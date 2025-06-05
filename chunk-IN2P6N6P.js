@@ -1,0 +1,1 @@
+import{Pa as t,Qa as a,ib as p,xa as s}from"./chunk-S2VO3HCN.js";var i=class n{static \u0275fac=function(e){return new(e||n)};static \u0275cmp=s({type:n,selectors:[["wb-examples-page"]],decls:4,vars:0,template:function(e,m){e&1&&(t(0,"h2"),p(1,"Code Examples"),a(),t(2,"p"),p(3,"Sample snippets will appear here."),a())},encapsulation:2})};export{i as ExamplesPage};
