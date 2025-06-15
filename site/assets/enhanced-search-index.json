@@ -1,0 +1,384 @@
+[
+  {
+    "type": "document",
+    "slug": "Advanced/configuration",
+    "title": "Advanced Configuration",
+    "category": "Advanced",
+    "url": "/docs/Advanced/configuration",
+    "chunks": [
+      {
+        "id": "Advanced/configuration-chunk-0",
+        "text": "Advanced Configuration\nThis is a test file in the Advanced subdirectory to verify recursive scanning works.",
+        "startIndex": 0,
+        "wordCount": 16,
+        "importance": 1,
+        "preview": "Advanced Configuration\nThis is a test file in the Advanced subdirectory to verify recursive scanning works.",
+        "keywords": []
+      }
+    ],
+    "keywords": [],
+    "description": "",
+    "order": 1,
+    "lastModified": "2025-06-08T04:44:46.017Z"
+  },
+  {
+    "type": "document",
+    "slug": "Tutorials/getting-started-tutorial",
+    "title": "Getting Started Tutorial",
+    "category": "Tutorials",
+    "url": "/docs/Tutorials/getting-started-tutorial",
+    "chunks": [
+      {
+        "id": "Tutorials/getting-started-tutorial-chunk-0",
+        "text": "Getting Started Tutorial\nThis tutorial will walk you through the basics of using Whizbang.\nPrerequisites\nBasic knowledge of JavaScript\nNode.js installed on your system\nStep 1: Installation\nFirst, install the package:\n`bash\nnpm install whizbang\n`\nStep 2: Basic Usage\nCreate a new instance:\n`javascript\nimport { Whizbang } from 'whizbang';\nconst wb = new Whizbang();\n`\nThis demonstrates that our recursive docs system works perfectly with subdirectories!",
+        "startIndex": 0,
+        "wordCount": 68,
+        "importance": 1,
+        "preview": "Getting Started Tutorial\nThis tutorial will walk you through the basics of using Whizbang.\nPrerequisites\nBasic knowledge of JavaScript\nNode.js install...",
+        "keywords": [
+          "whizbang"
+        ]
+      }
+    ],
+    "keywords": [
+      "whizbang"
+    ],
+    "description": "",
+    "order": 1,
+    "lastModified": "2025-06-08T04:44:46.052Z"
+  },
+  {
+    "type": "document",
+    "slug": "aggregates",
+    "title": "Aggregates",
+    "category": "Core concepts",
+    "url": "/docs/aggregates",
+    "chunks": [
+      {
+        "id": "aggregates-chunk-0",
+        "text": "Aggregates\nAggregates are the core building blocks of Whizbang...\nhi",
+        "startIndex": 0,
+        "wordCount": 10,
+        "importance": 1,
+        "preview": "Aggregates\nAggregates are the core building blocks of Whizbang...\nhi",
+        "keywords": []
+      }
+    ],
+    "keywords": [],
+    "description": "",
+    "order": 1,
+    "lastModified": "2025-06-07T16:58:48.900Z"
+  },
+  {
+    "type": "document",
+    "slug": "api",
+    "title": "API Reference",
+    "category": "General",
+    "url": "/docs/api",
+    "chunks": [
+      {
+        "id": "api-chunk-0",
+        "text": "API Reference\nComplete API documentation for our api.\nTo make sure you can stream all data to the right location...\nThen fine-tuning will be the next major step. Agreed?\nSo, clarification in the direction.",
+        "startIndex": 0,
+        "wordCount": 34,
+        "importance": 1,
+        "preview": "API Reference\nComplete API documentation for our api.\nTo make sure you can stream all data to the right location...\nThen fine-tuning will be the next ...",
+        "keywords": []
+      }
+    ],
+    "keywords": [],
+    "description": "",
+    "order": 999,
+    "lastModified": "2025-06-08T17:35:44.011Z"
+  },
+  {
+    "type": "document",
+    "slug": "enhanced-csharp-examples",
+    "title": "Enhanced C# Code Examples",
+    "category": "Core concepts",
+    "url": "/docs/enhanced-csharp-examples",
+    "chunks": [
+      {
+        "id": "enhanced-csharp-examples-chunk-0",
+        "text": "Enhanced CCode Examples\nThis document demonstrates the enhanced Ccode viewing capabilities with rich metadata, interactive features, and professional styling Basic API Controller Example\n`csharp{\ntitle: \"User Management API Controller\"\ndescription: \"A comprehensive REST API controller for user management with CRUD operations\"\nframework: \"NET8\"\ncategory: \"API\"\ndifficulty: \"INTERMEDIATE\"\ntags: [\"Web API\", \"REST\", \"CRUD\", \"Authentication\"]\ngithubUrl: \"https://github com/example/user-api\"\ndocsUrl: \"https://docs microsoft com/aspnet/core/web-api\"\nnugetPackages: [\"Microsoft AspNetCore Mvc\", \"Microsoft EntityFrameworkCore\", \"Microsoft AspNetCore Authorization\"]\nfilename: \"UserController cs\"\nshowLineNumbers: true\nshowLinesOnly: [1, 2, 3, 8, 9, 12, 13, 14, 15, 18, 19] \nhighlightLines: [12, 15, 28, 45]\nusingStatements: [\"Microsoft AspNetCore Mvc\", \"Microsoft EntityFrameworkCore\", \"Microsoft AspNetCore Authorization\", \"System Threading Tasks\", \"System Collections Generic\"]\n}\nusing Microsoft AspNetCore Mvc;\nusing Microsoft EntityFrameworkCore;\nusing Microsoft AspNetCore Authorization;\nnamespace UserManagement Controllers\n{\n    [ApiController]\n    [Route(\"api/[controller]\")]\n    [Authorize]\n    public class UserController : ControllerBase\n    {\n        private readonly UserDbContext _context;\n        private readonly ILogger<UserController> _logger;\n        public UserController(UserDbContext context, ILogger<UserController> logger)\n        {\n            _context = context;\n            _logger = logger;\n        }\n        [HttpGet]\n        public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()\n        {\n            try\n            {\n                var users = await _context Users Where(u => u IsActive) Select(u => new UserDto\n                    {\n                        Id = u Id,\n                        Name = u Name,\n                        Email = u Email,\n                        CreatedAt = u CreatedAt\n                    }) ToListAsync();\n                return Ok(users);\n            }\n            catch (Exception ex)\n            {\n                _logger LogError(ex, \"Error retrieving users\");\n                return StatusCode(500, \"Internal server error\");\n            }\n        }\n        [HttpGet(\"{id}\")]\n        public async Task<ActionResult<UserDto>> GetUser(int id)\n        {\n            var user = await _context Users FindAsync(id);\n            if (user == null)\n            {\n                return NotFound($\"User with ID {id} not found\");\n            }\n            return Ok(new UserDto\n            {\n                Id = user Id,\n                Name = user Name,\n                Email = user Email,\n                CreatedAt = user CreatedAt\n            });\n        }\n        [HttpPost]\n        public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserRequest request)\n        {\n            if ( ModelState IsValid)\n            {\n                return BadRequest(ModelState);\n            }\n            var user = new User\n            {\n                Name = request Name,\n                Email = request Email,\n                CreatedAt = DateTime UtcNow,\n                IsActive = true\n            };\n            _context",
+        "startIndex": 0,
+        "wordCount": 300,
+        "importance": 1,
+        "preview": "Enhanced CCode Examples\nThis document demonstrates the enhanced Ccode viewing capabilities with rich metadata, interactive features, and professional ...",
+        "keywords": [
+          "microsoft",
+          "aspnetcore",
+          "email",
+          "usercontroller",
+          "public",
+          "userdto",
+          "users",
+          "createdat",
+          "return",
+          "controller"
+        ]
+      },
+      {
+        "id": "enhanced-csharp-examples-chunk-1",
+        "text": "Name, Email = user Email, CreatedAt = user CreatedAt }); } [HttpPost] public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserRequest request) { if ( ModelState IsValid) { return BadRequest(ModelState); } var user = new User { Name = request Name, Email = request Email, CreatedAt = DateTime UtcNow, IsActive = true }; _context Users Add(user);\n            await _context SaveChangesAsync();\n            var userDto = new UserDto\n            {\n                Id = user Id,\n                Name = user Name,\n                Email = user Email,\n                CreatedAt = user CreatedAt\n            };\n            return CreatedAtAction(nameof(GetUser), new { id = user Id }, userDto);\n        }\n    }\n}\n`\nEntity Framework Model Example\n`csharp{\ntitle: \"User Entity Model\"\ndescription: \"Entity Framework model with relationships and validation attributes\"\nframework: \"NET8\"\ncategory: \"ENTITY\"\ndifficulty: \"BEGINNER\"\ntags: [\"Entity Framework\", \"Models\", \"Data Annotations\"]\nnugetPackages: [\"Microsoft EntityFrameworkCore\", \"System ComponentModel Annotations\"]\nfilename: \"User cs\"\n}\nusing System ComponentModel DataAnnotations;\nusing System ComponentModel DataAnnotations Schema;\nnamespace UserManagement Models\n{\n    [Table(\"Users\")]\n    public class User\n    {\n        [Key]\n        [DatabaseGenerated(DatabaseGeneratedOption Identity)]\n        public int Id { get; set; }\n        [Required]\n        [StringLength(100, MinimumLength = 2)]\n        public string Name { get; set; } = string Empty;\n        [Required]\n        [EmailAddress]\n        [StringLength(255)]\n        public string Email { get; set; } = string Empty;\n        [Required]\n        public DateTime CreatedAt { get; set; }\n        public DateTime UpdatedAt { get; set; }\n        [Required]\n        public bool IsActive { get; set; } = true;\n        // Navigation properties\n        public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();\n        public virtual ICollection<UserProfile> UserProfiles { get; set; } = new List<UserProfile>();\n    }\n    public class UserDto\n    {\n        public int Id { get; set; }\n        public string Name { get; set; } = string Empty;\n        public string Email { get; set; } = string Empty;\n        public DateTime CreatedAt { get; set; }\n    }\n    public class CreateUserRequest\n    {\n        [Required]\n        [StringLength(100, MinimumLength = 2)]\n        public string Name { get; set; } = string",
+        "startIndex": 1610,
+        "wordCount": 296,
+        "importance": 0.7999999999999999,
+        "preview": "Name, Email = user Email, CreatedAt = user CreatedAt }); } [HttpPost] public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserRequest...",
+        "keywords": [
+          "public",
+          "string",
+          "email",
+          "createdat",
+          "userdto",
+          "entity",
+          "required",
+          "datetime",
+          "framework",
+          "empty"
+        ]
+      },
+      {
+        "id": "enhanced-csharp-examples-chunk-2",
+        "text": "{ get; set; } public string Name { get; set; } = string Empty; public string Email { get; set; } = string Empty; public DateTime CreatedAt { get; set; } } public class CreateUserRequest { [Required] [StringLength(100, MinimumLength = 2)] public string Name { get; set; } = string Empty;\n        [Required]\n        [EmailAddress]\n        public string Email { get; set; } = string Empty;\n    }\n}\n`\nAdvanced Service Pattern Example\n`csharp{\ntitle: \"User Service with Repository Pattern\"\ndescription: \"Implementation of service layer with dependency injection and error handling\"\nframework: \"NET8\"\ncategory: \"SERVICE\"\ndifficulty: \"ADVANCED\"\ntags: [\"Service Pattern\", \"Repository\", \"Dependency Injection\", \"Error Handling\"]\ngithubUrl: \"https://github com/example/user-service\"\nnugetPackages: [\"Microsoft Extensions Logging\", \"AutoMapper\"]\nfilename: \"UserService cs\"\nshowLinesOnly: [1, 2, 3, 4, 9, 10, 11, 12, 13, 14, 15, 20, 21, 22, 23, 24, 25]\ncollapsible: false\n}\nusing AutoMapper;\nusing Microsoft Extensions Logging;\nusing UserManagement Models;\nusing UserManagement Repositories;\nusing UserManagement Exceptions;\nnamespace UserManagement Services\n{\n    public interface IUserService\n    {\n        Task<IEnumerable<UserDto>> GetAllUsersAsync();\n        Task<UserDto > GetUserByIdAsync(int id);\n        Task<UserDto> CreateUserAsync(CreateUserRequest request);\n        Task<UserDto > UpdateUserAsync(int id, UpdateUserRequest request);\n        Task<bool> DeleteUserAsync(int id);\n        Task<bool> UserExistsAsync(string email);\n    }\n    public class UserService : IUserService\n    {\n        private readonly IUserRepository _userRepository;\n        private readonly IMapper _mapper;\n        private readonly ILogger<UserService> _logger;\n        public UserService(\n            IUserRepository userRepository,\n            IMapper mapper,\n            ILogger<UserService> logger)\n        {\n            _userRepository = userRepository throw new ArgumentNullException(nameof(userRepository));\n            _mapper = mapper throw new ArgumentNullException(nameof(mapper));\n            _logger = logger throw new ArgumentNullException(nameof(logger));\n        }\n        public async Task<IEnumerable<UserDto>> GetAllUsersAsync()\n        {\n            try\n            {\n                _logger LogInformation(\"Retrieving all active users\");\n                var users = await _userRepository GetActiveUsersAsync();\n                var userDtos = _mapper Map<IEnumerable<UserDto>>(users);\n                _logger LogInformation(\"Retrieved {UserCount} active users\", users Count());\n                return userDtos;\n            }\n            catch (Exception ex)\n            {\n                _logger LogError(ex, \"Error occurred while retrieving users\");\n                throw new ServiceException(\"Failed to retrieve users\", ex);\n            }\n        }\n        public async Task<UserDto > GetUserByIdAsync(int id)\n        {\n            try\n            {\n                _logger LogInformation(\"Retrieving user with ID: {UserId}\", id);\n                var user = await _userRepository",
+        "startIndex": 5371,
+        "wordCount": 299,
+        "importance": 0.7999999999999999,
+        "preview": "{ get; set; } public string Name { get; set; } = string Empty; public string Email { get; set; } = string Empty; public DateTime CreatedAt { get; set;...",
+        "keywords": [
+          "public",
+          "string",
+          "userdto",
+          "users",
+          "service",
+          "userservice",
+          "using",
+          "empty",
+          "usermanagement",
+          "throw"
+        ]
+      },
+      {
+        "id": "enhanced-csharp-examples-chunk-3",
+        "text": "LogInformation(\"Retrieved {UserCount} active users\", users Count()); return userDtos; } catch (Exception ex) { _logger LogError(ex, \"Error occurred while retrieving users\"); throw new ServiceException(\"Failed to retrieve users\", ex); } } public async Task<UserDto > GetUserByIdAsync(int id) { try { _logger LogInformation(\"Retrieving user with ID: {UserId}\", id); var user = await _userRepository GetByIdAsync(id);\n                if (user == null)\n                {\n                    _logger LogWarning(\"User with ID {UserId} not found\", id);\n                    return null;\n                }\n                var userDto = _mapper Map<UserDto>(user);\n                _logger LogInformation(\"Successfully retrieved user: {UserEmail}\", user Email);\n                return userDto;\n            }\n            catch (Exception ex)\n            {\n                _logger LogError(ex, \"Error occurred while retrieving user with ID: {UserId}\", id);\n                throw new ServiceException($\"Failed to retrieve user with ID: {id}\", ex);\n            }\n        }\n        public async Task<UserDto> CreateUserAsync(CreateUserRequest request)\n        {\n            try\n            {\n                _logger LogInformation(\"Creating new user with email: {Email}\", request Email);\n                // Check if user already exists\n                if (await UserExistsAsync(request Email))\n                {\n                    throw new DuplicateUserException($\"User with email {request Email} already exists\");\n                }\n                var user = _mapper Map<User>(request);\n                user CreatedAt = DateTime UtcNow;\n                user IsActive = true;\n                var createdUser = await _userRepository CreateAsync(user);\n                var userDto = _mapper Map<UserDto>(createdUser);\n                _logger LogInformation(\"Successfully created user with ID: {UserId}\", createdUser Id);\n                return userDto;\n            }\n            catch (DuplicateUserException)\n            {\n                throw; // Re-throw business logic exceptions\n            }\n            catch (Exception ex)\n            {\n                _logger LogError(ex, \"Error occurred while creating user with email: {Email}\", request Email);\n                throw new ServiceException(\"Failed to create user\", ex);\n            }\n        }\n        public async Task<bool> UserExistsAsync(string email)\n        {\n            try\n            {\n                return await _userRepository ExistsByEmailAsync(email);\n            }\n            catch (Exception ex)\n            {\n                _logger LogError(ex, \"Error checking if user exists with email: {Email}\", email);\n                throw new ServiceException(\"Failed to check user existence\", ex);\n            }\n        }\n    }\n}\n`\nMiddleware Configuration Example\n`csharp{\ntitle: \"Custom Authentication Middleware\"\ndescription: \"JWT authentication middleware with custom claims handling\"\nframework: \"NET8\"\ncategory: \"MIDDLEWARE\"\ndifficulty: \"ADVANCED\"\ntags: [\"Middleware\", \"JWT\", \"Authentication\", \"Security\"]\ndocsUrl: \"https://docs microsoft com/aspnet/core/fundamentals/middleware\"\nnugetPackages: [\"Microsoft AspNetCore Authentication JwtBearer\", \"System IdentityModel Tokens",
+        "startIndex": 8179,
+        "wordCount": 299,
+        "importance": 0.7999999999999999,
+        "preview": "LogInformation(\"Retrieved {UserCount} active users\", users Count()); return userDtos; } catch (Exception ex) { _logger LogError(ex, \"Error occurred wh...",
+        "keywords": [
+          "email",
+          "userdto",
+          "throw",
+          "request",
+          "middleware",
+          "loginformation",
+          "return",
+          "catch",
+          "users",
+          "exception"
+        ]
+      },
+      {
+        "id": "enhanced-csharp-examples-chunk-4",
+        "text": "ServiceException(\"Failed to check user existence\", ex); } } } } ` Middleware Configuration Example `csharp{ title: \"Custom Authentication Middleware\" description: \"JWT authentication middleware with custom claims handling\" framework: \"NET8\" category: \"MIDDLEWARE\" difficulty: \"ADVANCED\" tags: [\"Middleware\", \"JWT\", \"Authentication\", \"Security\"] docsUrl: \"https://docs microsoft com/aspnet/core/fundamentals/middleware\" nugetPackages: [\"Microsoft AspNetCore Authentication JwtBearer\", \"System IdentityModel Tokens Jwt\"]\nfilename: \"JwtAuthenticationMiddleware cs\"\n}\nusing Microsoft AspNetCore Authentication;\nusing Microsoft Extensions Options;\nusing System IdentityModel Tokens Jwt;\nusing System Security Claims;\nusing System Text Encodings Web;\nusing Microsoft IdentityModel Tokens;\nusing System Text;\nnamespace UserManagement Middleware\n{\n    public class JwtAuthenticationMiddleware\n    {\n        private readonly RequestDelegate _next;\n        private readonly JwtSettings _jwtSettings;\n        private readonly ILogger<JwtAuthenticationMiddleware> _logger;\n        public JwtAuthenticationMiddleware(\n            RequestDelegate next,\n            IOptions<JwtSettings> jwtSettings,\n            ILogger<JwtAuthenticationMiddleware> logger)\n        {\n            _next = next;\n            _jwtSettings = jwtSettings Value;\n            _logger = logger;\n        }\n        public async Task InvokeAsync(HttpContext context)\n        {\n            var token = ExtractTokenFromHeader(context);\n            if ( string IsNullOrEmpty(token))\n            {\n                await ValidateAndSetUser(context, token);\n            }\n            await _next(context);\n        }\n        private string ExtractTokenFromHeader(HttpContext context)\n        {\n            var authHeader = context Request Headers[\"Authorization\"] FirstOrDefault();\n            if (authHeader = null && authHeader StartsWith(\"Bearer \"))\n            {\n                return authHeader Substring(\"Bearer \" Length) Trim();\n            }\n            return null;\n        }\n        private async Task ValidateAndSetUser(HttpContext context, string token)\n        {\n            try\n            {\n                var tokenHandler = new JwtSecurityTokenHandler();\n                var key = Encoding ASCII GetBytes(_jwtSettings SecretKey);\n                var validationParameters = new TokenValidationParameters\n                {\n                    ValidateIssuerSigningKey = true,\n                    IssuerSigningKey = new SymmetricSecurityKey(key),\n                    ValidateIssuer = true,\n                    ValidIssuer = _jwtSettings Issuer,\n                    ValidateAudience = true,\n                    ValidAudience = _jwtSettings Audience,\n                    ValidateLifetime = true,\n                    ClockSkew = TimeSpan Zero\n                };\n                var principal = tokenHandler ValidateToken(token, validationParameters, out SecurityToken validatedToken);\n                // Set the user context\n                context User = principal;\n                _logger LogInformation(\"JWT token validated successfully for user: {UserId}\", \n                    principal FindFirst(ClaimTypes NameIdentifier) Value);\n            }\n            catch (SecurityTokenException ex)\n            {\n                _logger LogWarning(\"Invalid JWT token: {Error}\", ex Message);\n            }\n            catch (Exception ex)\n            {\n                _logger",
+        "startIndex": 11016,
+        "wordCount": 282,
+        "importance": 0.7999999999999999,
+        "preview": "ServiceException(\"Failed to check user existence\", ex); } } } } ` Middleware Configuration Example `csharp{ title: \"Custom Authentication Middleware\" ...",
+        "keywords": [
+          "context",
+          "middleware",
+          "using",
+          "token",
+          "authentication",
+          "microsoft",
+          "system",
+          "jwtauthenticationmiddleware",
+          "private",
+          "jwtsettings"
+        ]
+      },
+      {
+        "id": "enhanced-csharp-examples-chunk-5",
+        "text": "Zero }; var principal = tokenHandler ValidateToken(token, validationParameters, out SecurityToken validatedToken); // Set the user context context User = principal; _logger LogInformation(\"JWT token validated successfully for user: {UserId}\", principal FindFirst(ClaimTypes NameIdentifier) Value); } catch (SecurityTokenException ex) { _logger LogWarning(\"Invalid JWT token: {Error}\", ex Message); } catch (Exception ex) { _logger LogError(ex, \"Error validating JWT token\");\n            }\n        }\n    }\n    public class JwtSettings\n    {\n        public string SecretKey { get; set; } = string Empty;\n        public string Issuer { get; set; } = string Empty;\n        public string Audience { get; set; } = string Empty;\n        public int ExpirationMinutes { get; set; } = 60;\n    }\n}\n`\nConfiguration and Startup Example\n`csharp{\ntitle: \"Program cs Configuration\"\ndescription: \"Modern NET 8 minimal hosting model with comprehensive service configuration\"\nframework: \"NET8\"\ncategory: \"CONFIG\"\ndifficulty: \"INTERMEDIATE\"\ntags: [\"Configuration\", \"Dependency Injection\", \"Startup\", \"Minimal API\"]\nfilename: \"Program cs\"\n}\nusing Microsoft EntityFrameworkCore;\nusing Microsoft AspNetCore Authentication JwtBearer;\nusing Microsoft IdentityModel Tokens;\nusing System Text;\nusing UserManagement Data;\nusing UserManagement Services;\nusing UserManagement Repositories;\nusing UserManagement Middleware;\nvar builder = WebApplication CreateBuilder(args);\n// Configuration\nvar jwtSettings = builder Configuration GetSection(\"JwtSettings\");\nvar connectionString = builder Configuration GetConnectionString(\"DefaultConnection\");\n// Add services to the container\nbuilder Services AddDbContext<UserDbContext>(options =>\n    options UseSqlServer(connectionString));\n// JWT Authentication\nbuilder Services Configure<JwtSettings>(jwtSettings);\nbuilder Services AddAuthentication(JwtBearerDefaults AuthenticationScheme) AddJwtBearer(options =>\n    {\n        options TokenValidationParameters = new TokenValidationParameters\n        {\n            ValidateIssuerSigningKey = true,\n            IssuerSigningKey = new SymmetricSecurityKey(\n                Encoding ASCII GetBytes(jwtSettings[\"SecretKey\"] )),\n            ValidateIssuer = true,\n            ValidIssuer = jwtSettings[\"Issuer\"],\n            ValidateAudience = true,\n            ValidAudience = jwtSettings[\"Audience\"],\n            ValidateLifetime = true,\n            ClockSkew = TimeSpan Zero\n        };\n    });\nbuilder Services AddAuthorization();\n// Register application services\nbuilder Services AddScoped<IUserRepository, UserRepository>();\nbuilder Services AddScoped<IUserService, UserService>();\n// AutoMapper\nbuilder Services AddAutoMapper(typeof(Program));\n// API Controllers\nbuilder Services AddControllers();\n// API Documentation\nbuilder Services AddEndpointsApiExplorer();\nbuilder Services AddSwaggerGen(c =>\n{\n    c",
+        "startIndex": 13942,
+        "wordCount": 288,
+        "importance": 0.7999999999999999,
+        "preview": "Zero }; var principal = tokenHandler ValidateToken(token, validationParameters, out SecurityToken validatedToken); // Set the user context context Use...",
+        "keywords": [
+          "services",
+          "builder",
+          "jwtsettings",
+          "using",
+          "configuration",
+          "string",
+          "public",
+          "token",
+          "usermanagement",
+          "options"
+        ]
+      },
+      {
+        "id": "enhanced-csharp-examples-chunk-6",
+        "text": "ValidAudience = jwtSettings[\"Audience\"], ValidateLifetime = true, ClockSkew = TimeSpan Zero }; }); builder Services AddAuthorization(); // Register application services builder Services AddScoped<IUserRepository, UserRepository>(); builder Services AddScoped<IUserService, UserService>(); // AutoMapper builder Services AddAutoMapper(typeof(Program)); // API Controllers builder Services AddControllers(); // API Documentation builder Services AddEndpointsApiExplorer(); builder Services AddSwaggerGen(c => { c SwaggerDoc(\"v1\", new() { Title = \"User Management API\", Version = \"v1\" });\n    c AddSecurityDefinition(\"Bearer\", new()\n    {\n        Description = \"JWT Authorization header using the Bearer scheme \",\n        Name = \"Authorization\",\n        In = Microsoft OpenApi Models ParameterLocation Header,\n        Type = Microsoft OpenApi Models SecuritySchemeType Http,\n        Scheme = \"bearer\"\n    });\n});\n// CORS\nbuilder Services AddCors(options =>\n{\n    options AddPolicy(\"AllowSpecificOrigins\", policy =>\n    {\n        policy WithOrigins(\"https://localhost:4200\", \"https://myapp com\") AllowAnyHeader() AllowAnyMethod();\n    });\n});\n// Logging\nbuilder Services AddLogging(config =>\n{\n    config AddConsole();\n    config AddDebug();\n});\nvar app = builder Build();\n// Configure the HTTP request pipeline\nif (app Environment IsDevelopment())\n{\n    app UseSwagger();\n    app UseSwaggerUI();\n    app UseDeveloperExceptionPage();\n}\napp UseHttpsRedirection();\napp UseCors(\"AllowSpecificOrigins\");\n// Custom JWT middleware\napp UseMiddleware<JwtAuthenticationMiddleware>();\napp UseAuthentication();\napp UseAuthorization();\napp MapControllers();\napp Run();\n`\nThis documentation showcases the enhanced Ccode viewing capabilities with:\nRich Metadata: Titles, descriptions, framework versions, categories, difficulty levels\nInteractive Features: Copy, download, GitHub links, NuGet package integration\nVisual Enhancements: Syntax highlighting, line numbers, code folding\nProfessional Styling: VS Code-inspired themes, hover effects, responsive design\nDeveloper Tools: Line highlighting, collapsible sections, tag categorization",
+        "startIndex": 16385,
+        "wordCount": 224,
+        "importance": 0.9500000000000001,
+        "preview": "ValidAudience = jwtSettings[\"Audience\"], ValidateLifetime = true, ClockSkew = TimeSpan Zero }; }); builder Services AddAuthorization(); // Register ap...",
+        "keywords": [
+          "builder",
+          "services",
+          "bearer",
+          "config"
+        ]
+      }
+    ],
+    "keywords": [
+      "public",
+      "email",
+      "using",
+      "microsoft",
+      "userdto",
+      "string",
+      "services",
+      "builder",
+      "users",
+      "return"
+    ],
+    "description": "",
+    "order": 3,
+    "lastModified": "2025-06-09T18:17:14.327Z"
+  },
+  {
+    "type": "document",
+    "slug": "enhanced-search-demo",
+    "title": "enhanced-search-demo",
+    "category": "General",
+    "url": "/docs/enhanced-search-demo",
+    "chunks": [
+      {
+        "id": "enhanced-search-demo-chunk-0",
+        "text": "",
+        "startIndex": 0,
+        "wordCount": 1,
+        "importance": 0.8,
+        "preview": "",
+        "keywords": []
+      }
+    ],
+    "keywords": [],
+    "description": "",
+    "order": 999,
+    "lastModified": "2025-06-09T02:19:31.095Z"
+  },
+  {
+    "type": "document",
+    "slug": "getting-started",
+    "title": "Hello World API call",
+    "category": "Introduction",
+    "url": "/docs/getting-started",
+    "chunks": [
+      {
+        "id": "getting-started-chunk-0",
+        "text": "Getting Started\nInstall Whizbang:\n`bash\nnpm i @whizbang/runtime\n`\n<wb-video id=\"dQw4w9WgXcQ\"></wb-video>\n<wb-example id=\"hello-world\"></wb-example>",
+        "startIndex": 0,
+        "wordCount": 13,
+        "importance": 1,
+        "preview": "Getting Started\nInstall Whizbang:\n`bash\nnpm i @whizbang/runtime\n`\n<wb-video id=\"dQw4w9WgXcQ\"></wb-video>\n<wb-example id=\"hello-world\"></wb-example>",
+        "keywords": []
+      }
+    ],
+    "keywords": [],
+    "description": "",
+    "order": 1,
+    "lastModified": "2025-06-07T16:58:26.813Z"
+  },
+  {
+    "type": "document",
+    "slug": "philosophy",
+    "title": "Philosophy",
+    "category": "Introduction",
+    "url": "/docs/philosophy",
+    "chunks": [
+      {
+        "id": "philosophy-chunk-0",
+        "text": "Philosophy\nWhizbang follows a philosophy of simplicity and performance...",
+        "startIndex": 0,
+        "wordCount": 9,
+        "importance": 1,
+        "preview": "Philosophy\nWhizbang follows a philosophy of simplicity and performance...",
+        "keywords": []
+      }
+    ],
+    "keywords": [],
+    "description": "",
+    "order": 2,
+    "lastModified": "2025-06-07T16:58:26.816Z"
+  },
+  {
+    "type": "document",
+    "slug": "projections",
+    "title": "Projections",
+    "category": "Core concepts",
+    "url": "/docs/projections",
+    "chunks": [
+      {
+        "id": "projections-chunk-0",
+        "text": "Projections\nProjections allow you to create read models from your event streams...",
+        "startIndex": 0,
+        "wordCount": 12,
+        "importance": 1,
+        "preview": "Projections\nProjections allow you to create read models from your event streams...",
+        "keywords": []
+      }
+    ],
+    "keywords": [],
+    "description": "",
+    "order": 2,
+    "lastModified": "2025-06-07T16:58:26.848Z"
+  },
+  {
+    "type": "document",
+    "slug": "simple-csharp-examples",
+    "title": "Simple C# Code Examples",
+    "category": "Core concepts",
+    "url": "/docs/simple-csharp-examples",
+    "chunks": [
+      {
+        "id": "simple-csharp-examples-chunk-0",
+        "text": "Simple CCode Examples\nBasic examples to test the enhanced Ccode block functionality.\nSimple Console Application\n`csharp{\ntitle: \"Hello World Console App\"\ndescription: \"A simple console application demonstrating basic Csyntax\"\nframework: \"NET8\"\ndifficulty: \"BEGINNER\"\nfilename: \"Program.cs\"\n}\nusing System;\nnamespace HelloWorld\n{\n    class Program\n    {\n        static void Main(string[] args)\n        {\n            Console.WriteLine(\"Hello, World!\");\n            Console.WriteLine(\"Welcome to enhanced Ccode viewing!\");\n            var message = GetWelcomeMessage(\"Developer\");\n            Console.WriteLine(message);\n        }\n        static string GetWelcomeMessage(string name)\n        {\n            return $\"Hello, {name}! Today is {DateTime.Now:yyyy-MM-dd}\";\n        }\n    }\n}\n`\nBasic Class Example\n`csharp{\ntitle: \"Person Class\"\ndescription: \"Simple class with properties and methods\"\ncategory: \"ENTITY\"\ndifficulty: \"BEGINNER\"\ntags: [\"Class\", \"Properties\", \"Methods\"]\nfilename: \"Person.cs\"\n}\npublic class Person\n{\n    public string Name { get; set; }\n    public int Age { get; set; }\n    public string Email { get; set; }\n    public Person(string name, int age, string email)\n    {\n        Name = name;\n        Age = age;\n        Email = email;\n    }\n    public void DisplayInfo()\n    {\n        Console.WriteLine($\"Name: {Name}\");\n        Console.WriteLine($\"Age: {Age}\");\n        Console.WriteLine($\"Email: {Email}\");\n    }\n    public bool IsAdult()\n    {\n        return Age >= 18;\n    }\n}\n`\nNuGet Package Example\n`csharp{\ntitle: \"JSON Serialization Example\"\ndescription: \"Using Newtonsoft.Json for JSON operations\"\nframework: \"NET8\"\ndifficulty: \"INTERMEDIATE\"\ntags: [\"JSON\", \"Serialization\", \"NuGet\"]\nnugetPackages: [\"Newtonsoft.Json\"]\nfilename: \"JsonExample.cs\"\n}\nusing Newtonsoft.Json;\nusing System.Collections.Generic;\npublic class JsonExample\n{\n    public void SerializeExample()\n    {\n        var person = new Person(\"John Doe\", 30, \"john@example.com\");\n        // Serialize to JSON\n        string json = JsonConvert.SerializeObject(person, Formatting.Indented);\n        Console.WriteLine(\"Serialized JSON:\");\n        Console.WriteLine(json);\n        // Deserialize from JSON\n        var deserializedPerson = JsonConvert.DeserializeObject<Person>(json);\n        Console.WriteLine(\"\\nDeserialized object:\");\n        deserializedPerson.DisplayInfo();\n    }\n}\n`",
+        "startIndex": 0,
+        "wordCount": 240,
+        "importance": 1,
+        "preview": "Simple CCode Examples\nBasic examples to test the enhanced Ccode block functionality.\nSimple Console Application\n`csharp{\ntitle: \"Hello World Console A...",
+        "keywords": [
+          "console",
+          "writeline",
+          "public",
+          "string",
+          "person",
+          "class",
+          "email",
+          "simple",
+          "using",
+          "example"
+        ]
+      }
+    ],
+    "keywords": [
+      "console",
+      "writeline",
+      "public",
+      "string",
+      "person",
+      "class",
+      "email",
+      "simple",
+      "using",
+      "example"
+    ],
+    "description": "",
+    "order": 4,
+    "lastModified": "2025-06-08T19:13:08.879Z"
+  }
+]
