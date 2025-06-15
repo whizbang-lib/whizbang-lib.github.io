@@ -2,18 +2,24 @@
   {
     "slug": "Advanced/configuration",
     "title": "Advanced Configuration",
+    "category": "Advanced",
+    "order": 1,
     "videos": [],
     "examples": []
   },
   {
     "slug": "Tutorials/getting-started-tutorial",
     "title": "Getting Started Tutorial",
+    "category": "Tutorials",
+    "order": 1,
     "videos": [],
     "examples": []
   },
   {
     "slug": "aggregates",
     "title": "Aggregates",
+    "category": "Core concepts",
+    "order": 1,
     "videos": [],
     "examples": []
   },
@@ -26,6 +32,8 @@
   {
     "slug": "enhanced-csharp-examples",
     "title": "Enhanced C# Code Examples",
+    "category": "Core concepts",
+    "order": 3,
     "videos": [],
     "examples": []
   },
@@ -38,6 +46,8 @@
   {
     "slug": "getting-started",
     "title": "Getting started",
+    "category": "Introduction",
+    "order": 1,
     "videos": [
       "dQw4w9WgXcQ"
     ],
@@ -52,18 +62,24 @@
   {
     "slug": "philosophy",
     "title": "Philosophy",
+    "category": "Introduction",
+    "order": 2,
     "videos": [],
     "examples": []
   },
   {
     "slug": "projections",
     "title": "Projections",
+    "category": "Core concepts",
+    "order": 2,
     "videos": [],
     "examples": []
   },
   {
     "slug": "simple-csharp-examples",
     "title": "Simple C# Code Examples",
+    "category": "Core concepts",
+    "order": 4,
     "videos": [],
     "examples": []
   }
