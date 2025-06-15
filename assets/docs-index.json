@@ -1,0 +1,50 @@
+[
+  {
+    "title": "Aggregates",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "title": "API Reference",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "title": "Enhanced C# Code Examples",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "getting-started",
+    "title": "Getting started",
+    "videos": [
+      "dQw4w9WgXcQ"
+    ],
+    "examples": [
+      {
+        "id": "hello-world",
+        "title": "Hello World API call",
+        "stackblitz": "https://stackblitz.com/edit/whizbang-hello"
+      }
+    ]
+  },
+  {
+    "title": "Philosophy",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "title": "Projections",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "title": "Simple C# Code Examples",
+    "videos": [],
+    "examples": []
+  }
+]
