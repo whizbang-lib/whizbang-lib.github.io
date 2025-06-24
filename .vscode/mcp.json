@@ -1,0 +1,27 @@
+{
+    "servers": {
+        "terminal": {
+            "command": "npx",
+            "args": [
+                "@dillip285/mcp-terminal",
+                "--allowed-paths",
+                "/path/to/allowed/directory"
+            ]
+        },
+        "context7": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+                "-y",
+                "@upstash/context7-mcp"
+            ]
+        },
+        "puppeteer": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-puppeteer"
+            ]
+        }
+    }
+}
