@@ -1,0 +1,251 @@
+// =============================================================================
+// Design Tokens - Centralized design system variables
+// =============================================================================
+
+// Color System - Theme-Aware Design Tokens
+// =============================================================================
+// Light Theme (Default)
+:root {
+  // Primary Colors (inherit from PrimeNG theme)
+  --wb-primary: var(--primary-color);
+  --wb-primary-50: var(--primary-50);
+  --wb-primary-100: var(--primary-100);
+  --wb-primary-500: var(--primary-500);
+  --wb-primary-600: var(--primary-600);
+  --wb-primary-700: var(--primary-700);
+
+  // Surface Colors - Light Theme
+  --wb-surface-ground: var(--surface-ground);
+  --wb-surface-card: var(--surface-card);
+  --wb-surface-border: var(--surface-border);
+  --wb-surface-hover: var(--surface-hover);
+
+  // Text Colors - Light Theme
+  --wb-text-primary: var(--text-color);
+  --wb-text-secondary: var(--text-color-secondary);
+  --wb-text-muted: var(--text-color-secondary);
+
+  // Code Block Colors - Light Theme
+  --wb-code-bg: #f8fafc;
+  --wb-code-bg-secondary: #f1f5f9;
+  --wb-code-text: #334155;
+  --wb-code-text-muted: #64748b;
+  --wb-code-border: #e2e8f0;
+  --wb-code-line-number: #94a3b8;
+  --wb-code-highlight: #dbeafe;
+  --wb-code-header-bg: var(--surface-ground);
+  --wb-code-footer-bg: var(--surface-ground);
+
+  // Syntax Highlighting Colors - Light Theme (VS Code Light)
+  --wb-syntax-keyword: #0070f3;
+  --wb-syntax-string: #d73a49;
+  --wb-syntax-comment: #6a737d;
+  --wb-syntax-number: #005cc5;
+  --wb-syntax-class: #6f42c1;
+  --wb-syntax-method: #005cc5;
+  --wb-syntax-property: #e36209;
+
+  // Status Colors
+  --wb-success: #10b981;
+  --wb-warning: #f59e0b;
+  --wb-error: #ef4444;
+  --wb-info: #3b82f6;
+
+  // Background Gradients
+  --wb-gradient-primary: linear-gradient(135deg, var(--primary-color), var(--primary-600));
+  --wb-gradient-surface: linear-gradient(135deg, var(--surface-ground), var(--surface-card));
+}
+
+// Dark Theme Overrides
+:root[data-theme="dark"] {
+  // Surface Colors - Dark Theme
+  --wb-surface-ground: #0f172a;
+  --wb-surface-card: #1e293b;
+  --wb-surface-border: #334155;
+  --wb-surface-hover: #475569;
+
+  // Text Colors - Dark Theme
+  --wb-text-primary: #f1f5f9;
+  --wb-text-secondary: #cbd5e1;
+  --wb-text-muted: #94a3b8;
+
+  // Code Block Colors - Dark Theme
+  --wb-code-bg: #1a202c;
+  --wb-code-bg-secondary: #2d3748;
+  --wb-code-text: #e2e8f0;
+  --wb-code-text-muted: #a0aec0;
+  --wb-code-border: #4a5568;
+  --wb-code-line-number: #718096;
+  --wb-code-highlight: #2d3748;
+  --wb-code-header-bg: #2d3748;
+  --wb-code-footer-bg: #2d3748;
+
+  // Syntax Highlighting Colors - Dark Theme (VS Code Dark)
+  --wb-syntax-keyword: #569cd6;
+  --wb-syntax-string: #ce9178;
+  --wb-syntax-comment: #6a9955;
+  --wb-syntax-number: #b5cea8;
+  --wb-syntax-class: #4ec9b0;
+  --wb-syntax-method: #dcdcaa;
+  --wb-syntax-property: #9cdcfe;
+
+  // Status Colors - Dark Theme Adjustments
+  --wb-success: #10b981;
+  --wb-warning: #fbbf24;
+  --wb-error: #f87171;
+  --wb-info: #60a5fa;
+
+  // Background Gradients - Dark Theme
+  --wb-gradient-primary: linear-gradient(135deg, var(--primary-color), var(--primary-700));
+  --wb-gradient-surface: linear-gradient(135deg, var(--wb-surface-ground), var(--wb-surface-card));
+}
+
+// Spacing Scale
+// -----------------------------------------------------------------------------
+// Consistent spacing system based on 0.25rem (4px) increments
+$wb-spacing: (
+  'xs': 0.25rem,   // 4px
+  'sm': 0.5rem,    // 8px
+  'md': 0.75rem,   // 12px
+  'lg': 1rem,      // 16px
+  'xl': 1.25rem,   // 20px
+  '2xl': 1.5rem,   // 24px
+  '3xl': 2rem,     // 32px
+  '4xl': 2.5rem,   // 40px
+  '5xl': 3rem,     // 48px
+  '6xl': 4rem,     // 64px
+);
+
+// Function to get spacing values
+@function wb-spacing($size) {
+  @return map-get($wb-spacing, $size);
+}
+
+// Typography Scale
+// -----------------------------------------------------------------------------
+$wb-font-sizes: (
+  'xs': 0.75rem,    // 12px
+  'sm': 0.875rem,   // 14px
+  'base': 1rem,     // 16px
+  'lg': 1.125rem,   // 18px
+  'xl': 1.25rem,    // 20px
+  '2xl': 1.5rem,    // 24px
+  '3xl': 1.875rem,  // 30px
+  '4xl': 2.25rem,   // 36px
+  '5xl': 3rem,      // 48px
+);
+
+$wb-font-weights: (
+  'normal': 400,
+  'medium': 500,
+  'semibold': 600,
+  'bold': 700,
+);
+
+$wb-line-heights: (
+  'tight': 1.25,
+  'normal': 1.5,
+  'relaxed': 1.75,
+);
+
+// Functions for typography
+@function wb-font-size($size) {
+  @return map-get($wb-font-sizes, $size);
+}
+
+@function wb-font-weight($weight) {
+  @return map-get($wb-font-weights, $weight);
+}
+
+@function wb-line-height($height) {
+  @return map-get($wb-line-heights, $height);
+}
+
+// Border Radius Scale
+// -----------------------------------------------------------------------------
+$wb-border-radius: (
+  'none': 0,
+  'sm': 0.125rem,   // 2px
+  'md': 0.25rem,    // 4px
+  'lg': 0.375rem,   // 6px
+  'xl': 0.5rem,     // 8px
+  '2xl': 0.75rem,   // 12px
+  '3xl': 1rem,      // 16px
+  'full': 9999px,
+);
+
+@function wb-border-radius($size) {
+  @return map-get($wb-border-radius, $size);
+}
+
+// Shadow Scale
+// -----------------------------------------------------------------------------
+$wb-shadows: (
+  'sm': (0 1px 2px 0 rgba(0, 0, 0, 0.05)),
+  'base': (0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)),
+  'md': (0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)),
+  'lg': (0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)),
+  'xl': (0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)),
+  '2xl': (0 25px 50px -12px rgba(0, 0, 0, 0.25)),
+);
+
+@function wb-shadow($size) {
+  @return map-get($wb-shadows, $size);
+}
+
+// Z-Index Scale
+// -----------------------------------------------------------------------------
+$wb-z-index: (
+  'dropdown': 1000,
+  'sticky': 1020,
+  'fixed': 1030,
+  'modal-backdrop': 1040,
+  'modal': 1050,
+  'popover': 1060,
+  'tooltip': 1070,
+);
+
+@function wb-z-index($layer) {
+  @return map-get($wb-z-index, $layer);
+}
+
+// Breakpoints
+// -----------------------------------------------------------------------------
+$wb-breakpoints: (
+  'mobile': 480px,
+  'tablet': 768px,
+  'desktop': 1024px,
+  'wide': 1200px,
+  'ultrawide': 1440px,
+);
+
+@function wb-breakpoint($size) {
+  @return map-get($wb-breakpoints, $size);
+}
+
+// Animation Durations
+// -----------------------------------------------------------------------------
+$wb-durations: (
+  'fast': 0.15s,
+  'base': 0.2s,
+  'slow': 0.3s,
+  'slower': 0.5s,
+);
+
+@function wb-duration($speed) {
+  @return map-get($wb-durations, $speed);
+}
+
+// Transition Easings
+// -----------------------------------------------------------------------------
+$wb-easings: (
+  'linear': linear,
+  'ease': ease,
+  'ease-in': ease-in,
+  'ease-out': ease-out,
+  'ease-in-out': ease-in-out,
+);
+
+@function wb-easing($type) {
+  @return map-get($wb-easings, $type);
+}

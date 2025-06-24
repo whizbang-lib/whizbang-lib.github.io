@@ -1,0 +1,39 @@
+<header class="fixed-header">
+    <p-toolbar class="gradient-bg">
+        <ng-template pTemplate="start">
+            <div class="toolbar-start">
+                <wb-hamburger-menu></wb-hamburger-menu>
+                <img 
+                    [src]="getLogoPath()" 
+                    width="120" 
+                    routerLink="/" 
+                    class="logo cursor-pointer" 
+                />
+            </div>
+        </ng-template>
+        <ng-template pTemplate="end">
+            <div class="toolbar-end">
+                <!-- Search and theme toggle now handled by hamburger menu on mobile -->
+                <div class="desktop-only">
+                    <wb-enhanced-search></wb-enhanced-search>
+                    <wb-theme-toggle></wb-theme-toggle>
+                </div>
+            </div>
+        </ng-template>
+    </p-toolbar>
+</header>
+
+<main class="main-content">
+    <router-outlet></router-outlet>
+</main>
+
+<footer class="py-4 text-center border-top">
+    © {{year}} Whizbang •
+    <a href="https://github.com/whizbang/whizbang">GitHub</a>
+</footer>
+
+<!-- AI Enhancement Notification -->
+<wb-ai-enhancement-notification></wb-ai-enhancement-notification>
+
+<!-- Global Toast Notifications -->
+<wb-global-toast></wb-global-toast>
