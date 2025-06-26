@@ -11,7 +11,7 @@ import { trigger, transition, style, animate } from '@angular/animations';
 
 @Component({
   standalone: true,
-  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule, EnhancedCodeBlockV2Component],
+  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule],
   template: `
     <div>
       <!-- Loading state with fade-in animation -->
