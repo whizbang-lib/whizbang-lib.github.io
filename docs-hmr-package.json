@@ -1,0 +1,19 @@
+{
+  "name": "whizbang-docs-dev",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:docs-watcher\" \"npm run dev:angular\"",
+    "dev:angular": "ng serve --hmr",
+    "dev:docs-watcher": "node src/scripts/hmr-docs-watcher.mjs",
+    "build": "npm run build:docs-config && ng build",
+    "build:docs-config": "node src/scripts/gen-production-docs.mjs && node src/scripts/gen-docs-list.mjs",
+    "docs:gen": "node src/scripts/gen-docs-list.mjs",
+    "docs:watch": "node src/scripts/watch-docs.mjs",
+    "docs:hmr": "node src/scripts/hmr-docs-watcher.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.14.0",
+    "concurrently": "^8.2.0"
+  }
+}

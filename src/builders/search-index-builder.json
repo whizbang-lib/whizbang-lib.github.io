@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "type": "object",
+  "title": "Search Index Builder",
+  "description": "Generates enhanced search index before Angular builds",
+  "properties": {
+    "command": {
+      "type": "string",
+      "description": "Command to execute",
+      "default": "node"
+    },
+    "args": {
+      "type": "array",
+      "description": "Arguments to pass to the command",
+      "items": {
+        "type": "string"
+      },
+      "default": ["src/scripts/gen-enhanced-search-index.mjs"]
+    },
+    "cwd": {
+      "type": "string",
+      "description": "Current working directory"
+    }
+  },
+  "additionalProperties": false
+}

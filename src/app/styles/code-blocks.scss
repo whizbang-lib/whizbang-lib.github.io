@@ -1,0 +1,81 @@
+/* Simple Code Block Styles */
+.code-block-wrapper {
+    position: relative;
+    margin: 1rem 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #1e1e1e;
+    border: 1px solid #333;
+}
+
+.code-block-header {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: #252526;
+    border-bottom: 1px solid #333;
+}
+
+.copy-button,
+.download-button {
+    background: transparent;
+    border: 1px solid #333;
+    color: #cccccc;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+}
+
+.copy-button:hover,
+.download-button:hover {
+    background: #333;
+    border-color: #555;
+}
+
+.line-numbers {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: #252526;
+    color: #858585;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    padding: 1rem 0.5rem;
+    border-right: 1px solid #333;
+    min-width: 3rem;
+    text-align: right;
+    user-select: none;
+}
+
+.line-numbers span {
+    display: block;
+}
+
+.code-block-wrapper pre {
+    margin: 0;
+    padding: 1rem;
+    background: #1e1e1e;
+    overflow-x: auto;
+}
+
+.code-block-wrapper pre.has-line-numbers {
+    padding-left: 4rem;
+}
+
+.code-block-wrapper pre code {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    background: transparent;
+    color: #cccccc;
+}
+
+/* Override highlight.js styles for consistency */
+.hljs {
+    background: transparent !important;
+    color: #cccccc !important;
+}

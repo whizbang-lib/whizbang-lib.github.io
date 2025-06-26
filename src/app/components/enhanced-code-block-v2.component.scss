@@ -1,0 +1,1246 @@
+// =============================================================================
+// Enhanced Code Block V2 Component - Using design system with theme support
+// =============================================================================
+
+@import '../../styles/design-tokens';
+@import '../../styles/mixins';
+
+:host {
+    display: block;
+    // Use design system variables
+    --code-font-family: var(--wb-code-font-family, 'Consolas', 'Monaco', 'Courier New', monospace);
+    --code-font-size: #{wb-font-size('sm')};
+    --code-line-height: #{wb-line-height('normal')};
+    --code-padding: #{wb-spacing('lg')};
+
+    // Override any global styles from enhanced-code-blocks.scss to prevent conflicts
+    * {
+        box-sizing: border-box !important;
+    }
+}
+
+// Dark mode overrides - darker chrome with higher specificity
+:root[data-theme="dark"] :host {
+    .enhanced-code-block {
+        background: #0a0a0a !important;
+        border-color: #1a1a1a !important;
+        
+        .code-header {
+            background: #2a2a2a !important;
+        }
+        
+        .code-tags {
+            background: #2a2a2a !important;
+        }
+        
+        .code-container {
+            background: linear-gradient(to right, 
+                #1a1a1a 0,  // darker line numbers
+                #1a1a1a 3rem, 
+                #000000 3rem, 
+                #000000 100%) !important;
+                
+            .line-numbers {
+                background: #1a1a1a !important; // Solid background for line numbers in dark mode
+            }
+        }
+        
+        .code-description,
+        .code-metadata {
+            background: #2a2a2a !important;
+        }
+        
+    }
+}
+
+/* Force theme-aware text in code blocks */
+:host ::ng-deep .code-content code,
+:host ::ng-deep .code-content code *,
+:host ::ng-deep .code-pre,
+:host ::ng-deep .code-pre * {
+    color: var(--wb-code-text) !important;
+}
+
+.enhanced-code-block {
+    @include wb-code-block-base;
+    margin: wb-spacing('2xl') 0;
+    position: relative;
+
+    &:hover {
+        @include wb-hover-lift;
+    }
+
+    &.collapsible {
+        position: relative;
+
+        &.collapsed {
+            .code-container {
+                position: relative;
+            }
+        }
+    }
+}
+
+/* Header Section - Theme-aware */
+.code-header {
+    @include wb-code-header;
+    @include wb-flex-between;
+    align-items: flex-start;
+    gap: wb-spacing('lg');
+    
+    // Remove the border-bottom from wb-code-header mixin to eliminate artifact above tools
+    border-bottom: none !important;
+    
+    // Force dark background in light theme
+    :root:not([data-theme="dark"]) & {
+        background: #1f2937 !important; // gray-800
+        color: white !important;
+    }
+
+    .code-info {
+        flex: 1;
+        min-width: 0;
+
+        .code-title {
+            @include wb-heading('lg', 'semibold');
+            margin: 0 0 wb-spacing('sm') 0;
+            color: var(--wb-text-primary);
+        }
+
+        .metadata-row {
+            display: flex;
+            align-items: center;
+            gap: wb-spacing('sm');
+            flex-wrap: wrap;
+
+            .filename {
+                @include wb-code-font;
+                background: var(--wb-code-bg-secondary);
+                color: var(--wb-code-text-muted);
+                padding: wb-spacing('xs') wb-spacing('sm');
+                border-radius: wb-border-radius('md');
+                border: 1px solid var(--wb-code-border);
+                font-size: wb-font-size('xs');
+                display: flex;
+                align-items: center;
+                gap: wb-spacing('xs');
+
+                i {
+                    color: var(--wb-primary);
+                }
+            }
+        }
+    }
+
+    .code-actions {
+        display: flex;
+        gap: wb-spacing('xs');
+        flex-wrap: wrap;
+        align-items: center;
+        
+        // Make the container background transparent to blend with header
+        background: transparent;
+        
+        // Remove any top border that creates artifact above tools
+        border-top: none !important;
+        
+        // Style the buttons to integrate better with dark header
+        ::ng-deep .p-button {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            color: rgba(255, 255, 255, 0.9) !important;
+            border-radius: wb-border-radius('lg') !important;
+            padding: wb-spacing('xs') wb-spacing('sm') !important;
+            font-size: wb-font-size('xs') !important;
+            height: auto !important;
+            min-height: auto !important;
+            transition: all wb-duration('fast') wb-easing('ease-in-out') !important;
+            
+            &:hover {
+                background: rgba(255, 255, 255, 0.2) !important;
+                border-color: rgba(255, 255, 255, 0.3) !important;
+                color: white !important;
+                transform: translateY(-1px);
+            }
+            
+            &:focus {
+                box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2) !important;
+            }
+            
+            &:disabled {
+                background: rgba(255, 255, 255, 0.05) !important;
+                border-color: rgba(255, 255, 255, 0.1) !important;
+                color: rgba(255, 255, 255, 0.5) !important;
+                transform: none !important;
+            }
+            
+            // Special styling for text buttons
+            &.p-button-text {
+                background: transparent !important;
+                border: 1px solid transparent !important;
+                
+                &:hover {
+                    background: rgba(255, 255, 255, 0.1) !important;
+                    border-color: rgba(255, 255, 255, 0.2) !important;
+                }
+            }
+            
+            // Outlined buttons
+            &.p-button-outlined {
+                background: transparent !important;
+                border: 1px solid rgba(255, 255, 255, 0.3) !important;
+                
+                &:hover {
+                    background: rgba(255, 255, 255, 0.1) !important;
+                    border-color: rgba(255, 255, 255, 0.4) !important;
+                }
+            }
+        }
+    }
+}
+
+/* Tags Section - No longer needed, tags moved inline to metadata-row */
+
+/* Code Container - Theme-aware */
+.code-container {
+    position: relative;
+    display: flex;
+    background: linear-gradient(to right, 
+        var(--wb-code-bg-secondary) 0, 
+        var(--wb-code-bg-secondary) 3rem, 
+        var(--wb-code-bg) 3rem, 
+        var(--wb-code-bg) 100%);
+    color: var(--wb-code-text);
+    overflow-x: auto; // Allow horizontal scrolling on container
+    overflow-y: auto; // Allow vertical scrolling on container  
+    max-height: 600px; // Set a reasonable max height for vertical scrolling
+    
+    &.full-height {
+        max-height: none; // Allow full height when needed
+    }
+    
+    &.collapsed {
+        max-height: 200px; // Collapsed height - still allow scrolling
+    }
+    
+    transition: background-color wb-duration('base') wb-easing('ease-in-out');
+    
+    // Force dark line number background in light theme
+    :root:not([data-theme="dark"]) & {
+        background: linear-gradient(to right, 
+            #374151 0,  // gray-700 for line numbers
+            #374151 3rem, 
+            var(--wb-code-bg) 3rem, 
+            var(--wb-code-bg) 100%) !important;
+            
+        .line-numbers {
+            background: #374151 !important; // Solid background for line numbers in light mode
+        }
+    }
+}
+
+.line-numbers {
+    position: sticky;
+    left: 0; // Stay fixed during horizontal scroll only
+    // NO top property - this allows vertical scrolling with content
+    z-index: 100; // High z-index to stay above code content
+    background: var(--wb-code-bg-secondary); // Solid background to prevent bleed-through
+    border-right: 1px solid var(--wb-code-border);
+    padding: wb-spacing('lg') wb-spacing('md');
+    min-width: 3rem;
+    width: 3rem; // Fixed width
+    flex-shrink: 0; // Don't shrink
+    text-align: right;
+    height: fit-content; // Let height fit content naturally
+    @include wb-code-font;
+    font-size: wb-font-size('sm');
+    line-height: 1.5;
+    user-select: none;
+    transition: all wb-duration('base') wb-easing('ease-in-out');
+
+    // Ensure consistent text rendering
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    .line-number {
+        display: block;
+        line-height: 1.5;
+
+        &.gap-indicator {
+            color: var(--wb-primary) !important;
+            text-align: center;
+        }
+        
+        &.highlighted-line-number {
+            background: var(--wb-code-highlight) !important;
+            color: var(--wb-primary) !important;
+            font-weight: wb-font-weight('semibold');
+            border-left: 3px solid var(--wb-primary);
+            padding-left: calc(#{wb-spacing('xs')} - 3px);
+            margin-left: -#{wb-spacing('xs')};
+        }
+    }
+}
+
+.code-content {
+    flex: 1;
+    min-width: 0;
+    overflow: visible; // Allow content to flow naturally
+
+    // Target pre element with any Angular classes
+    pre.code-pre,
+    .code-pre {
+        margin: 0 !important;
+        padding: 0 !important; // Remove all padding
+        background: transparent;
+        color: var(--wb-code-text);
+        @include wb-code-font;
+        font-size: wb-font-size('sm');
+        line-height: 1.5;
+        white-space: pre;
+        display: block !important;
+        border: none !important;
+
+        .code-display {
+            @include wb-code-font;
+            display: block;
+            background: transparent;
+            color: inherit;
+            padding: 0; // Remove all padding
+            padding-left: wb-spacing('lg'); // Only left padding for horizontal spacing
+            padding-right: wb-spacing('lg'); // Only right padding
+            margin: 0;
+            margin-top: -5px; // Fine-tune vertical alignment - must come after margin: 0
+            border: none;
+            font-size: inherit;
+            line-height: 1.5; // Match line numbers exactly
+            white-space: pre;
+
+            // Ensure consistent text rendering
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    }
+
+    // Apply syntax highlighting with higher specificity
+    ::ng-deep {
+        .code-display {
+            .hljs-keyword {
+                color: var(--wb-syntax-keyword) !important;
+            }
+
+            .hljs-string {
+                color: var(--wb-syntax-string) !important;
+            }
+
+            .hljs-comment {
+                color: var(--wb-syntax-comment) !important;
+                font-style: italic;
+            }
+
+            .hljs-number {
+                color: var(--wb-syntax-number) !important;
+            }
+
+            .hljs-type {
+                color: var(--wb-syntax-class) !important;
+            }
+
+            .hljs-attribute {
+                color: var(--wb-syntax-property) !important;
+            }
+
+            .hljs-title.function_ {
+                color: var(--wb-syntax-method) !important;
+            }
+
+            .hljs-property {
+                color: var(--wb-syntax-property) !important;
+            }
+
+            .hljs-namespace {
+                color: var(--wb-syntax-class) !important;
+            }
+
+            .hljs-literal {
+                color: var(--wb-syntax-keyword) !important;
+            }
+
+            .hljs-built_in {
+                color: var(--wb-syntax-class) !important;
+            }
+
+            .hljs-symbol {
+                color: var(--wb-syntax-number) !important;
+            }
+            
+            // Enhanced C# specific token highlighting
+            .hljs-variable {
+                color: var(--wb-syntax-variable) !important;
+            }
+            
+            .hljs-meta {
+                color: var(--wb-syntax-meta) !important;
+                font-weight: bold;
+            }
+            
+            .hljs-doctag {
+                color: var(--wb-syntax-doctag) !important;
+                font-weight: bold;
+            }
+            
+            .hljs-params {
+                color: var(--wb-syntax-params) !important;
+            }
+            
+            .hljs-title.class_ {
+                color: var(--wb-syntax-title-class) !important;
+                font-weight: bold;
+            }
+            
+            .hljs-title.function_ {
+                color: var(--wb-syntax-title-function) !important;
+                font-weight: bold;
+            }
+            
+            .hljs-operator {
+                color: var(--wb-syntax-operator) !important;
+            }
+            
+            .hljs-punctuation {
+                color: var(--wb-syntax-punctuation) !important;
+            }
+            
+            // C# specific improvements
+            .hljs-meta-string {
+                color: var(--wb-syntax-string) !important;
+            }
+            
+            .hljs-attr {
+                color: var(--wb-syntax-annotation) !important;
+            }
+            
+            .hljs-subst {
+                color: var(--wb-syntax-variable) !important;
+            }
+            
+            .hljs-template-tag {
+                color: var(--wb-syntax-meta) !important;
+            }
+            
+            .hljs-template-variable {
+                color: var(--wb-syntax-variable) !important;
+            }
+            
+            // Improve contrast for certain combinations
+            .hljs-class .hljs-title {
+                color: var(--wb-syntax-title-class) !important;
+                font-weight: bold;
+            }
+            
+            .hljs-function .hljs-title {
+                color: var(--wb-syntax-title-function) !important;
+                font-weight: bold;
+            }
+            
+            // Additional token types found in C# highlighting
+            .hljs-section {
+                color: var(--wb-syntax-keyword) !important;
+                font-weight: bold;
+            }
+            
+            .hljs-selector-tag {
+                color: var(--wb-syntax-class) !important;
+            }
+            
+            .hljs-selector-id {
+                color: var(--wb-syntax-variable) !important;
+            }
+            
+            .hljs-selector-class {
+                color: var(--wb-syntax-class) !important;
+            }
+            
+            // Expandable gap styling
+            .expand-gap {
+                display: inline-block;
+                background: var(--wb-surface-hover);
+                color: var(--wb-primary) !important;
+                border: 1px solid var(--wb-primary);
+                border-radius: wb-border-radius('sm');
+                padding: 0 wb-spacing('sm'); // Only horizontal padding
+                margin: 0; // No vertical margin
+                cursor: pointer;
+                font-size: inherit; // Match code font size
+                font-weight: wb-font-weight('semibold');
+                line-height: 1.5; // Match exactly with line numbers
+                height: 1.5em; // Explicit height matching line height
+                transition: all wb-duration('base') wb-easing('ease-in-out');
+                
+                text-align: center;
+                width: 100%;
+                box-sizing: border-box;
+                vertical-align: baseline;
+                
+                &:hover {
+                    background: var(--wb-primary);
+                    color: white !important;
+                }
+            }
+            
+            // Highlighted line styling
+            .highlighted-line {
+                display: inline-block;
+                width: 100%;
+                background: var(--wb-code-highlight) !important;
+                margin: 0 -#{wb-spacing('lg')};
+                padding: 0 wb-spacing('lg');
+                position: relative;
+                line-height: inherit;
+            }
+        }
+    }
+}
+
+
+/* Description Section - Theme-aware */
+.code-description {
+    @include wb-code-footer;
+    font-style: italic;
+    
+    // Force dark background in light theme
+    :root:not([data-theme="dark"]) & {
+        background: #1f2937 !important; // gray-800
+        color: white !important;
+    }
+
+    p {
+        margin: 0;
+        color: var(--wb-text-secondary);
+        transition: color wb-duration('base') wb-easing('ease-in-out');
+        
+        :root:not([data-theme="dark"]) & {
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
+    }
+}
+
+/* Metadata Section - Theme-aware */
+.code-metadata {
+    @include wb-code-footer;
+    border-top: 1px solid var(--wb-code-border);
+    
+    // Force dark background in light theme
+    :root:not([data-theme="dark"]) & {
+        background: #1f2937 !important; // gray-800
+        color: white !important;
+    }
+
+    .metadata-item {
+        margin-bottom: wb-spacing('sm');
+        color: var(--wb-text-primary);
+        font-size: wb-font-size('sm');
+        transition: color wb-duration('base') wb-easing('ease-in-out');
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+
+        strong {
+            color: var(--wb-primary);
+            font-weight: wb-font-weight('semibold');
+        }
+    }
+
+    .nuget-packages-list {
+        color: var(--wb-text-secondary);
+        font-family: var(--wb-code-font-family);
+        font-size: wb-font-size('sm');
+    }
+
+    .metadata-links {
+        display: flex;
+        gap: wb-spacing('lg');
+        margin-top: wb-spacing('md');
+        padding-top: wb-spacing('md');
+        border-top: 1px solid var(--wb-code-border);
+
+        .metadata-link {
+            @include wb-button-secondary;
+            gap: wb-spacing('xs');
+            text-decoration: none;
+            font-size: wb-font-size('sm');
+
+            &.github-link:hover {
+                background: #24292e;
+                border-color: #24292e;
+                color: white;
+            }
+
+            &.docs-link:hover {
+                background: var(--wb-info);
+                border-color: var(--wb-info);
+                color: white;
+            }
+        }
+    }
+}
+
+/* Loading State - Theme-aware */
+.code-loading {
+    @include wb-code-content;
+    text-align: center;
+    color: var(--wb-text-secondary);
+    font-style: italic;
+
+    .loading-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: wb-spacing('sm');
+        padding: wb-spacing('3xl') 0;
+
+        i {
+            font-size: wb-font-size('lg');
+            color: var(--wb-primary);
+        }
+    }
+}
+
+/* PrimeNG Component Overrides for Theme Support */
+:host ::ng-deep {
+    .p-chip {
+        // Base pill/bubble styling for all chips
+        border-radius: 9999px !important; // Very high radius for pill shape
+        padding: wb-spacing('xs') wb-spacing('md') !important;
+        height: auto !important;
+        min-height: 1.5rem !important;
+        font-size: wb-font-size('xs') !important;
+        font-weight: wb-font-weight('medium') !important;
+        line-height: 1.2 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        border: 1px solid transparent !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        transition: all wb-duration('base') wb-easing('ease-in-out') !important;
+        
+        // Remove default PrimeNG chip styling
+        .p-chip-text {
+            padding: 0 !important;
+            margin: 0 !important;
+            line-height: inherit !important;
+        }
+
+        &.language-chip {
+            color: white !important;
+            font-weight: wb-font-weight('semibold') !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            // Background color will be set by getLanguageColor() in component
+        }
+
+        &.framework-chip {
+            background: var(--wb-success) !important;
+            color: white !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            
+            &:hover {
+                background: color-mix(in srgb, var(--wb-success) 90%, white) !important;
+                transform: translateY(-1px);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+            }
+        }
+
+        &.difficulty-chip {
+            color: white !important;
+            font-weight: wb-font-weight('semibold') !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            
+            // Difficulty-specific colors
+            &[data-difficulty="beginner"] {
+                background: var(--wb-success) !important;
+                &:hover {
+                    background: color-mix(in srgb, var(--wb-success) 90%, white) !important;
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+                }
+            }
+            
+            &[data-difficulty="intermediate"] {
+                background: var(--wb-info) !important;
+                &:hover {
+                    background: color-mix(in srgb, var(--wb-info) 90%, white) !important;
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+                }
+            }
+            
+            &[data-difficulty="advanced"] {
+                background: var(--wb-warning) !important;
+                &:hover {
+                    background: color-mix(in srgb, var(--wb-warning) 90%, white) !important;
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+                }
+            }
+            
+            &[data-difficulty="expert"] {
+                background: var(--wb-danger) !important;
+                &:hover {
+                    background: color-mix(in srgb, var(--wb-danger) 90%, white) !important;
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+                }
+            }
+        }
+
+        &.tag-chip {
+            background: var(--wb-primary) !important;
+            color: white !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            
+            &:hover {
+                background: color-mix(in srgb, var(--wb-primary) 90%, white) !important;
+                transform: translateY(-1px);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+            }
+        }
+        
+        // Special styling for chips in header metadata (tags now included here)
+        .metadata-row & {
+            margin: 0 wb-spacing('xs') 0 0 !important;
+            
+            &:last-child {
+                margin-right: 0 !important;
+            }
+        }
+    }
+
+    .p-button {
+        transition: all wb-duration('base') wb-easing('ease-in-out');
+    }
+
+    .p-overlaypanel {
+
+        .info-panel,
+        .nuget-commands-panel {
+            background: var(--wb-surface-card);
+            color: var(--wb-text-primary);
+            transition: all wb-duration('base') wb-easing('ease-in-out');
+
+            h5,
+            h6 {
+                color: var(--wb-text-primary);
+                margin-bottom: wb-spacing('sm');
+            }
+
+            .command-box {
+                background: var(--wb-code-bg-secondary);
+                border: 1px solid var(--wb-code-border);
+                border-radius: wb-border-radius('md');
+                padding: wb-spacing('sm');
+                margin-bottom: wb-spacing('sm');
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: wb-spacing('sm');
+
+                code {
+                    @include wb-code-font;
+                    color: var(--wb-code-text);
+                    font-size: wb-font-size('sm');
+                    flex: 1;
+                }
+            }
+        }
+    }
+}
+
+// Dark mode expand gap override with maximum specificity
+:root[data-theme="dark"] :host ::ng-deep .code-display .expand-gap {
+    background: #1a1a1a !important;
+}
+
+// =============================================================================
+// Mobile Responsiveness Enhancements
+// =============================================================================
+
+// Hide chips and filename on mobile devices to reduce screen clutter
+@include wb-tablet {
+    :host ::ng-deep {
+        .p-chip {
+            &.language-chip,
+            &.framework-chip,
+            &.difficulty-chip,
+            &.tag-chip {
+                display: none !important;
+            }
+        }
+    }
+    
+    // Hide filename from header on mobile - only show in More Info modal
+    .code-header .metadata-row .filename {
+        display: none !important;
+    }
+    
+    // Optimize code header layout for mobile - reduce vertical padding
+    .code-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: wb-spacing('xs'); // Reduced from 'md' to 'xs'
+        padding: wb-spacing('sm') wb-spacing('md'); // Reduced vertical padding
+        
+        .code-info {
+            .code-title {
+                margin-bottom: 0; // Remove bottom margin - let toolbar handle spacing
+            }
+            
+            .metadata-row {
+                flex-wrap: wrap;
+                gap: wb-spacing('xs');
+                margin-top: wb-spacing('xs'); // Keep small space above metadata
+                
+                .filename {
+                    font-size: wb-font-size('xs');
+                    padding: wb-spacing('xs');
+                }
+            }
+        }
+        
+        .code-actions {
+            justify-content: flex-start;
+            gap: wb-spacing('xs');
+            margin-top: 0; // Remove top margin to eliminate double spacing
+            padding: 0; // Remove any container padding
+            
+            ::ng-deep .p-button {
+                font-size: wb-font-size('xs') !important;
+                padding: 2px 4px !important; // Minimal button padding
+                min-height: auto !important;
+                height: auto !important;
+            }
+        }
+    }
+    
+    // ONLY change font sizes - preserve desktop alignment completely
+    .code-container {
+        .line-numbers {
+            font-size: wb-font-size('xs') !important;
+            line-height: 1.5 !important; // Ensure exact match with code display
+            padding: wb-spacing('lg') wb-spacing('md') !important; // Match desktop exactly
+        }
+        
+        .code-content .code-display {
+            font-size: wb-font-size('xs') !important;
+            padding: 0 !important;
+            padding-left: wb-spacing('lg') !important; // Match desktop exactly
+            padding-right: wb-spacing('lg') !important; // Match desktop exactly
+            margin: 0 !important;
+            margin-top: -5px !important; // Critical alignment adjustment
+            line-height: 1.5 !important; // Match line numbers exactly
+        }
+    }
+}
+
+// Mobile-specific optimizations (below 480px)
+@include wb-mobile {
+    .enhanced-code-block {
+        margin: wb-spacing('lg') 0;
+    }
+    
+    .code-header {
+        padding: wb-spacing('xs') wb-spacing('sm'); // Further reduced vertical padding
+        gap: wb-spacing('xs'); // Minimal gap between elements
+        
+        .code-info {
+            .code-title {
+                font-size: wb-font-size('lg');
+                margin-bottom: 0; // Remove bottom margin to eliminate double spacing
+                line-height: wb-line-height('tight'); // Tighter line height
+            }
+            
+            .metadata-row {
+                gap: wb-spacing('xs');
+                margin-top: 0; // Remove top margin for tighter layout
+                
+                .filename {
+                    font-size: wb-font-size('xs');
+                    padding: wb-spacing('xs') wb-spacing('sm');
+                }
+            }
+        }
+        
+        .code-actions {
+            flex-wrap: wrap;
+            margin-top: 0; // Remove top margin to eliminate double spacing
+            padding: 0; // Remove any container padding
+            
+            ::ng-deep .p-button {
+                min-width: 1.5rem !important;
+                height: 1.5rem !important;
+                padding: 1px 2px !important; // Ultra-minimal button padding
+                font-size: 10px !important;
+            }
+        }
+    }
+    
+    // ONLY change font sizes for very small screens - preserve desktop alignment
+    .code-container {
+        .line-numbers {
+            font-size: 0.7rem !important;
+            line-height: 1.5 !important; // Ensure exact match with code display
+            padding: wb-spacing('lg') wb-spacing('md') !important; // Match desktop exactly
+        }
+        
+        .code-content .code-display {
+            font-size: 0.7rem !important;
+            padding: 0 !important;
+            padding-left: wb-spacing('lg') !important; // Match desktop exactly
+            padding-right: wb-spacing('lg') !important; // Match desktop exactly
+            margin: 0 !important;
+            margin-top: -5px !important; // Critical alignment adjustment
+            line-height: 1.5 !important; // Match line numbers exactly
+        }
+    }
+    
+    // Mobile title optimization - eliminate double spacing
+    .code-header {
+        .code-info {
+            .code-title {
+                font-size: wb-font-size('md') !important;
+                line-height: wb-line-height('tight') !important;
+                margin-bottom: 0 !important; // Remove bottom margin to eliminate double spacing
+                margin-top: 0 !important; // Remove any top margin
+            }
+        }
+    }
+    
+    // Optimize description and metadata sections for mobile
+    .code-description,
+    .code-metadata {
+        padding: wb-spacing('sm');
+        
+        p {
+            font-size: wb-font-size('xs') !important;
+            line-height: wb-line-height('normal') !important;
+            margin: 0 !important;
+            color: var(--wb-text-muted) !important;
+        }
+        
+        .metadata-item {
+            font-size: wb-font-size('xs');
+            margin-bottom: wb-spacing('xs');
+        }
+        
+        .metadata-links {
+            flex-direction: column;
+            gap: wb-spacing('sm');
+            
+            .metadata-link {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    }
+    
+    // More Info desktop content minimization on mobile
+    .more-info-content {
+        padding: wb-spacing('sm');
+        
+        .code-filename {
+            margin-bottom: wb-spacing('sm');
+            
+            .metadata-item {
+                font-size: wb-font-size('xs');
+                
+                .filename-value {
+                    font-family: var(--wb-font-mono);
+                    
+                    .pi {
+                        margin-right: wb-spacing('xs');
+                        color: var(--wb-primary);
+                    }
+                }
+            }
+        }
+        
+        .code-description {
+            margin-bottom: wb-spacing('sm');
+            
+            p {
+                font-size: wb-font-size('xs') !important;
+                line-height: wb-line-height('normal') !important;
+                margin: 0 !important;
+            }
+        }
+        
+        .code-metadata {
+            .metadata-item {
+                font-size: wb-font-size('xs');
+                margin-bottom: wb-spacing('sm');
+                
+                strong {
+                    font-size: wb-font-size('xs');
+                }
+            }
+        }
+    }
+}
+
+// Extra small mobile screens (480px and below)
+@include wb-mobile {
+    .enhanced-code-block {
+        // Ensure code block fits within screen bounds
+        max-width: 100vw;
+        margin: 0;
+        border-radius: wb-border-radius('sm');
+        
+        // More aggressive title compression for very small screens
+        .code-header {
+            padding: wb-spacing('xs') wb-spacing('sm');
+            max-width: 100%;
+            overflow: hidden;
+            
+            .code-info {
+                .code-title {
+                    font-size: wb-font-size('sm') !important;
+                    line-height: wb-line-height('tight') !important;
+                    margin-bottom: wb-spacing('xs') !important;
+                }
+                
+                .metadata-row {
+                    gap: wb-spacing('xs');
+                    
+                    .filename {
+                        font-size: wb-font-size('xs') !important;
+                        
+                        .pi {
+                            font-size: 0.7rem !important;
+                        }
+                    }
+                }
+            }
+            
+            .code-actions {
+                gap: wb-spacing('xs');
+                
+                ::ng-deep .p-button {
+                    min-width: 1.75rem !important;
+                    height: 1.75rem !important;
+                    padding: wb-spacing('xs') !important;
+                    
+                    .p-button-icon {
+                        font-size: 0.7rem !important;
+                    }
+                }
+            }
+        }
+        
+        // More aggressive description minimization
+        .code-description,
+        .more-info-content .code-description {
+            padding: wb-spacing('xs') wb-spacing('sm');
+            
+            p {
+                font-size: 0.7rem !important;
+                line-height: 1.3 !important;
+            }
+        }
+        
+        // Code content - only change font sizes, keep desktop alignment exactly
+        .code-container {
+            .line-numbers {
+                font-size: 0.7rem !important;
+                // All other properties inherited from desktop
+            }
+            
+            .code-content {
+                .code-display {
+                    font-size: 0.7rem !important;
+                    // All other properties inherited from desktop
+                }
+            }
+        }
+        
+        // More Info content on very small screens
+        .more-info-content {
+            padding: wb-spacing('xs') wb-spacing('sm');
+            
+            .code-metadata {
+                .metadata-item {
+                    font-size: 0.7rem;
+                    margin-bottom: wb-spacing('xs');
+                    
+                    strong {
+                        font-size: 0.7rem;
+                    }
+                }
+                
+                .metadata-links {
+                    .metadata-link {
+                        font-size: 0.7rem;
+                        padding: wb-spacing('xs');
+                    }
+                }
+            }
+        }
+    }
+}
+
+/* Mobile Info Dialog Styling */
+:host ::ng-deep .mobile-info-dialog {
+    .p-dialog-header {
+        padding: wb-spacing('md') wb-spacing('lg');
+        background: var(--wb-surface);
+        border-bottom: 1px solid var(--wb-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        
+        .p-dialog-title {
+            font-size: wb-font-size('lg');
+            font-weight: wb-font-weight('semibold');
+            color: var(--wb-text);
+        }
+        
+        .p-dialog-header-close {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            border: 1px solid var(--wb-border);
+            background: var(--wb-surface);
+            color: var(--wb-text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            
+            &:hover {
+                background: var(--wb-surface-hover);
+                border-color: var(--wb-primary);
+                color: var(--wb-primary);
+            }
+            
+            .p-dialog-header-close-icon {
+                font-size: 1rem;
+            }
+        }
+    }
+    
+    .p-dialog-content {
+        padding: wb-spacing('lg');
+        
+        .dialog-filename {
+            margin-bottom: wb-spacing('lg');
+            
+            h6 {
+                margin: 0 0 wb-spacing('sm') 0;
+                font-size: wb-font-size('md');
+                font-weight: wb-font-weight('semibold');
+                color: var(--wb-text);
+            }
+            
+            .filename-display {
+                margin: 0;
+                font-size: wb-font-size('sm');
+                color: var(--wb-text-muted);
+                font-family: var(--wb-font-mono);
+                display: flex;
+                align-items: center;
+                gap: wb-spacing('xs');
+                
+                .pi {
+                    color: var(--wb-primary);
+                }
+            }
+        }
+        
+        .dialog-description {
+            margin-bottom: wb-spacing('lg');
+            
+            h6 {
+                margin: 0 0 wb-spacing('sm') 0;
+                font-size: wb-font-size('md');
+                font-weight: wb-font-weight('semibold');
+                color: var(--wb-text);
+            }
+            
+            p {
+                margin: 0;
+                font-size: wb-font-size('sm');
+                line-height: wb-line-height('relaxed');
+                color: var(--wb-text-muted);
+            }
+        }
+        
+        .dialog-metadata {
+            .dialog-metadata-item {
+                margin-bottom: wb-spacing('lg');
+                
+                &:last-child {
+                    margin-bottom: 0;
+                }
+                
+                strong {
+                    display: block;
+                    margin-bottom: wb-spacing('xs');
+                    font-size: wb-font-size('sm');
+                    font-weight: wb-font-weight('semibold');
+                    color: var(--wb-text);
+                }
+                
+                .nuget-list {
+                    margin: wb-spacing('sm') 0;
+                    padding-left: wb-spacing('lg');
+                    
+                    li {
+                        margin-bottom: wb-spacing('xs');
+                        font-size: wb-font-size('sm');
+                        color: var(--wb-text-muted);
+                        font-family: var(--wb-font-mono);
+                    }
+                }
+                
+                .p-button {
+                    margin-top: wb-spacing('sm');
+                    width: 100%;
+                }
+            }
+        }
+        
+        .dialog-links {
+            h6 {
+                margin: 0 0 wb-spacing('sm') 0;
+                font-size: wb-font-size('md');
+                font-weight: wb-font-weight('semibold');
+                color: var(--wb-text);
+            }
+            
+            .dialog-link-buttons {
+                display: flex;
+                flex-direction: column;
+                gap: wb-spacing('sm');
+                
+                .p-button {
+                    width: 100%;
+                    justify-content: flex-start;
+                    
+                    .p-button-icon {
+                        margin-right: wb-spacing('sm');
+                    }
+                }
+            }
+        }
+    }
+    
+    /* Dialog overlay adjustments for mobile */
+    .p-dialog-mask {
+        background-color: rgba(0, 0, 0, 0.6);
+    }
+    
+    .p-dialog {
+        margin: wb-spacing('lg');
+        border-radius: wb-border-radius('lg');
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+}

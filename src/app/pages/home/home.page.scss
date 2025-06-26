@@ -1,0 +1,866 @@
+.gradient-text, .text-gradient {
+    background: linear-gradient(90deg, #ff7c00, #ff0066, #7b3ff8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.btn-gradient {
+    background: linear-gradient(90deg, #ff7c00, #ff0066, #7b3ff8);
+    border: none;
+}
+
+.meet-whizbang-logo {
+    height: 1em;
+    vertical-align: bottom;
+    display: inline-block;
+}
+
+// Enhanced spacing and visual improvements
+section {
+    margin-bottom: 4rem;
+    padding: 2rem 0;
+    position: relative;
+    z-index: 1;
+    // Ensure sections don't cause horizontal shift
+    max-width: 100%;
+    overflow: visible; // Ensure overflow doesn't interfere with sticky positioning
+    
+    // Don't apply default styles to sticky sections (but NOT use-cases/roadmap since they're in container)
+    &.capabilities-section {
+        margin-bottom: 0 !important; // Override default section margin
+        padding: 0 !important; // Override default section padding
+        position: sticky !important; // Ensure sticky positioning isn't overridden
+        top: 70px !important; // REVERT: Back to 70px
+    }
+    
+    // Use Cases and Roadmap are inside container, don't make them sticky
+    &.use-cases-section,
+    &.roadmap-section {
+        margin-bottom: 0 !important; // Override default section margin
+        padding: 0 !important; // Override default section padding
+        position: absolute !important; // They should be absolute within sticky container
+        top: 0 !important; // Position at top of their sticky container
+    }
+}
+
+
+
+.surface-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+}
+
+/* Enhanced mobile responsiveness improvements */
+@media (max-width: 768px) {
+    /* Typography scaling for better mobile readability */
+    .text-6xl {
+        font-size: 2.5rem !important;
+        line-height: 1.2 !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .text-2xl {
+        font-size: 1.5rem !important;
+        line-height: 1.3 !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .text-xl {
+        font-size: 1.125rem !important;
+        line-height: 1.4 !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    /* Improve section spacing for mobile */
+    section {
+        padding: 2rem 0 !important;
+        margin-bottom: 2rem !important;
+    }
+    
+    /* Optimize hero section for mobile */
+    .hero-section {
+        padding: 2rem 0 !important;
+        min-height: 80vh !important;
+        
+        .container-wrapper {
+            padding: 0 1rem !important;
+        }
+    }
+    
+    /* Improve card layouts for mobile */
+    .surface-card {
+        margin-bottom: 1rem !important;
+        padding: 1rem !important;
+        
+        /* Ensure proper touch targets for interactive cards */
+        &:hover,
+        &.hover-lift:hover {
+            transform: translateY(-1px) !important; /* Reduced transform for mobile */
+        }
+    }
+    
+    /* Better button spacing and sizing */
+    .p-button {
+        margin: 0.5rem 0.25rem !important;
+        min-width: 120px !important;
+    }
+    
+    /* Grid improvements for mobile */
+    .grid {
+        gap: 1rem !important;
+        
+        .col-12,
+        .col-6,
+        .col-4,
+        .col-3 {
+            padding: 0.5rem !important;
+        }
+    }
+}
+
+@media (max-width: 480px) {
+    /* Enhanced mobile typography for very small screens */
+    .text-6xl {
+        font-size: 2rem !important;
+        line-height: 1.2 !important;
+    }
+    
+    .text-2xl {
+        font-size: 1.375rem !important;
+        line-height: 1.3 !important;
+    }
+    
+    .text-xl {
+        font-size: 1.125rem !important;
+        line-height: 1.4 !important;
+    }
+    
+    /* Tighter spacing for small screens */
+    section {
+        padding: 1.5rem 0 !important;
+        margin-bottom: 1.5rem !important;
+    }
+    
+    .hero-section {
+        padding: 1.5rem 0 !important;
+        min-height: 70vh !important;
+        
+        .container-wrapper {
+            padding: 0 0.75rem !important;
+        }
+    }
+    
+    /* Stack buttons vertically on very small screens */
+    .p-button {
+        width: 100% !important;
+        margin: 0.25rem 0 !important;
+        max-width: 300px !important;
+    }
+    
+    /* Optimize grid for small mobile */
+    .grid {
+        gap: 0.75rem !important;
+        
+        .col-12,
+        .col-6,
+        .col-4,
+        .col-3 {
+            padding: 0.375rem !important;
+        }
+    }
+}
+
+// Icon styling
+.pi {
+    color: var(--primary-color);
+}
+
+// ===== PARALLAX & SCROLL ANIMATIONS =====
+
+// Fix for sticky positioning - the key issue!
+:host {
+    // CRITICAL: overflow: hidden breaks sticky positioning completely
+    overflow: visible !important; // This was the blocker!
+    // Prevent horizontal scrolling only on specific elements, not the host
+    width: 100%;
+    margin: 0;
+    // Explicitly allow sticky positioning
+    contain: none;
+}
+
+// Additional safety for sliding sections
+.flying-use-cases,
+.roadmap-section {
+    // Ensure sections don't create horizontal overflow during animation
+    max-width: 100vw;
+    box-sizing: border-box;
+    // Fix positioning to prevent rightward shift
+    left: 0;
+    right: 0;
+}
+
+// Overall page background
+:host {
+    background: linear-gradient(135deg, 
+        var(--surface-ground) 0%, 
+        var(--surface-section) 50%, 
+        var(--surface-card) 100%);
+    min-height: 100vh;
+    // Reset any positioning issues
+    display: block;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+// Hero section with parallax background
+.hero-section {
+    position: relative;
+    overflow: hidden;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: linear-gradient(135deg, 
+        rgba(var(--primary-color-rgb), 0.05) 0%,
+        transparent 50%,
+        rgba(var(--surface-section-rgb), 0.8) 100%);
+    
+    .parallax-bg {
+        position: absolute;
+        top: -20%;
+        left: -20%;
+        width: 140%;
+        height: 140%;
+        background: 
+            radial-gradient(circle at 20% 80%, rgba(255, 124, 0, 0.08) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(255, 0, 102, 0.08) 0%, transparent 50%),
+            radial-gradient(circle at 40% 40%, rgba(123, 63, 248, 0.08) 0%, transparent 50%);
+        animation: gradientFloat 20s ease-in-out infinite;
+        z-index: -1;
+    }
+}
+
+// Keyframe animations
+@keyframes gradientFloat {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(1deg) scale(1.05); }
+    50% { transform: rotate(0deg) scale(1.1); }
+    75% { transform: rotate(-1deg) scale(1.05); }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(60px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-60px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(60px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(60px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes zoomIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes iconBounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+// Animation classes - initially hidden
+.animate-on-scroll {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    
+    &.animate-in {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    // Specific animation types
+    &.slide-up.animate-in {
+        animation: slideUp 0.8s ease-out forwards;
+    }
+    
+    &.slide-in-left.animate-in {
+        animation: slideInLeft 0.8s ease-out forwards;
+    }
+    
+    &.slide-in-right.animate-in {
+        animation: slideInRight 0.8s ease-out forwards;
+    }
+    
+    &.slide-in-up.animate-in {
+        animation: slideInUp 0.8s ease-out forwards;
+    }
+    
+    &.fade-in.animate-in {
+        animation: fadeIn 1s ease-out forwards;
+    }
+    
+    &.fade-in-up.animate-in {
+        animation: fadeInUp 0.8s ease-out forwards;
+    }
+    
+    &.scale-in.animate-in {
+        animation: scaleIn 0.6s ease-out forwards;
+    }
+    
+    &.zoom-in.animate-in {
+        animation: zoomIn 0.8s ease-out forwards;
+    }
+}
+
+// Hover effects
+.hover-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    
+    &:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    }
+}
+
+.hover-glow {
+    transition: box-shadow 0.3s ease;
+    
+    &:hover {
+        box-shadow: 0 0 30px rgba(var(--primary-color-rgb), 0.3);
+    }
+}
+
+// Button animations
+.pulse-on-hover {
+    transition: all 0.3s ease;
+    
+    &:hover {
+        animation: pulse 1s infinite;
+    }
+}
+
+.bounce-on-hover {
+    transition: transform 0.2s ease;
+    
+    &:hover {
+        animation: bounce 0.6s ease;
+    }
+}
+
+.glow-on-hover {
+    transition: all 0.3s ease;
+    
+    &:hover {
+        text-shadow: 0 0 10px rgba(var(--primary-color-rgb), 0.6);
+        transform: scale(1.05);
+    }
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(var(--primary-color-rgb), 0); }
+    100% { box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0); }
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+    60% { transform: translateY(-5px); }
+}
+
+// Icon animations
+.icon-bounce {
+    &:hover {
+        animation: iconBounce 1s ease-in-out;
+    }
+}
+
+// Floating animation
+.float-animation {
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+// Parallax elements
+.parallax-element {
+    will-change: transform;
+}
+
+// Fast moving header
+.fast-parallax-header {
+    will-change: transform;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+}
+
+// Performance optimizations
+.animate-on-scroll,
+.parallax-element,
+.float-animation {
+    backface-visibility: hidden;
+    perspective: 1000px;
+    transform-style: preserve-3d;
+}
+
+// Section-specific styling
+.benefits-section {
+    background: var(--surface-section);
+    border-radius: 2rem;
+    margin: 2rem 0;
+    padding: 3rem 0;
+    position: relative;
+    z-index: 10; // Higher z-index to stay above parallax elements
+    transform: translateZ(0); // Force hardware acceleration and isolate stacking context
+    
+    h2 {
+        position: relative;
+        z-index: 11;
+        margin-bottom: 2rem;
+    }
+    
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, 
+            rgba(var(--primary-color-rgb), 0.02) 0%,
+            transparent 50%,
+            rgba(var(--primary-color-rgb), 0.02) 100%);
+        border-radius: inherit;
+        z-index: -1;
+    }
+}
+
+.container-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    // Ensure proper centering
+    width: 100%;
+    box-sizing: border-box;
+}
+
+// Code sample section styling
+.code-sample-section {
+    .surface-card {
+        max-width: 100%;
+        overflow: hidden;
+        box-shadow: none; // Remove any duplicate shadows
+    }
+    
+    .code-block-wrapper {
+        margin: 1rem 0;
+        min-height: 200px; // Ensure minimum height
+        
+        wb-enhanced-code-v2 {
+            display: block;
+            width: 100%;
+            
+            // Keep the inner shadow for nice hover effects
+        }
+    }
+}
+
+// Section-specific backgrounds for better visual separation
+// .hero-section - already has its own gradient background
+
+// Why Choose Whizbang header area (now integrated into benefits section)
+// .section-header - no longer needed, header is now part of benefits section
+
+// Benefits section
+.benefits-section {
+    background: linear-gradient(135deg, 
+        #a8e6cf 0%,     // Mint green
+        #dcedc8 50%,    // Light lime
+        #c8e6c9 100%);  // Soft green
+    margin: 3rem -50vw; // Extend to full viewport width
+    margin-left: calc(-50vw + 50%); // Center while extending to edges
+    margin-right: calc(-50vw + 50%);
+    padding: 3rem max(2rem, calc(50vw - 600px));
+    border-radius: 0; // Remove border radius for full width
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border: none; // Remove border for seamless full width
+    // Ensure background moves with parallax
+    will-change: transform;
+    transform-style: preserve-3d;
+    position: relative;
+    z-index: 5; // Higher z-index so it scrolls over the pink section
+    
+    // Add background that extends beyond content but doesn't cause overflow
+    &::before {
+        content: '';
+        position: absolute;
+        top: -3rem;
+        left: -2rem;
+        right: -2rem;
+        bottom: -3rem;
+        background: inherit;
+        border-radius: inherit;
+        border: inherit;
+        box-shadow: inherit;
+        z-index: -1;
+    }
+}
+
+// Code sample section
+.code-sample-section {
+    background: linear-gradient(135deg, 
+        #e1bee7 0%,     // Light purple
+        #f8bbd9 50%,    // Pink
+        #e1bee7 100%);  // Light purple
+    margin: -12rem -50vw 3rem -50vw; // Extend to full viewport width
+    margin-left: calc(-50vw + 50%); // Center while extending to edges
+    margin-right: calc(-50vw + 50%);
+    padding: 3rem max(2rem, calc(50vw - 600px)) 3rem max(2rem, calc(50vw - 600px));
+    border-radius: 0; // Remove border radius for full width
+    border: none; // Remove border for seamless full width
+    box-shadow: none; // Remove outer shadow
+    // Ensure background moves with parallax
+    will-change: transform;
+    transform-style: preserve-3d;
+    position: relative;
+    z-index: 3; // Lower z-index so green section scrolls over it
+    
+    // Add background that extends beyond content but doesn't cause overflow
+    &::before {
+        content: '';
+        position: absolute;
+        top: -1rem;
+        left: -1rem;
+        right: -1rem;
+        bottom: -1rem;
+        background: inherit;
+        border-radius: inherit;
+        border: inherit;
+        box-shadow: inherit;
+        z-index: -1;
+    }
+}
+
+// Core Capabilities - Clean sticky section
+.capabilities-section {
+    background: linear-gradient(135deg, 
+        #ffcc80 0%,     // Light orange
+        #ffab91 50%,    // Peach
+        #ff8a65 100%);  // Coral
+    margin: 3rem -50vw;
+    margin-left: calc(-50vw + 50%); // Center while extending to edges
+    margin-right: calc(-50vw + 50%);
+    padding: 3rem max(2rem, calc(50vw - 600px));
+    border-radius: 0; // Remove border radius for full width
+    border: none; // Remove border for seamless full width
+    box-shadow: 0 4px 20px rgba(255, 112, 67, 0.2);
+    position: sticky !important;
+    top: 70px !important;
+    z-index: 4 !important;
+    
+    h3 {
+        padding-top: 2rem; // Extra padding above the header
+    }
+    
+    &::before {
+        content: '';
+        position: absolute;
+        top: -1rem;
+        left: -1rem;
+        right: -1rem;
+        bottom: -1rem;
+        background: inherit;
+        border-radius: inherit;
+        border: inherit;
+        box-shadow: inherit;
+        z-index: -1;
+    }
+}
+
+// Additional sticky class
+.sticky-capabilities {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 4 !important;
+}
+
+// Test sticky removed - sticky positioning now works!
+
+// Minimal spacer - Use Cases should appear immediately over Core Capabilities
+.capabilities-spacer {
+    height: 10vh; // Just enough to let capabilities stick, then Use Cases appears
+}
+
+// Use Cases - Clean version within sticky container
+.use-cases-section {
+    background: linear-gradient(135deg, 
+        #b3e5fc 0%,     // Light blue
+        #81d4fa 50%,    // Sky blue
+        #4fc3f7 100%);  // Blue
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    box-shadow: 0 4px 20px rgba(79, 195, 247, 0.2);
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 100 !important;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    // Remove initial transform - let JavaScript handle all transforms
+    
+    .container-wrapper {
+        padding: 4rem 2rem 2rem 2rem;
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    &::before {
+        content: '';
+        position: absolute;
+        top: -1rem;
+        left: -1rem;
+        right: -1rem;
+        bottom: -1rem;
+        background: inherit;
+        border-radius: inherit;
+        border: inherit;
+        box-shadow: inherit;
+        z-index: -1;
+    }
+}
+
+// Roadmap section - Clean version, starts off-screen left
+.roadmap-section {
+    background: linear-gradient(135deg, 
+        #f8bbd9 0%,     // Pink
+        #e1bee7 50%,    // Light purple
+        #d1c4e9 100%);  // Lavender
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    box-shadow: 0 4px 20px rgba(171, 71, 188, 0.2);
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 50;
+    // Remove initial transform - let JavaScript handle all transforms
+    height: 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    .container-wrapper {
+        padding: 4rem 2rem 2rem 2rem;
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    &::before {
+        content: '';
+        position: absolute;
+        top: -1rem;
+        left: -1rem;
+        right: -1rem;
+        bottom: -1rem;
+        background: inherit;
+        border-radius: inherit;
+        border: inherit;
+        box-shadow: inherit;
+        z-index: -1;
+    }
+}
+
+// Container that sticks to top - Clean version
+.horizontal-slide-container {
+    position: sticky !important;
+    top: 70px !important;
+    width: 100%;
+    height: calc(100vh - 70px);
+    overflow: hidden; // Hide content sliding during animation
+    z-index: 50;
+    margin: -6rem 0 3rem 0; // Negative margin to position over capabilities
+}
+
+// Spacer to create scroll distance for the horizontal slide animation
+.horizontal-slide-spacer {
+    height: 150vh; // 1.5 viewport heights of scroll space for smooth animation
+}
+
+// Call to action section - pushes pinned content up
+.cta-section {
+    background: linear-gradient(135deg, 
+        #ffeb3b 0%,     // Bright yellow
+        #ffc107 50%,    // Amber
+        #ff9800 100%);  // Orange
+    margin: 0 -50vw 3rem -50vw; // Extend to full viewport width
+    margin-left: calc(-50vw + 50%); // Center while extending to edges
+    margin-right: calc(-50vw + 50%);
+    padding: 8rem max(2rem, calc(50vw - 600px)) 8rem max(2rem, calc(50vw - 600px));
+    border-radius: 0; // Remove border radius for full width
+    box-shadow: 0 8px 32px rgba(255, 152, 0, 0.3);
+    border: none; // Remove border for seamless full width
+    // High z-index to push over sticky content and horizontal slide container
+    position: relative;
+    z-index: 100;
+    // Ensure background moves with parallax
+    will-change: transform;
+    transform-style: preserve-3d;
+    
+    &::before {
+        content: '';
+        position: absolute;
+        top: -1rem;
+        left: -1rem;
+        right: -1rem;
+        bottom: -1rem;
+        background: inherit;
+        border-radius: inherit;
+        border: inherit;
+        box-shadow: inherit;
+        z-index: -1;
+    }
+    
+    // Extra space above the footer text
+    p:last-child {
+        margin-top: 4rem !important;
+    }
+}
+
+// Enhanced card styling with better spacing
+.surface-card {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    
+    &.hover-glow:hover {
+        border-color: rgba(var(--primary-color-rgb), 0.3);
+    }
+}
+
+// Better text spacing to prevent overlap
+.text-surface-600,
+.text-surface-300 {
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+// Reduce motion for accessibility
+@media (prefers-reduced-motion: reduce) {
+    .animate-on-scroll,
+    .parallax-element,
+    .float-animation,
+    .hover-lift,
+    .pulse-on-hover,
+    .bounce-on-hover,
+    .glow-on-hover,
+    .icon-bounce {
+        animation: none !important;
+        transition: none !important;
+        transform: none !important;
+    }
+    
+    .hero-section .parallax-bg {
+        animation: none !important;
+    }
+}
