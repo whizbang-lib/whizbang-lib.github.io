@@ -1,0 +1,71 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "projects": {
+    "whizbang-site": {
+      "projectType": "application",
+      "prefix": "wb",
+      "root": "",
+      "sourceRoot": "src",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:browser",
+          "options": {
+            "outputPath": "dist/whizbang-site",
+            "index": "src/index.html",
+            "main": "src/main.ts",
+            "polyfills": "src/polyfills.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": ["src/favicon.ico", "src/assets", "src/404.html"],
+            "styles": [
+              "src/styles.scss",
+              "node_modules/primeicons/primeicons.css",
+              "node_modules/primeflex/primeflex.min.css",
+              "node_modules/prism-themes/themes/prism-one-light.css"
+            ],
+            "scripts": []
+          },
+          "configurations": {
+            "development": {
+              "optimization": false,
+              "aot": false,
+              "vendorChunk": true,
+              "buildOptimizer": false,
+              "sourceMap": true,
+              "namedChunks": true,
+              "outputHashing": "none"
+            },
+            "production": {
+              "optimization": {
+                "fonts": false
+              },
+              "aot": true,
+              "outputHashing": "all",
+              "extractLicenses": true,
+              "vendorChunk": false,
+              "buildOptimizer": true
+            }
+          }
+        },
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "buildTarget": "whizbang-site:build:development"
+          },
+          "configurations": {
+            "production": {
+              "buildTarget": "whizbang-site:build:production"
+            },
+            "development": {
+              "hmr": true,
+              "buildTarget": "whizbang-site:build:development"
+            }
+          }
+        }
+      }
+    }
+  },
+  "cli": {
+    "analytics": false
+  }
+}
