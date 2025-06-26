@@ -1,0 +1,483 @@
+// =============================================================================
+// Global Styles - Main stylesheet with design system imports
+// =============================================================================
+
+// Third-party CSS frameworks - @use must come first
+@use 'primeflex/primeflex';
+
+// Design System - @import after @use
+@import 'styles/theme-tokens';
+@import 'styles/design-tokens';
+@import 'styles/mixins';
+@import 'styles/enhanced-code-blocks';
+
+// Ensure proper box sizing globally
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+// Prevent horizontal scrolling on body only
+body {
+    overflow-x: hidden;
+}
+
+/* Prevent flash of unformatted code - hide until enhanced */
+pre code:not(.enhanced-marker) {
+    opacity: 0;
+    transition: opacity wb-duration('base') wb-easing('ease-in-out');
+}
+
+pre code.enhanced-marker {
+    opacity: 1;
+}
+
+// Base styles using design tokens
+body {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    color: var(--wb-text-primary);
+    background: var(--wb-surface-ground);
+}
+
+// Allow PrimeNG to manage its own theme variables
+// We'll only override specific custom properties that don't interfere with theming
+
+// Custom app-specific overrides that don't conflict with PrimeNG theming
+:root:not([data-theme="dark"]) {
+    // Keep custom app background
+    --wb-surface-ground: #ffffff;
+    --wb-surface-card: #ffffff;
+    --wb-text-primary: #111827;
+    
+    // Menu background overrides for better contrast in light mode
+    --wb-surface-section: #f3f4f6; /* gray-100 for top-level */
+    --wb-surface-border: #e5e7eb;  /* gray-200 for second-level */
+}
+
+// Force white background on all major layout elements in light theme
+:root:not([data-theme="dark"]) body {
+    background-color: #ffffff !important;
+}
+
+:root:not([data-theme="dark"]) .p-component {
+    background-color: transparent;
+}
+
+// Ensure router outlet content has white background
+:root:not([data-theme="dark"]) router-outlet + * {
+    background-color: #ffffff;
+}
+
+// Force toolbar background in light mode - dark gradient for better logo contrast
+:root:not([data-theme="dark"]) .fixed-header {
+    background: linear-gradient(135deg, #1f2937, #111827) !important;
+    color: white !important;
+}
+
+:root:not([data-theme="dark"]) .fixed-header .p-toolbar {
+    background: linear-gradient(135deg, #1f2937, #111827) !important;
+    color: white !important;
+}
+
+:root:not([data-theme="dark"]) .gradient-bg {
+    background: linear-gradient(135deg, #1f2937, #111827) !important;
+    color: white !important;
+}
+
+// Dark mode should have the same dark header
+:root[data-theme="dark"] .fixed-header {
+    background: linear-gradient(135deg, #1f2937, #111827) !important;
+    color: white !important;
+}
+
+:root[data-theme="dark"] .fixed-header .p-toolbar {
+    background: linear-gradient(135deg, #1f2937, #111827) !important;
+    color: white !important;
+}
+
+:root[data-theme="dark"] .gradient-bg {
+    background: linear-gradient(135deg, #1f2937, #111827) !important;
+    color: white !important;
+}
+
+// Force all header text and icons to be white in dark mode too
+:root[data-theme="dark"] .fixed-header {
+    .toolbar-nav-button {
+        color: white !important;
+    }
+    
+    .p-button {
+        color: white !important;
+    }
+    
+    .logo {
+        filter: none !important;
+    }
+}
+
+// Force all header text and icons to be white in light mode
+:root:not([data-theme="dark"]) .fixed-header {
+    .toolbar-nav-button {
+        color: white !important;
+    }
+    
+    .toolbar-nav-button:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        color: white !important;
+    }
+    
+    .toolbar-nav-button.active {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+    }
+    
+    // Search component icons and text
+    wb-enhanced-search {
+        color: white !important;
+        
+        .p-inputtext {
+            color: white !important;
+            
+            &::placeholder {
+                color: rgba(255, 255, 255, 0.7) !important;
+            }
+        }
+        
+        .pi {
+            color: white !important;
+        }
+    }
+    
+    // Theme toggle component
+    wb-theme-toggle {
+        color: white !important;
+        
+        .p-button {
+            color: white !important;
+        }
+        
+        .pi {
+            color: white !important;
+        }
+    }
+}
+
+// Deep-level menu container override for light mode
+:root:not([data-theme="dark"]) .custom-nav-menu.deep-level {
+    background: #f9fafb !important; /* gray-50 for deep-level containers */
+    border: 1px solid #d1d5db !important; /* gray-300 for border */
+    
+    // Inset gradient effect for light mode
+    box-shadow: 
+        inset 2px 2px 4px rgba(0, 0, 0, 0.1),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.8) !important;
+}
+
+// Deep-level menu container override for dark mode - use higher specificity
+html:root[data-theme="dark"] .custom-nav-menu.deep-level {
+    background: #2d3748 !important; /* gray-800 - darker than before */
+    background-color: #2d3748 !important; /* gray-800 - double override */
+    border: 1px solid #4a5568 !important; /* gray-700 for border */
+    
+    // Inset gradient effect for dark mode - similar to light theme but inverted
+    box-shadow: 
+        inset 2px 2px 4px rgba(0, 0, 0, 0.4),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.1) !important;
+}
+
+// Dark theme custom app variables
+:root[data-theme="dark"] {
+    // Keep custom app variables for parts not managed by PrimeNG
+    --wb-surface-ground: #1f2937;
+    --wb-surface-card: #374151;
+    --wb-text-primary: #f3f4f6;
+    
+    // Lighter background for deep-level menu containers
+    --wb-surface-container: #374151; /* gray-700 for deep-level containers */
+}
+
+// Green borders around all sides of top-level menu panels - both light and dark mode
+.p-panelmenu .p-panelmenu-panel {
+    border: 2px solid #10b981 !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.p-panelmenu .p-panelmenu-panel:last-child {
+    margin-bottom: 0 !important;
+}
+
+// Remove borders from child menu items
+.p-panelmenu .p-menuitem-link {
+    border: none !important;
+}
+
+// Dark mode code block overrides - force darker chrome
+:root[data-theme="dark"] {
+    .enhanced-code-block {
+        background: #0a0a0a !important;
+        border-color: #1a1a1a !important;
+        
+        .code-header {
+            background: #0f0f0f !important;
+        }
+        
+        .code-tags {
+            background: #0f0f0f !important;
+        }
+        
+        .code-container {
+            background: linear-gradient(to right, 
+                #1a1a1a 0,
+                #1a1a1a 3rem, 
+                #1a202c 3rem, 
+                #1a202c 100%) !important;
+        }
+        
+        .code-description,
+        .code-metadata {
+            background: #0f0f0f !important;
+        }
+    }
+}
+
+.container {
+    @include wb-container;
+}
+
+/* Search highlighting styles */
+mark.search-highlight {
+    background: var(--wb-warning) !important;
+    color: var(--wb-warning-text) !important;
+    padding: wb-spacing('xs') wb-spacing('xs');
+    border-radius: wb-border-radius('sm');
+    font-weight: wb-font-weight('medium');
+    border: 1px solid var(--wb-warning);
+    box-shadow: var(--wb-shadow-sm);
+}
+
+/* Search overlay styles */
+.search-overlay .p-overlaypanel-content {
+    padding: 0 !important;
+}
+
+/* Gradient background for menubar */
+.gradient-bg {
+    background: var(--wb-gradient-primary);
+}
+
+.gradient-bg .p-menubar {
+    background: transparent;
+    border: none;
+}
+
+// Enhanced code block styles are now imported from _enhanced-code-blocks.scss
+
+// COMPREHENSIVE PrimeNG v19 Overlay Background Fix
+// This addresses transparency issues by targeting both the component CSS classes
+// and using the correct CSS variable cascade for PrimeNG v19
+
+// Base overlay styling with comprehensive fallbacks
+.p-sidebar,
+.p-overlaypanel,
+.p-dropdown-panel,
+.p-autocomplete-panel,
+.p-dialog,
+.p-menu,
+.p-contextmenu,
+.p-tieredmenu {
+  background: var(--p-content-background, #ffffff) !important;
+  border: 1px solid var(--p-content-border-color, #e2e8f0) !important;
+}
+
+// Specific component styling with PrimeNG v19 variable hierarchy
+.p-sidebar {
+  background: var(--p-sidebar-background, var(--p-overlay-modal-background, var(--p-content-background, #ffffff))) !important;
+}
+
+.p-overlaypanel {
+  background: var(--p-overlaypanel-background, var(--p-overlay-popover-background, var(--p-content-background, #ffffff))) !important;
+}
+
+.p-dropdown-panel,
+.p-autocomplete-panel {
+  background: var(--p-overlay-select-background, var(--p-content-background, #ffffff)) !important;
+}
+
+.p-dialog {
+  background: var(--p-overlay-modal-background, var(--p-content-background, #ffffff)) !important;
+}
+
+// Dark theme comprehensive override
+:root[data-theme="dark"] {
+  .p-sidebar,
+  .p-overlaypanel,
+  .p-dropdown-panel,
+  .p-autocomplete-panel,
+  .p-dialog,
+  .p-menu,
+  .p-contextmenu,
+  .p-tieredmenu {
+    background: var(--p-content-background, #18181b) !important;
+    border: 1px solid var(--p-content-border-color, #3f3f46) !important;
+  }
+
+  // Specific dark theme variable hierarchy
+  .p-sidebar {
+    background: var(--p-sidebar-background, var(--p-overlay-modal-background, var(--p-content-background, #18181b))) !important;
+  }
+
+  .p-overlaypanel {
+    background: var(--p-overlaypanel-background, var(--p-overlay-popover-background, var(--p-content-background, #18181b))) !important;
+  }
+
+  .p-dropdown-panel,
+  .p-autocomplete-panel {
+    background: var(--p-overlay-select-background, var(--p-content-background, #18181b)) !important;
+  }
+
+  .p-dialog {
+    background: var(--p-overlay-modal-background, var(--p-content-background, #18181b)) !important;
+  }
+}
+
+// Additional safety net for any missed overlay elements
+[class*="p-"][class*="panel"],
+[class*="p-"][class*="overlay"],
+[class*="p-"][class*="dropdown"],
+[class*="p-"][class*="menu"] {
+  background: var(--p-content-background, #ffffff) !important;
+}
+
+:root[data-theme="dark"] [class*="p-"][class*="panel"],
+:root[data-theme="dark"] [class*="p-"][class*="overlay"],
+:root[data-theme="dark"] [class*="p-"][class*="dropdown"],
+:root[data-theme="dark"] [class*="p-"][class*="menu"] {
+  background: var(--p-content-background, #18181b) !important;
+}
+
+// Push sidebar functionality - shift main content when sidebar is open
+// Only apply push layout on desktop/tablet screens
+@media (min-width: 769px) {
+  body.sidebar-open {
+    margin-left: 280px;
+    transition: margin-left 0.3s ease;
+  }
+
+  body:not(.sidebar-open) {
+    margin-left: 0;
+    transition: margin-left 0.3s ease;
+  }
+}
+
+// On mobile screens, disable push layout to prevent horizontal overflow
+@media (max-width: 768px) {
+  body.sidebar-open,
+  body:not(.sidebar-open) {
+    margin-left: 0 !important;
+  }
+}
+
+// =============================================================================
+// Mobile Typography & Content Density Enhancements
+// =============================================================================
+
+/* Mobile typography improvements */
+@media (max-width: 768px) {
+  /* Global typography scaling for better mobile readability */
+  body {
+    font-size: 16px; /* Ensure base font size is readable on mobile */
+    line-height: 1.6; /* Improve readability */
+  }
+  
+  /* Heading optimizations for mobile */
+  h1 { font-size: 1.75rem; line-height: 1.3; margin-bottom: 1rem; }
+  h2 { font-size: 1.5rem; line-height: 1.3; margin-bottom: 0.875rem; }
+  h3 { font-size: 1.25rem; line-height: 1.4; margin-bottom: 0.75rem; }
+  h4 { font-size: 1.125rem; line-height: 1.4; margin-bottom: 0.75rem; }
+  h5 { font-size: 1rem; line-height: 1.5; margin-bottom: 0.5rem; }
+  h6 { font-size: 0.875rem; line-height: 1.5; margin-bottom: 0.5rem; }
+  
+  /* Paragraph and text optimizations */
+  p {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+  
+  /* Ensure all buttons meet minimum touch target requirements */
+  .p-button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    font-size: 1rem !important;
+    padding: 0.75rem 1rem !important;
+  }
+  
+  /* Improve card spacing and padding for mobile */
+  .p-card {
+    .p-card-body {
+      padding: 1rem !important;
+    }
+    
+    .p-card-header {
+      padding: 1rem 1rem 0.5rem 1rem !important;
+    }
+    
+    .p-card-footer {
+      padding: 0.5rem 1rem 1rem 1rem !important;
+    }
+  }
+  
+  /* Improve form input sizing for mobile */
+  .p-inputtext,
+  .p-dropdown,
+  .p-multiselect {
+    min-height: 44px !important;
+    font-size: 1rem !important;
+    padding: 0.75rem !important;
+  }
+  
+  /* Container and spacing improvements */
+  .container,
+  .container-wrapper {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Enhanced mobile typography for very small screens */
+  h1 { font-size: 1.5rem; margin-bottom: 0.75rem; }
+  h2 { font-size: 1.375rem; margin-bottom: 0.75rem; }
+  h3 { font-size: 1.25rem; margin-bottom: 0.625rem; }
+  h4 { font-size: 1.125rem; margin-bottom: 0.625rem; }
+  
+  /* Larger touch targets for small screens */
+  .p-button {
+    min-height: 48px !important;
+    min-width: 48px !important;
+    font-size: 1.125rem !important;
+    padding: 1rem 1.25rem !important;
+  }
+  
+  /* Improved form elements for small mobile */
+  .p-inputtext,
+  .p-dropdown,
+  .p-multiselect {
+    min-height: 48px !important;
+    font-size: 1.125rem !important;
+    padding: 1rem !important;
+  }
+  
+  /* Tighter container spacing for small screens */
+  .container,
+  .container-wrapper {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+  
+  /* Optimize section spacing */
+  section {
+    padding: 1.5rem 0 !important;
+    margin-bottom: 2rem !important;
+  }
+}

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sticky Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        
+        .spacer {
+            height: 150vh;
+            background: linear-gradient(to bottom, #f0f0f0, #e0e0e0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .sticky-test {
+            position: sticky;
+            top: 0;
+            background: linear-gradient(135deg, #ffcc80, #ffab91, #ff8a65);
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 2px solid #ff7043;
+            margin: 2rem 0;
+            z-index: 10;
+        }
+        
+        .sticky-test h2 {
+            margin: 0 0 1rem 0;
+            color: #333;
+        }
+        
+        .debug {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: black;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="spacer">Scroll down to test sticky positioning</div>
+    
+    <div class="sticky-test" id="stickyElement">
+        <h2>Sticky Test Element</h2>
+        <p>This should stick to the top when you scroll past it.</p>
+        <div>Position: <span id="position">normal</span></div>
+        <div>Top: <span id="top">auto</span></div>
+    </div>
+    
+    <div class="spacer">Keep scrolling to see if it stays stuck</div>
+    <div class="spacer">More content below</div>
+    
+    <div class="debug" id="debug">
+        Scroll position: <span id="scrollPos">0</span><br>
+        Element top: <span id="elemTop">0</span><br>
+        Is sticky: <span id="isSticky">false</span>
+    </div>
+
+    <script>
+        const stickyElement = document.getElementById('stickyElement');
+        const debugEl = document.getElementById('debug');
+        const scrollPosEl = document.getElementById('scrollPos');
+        const elemTopEl = document.getElementById('elemTop');
+        const isStickyEl = document.getElementById('isSticky');
+        const positionEl = document.getElementById('position');
+        const topEl = document.getElementById('top');
+
+        function updateDebug() {
+            const rect = stickyElement.getBoundingClientRect();
+            const computedStyle = window.getComputedStyle(stickyElement);
+            const scrollPos = window.pageYOffset;
+            
+            scrollPosEl.textContent = scrollPos;
+            elemTopEl.textContent = rect.top;
+            isStickyEl.textContent = rect.top === 0 ? 'YES' : 'NO';
+            positionEl.textContent = computedStyle.position;
+            topEl.textContent = computedStyle.top;
+        }
+
+        window.addEventListener('scroll', updateDebug);
+        updateDebug();
+    </script>
+</body>
+</html>
