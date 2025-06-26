@@ -1,0 +1,182 @@
+<!-- Hero Section -->
+<section class="text-center mb-8 hero-section" #heroSection>
+    <div class="parallax-bg"></div>
+    <h1 class="text-6xl font-bold mb-4 animate-on-scroll slide-up float-animation">
+        Meet <img [src]="getMeetWhizbangPath()" alt="Whizbang" class="meet-whizbang-logo">
+    </h1>
+    <h2 class="text-2xl font-semibold mb-4 text-gradient animate-on-scroll slide-up" style="animation-delay: 0.2s;">Unified Event‑Sourced Data & Messaging Runtime for .NET</h2>
+    <p class="text-xl mb-6 max-w-4xl mx-auto animate-on-scroll fade-in" style="animation-delay: 0.4s;">One runtime. Any store. Every message. Collapse MartenDB, Wolverine, MassTransit, and MediatR into one cohesive platform with a single mental model.</p>
+    <div class="flex flex-wrap justify-content-center gap-3 mb-6 animate-on-scroll scale-in" style="animation-delay: 0.6s;">
+        <a pButton pRipple class="btn-gradient pulse-on-hover" routerLink="/docs/getting-started">Get Started</a>
+        <a pButton pRipple routerLink="/examples" class="p-button-outlined bounce-on-hover">View Examples</a>
+        <a pButton pRipple href="https://github.com/whizbang-lib/whizbang" target="_blank" class="p-button-text glow-on-hover">Visit GitHub →</a>
+    </div>
+</section>
+
+<!-- Why Choose Whizbang & Benefits Combined -->
+<section class="mb-8 animate-on-scroll fade-in-up benefits-section fast-parallax-header">
+    <div class="container-wrapper">
+        <h2 class="text-3xl font-semibold mb-6 text-center animate-on-scroll slide-up fast-parallax-header">Why Choose Whizbang?</h2>
+        <div class="grid">
+        <div class="col-12 md:col-4 animate-on-scroll slide-in-left" style="animation-delay: 0.1s;">
+            <div class="text-center p-4 parallax-element hover-lift">
+                <i class="pi pi-sitemap text-4xl text-primary mb-3 icon-bounce"></i>
+                <h3 class="text-xl font-semibold mb-2">Single Surface Area</h3>
+                <p class="text-surface-600 dark:text-surface-300">Aggregates, projections, commands, queries, and sagas share the same primitives.</p>
+            </div>
+        </div>
+        <div class="col-12 md:col-4 animate-on-scroll slide-in-up" style="animation-delay: 0.2s;">
+            <div class="text-center p-4 parallax-element hover-lift">
+                <i class="pi pi-database text-4xl text-primary mb-3 icon-bounce"></i>
+                <h3 class="text-xl font-semibold mb-2">Poly-Store Adapters</h3>
+                <p class="text-surface-600 dark:text-surface-300">Postgres, SQL Server, MySQL, Cosmos DB, and LiteFS/SQLite support out of the box.</p>
+            </div>
+        </div>
+        <div class="col-12 md:col-4 animate-on-scroll slide-in-right" style="animation-delay: 0.3s;">
+            <div class="text-center p-4 parallax-element hover-lift">
+                <i class="pi pi-eye text-4xl text-primary mb-3 icon-bounce"></i>
+                <h3 class="text-xl font-semibold mb-2">Observable by Default</h3>
+                <p class="text-surface-600 dark:text-surface-300">OpenTelemetry traces and live dashboard highlight issues before production.</p>
+            </div>
+        </div>
+    </div>
+    </div>
+</section>
+
+<!-- Quick Start Code Sample -->
+<section class="mb-8 code-sample-section">
+    <div class="container-wrapper">
+        <h3 class="text-2xl font-semibold mb-4 text-center animate-on-scroll slide-up">Five-Minute Start</h3>
+        <wb-enhanced-code-v2 
+            [code]="quickStartCode" 
+            [options]="{ language: 'csharp', showLineNumbers: true, copyable: true }">
+        </wb-enhanced-code-v2>
+        <div class="mt-4 text-center">
+            <p class="mb-3 font-semibold">Run locally:</p>
+            <wb-enhanced-code-v2 
+                [code]="cliCommands" 
+                [options]="{ language: 'bash', copyable: true }">
+            </wb-enhanced-code-v2>
+        </div>
+    </div>
+</section>
+
+<!-- Core Capabilities - Sticky Section -->
+<section class="capabilities-section sticky-capabilities">
+    <div class="container-wrapper">
+        <h3 class="text-2xl font-semibold mb-6 text-center">Core Capabilities</h3>
+        <div class="grid mb-8">
+            <div class="col-12 md:col-6">
+                <div class="surface-card p-4 border-round h-full">
+                    <h4 class="text-lg font-semibold mb-2">Poly-Store Document + Event Store</h4>
+                    <p class="text-surface-600 dark:text-surface-300 mb-3">JSONB for Postgres + native JSON columns on SQL Server/MySQL, plus a binary codec for LiteFS.</p>
+                </div>
+            </div>
+            <div class="col-12 md:col-6">
+                <div class="surface-card p-4 border-round h-full">
+                    <h4 class="text-lg font-semibold mb-2">Unified Messaging Pipeline</h4>
+                    <p class="text-surface-600 dark:text-surface-300 mb-3">Inline → durable → batched modes are toggleable. Built-in outbox/inbox, delayed delivery, sagas.</p>
+                </div>
+            </div>
+            <div class="col-12 md:col-6">
+                <div class="surface-card p-4 border-round h-full">
+                    <h4 class="text-lg font-semibold mb-2">Handlers = Functions</h4>
+                    <p class="text-surface-600 dark:text-surface-300 mb-3">Plain C# methods return results or new messages. Mark a handler as <code>pure</code> and the compiler forbids hidden side effects.</p>
+                </div>
+            </div>
+            <div class="col-12 md:col-6">
+                <div class="surface-card p-4 border-round h-full">
+                    <h4 class="text-lg font-semibold mb-2">Cloud-Native Superpowers</h4>
+                    <p class="text-surface-600 dark:text-surface-300 mb-3">Kubernetes Operator for auto-scaling projections by lag, partition-aware consumers, and seamless multi-region DR.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Spacer to allow capabilities to stick before use cases arrive -->
+<div class="capabilities-spacer"></div>
+
+<!-- Horizontal Slide Container - Prevents Overflow -->
+<div class="horizontal-slide-container">
+    <!-- Use Cases - Sticky Section that gets pushed by Roadmap -->
+    <section class="use-cases-section flying-use-cases">
+        <div class="container-wrapper">
+            <h3 class="text-2xl font-semibold mb-6 text-center">Typical Use Cases</h3>
+            <div class="grid">
+                <div class="col-12 md:col-6 lg:col-3">
+                    <div class="text-center p-4">
+                        <i class="pi pi-sparkles text-3xl text-primary mb-3"></i>
+                        <h4 class="font-semibold mb-2">Green-field SaaS</h4>
+                        <p class="text-surface-600 dark:text-surface-300 text-sm">Teams adopting CQRS + event sourcing without Postgres lock-in.</p>
+                    </div>
+                </div>
+                <div class="col-12 md:col-6 lg:col-3">
+                    <div class="text-center p-4">
+                        <i class="pi pi-objects-column text-3xl text-primary mb-3"></i>
+                        <h4 class="font-semibold mb-2">Legacy Decomposition</h4>
+                        <p class="text-surface-600 dark:text-surface-300 text-sm">Services need a shared event backbone & document store.</p>
+                    </div>
+                </div>
+                <div class="col-12 md:col-6 lg:col-3">
+                    <div class="text-center p-4">
+                        <i class="pi pi-wifi text-3xl text-primary mb-3"></i>
+                        <h4 class="font-semibold mb-2">Edge & Offline-First</h4>
+                        <p class="text-surface-600 dark:text-surface-300 text-sm">Apps that sync LiteFS event streams to the cloud on reconnect.</p>
+                    </div>
+                </div>
+                <div class="col-12 md:col-6 lg:col-3">
+                    <div class="text-center p-4">
+                        <i class="pi pi-shield text-3xl text-primary mb-3"></i>
+                        <h4 class="font-semibold mb-2">Regulated Industries</h4>
+                        <p class="text-surface-600 dark:text-surface-300 text-sm">Column-level encryption, audit log streams, and data-retention SLAs.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Roadmap - Section that pushes Use Cases -->
+    <section class="roadmap-section">
+        <div class="container-wrapper">
+            <div class="p-6 border-round">
+                <h3 class="text-2xl font-semibold mb-6 text-center">Roadmap</h3>
+                <div class="grid">
+                    <div class="col-12 md:col-4">
+                        <div class="text-center p-4">
+                            <h4 class="font-semibold text-primary mb-2">Q3 2025</h4>
+                            <p class="text-sm">Public Beta • Postgres + Kafka + Operator</p>
+                        </div>
+                    </div>
+                    <div class="col-12 md:col-4">
+                        <div class="text-center p-4">
+                            <h4 class="font-semibold text-primary mb-2">Q4 2025</h4>
+                            <p class="text-sm">General Availability • SQL Server/MySQL adapters • Cloud dashboard SaaS</p>
+                        </div>
+                    </div>
+                    <div class="col-12 md:col-4">
+                        <div class="text-center p-4">
+                            <h4 class="font-semibold text-primary mb-2">2026</h4>
+                            <p class="text-sm">Multi-region DR • Cosmos DB adapter • No-code projection designer</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Spacer to create scroll distance for horizontal slide animation -->
+<div class="horizontal-slide-spacer"></div>
+
+<!-- Call to Action -->
+<section class="text-center cta-section">
+    <h3 class="text-2xl font-semibold mb-4">Ready to Build the Future?</h3>
+    <p class="text-lg mb-6 max-w-2xl mx-auto">Join the early-access program, star the repo, and share feedback in the open RFC discussions. Let's build a pit of success for event-sourced, message-driven systems—together.</p>
+    <div class="flex flex-wrap justify-content-center gap-3">
+        <a pButton pRipple class="btn-gradient" routerLink="/docs/getting-started">Join Early Access</a>
+        <a pButton pRipple href="https://github.com/whizbang-labs/whizbang" target="_blank" class="p-button-outlined">Star on GitHub</a>
+        <a pButton pRipple routerLink="/docs" class="p-button-text">Read the Docs</a>
+    </div>
+    <p class="mt-12 text-surface-500 dark:text-surface-400">Made with 🧙 by the Whizbang core team.</p>
+</section>

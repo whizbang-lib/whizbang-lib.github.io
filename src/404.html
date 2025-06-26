@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script>
+    // GitHub Pages SPA redirect hack
+    // This script takes the current path and redirects to the root with the path as a query parameter
+    // The root page then redirects back to the correct route
+    var pathSegmentsToKeep = 0; // For GitHub Pages with custom domain, use 0. For user/repo pages, use 1.
+    
+    var l = window.location;
+    
+    // Prevent infinite loops - don't redirect if we're already at root with redirect params
+    if (l.pathname === '/' && l.search.indexOf('/?/') === 0) {
+      return;
+    }
+    
+    l.replace(
+      l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+      l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+      l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+      (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+      l.hash
+    );
+  </script>
+</head>
+<body>
+</body>
+</html>

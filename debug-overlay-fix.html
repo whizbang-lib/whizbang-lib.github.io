@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrimeNG Overlay Debug - WhizBang Site</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .debug-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .debug-info {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 5px 0;
+            white-space: pre-wrap;
+        }
+        .test-button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background: #059669;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+    </style>
+</head>
+<body>
+    <h1>PrimeNG Overlay Background Debug Tool</h1>
+    <p>This tool helps diagnose PrimeNG overlay transparency issues by checking CSS variables and computed styles.</p>
+
+    <div class="debug-section">
+        <div class="debug-title">1. Theme Detection</div>
+        <div id="theme-info" class="debug-info">Checking theme...</div>
+        <button class="test-button" onclick="toggleTheme()">Toggle Dark/Light Theme</button>
+    </div>
+
+    <div class="debug-section">
+        <div class="debug-title">2. PrimeNG CSS Variables</div>
+        <div id="css-vars-info" class="debug-info">Checking CSS variables...</div>
+        <button class="test-button" onclick="checkCSSVariables()">Refresh CSS Variables</button>
+    </div>
+
+    <div class="debug-section">
+        <div class="debug-title">3. Test Actions</div>
+        <button class="test-button" onclick="openTestApp()">Open Whizbang Site</button>
+        <button class="test-button" onclick="logOverlayStyles()">Log Overlay Styles</button>
+        <button class="test-button" onclick="simulateOverlay()">Create Test Overlay</button>
+    </div>
+
+    <div class="debug-section">
+        <div class="debug-title">4. Diagnostics Results</div>
+        <div id="diagnostics-results"></div>
+    </div>
+
+    <!-- Test overlay element -->
+    <div id="test-overlay" style="
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 300px;
+        height: 200px;
+        z-index: 1000;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    ">
+        <h3>Test Overlay</h3>
+        <p>This overlay tests the background styling.</p>
+        <button onclick="closeTestOverlay()">Close</button>
+    </div>
+
+    <script>
+        let isDarkTheme = false;
+        
+        function checkTheme() {
+            const html = document.documentElement;
+            isDarkTheme = html.hasAttribute('data-theme') && html.getAttribute('data-theme') === 'dark';
+            
+            const themeInfo = document.getElementById('theme-info');
+            themeInfo.textContent = `Current theme: ${isDarkTheme ? 'Dark' : 'Light'}
+Theme attribute: ${html.getAttribute('data-theme') || 'none'}
+Body classes: ${document.body.className || 'none'}`;
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            isDarkTheme = !isDarkTheme;
+            
+            if (isDarkTheme) {
+                html.setAttribute('data-theme', 'dark');
+                document.body.style.background = '#1f2937';
+                document.body.style.color = '#f3f4f6';
+            } else {
+                html.removeAttribute('data-theme');
+                document.body.style.background = '#f5f5f5';
+                document.body.style.color = '#333';
+            }
+            
+            checkTheme();
+            checkCSSVariables();
+        }
+
+        function checkCSSVariables() {
+            const root = document.documentElement;
+            const computedStyle = getComputedStyle(root);
+            
+            const vars = [
+                '--p-content-background',
+                '--p-surface-0',
+                '--p-surface-900',
+                '--p-overlay-select-background',
+                '--p-overlay-popover-background',
+                '--p-overlay-modal-background',
+                '--p-sidebar-background',
+                '--p-overlaypanel-background',
+                '--p-content-border-color',
+                '--p-surface-200',
+                '--p-surface-700'
+            ];
+            
+            let output = 'PrimeNG CSS Variables:\\n';
+            vars.forEach(varName => {
+                const value = computedStyle.getPropertyValue(varName) || 'undefined';
+                output += `${varName}: ${value}\\n`;
+            });
+            
+            document.getElementById('css-vars-info').textContent = output;
+        }
+
+        function openTestApp() {
+            window.open('http://localhost:4200', '_blank');
+        }
+
+        function logOverlayStyles() {
+            console.group('PrimeNG Overlay Styles Debug');
+            
+            // Log current CSS variables
+            const root = document.documentElement;
+            const computedStyle = getComputedStyle(root);
+            
+            const importantVars = [
+                '--p-content-background',
+                '--p-surface-0',
+                '--p-surface-900',
+                '--p-overlay-popover-background',
+                '--p-sidebar-background'
+            ];
+            
+            console.log('Current CSS Variables:');
+            importantVars.forEach(varName => {
+                const value = computedStyle.getPropertyValue(varName);
+                console.log(`  ${varName}: ${value || 'undefined'}`);
+            });
+            
+            console.log('\\nExpected values:');
+            console.log('  Light theme backgrounds should be: #ffffff or var(--p-surface-0)');
+            console.log('  Dark theme backgrounds should be: #18181b or var(--p-surface-900)');
+            
+            console.groupEnd();
+            
+            addDiagnosticResult('Overlay styles logged to console', 'success');
+        }
+
+        function simulateOverlay() {
+            const overlay = document.getElementById('test-overlay');
+            const root = document.documentElement;
+            const computedStyle = getComputedStyle(root);
+            
+            // Apply PrimeNG-style background
+            const bgVar = isDarkTheme ? 
+                computedStyle.getPropertyValue('--p-surface-900') || '#18181b' :
+                computedStyle.getPropertyValue('--p-surface-0') || '#ffffff';
+            
+            const borderVar = isDarkTheme ?
+                computedStyle.getPropertyValue('--p-surface-700') || '#3f3f46' :
+                computedStyle.getPropertyValue('--p-surface-200') || '#e2e8f0';
+            
+            overlay.style.background = bgVar;
+            overlay.style.border = `1px solid ${borderVar}`;
+            overlay.style.color = isDarkTheme ? '#f3f4f6' : '#333';
+            overlay.style.display = 'block';
+            
+            addDiagnosticResult(`Test overlay created with background: ${bgVar}`, 'success');
+        }
+
+        function closeTestOverlay() {
+            document.getElementById('test-overlay').style.display = 'none';
+        }
+
+        function addDiagnosticResult(message, type) {
+            const results = document.getElementById('diagnostics-results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            results.appendChild(div);
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            checkTheme();
+            checkCSSVariables();
+            addDiagnosticResult('Debug tool initialized', 'success');
+            
+            console.log('PrimeNG Overlay Debug Tool loaded');
+            console.log('Use the buttons above to test overlay backgrounds');
+            console.log('Toggle theme and check if CSS variables change appropriately');
+        };
+    </script>
+</body>
+</html>

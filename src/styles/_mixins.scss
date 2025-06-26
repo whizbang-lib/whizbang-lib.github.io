@@ -1,0 +1,355 @@
+// =============================================================================
+// SCSS Mixins - Reusable styling patterns
+// =============================================================================
+
+@import 'design-tokens';
+
+// Responsive Breakpoint Mixins
+// -----------------------------------------------------------------------------
+@mixin wb-mobile {
+  @media (max-width: wb-breakpoint('mobile')) {
+    @content;
+  }
+}
+
+@mixin wb-tablet {
+  @media (max-width: wb-breakpoint('tablet')) {
+    @content;
+  }
+}
+
+@mixin wb-desktop {
+  @media (min-width: wb-breakpoint('desktop')) {
+    @content;
+  }
+}
+
+@mixin wb-wide {
+  @media (min-width: wb-breakpoint('wide')) {
+    @content;
+  }
+}
+
+@mixin wb-between($min, $max) {
+  @media (min-width: wb-breakpoint($min)) and (max-width: wb-breakpoint($max)) {
+    @content;
+  }
+}
+
+// Typography Mixins
+// -----------------------------------------------------------------------------
+@mixin wb-text($size: 'base', $weight: 'normal', $line-height: 'normal') {
+  font-size: wb-font-size($size);
+  font-weight: wb-font-weight($weight);
+  line-height: wb-line-height($line-height);
+}
+
+@mixin wb-heading($size: '2xl', $weight: 'semibold') {
+  font-size: wb-font-size($size);
+  font-weight: wb-font-weight($weight);
+  line-height: wb-line-height('tight');
+  color: var(--wb-text-primary);
+}
+
+@mixin wb-code-font {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-variant-ligatures: none;
+  letter-spacing: 0.025em;
+}
+
+// Layout Mixins
+// -----------------------------------------------------------------------------
+@mixin wb-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin wb-flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin wb-container($max-width: wb-breakpoint('wide')) {
+  max-width: $max-width;
+  margin: 0 auto;
+  padding: 0 wb-spacing('lg');
+
+  @include wb-tablet {
+    padding: 0 wb-spacing('md');
+  }
+
+  @include wb-mobile {
+    padding: 0 wb-spacing('sm');
+  }
+}
+
+// Card/Surface Mixins
+// -----------------------------------------------------------------------------
+@mixin wb-card($padding: 'xl', $radius: 'xl', $shadow: 'base') {
+  background: var(--wb-surface-card);
+  border: 1px solid var(--wb-surface-border);
+  border-radius: wb-border-radius($radius);
+  box-shadow: wb-shadow($shadow);
+  padding: wb-spacing($padding);
+}
+
+@mixin wb-surface {
+  background: var(--wb-surface-ground);
+  color: var(--wb-text-primary);
+}
+
+// Button Mixins
+// -----------------------------------------------------------------------------
+@mixin wb-button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: wb-border-radius('lg');
+  cursor: pointer;
+  font-weight: wb-font-weight('medium');
+  transition: all wb-duration('base') wb-easing('ease-in-out');
+  text-decoration: none;
+  
+  &:focus-visible {
+    outline: 2px solid var(--wb-primary);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+@mixin wb-button-primary {
+  @include wb-button-base;
+  background: var(--wb-primary);
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: var(--wb-primary-700);
+    transform: translateY(-1px);
+    box-shadow: wb-shadow('md');
+  }
+}
+
+@mixin wb-button-secondary {
+  @include wb-button-base;
+  background: var(--wb-surface-card);
+  color: var(--wb-text-primary);
+  border: 1px solid var(--wb-surface-border);
+
+  &:hover:not(:disabled) {
+    background: var(--wb-surface-hover);
+    border-color: var(--wb-primary);
+  }
+}
+
+@mixin wb-button-ghost {
+  @include wb-button-base;
+  background: transparent;
+  color: var(--wb-text-secondary);
+
+  &:hover:not(:disabled) {
+    background: var(--wb-surface-hover);
+    color: var(--wb-text-primary);
+  }
+}
+
+// Code Block Mixins - Theme-Aware
+// -----------------------------------------------------------------------------
+@mixin wb-code-block-base {
+  @include wb-card('0', 'xl', 'md');
+  background: var(--wb-code-bg);
+  border-color: var(--wb-code-border);
+  overflow: hidden;
+  
+  // Ensure smooth theme transitions
+  transition: background-color wb-duration('base') wb-easing('ease-in-out'),
+              border-color wb-duration('base') wb-easing('ease-in-out');
+}
+
+@mixin wb-code-header {
+  background: var(--wb-code-header-bg);
+  color: var(--wb-text-primary);
+  padding: wb-spacing('lg');
+  border-bottom: 1px solid var(--wb-code-border);
+  transition: background-color wb-duration('base') wb-easing('ease-in-out'),
+              color wb-duration('base') wb-easing('ease-in-out');
+
+  @include wb-tablet {
+    padding: wb-spacing('md');
+  }
+}
+
+@mixin wb-code-footer {
+  background: var(--wb-code-footer-bg);
+  color: var(--wb-text-primary);
+  padding: wb-spacing('lg');
+  border-top: 1px solid var(--wb-code-border);
+  transition: background-color wb-duration('base') wb-easing('ease-in-out'),
+              color wb-duration('base') wb-easing('ease-in-out');
+
+  @include wb-tablet {
+    padding: wb-spacing('md');
+  }
+}
+
+@mixin wb-code-content {
+  @include wb-code-font;
+  background: var(--wb-code-bg);
+  color: var(--wb-code-text);
+  padding: wb-spacing('lg');
+  overflow-x: auto;
+  line-height: 1.6;
+  font-size: wb-font-size('sm');
+  transition: background-color wb-duration('base') wb-easing('ease-in-out'),
+              color wb-duration('base') wb-easing('ease-in-out');
+
+  @include wb-tablet {
+    padding: wb-spacing('md');
+    font-size: wb-font-size('xs');
+  }
+}
+
+@mixin wb-code-syntax-highlighting {
+  .hljs-keyword { color: var(--wb-syntax-keyword); }
+  .hljs-string { color: var(--wb-syntax-string); }
+  .hljs-comment { color: var(--wb-syntax-comment); font-style: italic; }
+  .hljs-number { color: var(--wb-syntax-number); }
+  .hljs-type { color: var(--wb-syntax-class); }
+  .hljs-attribute { color: var(--wb-syntax-property); }
+  .hljs-title.function_ { color: var(--wb-syntax-method); }
+  .hljs-property { color: var(--wb-syntax-property); }
+  .hljs-namespace { color: var(--wb-syntax-class); }
+  .hljs-literal { color: var(--wb-syntax-keyword); }
+  .hljs-built_in { color: var(--wb-syntax-class); }
+  .hljs-symbol { color: var(--wb-syntax-number); }
+}
+
+@mixin wb-line-numbers {
+  counter-reset: line;
+  
+  .line {
+    counter-increment: line;
+    position: relative;
+    
+    &::before {
+      content: counter(line);
+      position: absolute;
+      left: -3rem;
+      width: 2rem;
+      text-align: right;
+      color: var(--wb-code-line-number);
+      font-size: wb-font-size('xs');
+      user-select: none;
+    }
+  }
+}
+
+// Animation Mixins
+// -----------------------------------------------------------------------------
+@mixin wb-fade-in($duration: 'base') {
+  opacity: 0;
+  animation: wb-fade-in wb-duration($duration) wb-easing('ease-out') forwards;
+
+  @keyframes wb-fade-in {
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+@mixin wb-slide-up($duration: 'base', $distance: 20px) {
+  opacity: 0;
+  transform: translateY($distance);
+  animation: wb-slide-up wb-duration($duration) wb-easing('ease-out') forwards;
+
+  @keyframes wb-slide-up {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@mixin wb-hover-lift {
+  transition: transform wb-duration('base') wb-easing('ease-out'),
+              box-shadow wb-duration('base') wb-easing('ease-out');
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: wb-shadow('lg');
+  }
+}
+
+// Utility Mixins
+// -----------------------------------------------------------------------------
+@mixin wb-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@mixin wb-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin wb-line-clamp($lines: 3) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// Theme Support Mixins
+// -----------------------------------------------------------------------------
+@mixin wb-theme-aware {
+  // Light theme styles by default
+  @content;
+
+  // Dark theme overrides
+  :root[data-theme="dark"] & {
+    @content;
+  }
+}
+
+// Focus States
+// -----------------------------------------------------------------------------
+@mixin wb-focus-ring($color: var(--wb-primary)) {
+  &:focus-visible {
+    outline: 2px solid $color;
+    outline-offset: 2px;
+  }
+}
+
+// Loading States
+// -----------------------------------------------------------------------------
+@mixin wb-skeleton {
+  background: linear-gradient(90deg, 
+    var(--wb-surface-ground) 25%, 
+    var(--wb-surface-hover) 50%, 
+    var(--wb-surface-ground) 75%);
+  background-size: 200% 100%;
+  animation: wb-skeleton 1.5s infinite;
+
+  @keyframes wb-skeleton {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+}

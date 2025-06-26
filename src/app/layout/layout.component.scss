@@ -1,0 +1,157 @@
+.fixed-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    
+    // Force solid background in light mode
+    :root:not([data-theme="dark"]) & {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    }
+}
+
+.gradient-bg {
+    background: var(--wb-gradient-primary);
+    color: #fff;
+    border: none !important;
+    border-radius: 0 !important;
+}
+
+// Ensure toolbar has solid background in light mode
+:root:not([data-theme="dark"]) .gradient-bg {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+}
+
+// Also ensure the PrimeNG toolbar component gets the background
+:root:not([data-theme="dark"]) .fixed-header .p-toolbar {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+}
+
+.toolbar-start {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.logo {
+    transition: opacity 0.2s;
+}
+
+.logo:hover {
+    opacity: 0.8;
+}
+
+.toolbar-end {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.desktop-only {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.main-content {
+    padding-top: 70px;
+    min-height: calc(100vh - 70px);
+    // Ensure sticky positioning works
+    overflow: visible;
+    position: relative;
+}
+
+/* Ensure toolbar fills the header */
+:host ::ng-deep .fixed-header .p-toolbar {
+    border-radius: 0;
+    border: none;
+    padding: 0.75rem 1.5rem;
+}
+
+/* Enhanced responsive adjustments for better mobile experience */
+@media (max-width: 992px) {
+    .toolbar-start {
+        gap: 0.75rem;
+    }
+    
+    /* Ensure buttons are large enough for tablet touch */
+    :host ::ng-deep .fixed-header .p-button {
+        min-width: 40px;
+        min-height: 40px;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        padding-top: 64px; /* Slightly larger header for touch */
+        min-height: calc(100vh - 64px);
+    }
+    
+    .logo {
+        width: 100px;
+    }
+    
+    .desktop-only {
+        display: none;
+    }
+    
+    :host ::ng-deep .fixed-header .p-toolbar {
+        padding: 0.75rem 1rem; /* More padding for touch */
+        min-height: 64px; /* Ensure adequate height */
+    }
+    
+    /* Make all toolbar buttons WCAG compliant */
+    .toolbar-start,
+    .toolbar-end {
+        :host ::ng-deep .p-button {
+            min-width: 44px !important;
+            min-height: 44px !important;
+            font-size: 1.125rem;
+        }
+    }
+    
+    /* Improve search component sizing for mobile */
+    :host ::ng-deep wb-enhanced-search {
+        .p-inputtext {
+            min-height: 44px;
+            font-size: 1rem;
+        }
+    }
+}
+
+@media (max-width: 480px) {
+    .main-content {
+        padding-top: 56px; /* Standard mobile header height */
+        min-height: calc(100vh - 56px);
+    }
+    
+    .toolbar-end {
+        gap: 0.5rem;
+    }
+    
+    .logo {
+        width: 80px;
+    }
+    
+    :host ::ng-deep .fixed-header .p-toolbar {
+        padding: 0.5rem 0.75rem;
+        min-height: 56px;
+    }
+    
+    /* Larger touch targets for small mobile screens */
+    .toolbar-start,
+    .toolbar-end {
+        :host ::ng-deep .p-button {
+            min-width: 48px !important; /* Larger than minimum for small screens */
+            min-height: 48px !important;
+            font-size: 1.25rem;
+        }
+    }
+    
+    /* Theme toggle button optimization */
+    :host ::ng-deep wb-theme-toggle .p-button {
+        padding: 0.5rem !important;
+    }
+}
