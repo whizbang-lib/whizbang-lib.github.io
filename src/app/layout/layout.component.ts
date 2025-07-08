@@ -7,7 +7,6 @@ import { ThemeToggleComponent } from '../components/theme-toggle.component';
 import { HamburgerMenuComponent } from '../components/hamburger-menu.component';
 import { AIEnhancementNotificationComponent } from '../components/ai-enhancement-notification.component';
 import { GlobalToastComponent } from '../components/global-toast.component';
-import { ThemeService } from '../services/theme.service';
 
 @Component({
   selector: 'wb-layout',
@@ -17,8 +16,6 @@ import { ThemeService } from '../services/theme.service';
   styleUrls: ['./layout.component.scss'],
 })
 export class LayoutComponent {
-  private themeService = inject(ThemeService);
-  
   year = new Date().getFullYear();
 
   getLogoPath(): string {
