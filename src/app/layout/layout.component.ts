@@ -24,6 +24,33 @@ export class LayoutComponent {
   }
 
   getVersionInfo(): { commit: string; buildDate: string } {
-    return (window as any).WHIZBANG_VERSION || { commit: 'dev', buildDate: 'local development' };
+    const versionInfo = (window as any).WHIZBANG_VERSION || { commit: 'dev', buildDate: 'local development' };
+    
+    // If it's local development, return as-is
+    if (versionInfo.buildDate === 'local development') {
+      return versionInfo;
+    }
+    
+    // Convert UTC time to user's local timezone
+    try {
+      const utcDate = new Date(versionInfo.buildDate.replace(' UTC', ''));
+      const localDate = utcDate.toLocaleString(undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+      
+      return {
+        commit: versionInfo.commit,
+        buildDate: localDate
+      };
+    } catch (error) {
+      // Fallback to original if parsing fails
+      return versionInfo;
+    }
   }
 }
