@@ -4,17 +4,9 @@
   <meta charset="utf-8">
   <script>
     // GitHub Pages SPA redirect hack
-    // This script takes the current path and redirects to the root with the path as a query parameter
-    // The root page then redirects back to the correct route
-    var l = window.location;
-    
-    l.replace(
-      l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-      '/?/' +
-      l.pathname.slice(1).replace(/&/g, '~and~') +
-      (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
-      l.hash
-    );
+    // Store the requested path in sessionStorage and redirect to root
+    sessionStorage.setItem('redirectPath', location.pathname + location.search + location.hash);
+    location.replace('/');
   </script>
 </head>
 <body>
