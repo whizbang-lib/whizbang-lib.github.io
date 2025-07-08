@@ -41,3 +41,12 @@ testem.log
 # System Files
 .DS_Store
 Thumbs.db
+
+# Generated search indexes (built during npm run build)
+src/assets/docs-list.json
+src/assets/docs-index.json
+src/assets/search-index.json
+src/assets/enhanced-search-index.json
+
+# AI cache files
+.ai-cache.json
