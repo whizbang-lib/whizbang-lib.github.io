@@ -30,6 +30,12 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Inject version info
+        run: |
+          VERSION="${{ github.sha }}"
+          BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          echo "window.WHIZBANG_VERSION = { commit: '$VERSION', buildDate: '$BUILD_DATE' };" > src/assets/version.js
+          
       - name: Build
         run: npm run build
 

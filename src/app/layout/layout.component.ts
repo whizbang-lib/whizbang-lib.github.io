@@ -25,4 +25,8 @@ export class LayoutComponent {
     // Use dark logo for both light and dark themes since header now has dark background
     return 'assets/branding/logo-dark.svg';
   }
+
+  getVersionInfo(): { commit: string; buildDate: string } {
+    return (window as any).WHIZBANG_VERSION || { commit: 'dev', buildDate: 'local development' };
+  }
 }
