@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, ViewChild, ViewContainerRef, EnvironmentInjector, ComponentRef, AfterViewInit } from '@angular/core';
+import { Component, inject, signal, OnInit, ViewChild, ViewContainerRef, EnvironmentInjector, ComponentRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MarkdownModule } from 'ngx-markdown';
 import { HttpClient } from '@angular/common/http';
@@ -7,6 +7,7 @@ import { WbExampleComponent } from '../../components/wb-example.component';
 import { CommonModule } from '@angular/common';
 import { EnhancedCodeBlockV2Component } from '../../components/enhanced-code-block-v2.component';
 import { CodeBlockParser } from '../../services/code-block-parser.service';
+import { ScrollSpyService } from '../../services/scroll-spy.service';
 import { trigger, transition, style, animate } from '@angular/animations';
 
 @Component({
@@ -47,11 +48,12 @@ import { trigger, transition, style, animate } from '@angular/animations';
     ])
   ]
 })
-export class MarkdownPage implements OnInit, AfterViewInit {
+export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   private codeBlockParser = inject(CodeBlockParser);
   private injector = inject(EnvironmentInjector);
+  private scrollSpyService = inject(ScrollSpyService);
   
   @ViewChild('codeBlockContainer', { read: ViewContainerRef }) codeBlockContainer!: ViewContainerRef;
   
@@ -67,6 +69,8 @@ export class MarkdownPage implements OnInit, AfterViewInit {
     this.route.url.subscribe(segments => {
       // Reset content ready state when navigating to new page
       this.isContentReady.set(false);
+      // Clean up scroll spy when navigating to new page
+      this.scrollSpyService.cleanup();
       const fullPath = segments.map(segment => segment.path).join('/');
       this.loadMarkdownContent(`assets/docs/${fullPath}.md`);
     });
@@ -140,6 +144,9 @@ export class MarkdownPage implements OnInit, AfterViewInit {
       
       // All placeholders have been processed, content is ready
       this.isContentReady.set(true);
+      
+      // Initialize scroll spy after content is ready
+      this.scrollSpyService.initializeScrollSpy();
     });
   }
 
@@ -202,6 +209,8 @@ export class MarkdownPage implements OnInit, AfterViewInit {
         } else {
           // No code blocks to process, content is ready immediately
           this.isContentReady.set(true);
+          // Initialize scroll spy for pages without code blocks
+          setTimeout(() => this.scrollSpyService.initializeScrollSpy(), 100);
         }
       },
       error: (error) => {
@@ -254,5 +263,9 @@ export class MarkdownPage implements OnInit, AfterViewInit {
       .replace(/<wb-example[^>]*><\/wb-example>/g, '');
     
     return { processedContent, videos, examples };
+  }
+
+  ngOnDestroy() {
+    this.scrollSpyService.cleanup();
   }
 }
