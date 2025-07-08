@@ -3,7 +3,7 @@ title: Enhanced C# Code Examples
 category: Core concepts
 order: 3
 ---
-# Enhanced C# Code Examples
+# Enhanced C# Code Examples 2
 
 This document demonstrates the enhanced C# code viewing capabilities with rich metadata, interactive features, and professional styling.
 
