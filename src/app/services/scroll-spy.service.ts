@@ -76,9 +76,9 @@ export class ScrollSpyService implements OnDestroy {
       const element = document.getElementById(hash);
       if (element) {
         this.activeHeading = hash;
-        // Scroll to the element with a smooth animation
+        // Scroll to the element with offset for fixed header
         setTimeout(() => {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          this.scrollToElementWithOffset(element);
         }, 100);
         return;
       }
@@ -88,6 +88,17 @@ export class ScrollSpyService implements OnDestroy {
     if (this.headings.length > 0) {
       this.updateActiveHeading(this.headings[0].id);
     }
+  }
+
+  private scrollToElementWithOffset(element: Element) {
+    const headerHeight = 70; // Fixed header height
+    const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+    const offsetPosition = elementPosition - headerHeight - 20; // Extra 20px padding
+
+    window.scrollTo({
+      top: offsetPosition,
+      behavior: 'smooth'
+    });
   }
 
   private updateActiveHeading(headingId: string) {
@@ -127,6 +138,10 @@ export class ScrollSpyService implements OnDestroy {
       e.preventDefault();
       const fullUrl = `${window.location.origin}${window.location.pathname}#${heading.id}`;
       
+      // Update URL hash and scroll to position
+      window.history.replaceState(null, '', `#${heading.id}`);
+      this.scrollToElementWithOffset(heading);
+      
       // Copy to clipboard
       navigator.clipboard.writeText(fullUrl).then(() => {
         // Show temporary feedback
@@ -138,8 +153,7 @@ export class ScrollSpyService implements OnDestroy {
       });
     });
 
-    // Add the copy link to the heading
-    heading.style.position = 'relative';
+    // Add the copy link to the heading as inline content
     heading.appendChild(copyLink);
   }
 

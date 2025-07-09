@@ -25,6 +25,7 @@
 !.vscode/extensions.json
 
 # misc
+/claude-scratch
 /.sass-cache
 /.angular/cache
 /connect.lock
