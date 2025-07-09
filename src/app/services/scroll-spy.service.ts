@@ -46,28 +46,42 @@ export class ScrollSpyService implements OnDestroy {
       this.addCopyLinkToHeading(heading as HTMLElement);
     });
 
-    // Create intersection observer
-    this.observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            this.updateActiveHeading(entry.target.id);
-          }
-        });
-      },
-      {
-        rootMargin: '-20% 0px -80% 0px', // Trigger when heading is in top 20% of viewport
-        threshold: 0
-      }
-    );
-
-    // Observe all headings
-    this.headings.forEach((heading) => {
-      this.observer!.observe(heading);
-    });
+    // Use scroll event listener for precise control
+    this.setupScrollListener();
 
     // Set initial active heading based on current hash
     this.setInitialActiveHeading();
+  }
+
+  private setupScrollListener() {
+    // Add scroll listener
+    window.addEventListener('scroll', this.handleScroll, { passive: true });
+    
+    // Initial check
+    this.updateActiveHeadingFromScroll();
+  }
+
+  private updateActiveHeadingFromScroll() {
+    const headerOffset = 70; // Fixed header height
+    const triggerOffset = 30; // When heading should become active (adjust this value!)
+    
+    let activeHeading: Element | null = null;
+    
+    for (const heading of this.headings) {
+      const rect = heading.getBoundingClientRect();
+      const triggerPoint = headerOffset + triggerOffset;
+      
+      // Check if heading has passed the trigger point
+      if (rect.top <= triggerPoint) {
+        activeHeading = heading;
+      } else {
+        break; // Stop at first heading that hasn't passed trigger point
+      }
+    }
+    
+    if (activeHeading && activeHeading.id !== this.activeHeading) {
+      this.updateActiveHeading(activeHeading.id);
+    }
   }
 
   private setInitialActiveHeading() {
@@ -194,9 +208,17 @@ export class ScrollSpyService implements OnDestroy {
       this.observer.disconnect();
       this.observer = null;
     }
+    
+    // Remove scroll listener
+    window.removeEventListener('scroll', this.handleScroll);
+    
     this.headings = [];
     this.activeHeading = null;
   }
+
+  private handleScroll = () => {
+    this.updateActiveHeadingFromScroll();
+  };
 
   ngOnDestroy() {
     this.cleanup();
