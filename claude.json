@@ -1,0 +1,13 @@
+{
+  "mcp": {
+    "servers": {
+      "puppeteer": {
+        "command": "@modelcontextprotocol/server-puppeteer"
+      },
+      "terminal": {
+        "command": "@dillip285/mcp-terminal",
+        "args": ["--allowed-paths", "/home/phil/src/extrava/whizbang-lib.github.io"]
+      }
+    }
+  }
+}
