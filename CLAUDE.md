@@ -116,3 +116,61 @@ Always reference and update relevant plans during development sessions to mainta
 ## Temporary Files
 
 Use the `claude-scratch/` folder for any temporary files including screenshots, test scripts, or other temporary assets. This keeps the project root clean and organized.
+
+## MCP Configuration
+
+This project includes MCP server configuration in `.claude-code-mcp.json` that enables additional tools for development and testing.
+
+### Available MCP Tools
+
+- **Puppeteer Server**: Browser automation and screenshot capabilities
+  - `mcp__puppeteer__screenshot` - Take screenshots of web pages
+  - `mcp__puppeteer__navigate` - Navigate to URLs and interact with pages
+  - `mcp__puppeteer__click` - Click elements on pages
+  - `mcp__puppeteer__type` - Type text into form fields
+
+- **Terminal Server**: Secure command execution
+  - `mcp__terminal__exec` - Execute shell commands with project path restrictions
+  - Restricted to project directory for security
+
+- **Context7 Server**: Enhanced context management
+  - Additional context and memory capabilities
+
+### Setup Instructions
+
+1. **MCP Configuration File**: `.claude-code-mcp.json` contains the server definitions
+2. **Claude Code Integration**: The configuration should be automatically detected
+3. **Tool Availability**: MCP tools are prefixed with `mcp__<server>__<tool>`
+
+### Usage Examples
+
+```javascript
+// Take a screenshot of the local dev server
+mcp__puppeteer__screenshot({
+  url: "http://localhost:4200/",
+  filename: "homepage-screenshot.png",
+  instructions: "Navigate to page and take screenshot"
+})
+
+// Execute a build command
+mcp__terminal__exec({
+  command: "npm run build",
+  cwd: "/home/phil/src/extrava/whizbang-lib.github.io"
+})
+```
+
+### Troubleshooting
+
+If MCP tools are not available:
+1. Restart Claude Code session
+2. Verify `.claude-code-mcp.json` is in project root
+3. Check that required npm packages are available:
+   - `@modelcontextprotocol/server-puppeteer`
+   - `@dillip285/mcp-terminal`
+   - `@upstash/context7-mcp`
+
+### Security Notes
+
+- Terminal access is restricted to the project directory
+- Puppeteer can only access localhost and specified domains
+- All MCP servers run with project-level permissions only
