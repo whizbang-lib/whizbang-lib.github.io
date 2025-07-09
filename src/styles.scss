@@ -17,6 +17,11 @@
     box-sizing: border-box;
 }
 
+// Add scroll padding to account for fixed header
+html {
+    scroll-padding-top: 90px; // 70px header + 20px padding
+}
+
 // Prevent horizontal scrolling on body only
 body {
     overflow-x: hidden;
