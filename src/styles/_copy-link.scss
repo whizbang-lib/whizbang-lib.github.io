@@ -5,20 +5,19 @@
 @import 'design-tokens';
 
 .copy-link {
-  position: absolute;
-  right: -2rem;
-  top: 50%;
-  transform: translateY(-50%);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.5rem;
   opacity: 0;
   transition: opacity 0.2s ease;
   color: var(--text-color-secondary);
   text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   padding: 0.25rem;
   border-radius: wb-border-radius('sm');
   background: transparent;
+  vertical-align: middle;
   
   &:hover {
     color: var(--primary-color);
@@ -38,6 +37,13 @@
 }
 
 // Show copy link on heading hover
+h1, h2, h3, h4, h5, h6 {
+  &:hover .copy-link {
+    opacity: 1;
+  }
+}
+
+// Also show within markdown context for backwards compatibility
 markdown {
   h1, h2, h3, h4, h5, h6 {
     &:hover .copy-link {
@@ -49,7 +55,7 @@ markdown {
 // Responsive adjustments for mobile
 @media (max-width: 768px) {
   .copy-link {
-    right: -1.5rem;
+    margin-left: 0.25rem;
     padding: 0.2rem;
     
     svg {
