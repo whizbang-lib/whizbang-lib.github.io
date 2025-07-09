@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+      "env": {}
+    },
+    "terminal": {
+      "command": "npx", 
+      "args": [
+        "-y",
+        "@dillip285/mcp-terminal",
+        "--allowed-paths",
+        "/home/phil/src/extrava/whizbang-lib.github.io"
+      ],
+      "env": {}
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "env": {}
+    }
+  }
+}
