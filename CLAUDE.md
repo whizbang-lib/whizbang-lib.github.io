@@ -92,6 +92,80 @@ This is a documentation website for the **Whizbang .NET library** - a comprehens
 - **Documented Library**: .NET/C# (Whizbang library)
 - **Rendering**: ngx-markdown for documentation, multiple syntax highlighters for code
 
+## Documentation as Specification
+
+This documentation serves a **dual purpose**: it is both user-facing documentation AND the living specification for the Whizbang library development.
+
+### Core Principles
+
+#### Documentation-First Development
+
+- Write documentation BEFORE or DURING implementation, not after
+- Documentation drives API design discussions
+- If you can't explain it clearly in docs, the API needs work
+- Examples written during design phase reveal usability issues early
+
+#### Living Specifications
+
+- Documentation must stay synchronized with library code at all times
+- Every API change requires corresponding documentation update
+- Breaking changes require migration guides
+- Documentation is never "done" - it evolves with the library
+
+#### Example-Driven Development
+
+- Every concept MUST have complete, runnable C# examples
+- Examples are not optional - they're part of the specification
+- Code examples should be validated against actual library behavior
+- Examples demonstrate best practices, not just syntax
+
+#### Documentation as Tests
+
+- Documentation examples serve as integration tests (conceptually)
+- If an example doesn't work, either the docs or the library is wrong
+- Examples validate that the API is actually usable
+- Breaking example code is a regression
+
+#### Source of Truth
+
+- When in doubt about API design, refer to the documentation
+- Documentation reflects intended behavior
+- Implementation should match documented behavior
+- Discrepancies are bugs to be fixed
+
+### Why This Matters
+
+#### For Users
+
+- High-quality, accurate documentation they can trust
+- Complete examples that actually work
+- Clear guidance on best practices
+
+#### For Developers
+
+- Documentation guides implementation
+- Catches design issues before code is written
+- Provides clear acceptance criteria
+- Reduces rework and refactoring
+
+#### For AI Assistants
+
+- Clear specifications to reference during development
+- Examples demonstrate intended usage patterns
+- Vibe-code-guide for implementing library features
+- Roadmap shows planned direction
+
+### Definition of Done
+
+A feature is not complete until:
+
+- [ ] Public APIs are documented
+- [ ] Complete C# examples are provided
+- [ ] Examples have been validated
+- [ ] Best practices are explained
+- [ ] Error scenarios are covered
+- [ ] Migration guide exists (if breaking change)
+
 ## Active Development Initiatives
 
 ### Completed Initiatives ✅
@@ -166,6 +240,281 @@ See: [plans/ui-improvements/enhanced-code-block-improvements.md](plans/ui-improv
 
 See: [plans/search-enhancements/ai-search-enhancement.md](plans/search-enhancements/ai-search-enhancement.md)
 See: [plans/search-enhancements/progress-tracker.md](plans/search-enhancements/progress-tracker.md)
+
+## MCP Server Integration
+
+This project includes a Model Context Protocol (MCP) server for programmatic access to documentation.
+
+### Two Separate MCP Servers
+
+**IMPORTANT**: This project ecosystem includes TWO distinct MCP servers with different purposes:
+
+#### 1. Documentation MCP Server (This Repository)
+
+**Location**: `mcp-docs-server/` directory in this repo
+**Technology**: Node.js/TypeScript
+**Package**: `@whizbang/docs-mcp-server` (npm)
+**Installation**: `npm install -g @whizbang/docs-mcp-server`
+
+**Purpose**: Read-only access to Whizbang library documentation
+
+**Capabilities**:
+
+- Access all documentation via resources (`doc://`, `roadmap://`, `code://`)
+- Full-text search using MiniSearch
+- AI-enhanced semantic search
+- Find code examples by topic
+- List documentation by category
+- Browse roadmap/planned features
+
+**Does NOT**:
+
+- Execute library code
+- Interact with Whizbang runtime
+- Modify documentation
+- Run C# code
+
+**Target Audience**:
+
+- Developers learning Whizbang
+- AI assistants providing guidance on library usage
+- Technical writers maintaining documentation
+- Library maintainers searching docs
+
+#### 2. Runtime MCP Server (Future - Separate Repository)
+
+**Technology**: C#/.NET
+**Package**: `Whizbang.Runtime.McpServer` (NuGet)
+**Installation**: `dotnet tool install -g Whizbang.Runtime.McpServer`
+
+**Purpose**: Interact with actual Whizbang .NET library functions
+
+**Capabilities**:
+
+- Execute library methods
+- Create and manage aggregates
+- Run projections
+- Query data through Whizbang API
+- Test library functionality
+- Demonstrate live examples
+
+**Does**:
+
+- Actually run Whizbang library code
+- Provide runtime interaction
+- Execute C# against the library
+
+**Target Audience**:
+
+- AI assistants building applications with Whizbang
+- Developers prototyping with the library
+- Testing and validation scenarios
+
+### Why Two Separate Servers?
+
+**Separation of Concerns**:
+
+- **Documentation** (read-only data) vs **Execution** (active runtime)
+- Different security models (docs are safe, code execution requires sandboxing)
+- Different performance characteristics
+- Different failure modes
+
+**Technology Alignment**:
+
+- **Docs server**: Node.js leverages existing search infrastructure
+- **Runtime server**: Must be C#/.NET to interact with library
+
+**Independent Evolution**:
+
+- Update docs without affecting runtime
+- Change runtime without breaking docs
+- Version independently
+- Deploy separately
+
+### Documentation MCP Server - Usage Modes
+
+The docs MCP server supports multiple configurations:
+
+#### Mode 1: Local Development
+
+For contributors working on documentation:
+
+```json
+{
+  "mcpServers": {
+    "whizbang-docs": {
+      "command": "node",
+      "args": ["./mcp-docs-server/build/index.js"],
+      "env": {
+        "DOCS_SOURCE": "local",
+        "DOCS_PATH": "./src/assets/docs"
+      }
+    }
+  }
+}
+```
+
+#### Mode 2: Installed Package
+
+For users with package installed globally:
+
+```json
+{
+  "mcpServers": {
+    "whizbang-docs": {
+      "command": "npx",
+      "args": ["@whizbang/docs-mcp-server"]
+    }
+  }
+}
+```
+
+#### Mode 3: Remote Fetch (Future)
+
+Fetch docs from published GitHub Pages:
+
+```json
+{
+  "mcpServers": {
+    "whizbang-docs": {
+      "command": "npx",
+      "args": ["@whizbang/docs-mcp-server"],
+      "env": {
+        "DOCS_SOURCE": "remote",
+        "DOCS_BASE_URL": "https://whizbang-lib.github.io"
+      }
+    }
+  }
+}
+```
+
+### URI Schemes
+
+The documentation MCP server uses distinct URI schemes for different content types:
+
+#### Documentation Resources
+
+- `doc://getting-started` - Getting Started guide
+- `doc://tutorials/getting-started-tutorial` - Tutorial documents
+- `doc://advanced/configuration` - Advanced configuration
+- `doc://api` - API reference
+
+#### Roadmap Resources (Unreleased Features)
+
+- `roadmap://event-sourcing` - Planned event sourcing feature
+- `roadmap://advanced-querying` - Future query capabilities
+
+**Important**: Separate `roadmap://` scheme prevents confusion about what's released.
+
+#### Code Example Resources
+
+- `code://csharp/aggregates/order-aggregate` - Aggregate examples
+- `code://csharp/projections/read-model` - Projection examples
+
+### Available Tools
+
+The docs MCP server provides these tools for searching and discovery:
+
+#### search-docs
+
+Full-text search using existing MiniSearch index.
+
+**Input**: Query string, optional limit
+**Output**: Ranked search results with snippets
+**Use case**: Find docs by keyword
+
+#### semantic-search
+
+AI-enhanced search using pre-computed embeddings.
+
+**Input**: Query string, optional limit
+**Output**: Semantically similar results
+**Use case**: Find conceptually related content
+
+#### find-examples
+
+Search specifically for C# code examples.
+
+**Input**: Topic/keyword, optional filters (language, framework, difficulty)
+**Output**: Relevant code examples with metadata
+**Use case**: Find examples demonstrating a concept
+
+#### list-docs-by-category
+
+List all documentation in a category.
+
+**Input**: Category name
+**Output**: Array of documents with metadata
+**Use case**: Browse documentation structure
+
+#### list-roadmap
+
+List planned/unreleased features.
+
+**Input**: Optional status filter (planned, in-development, experimental)
+**Output**: Roadmap items with status and target version
+**Use case**: Discover future features
+
+### Available Prompts
+
+Reusable templates for common tasks:
+
+#### explain-concept
+
+Get detailed explanation of a Whizbang concept.
+
+**Input**: Concept name (e.g., "aggregates", "projections")
+**Process**: Searches docs, formats explanation
+**Output**: Concept explanation + examples + API reference
+
+#### show-example
+
+Find and display relevant code examples.
+
+**Input**: What user wants to do (e.g., "create an aggregate")
+**Process**: Searches examples, returns formatted code
+**Output**: Code example with explanation and usage notes
+
+#### api-reference
+
+Look up API documentation.
+
+**Input**: Class/method name
+**Process**: Searches API docs
+**Output**: API signature, parameters, examples, links
+
+### MCP Server Benefits
+
+#### User Benefits
+
+- AI assistants can search and reference documentation
+- No need to manually copy-paste docs into chat
+- Always access latest documentation
+- Discover related content through semantic search
+
+#### Maintainer Benefits
+
+- Reduce context window usage in AI conversations
+- Documentation accessible across sessions
+- Easy to test documentation accessibility
+- MCP Inspector for validation
+
+#### AI Assistant Benefits
+
+- Direct programmatic access to docs
+- Search capabilities (keyword + semantic)
+- Clear distinction between released and planned features
+- Persistent knowledge across conversation sessions
+
+### MCP Server Development
+
+See [`mcp-docs-server/README.md`](mcp-docs-server/README.md) (to be created) for:
+
+- Installation and setup
+- Development workflow
+- Testing with MCP Inspector
+- Publishing to npm registry
+- Configuration options
 
 ### Key Technical Decisions
 
@@ -256,6 +605,756 @@ These design standards have been established through implementation and should b
 - Dark header forced even in light theme (code blocks)
 - Consistent visual language across themes
 
+## Standards & Anti-Patterns
+
+These standards ensure high-quality, consistent documentation and prevent common pitfalls.
+
+### C# Coding Standards for Examples
+
+All C# code examples in documentation must follow these standards:
+
+#### EditorConfig Compliance
+
+**CRITICAL**: All code examples MUST follow [`CODE_SAMPLES.editorconfig`](./CODE_SAMPLES.editorconfig).
+
+**Key Conventions**:
+- **Brace Style**: K&R/Egyptian (opening brace on same line, not Allman style)
+- **var Usage**: Always use `var` for local variables
+- **Naming**:
+  - PascalCase: Types, methods, properties, public fields
+  - camelCase: Parameters, local variables
+  - `_camelCase`: Private fields (underscore prefix)
+  - `IPascalCase`: Interfaces (I prefix)
+  - `MethodAsync`: Async methods (Async suffix)
+  - `ALL_CAPS`: Constants (with underscores)
+- **Namespaces**: File-scoped (not block-scoped)
+- **Using Directives**: Outside namespace, System directives first
+- **Modern C#**: Pattern matching, null coalescing, index/range operators, file-scoped namespaces
+
+#### Enhanced Code Block Metadata
+
+The site supports rich metadata for examples. Use this format for complete, standalone examples:
+
+````markdown
+```csharp{
+title: "Order Processing Service"
+description: "Demonstrates order validation with error handling"
+framework: "NET8"
+category: "Domain Logic"
+difficulty: "INTERMEDIATE"
+tags: ["Orders", "Validation", "Error Handling"]
+nugetPackages: ["Whizbang.Core", "Whizbang.Orders"]
+filename: "OrderProcessor.cs"
+showLineNumbers: true
+highlightLines: [12, 15]
+usingStatements: ["Whizbang", "System", "System.Threading.Tasks"]
+}
+// Code here
+```
+````
+
+See [DOCUMENTATION-STANDARDS.md](./DOCUMENTATION-STANDARDS.md) for complete metadata field documentation.
+
+#### Test-Driven Examples
+
+**CRITICAL**: All complete code examples MUST have corresponding tests that verify they work.
+
+Add test references to metadata:
+
+```csharp{
+title: "Order Processing Example"
+testFile: "OrderProcessorTests.cs"
+testMethod: "ProcessOrderAsync_ValidOrder_SavesSuccessfully"
+githubUrl: "https://github.com/whizbang/library/blob/main/tests/Documentation/OrderProcessorTests.cs"
+}
+```
+
+**Requirements**:
+- Examples extracted from or validated by tests in `tests/Documentation/`
+- Tests must pass in CI/CD
+- Roadmap features have skeleton tests with `[Fact(Skip = "Roadmap feature")]`
+- Breaking changes update tests immediately
+
+**Benefits**:
+- Examples guaranteed to compile
+- Examples guaranteed to work
+- Breaking changes caught immediately
+- Documentation stays synchronized with code
+
+See [DOCUMENTATION-STANDARDS.md](./DOCUMENTATION-STANDARDS.md#test-driven-examples) for complete test-driven examples guide.
+
+#### Complete Examples
+
+- Include ALL `using` statements required
+- Show full class/method context, not just fragments
+- Provide complete, copy-paste-able code
+- Use file-scoped namespaces
+- Follow K&R/Egyptian brace style
+- Reference corresponding test in metadata
+
+```csharp
+// ✅ GOOD - Complete example with K&R/Egyptian braces
+using System;
+using System.Threading.Tasks;
+using Whizbang;
+
+namespace MyApp.Orders;
+
+public class OrderProcessor {
+    private readonly IOrderRepository _repository;
+
+    public OrderProcessor(IOrderRepository repository) {
+        _repository = repository;
+    }
+
+    public async Task ProcessOrderAsync(Order order) {
+        // Implementation
+        await _repository.SaveAsync(order);
+    }
+}
+
+// ❌ BAD - Incomplete fragment
+ProcessOrderAsync(order);  // Where does order come from? What namespace?
+```
+
+#### Error Handling
+
+- Show error handling for important scenarios
+- Document exceptions that can be thrown
+- Don't swallow exceptions in examples
+- Use meaningful error messages
+
+```csharp
+// ✅ GOOD - Proper error handling (K&R/Egyptian braces)
+try {
+    await processor.ProcessOrderAsync(order);
+} catch (InvalidOrderException ex) {
+    _logger.LogError(ex, "Order validation failed: {OrderId}", order.Id);
+    throw;
+}
+
+// ❌ BAD - Swallowing exceptions
+try {
+    await processor.ProcessOrderAsync(order);
+} catch { }  // Silent failure
+```
+
+#### Comments
+
+- Explain **why**, not **what** (code shows what)
+- Highlight non-obvious behavior
+- Point out important patterns
+- Keep comments concise
+
+### Documentation Standards
+
+#### Required Elements
+
+Every documentation page must have:
+
+- **Title**: Clear, descriptive H1 heading
+- **Frontmatter**: Complete metadata (title, category, order)
+- **Concept Explanation**: What it is and why it matters
+- **Code Examples**: Complete, runnable C# code
+- **Best Practices**: Recommended patterns
+- **Error Scenarios**: Common pitfalls and how to avoid them
+
+#### Frontmatter Requirements
+
+```yaml
+---
+title: Getting Started          # Required - display title
+slug: getting-started           # Optional - URL slug (auto-generated from filename if omitted)
+category: Introduction          # Required - navigation category
+order: 1                        # Required - sort order within category
+tags: beginner, tutorial        # Optional - for search/filtering
+---
+```
+
+#### Cross-References
+
+- Link to related concepts liberally
+- Use relative paths: `[Aggregates](./aggregates.md)`
+- Keep links up-to-date when reorganizing
+- Test links after moving files
+
+### Anti-Patterns to Avoid
+
+#### ❌ Incomplete Code Examples
+
+Don't show code fragments without context:
+
+```csharp
+// ❌ BAD - Missing context
+aggregate.Apply(event);  // What type is aggregate? Where is Apply defined?
+```
+
+Show complete, compilable examples:
+
+```csharp
+// ✅ GOOD - Complete context with K&R/Egyptian braces
+using Whizbang;
+
+namespace MyApp.Domain;
+
+public class OrderAggregate : Aggregate {
+    public void PlaceOrder(Order order) {
+        var @event = new OrderPlacedEvent(order.Id, order.CustomerId);
+        Apply(@event);
+    }
+}
+```
+
+#### ❌ Pseudo-Code or Simplified Examples
+
+Don't use pseudo-code that won't compile:
+
+```csharp
+// ❌ BAD - Won't compile
+var result = DoSomething();  // Generic placeholder code
+```
+
+Use real, working code:
+
+```csharp
+// ✅ GOOD - Actual code
+var result = await orderService.GetOrderAsync(orderId);
+```
+
+#### ❌ Outdated Examples
+
+- Don't let examples use deprecated APIs
+- Update examples when library APIs change
+- Version-check examples regularly
+- Remove examples for removed features
+
+#### ❌ Missing Error Handling
+
+Don't ignore error scenarios in examples:
+
+```csharp
+// ❌ BAD - No error handling
+var order = await GetOrderAsync(id);  // What if it doesn't exist?
+order.Process();
+```
+
+Show realistic error handling:
+
+```csharp
+// ✅ GOOD - Handles errors (K&R/Egyptian braces)
+var order = await GetOrderAsync(id);
+if (order == null) {
+    throw new OrderNotFoundException(id);
+}
+await order.ProcessAsync();
+```
+
+#### ❌ Concepts Without Examples
+
+Every concept MUST have at least one code example. Explanations alone are insufficient.
+
+#### ❌ Examples Without Explanation
+
+Every code example MUST have accompanying explanation. Code dumps without context are confusing.
+
+#### ❌ Copy-Paste Without Understanding
+
+Don't include boilerplate code you don't understand. Every line should serve a purpose.
+
+### Validation Requirements
+
+Before merging documentation:
+
+#### Code Quality Checks
+
+- [ ] All examples include necessary `using` statements
+- [ ] Examples follow C# naming conventions
+- [ ] Examples follow `CODE_SAMPLES.editorconfig` (K&R/Egyptian braces)
+- [ ] Examples use current library APIs (not deprecated)
+- [ ] Error handling is appropriate for the scenario
+- [ ] Comments explain key concepts, not syntax
+
+#### Test Verification
+
+- [ ] Complete examples have corresponding tests
+- [ ] `testFile` and `testMethod` metadata present
+- [ ] Tests pass in CI/CD
+- [ ] Example code matches test's Arrange/Act sections
+- [ ] Tests located in `tests/Documentation/` directory
+- [ ] Roadmap features have skeleton tests with `[Fact(Skip = "...")]`
+
+#### Completeness Checks
+
+- [ ] Public APIs are documented
+- [ ] Concepts have explanations
+- [ ] Examples are provided
+- [ ] Best practices are covered
+- [ ] Common errors are addressed
+
+#### Consistency Checks
+
+- [ ] Terminology is consistent across docs
+- [ ] Naming patterns match library conventions
+- [ ] Code style is uniform (K&R/Egyptian braces)
+- [ ] Frontmatter is complete and correct
+
+## Regression Prevention
+
+Preventing documentation regressions is critical to maintaining trust and usability.
+
+### Change Impact Analysis
+
+When changing library APIs, immediately check documentation impact:
+
+#### Process
+
+1. **Identify Affected Documentation**
+   - Search docs for type names, method names, namespaces
+   - Check tutorials that demonstrate the changed feature
+   - Review getting started guides
+   - Examine advanced topics using the API
+
+2. **Update All Affected Examples**
+   - Fix code examples to use new API
+   - Update method signatures
+   - Change parameter names/types
+   - Add/remove using statements as needed
+
+3. **Update Explanations**
+   - Revise concept descriptions if behavior changed
+   - Update best practices if patterns changed
+   - Modify warnings if pitfalls changed
+   - Refresh screenshots or diagrams
+
+4. **Add Migration Guidance**
+   - Document what changed and why
+   - Show before/after examples
+   - Explain how to upgrade existing code
+   - Provide timeline for deprecated features
+
+### Documentation Testing
+
+Validate that examples remain accurate:
+
+#### Manual Validation
+
+- **Extract Examples**: Pull all code examples from documentation
+- **Check Compilation**: Verify examples would compile (conceptually)
+- **Verify APIs**: Ensure examples use current, non-deprecated APIs
+- **Test Patterns**: Confirm examples follow current best practices
+- **Check Links**: Validate cross-references and external links
+
+#### Automated Validation (Future)
+
+When test framework is available:
+
+- Extract code blocks from markdown
+- Compile examples against current library
+- Run examples as integration tests
+- Fail build if examples don't compile
+- Generate report of broken examples
+
+### Version Synchronization
+
+Keep documentation in sync with library versions:
+
+#### Version Tagging
+
+- Tag documentation releases with library version
+- Maintain version compatibility matrix
+- Document which docs version matches which library version
+- Provide links to previous documentation versions
+
+#### Version-Specific Content
+
+```yaml
+---
+title: Advanced Features
+min_version: 2.0.0  # Feature available from this version
+max_version: 3.0.0  # Feature removed/changed in this version
+---
+```
+
+#### Deprecation Warnings
+
+When deprecating features:
+
+- Add deprecation notice to affected documentation
+- Show migration path to new API
+- Specify timeline for removal
+- Provide side-by-side comparison
+
+Example:
+
+```markdown
+## Using Legacy API (Deprecated)
+
+⚠️ **DEPRECATED**: This API is deprecated as of v2.0 and will be removed in v3.0.
+Use the new `ProcessOrderAsync` method instead. [Migration Guide](./migration-v2-to-v3.md)
+```
+
+### Breaking Changes
+
+Handle breaking changes with care:
+
+#### Documentation Requirements for Breaking Changes
+
+1. **Clear Announcement**
+   - Mark breaking changes prominently
+   - Explain what broke and why
+   - Provide justification for the change
+
+2. **Migration Guide**
+   - Step-by-step upgrade instructions
+   - Before/after code examples
+   - Common migration scenarios
+   - Troubleshooting tips
+
+3. **Timeline**
+   - When change was introduced
+   - Deprecation period (if applicable)
+   - When old API will be removed
+   - Support timeline
+
+4. **Side-by-Side Examples**
+
+```csharp
+// Old API (v1.x)
+var result = processor.Process(order);
+
+// New API (v2.0+) - K&R/Egyptian braces
+var result = await processor.ProcessAsync(order);
+```
+
+### Example Validation Process
+
+Systematic approach to keeping examples valid:
+
+#### Regular Review Schedule
+
+- **Weekly**: Check examples in recently changed docs
+- **Monthly**: Spot-check random sample of examples
+- **Per Release**: Validate all examples against new library version
+- **Per Breaking Change**: Review all affected examples
+
+#### Validation Checklist
+
+For each code example:
+
+- [ ] All `using` statements present
+- [ ] Types exist in current library
+- [ ] Methods exist with correct signatures
+- [ ] Parameters have correct names/types
+- [ ] Return types match current API
+- [ ] No deprecated APIs used (unless showing migration)
+- [ ] Error handling is appropriate
+- [ ] Example compiles conceptually
+- [ ] Example demonstrates current best practice
+
+#### Reporting
+
+Track validation results:
+
+- List of broken examples
+- Types of issues found (missing types, wrong signatures, etc.)
+- Priority (critical vs minor)
+- Assigned owner for fixes
+- Target completion date
+
+### Continuous Monitoring
+
+Prevent regressions through ongoing vigilance:
+
+#### Pre-Merge Checks
+
+- Review documentation changes with code changes
+- Verify examples match new API
+- Check for broken cross-references
+- Validate frontmatter is complete
+
+#### Post-Merge Validation
+
+- Run automated example validation (when available)
+- Check site builds successfully
+- Verify search indices update correctly
+- Confirm navigation structure is intact
+
+#### User Feedback
+
+- Monitor issues/questions about documentation
+- Track confusion patterns
+- Address frequently misunderstood examples
+- Update docs based on real user problems
+
+## Roadmap Documentation
+
+Document future and unreleased features while preventing user confusion.
+
+### Purpose
+
+Roadmap documentation enables **documentation-driven development** by allowing specifications to be written before implementation, while clearly distinguishing released features from planned ones.
+
+### Directory Structure
+
+```text
+src/assets/docs/
+├── Roadmap/              # Future/unreleased features ONLY
+│   ├── event-sourcing.md
+│   └── advanced-querying.md
+├── Core concepts/        # Released features only
+├── Tutorials/            # Released features only
+└── Advanced/             # Released features only
+```
+
+**Rule**: If a feature is not yet available in a released version, it MUST be in `Roadmap/`. Once released, move it to the appropriate category.
+
+### Roadmap Frontmatter Requirements
+
+All roadmap documents MUST include these frontmatter fields:
+
+```yaml
+---
+title: Event Sourcing Support
+category: Roadmap
+status: planned          # planned | in-development | experimental
+target_version: 2.0.0
+order: 1
+unreleased: true         # CRITICAL - must be true
+---
+```
+
+**Required Fields**:
+
+- `title`: Feature name
+- `category`: Must be "Roadmap"
+- `status`: Current development status
+- `target_version`: Version where feature will be available
+- `unreleased`: Must be `true` (flags as unreleased)
+
+### Status Definitions
+
+#### planned
+
+- Specification written
+- API designed
+- Implementation not started
+- Open for feedback and discussion
+
+#### in-development
+
+- Implementation actively in progress
+- API may still change based on implementation learnings
+- Not ready for production use
+- May have experimental packages available
+
+#### experimental
+
+- Implementation complete but API may change
+- Available in preview/beta packages
+- Breaking changes possible
+- Seeking feedback before stabilization
+
+#### released
+
+- Feature is stable and available
+- Once marked released, move file out of `Roadmap/`
+- Update `unreleased: false`
+- Move to appropriate category folder
+
+### Visual Indicators
+
+The Angular site will display roadmap documents with clear warnings:
+
+#### Warning Banner
+
+```markdown
+⚠️ FUTURE FEATURE - NOT YET RELEASED
+
+This documentation describes a planned feature for v2.0.0.
+This API is not available in the current release.
+
+Status: In Development
+Target Version: 2.0.0
+```
+
+#### Chip Styling
+
+- **Planned**: Orange chip with "Planned" label
+- **In Development**: Blue chip with "In Development" label
+- **Experimental**: Yellow chip with "Experimental" label
+- Released features don't appear in Roadmap
+
+#### Navigation
+
+- Roadmap appears as separate navigation category
+- Clearly labeled "Roadmap (Unreleased Features)"
+- Visually distinct from released documentation
+
+### Writing Roadmap Documentation
+
+#### API Design
+
+Examples can be aspirational but should reflect intended final API:
+
+```csharp
+// This API doesn't exist yet, but shows intended design
+using Whizbang.EventSourcing;
+
+namespace MyApp.Domain;
+
+public class OrderAggregate : EventSourcedAggregate {
+    public void PlaceOrder(PlaceOrderCommand command) {
+        // Intended API design - K&R/Egyptian braces
+        var @event = new OrderPlacedEvent(command.OrderId, command.CustomerId);
+        ApplyEvent(@event);
+    }
+}
+```
+
+#### Clarity
+
+- Be explicit that feature doesn't exist yet
+- Explain the motivation for the feature
+- Show intended use cases
+- Invite feedback on design
+
+#### Flexibility
+
+- Acknowledge API may change
+- Note alternative designs being considered
+- Welcome community input
+- Don't over-promise on timelines
+
+### Migration Process
+
+When a roadmap feature is released:
+
+#### Steps
+
+1. **Move File**
+
+   ```bash
+   # Move from Roadmap to appropriate category
+   git mv src/assets/docs/Roadmap/event-sourcing.md \
+          src/assets/docs/Core\ concepts/event-sourcing.md
+   ```
+
+2. **Update Frontmatter**
+
+   ```yaml
+   ---
+   title: Event Sourcing Support
+   category: Core concepts      # Changed from "Roadmap"
+   order: 5                     # Set order within new category
+   unreleased: false            # Changed from true
+   # Remove status and target_version
+   ---
+   ```
+
+3. **Update Content**
+
+   - Remove "unreleased" warnings
+   - Update examples to match actual released API
+   - Add any implementation notes learned during development
+   - Verify all examples work with released version
+
+4. **Verify Examples**
+
+   - Test all code examples against released library
+   - Ensure examples compile and run
+   - Validate best practices are still current
+
+5. **Update Search Indices**
+   - Re-run build to regenerate search indices
+   - Verify doc appears in normal search (not roadmap)
+   - Check MCP server resources updated
+
+### Roadmap Benefits
+
+#### Benefits for Users
+
+- Clear distinction between available and planned features
+- Visibility into library direction
+- Opportunity to provide feedback on designs
+- No confusion about what's actually available
+
+#### Benefits for Developers
+
+- Design APIs in documentation first
+- Get feedback before implementing
+- Reference during development
+- Living spec that becomes user docs
+
+#### Benefits for AI Assistants
+
+- Clear context on what's available vs planned
+- Can reference roadmap during library development
+- Understand future direction
+- Avoid suggesting unreleased features to users
+
+### MCP Server Integration
+
+The documentation MCP server provides separate access to roadmap features:
+
+#### Separate URI Scheme
+
+- Released docs: `doc://getting-started`
+- Roadmap docs: `roadmap://event-sourcing`
+
+This prevents confusion - AI assistants know roadmap items are unreleased.
+
+#### Roadmap Tools
+
+- `list-roadmap`: List all planned/unreleased features
+- Search results flagged: "Roadmap (Unreleased)"
+- Metadata includes status and target version
+
+### Examples
+
+#### Good Roadmap Doc
+
+Example of a well-structured roadmap document:
+
+```markdown
+---
+title: Event Sourcing Support
+category: Roadmap
+status: in-development
+target_version: 2.0.0
+unreleased: true
+---
+
+# Event Sourcing Support
+
+⚠️ This feature is currently in development and not available in released versions.
+
+## Overview
+
+Event sourcing will allow aggregates to be persisted as sequences of events...
+
+## Intended API
+
+```csharp
+using Whizbang.EventSourcing;
+
+// Note: This API is planned and may change
+public class OrderAggregate : EventSourcedAggregate
+{
+    // ... implementation
+}
+```
+
+## Status
+
+- **Current Status**: In Development
+- **Target Version**: 2.0.0
+- **Expected**: Q2 2025
+
+## Feedback
+
+We welcome feedback on this design! [Open an issue](https://github.com/...) with suggestions.
+```
+
 ## Development Notes
 
 1. The app uses a custom documentation system that automatically indexes markdown files from `src/assets/docs/`
@@ -302,6 +1401,48 @@ Plans are organized in category folders:
 Plans must be living documents that accurately track the development process, not just end-state summaries. Update plans throughout the work session, not just at the end.
 
 Always reference and update relevant plans during development sessions to maintain continuity.
+
+### Library Feature Development Requirements
+
+When planning library features (not documentation site features), plans MUST include:
+
+#### Documentation Tasks
+
+- [ ] Write documentation BEFORE or DURING implementation
+- [ ] Create complete C# examples
+- [ ] Document all public APIs
+- [ ] Explain concepts and use cases
+- [ ] Show error handling patterns
+
+Documentation is NOT optional - it's part of the definition of done for any library feature.
+
+#### Example Validation
+
+- [ ] All examples must be complete and runnable
+- [ ] Examples follow library best practices
+- [ ] Error scenarios are demonstrated
+- [ ] Migration guides for breaking changes
+
+#### Breaking Change Handling
+
+If the feature introduces breaking changes:
+
+- [ ] Document what breaks and why
+- [ ] Provide before/after examples
+- [ ] Create migration guide
+- [ ] Specify deprecation timeline
+- [ ] Update affected documentation
+
+#### Roadmap Integration
+
+If feature is not yet released:
+
+- [ ] Create roadmap documentation in `src/assets/docs/Roadmap/`
+- [ ] Set `unreleased: true` in frontmatter
+- [ ] Specify `target_version` and `status`
+- [ ] Move to appropriate category when released
+
+**Remember**: Plans for library features should allocate ~30-40% of time to documentation. If planning says "3 days implementation", plan should include "+1-2 days documentation".
 
 ## Temporary Files
 
