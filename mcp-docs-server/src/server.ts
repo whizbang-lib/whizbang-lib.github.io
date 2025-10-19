@@ -17,6 +17,9 @@ import { getUriScheme } from './utils/uri-parser.js';
 import { SearchIndex } from './utils/search-index.js';
 import { searchDocs, listDocsByCategory, getCategories } from './tools/search-tool.js';
 import { findExamples } from './tools/find-examples-tool.js';
+import { generateExplainConceptPrompt } from './prompts/explain-concept.js';
+import { generateShowExamplePrompt } from './prompts/show-example.js';
+import { generateCompareApproachesPrompt } from './prompts/compare-approaches.js';
 import path from 'path';
 
 export interface McpDocsServerConfig {
@@ -295,17 +298,73 @@ export class McpDocsServer {
 
     // Prompts: List available prompts
     this.server.setRequestHandler(ListPromptsRequestSchema, async () => {
-      // TODO: Implement in Phase 5
       return {
         prompts: [
           {
             name: 'explain-concept',
-            description: 'Get detailed explanation of a Whizbang concept',
+            description: 'Get detailed explanation of a Whizbang concept with examples and best practices',
             arguments: [
               {
                 name: 'concept',
                 description: 'Name of the concept to explain',
                 required: true
+              },
+              {
+                name: 'includeExamples',
+                description: 'Include code examples (default: true)',
+                required: false
+              },
+              {
+                name: 'difficulty',
+                description: 'Target difficulty level: beginner, intermediate, or advanced',
+                required: false
+              }
+            ]
+          },
+          {
+            name: 'show-example',
+            description: 'Show code examples for a specific topic with test references',
+            arguments: [
+              {
+                name: 'topic',
+                description: 'Topic to find examples for',
+                required: true
+              },
+              {
+                name: 'framework',
+                description: 'Filter by framework version (e.g., "NET8")',
+                required: false
+              },
+              {
+                name: 'difficulty',
+                description: 'Filter by difficulty: beginner, intermediate, or advanced',
+                required: false
+              },
+              {
+                name: 'withTests',
+                description: 'Include test references (default: true)',
+                required: false
+              }
+            ]
+          },
+          {
+            name: 'compare-approaches',
+            description: 'Compare different implementation approaches for a topic',
+            arguments: [
+              {
+                name: 'topic',
+                description: 'Topic to compare approaches for',
+                required: true
+              },
+              {
+                name: 'approaches',
+                description: 'Specific approaches to compare (optional, comma-separated)',
+                required: false
+              },
+              {
+                name: 'criteria',
+                description: 'Comparison criteria (optional, comma-separated)',
+                required: false
               }
             ]
           }
@@ -315,26 +374,103 @@ export class McpDocsServer {
 
     // Prompts: Get specific prompt
     this.server.setRequestHandler(GetPromptRequestSchema, async (request) => {
-      // TODO: Implement in Phase 5
-      if (request.params.name === 'explain-concept') {
-        const concept = request.params.arguments?.concept as string;
-        return {
-          messages: [
-            {
-              role: 'user',
-              content: {
-                type: 'text',
-                text: `Explain the concept of "${concept}" in Whizbang.`
-              }
-            }
-          ]
-        };
-      }
+      const args = request.params.arguments || {};
 
-      throw new McpError(
-        ErrorCode.InvalidRequest,
-        `Unknown prompt: ${request.params.name}`
-      );
+      try {
+        switch (request.params.name) {
+          case 'explain-concept': {
+            const includeExamplesValue = args.includeExamples;
+            const includeExamples = includeExamplesValue === undefined
+              ? true
+              : includeExamplesValue === 'true' || (includeExamplesValue as unknown) === true;
+
+            const promptText = generateExplainConceptPrompt({
+              concept: args.concept as string,
+              includeExamples,
+              difficulty: args.difficulty as any
+            });
+
+            return {
+              messages: [
+                {
+                  role: 'user',
+                  content: {
+                    type: 'text',
+                    text: promptText
+                  }
+                }
+              ]
+            };
+          }
+
+          case 'show-example': {
+            const withTestsValue = args.withTests;
+            const withTests = withTestsValue === undefined
+              ? true
+              : withTestsValue === 'true' || (withTestsValue as unknown) === true;
+
+            const promptText = generateShowExamplePrompt({
+              topic: args.topic as string,
+              framework: args.framework as string,
+              difficulty: args.difficulty as any,
+              withTests
+            });
+
+            return {
+              messages: [
+                {
+                  role: 'user',
+                  content: {
+                    type: 'text',
+                    text: promptText
+                  }
+                }
+              ]
+            };
+          }
+
+          case 'compare-approaches': {
+            const approaches = args.approaches
+              ? (args.approaches as string).split(',').map(a => a.trim())
+              : undefined;
+            const criteria = args.criteria
+              ? (args.criteria as string).split(',').map(c => c.trim())
+              : undefined;
+
+            const promptText = generateCompareApproachesPrompt({
+              topic: args.topic as string,
+              approaches,
+              criteria
+            });
+
+            return {
+              messages: [
+                {
+                  role: 'user',
+                  content: {
+                    type: 'text',
+                    text: promptText
+                  }
+                }
+              ]
+            };
+          }
+
+          default:
+            throw new McpError(
+              ErrorCode.InvalidRequest,
+              `Unknown prompt: ${request.params.name}`
+            );
+        }
+      } catch (error) {
+        if (error instanceof McpError) {
+          throw error;
+        }
+        throw new McpError(
+          ErrorCode.InternalError,
+          `Failed to generate prompt: ${error}`
+        );
+      }
     });
   }
 

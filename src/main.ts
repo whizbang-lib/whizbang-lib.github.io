@@ -57,7 +57,7 @@ bootstrapApplication(AppComponent, {
     }),
     importProvidersFrom(
       BrowserAnimationsModule,
-      HttpClientModule, 
+      HttpClientModule,
       MarkdownModule.forRoot({
         sanitize: SecurityContext.NONE
       })

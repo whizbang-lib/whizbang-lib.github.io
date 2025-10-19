@@ -6,16 +6,16 @@ import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
-import { OverlayPanelModule } from 'primeng/overlaypanel';
+import { PopoverModule } from 'primeng/popover';
 import { AutoCompleteModule } from 'primeng/autocomplete';
-import { OverlayPanel } from 'primeng/overlaypanel';
+import { Popover } from 'primeng/popover';
 import { EnhancedSearchService, EnhancedSearchResult } from '../services/enhanced-search.service';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } from 'rxjs';
 
 @Component({
   selector: 'wb-enhanced-search',
   standalone: true,
-  imports: [CommonModule, FormsModule, InputTextModule, ButtonModule, IconFieldModule, InputIconModule, OverlayPanelModule, AutoCompleteModule],
+  imports: [CommonModule, FormsModule, InputTextModule, ButtonModule, IconFieldModule, InputIconModule, PopoverModule, AutoCompleteModule],
   template: `
     <div class="search-container">
       <p-iconField iconPosition="left" class="search-field">
@@ -45,10 +45,8 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
         ></p-inputIcon>
       </p-iconField>
 
-      <p-overlayPanel 
-        #searchOverlay 
-        [dismissable]="true"
-        [showCloseIcon]="false"
+      <p-popover
+        #searchOverlay
         styleClass="search-overlay"
       >
         <!-- Auto-suggestions -->
@@ -132,7 +130,7 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
             <p class="text-600 mt-2">Preparing search index...</p>
           </div>
         </div>
-      </p-overlayPanel>
+      </p-popover>
     </div>
   `,
   styles: [`
@@ -172,7 +170,7 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
       border-radius: 8px;
     }
 
-    :host ::ng-deep .search-overlay .p-overlaypanel-content {
+    :host ::ng-deep .search-overlay .p-popover-content {
       padding: 0;
       max-height: 80vh;
       overflow: hidden;
@@ -390,7 +388,7 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
   `]
 })
 export class EnhancedSearchComponent implements OnInit, OnDestroy {
-  @ViewChild('searchOverlay') searchOverlay!: OverlayPanel;
+  @ViewChild('searchOverlay') searchOverlay!: Popover;
   @ViewChild('searchInput') searchInput!: ElementRef;
 
   searchQuery = '';

@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, ViewChild, ViewContainerRef, EnvironmentInjector, ComponentRef, AfterViewInit } from '@angular/core';
+import { Component, inject, signal, OnInit, ViewChild, ViewContainerRef, EnvironmentInjector, ComponentRef, AfterViewInit, effect, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MarkdownModule } from 'ngx-markdown';
 import { HttpClient } from '@angular/common/http';
@@ -7,11 +7,13 @@ import { WbExampleComponent } from '../../components/wb-example.component';
 import { CommonModule } from '@angular/common';
 import { EnhancedCodeBlockV2Component } from '../../components/enhanced-code-block-v2.component';
 import { CodeBlockParser } from '../../services/code-block-parser.service';
+import { MermaidService } from '../../services/mermaid.service';
+import { ThemeService } from '../../services/theme.service';
 import { trigger, transition, style, animate } from '@angular/animations';
 
 @Component({
   standalone: true,
-  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule, EnhancedCodeBlockV2Component],
+  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule],
   template: `
     <div>
       <!-- Loading state with fade-in animation -->
@@ -52,16 +54,29 @@ export class MarkdownPage implements OnInit, AfterViewInit {
   private http = inject(HttpClient);
   private codeBlockParser = inject(CodeBlockParser);
   private injector = inject(EnvironmentInjector);
-  
+  private mermaidService = inject(MermaidService);
+  private themeService = inject(ThemeService);
+
   @ViewChild('codeBlockContainer', { read: ViewContainerRef }) codeBlockContainer!: ViewContainerRef;
-  
+
   processedContent = signal('');
   videos = signal<string[]>([]);
   examples = signal<string[]>([]);
   isContentReady = signal(false);
-  
+
   private allCodeBlocks: any[] = [];
   private codeComponentRefs: ComponentRef<EnhancedCodeBlockV2Component>[] = [];
+
+  constructor() {
+    // Listen for theme changes and re-render Mermaid diagrams
+    effect(() => {
+      const isDark = this.themeService.isDarkTheme();
+      // Re-render diagrams when theme changes (if diagrams exist)
+      if (this.mermaidBlocks.length > 0) {
+        setTimeout(() => this.reRenderMermaidBlocks(), 100);
+      }
+    });
+  }
 
   ngOnInit() {
     this.route.url.subscribe(segments => {
@@ -98,11 +113,12 @@ export class MarkdownPage implements OnInit, AfterViewInit {
   
   private insertComponentsIntoDOM() {
     // Use MutationObserver to wait for markdown content to be rendered
-    this.waitForMarkdownRender().then(() => {
+    this.waitForMarkdownRender().then(async () => {
       const markdownElement = document.querySelector('markdown');
       if (!markdownElement) {
-        // If no markdown element and no code blocks, content is ready
+        // If no markdown element, still try to render mermaid diagrams
         if (this.allCodeBlocks.length === 0) {
+          await this.renderMermaidBlocks();
           this.isContentReady.set(true);
         }
         return;
@@ -137,9 +153,12 @@ export class MarkdownPage implements OnInit, AfterViewInit {
           }
         }
       });
-      
-      // All placeholders have been processed, content is ready
-      this.isContentReady.set(true);
+
+      // All placeholders have been processed, render Mermaid diagrams
+      setTimeout(async () => {
+        await this.renderMermaidBlocks();
+        this.isContentReady.set(true);
+      }, 500);
     });
   }
 
@@ -187,10 +206,10 @@ export class MarkdownPage implements OnInit, AfterViewInit {
         // Parse ALL code blocks (both enhanced and regular)
         const { processedContent, codeBlocks } = this.codeBlockParser.parseAllCodeBlocks(content);
         this.allCodeBlocks = codeBlocks;
-        
+
         // Parse the rest of the content (videos, examples)
         const { processedContent: finalContent, videos, examples } = this.parseCustomComponents(processedContent);
-        
+
         this.processedContent.set(finalContent);
         this.videos.set(videos);
         this.examples.set(examples);
@@ -213,10 +232,82 @@ export class MarkdownPage implements OnInit, AfterViewInit {
     });
   }
 
+  private mermaidBlocks: {placeholder: string, code: string}[] = [];
+
+  private async renderMermaidBlocks() {
+    for (let i = 0; i < this.mermaidBlocks.length; i++) {
+      const { placeholder, code } = this.mermaidBlocks[i];
+
+      try {
+        // Find the placeholder comment in the DOM
+        const walker = document.createTreeWalker(
+          document.body,
+          NodeFilter.SHOW_COMMENT,
+          null
+        );
+
+        let commentNode;
+        while (commentNode = walker.nextNode()) {
+          if (commentNode.textContent === placeholder.replace('<!--', '').replace('-->', '')) {
+            // Render the mermaid diagram
+            const id = `mermaid-diagram-${i}`;
+            const { svg } = await this.mermaidService.renderDiagram(id, code);
+
+            // Create container
+            const container = document.createElement('div');
+            container.className = 'mermaid-diagram';
+            container.innerHTML = svg;
+
+            // Replace comment with diagram
+            if (commentNode.parentNode) {
+              commentNode.parentNode.replaceChild(container, commentNode);
+            }
+
+            // Apply node classes to edges after SVG is in DOM
+            const svgElement = container.querySelector('svg');
+            if (svgElement) {
+              this.mermaidService.applyNodeClassesToEdges(svgElement);
+            }
+            break;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to render mermaid diagram:', error);
+      }
+    }
+  }
+
+  private async reRenderMermaidBlocks() {
+    // Find all existing mermaid diagram containers and re-render them
+    const containers = document.querySelectorAll('.mermaid-diagram');
+
+    for (let i = 0; i < Math.min(containers.length, this.mermaidBlocks.length); i++) {
+      const container = containers[i];
+      const { code } = this.mermaidBlocks[i];
+
+      try {
+        // Re-render the diagram with new theme
+        const id = `mermaid-diagram-${i}-rerender-${Date.now()}`;
+        const { svg } = await this.mermaidService.renderDiagram(id, code);
+
+        // Update container content
+        container.innerHTML = svg;
+
+        // Apply node classes to edges after SVG is updated
+        const svgElement = container.querySelector('svg');
+        if (svgElement) {
+          this.mermaidService.applyNodeClassesToEdges(svgElement);
+        }
+      } catch (error) {
+        console.error('Failed to re-render mermaid diagram:', error);
+      }
+    }
+  }
+
   private parseCustomComponents(content: string) {
     const videos: string[] = [];
     const examples: string[] = [];
-    
+
     // Strip frontmatter if it exists
     let processedContent = content;
     if (content.startsWith('---')) {
@@ -224,6 +315,20 @@ export class MarkdownPage implements OnInit, AfterViewInit {
       if (frontmatterEndIndex !== -1) {
         processedContent = content.substring(frontmatterEndIndex + 3).trim();
       }
+    }
+
+    // Extract mermaid blocks BEFORE markdown processing
+    this.mermaidBlocks = [];
+    const mermaidRegex = /```mermaid\s*\r?\n([\s\S]*?)```/g;
+    let mermaidMatch;
+    let mermaidIndex = 0;
+
+    while ((mermaidMatch = mermaidRegex.exec(processedContent)) !== null) {
+      const mermaidCode = mermaidMatch[1];
+      const placeholder = `<!--MERMAID_PLACEHOLDER_${mermaidIndex}-->`;
+      this.mermaidBlocks.push({ placeholder, code: mermaidCode });
+      processedContent = processedContent.replace(mermaidMatch[0], placeholder);
+      mermaidIndex++;
     }
     
     // Extract video IDs

@@ -2,8 +2,8 @@
 // Enhanced Code Block V2 Component - Using design system with theme support
 // =============================================================================
 
-@import '../../styles/design-tokens';
-@import '../../styles/mixins';
+@use '../../styles/design-tokens' as *;
+@use '../../styles/mixins' as *;
 
 :host {
     display: block;
@@ -83,14 +83,15 @@
 
 /* Header Section - Theme-aware */
 .code-header {
-    @include wb-code-header;
-    @include wb-flex-between;
     align-items: flex-start;
     gap: wb-spacing('lg');
-    
+
     // Remove the border-bottom from wb-code-header mixin to eliminate artifact above tools
     border-bottom: none !important;
-    
+
+    @include wb-code-header;
+    @include wb-flex-between;
+
     // Force dark background in light theme
     :root:not([data-theme="dark"]) & {
         background: #1f2937 !important; // gray-800
@@ -505,9 +506,9 @@
 
 /* Description Section - Theme-aware */
 .code-description {
-    @include wb-code-footer;
     font-style: italic;
-    
+    @include wb-code-footer;
+
     // Force dark background in light theme
     :root:not([data-theme="dark"]) & {
         background: #1f2937 !important; // gray-800
@@ -527,9 +528,9 @@
 
 /* Metadata Section - Theme-aware */
 .code-metadata {
-    @include wb-code-footer;
     border-top: 1px solid var(--wb-code-border);
-    
+    @include wb-code-footer;
+
     // Force dark background in light theme
     :root:not([data-theme="dark"]) & {
         background: #1f2937 !important; // gray-800
@@ -588,10 +589,10 @@
 
 /* Loading State - Theme-aware */
 .code-loading {
-    @include wb-code-content;
     text-align: center;
     color: var(--wb-text-secondary);
     font-style: italic;
+    @include wb-code-content;
 
     .loading-placeholder {
         display: flex;
@@ -719,7 +720,7 @@
         transition: all wb-duration('base') wb-easing('ease-in-out');
     }
 
-    .p-overlaypanel {
+    .p-popover {
 
         .info-panel,
         .nuget-commands-panel {

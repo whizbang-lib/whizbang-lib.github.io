@@ -46,11 +46,18 @@ export class CodeBlockParser {
     }
     
     // Parse regular code blocks (without metadata)
+    // NOTE: Skip mermaid blocks - they are handled separately by the markdown page component
     const regularCodeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
     let regularMatch;
-    
+
     while ((regularMatch = regularCodeBlockRegex.exec(processedContent)) !== null) {
       const language = regularMatch[1] || 'text';
+
+      // Skip mermaid blocks - they need to be rendered with Mermaid.js, not as code blocks
+      if (language === 'mermaid') {
+        continue;
+      }
+
       const code = regularMatch[2].trim();
       const placeholder = `[CODE_BLOCK_${blockIndex}]`;
       

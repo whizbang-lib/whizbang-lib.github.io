@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { ChipModule } from 'primeng/chip';
-import { OverlayPanelModule } from 'primeng/overlaypanel';
+import { PopoverModule } from 'primeng/popover';
 import { DialogModule } from 'primeng/dialog';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { ThemeService } from '../services/theme.service';
@@ -41,7 +41,7 @@ interface CodeBlockOptions {
 
 @Component({
   standalone: true,
-  imports: [CommonModule, ButtonModule, TooltipModule, ChipModule, OverlayPanelModule, DialogModule],
+  imports: [CommonModule, ButtonModule, TooltipModule, ChipModule, PopoverModule, DialogModule],
   selector: 'wb-enhanced-code-v2',
   changeDetection: ChangeDetectionStrategy.OnPush,
   animations: [
@@ -354,65 +354,65 @@ interface CodeBlockOptions {
       
       
       <!-- Description Panel -->
-      <p-overlayPanel #infoPanel>
+      <p-popover #infoPanel>
         <div class="info-panel">
           <h5 *ngIf="options.description">Description</h5>
           <p *ngIf="options.description">{{ options.description }}</p>
-          
+
           <h5 *ngIf="options.nugetPackage">NuGet Package</h5>
           <div *ngIf="options.nugetPackage" class="nuget-info">
             <code>{{ options.nugetPackage }}</code>
-            <button 
-              pButton 
-              icon="pi pi-copy" 
+            <button
+              pButton
+              icon="pi pi-copy"
               class="p-button-sm p-button-text"
               (click)="copyNugetCommand()"
               pTooltip="Copy install command">
             </button>
           </div>
         </div>
-      </p-overlayPanel>
+      </p-popover>
       
       <!-- NuGet Commands Panel -->
-      <p-overlayPanel #nugetPanel [dismissable]="true">
+      <p-popover #nugetPanel>
         <div class="nuget-commands-panel">
           <h5>Install Dependencies</h5>
-          
+
           <div class="command-section">
             <h6>.NET CLI</h6>
             <div class="command-box">
               <code>{{ getAllDotnetCommands() }}</code>
-              <button 
-                pButton 
-                icon="pi pi-copy" 
+              <button
+                pButton
+                icon="pi pi-copy"
                 class="p-button-sm p-button-text"
                 (click)="copyAllDotnetCommands()"
                 pTooltip="Copy .NET CLI command">
               </button>
             </div>
           </div>
-          
+
           <div class="command-section">
             <h6>Package Manager Console</h6>
             <div class="command-box">
               <code>{{ getAllPowerShellCommands() }}</code>
-              <button 
-                pButton 
-                icon="pi pi-copy" 
+              <button
+                pButton
+                icon="pi pi-copy"
                 class="p-button-sm p-button-text"
                 (click)="copyAllPowerShellCommands()"
                 pTooltip="Copy PowerShell command">
               </button>
             </div>
           </div>
-          
+
           <div class="command-section">
             <h6>PackageReference</h6>
             <div class="command-box">
               <code>{{ getAllPackageReferences() }}</code>
-              <button 
-                pButton 
-                icon="pi pi-copy" 
+              <button
+                pButton
+                icon="pi pi-copy"
                 class="p-button-sm p-button-text"
                 (click)="copyAllXmlReferences()"
                 pTooltip="Copy all PackageReference tags">
@@ -420,7 +420,7 @@ interface CodeBlockOptions {
             </div>
           </div>
         </div>
-      </p-overlayPanel>
+      </p-popover>
     </div>
   `,
   styleUrls: ['./enhanced-code-block-v2.component.scss']

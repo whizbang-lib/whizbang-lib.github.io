@@ -160,58 +160,84 @@ The `code://` URI scheme is reserved for potential future enhancement where code
 
 ### search-docs
 
-Full-text search across all documentation.
+Full-text or semantic search across all documentation.
 
-**Input**: `{ query: string, limit?: number }`
-**Output**: Array of search results with snippets
+**Parameters**:
+- `query` (required): Search query
+- `limit` (optional): Maximum results (default: 10)
+- `category` (optional): Filter by category
+- `semantic` (optional): Use semantic/fuzzy search instead of keyword search
 
-### semantic-search
-
-AI-enhanced semantic search.
-
-**Input**: `{ query: string, limit?: number }`
-**Output**: Semantically similar results
+**Output**: Array of search results with title, preview, category, URI, and relevance score
 
 ### find-examples
 
-Search for C# code examples by topic.
+Find C# code examples with enhanced metadata from documentation.
 
-**Input**: `{ topic: string, filters?: { language, framework, difficulty } }`
-**Output**: Relevant code examples with metadata
+**Parameters**:
+- `query` (optional): Search query for examples
+- `framework` (optional): Filter by framework (e.g., "NET8")
+- `difficulty` (optional): BEGINNER, INTERMEDIATE, or ADVANCED
+- `category` (optional): Filter by category (e.g., "API", "Domain Logic")
+- `tags` (optional): Array of tags to filter by
+- `limit` (optional): Maximum results (default: 20)
+
+**Output**: Code examples with title, description, framework, test references, and code snippet
+
+### list-categories
+
+List all available documentation categories.
+
+**Parameters**: None
+
+**Output**: Array of category names
 
 ### list-docs-by-category
 
-List all documentation in a category.
+List all documentation grouped by category.
 
-**Input**: `{ category: string }`
-**Output**: Array of documents with metadata
+**Parameters**:
+- `category` (optional): Filter to specific category
 
-### list-roadmap
-
-List planned/unreleased features.
-
-**Input**: `{ status?: 'planned' | 'in-development' | 'experimental' }`
-**Output**: Roadmap items with status and target version
+**Output**: Object with categories as keys and document arrays as values
 
 ## Available Prompts
 
+Prompts are reusable templates that guide Claude in using the tools effectively.
+
 ### explain-concept
 
-Get detailed explanation of a Whizbang concept.
+Get a detailed explanation of a Whizbang .NET library concept with examples and best practices.
 
-**Arguments**: `concept` (required)
+**Parameters**:
+- `concept` (required): Name of the concept to explain
+- `includeExamples` (optional): Include code examples (default: true)
+- `difficulty` (optional): beginner, intermediate, or advanced
+
+**Example**: Explain aggregates for a beginner-level developer
 
 ### show-example
 
-Find and display relevant code examples.
+Find and display code examples for a specific topic with test references and context.
 
-**Arguments**: `task` (what user wants to do)
+**Parameters**:
+- `topic` (required): Topic to find examples for
+- `framework` (optional): Filter by framework version
+- `difficulty` (optional): beginner, intermediate, or advanced
+- `withTests` (optional): Include test file references (default: true)
 
-### api-reference
+**Example**: Show intermediate examples for order processing in NET8
 
-Look up API documentation.
+### compare-approaches
 
-**Arguments**: `api` (class/method name)
+Compare different implementation approaches for a topic with pros/cons analysis.
+
+**Parameters**:
+- `topic` (required): Topic to compare approaches for
+- `approaches` (optional): Comma-separated list of specific approaches to compare
+- `criteria` (optional): Comma-separated comparison criteria
+
+**Example**: Compare repository pattern approaches for data access
 
 ## Development
 

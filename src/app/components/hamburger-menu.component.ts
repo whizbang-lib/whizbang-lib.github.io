@@ -801,7 +801,7 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
   
   private router = inject(Router);
   private docsMenuService = inject(EnvironmentAwareDocsService);
-  private themeService = inject(ThemeService);
+  protected themeService = inject(ThemeService);
   private userPreferencesService = inject(UserPreferencesService);
   
   private routerSubscription?: Subscription;

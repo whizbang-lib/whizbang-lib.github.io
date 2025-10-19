@@ -4,15 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
-import { OverlayPanelModule } from 'primeng/overlaypanel';
-import { OverlayPanel } from 'primeng/overlaypanel';
+import { PopoverModule } from 'primeng/popover';
+import { Popover } from 'primeng/popover';
 import { SearchService, SearchResult } from '../services/search.service';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'wb-search',
   standalone: true,
-  imports: [CommonModule, FormsModule, InputTextModule, ButtonModule, OverlayPanelModule],
+  imports: [CommonModule, FormsModule, InputTextModule, ButtonModule, PopoverModule],
   template: `
     <div class="search-container">
       <div class="p-inputgroup">
@@ -44,14 +44,10 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
         ></button>
       </div>
 
-      <p-overlayPanel 
-        #searchOverlay 
-        [dismissable]="true"
-        [showCloseIcon]="false"
+      <p-popover
+        #searchOverlay
         styleClass="search-overlay"
         appendTo="body"
-        [baseZIndex]="10000"
-        [responsive]="true"
       >
         <div class="search-results-container" *ngIf="searchResults.length > 0">
           <div class="search-results-header">
@@ -85,7 +81,7 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
             <p class="text-600 mt-2">Searching...</p>
           </div>
         </div>
-      </p-overlayPanel>
+      </p-popover>
     </div>
   `,
   styles: [`
@@ -106,7 +102,7 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
       border-radius: 8px;
     }
 
-    :host ::ng-deep .search-overlay .p-overlaypanel-content {
+    :host ::ng-deep .search-overlay .p-popover-content {
       padding: 0;
       max-height: 80vh;
       overflow: hidden;
@@ -233,11 +229,11 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
     }
 
     /* Improved overlay positioning */
-    :host ::ng-deep .search-overlay .p-overlaypanel-flipped {
+    :host ::ng-deep .search-overlay .p-popover-flipped {
       margin-top: 10px;
     }
 
-    :host ::ng-deep .search-overlay.p-overlaypanel {
+    :host ::ng-deep .search-overlay.p-popover {
       transform-origin: top center;
       animation: fadeIn 0.2s ease-out;
     }
@@ -255,7 +251,7 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
   `]
 })
 export class SearchComponent implements OnInit, OnDestroy {
-  @ViewChild('searchOverlay') searchOverlay!: OverlayPanel;
+  @ViewChild('searchOverlay') searchOverlay!: Popover;
   @ViewChild('searchInput') searchInput!: ElementRef;
 
   searchQuery = '';
