@@ -41,3 +41,7 @@ testem.log
 # System Files
 .DS_Store
 Thumbs.db
+
+# Playwright MCP screenshots and temporary files
+.playwright-mcp/
+claude-scratch/
