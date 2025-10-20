@@ -1,6 +1,6 @@
 [
   {
-    "slug": "Advanced/advanced-scenarios",
+    "slug": "advanced/advanced-scenarios",
     "title": "Advanced Scenarios",
     "category": "Advanced",
     "order": 1,
@@ -8,7 +8,7 @@
     "examples": []
   },
   {
-    "slug": "Advanced/configuration",
+    "slug": "advanced/configuration",
     "title": "Configuration",
     "category": "Advanced",
     "order": 1,
@@ -16,7 +16,7 @@
     "examples": []
   },
   {
-    "slug": "Architecture & Design/architecture",
+    "slug": "architecture-design/architecture",
     "title": "Architecture Overview",
     "category": "Architecture & Design",
     "order": 1,
@@ -24,7 +24,7 @@
     "examples": []
   },
   {
-    "slug": "Architecture & Design/philosophy",
+    "slug": "architecture-design/philosophy",
     "title": "Philosophy & Design Principles",
     "category": "Architecture & Design",
     "order": 2,
@@ -32,7 +32,7 @@
     "examples": []
   },
   {
-    "slug": "Commands/command-handling",
+    "slug": "commands/command-handling",
     "title": "Command Handling",
     "category": "Commands",
     "order": 1,
@@ -40,7 +40,7 @@
     "examples": []
   },
   {
-    "slug": "Contributors/coding-standards",
+    "slug": "contributors/coding-standards",
     "title": "Coding Standards",
     "category": "Contributors",
     "order": 2,
@@ -48,7 +48,7 @@
     "examples": []
   },
   {
-    "slug": "Contributors/contributing",
+    "slug": "contributors/contributing",
     "title": "Contributing to Whizbang",
     "category": "Contributors",
     "order": 1,
@@ -56,7 +56,7 @@
     "examples": []
   },
   {
-    "slug": "Core Concepts/aggregates",
+    "slug": "core-concepts/aggregates",
     "title": "Aggregates",
     "category": "Core Concepts",
     "order": 2,
@@ -64,7 +64,7 @@
     "examples": []
   },
   {
-    "slug": "Core Concepts/core-concepts",
+    "slug": "core-concepts",
     "title": "Core Concepts",
     "category": "Core Concepts",
     "order": 1,
@@ -72,7 +72,7 @@
     "examples": []
   },
   {
-    "slug": "Core Concepts/projections",
+    "slug": "core-concepts/projections",
     "title": "Projections",
     "category": "Core Concepts",
     "order": 3,
@@ -80,7 +80,7 @@
     "examples": []
   },
   {
-    "slug": "Core Concepts/repositories-and-helpers",
+    "slug": "core-concepts/repositories-and-helpers",
     "title": "Repositories and CQRS Helpers",
     "category": "Core Concepts",
     "order": 2,
@@ -88,7 +88,7 @@
     "examples": []
   },
   {
-    "slug": "Design/open-questions",
+    "slug": "design/open-questions",
     "title": "Open Design Questions",
     "category": "Architecture & Design",
     "order": 3,
@@ -96,7 +96,7 @@
     "examples": []
   },
   {
-    "slug": "Examples/enhanced-csharp-examples",
+    "slug": "examples/enhanced-csharp-examples",
     "title": "C# Code Examples",
     "category": "Examples",
     "order": 1,
@@ -104,7 +104,7 @@
     "examples": []
   },
   {
-    "slug": "Getting Started/aspire-integration",
+    "slug": "getting-started/aspire-integration",
     "title": ".NET Aspire Integration",
     "category": "Getting Started",
     "order": 3,
@@ -120,7 +120,7 @@
     "examples": []
   },
   {
-    "slug": "Getting Started/package-structure",
+    "slug": "getting-started/package-structure",
     "title": "Package Structure",
     "category": "Getting Started",
     "order": 2,
@@ -128,7 +128,7 @@
     "examples": []
   },
   {
-    "slug": "Observability/dashboard",
+    "slug": "observability/dashboard",
     "title": "Whizbang Dashboard",
     "category": "Observability",
     "order": 1,
@@ -136,7 +136,7 @@
     "examples": []
   },
   {
-    "slug": "Projections/projection-contexts",
+    "slug": "projections/projection-contexts",
     "title": "Projection Contexts",
     "category": "Projections",
     "order": 3,
@@ -144,7 +144,7 @@
     "examples": []
   },
   {
-    "slug": "Projections/projection-purity",
+    "slug": "projections/projection-purity",
     "title": "Projection Purity",
     "category": "Projections",
     "order": 4,
@@ -152,7 +152,7 @@
     "examples": []
   },
   {
-    "slug": "Projections/projection-return-values",
+    "slug": "projections/projection-return-values",
     "title": "Projection Return Values",
     "category": "Projections",
     "order": 5,
@@ -160,7 +160,7 @@
     "examples": []
   },
   {
-    "slug": "Projections/projection-subscriptions",
+    "slug": "projections/projection-subscriptions",
     "title": "Projection Subscriptions",
     "category": "Projections",
     "order": 2,
@@ -168,7 +168,7 @@
     "examples": []
   },
   {
-    "slug": "Roadmap/backups-and-snapshots",
+    "slug": "roadmap/backups-and-snapshots",
     "title": "Backups and Snapshots",
     "category": "Roadmap",
     "order": 2,
@@ -176,7 +176,7 @@
     "examples": []
   },
   {
-    "slug": "Roadmap/distributed-messaging",
+    "slug": "roadmap/distributed-messaging",
     "title": "Distributed Messaging",
     "category": "Roadmap",
     "order": 1,
@@ -184,7 +184,7 @@
     "examples": []
   },
   {
-    "slug": "Roadmap/lakehouse-streaming",
+    "slug": "roadmap/lakehouse-streaming",
     "title": "Lakehouse Streaming",
     "category": "Roadmap",
     "order": 3,

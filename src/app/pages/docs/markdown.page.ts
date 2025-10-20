@@ -83,8 +83,48 @@ export class MarkdownPage implements OnInit, AfterViewInit {
       // Reset content ready state when navigating to new page
       this.isContentReady.set(false);
       const fullPath = segments.map(segment => segment.path).join('/');
-      this.loadMarkdownContent(`assets/docs/${fullPath}.md`);
+      this.resolveMarkdownPath(fullPath).then(resolvedPath => {
+        this.loadMarkdownContent(resolvedPath);
+      });
     });
+  }
+
+  private async resolveMarkdownPath(urlPath: string): Promise<string> {
+    try {
+      // Load the docs index to find the actual file path
+      const docsIndex = await this.http.get<any[]>('assets/docs-index.json').toPromise();
+      
+      // Find the entry that matches the URL path
+      const docEntry = docsIndex?.find(doc => doc.slug === urlPath);
+      
+      if (docEntry) {
+        // If we found an entry, construct the path based on the original slug structure
+        // For clean index routes, we need to map back to the actual file path
+        if (docEntry.slug === urlPath && !urlPath.includes('/')) {
+          // This is likely a clean index route, try the folder/filename pattern first
+          const expectedPath = `assets/docs/${urlPath}/${urlPath}.md`;
+          
+          // Check if the file exists by attempting to load it
+          try {
+            await this.http.get(expectedPath, { responseType: 'text' }).toPromise();
+            return expectedPath;
+          } catch {
+            // If the folder/filename pattern doesn't work, fall back to the direct path
+            return `assets/docs/${urlPath}.md`;
+          }
+        } else {
+          // For non-index routes, use the slug as-is
+          return `assets/docs/${docEntry.slug}.md`;
+        }
+      }
+      
+      // Fallback: use the URL path directly
+      return `assets/docs/${urlPath}.md`;
+    } catch (error) {
+      console.error('Error resolving markdown path:', error);
+      // Fallback: use the URL path directly
+      return `assets/docs/${urlPath}.md`;
+    }
   }
   
   ngAfterViewInit() {

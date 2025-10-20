@@ -1,6 +1,5 @@
 ---
 title: Getting Started
-slug: getting-started
 category: Getting Started
 order: 1
 tags: tutorial, quickstart, installation
