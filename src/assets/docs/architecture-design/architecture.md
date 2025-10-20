@@ -41,14 +41,19 @@ Whizbang is built on a layered architecture that supports scaling from a simple 
 
 ## Core Components
 
-### 1. Message Router
+### 1. Message Router with Return Type Semantics
 
-The **Message Router** is the heart of Whizbang. It:
+The **Message Router** is the heart of Whizbang. It interprets handler return types to determine behavior:
 
 - Routes **commands** to their owning domain's handlers
-- Publishes **events** to all interested subscribers
+- Publishes **events** to all interested subscribers  
 - Executes **queries** against projections
 - Coordinates **sagas** across long-running processes
+- **Return type semantics** - What you return determines what happens:
+  - Single message return → Publish/Send based on type
+  - Tuple return → Multiple cascading messages
+  - Void return → Fire-and-forget execution
+  - IAsyncEnumerable → Streaming results
 
 All message routing respects **domain ownership**—commands must be sent to the service that owns that aggregate, while events are broadcast from the owning domain to subscribers.
 
@@ -85,29 +90,41 @@ Projections can be:
 - **Cached** - Materialized in-memory for ultra-low latency
 - **External** - Pushed to Elasticsearch, Redis, or other specialized stores
 
-### 4. Command & Event Pipeline
+### 4. Aspect-Oriented Pipeline
 
-The **Pipeline** provides hooks for cross-cutting concerns:
+The **AOP Pipeline** weaves cross-cutting concerns through source generation:
 
 ```
 Incoming Message
       ↓
-  Validation
+  [Logged] - Structured logging aspect
       ↓
-  Authorization
+  [Validated] - Input validation aspect
       ↓
-  Idempotence Check
+  [Authorized] - Security aspect
       ↓
-  OpenTelemetry Trace
+  [Cached] - Result caching aspect
+      ↓
+  [Retry] - Resilience aspect
+      ↓
+  [Timed] - Performance metrics aspect
       ↓
   Handler Execution
       ↓
+  [Transactional] - Database transaction aspect
+      ↓
   Event Append / Projection Update
       ↓
-  Outbox Write (if distributed)
+  [Outbox] - Distributed messaging aspect
       ↓
   Response / New Messages
 ```
+
+Aspects are:
+- **Declarative** - Applied via attributes
+- **Compiled** - Source generators create zero-overhead code
+- **Composable** - Multiple aspects work together
+- **Testable** - Can be verified in isolation
 
 Every stage is **pluggable** and **observable**.
 
@@ -274,9 +291,53 @@ Each service:
 
 Event streams are replicated across regions for disaster recovery. Region 2 can take over if Region 1 fails.
 
-## Message Execution Modes
+## Progressive Enhancement Modes
 
-Whizbang supports three execution modes, all using the same handler code:
+Whizbang provides four deployment modes, all using the **exact same handler code**:
+
+### Mode 1: In-Process (Development)
+```csharp
+services.AddWhizbang().UseInProcessMode();
+```
+- No infrastructure dependencies
+- Immediate execution
+- Perfect for development and testing
+
+### Mode 2: Durable (Single Service)
+```csharp
+services.AddWhizbang()
+    .UseDurableMode()
+    .UsePostgreSQL(connectionString);
+```
+- Persistent message queue
+- Automatic retry on failure
+- Outbox pattern for reliability
+
+### Mode 3: Distributed (Microservices)
+```csharp
+services.AddWhizbang()
+    .UseDistributedMode()
+    .UseKafka(kafkaConfig)
+    .UsePostgreSQL(connectionString);
+```
+- Cross-service messaging
+- Service discovery
+- Distributed tracing
+
+### Mode 4: Event-Sourced (Full CQRS/ES)
+```csharp
+services.AddWhizbang()
+    .UseEventSourcedMode()
+    .UseEventStore(eventStoreConfig)
+    .UseProjections(projectionConfig);
+```
+- Complete event sourcing
+- Time travel debugging
+- Projection rebuilding
+
+## Message Execution Patterns
+
+Within any mode, Whizbang supports three execution patterns:
 
 ### Inline Mode
 
