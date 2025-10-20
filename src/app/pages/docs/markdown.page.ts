@@ -12,6 +12,7 @@ import { ThemeService } from '../../services/theme.service';
 import { SeoService } from '../../services/seo.service';
 import { BreadcrumbService } from '../../services/breadcrumb.service';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../components/breadcrumb.component';
+import { StructuredDataService } from '../../services/structured-data.service';
 import { trigger, transition, style, animate } from '@angular/animations';
 
 @Component({
@@ -65,6 +66,7 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
   private themeService = inject(ThemeService);
   private seoService = inject(SeoService);
   private breadcrumbService = inject(BreadcrumbService);
+  private structuredDataService = inject(StructuredDataService);
 
   @ViewChild('codeBlockContainer', { read: ViewContainerRef }) codeBlockContainer!: ViewContainerRef;
 
@@ -275,6 +277,9 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         
         // Set SEO metadata for this page
         this.setSeoMetadata(content, finalContent);
+        
+        // Generate and add structured data for this page
+        this.generateStructuredData(content, finalContent, path);
         
         // Create code block components after content is processed
         if (this.allCodeBlocks.length > 0) {
@@ -509,11 +514,66 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
     return data;
   }
 
+  private async generateStructuredData(originalContent: string, processedContent: string, path: string) {
+    try {
+      // Get current URL path
+      const currentUrl = `${window.location.origin}${this.router.url}`;
+      const urlPath = this.route.snapshot.url.map(segment => segment.path).join('/');
+      
+      // Load docs index to get page metadata
+      const docsIndex = await this.http.get<any[]>('assets/docs-index.json').toPromise();
+      const docEntry = docsIndex?.find(doc => doc.slug === urlPath);
+      
+      if (docEntry) {
+        // Parse frontmatter to get additional metadata
+        let frontmatterData: any = {};
+        if (originalContent.startsWith('---')) {
+          const frontmatterEnd = originalContent.indexOf('---', 3);
+          if (frontmatterEnd !== -1) {
+            const frontmatterContent = originalContent.substring(3, frontmatterEnd);
+            frontmatterData = this.parseFrontmatter(frontmatterContent);
+          }
+        }
+        
+        // Prepare metadata for structured data
+        const metadata = {
+          title: docEntry.title,
+          description: docEntry.description || frontmatterData.description || 'Whizbang .NET library documentation',
+          category: docEntry.category || frontmatterData.category || 'Documentation',
+          tags: frontmatterData.tags || [],
+          order: frontmatterData.order
+        };
+        
+        // Extract code examples from the original content
+        const codeExamples = this.structuredDataService.extractCodeExamplesFromContent(originalContent);
+        
+        // Get current breadcrumbs
+        const breadcrumbs = this.breadcrumbs();
+        
+        // Generate comprehensive structured data
+        const structuredData = this.structuredDataService.generateDocumentationStructuredData(
+          currentUrl,
+          metadata,
+          breadcrumbs,
+          codeExamples
+        );
+        
+        // Add structured data to page
+        this.structuredDataService.addStructuredDataToPage(structuredData, 'documentation');
+      }
+    } catch (error) {
+      console.error('Error generating structured data:', error);
+    }
+  }
+
   ngOnDestroy() {
     // Clean up SEO metadata when component is destroyed
     this.seoService.clearPageMetadata();
     
     // Clean up breadcrumb structured data
     this.breadcrumbService.removeStructuredDataFromPage();
+    
+    // Clean up documentation structured data
+    this.structuredDataService.removeStructuredDataFromPage('documentation');
   }
 }
