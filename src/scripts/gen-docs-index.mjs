@@ -53,6 +53,7 @@ async function processDirectory(dir, relativeDir = '') {
         title: data.title || filename,
         category: category,
         order: data.order,
+        description: data.description || '',
         videos: data.videos ?? [],
         examples: data.examples ?? []
       });

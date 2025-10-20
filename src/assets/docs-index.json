@@ -4,6 +4,7 @@
     "title": "Advanced Scenarios",
     "category": "Advanced",
     "order": 1,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -12,6 +13,7 @@
     "title": "Configuration",
     "category": "Advanced",
     "order": 1,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -20,6 +22,7 @@
     "title": "Architecture Overview",
     "category": "Architecture & Design",
     "order": 1,
+    "description": "Explore Whizbang's layered architecture that scales from simple in-process mediator to full distributed event-sourced systems with domain ownership and driver-based design.",
     "videos": [],
     "examples": []
   },
@@ -28,6 +31,7 @@
     "title": "Philosophy & Design Principles",
     "category": "Architecture & Design",
     "order": 2,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -36,6 +40,7 @@
     "title": "Command Handling",
     "category": "Commands",
     "order": 1,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -44,6 +49,7 @@
     "title": "Coding Standards",
     "category": "Contributors",
     "order": 2,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -52,6 +58,7 @@
     "title": "Contributing to Whizbang",
     "category": "Contributors",
     "order": 1,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -60,6 +67,7 @@
     "title": "Aggregates",
     "category": "Core Concepts",
     "order": 2,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -68,6 +76,7 @@
     "title": "Core Concepts",
     "category": "Core Concepts",
     "order": 1,
+    "description": "Master the four foundational concepts of Whizbang - Events, Commands, Aggregates, and Projections - essential for building effective CQRS and event-sourced systems.",
     "videos": [],
     "examples": []
   },
@@ -76,6 +85,7 @@
     "title": "Projections",
     "category": "Core Concepts",
     "order": 3,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -84,6 +94,7 @@
     "title": "Repositories and CQRS Helpers",
     "category": "Core Concepts",
     "order": 2,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -92,6 +103,7 @@
     "title": "Open Design Questions",
     "category": "Architecture & Design",
     "order": 3,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -100,6 +112,7 @@
     "title": "C# Code Examples",
     "category": "Examples",
     "order": 1,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -108,6 +121,7 @@
     "title": ".NET Aspire Integration",
     "category": "Getting Started",
     "order": 3,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -116,6 +130,7 @@
     "title": "Getting Started",
     "category": "Getting Started",
     "order": 1,
+    "description": "Learn how to build your first Whizbang application with this hands-on tutorial covering CQRS, event sourcing, and projections from simple to scale.",
     "videos": [],
     "examples": []
   },
@@ -124,6 +139,7 @@
     "title": "Package Structure",
     "category": "Getting Started",
     "order": 2,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -132,6 +148,7 @@
     "title": "Whizbang Dashboard",
     "category": "Observability",
     "order": 1,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -140,6 +157,7 @@
     "title": "Projection Contexts",
     "category": "Projections",
     "order": 3,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -148,6 +166,7 @@
     "title": "Projection Purity",
     "category": "Projections",
     "order": 4,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -156,6 +175,7 @@
     "title": "Projection Return Values",
     "category": "Projections",
     "order": 5,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -164,6 +184,7 @@
     "title": "Projection Subscriptions",
     "category": "Projections",
     "order": 2,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -172,6 +193,7 @@
     "title": "Backups and Snapshots",
     "category": "Roadmap",
     "order": 2,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -180,6 +202,7 @@
     "title": "Distributed Messaging",
     "category": "Roadmap",
     "order": 1,
+    "description": "",
     "videos": [],
     "examples": []
   },
@@ -188,6 +211,7 @@
     "title": "Lakehouse Streaming",
     "category": "Roadmap",
     "order": 3,
+    "description": "",
     "videos": [],
     "examples": []
   }

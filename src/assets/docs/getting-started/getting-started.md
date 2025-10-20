@@ -2,6 +2,7 @@
 title: Getting Started
 category: Getting Started
 order: 1
+description: Learn how to build your first Whizbang application with this hands-on tutorial covering CQRS, event sourcing, and projections from simple to scale.
 tags: tutorial, quickstart, installation
 ---
 

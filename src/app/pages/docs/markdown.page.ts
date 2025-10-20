@@ -1,5 +1,5 @@
 import { Component, inject, signal, OnInit, ViewChild, ViewContainerRef, EnvironmentInjector, ComponentRef, AfterViewInit, effect, OnDestroy } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MarkdownModule } from 'ngx-markdown';
 import { HttpClient } from '@angular/common/http';
 import { WbVideoComponent } from '../../components/wb-video.component';
@@ -9,6 +9,7 @@ import { EnhancedCodeBlockV2Component } from '../../components/enhanced-code-blo
 import { CodeBlockParser } from '../../services/code-block-parser.service';
 import { MermaidService } from '../../services/mermaid.service';
 import { ThemeService } from '../../services/theme.service';
+import { SeoService } from '../../services/seo.service';
 import { trigger, transition, style, animate } from '@angular/animations';
 
 @Component({
@@ -49,13 +50,15 @@ import { trigger, transition, style, animate } from '@angular/animations';
     ])
   ]
 })
-export class MarkdownPage implements OnInit, AfterViewInit {
+export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private http = inject(HttpClient);
   private codeBlockParser = inject(CodeBlockParser);
   private injector = inject(EnvironmentInjector);
   private mermaidService = inject(MermaidService);
   private themeService = inject(ThemeService);
+  private seoService = inject(SeoService);
 
   @ViewChild('codeBlockContainer', { read: ViewContainerRef }) codeBlockContainer!: ViewContainerRef;
 
@@ -254,6 +257,8 @@ export class MarkdownPage implements OnInit, AfterViewInit {
         this.videos.set(videos);
         this.examples.set(examples);
         
+        // Set SEO metadata for this page
+        this.setSeoMetadata(content, finalContent);
         
         // Create code block components after content is processed
         if (this.allCodeBlocks.length > 0) {
@@ -399,5 +404,87 @@ export class MarkdownPage implements OnInit, AfterViewInit {
       .replace(/<wb-example[^>]*><\/wb-example>/g, '');
     
     return { processedContent, videos, examples };
+  }
+
+  private async setSeoMetadata(originalContent: string, processedContent: string) {
+    try {
+      // Get current URL path
+      const currentUrl = `${window.location.origin}${this.router.url}`;
+      const urlPath = this.route.snapshot.url.map(segment => segment.path).join('/');
+      
+      // Load docs index to get page metadata
+      const docsIndex = await this.http.get<any[]>('assets/docs-index.json').toPromise();
+      const docEntry = docsIndex?.find(doc => doc.slug === urlPath);
+      
+      if (docEntry) {
+        // Parse frontmatter to get additional metadata
+        let frontmatterData: any = {};
+        if (originalContent.startsWith('---')) {
+          const frontmatterEnd = originalContent.indexOf('---', 3);
+          if (frontmatterEnd !== -1) {
+            const frontmatterContent = originalContent.substring(3, frontmatterEnd);
+            // Simple YAML parsing for our basic fields
+            frontmatterData = this.parseFrontmatter(frontmatterContent);
+          }
+        }
+        
+        // Use explicit description from frontmatter or docs index, or generate fallback
+        let description = docEntry.description || frontmatterData.description;
+        if (!description) {
+          description = this.seoService.generateFallbackDescription(processedContent);
+        }
+        
+        // Extract keywords from tags
+        const tags = frontmatterData.tags || [];
+        const keywords = Array.isArray(tags) ? this.seoService.extractKeywordsFromTags(tags) : '';
+        
+        // Set SEO metadata
+        this.seoService.setPageMetadata({
+          title: docEntry.title,
+          description: description,
+          keywords: keywords,
+          type: 'article',
+          url: currentUrl
+        });
+      }
+    } catch (error) {
+      console.error('Error setting SEO metadata:', error);
+    }
+  }
+
+  private parseFrontmatter(frontmatterContent: string): any {
+    const data: any = {};
+    const lines = frontmatterContent.split('\n');
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        const colonIndex = trimmed.indexOf(':');
+        if (colonIndex > 0) {
+          const key = trimmed.substring(0, colonIndex).trim();
+          let value = trimmed.substring(colonIndex + 1).trim();
+          
+          // Remove quotes if present
+          if ((value.startsWith('"') && value.endsWith('"')) || 
+              (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+          }
+          
+          // Handle arrays (simple comma-separated values)
+          if (key === 'tags' && value.includes(',')) {
+            data[key] = value.split(',').map(tag => tag.trim());
+          } else {
+            data[key] = value;
+          }
+        }
+      }
+    }
+    
+    return data;
+  }
+
+  ngOnDestroy() {
+    // Clean up SEO metadata when component is destroyed
+    this.seoService.clearPageMetadata();
   }
 }

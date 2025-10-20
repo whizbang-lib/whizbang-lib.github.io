@@ -2,6 +2,7 @@
 title: Architecture Overview
 category: Architecture & Design
 order: 1
+description: Explore Whizbang's layered architecture that scales from simple in-process mediator to full distributed event-sourced systems with domain ownership and driver-based design.
 tags: architecture, design, system-design
 ---
 

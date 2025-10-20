@@ -2,6 +2,7 @@
 title: Core Concepts
 category: Core Concepts
 order: 1
+description: Master the four foundational concepts of Whizbang - Events, Commands, Aggregates, and Projections - essential for building effective CQRS and event-sourced systems.
 tags: events, commands, aggregates, projections, domain-driven-design
 ---
 
