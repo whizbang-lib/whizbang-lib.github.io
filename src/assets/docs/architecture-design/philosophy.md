@@ -136,7 +136,24 @@ Swap drivers through configuration, not code changes. Start with SQLite for loca
 
 This prevents the "event spaghetti" problem where no one knows who publishes what, or where to send commands.
 
-### 3. Convention Over Configuration
+### 3. Handlers as Pure Functions
+
+**Handlers are just C# methods that return results or new messages.** No magic base classes, no required interfaces (unless you want them), no framework coupling.
+
+Mark a handler as `pure` and the Roslyn analyzer **forbids hidden side effects**—guaranteeing your handler is a true function from input to output.
+
+```csharp
+[Pure]
+public OrderCalculated Calculate(CalculateOrder cmd) {
+    // ✅ Pure computation allowed
+    return new OrderCalculated(cmd.Items.Sum(i => i.Price));
+    
+    // ❌ Compile error: Side effects not allowed in pure handler
+    // await database.SaveAsync(result);
+}
+```
+
+### 4. Convention Over Configuration
 
 **Your code expresses intent through conventions.** Return types determine behavior. Attributes declare aspects. Source generators eliminate boilerplate. No XML files, no complex registration, no ceremony.
 
@@ -147,12 +164,12 @@ public ProcessPayment Handle(OrderCreated e) => new ProcessPayment();     // Com
 public void Handle(LogActivity cmd) => Console.WriteLine(cmd.Message);   // Fire-and-forget
 
 // Attributes declare behavior
-[Pure]           // Compile-time verification of no side effects
 [Idempotent]     // Automatic deduplication
 [Transactional]  // Wrap in transaction
+[Logged]         // Structured logging
 ```
 
-### 4. Observable by Default
+### 5. Observable by Default
 
 **Problems found in production are 10x more expensive than problems found in development.** Whizbang includes:
 
@@ -163,7 +180,7 @@ public void Handle(LogActivity cmd) => Console.WriteLine(cmd.Message);   // Fire
 
 Observability is not bolted on—it's built into the core runtime.
 
-### 5. Idempotence Everywhere
+### 6. Idempotence Everywhere
 
 **Messages may be delivered more than once.** Whizbang ensures:
 
@@ -174,7 +191,7 @@ Observability is not bolted on—it's built into the core runtime.
 
 Your domain logic never needs to worry about duplicate messages.
 
-### 6. Compile-Time Safety
+### 7. Compile-Time Safety
 
 **Catch errors during build, not at runtime.** Through source generators and Roslyn analyzers, Whizbang provides unprecedented compile-time verification:
 
@@ -198,7 +215,7 @@ public class OrderHandler : IHandle<CreateOrder> {
 }
 ```
 
-### 7. AOT-Safe and Performance-First
+### 8. AOT-Safe and Performance-First
 
 **Modern .NET demands performance.** Whizbang achieves both developer experience and runtime performance through:
 
@@ -210,7 +227,7 @@ public class OrderHandler : IHandle<CreateOrder> {
 
 Deploy as a tiny container or serverless function without compromise.
 
-### 8. Security and Multi-Tenancy First
+### 9. Security and Multi-Tenancy First
 
 **Security is not an afterthought.** Whizbang provides built-in support for:
 
