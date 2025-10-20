@@ -44,6 +44,8 @@ usingStatements: ["Whizbang", "System", "System.Threading.Tasks"]
 
 See [DOCUMENTATION-STANDARDS.md](../DOCUMENTATION-STANDARDS.md) for complete metadata field documentation.
 
+**Important**: Enhanced code block metadata is automatically used for SEO structured data generation. Code examples with rich metadata will appear in search engine rich results.
+
 ### Test-Driven Examples
 
 **CRITICAL**: All complete code examples MUST have corresponding tests that verify they work.
@@ -102,10 +104,32 @@ slug: getting-started           # Optional - URL slug (auto-generated from filen
 category: Introduction          # Required - navigation category
 order: 1                        # Required - sort order within category
 tags: beginner, tutorial        # Optional - for search/filtering
+description: Brief description   # Optional - defaults to generic description if omitted
 ---
 ```
 
 **Note**: The `slug` field is optional and will be auto-generated from the filename if omitted. The documentation generation script (`src/scripts/gen-docs-list.mjs`) recursively discovers all markdown files in `src/assets/docs/` including subdirectories, so files can be organized into folders (e.g., `Projections/`, `Commands/`, `Tutorials/`) for better structure.
+
+### SEO and Structured Data
+
+**Automatic Generation**: Every documentation page automatically generates comprehensive structured data (JSON-LD schema.org markup) for enhanced SEO and search engine rich results. The system generates:
+
+- **WebSite schema**: Site-level metadata with search actions
+- **Organization schema**: Publisher information with branding
+- **Article schemas**: Content-aware types (TechArticle/HowTo/APIReference) based on content analysis
+- **BreadcrumbList schema**: Navigation hierarchy from breadcrumb service
+- **SoftwareSourceCode schemas**: Automatically extracted from enhanced code blocks
+
+**Content-Aware Schema Selection**:
+- **HowTo**: For tutorials, getting started guides, and step-by-step content
+- **APIReference**: For pages with "api" or "reference" in title/category/tags
+- **TechArticle**: Default for general technical documentation
+
+**Optimization Tips**:
+- Use descriptive `title` and `description` in frontmatter for better search results
+- Add relevant `tags` for keyword optimization
+- Use enhanced code block metadata for rich code example results
+- Ensure breadcrumb navigation is logical for site hierarchy
 
 ## Anti-Patterns to Avoid
 
