@@ -7300,9 +7300,9 @@
       "commands",
       "services"
     ],
-    "description": "",
+    "description": "Explore Whizbangs layered architecture that scales from simple in-process mediator to full distributed event-sourced systems with domain ownership and driver-based design.",
     "order": 1,
-    "lastModified": "2025-10-19T23:51:27.336Z"
+    "lastModified": "2025-10-20T01:09:00.328Z"
   },
   {
     "type": "document",
@@ -25217,9 +25217,9 @@
       "command",
       "whizbang"
     ],
-    "description": "",
+    "description": "Master the four foundational concepts of Whizbang - Events, Commands, Aggregates, and Projections - essential for building effective CQRS and event-sourced systems.",
     "order": 1,
-    "lastModified": "2025-10-18T20:21:06.377Z"
+    "lastModified": "2025-10-20T01:08:55.587Z"
   },
   {
     "type": "document",
@@ -43714,9 +43714,9 @@
       "system",
       "events"
     ],
-    "description": "",
+    "description": "Learn how to build your first Whizbang application with this hands-on tutorial covering CQRS, event sourcing, and projections from simple to scale.",
     "order": 1,
-    "lastModified": "2025-10-20T00:49:48.163Z"
+    "lastModified": "2025-10-20T01:08:50.689Z"
   },
   {
     "type": "document",
