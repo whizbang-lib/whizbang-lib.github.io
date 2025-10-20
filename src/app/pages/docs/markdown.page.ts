@@ -310,14 +310,25 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         let commentNode;
         while (commentNode = walker.nextNode()) {
           if (commentNode.textContent === placeholder.replace('<!--', '').replace('-->', '')) {
-            // Render the mermaid diagram
+            // Render the mermaid diagram with alt text
             const id = `mermaid-diagram-${i}`;
-            const { svg } = await this.mermaidService.renderDiagram(id, code);
+            const { svg, altText } = await this.mermaidService.renderDiagram(id, code);
 
             // Create container
             const container = document.createElement('div');
             container.className = 'mermaid-diagram';
             container.innerHTML = svg;
+
+            // Add accessible alt text to the SVG
+            const svgElement = container.querySelector('svg');
+            if (svgElement && altText) {
+              svgElement.setAttribute('role', 'img');
+              svgElement.setAttribute('aria-label', altText);
+              // Also add title element for additional accessibility
+              const titleElement = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+              titleElement.textContent = altText;
+              svgElement.insertBefore(titleElement, svgElement.firstChild);
+            }
 
             // Replace comment with diagram
             if (commentNode.parentNode) {
@@ -325,7 +336,6 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
             }
 
             // Apply node classes to edges after SVG is in DOM
-            const svgElement = container.querySelector('svg');
             if (svgElement) {
               this.mermaidService.applyNodeClassesToEdges(svgElement);
             }

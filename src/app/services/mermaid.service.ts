@@ -305,7 +305,7 @@ export class MermaidService {
     }
   }
 
-  async renderDiagram(id: string, code: string, fontSize?: string): Promise<{ svg: string }> {
+  async renderDiagram(id: string, code: string, fontSize?: string): Promise<{ svg: string; altText?: string }> {
     if (!this.initialized) {
       this.initializeMermaid();
     }
@@ -406,7 +406,13 @@ export class MermaidService {
       this.initializeMermaid();
     }
     
-    return { svg: new XMLSerializer().serializeToString(svgElement) };
+    // Generate alt text for accessibility
+    const altText = this.generateAltText(code);
+    
+    return { 
+      svg: new XMLSerializer().serializeToString(svgElement),
+      altText
+    };
   }
 
   /**
@@ -973,5 +979,154 @@ export class MermaidService {
     // This method is kept for backward compatibility but is no longer used
     // Mermaid diagrams are now rendered directly in markdown.page.ts
     console.warn('MermaidService.renderDiagrams() is deprecated - diagrams are now rendered in markdown.page.ts');
+  }
+
+  /**
+   * Generate descriptive alt text for Mermaid diagrams based on their syntax
+   */
+  private generateAltText(mermaidCode: string): string {
+    const code = mermaidCode.trim();
+    
+    // Detect diagram type
+    if (code.startsWith('sequenceDiagram')) {
+      return this.generateSequenceDiagramAltText(code);
+    } else if (code.startsWith('graph')) {
+      return this.generateGraphDiagramAltText(code);
+    } else if (code.startsWith('flowchart')) {
+      return this.generateFlowchartAltText(code);
+    } else if (code.startsWith('classDiagram')) {
+      return this.generateClassDiagramAltText(code);
+    }
+    
+    // Fallback for unknown diagram types
+    return 'Interactive diagram illustrating system architecture and component relationships.';
+  }
+
+  /**
+   * Generate alt text for sequence diagrams
+   */
+  private generateSequenceDiagramAltText(code: string): string {
+    const lines = code.split('\n').map(line => line.trim()).filter(line => line);
+    
+    // Extract participants
+    const participants: string[] = [];
+    const participantAliases = new Map<string, string>();
+    
+    for (const line of lines) {
+      if (line.startsWith('participant ')) {
+        const match = line.match(/participant\s+(.+?)(?:\s+as\s+(.+))?$/);
+        if (match) {
+          const [, id, alias] = match;
+          participants.push(alias || id);
+          if (alias) {
+            participantAliases.set(id, alias);
+          }
+        }
+      }
+    }
+    
+    // Extract interactions (arrows between participants)
+    const interactions: string[] = [];
+    for (const line of lines) {
+      if (line.includes('->') || line.includes('-->>')) {
+        const match = line.match(/(.+?)(?:->|-->>)(.+?):\s*(.+)$/);
+        if (match) {
+          const [, from, to, action] = match;
+          const fromName = participantAliases.get(from.trim()) || from.trim();
+          const toName = participantAliases.get(to.trim()) || to.trim();
+          interactions.push(`${fromName} sends ${action} to ${toName}`);
+        }
+      }
+    }
+    
+    const participantCount = participants.length;
+    const participantList = participants.length > 0 ? participants.join(', ') : 'system components';
+    
+    // Build workflow description
+    let workflow = 'message flow';
+    if (interactions.length > 0) {
+      workflow = interactions.slice(0, 3).join(', then ').toLowerCase();
+      if (interactions.length > 3) {
+        workflow += ', and additional steps';
+      }
+    }
+    
+    return `Sequence diagram showing ${workflow} between ${participantCount} components: ${participantList}. Flow demonstrates the step-by-step interaction pattern for this process.`;
+  }
+
+  /**
+   * Generate alt text for graph diagrams (dependency and architecture diagrams)
+   */
+  private generateGraphDiagramAltText(code: string): string {
+    const lines = code.split('\n').map(line => line.trim()).filter(line => line);
+    
+    // Detect direction
+    const firstLine = lines[0] || '';
+    const direction = firstLine.includes('LR') ? 'left-to-right' : 
+                     firstLine.includes('TB') ? 'top-to-bottom' : 
+                     firstLine.includes('RL') ? 'right-to-left' : 'hierarchical';
+    
+    // Extract subgraphs
+    const subgraphs: string[] = [];
+    let inSubgraph = false;
+    
+    for (const line of lines) {
+      if (line.startsWith('subgraph ')) {
+        const match = line.match(/subgraph\s+(.+?)\["(.+?)"\]/);
+        if (match) {
+          subgraphs.push(match[2]);
+        }
+        inSubgraph = true;
+      } else if (line === 'end' && inSubgraph) {
+        inSubgraph = false;
+      }
+    }
+    
+    // Extract nodes (simplified)
+    const nodeCount = (code.match(/\[.+?\]/g) || []).length;
+    
+    // Extract relationships (arrows)
+    const relationships = (code.match(/-->\|.+?\|/g) || []).length + 
+                         (code.match(/-->/g) || []).length;
+    
+    // Determine diagram purpose based on content
+    let purpose = 'component relationships';
+    if (code.includes('Core') || code.includes('Package')) {
+      purpose = 'package dependencies and architectural layers';
+    } else if (code.includes('Command') || code.includes('Event')) {
+      purpose = 'CQRS workflow and data flow patterns';
+    } else if (code.includes('Write') || code.includes('Read')) {
+      purpose = 'read and write side separation in CQRS architecture';
+    }
+    
+    const groupingText = subgraphs.length > 0 ? 
+      ` organized in ${subgraphs.length} groups: ${subgraphs.join(', ')}.` : '.';
+    
+    return `${direction.charAt(0).toUpperCase() + direction.slice(1)} diagram showing ${purpose} between ${nodeCount} components${groupingText} Contains ${relationships} connections demonstrating system architecture and data flow.`;
+  }
+
+  /**
+   * Generate alt text for flowchart diagrams
+   */
+  private generateFlowchartAltText(code: string): string {
+    // Flowcharts are similar to graphs but often show process flows
+    return this.generateGraphDiagramAltText(code.replace('flowchart', 'graph'));
+  }
+
+  /**
+   * Generate alt text for class diagrams
+   */
+  private generateClassDiagramAltText(code: string): string {
+    const lines = code.split('\n').map(line => line.trim()).filter(line => line);
+    
+    // Extract classes
+    const classes = lines.filter(line => line.startsWith('class ')).length;
+    
+    // Extract relationships
+    const relationships = lines.filter(line => 
+      line.includes('--|>') || line.includes('--') || line.includes('..>')
+    ).length;
+    
+    return `Class diagram showing ${classes} classes with ${relationships} relationships. Illustrates object-oriented design patterns and type hierarchies.`;
   }
 }
