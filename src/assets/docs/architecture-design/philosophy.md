@@ -11,6 +11,28 @@ Whizbang is a unified event-sourced data and messaging runtime for .NET that col
 
 ## Core Philosophy
 
+### Events as the Source of Truth
+
+**Events are immutable facts that have happened.** In Whizbang, events are not just notifications—they are the authoritative record of everything that has occurred in your system. All aggregates and projections can be rebuilt or reimagined from the event stream at any time, even years after initial deployment.
+
+This approach provides:
+- **Complete audit trail** - Every state change is recorded forever
+- **Time travel debugging** - Replay events to understand how state evolved
+- **Flexible projections** - Build new read models from existing events
+- **Migration freedom** - Refactor your domain model without losing history
+
+### Single Surface Area
+
+Teams waste cognitive energy context-switching between different APIs, patterns, and abstractions. Whizbang provides **one set of primitives** for:
+
+- **Aggregates** - Write-side domain models that enforce business rules
+- **Projections** - Read-side models optimized for queries
+- **Commands** - Requests to change state, routed to domain owners
+- **Queries** - Requests for data, executed against projections
+- **Sagas** - Long-running processes that coordinate across domains
+
+All of these concepts share the same handler model, dependency injection patterns, and testing approaches. Learn once, apply everywhere.
+
 ### One Runtime. Any Mode. Every Pattern.
 
 **Write your business logic once. Run it anywhere.** Whizbang provides a unified mental model that scales from simple in-process messaging to complex distributed event-sourced systems—without changing your handlers.
@@ -66,6 +88,18 @@ public class OrderHandler : IHandle<CreateOrder> {
     }
 }
 ```
+
+### From Simple to Scale
+
+Whizbang is designed for **the full spectrum**:
+
+**Simple Start**: Use Whizbang as an in-process mediator for CQRS without any infrastructure dependencies. Perfect for small apps or getting started.
+
+**Growth Path**: Add event sourcing, projections, and persistence as your needs grow. Every feature is opt-in.
+
+**Enterprise Scale**: Deploy across microservices with message brokers, multiple databases, multi-region disaster recovery, and Kubernetes auto-scaling.
+
+**The same code works at every scale.** Your simple mediator handlers become distributed message handlers without rewrites.
 
 ### Progressive Enhancement
 
