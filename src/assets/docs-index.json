@@ -1,5 +1,37 @@
 [
   {
+    "slug": "Advanced/advanced-scenarios",
+    "title": "Advanced Scenarios",
+    "category": "Advanced",
+    "order": 1,
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "Advanced/configuration",
+    "title": "Configuration",
+    "category": "Advanced",
+    "order": 1,
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "Architecture & Design/architecture",
+    "title": "Architecture Overview",
+    "category": "Architecture & Design",
+    "order": 1,
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "Architecture & Design/philosophy",
+    "title": "Philosophy & Design Principles",
+    "category": "Architecture & Design",
+    "order": 2,
+    "videos": [],
+    "examples": []
+  },
+  {
     "slug": "Commands/command-handling",
     "title": "Command Handling",
     "category": "Commands",
@@ -24,10 +56,82 @@
     "examples": []
   },
   {
+    "slug": "Core Concepts/aggregates",
+    "title": "Aggregates",
+    "category": "Core Concepts",
+    "order": 2,
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "Core Concepts/core-concepts",
+    "title": "Core Concepts",
+    "category": "Core Concepts",
+    "order": 1,
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "Core Concepts/projections",
+    "title": "Projections",
+    "category": "Core Concepts",
+    "order": 3,
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "Core Concepts/repositories-and-helpers",
+    "title": "Repositories and CQRS Helpers",
+    "category": "Core Concepts",
+    "order": 2,
+    "videos": [],
+    "examples": []
+  },
+  {
     "slug": "Design/open-questions",
     "title": "Open Design Questions",
     "category": "Architecture & Design",
     "order": 3,
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "Examples/enhanced-csharp-examples",
+    "title": "C# Code Examples",
+    "category": "Examples",
+    "order": 1,
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "Getting Started/aspire-integration",
+    "title": ".NET Aspire Integration",
+    "category": "Getting Started",
+    "order": 3,
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "getting-started",
+    "title": "Getting Started",
+    "category": "Getting Started",
+    "order": 1,
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "Getting Started/package-structure",
+    "title": "Package Structure",
+    "category": "Getting Started",
+    "order": 2,
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "Observability/dashboard",
+    "title": "Whizbang Dashboard",
+    "category": "Observability",
+    "order": 1,
     "videos": [],
     "examples": []
   },
@@ -84,110 +188,6 @@
     "title": "Lakehouse Streaming",
     "category": "Roadmap",
     "order": 3,
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "advanced-scenarios",
-    "title": "Advanced Scenarios",
-    "category": "Advanced",
-    "order": 1,
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "aggregates",
-    "title": "Aggregates",
-    "category": "Core Concepts",
-    "order": 2,
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "architecture",
-    "title": "Architecture Overview",
-    "category": "Architecture & Design",
-    "order": 1,
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "aspire-integration",
-    "title": ".NET Aspire Integration",
-    "category": "Getting Started",
-    "order": 3,
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "configuration",
-    "title": "Configuration",
-    "category": "Advanced",
-    "order": 1,
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "core-concepts",
-    "title": "Core Concepts",
-    "category": "Core Concepts",
-    "order": 1,
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "dashboard",
-    "title": "Whizbang Dashboard",
-    "category": "Observability",
-    "order": 1,
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "enhanced-csharp-examples",
-    "title": "C# Code Examples",
-    "category": "Examples",
-    "order": 1,
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "getting-started",
-    "title": "Getting Started",
-    "category": "Getting Started",
-    "order": 1,
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "package-structure",
-    "title": "Package Structure",
-    "category": "Getting Started",
-    "order": 2,
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "philosophy",
-    "title": "Philosophy & Design Principles",
-    "category": "Architecture & Design",
-    "order": 2,
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "projections",
-    "title": "Projections",
-    "category": "Core Concepts",
-    "order": 3,
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "repositories-and-helpers",
-    "title": "Repositories and CQRS Helpers",
-    "category": "Core Concepts",
-    "order": 2,
     "videos": [],
     "examples": []
   }
