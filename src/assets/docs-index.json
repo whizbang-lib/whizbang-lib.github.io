@@ -99,10 +99,127 @@
     "examples": []
   },
   {
+    "slug": "design/advanced-features",
+    "title": "Advanced Features",
+    "category": "Architecture & Design",
+    "order": 10,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "design/concurrency-control",
+    "title": "Concurrency Control",
+    "category": "Architecture & Design",
+    "order": 5,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "design/deployment-operations",
+    "title": "Deployment & Operations",
+    "category": "Architecture & Design",
+    "order": 15,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "design/domain-ownership",
+    "title": "Domain Ownership",
+    "category": "Architecture & Design",
+    "order": 6,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "design/event-store-projections",
+    "title": "Event Store & Projection Architecture",
+    "category": "Architecture & Design",
+    "order": 4,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "design/flags-tags-system",
+    "title": "Flags & Tags System",
+    "category": "Architecture & Design",
+    "order": 11,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "design/multi-tenancy",
+    "title": "Multi-Tenancy",
+    "category": "Architecture & Design",
+    "order": 8,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "design/observability-metrics",
+    "title": "Observability & Metrics",
+    "category": "Architecture & Design",
+    "order": 14,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
     "slug": "design/open-questions",
-    "title": "Open Design Questions",
+    "title": "Open Design Questions - RESOLVED",
     "category": "Architecture & Design",
     "order": 3,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "design/policy-engine",
+    "title": "Policy Engine",
+    "category": "Architecture & Design",
+    "order": 12,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "design/projection-management",
+    "title": "Projection Management",
+    "category": "Architecture & Design",
+    "order": 7,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "design/schema-evolution",
+    "title": "Schema Evolution & Event Versioning",
+    "category": "Architecture & Design",
+    "order": 9,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "design/source-generation-ide",
+    "title": "Source Generation & IDE Integration",
+    "category": "Architecture & Design",
+    "order": 12,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "design/testing-development-tools",
+    "title": "Testing & Development Tools",
+    "category": "Architecture & Design",
+    "order": 13,
     "description": "",
     "videos": [],
     "examples": []
@@ -212,6 +329,60 @@
     "category": "Roadmap",
     "order": 3,
     "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "usage-patterns/cqrs-implementation",
+    "title": "CQRS Implementation",
+    "category": "Usage Patterns",
+    "order": 3,
+    "description": "Implement Command Query Responsibility Segregation (CQRS) with Whizbang to separate read and write models for optimal performance",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "usage-patterns/distributed-messaging",
+    "title": "Distributed Messaging",
+    "category": "Usage Patterns",
+    "order": 4,
+    "description": "Implement distributed messaging patterns with Whizbang for reliable communication across service boundaries",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "usage-patterns/event-sourcing-basics",
+    "title": "Event Sourcing Basics",
+    "category": "Usage Patterns",
+    "order": 2,
+    "description": "Learn the fundamentals of event sourcing with Whizbang - storing state changes as events and rebuilding state through event replay",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "usage-patterns/microservices-integration",
+    "title": "Microservices Integration",
+    "category": "Usage Patterns",
+    "order": 6,
+    "description": "Build and deploy microservices with Whizbang and .NET Aspire for production-ready distributed systems",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "usage-patterns/saga-orchestration",
+    "title": "Saga Orchestration",
+    "category": "Usage Patterns",
+    "order": 5,
+    "description": "Implement saga patterns with Whizbang to orchestrate complex multi-step business processes with compensation",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "usage-patterns/simple-mediator",
+    "title": "Simple Mediator Pattern",
+    "category": "Usage Patterns",
+    "order": 1,
+    "description": "Learn how to implement a simple in-process mediator pattern with Whizbang for command and query handling without persistence",
     "videos": [],
     "examples": []
   }
