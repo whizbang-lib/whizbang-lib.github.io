@@ -19,10 +19,11 @@ The Simple Mediator pattern is your entry point into the Whizbang library. It pr
 
 ### Key Benefits
 
-- **Decoupling**: Handlers are independent of controllers/UI
-- **Testability**: Easy to unit test individual handlers
-- **Simplicity**: No persistence or event sourcing complexity
-- **Flexibility**: Easy to add cross-cutting concerns later
+- **Progressive Enhancement**: Same code works from monolith to microservices
+- **Convention Over Configuration**: Return types determine behavior
+- **Aspect-Oriented**: Cross-cutting concerns via declarative attributes
+- **Compile-Time Safety**: Source generators catch errors at build time
+- **Zero Overhead**: Generated code performs like hand-written code
 
 ## Architecture Diagram
 
@@ -48,56 +49,55 @@ graph LR
 <PackageReference Include="Whizbang.Core" Version="1.0.0" />
 ```
 
-### Key Interfaces
+### The Unified Approach
 
-- `ICommand<TResult>` - Represents an action that changes state
-- `IQuery<TResult>` - Represents a request for data
-- `ICommandHandler<TCommand, TResult>` - Handles command execution
-- `IQueryHandler<TQuery, TResult>` - Handles query execution
-- `IMediator` - Routes commands and queries to handlers
+Whizbang uses a single, simple pattern for all handlers:
+
+- **One Interface**: `IHandle<T>` for all message types
+- **Return Type Semantics**: What you return determines what happens
+- **Aspect Attributes**: Declarative cross-cutting concerns
+- **No Ceremony**: No base classes, no complex registration
 
 ## Step-by-Step Implementation
 
-### Step 1: Define Your Commands and Queries
+### Step 1: Define Your Messages
 
 ```csharp{
-title: "Command and Query Definitions"
-description: "Define strongly-typed commands and queries for your operations"
+title: "Message Definitions"
+description: "Simple message types - no special interfaces required"
 framework: "NET8"
 category: "Domain Logic"
 difficulty: "BEGINNER"
-tags: ["Commands", "Queries", "CQRS"]
+tags: ["Messages", "Commands", "Queries"]
 nugetPackages: ["Whizbang.Core"]
-filename: "OrderCommands.cs"
+filename: "OrderMessages.cs"
 showLineNumbers: true
-usingStatements: ["Whizbang", "System", "System.Collections.Generic"]
+usingStatements: ["System", "System.Collections.Generic"]
 }
-using Whizbang;
 using System;
 using System.Collections.Generic;
 
 namespace MyApp.Orders;
 
-// Command: Changes state, returns a result
-public record CreateOrderCommand(
+// Command: A message that changes state
+public record CreateOrder(
     Guid CustomerId,
     List<OrderItem> Items,
     string ShippingAddress
-) : ICommand<OrderCreatedResult>;
-
-// Query: Reads data, no side effects
-public record GetOrderByIdQuery(
-    Guid OrderId
-) : IQuery<OrderDetails>;
-
-// Command result
-public record OrderCreatedResult(
-    Guid OrderId,
-    decimal TotalAmount,
-    DateTime EstimatedDelivery
 );
 
-// Query result
+// Query: A message that reads data
+public record GetOrderById(Guid OrderId);
+
+// Event: Something that happened
+public record OrderCreated(
+    Guid OrderId,
+    Guid CustomerId,
+    decimal TotalAmount,
+    DateTime CreatedAt
+);
+
+// Response types
 public record OrderDetails(
     Guid OrderId,
     Guid CustomerId,
@@ -107,7 +107,7 @@ public record OrderDetails(
     DateTime CreatedAt
 );
 
-// Shared domain model
+// Domain model
 public record OrderItem(
     string ProductId,
     string ProductName,
@@ -116,138 +116,75 @@ public record OrderItem(
 );
 ```
 
-### Step 2: Implement Command Handlers
+### Step 2: Implement Handlers with Return Type Semantics
 
 ```csharp{
-title: "Command Handler Implementation"
-description: "Handle commands with business logic and validation"
+title: "Handler Implementation - Unified Approach"
+description: "Simple handlers with return type semantics and aspects"
 framework: "NET8"
 category: "Domain Logic"
 difficulty: "BEGINNER"
-tags: ["Command Handler", "Business Logic", "Validation"]
+tags: ["Handlers", "Return Types", "Aspects"]
 nugetPackages: ["Whizbang.Core"]
-filename: "CreateOrderHandler.cs"
+filename: "OrderHandlers.cs"
 showLineNumbers: true
-highlightLines: [15, 20, 28]
-usingStatements: ["Whizbang", "System", "System.Threading.Tasks"]
+highlightLines: [8, 13, 29, 45]
+usingStatements: ["Whizbang", "System", "System.Linq"]
 }
 using Whizbang;
 using System;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace MyApp.Orders.Handlers;
 
-public class CreateOrderHandler : ICommandHandler<CreateOrderCommand, OrderCreatedResult> {
-    private readonly IOrderService _orderService;
-    private readonly IInventoryService _inventoryService;
+// Command handler with aspects
+[Logged]
+[Validated]
+[Transactional]
+public class CreateOrderHandler : IHandle<CreateOrder> {
+    private readonly IOrderRepository _repository;
     
-    public CreateOrderHandler(
-        IOrderService orderService, 
-        IInventoryService inventoryService) {
-        _orderService = orderService;
-        _inventoryService = inventoryService;
-    }
-    
-    public async Task<OrderCreatedResult> Handle(
-        CreateOrderCommand command, 
-        CancellationToken cancellationToken) {
-        
-        // Validate command
-        if (command.Items == null || !command.Items.Any()) {
-            throw new ValidationException("Order must have at least one item");
-        }
-        
-        // Check inventory
-        foreach (var item in command.Items) {
-            var available = await _inventoryService.CheckAvailability(
-                item.ProductId, 
-                item.Quantity,
-                cancellationToken);
-                
-            if (!available) {
-                throw new InsufficientInventoryException(
-                    $"Product {item.ProductName} is out of stock");
-            }
-        }
-        
+    // Return type determines behavior: OrderCreated event will be published
+    public OrderCreated Handle(CreateOrder cmd, IOrderRepository repository) {
         // Calculate total
-        var totalAmount = command.Items.Sum(i => i.Quantity * i.UnitPrice);
+        var totalAmount = cmd.Items.Sum(i => i.Quantity * i.UnitPrice);
         
-        // Create order (in-memory for this example)
-        var orderId = Guid.NewGuid();
+        // Create order
         var order = new Order {
-            Id = orderId,
-            CustomerId = command.CustomerId,
-            Items = command.Items,
+            Id = Guid.NewGuid(),
+            CustomerId = cmd.CustomerId,
+            Items = cmd.Items,
             TotalAmount = totalAmount,
-            ShippingAddress = command.ShippingAddress,
+            ShippingAddress = cmd.ShippingAddress,
             Status = "Pending",
             CreatedAt = DateTime.UtcNow
         };
         
         // Save order
-        await _orderService.SaveOrder(order, cancellationToken);
+        repository.Save(order);
         
-        // Reserve inventory
-        await _inventoryService.ReserveItems(
-            command.Items, 
-            orderId,
-            cancellationToken);
-        
-        // Calculate estimated delivery
-        var estimatedDelivery = DateTime.UtcNow.AddDays(3);
-        
-        return new OrderCreatedResult(
-            orderId,
-            totalAmount,
-            estimatedDelivery
+        // Return event - Whizbang publishes it automatically
+        return new OrderCreated(
+            order.Id,
+            order.CustomerId,
+            order.TotalAmount,
+            order.CreatedAt
         );
     }
 }
-```
 
-### Step 3: Implement Query Handlers
-
-```csharp{
-title: "Query Handler Implementation"
-description: "Handle queries to retrieve data without side effects"
-framework: "NET8"
-category: "Domain Logic"
-difficulty: "BEGINNER"
-tags: ["Query Handler", "Read Model", "Data Access"]
-nugetPackages: ["Whizbang.Core"]
-filename: "GetOrderByIdHandler.cs"
-showLineNumbers: true
-usingStatements: ["Whizbang", "System", "System.Threading.Tasks"]
-}
-using Whizbang;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace MyApp.Orders.Handlers;
-
-public class GetOrderByIdHandler : IQueryHandler<GetOrderByIdQuery, OrderDetails> {
-    private readonly IOrderService _orderService;
-    
-    public GetOrderByIdHandler(IOrderService orderService) {
-        _orderService = orderService;
-    }
-    
-    public async Task<OrderDetails> Handle(
-        GetOrderByIdQuery query, 
-        CancellationToken cancellationToken) {
-        
-        // Retrieve order
-        var order = await _orderService.GetOrder(query.OrderId, cancellationToken);
+// Query handler with caching aspect
+[Cached(Duration = "5m")]
+public class GetOrderByIdHandler : IHandle<GetOrderById> {
+    // Return type is inferred from query
+    public OrderDetails Handle(GetOrderById query, IOrderRepository repository) {
+        var order = repository.GetById(query.OrderId);
         
         if (order == null) {
             throw new NotFoundException($"Order {query.OrderId} not found");
         }
         
-        // Map to query result
+        // Map to response
         return new OrderDetails(
             order.Id,
             order.CustomerId,
@@ -258,21 +195,35 @@ public class GetOrderByIdHandler : IQueryHandler<GetOrderByIdQuery, OrderDetails
         );
     }
 }
+
+// Handler returning multiple effects via tuple
+public class ProcessOrderHandler : IHandle<ProcessOrder> {
+    // Tuple return = multiple cascading messages
+    public (OrderProcessed, SendEmail, UpdateInventory) Handle(ProcessOrder cmd) {
+        // Process order logic...
+        
+        return (
+            new OrderProcessed(cmd.OrderId),
+            new SendEmail(cmd.CustomerEmail, "Order confirmed"),
+            new UpdateInventory(cmd.Items)
+        );
+    }
+}
 ```
 
-### Step 4: Configure Dependency Injection
+### Step 3: Wire Up Your Application
 
 ```csharp{
 title: "Service Configuration"
-description: "Register mediator and handlers with dependency injection"
+description: "Progressive enhancement - start simple, scale when needed"
 framework: "NET8"
 category: "Configuration"
 difficulty: "BEGINNER"
-tags: ["DI", "Configuration", "ASP.NET Core"]
+tags: ["DI", "Configuration", "Progressive Enhancement"]
 nugetPackages: ["Whizbang.Core", "Microsoft.Extensions.DependencyInjection"]
 filename: "Program.cs"
 showLineNumbers: true
-highlightLines: [8, 11]
+highlightLines: [8, 11, 20, 28]
 usingStatements: ["Whizbang", "Microsoft.Extensions.DependencyInjection"]
 }
 using Whizbang;
@@ -282,17 +233,30 @@ using MyApp.Orders.Handlers;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add Whizbang mediator
-builder.Services.AddWhizbang(config => {
-    config.RegisterHandlersFromAssembly(typeof(Program).Assembly);
-    config.UseSimpleMediator(); // No persistence, just routing
-});
+// Start simple - In-process mode (like MediatR)
+builder.Services.AddWhizbang()
+    .RegisterHandlersFromAssembly(typeof(Program).Assembly)
+    .UseInProcessMode();  // No infrastructure needed
 
 // Register your services
-builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 
-// Add controllers
+// When ready for durability (like Wolverine)
+// builder.Services.AddWhizbang()
+//     .UseDurableMode()
+//     .UsePostgreSQL(connectionString);
+
+// When scaling to microservices (like MassTransit)
+// builder.Services.AddWhizbang()
+//     .UseDistributedMode()
+//     .UseKafka(kafkaConfig);
+
+// When you need event sourcing (unique to Whizbang)
+// builder.Services.AddWhizbang()
+//     .UseEventSourcedMode()
+//     .UseEventStore(eventStoreConfig);
+
 builder.Services.AddControllers();
 
 var app = builder.Build();
@@ -307,7 +271,7 @@ app.Run();
 
 ```csharp{
 title: "Complete Mediator Pattern Example"
-description: "Full working example with API controller using the mediator pattern"
+description: "Full working example with API controller using the unified approach"
 framework: "NET8"
 category: "Complete Example"
 difficulty: "BEGINNER"
@@ -315,16 +279,14 @@ tags: ["API", "Controller", "Mediator", "Complete"]
 nugetPackages: ["Whizbang.Core", "Microsoft.AspNetCore.Mvc"]
 filename: "OrdersController.cs"
 showLineNumbers: true
-highlightLines: [15, 24, 36, 48]
+highlightLines: [14, 23, 33]
 testFile: "OrdersControllerTests.cs"
 testMethod: "CreateOrder_ValidCommand_ReturnsOrderId"
-usingStatements: ["Whizbang", "Microsoft.AspNetCore.Mvc", "System.Threading.Tasks"]
+usingStatements: ["Whizbang", "Microsoft.AspNetCore.Mvc", "System"]
 }
 using Whizbang;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 using MyApp.Orders;
 
 namespace MyApp.Controllers;
@@ -332,28 +294,26 @@ namespace MyApp.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 public class OrdersController : ControllerBase {
-    private readonly IMediator _mediator;
+    private readonly IWhizbang _whizbang;
     
-    public OrdersController(IMediator mediator) {
-        _mediator = mediator;
+    public OrdersController(IWhizbang whizbang) {
+        _whizbang = whizbang;
     }
     
     [HttpPost]
-    public async Task<ActionResult<OrderCreatedResult>> CreateOrder(
-        [FromBody] CreateOrderRequest request,
-        CancellationToken cancellationToken) {
+    public async Task<ActionResult<OrderCreated>> CreateOrder(
+        [FromBody] CreateOrderRequest request) {
         
         // Map request to command
-        var command = new CreateOrderCommand(
+        var command = new CreateOrder(
             request.CustomerId,
             request.Items,
             request.ShippingAddress
         );
         
         try {
-            // Send command through mediator
-            var result = await _mediator.Send(command, cancellationToken);
-            
+            // Send command - return type determines behavior
+            var result = await _whizbang.Send(command);
             return Ok(result);
         }
         catch (ValidationException ex) {
@@ -365,22 +325,31 @@ public class OrdersController : ControllerBase {
     }
     
     [HttpGet("{orderId}")]
-    public async Task<ActionResult<OrderDetails>> GetOrder(
-        Guid orderId,
-        CancellationToken cancellationToken) {
-        
+    public async Task<ActionResult<OrderDetails>> GetOrder(Guid orderId) {
         // Create query
-        var query = new GetOrderByIdQuery(orderId);
+        var query = new GetOrderById(orderId);
         
         try {
-            // Send query through mediator
-            var result = await _mediator.Send(query, cancellationToken);
-            
+            // Send query through whizbang
+            var result = await _whizbang.Send(query);
             return Ok(result);
         }
         catch (NotFoundException ex) {
             return NotFound(new { error = ex.Message });
         }
+    }
+    
+    [HttpPost("{orderId}/process")]
+    public async Task<ActionResult> ProcessOrder(Guid orderId) {
+        // Handler returns tuple - all messages are processed
+        var (orderProcessed, emailSent, inventoryUpdated) = 
+            await _whizbang.Send(new ProcessOrder(orderId));
+        
+        return Ok(new {
+            orderId = orderProcessed.OrderId,
+            emailSent = emailSent.Sent,
+            inventoryUpdated = inventoryUpdated.UpdatedCount
+        });
     }
 }
 
@@ -398,46 +367,32 @@ public record CreateOrderRequest(
 
 ```csharp{
 title: "Handler Unit Tests"
-description: "Test handlers in isolation with mocked dependencies"
+description: "Test handlers with aspects in isolation"
 framework: "NET8"
 category: "Testing"
 difficulty: "BEGINNER"
-tags: ["Unit Testing", "xUnit", "Moq"]
-nugetPackages: ["Whizbang.Core", "xUnit", "Moq"]
+tags: ["Unit Testing", "xUnit", "Aspects"]
+nugetPackages: ["Whizbang.Core", "xUnit"]
 filename: "CreateOrderHandlerTests.cs"
 showLineNumbers: true
-usingStatements: ["Whizbang", "Xunit", "Moq"]
+highlightLines: [15, 25, 40]
+usingStatements: ["Whizbang", "Xunit"]
 }
 using Whizbang;
 using Xunit;
-using Moq;
 using System;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using MyApp.Orders;
 using MyApp.Orders.Handlers;
 
 namespace MyApp.Tests.Orders;
 
 public class CreateOrderHandlerTests {
-    private readonly Mock<IOrderService> _orderServiceMock;
-    private readonly Mock<IInventoryService> _inventoryServiceMock;
-    private readonly CreateOrderHandler _handler;
-    
-    public CreateOrderHandlerTests() {
-        _orderServiceMock = new Mock<IOrderService>();
-        _inventoryServiceMock = new Mock<IInventoryService>();
-        _handler = new CreateOrderHandler(
-            _orderServiceMock.Object,
-            _inventoryServiceMock.Object
-        );
-    }
-    
     [Fact]
-    public async Task Handle_ValidCommand_CreatesOrder() {
+    public void Handle_ValidCommand_ReturnsOrderCreatedEvent() {
         // Arrange
-        var command = new CreateOrderCommand(
+        var handler = new CreateOrderHandler();
+        var command = new CreateOrder(
             Guid.NewGuid(),
             new List<OrderItem> {
                 new OrderItem("PROD-1", "Widget", 2, 10.00m)
@@ -445,39 +400,70 @@ public class CreateOrderHandlerTests {
             "123 Main St"
         );
         
-        _inventoryServiceMock
-            .Setup(x => x.CheckAvailability(
-                It.IsAny<string>(), 
-                It.IsAny<int>(), 
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+        var repository = new FakeOrderRepository();
         
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
+        // Act - Handler with dependency injection
+        var result = handler.Handle(command, repository);
         
-        // Assert
-        Assert.NotEqual(Guid.Empty, result.OrderId);
+        // Assert - Return type determines behavior
+        Assert.NotNull(result);
+        Assert.IsType<OrderCreated>(result);
         Assert.Equal(20.00m, result.TotalAmount);
-        Assert.True(result.EstimatedDelivery > DateTime.UtcNow);
-        
-        _orderServiceMock.Verify(
-            x => x.SaveOrder(It.IsAny<Order>(), It.IsAny<CancellationToken>()), 
-            Times.Once);
+        Assert.True(repository.WasCalled);
     }
     
     [Fact]
-    public async Task Handle_EmptyItems_ThrowsValidationException() {
+    public void Handle_MultipleEffects_ReturnsTuple() {
         // Arrange
-        var command = new CreateOrderCommand(
-            Guid.NewGuid(),
-            new List<OrderItem>(),
-            "123 Main St"
-        );
+        var handler = new ProcessOrderHandler();
+        var command = new ProcessOrder(Guid.NewGuid());
         
-        // Act & Assert
-        await Assert.ThrowsAsync<ValidationException>(
-            () => _handler.Handle(command, CancellationToken.None)
-        );
+        // Act - Handler returns tuple
+        var (processed, email, inventory) = handler.Handle(command);
+        
+        // Assert - All effects returned
+        Assert.NotNull(processed);
+        Assert.NotNull(email);
+        Assert.NotNull(inventory);
+        Assert.Equal(command.OrderId, processed.OrderId);
+    }
+}
+
+// Test with aspects
+public class AspectTests {
+    [Fact]
+    public async Task Handler_WithCacheAspect_CachesResult() {
+        // Arrange
+        var test = await Whizbang.Test<GetOrderByIdHandler>()
+            .WithAspects() // Include production aspects
+            .Given(new GetOrderById(Guid.NewGuid()))
+            .WhenHandled();
+        
+        // First call
+        var result1 = test.Result;
+        
+        // Second call - should be cached
+        var result2 = await test.HandleAgain();
+        
+        // Assert
+        test.Aspect<CacheAspect>()
+            .ShouldHaveHit("order:*")
+            .WithinDuration("5m");
+        
+        Assert.Same(result1, result2); // Same instance from cache
+    }
+    
+    [Fact]
+    public async Task Handler_WithLoggingAspect_LogsExecution() {
+        // Test logging aspect
+        await Whizbang.Test<CreateOrderHandler>()
+            .Given(new CreateOrder { ... })
+            .WithAspects()
+            .WhenHandled()
+            .ThenAspect<LoggingAspect>(logs => {
+                logs.ShouldContain("Executing CreateOrderHandler");
+                logs.ShouldContain("Completed in");
+            });
     }
 }
 ```
@@ -496,25 +482,33 @@ public class OrderService {
     }
 }
 
-// ✅ GOOD - Always use the mediator
+// ✅ GOOD - Always use Whizbang for routing
 public class OrderService {
-    private readonly IMediator _mediator;
+    private readonly IWhizbang _whizbang;
     
-    public OrderService(IMediator mediator) {
-        _mediator = mediator;
+    public OrderService(IWhizbang whizbang) {
+        _whizbang = whizbang;
     }
 }
 ```
 
-### Don't Mix Commands and Queries
+### Use Return Types to Express Intent
 
 ```csharp
-// ❌ BAD - Command returning data it modified
-public record CreateOrderCommand(...) : ICommand<Order>;
+// ❌ BAD - Unclear what happens with the result
+public object Handle(CreateOrder cmd) {
+    return new { OrderId = Guid.NewGuid() };
+}
 
-// ✅ GOOD - Command returns minimal result, use query for full data
-public record CreateOrderCommand(...) : ICommand<OrderCreatedResult>;
-public record GetOrderByIdQuery(Guid OrderId) : IQuery<Order>;
+// ✅ GOOD - Return type makes intent clear
+public OrderCreated Handle(CreateOrder cmd) {
+    return new OrderCreated(Guid.NewGuid());
+}
+
+// ✅ GOOD - Multiple effects via tuple
+public (OrderCreated, SendEmail) Handle(CreateOrder cmd) {
+    return (new OrderCreated(), new SendEmail());
+}
 ```
 
 ### Avoid Business Logic in Controllers
@@ -533,7 +527,7 @@ public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
 [HttpPost]
 public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
     var command = MapToCommand(request);
-    var result = await _mediator.Send(command);
+    var result = await _whizbang.Send(command);
     return Ok(result);
 }
 ```
@@ -541,28 +535,41 @@ public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
 ## Progressive Enhancement
 
 ### Start Simple
-1. Begin with basic command/query handlers
-2. Add validation as needed
-3. Implement error handling patterns
-
-### Add Cross-Cutting Concerns
 ```csharp
-// Add logging behavior
-config.AddBehavior<LoggingBehavior>();
-
-// Add validation behavior  
-config.AddBehavior<ValidationBehavior>();
-
-// Add caching for queries
-config.AddBehavior<CachingBehavior>();
+// Phase 1: Simple in-process (like MediatR)
+builder.Services.AddWhizbang()
+    .UseInProcessMode();
 ```
 
-### Evolve to Event Sourcing
-When ready for event sourcing:
-1. Change `ICommand` to `IEventSourcedCommand`
-2. Add event definitions
-3. Implement aggregates
-4. Switch to `UseEventSourcing()` configuration
+### Add Durability When Needed
+```csharp
+// Phase 2: Add persistence and retry (like Wolverine)
+builder.Services.AddWhizbang()
+    .UseDurableMode()
+    .UsePostgreSQL(connectionString)
+    .WithOutbox();
+```
+
+### Scale to Distributed
+```csharp
+// Phase 3: Microservices (like MassTransit)
+builder.Services.AddWhizbang()
+    .UseDistributedMode()
+    .UseKafka(kafkaConfig)
+    .WithSagaOrchestration();
+```
+
+### Enable Event Sourcing
+```csharp
+// Phase 4: Full event sourcing (unique to Whizbang)
+builder.Services.AddWhizbang()
+    .UseEventSourcedMode()
+    .UseEventStore(eventStoreConfig)
+    .WithProjections()
+    .WithSnapshots();
+```
+
+**The same handler code works in ALL modes!**
 
 ## Related Patterns
 
@@ -573,29 +580,49 @@ When ready for event sourcing:
 ## Production Considerations
 
 ### Performance
-- Handlers are resolved per request (scoped lifetime)
-- Consider async/await for I/O operations
-- Profile handler execution time
+- Zero-overhead aspects via source generation
+- Handler pooling for reduced allocations
+- Compile-time optimizations
+- Adaptive runtime optimization
 
-### Monitoring
+### Monitoring with Aspects
 ```csharp
-// Add telemetry
-config.AddBehavior<TelemetryBehavior>();
-
-// Track metrics
-config.OnCommandExecuted(async (command, result, duration) => {
-    await metrics.RecordCommandExecution(command.GetType().Name, duration);
-});
+// Built-in observability via aspects
+[Observed] // Automatic telemetry
+[Timed]    // Performance metrics
+[Logged]   // Structured logging
+public class OrderHandler : IHandle<CreateOrder> {
+    public OrderCreated Handle(CreateOrder cmd) {
+        // Automatically generates:
+        // - Distributed trace spans
+        // - Metrics (count, duration, errors)
+        // - Structured logs with correlation IDs
+        return new OrderCreated(cmd.OrderId);
+    }
+}
 ```
 
-### Error Handling
-- Use specific exception types
-- Log errors with correlation IDs
-- Return appropriate HTTP status codes
+### Error Handling with Result Types
+```csharp
+public Result<OrderCreated> Handle(CreateOrder cmd) {
+    if (!IsValid(cmd)) {
+        return Result.Failure<OrderCreated>("Validation failed");
+    }
+    
+    try {
+        var order = CreateOrder(cmd);
+        return Result.Success(new OrderCreated(order.Id));
+    }
+    catch (Exception ex) {
+        return Result.Failure<OrderCreated>(ex.Message);
+    }
+}
+```
 
 ## Next Steps
 
-- Explore **[Event Sourcing Basics](event-sourcing-basics.md)** to add persistence
-- Learn about **[CQRS Implementation](cqrs-implementation.md)** for read/write separation
-- Review the **[Getting Started Guide](/docs/getting-started/getting-started)** for more examples
-- Check out **[Command Handling](/docs/commands/command-handling)** for advanced patterns
+- Explore **[Progressive Enhancement](progressive-enhancement.md)** to scale your application
+- Learn about **[Aspect-Oriented Handlers](aspect-oriented-handlers.md)** for cross-cutting concerns
+- Review **[Return Type Semantics](/docs/core-concepts/return-type-semantics)** for advanced patterns
+- Check out **[Event Sourcing Basics](event-sourcing-basics.md)** when ready for event sourcing
+- See **[CQRS Implementation](cqrs-implementation.md)** for read/write separation
