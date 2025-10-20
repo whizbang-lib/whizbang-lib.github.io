@@ -1,7 +1,7 @@
 ---
 title: Architecture Overview
-category: Introduction
-order: 3
+category: Architecture & Design
+order: 1
 tags: architecture, design, system-design
 ---
 

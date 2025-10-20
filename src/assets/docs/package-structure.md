@@ -23,17 +23,12 @@ Whizbang is distributed as a suite of NuGet packages, allowing you to install on
 - **Stay lean** - No forced dependencies, excellent for AOT compilation
 
 ```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 800}}}%%
+%%{init: {'flowchart': {'nodeSpacing': 800}, 'themeVariables': {'fontSize': '200px'}}}%%
 graph LR
     subgraph ORM["ORM Integrations"]
         WhizEF[Whizbang.EntityFramework<br/>EF Core Integration]
         WhizDapper[Whizbang.Dapper<br/>Dapper Integration]
         WhizNH[Whizbang.NHibernate<br/>NHibernate Integration]
-    end
-
-    subgraph Observability["Observability"]
-        WhizOTel[Whizbang.OpenTelemetry<br/>Tracing, Metrics]
-        WhizDash[Whizbang.Dashboard<br/>Monitoring UI]
     end
 
     subgraph Core["Core Packages"]
@@ -50,6 +45,11 @@ graph LR
         WhizSQS[Whizbang.AWSSQS]
     end
 
+    subgraph Observability["Observability"]
+        WhizOTel[Whizbang.OpenTelemetry<br/>Tracing, Metrics]
+        WhizDash[Whizbang.Dashboard<br/>Monitoring UI]
+    end
+
     subgraph Dev["Developer Tools"]
         WhizAnalyzers[Whizbang.Analyzers<br/>Roslyn Analyzers, Purity Checks]
         WhizTesting[Whizbang.Testing<br/>In-Memory Doubles, Test Helpers]
@@ -62,9 +62,6 @@ graph LR
     WhizProj --> WhizCore
     WhizProj --> WhizES
     WhizMsg --> WhizCore
-
-    Dev -.->|Validate/Test| Core
-    Observability -.->|Monitor| Core
 ```
 
 ### Functional Area Color Key

@@ -1,7 +1,7 @@
 ---
 title: Open Design Questions
-category: Design
-order: 1
+category: Architecture & Design
+order: 3
 tags: architecture, design-decisions, discussion, rfc
 ---
 

@@ -28,16 +28,43 @@ export class MermaidService {
     if (!this.initialized) {
       const isDark = this.themeService.isDarkTheme();
 
+      // Remove default fontSize override that breaks flowchart font sizing
+      mermaid.mermaidAPI.updateSiteConfig({fontSize: undefined});
+      
       mermaid.initialize({
         startOnLoad: false,
-        theme: isDark ? 'base' : 'default',  // Use 'base' theme for full control in dark mode
+        theme: 'base',  // Use 'base' theme for full control over themeVariables
         securityLevel: 'loose',
+        deterministicIds: true,  // Consistent IDs for repeatability
+        maxTextSize: 90000,  // Increase text limit
         themeCSS: `
+          /* Force consistent sizing regardless of content */
+          svg {
+            width: 1200px !important;
+            height: 800px !important;
+            min-width: 1200px !important;
+            min-height: 800px !important;
+          }
+          /* Global spacing and layout overrides - remove scaling */
           .cluster-label foreignObject {
             overflow: visible !important;
             width: 100% !important;
             max-width: none !important;
             min-width: 1200px !important;
+          }
+          /* Fix text wrapping issue - force horizontal layout */
+          .cluster-label text {
+            writing-mode: horizontal-tb !important;
+            text-orientation: mixed !important;
+            white-space: nowrap !important;
+            dominant-baseline: middle !important;
+          }
+          .cluster-label tspan {
+            writing-mode: horizontal-tb !important;
+            text-orientation: mixed !important;
+            white-space: nowrap !important;
+            x: 0 !important;
+            dy: 0 !important;
           }
           g[id*="cluster"] {
             width: 100% !important;
@@ -50,36 +77,35 @@ export class MermaidService {
           g[id*="Observability"] {
             width: 100% !important;
             max-width: none !important;
-            min-width: 600px !important;
+            min-width: 800px !important;
+          }
+          /* Specific fix for subgraph header text to expand naturally */
+          .cluster-label text,
+          .subgraph-label text,
+          .cluster text,
+          .subgraph text {
+            white-space: nowrap !important;
+            text-overflow: unset !important;
+            overflow: visible !important;
+          }
+          /* Allow cluster label containers to expand with text */
+          .cluster-label {
+            width: auto !important;
+            max-width: none !important;
+            overflow: visible !important;
           }
           .cluster-label div {
-            width: 100% !important;
+            width: auto !important;
+            max-width: none !important;
+            min-width: auto !important;
             text-align: center !important;
             white-space: nowrap !important;
             margin-bottom: 150px !important;
             padding: 60px 80px !important;
             margin-top: 50px !important;
+            display: inline-block !important;
           }
-          /* Completely override subgraph text positioning */
-          svg text[text-anchor="middle"]:not(.nodeLabel):not(.edgeLabel) {
-            font-size: 2em !important;
-            font-weight: 700 !important;
-            white-space: nowrap !important;
-            writing-mode: lr !important;
-            text-orientation: mixed !important;
-            direction: ltr !important;
-            transform: none !important;
-            letter-spacing: 0 !important;
-            word-spacing: normal !important;
-            text-anchor: middle !important;
-            dominant-baseline: middle !important;
-          }
-          .nodeLabel {
-            font-size: 2em !important;
-          }
-          .edgeLabel {
-            font-size: 1.7em !important;
-          }
+          /* Remove font CSS from here */
           .edgeLabel rect {
             fill: transparent !important;
             stroke: none !important;
@@ -126,6 +152,15 @@ export class MermaidService {
           .cluster {
             padding-top: 60px !important;
             padding-bottom: 40px !important;
+            margin-left: 120px !important;
+            margin-right: 120px !important;
+          }
+          /* Horizontal spacing between subgraphs */
+          g[id*="cluster"] {
+            margin-left: 80px !important;
+          }
+          g[id*="cluster"]:not(:first-child) {
+            margin-left: 200px !important;
           }
           defs marker {
             width: 500px !important;
@@ -139,18 +174,26 @@ export class MermaidService {
           }
         `,  // Style cluster/subgraph labels and arrowheads - centered with larger headers and HUGE arrows
         flowchart: {
-          htmlLabels: false,  // CRITICAL: Required for arrow marker generation in 10.6.1
-          useMaxWidth: true,
+          htmlLabels: true,  // Enable HTML labels for proper text rendering
+          useMaxWidth: false,  // Disable auto-scaling
           padding: 80,
           diagramPadding: 80,
           nodeSpacing: 300,  // Horizontal spacing between nodes in LR graphs (default - can be overridden per-diagram)
           rankSpacing: 300,  // Spacing between ranks/levels within the flowchart
-          curve: 'basis'  // Use basis curve for smoother routing around obstacles
+          curve: 'basis',  // Use basis curve for smoother routing around obstacles
+          subGraphTitleMargin: {
+            bottom: 300  // Space between subgraph title and content
+          }
         },
         arrowMarkerAbsolute: true,
         themeVariables: {
           fontFamily: 'inherit',
-          fontSize: '3em',  // Base font size for all text (increased for better readability)
+          fontSize: '32px',  // Base theme font size
+          // Text color variables that control different text elements
+          primaryTextColor: isDark ? '#ffffff' : '#000000',
+          labelTextColor: isDark ? '#ffffff' : '#000000', 
+          nodeTextColor: isDark ? '#ffffff' : '#000000',
+          secondaryTextColor: isDark ? '#ffffff' : '#000000',
           // Dark mode specific overrides - use base theme for full control
           ...(isDark && {
             // Dark mode - force dark backgrounds everywhere
@@ -255,31 +298,95 @@ export class MermaidService {
             relationColor: '#94a3b8',
             relationLabelBackground: '#1e293b',
             relationLabelColor: '#ffffff'
-          }),
-          themeCSS: `
-            marker path {
-              fill: #94a3b8 !important;
-              stroke: #94a3b8 !important;
-            }
-            #arrowhead path {
-              fill: #94a3b8 !important;
-              stroke: #94a3b8 !important;
-            }
-            marker[id*="arrowhead"] path {
-              fill: #94a3b8 !important;
-              stroke: #94a3b8 !important;
-            }
-          `
+          })
         }
       });
       this.initialized = true;
     }
   }
 
-  async renderDiagram(id: string, code: string): Promise<{ svg: string }> {
+  async renderDiagram(id: string, code: string, fontSize?: string): Promise<{ svg: string }> {
     if (!this.initialized) {
       this.initializeMermaid();
     }
+    
+    // If custom fontSize is provided, calculate proportional sizes and update configuration
+    if (fontSize) {
+      const baseFontSize = parseInt(fontSize.replace('px', ''));
+      const isDark = this.themeService.isDarkTheme();
+      
+      // Calculate proportional spacing - 3x font size for header spacing
+      const headerSpacing = Math.round(baseFontSize * 3);
+      
+      // Create proportional themeCSS with scaled font sizes
+      const scaledThemeCSS = `
+        /* Force consistent sizing regardless of content */
+        svg {
+          width: 1200px !important;
+          height: 800px !important;
+          min-width: 1200px !important;
+          min-height: 800px !important;
+        }
+        /* Proportionally scaled text sizes */
+        text {
+          font-size: ${Math.round(baseFontSize * 0.75)}px;
+        }
+        .cluster-label text, .cluster text, .subgraph-label text {
+          font-size: ${Math.round(baseFontSize * 3.5)}px !important;
+          font-weight: 950 !important;
+        }
+        /* Override nodeLabel styling when inside cluster-label */
+        .cluster-label .nodeLabel text, .cluster-label .node text {
+          font-size: ${Math.round(baseFontSize * 3.5)}px !important;
+          font-weight: 950 !important;
+        }
+        .nodeLabel text, .node text {
+          font-size: ${baseFontSize}px !important;
+          font-weight: 600 !important;
+        }
+        .edgeLabel text {
+          font-size: ${Math.round(baseFontSize * 0.6)}px !important;
+          font-weight: 500 !important;
+        }
+        /* Subgraph spacing - force adequate horizontal separation */
+        .cluster {
+          margin-left: ${Math.round(baseFontSize * 2)}px !important;
+          margin-right: ${Math.round(baseFontSize * 2)}px !important;
+        }
+        g[id*="cluster"] {
+          transform: translateX(${Math.round(baseFontSize * 1.5)}px) !important;
+        }
+        g[id*="cluster"]:not(:first-child) {
+          margin-left: ${Math.round(baseFontSize * 3)}px !important;
+        }
+      `;
+      
+      // Update configuration with proportional spacing and HTML labels
+      mermaid.mermaidAPI.updateSiteConfig({
+        themeCSS: scaledThemeCSS,
+        flowchart: {
+          htmlLabels: true,  // Enable HTML labels for proper text rendering
+          useMaxWidth: false,
+          padding: 80,
+          diagramPadding: 80,
+          nodeSpacing: 600,  // Increased horizontal spacing between subgraphs
+          rankSpacing: 300,
+          curve: 'basis',
+          subGraphTitleMargin: {
+            bottom: headerSpacing  // Proportional header spacing (3x font size)
+          }
+        },
+        themeVariables: {
+          fontSize: fontSize,
+          fontFamily: 'inherit',
+          primaryTextColor: isDark ? '#ffffff' : '#000000',
+          labelTextColor: isDark ? '#ffffff' : '#000000', 
+          nodeTextColor: isDark ? '#ffffff' : '#000000',
+          secondaryTextColor: isDark ? '#ffffff' : '#000000',
+        }
+      });
+    }
+    
     const result = await mermaid.render(id, code);
     
     // Parse SVG for post-processing
@@ -292,6 +399,12 @@ export class MermaidService {
     
     // Then add colored arrows based on semantic classes
     this.addArrowMarkers(svgElement);
+    
+    // If we used custom fontSize, restore the original configuration
+    if (fontSize) {
+      this.initialized = false; // Force re-initialization with original settings
+      this.initializeMermaid();
+    }
     
     return { svg: new XMLSerializer().serializeToString(svgElement) };
   }

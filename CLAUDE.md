@@ -24,6 +24,25 @@ No standard Angular testing framework is configured. Testing is done through:
 - Standalone HTML test files (e.g., `test-*.html`)
 - Verification scripts (e.g., `verify-*.sh`)
 
+### Change Verification Requirements
+
+**CRITICAL**: Claude MUST verify all UI/visual changes using Playwright browser automation before considering work complete.
+
+**Required Process**:
+1. Make changes to code
+2. Use `mcp__playwright__browser_navigate` to visit the affected page
+3. Use `mcp__playwright__browser_take_screenshot` to capture the current state
+4. Examine the screenshot to verify the change worked as intended
+5. If the change didn't work, investigate and fix before claiming completion
+
+**DO NOT** rely on user verification - Claude must validate changes independently using browser automation tools.
+
+**Common Issues to Check**:
+- Mermaid diagram rendering and font sizes
+- CSS styling changes taking effect
+- Responsive layout behavior
+- Component functionality and appearance
+
 ## Architecture
 
 ### Core Framework

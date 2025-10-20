@@ -1,5 +1,4 @@
 [
-  "Advanced/configuration",
   "Commands/command-handling",
   "Contributors/coding-standards",
   "Contributors/contributing",
@@ -11,20 +10,17 @@
   "Roadmap/backups-and-snapshots",
   "Roadmap/distributed-messaging",
   "Roadmap/lakehouse-streaming",
-  "Tutorials/getting-started-tutorial",
   "advanced-scenarios",
   "aggregates",
-  "api",
   "architecture",
   "aspire-integration",
+  "configuration",
   "core-concepts",
   "dashboard",
   "enhanced-csharp-examples",
-  "enhanced-search-demo",
   "getting-started",
   "package-structure",
   "philosophy",
   "projections",
-  "repositories-and-helpers",
-  "simple-csharp-examples"
+  "repositories-and-helpers"
 ]

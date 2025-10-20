@@ -1,6 +1,6 @@
 ---
 title: Philosophy & Design Principles
-category: Introduction
+category: Architecture & Design
 order: 2
 tags: philosophy, design-principles, vision
 ---
