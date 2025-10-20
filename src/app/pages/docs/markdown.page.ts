@@ -10,11 +10,13 @@ import { CodeBlockParser } from '../../services/code-block-parser.service';
 import { MermaidService } from '../../services/mermaid.service';
 import { ThemeService } from '../../services/theme.service';
 import { SeoService } from '../../services/seo.service';
+import { BreadcrumbService } from '../../services/breadcrumb.service';
+import { BreadcrumbComponent, BreadcrumbItem } from '../../components/breadcrumb.component';
 import { trigger, transition, style, animate } from '@angular/animations';
 
 @Component({
   standalone: true,
-  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule],
+  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule, BreadcrumbComponent],
   template: `
     <div>
       <!-- Loading state with fade-in animation -->
@@ -26,6 +28,9 @@ import { trigger, transition, style, animate } from '@angular/animations';
       
       <!-- Content (hidden until ready) -->
       <div [style.visibility]="isContentReady() ? 'visible' : 'hidden'">
+        <!-- Breadcrumb Navigation -->
+        <wb-breadcrumb [items]="breadcrumbs()"></wb-breadcrumb>
+        
         <markdown [data]="processedContent()"></markdown>
         
         <!-- Dynamic code block components for ALL blocks -->
@@ -59,12 +64,14 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
   private mermaidService = inject(MermaidService);
   private themeService = inject(ThemeService);
   private seoService = inject(SeoService);
+  private breadcrumbService = inject(BreadcrumbService);
 
   @ViewChild('codeBlockContainer', { read: ViewContainerRef }) codeBlockContainer!: ViewContainerRef;
 
   processedContent = signal('');
   videos = signal<string[]>([]);
   examples = signal<string[]>([]);
+  breadcrumbs = signal<BreadcrumbItem[]>([]);
   isContentReady = signal(false);
 
   private allCodeBlocks: any[] = [];
@@ -82,10 +89,19 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.route.url.subscribe(segments => {
+    this.route.url.subscribe(async segments => {
       // Reset content ready state when navigating to new page
       this.isContentReady.set(false);
       const fullPath = segments.map(segment => segment.path).join('/');
+      
+      // Generate breadcrumbs for the current path (add 'docs/' prefix since we're in the docs route)
+      const breadcrumbPath = fullPath ? `docs/${fullPath}` : 'docs';
+      const breadcrumbItems = await this.breadcrumbService.generateBreadcrumbs(breadcrumbPath);
+      this.breadcrumbs.set(breadcrumbItems);
+      
+      // Add structured data for breadcrumbs
+      this.breadcrumbService.addStructuredDataToPage(breadcrumbItems);
+      
       this.resolveMarkdownPath(fullPath).then(resolvedPath => {
         this.loadMarkdownContent(resolvedPath);
       });
@@ -486,5 +502,8 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy() {
     // Clean up SEO metadata when component is destroyed
     this.seoService.clearPageMetadata();
+    
+    // Clean up breadcrumb structured data
+    this.breadcrumbService.removeStructuredDataFromPage();
   }
 }
