@@ -11,39 +11,72 @@ Whizbang is a unified event-sourced data and messaging runtime for .NET that col
 
 ## Core Philosophy
 
-### Events as the Source of Truth
+### One Runtime. Any Mode. Every Pattern.
 
-**Events are immutable facts that have happened.** In Whizbang, events are not just notifications—they are the authoritative record of everything that has occurred in your system. All aggregates and projections can be rebuilt or reimagined from the event stream at any time, even years after initial deployment.
+**Write your business logic once. Run it anywhere.** Whizbang provides a unified mental model that scales from simple in-process messaging to complex distributed event-sourced systems—without changing your handlers.
 
-This approach provides:
-- **Complete audit trail** - Every state change is recorded forever
-- **Time travel debugging** - Replay events to understand how state evolved
-- **Flexible projections** - Build new read models from existing events
-- **Migration freedom** - Refactor your domain model without losing history
+```csharp
+// This SAME handler works across ALL modes
+public class OrderHandler : IHandle<CreateOrder> {
+    public OrderCreated Handle(CreateOrder cmd) {
+        // Your business logic here
+        return new OrderCreated(cmd.OrderId);
+    }
+}
 
-### Single Surface Area
+// Mode switching is just configuration
+services.AddWhizbang().UseInProcessMode();    // Development
+services.AddWhizbang().UseDurableMode();      // Single service
+services.AddWhizbang().UseDistributedMode();  // Microservices
+services.AddWhizbang().UseEventSourcedMode(); // Event sourcing
+```
 
-Teams waste cognitive energy context-switching between different APIs, patterns, and abstractions. Whizbang provides **one set of primitives** for:
+### Return Type Semantics
 
-- **Aggregates** - Write-side domain models that enforce business rules
-- **Projections** - Read-side models optimized for queries
-- **Commands** - Requests to change state, routed to domain owners
-- **Queries** - Requests for data, executed against projections
-- **Sagas** - Long-running processes that coordinate across domains
+**What you return determines what happens.** No configuration files, no routing tables, no ceremony. Your intent is clear from your code:
 
-All of these concepts share the same handler model, dependency injection patterns, and testing approaches. Learn once, apply everywhere.
+```csharp
+// Single return = single effect
+return new OrderCreated();                           // Publishes event
 
-### From Simple to Scale
+// Tuple return = multiple effects
+return (new OrderCreated(), new ProcessPayment());   // Cascading messages
 
-Whizbang is designed for **the full spectrum**:
+// Result return = railway-oriented programming
+return Result.Success(new OrderCreated());          // Success/failure handling
 
-**Simple Start**: Use Whizbang as an in-process mediator for CQRS without any infrastructure dependencies. Perfect for small apps or getting started.
+// Streaming return = real-time processing
+yield return new OrderProcessed();                  // IAsyncEnumerable
+```
 
-**Growth Path**: Add event sourcing, projections, and persistence as your needs grow. Every feature is opt-in.
+### Aspect-Oriented by Design
 
-**Enterprise Scale**: Deploy across microservices with message brokers, multiple databases, multi-region disaster recovery, and Kubernetes auto-scaling.
+**Cross-cutting concerns are first-class citizens.** Through source generators and compile-time weaving, aspects like logging, retry, caching, and authorization are declarative and performant:
 
-**The same code works at every scale.** Your simple mediator handlers become distributed message handlers without rewrites.
+```csharp
+[Logged]
+[Cached(Duration = "5m")]
+[Retry(3, Backoff = "exponential")]
+[Authorized(Role = "Admin")]
+public class OrderHandler : IHandle<CreateOrder> {
+    [Pure] // Compile-time verification of no side effects
+    public OrderCreated Handle(CreateOrder cmd) {
+        // All aspects automatically applied
+        return new OrderCreated(cmd.OrderId);
+    }
+}
+```
+
+### Progressive Enhancement
+
+**Start simple. Add complexity only when needed.** Every Whizbang application follows the same growth path:
+
+1. **In-Process** - Simple mediator, no infrastructure
+2. **Durable** - Add persistence and retry
+3. **Distributed** - Scale across services
+4. **Event-Sourced** - Full event sourcing when needed
+
+The same handler code works at every level. No rewrites as you scale.
 
 ## Design Principles
 
@@ -69,11 +102,21 @@ Swap drivers through configuration, not code changes. Start with SQLite for loca
 
 This prevents the "event spaghetti" problem where no one knows who publishes what, or where to send commands.
 
-### 3. Handlers as Pure Functions
+### 3. Convention Over Configuration
 
-**Handlers are just C# methods that return results or new messages.** No magic base classes, no required interfaces (unless you want them), no framework coupling.
+**Your code expresses intent through conventions.** Return types determine behavior. Attributes declare aspects. Source generators eliminate boilerplate. No XML files, no complex registration, no ceremony.
 
-Mark a handler as `pure` and the Roslyn analyzer **forbids hidden side effects**—guaranteeing your handler is a true function from input to output.
+```csharp
+// Return type determines what happens
+public OrderCreated Handle(CreateOrder cmd) => new OrderCreated();        // Event
+public ProcessPayment Handle(OrderCreated e) => new ProcessPayment();     // Command
+public void Handle(LogActivity cmd) => Console.WriteLine(cmd.Message);   // Fire-and-forget
+
+// Attributes declare behavior
+[Pure]           // Compile-time verification of no side effects
+[Idempotent]     // Automatic deduplication
+[Transactional]  // Wrap in transaction
+```
 
 ### 4. Observable by Default
 
@@ -97,18 +140,43 @@ Observability is not bolted on—it's built into the core runtime.
 
 Your domain logic never needs to worry about duplicate messages.
 
-### 6. AOT-Safe and Trimming-Friendly
+### 6. Compile-Time Safety
 
-**Modern .NET deployments demand small binaries and fast startup.** Whizbang is designed for:
+**Catch errors during build, not at runtime.** Through source generators and Roslyn analyzers, Whizbang provides unprecedented compile-time verification:
 
-- **Native AOT compilation** - No reflection tricks that break AOT
-- **Assembly trimming** - Only include what you use
-- **Fast startup** - No slow reflection-based scanning
-- **Source generators** - Compile-time code generation for wire-up
+```csharp
+[Pure]
+public class CalculationHandler : IHandle<Calculate> {
+    public Result Handle(Calculate cmd) {
+        // ✅ Pure computation allowed
+        var result = cmd.A + cmd.B;
+        
+        // ❌ Compile error: I/O not allowed in pure function
+        // await database.SaveAsync(result);
+        
+        return new Result(result);
+    }
+}
+
+[Effects(Writes = "Orders", Publishes = "OrderEvents")]
+public class OrderHandler : IHandle<CreateOrder> {
+    // Source generator verifies declared effects match actual usage
+}
+```
+
+### 7. AOT-Safe and Performance-First
+
+**Modern .NET demands performance.** Whizbang achieves both developer experience and runtime performance through:
+
+- **Source generation** - Zero runtime reflection overhead
+- **Native AOT** - Full trimming and AOT compilation support
+- **Struct messages** - Stack allocation for small messages
+- **Object pooling** - Automatic pooling of handlers and messages
+- **SIMD operations** - Vectorized operations where applicable
 
 Deploy as a tiny container or serverless function without compromise.
 
-### 7. Security and Multi-Tenancy First
+### 8. Security and Multi-Tenancy First
 
 **Security is not an afterthought.** Whizbang provides built-in support for:
 
