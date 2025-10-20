@@ -221,6 +221,7 @@ public class OrderHandler : IHandle<CreateOrder> {
 
 - **Source generation** - Zero runtime reflection overhead
 - **Native AOT** - Full trimming and AOT compilation support
+- **Assembly trimming** - Only include what you use
 - **Struct messages** - Stack allocation for small messages
 - **Object pooling** - Automatic pooling of handlers and messages
 - **SIMD operations** - Vectorized operations where applicable
