@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "scripts": {
     "ng": "ng",
-    "prestart": "node src/scripts/gen-docs-list.mjs && node src/scripts/gen-docs-index.mjs && ./build-search-index.sh",
+    "prestart": "node src/scripts/gen-docs-list.mjs && node src/scripts/gen-docs-index.mjs && node src/scripts/gen-sitemap.mjs && ./build-search-index.sh",
     "start": "ng serve --hmr --configuration development",
-    "prebuild": "node src/scripts/gen-docs-list.mjs && node src/scripts/gen-docs-index.mjs && ./build-search-index.sh",
+    "prebuild": "node src/scripts/gen-docs-list.mjs && node src/scripts/gen-docs-index.mjs && node src/scripts/gen-sitemap.mjs && ./build-search-index.sh",
     "search-index": "./build-search-index.sh",
     "build": "ng build --configuration production --output-hashing=all",
     "preview": "ng serve --configuration production",
