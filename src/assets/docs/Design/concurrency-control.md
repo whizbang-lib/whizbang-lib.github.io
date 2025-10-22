@@ -16,6 +16,12 @@ Whizbang provides flexible concurrency control mechanisms to handle concurrent u
 **Standard event sourcing pattern** - explicitly specify the expected version:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Concurrency, Expected-Version, Optimistic-Locking]
+description: Expected version concurrency control with explicit version checking
+---
 // Load aggregate at version 5
 var order = await repository.Load<Order>(orderId);
 
@@ -40,6 +46,12 @@ await repository.Save(order, expectedVersion: 5);
 **HTTP-style semantics** using timestamps:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Concurrency, Timestamp-Based, HTTP-Semantics]
+description: Timestamp-based concurrency control using HTTP-style last-modified semantics
+---
 var order = await repository.Load<Order>(orderId);
 var lastModified = order.LastModified;
 
@@ -63,6 +75,12 @@ await repository.Save(order, ifNotModifiedSince: lastModified);
 **Smart retry with configurable resolution strategies**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Concurrency, Automatic-Retry, Conflict-Resolution]
+description: Automatic retry configuration with custom conflict resolution through policies
+---
 // Configure automatic retry via policies
 services.AddWhizbang(options => {
     options.Policies(policies => {
@@ -105,6 +123,12 @@ Drawing from Marten's concurrency features, Whizbang also supports:
 **Using opaque tokens** instead of version numbers:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Concurrency, Token-Based, Opaque-Tokens]
+description: Token-based concurrency control using opaque tokens instead of version numbers
+---
 var (order, token) = await repository.LoadWithToken<Order>(orderId);
 
 // Make changes
@@ -119,6 +143,12 @@ await repository.Save(order, concurrencyToken: token);
 **Marten-style revision tracking** with metadata:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Concurrency, Revision-Based, Marten-Style]
+description: Marten-style revision tracking with automatic metadata management
+---
 public class Order : Aggregate {
     // Whizbang tracks revision automatically
     public int Revision { get; internal set; }
@@ -134,6 +164,12 @@ await repository.Save(order, expectedRevision: order.Revision);
 **SQL-style conditional updates**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Concurrency, Conditional-Updates, SQL-Style]
+description: SQL-style conditional updates with business logic conditions
+---
 await repository.Save(order, condition: o => o.Status == OrderStatus.Pending);
 // Only saves if order is still pending
 ```
@@ -147,6 +183,12 @@ await repository.Save(order, condition: o => o.Status == OrderStatus.Pending);
 **Configure concurrency strategies using the Policy Engine** - the universal configuration scoping mechanism:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Concurrency, Policy-Configuration, Global-Strategy]
+description: Basic concurrency strategy configuration using policy engine for global defaults
+---
 services.AddWhizbang(options => {
     options.Policies(policies => {
         // Global default strategy
@@ -163,6 +205,12 @@ services.AddWhizbang(options => {
 **Combine multiple conditions for sophisticated concurrency control**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Concurrency, Advanced-Policies, Context-Dependent]
+description: Advanced policy scenarios with aggregate-specific, environment-based, and tenant-specific concurrency strategies
+---
 services.AddWhizbang(options => {
     options.Policies(policies => {
         // Orders get automatic retry with more attempts
@@ -205,6 +253,12 @@ services.AddWhizbang(options => {
 **Policies are evaluated at runtime** based on the current context:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Concurrency, Runtime-Evaluation, Context-Driven]
+description: Runtime policy evaluation based on context with automatic strategy selection
+---
 // Policy evaluation happens automatically during save operations
 await repository.Save(order, context => {
     context.WithTag("high-volume");        // Triggers high-volume policy
@@ -220,6 +274,12 @@ await repository.Save(order, context => {
 **Override policies for exceptional cases**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Concurrency, Manual-Override, Policy-Bypass]
+description: Manual override of policy-driven concurrency for exceptional critical operations
+---
 // Explicit override for critical operations
 await repository.Save(order, saveOptions => {
     saveOptions.OverrideConcurrencyStrategy(ConcurrencyStrategy.ExpectedVersion);
@@ -233,6 +293,12 @@ await repository.Save(order, saveOptions => {
 ### Built-in Resolvers
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Concurrency, Built-In-Resolvers, Conflict-Strategies]
+description: Built-in conflict resolvers for common scenarios using different merge strategies
+---
 services.AddWhizbang(options => {
     options.Policies(policies => {
         // Last-write-wins for Order aggregates
@@ -255,6 +321,12 @@ services.AddWhizbang(options => {
 **Define custom conflict resolution logic through policies**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Concurrency, Custom-Resolvers, Business-Logic-Merge]
+description: Custom conflict resolution with domain-specific merge logic for different aggregate properties
+---
 services.AddWhizbang(options => {
     options.Policies(policies => {
         // Custom resolver for Order aggregates
@@ -285,6 +357,12 @@ services.AddWhizbang(options => {
 **Access full conflict context through policies**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Concurrency, Three-Way-Merge, Advanced-Resolution]
+description: Advanced three-way merge conflict resolution using original version as merge base
+---
 services.AddWhizbang(options => {
     options.Policies(policies => {
         policies.When(ctx => ctx.MatchesAggregate<Order>())
@@ -306,6 +384,12 @@ services.AddWhizbang(options => {
 ### Concurrency Exception Handling
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Concurrency, Exception-Handling, Conflict-Information]
+description: Concurrency exception with detailed conflict information for debugging and handling
+---
 public class ConcurrencyException : Exception {
     public string StreamId { get; }
     public int ExpectedVersion { get; }
@@ -325,6 +409,12 @@ public class ConcurrencyException : Exception {
 ### Retry Logic
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Concurrency, Retry-Logic, Exponential-Backoff]
+description: Retry policy configuration with exponential backoff and jitter for reducing contention
+---
 public class RetryPolicy {
     public int MaxAttempts { get; set; } = 3;
     public TimeSpan InitialDelay { get; set; } = TimeSpan.FromMilliseconds(100);
@@ -342,6 +432,12 @@ public class RetryPolicy {
 ### Driver Interface
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Concurrency, Driver-Interface, Implementation]
+description: Driver interface for implementing concurrency control with different strategies and conflict resolution
+---
 public interface IConcurrencyDriver {
     Task<T> Load<T>(string streamId, ConcurrencyOptions options) where T : Aggregate;
     Task<(T Aggregate, ConcurrencyToken Token)> LoadWithToken<T>(string streamId) where T : Aggregate;
@@ -377,6 +473,12 @@ public class ConcurrencyCheck {
 ### Monitoring
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Concurrency, Monitoring, Metrics, Observability]
+description: Concurrency monitoring with conflict logging and metrics for observability
+---
 services.AddWhizbang(options => {
     options.UseOptimisticConcurrency(concurrency => {
         concurrency.OnConflict = (context) => {

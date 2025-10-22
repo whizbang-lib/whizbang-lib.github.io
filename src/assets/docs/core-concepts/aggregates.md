@@ -41,7 +41,18 @@ Whizbang aggregates use optimistic concurrency control:
 
 ## Example Structure
 
-```csharp
+```csharp{
+title: "Order Aggregate Example"
+description: "Complete aggregate structure showing event sourcing, command handling, and state management"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Aggregates", "Event Sourcing", "DDD", "Order Management"]
+filename: "OrderAggregate.cs"
+nugetPackages: ["Whizbang.EventSourcing"]
+usingStatements: ["System", "System.Collections.Generic", "Whizbang"]
+showLineNumbers: true
+}
 public class OrderAggregate : Aggregate {
     public Guid Id { get; private set; }
     public OrderStatus Status { get; private set; }

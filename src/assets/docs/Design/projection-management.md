@@ -18,6 +18,12 @@ Projections track their progress through **checkpoint storage**, supporting mult
 **Transactional consistency** - checkpoints and projections updated together:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Checkpoints, Configuration]
+description: Configuration for transactional checkpoint storage with projections
+---
 services.AddProjection<OrderSummaryProjection>(options => {
     options.CheckpointStorage = CheckpointStorage.SameDatabase;
 });
@@ -43,6 +49,12 @@ await transaction.CommitAsync();
 **Flexible checkpoint storage** separate from projection data:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Checkpoints, Redis, Eventually-Consistent]
+description: Configuration for separate checkpoint storage using Redis or other stores
+---
 services.AddProjection<OrderSummaryProjection>(options => {
     options.CheckpointStorage = CheckpointStorage.Separate;
     options.CheckpointStore = CheckpointStore.Redis; // or CosmosDB, DynamoDB
@@ -70,6 +82,12 @@ try {
 ### Checkpoint Configuration
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Configuration, Global-Settings]
+description: Global checkpoint configuration and storage options
+---
 services.AddWhizbang(options => {
     options.Projections(projections => {
         // Global checkpoint settings
@@ -91,6 +109,12 @@ services.AddWhizbang(options => {
 **Configurable automatic snapshotting** for projections:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Snapshots, Automatic-Management]
+description: Automatic snapshot configuration with frequency and retention policies
+---
 services.AddProjection<CustomerSummaryProjection>(options => {
     options.Snapshots(snapshots => {
         snapshots.Strategy = SnapshotStrategy.Automatic;
@@ -105,6 +129,12 @@ services.AddProjection<CustomerSummaryProjection>(options => {
 **Developer-controlled snapshotting**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Projections, Snapshots, Manual-Control]
+description: Manual snapshot control with custom triggers and restoration logic
+---
 public class CustomerSummaryProjection : IProjectionHandler<CustomerRegistered>,
                                         IProjectionHandler<CustomerUpdated>,
                                         ISnapshotProvider<CustomerSummarySnapshot> {
@@ -151,6 +181,12 @@ public class CustomerSummaryProjection : IProjectionHandler<CustomerRegistered>,
 **Opt out of snapshotting** for simple projections:
 
 ```csharp
+---
+category: Design
+difficulty: BEGINNER
+tags: [Design, Projections, Snapshots, Simple-Projections]
+description: Disabling snapshots for simple projections that don't need them
+---
 services.AddProjection<SimpleEventLogProjection>(options => {
     options.Snapshots(snapshots => {
         snapshots.Strategy = SnapshotStrategy.None;
@@ -165,6 +201,12 @@ services.AddProjection<SimpleEventLogProjection>(options => {
 **Simple configuration-based backfilling**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Backfilling, Declarative-Configuration]
+description: Declarative backfilling configuration with date ranges and batch settings
+---
 services.AddProjection<OrderHistoryProjection>(options => {
     options.Backfill(backfill => {
         backfill.StartFrom = DateTimeOffset.Parse("2024-01-01");
@@ -185,6 +227,12 @@ services.AddProjection<NewAnalyticsProjection>(options => {
 **Programmatic control over backfilling**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Backfilling, REST-API]
+description: REST API controller for programmatic projection backfilling
+---
 public class BackfillController : ControllerBase {
     private readonly IProjectionManager _projectionManager;
     
@@ -215,6 +263,12 @@ public class BackfillController : ControllerBase {
 **Event-driven backfill requests**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Projections, System-Events, Event-Driven-Backfill]
+description: System events for on-demand projection backfilling with criteria
+---
 // System event to trigger backfilling
 public record ProjectionBackfillRequested(
     string ProjectionName,
@@ -225,6 +279,13 @@ public record ProjectionBackfillRequested(
     string RequestedBy
 ) : ISystemEvent;
 
+```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Projections, System-Events, Event-Handlers]
+description: System event handler for processing backfill requests
+---
 // System event handler
 public class ProjectionBackfillHandler : ISystemEventHandler<ProjectionBackfillRequested> {
     public async Task Handle(ProjectionBackfillRequested @event, SystemEventContext context) {
@@ -262,6 +323,12 @@ await _systemEventPublisher.PublishAsync(new ProjectionBackfillRequested(
 ### Backfill Criteria Options
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Backfilling, Criteria-Options]
+description: Comprehensive backfill criteria options for different scenarios
+---
 public enum BackfillCriteria {
     // Date-based backfill
     DateRange,              // Specific date range
@@ -308,6 +375,12 @@ await _systemEvents.PublishAsync(new ProjectionBackfillRequested(
 ### Parallel Processing
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Projections, Backfilling, Parallel-Processing]
+description: Parallel backfill processing with partitioning and concurrency control
+---
 services.AddProjection<AnalyticsProjection>(options => {
     options.Backfill(backfill => {
         backfill.Strategy = BackfillStrategy.Parallel;
@@ -321,6 +394,12 @@ services.AddProjection<AnalyticsProjection>(options => {
 ### Progress Tracking
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Backfilling, Progress-Tracking]
+description: Real-time progress tracking for backfill operations
+---
 public class BackfillProgressTracker {
     public async Task TrackProgress(string projectionName, CancellationToken cancellationToken) {
         await foreach (var progress in _projectionManager.GetBackfillProgress(projectionName, cancellationToken)) {
@@ -334,6 +413,12 @@ public class BackfillProgressTracker {
 ### Rollback Support
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Projections, Backfilling, Rollback-Support]
+description: Rollback support for failed backfill operations with backup creation
+---
 // Rollback to previous version if backfill fails
 services.AddProjection<OrderSummaryProjection>(options => {
     options.Backfill(backfill => {
@@ -352,6 +437,12 @@ await _projectionManager.RollbackProjection("order-summary", toVersion: previous
 ### Built-in System Events
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, System-Events, Lifecycle-Management]
+description: Built-in system events for projection lifecycle monitoring
+---
 // Projection lifecycle events
 public record ProjectionStarted(string ProjectionName, DateTimeOffset StartedAt);
 public record ProjectionStopped(string ProjectionName, DateTimeOffset StoppedAt);
@@ -375,6 +466,12 @@ public record ProjectionSnapshotRestored(string ProjectionName, long EventVersio
 ### Custom System Event Handlers
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Projections, System-Events, Monitoring]
+description: Custom system event handlers for projection monitoring and alerting
+---
 public class ProjectionMonitoringHandler : 
     ISystemEventHandler<ProjectionFailed>,
     ISystemEventHandler<ProjectionBackfillCompleted> {
@@ -407,6 +504,12 @@ public class ProjectionMonitoringHandler :
 ### IProjectionManager Interface
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Management-API, Interfaces]
+description: Comprehensive projection management API interface
+---
 public interface IProjectionManager {
     // Lifecycle management
     Task StartProjection(string projectionName);
@@ -437,6 +540,12 @@ public interface IProjectionManager {
 ### Configuration Extensions
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Extension-Methods, Fluent-API]
+description: Extension methods for fluent projection configuration API
+---
 public static class ProjectionConfigurationExtensions {
     public static IProjectionBuilder<T> BackfillFromBeginning<T>(this IProjectionBuilder<T> builder) 
         where T : class;

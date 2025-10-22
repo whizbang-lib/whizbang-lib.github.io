@@ -16,6 +16,12 @@ Whizbang includes advanced features for enterprise scenarios, including cross-ag
 **Coordinate transactions across multiple aggregates** while maintaining consistency:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Unit-of-Work, Cross-Aggregate-Transactions]
+description: Unit of work pattern configuration for cross-aggregate transactions
+---
 services.AddWhizbang(options => {
     options.UseUnitOfWork(uow => {
         uow.IsolationLevel = IsolationLevel.ReadCommitted;
@@ -24,6 +30,13 @@ services.AddWhizbang(options => {
     });
 });
 
+```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Unit-of-Work, Command-Handlers]
+description: Command handler using unit of work for coordinated multi-aggregate operations
+---
 // Usage in handlers
 public class PlaceOrderHandler : ICommandHandler<PlaceOrder> {
     private readonly IUnitOfWork _unitOfWork;
@@ -71,6 +84,12 @@ public class PlaceOrderHandler : ICommandHandler<PlaceOrder> {
 ### Distributed Transactions with Saga Fallback
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Cross-Aggregate-Transactions, Saga-Fallback]
+description: Distributed transactions with saga fallback for complex operations
+---
 services.AddWhizbang(options => {
     options.CrossAggregateTransactions(transactions => {
         transactions.DefaultStrategy = TransactionStrategy.UnitOfWork;
@@ -93,6 +112,12 @@ services.AddWhizbang(options => {
 ### Transaction Boundaries
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Advanced-Features, Transaction-Boundaries, Error-Handling]
+description: Transaction boundary implementation with automatic rollback on failure
+---
 public class TransactionBoundary : ITransactionBoundary {
     public async Task<T> ExecuteInTransaction<T>(Func<Task<T>> operation) {
         using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
@@ -119,6 +144,12 @@ public class TransactionBoundary : ITransactionBoundary {
 **Performance budgets** provide automatic tracking and alerting for handler performance:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Advanced-Features, Performance-Budgets, Monitoring]
+description: Performance budget attributes for automatic tracking and alerting
+---
 [PerformanceBudget(MaxLatencyMs = 100)]
 public class PlaceOrderHandler : ICommandHandler<PlaceOrder> {
     // Automatic budget tracking and violation alerts
@@ -130,6 +161,12 @@ public class PlaceOrderHandler : ICommandHandler<PlaceOrder> {
 > **📋 Detailed Coverage**: For complete OpenTelemetry setup, metrics, and distributed tracing, see [**Observability & Metrics**](./observability-metrics.md)
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Advanced-Features, OpenTelemetry, Observability]
+description: OpenTelemetry integration configuration for comprehensive observability
+---
 services.AddWhizbang(options => {
     options.Observability(observability => {
         observability.UseOpenTelemetry(otel => {
@@ -149,6 +186,13 @@ services.AddWhizbang(options => {
     });
 });
 
+```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Performance-Tracking, Custom-Metrics]
+description: Custom performance tracking handler with detailed metrics collection
+---
 // Custom performance tracking
 public class PerformanceTrackingHandler<T> : ICommandHandler<T> where T : ICommand {
     private readonly ICommandHandler<T> _innerHandler;
@@ -194,6 +238,12 @@ public class PerformanceTrackingHandler<T> : ICommandHandler<T> where T : IComma
 ### Auto-Scaling Projection Workers
 
 ```yaml
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Kubernetes-Operator, Auto-Scaling]
+description: Kubernetes custom resource for auto-scaling projection workers
+---
 apiVersion: whizbang.io/v1
 kind: ProjectionWorker
 metadata:
@@ -223,6 +273,12 @@ spec:
 ### Partition-Aware Pod Placement
 
 ```yaml
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Kubernetes-Operator, Partition-Aware-Placement]
+description: Partition-aware pod placement for distributed projection processing
+---
 apiVersion: whizbang.io/v1
 kind: PartitionedProjection
 metadata:
@@ -250,6 +306,12 @@ spec:
 ### Blue/Green Projection Deployments
 
 ```yaml
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Kubernetes-Operator, Blue-Green-Deployment]
+description: Blue/green projection deployments with validation and automatic switchover
+---
 apiVersion: whizbang.io/v1
 kind: ProjectionDeployment
 metadata:
@@ -270,6 +332,12 @@ spec:
 ### Automatic Backfilling
 
 ```yaml
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Kubernetes-Operator, Automatic-Backfilling]
+description: Kubernetes job for automatic projection backfilling with resource management
+---
 apiVersion: whizbang.io/v1
 kind: BackfillJob
 metadata:
@@ -296,6 +364,12 @@ spec:
 ### Kubernetes Operator Implementation
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Kubernetes-Operator, Implementation]
+description: Kubernetes operator implementation for Whizbang resource management
+---
 public class WhizbangOperator : IHostedService {
     private readonly IKubernetesClient _kubernetesClient;
     private readonly IProjectionManager _projectionManager;
@@ -353,6 +427,12 @@ public class WhizbangOperator : IHostedService {
 **Capture and visualize message journeys** for debugging:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Advanced-Features, Debugging, Message-Journeys]
+description: Debugging configuration for message journey capture and visualization
+---
 services.AddWhizbang(options => {
     options.Debugging(debugging => {
         debugging.CaptureMessageJourneys = true;
@@ -362,6 +442,13 @@ services.AddWhizbang(options => {
     });
 });
 
+```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Debugging, Journey-Tracking]
+description: Message journey tracking interceptor for debugging and visualization
+---
 // Message journey tracking
 public class MessageJourneyTracker : IMessageInterceptor {
     public async Task<TResponse> Intercept<TRequest, TResponse>(
@@ -414,6 +501,12 @@ public class MessageJourneyTracker : IMessageInterceptor {
 **Replay events for debugging and testing**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Event-Replay, Simulation]
+description: Event replay service interface for debugging and testing scenarios
+---
 public interface IEventReplayService {
     Task<ReplayResult> ReplayEvents(ReplayOptions options);
     Task<SimulationResult> SimulateEventStream(SimulationOptions options);
@@ -459,6 +552,13 @@ public class EventReplayService : IEventReplayService {
     }
 }
 
+```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Advanced-Features, Event-Replay, Usage-Example]
+description: Event replay configuration options and usage example
+---
 // Usage
 var replayOptions = new ReplayOptions {
     FromEventNumber = 1000,
@@ -477,6 +577,12 @@ var result = await _replayService.ReplayEvents(replayOptions);
 **Inspect aggregate and projection state during debugging**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, State-Inspection, Debugging]
+description: State inspection interface for debugging aggregate and projection state
+---
 public interface IStateInspector {
     Task<AggregateState> InspectAggregate(string streamId, long? version = null);
     Task<ProjectionState> InspectProjection(string projectionName, string documentId);
@@ -485,6 +591,13 @@ public interface IStateInspector {
     Task<BreakpointContext> WaitForBreakpoint(string breakpointId);
 }
 
+```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Breakpoints, Implementation]
+description: Breakpoint handler implementation for debugging event processing
+---
 // Breakpoint implementation
 public class BreakpointHandler : IEventHandler<object> {
     public async Task Handle(object @event, EventContext context) {
@@ -517,6 +630,12 @@ public class BreakpointHandler : IEventHandler<object> {
 **Distributed tracing with W3C standards**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Advanced-Features, Distributed-Tracing, W3C-Standards]
+description: W3C trace context integration configuration for distributed tracing
+---
 services.AddWhizbang(options => {
     options.DistributedTracing(tracing => {
         tracing.UseW3CTraceContext = true;
@@ -528,6 +647,13 @@ services.AddWhizbang(options => {
     });
 });
 
+```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Trace-Propagation, W3C-Implementation]
+description: Automatic W3C trace context propagation implementation
+---
 // Automatic trace propagation
 public class TraceContextPropagator : IMessageInterceptor {
     public async Task<TResponse> Intercept<TRequest, TResponse>(
@@ -571,6 +697,12 @@ public class TraceContextPropagator : IMessageInterceptor {
 ### Comprehensive Advanced Features Setup
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Advanced-Features, Comprehensive-Setup, Configuration]
+description: Comprehensive advanced features configuration combining all options
+---
 services.AddWhizbang(options => {
     // Cross-aggregate transactions
     options.UseUnitOfWork(uow => {

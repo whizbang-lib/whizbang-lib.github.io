@@ -16,6 +16,12 @@ Whizbang provides comprehensive observability with policy-driven metrics collect
 **Core performance and health metrics** essential for operation:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Observability, Metrics, Default-Metrics]
+description: Core performance and health metrics essential for operation
+---
 // Command metrics
 whizbang_command_duration_seconds{command_type, domain, handler_type, status}
 whizbang_command_total{command_type, domain, status}
@@ -45,6 +51,12 @@ whizbang_cpu_usage_percent{component}
 **Configurable detail levels** for different scenarios:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Observability, Configuration, Observability-Levels]
+description: Configurable observability levels for different scenarios
+---
 public enum ObservabilityLevel {
     Minimal,    // Only essential metrics + errors
     Standard,   // Default metrics + basic timing
@@ -79,6 +91,12 @@ services.AddWhizbang(options => {
 **Dynamic observability** based on message context and policies:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Observability, Context-Aware-Metrics, Dynamic-Configuration]
+description: Dynamic observability configuration based on message context and policies
+---
 services.AddWhizbang(options => {
     options.Observability(obs => {
         obs.Policies(policies => {
@@ -114,6 +132,12 @@ services.AddWhizbang(options => {
 **Smart sampling** based on context and system load:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Observability, Adaptive-Sampling, System-Load]
+description: Smart sampling based on context and system load for performance optimization
+---
 public class AdaptiveObservabilityPolicy : IObservabilityPolicy {
     public async Task<ObservabilityConfig> GetConfigAsync(MessageContext context) {
         var config = new ObservabilityConfig();
@@ -153,6 +177,12 @@ public class AdaptiveObservabilityPolicy : IObservabilityPolicy {
 **Automatically include relevant fields** in metrics via attributes:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Observability, Custom-Fields, Source-Generation]
+description: Automatically include relevant fields in metrics via attributes
+---
 // Command with observability annotations
 public record PlaceOrder(
     Guid OrderId,
@@ -185,6 +215,12 @@ public record PlaceOrder(
 **Smart field transformations** for better cardinality management:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Observability, Field-Transformations, Cardinality-Management]
+description: Smart field transformations for better metric cardinality management
+---
 public enum FieldTransform {
     None,           // Use raw value
     Range,          // Convert numbers to ranges (0-100, 100-500, etc.)
@@ -210,6 +246,12 @@ public string CustomerTier { get; set; }
 **Source generator creates metric collection code**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Observability, Source-Generation, Metrics-Collection]
+description: Source generator creates metric collection code for annotated types
+---
 // Generated metric collection for PlaceOrder
 [GeneratedCode("Whizbang.SourceGenerator")]
 public partial class PlaceOrderMetricsCollector {
@@ -250,6 +292,12 @@ public partial class PlaceOrderMetricsCollector {
 **Full OpenTelemetry implementation** with Whizbang-specific semantics:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Observability, OpenTelemetry, Comprehensive-Instrumentation]
+description: Full OpenTelemetry implementation with Whizbang-specific semantics
+---
 services.AddWhizbang(options => {
     options.UseOpenTelemetry(otel => {
         otel.ConfigureTracing(tracing => {
@@ -288,6 +336,12 @@ services.AddWhizbang(options => {
 **Whizbang-specific OpenTelemetry semantic conventions**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Observability, OpenTelemetry, Semantic-Conventions]
+description: Whizbang-specific OpenTelemetry semantic conventions for consistency
+---
 public static class WhizbangSemanticConventions {
     // Span attributes
     public const string CommandType = "whizbang.command.type";
@@ -311,6 +365,13 @@ public static class WhizbangSemanticConventions {
     public const string LibraryVersion = "whizbang.library.version";
 }
 
+```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Observability, OpenTelemetry, Command-Instrumentation]
+description: Command instrumentation with automatic attribute and custom field capture
+---
 // Usage in instrumentation
 public class WhizbangCommandInstrumentation : IDisposable {
     public Activity? StartCommandActivity<T>(T command, MessageContext context) where T : ICommand {
@@ -339,6 +400,12 @@ public class WhizbangCommandInstrumentation : IDisposable {
 **Automatic performance budget tracking** with alerts:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Observability, Performance-Budgets, Automatic-Tracking]
+description: Automatic performance budget tracking with alerts and dynamic observability
+---
 services.AddWhizbang(options => {
     options.Policies(policies => {
         // Performance budgets for specific handlers
@@ -380,6 +447,12 @@ whizbang_performance_budget_headroom_seconds{handler_type}
 **Standards-compliant distributed tracing**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Observability, W3C-Trace-Context, Distributed-Tracing]
+description: Standards-compliant W3C trace context propagation implementation
+---
 public class WhizbangTraceContextPropagator : IMessageInterceptor {
     public async Task<TResponse> Intercept<TRequest, TResponse>(
         TRequest message,
@@ -456,6 +529,12 @@ public class WhizbangTraceContextPropagator : IMessageInterceptor {
 **Ready-to-use monitoring dashboards** for popular platforms:
 
 ```json
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Observability, Grafana, Dashboard-Configuration]
+description: Ready-to-use Grafana dashboard configuration for Whizbang metrics
+---
 // Grafana dashboard configuration
 {
   "dashboard": {
@@ -505,6 +584,12 @@ public class WhizbangTraceContextPropagator : IMessageInterceptor {
 **Production-ready alerting rules**:
 
 ```yaml
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Observability, Prometheus, Alerting-Rules]
+description: Production-ready Prometheus alerting rules for Whizbang applications
+---
 # Prometheus alerting rules
 groups:
   - name: whizbang.rules

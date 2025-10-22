@@ -81,7 +81,15 @@ The diagram uses color-coded edges to indicate functional areas:
 
 **The minimal foundation for all Whizbang applications.**
 
-```bash
+```bash{
+title: "Install Whizbang.Core Package"
+description: "Install the minimal foundation package for Whizbang applications"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "BEGINNER"
+tags: ["Getting Started", "Packages", "Installation", "Core"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.Core
 ```
 
@@ -198,7 +206,15 @@ The source generator will discover handlers through any of these paths.
 
 **Event sourcing and aggregate support.**
 
-```bash
+```bash{
+title: "Install Whizbang.EventSourcing Package"
+description: "Add event sourcing and aggregate support to your application"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "INTERMEDIATE"
+tags: ["Getting Started", "Packages", "Installation", "Event Sourcing"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.EventSourcing
 ```
 
@@ -266,7 +282,15 @@ await app.RunAsync();
 
 **Read-side projections and CQRS queries.**
 
-```bash
+```bash{
+title: "Install Whizbang.Projections Package"
+description: "Add read-side projections and CQRS query support"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "INTERMEDIATE"
+tags: ["Getting Started", "Packages", "Installation", "Projections"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.Projections
 ```
 
@@ -408,7 +432,15 @@ Whizbang supports **two ways** to register projections:
 
 **Distributed messaging and outbox/inbox patterns.**
 
-```bash
+```bash{
+title: "Install Whizbang.Messaging Package"
+description: "Add distributed messaging and outbox/inbox patterns for microservices"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "ADVANCED"
+tags: ["Getting Started", "Packages", "Installation", "Messaging"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.Messaging
 ```
 
@@ -529,7 +561,15 @@ Whizbang uses ORMs (not custom database drivers) for persistence, allowing you t
 
 **Entity Framework Core integration for event store and projections.**
 
-```bash
+```bash{
+title: "Install Whizbang.EntityFramework Package"
+description: "Add Entity Framework Core integration for event store and projections"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "INTERMEDIATE"
+tags: ["Getting Started", "Packages", "Installation", "Entity Framework"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.EntityFramework
 ```
 
@@ -614,7 +654,15 @@ services.AddWhizbang(options => {
 
 **Dapper integration for high-performance event store and projections.**
 
-```bash
+```bash{
+title: "Install Whizbang.Dapper Package"
+description: "Add high-performance Dapper integration for event store and projections"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "INTERMEDIATE"
+tags: ["Getting Started", "Packages", "Installation", "Dapper"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.Dapper
 ```
 
@@ -703,7 +751,15 @@ services.AddWhizbang(options => {
 
 **NHibernate integration for event store and projections.**
 
-```bash
+```bash{
+title: "Install Whizbang.NHibernate Package"
+description: "Add NHibernate integration for event store and projections"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "ADVANCED"
+tags: ["Getting Started", "Packages", "Installation", "NHibernate"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.NHibernate
 ```
 
@@ -799,7 +855,15 @@ services.AddWhizbang(options => {
 
 **Apache Kafka adapter for distributed messaging.**
 
-```bash
+```bash{
+title: "Install Whizbang.Kafka Package"
+description: "Add Apache Kafka adapter for distributed messaging"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "ADVANCED"
+tags: ["Getting Started", "Packages", "Installation", "Kafka"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.Kafka
 ```
 
@@ -821,7 +885,15 @@ dotnet add package Whizbang.Kafka
 
 **RabbitMQ adapter for distributed messaging.**
 
-```bash
+```bash{
+title: "Install Whizbang.RabbitMQ Package"
+description: "Add RabbitMQ adapter for distributed messaging"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "ADVANCED"
+tags: ["Getting Started", "Packages", "Installation", "RabbitMQ"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.RabbitMQ
 ```
 
@@ -838,7 +910,15 @@ dotnet add package Whizbang.RabbitMQ
 
 **Azure Service Bus adapter.**
 
-```bash
+```bash{
+title: "Install Whizbang.AzureServiceBus Package"
+description: "Add Azure Service Bus adapter for distributed messaging"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "ADVANCED"
+tags: ["Getting Started", "Packages", "Installation", "Azure Service Bus"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.AzureServiceBus
 ```
 
@@ -855,7 +935,15 @@ dotnet add package Whizbang.AzureServiceBus
 
 **AWS SQS/SNS adapter.**
 
-```bash
+```bash{
+title: "Install Whizbang.AWSSQS Package"
+description: "Add AWS SQS/SNS adapter for distributed messaging"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "ADVANCED"
+tags: ["Getting Started", "Packages", "Installation", "AWS SQS"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.AWSSQS
 ```
 
@@ -873,7 +961,15 @@ dotnet add package Whizbang.AWSSQS
 
 **OpenTelemetry integration.**
 
-```bash
+```bash{
+title: "Install Whizbang.OpenTelemetry Package"
+description: "Add OpenTelemetry integration for tracing and metrics"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "INTERMEDIATE"
+tags: ["Getting Started", "Packages", "Installation", "OpenTelemetry"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.OpenTelemetry
 ```
 
@@ -889,7 +985,15 @@ dotnet add package Whizbang.OpenTelemetry
 
 **Web-based monitoring dashboard.**
 
-```bash
+```bash{
+title: "Install Whizbang.Dashboard Package"
+description: "Add web-based monitoring dashboard for Whizbang applications"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "INTERMEDIATE"
+tags: ["Getting Started", "Packages", "Installation", "Dashboard"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.Dashboard
 ```
 
@@ -908,7 +1012,15 @@ dotnet add package Whizbang.Dashboard
 
 **Roslyn analyzers for compile-time validation.**
 
-```bash
+```bash{
+title: "Install Whizbang.Analyzers Package"
+description: "Add Roslyn analyzers for compile-time validation and purity checks"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "INTERMEDIATE"
+tags: ["Getting Started", "Packages", "Installation", "Analyzers"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.Analyzers
 ```
 
@@ -958,7 +1070,15 @@ public class OrderProjection {
 
 **Testing utilities and in-memory doubles.**
 
-```bash
+```bash{
+title: "Install Whizbang.Testing Package"
+description: "Add testing utilities and in-memory doubles for development"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "INTERMEDIATE"
+tags: ["Getting Started", "Packages", "Installation", "Testing"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.Testing
 ```
 
@@ -1089,7 +1209,15 @@ Are you developing/testing?
 
 ### Simple Monolith
 
-```bash
+```bash{
+title: "Simple Monolith Package Installation"
+description: "Install packages for a simple monolithic application with event sourcing"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "BEGINNER"
+tags: ["Getting Started", "Packages", "Installation", "Monolith"]
+showLineNumbers: true
+}
 dotnet add package Whizbang.Core
 dotnet add package Whizbang.EventSourcing
 dotnet add package Whizbang.EntityFramework
@@ -1100,7 +1228,15 @@ dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
 
 ### Monolith with Read Models
 
-```bash
+```bash{
+title: "Monolith with Read Models Package Installation"
+description: "Install packages for a monolith with event sourcing and read model projections"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "INTERMEDIATE"
+tags: ["Getting Started", "Packages", "Installation", "Monolith", "CQRS"]
+showLineNumbers: true
+}
 dotnet add package Whizbang.Core
 dotnet add package Whizbang.EventSourcing
 dotnet add package Whizbang.Projections
@@ -1112,7 +1248,15 @@ dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
 
 ### High-Performance Monolith
 
-```bash
+```bash{
+title: "High-Performance Monolith Package Installation"
+description: "Install packages for a high-performance monolith using Dapper for optimal speed"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "ADVANCED"
+tags: ["Getting Started", "Packages", "Installation", "Performance", "Dapper"]
+showLineNumbers: true
+}
 dotnet add package Whizbang.Core
 dotnet add package Whizbang.EventSourcing
 dotnet add package Whizbang.Projections
@@ -1124,7 +1268,15 @@ dotnet add package Npgsql
 
 ### Microservices with Kafka
 
-```bash
+```bash{
+title: "Microservices with Kafka Package Installation"
+description: "Install packages for microservices architecture with Kafka messaging and observability"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "ADVANCED"
+tags: ["Getting Started", "Packages", "Installation", "Microservices", "Kafka"]
+showLineNumbers: true
+}
 dotnet add package Whizbang.Core
 dotnet add package Whizbang.EventSourcing
 dotnet add package Whizbang.Projections
@@ -1139,7 +1291,15 @@ dotnet add package Whizbang.OpenTelemetry
 
 ### Enterprise with SQL Server
 
-```bash
+```bash{
+title: "Enterprise with SQL Server Package Installation"
+description: "Install packages for enterprise applications using NHibernate and SQL Server"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "ADVANCED"
+tags: ["Getting Started", "Packages", "Installation", "Enterprise", "SQL Server"]
+showLineNumbers: true
+}
 dotnet add package Whizbang.Core
 dotnet add package Whizbang.EventSourcing
 dotnet add package Whizbang.Projections

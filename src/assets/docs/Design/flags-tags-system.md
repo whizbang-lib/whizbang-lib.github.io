@@ -16,6 +16,12 @@ Whizbang provides a sophisticated flags and tags system for message context, ena
 **Hardcoded enum flags** provided by Whizbang for common scenarios:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Flags-Tags, Message-Context, Cross-Service-Communication]
+description: Library-defined flags enum for common development and operational scenarios
+---
 [Flags]
 public enum WhizbangFlags : long {
     None = 0,
@@ -61,6 +67,12 @@ public enum WhizbangFlags : long {
 **Arbitrary string tags** added by developers for custom scenarios:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Flags-Tags, Message-Context, Fluent-API]
+description: Message context class with fluent API for flags and tags management
+---
 public class MessageContext {
     public WhizbangFlags Flags { get; set; }
     public HashSet<string> Tags { get; set; } = new();
@@ -105,6 +117,12 @@ context.WithTag("customer-priority")
 **Flags carry through entire message journey** across service boundaries:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Flags-Tags, Cross-Service-Propagation, Debugging]
+description: Automatic flag and tag propagation across service boundaries
+---
 // Service 1: Initial command with debugging flags
 var command = new PlaceOrder(orderId, customerId, items);
 await _mediator.Send(command, context => {
@@ -121,6 +139,13 @@ await _mediator.Send(command, context => {
 // 5. Projection updates in Service 2
 // 6. Saga execution across services
 
+```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Flags-Tags, Event-Handlers, Context-Aware-Processing]
+description: Event handler using propagated flags and tags for conditional processing
+---
 // Service 2: Receives event with same flags and tags
 public class InventoryHandler : IEventHandler<OrderPlaced> {
     public async Task Handle(OrderPlaced @event, EventContext context) {
@@ -145,6 +170,13 @@ public class InventoryHandler : IEventHandler<OrderPlaced> {
 **Context travels with messages** across all transport mechanisms:
 
 ```csharp
+```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Flags-Tags, Message-Serialization, Cross-Service]
+description: Message envelope with context serialization for cross-service communication
+---
 // Message envelope for cross-service communication
 public class MessageEnvelope<T> {
     public T Message { get; set; }
@@ -153,6 +185,13 @@ public class MessageEnvelope<T> {
     public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
 }
 
+```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Flags-Tags, Kafka, Message-Brokers]
+description: Kafka message publisher with automatic context serialization
+---
 // Automatic context serialization in message brokers
 public class KafkaMessagePublisher : IMessagePublisher {
     public async Task PublishAsync<T>(T message, MessageContext context) {
@@ -180,6 +219,12 @@ public class KafkaMessagePublisher : IMessagePublisher {
 **Interactive debugging** with state inspection:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Flags-Tags, IDE-Integration, Debugging, Cursor-Mode]
+description: IDE integration for interactive debugging with state inspection
+---
 // IDE integration for step-by-step debugging
 public class CursorModeHandler : IMessageInterceptor {
     public async Task<TResponse> Intercept<TRequest, TResponse>(
@@ -229,6 +274,12 @@ public class CursorModeHandler : IMessageInterceptor {
 **Programmatic breakpoints** triggered by flags:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Flags-Tags, Debugging, Breakpoints, Development-Tools]
+description: Programmatic breakpoint system triggered by flags for debugging
+---
 public class BreakpointHandler : IMessageInterceptor {
     public async Task<TResponse> Intercept<TRequest, TResponse>(
         TRequest message,
@@ -269,6 +320,12 @@ public class BreakpointHandler : IMessageInterceptor {
 **Policy-driven data sanitization** based on flags:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Flags-Tags, Data-Scrubbing, Security, Privacy]
+description: Policy-driven data sanitization based on flags for security compliance
+---
 public class DataScrubbingInterceptor : IMessageInterceptor {
     public async Task<TResponse> Intercept<TRequest, TResponse>(
         TRequest message,
@@ -296,6 +353,13 @@ public class DataScrubbingInterceptor : IMessageInterceptor {
     }
 }
 
+```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Flags-Tags, Data-Scrubbing, Implementation]
+description: Concrete data scrubber implementation for order data sanitization
+---
 // Data scrubbing rules
 public class OrderDataScrubber : IDataScrubber<PlaceOrder> {
     public async Task<PlaceOrder> ScrubAsync(PlaceOrder order, ScrubOptions options) {
@@ -320,6 +384,13 @@ public class OrderDataScrubber : IDataScrubber<PlaceOrder> {
 **Secure data replication** with automatic scrubbing:
 
 ```csharp
+```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Flags-Tags, Production-to-QA, Data-Replication]
+description: Secure data replication from production to QA with automatic scrubbing
+---
 // Handler that duplicates production messages to QA with scrubbing
 public class ProductionToQAReplicator : IEventHandler<object> {
     public async Task Handle(object @event, EventContext context) {
@@ -352,6 +423,12 @@ public class ProductionToQAReplicator : IEventHandler<object> {
 **Optimize behavior for load testing scenarios**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Flags-Tags, Load-Testing, Performance-Optimization]
+description: Load testing optimization interceptor with flag-based behavior modification
+---
 public class LoadTestingOptimizer : IMessageInterceptor {
     public async Task<TResponse> Intercept<TRequest, TResponse>(
         TRequest message,
@@ -392,6 +469,12 @@ public class LoadTestingOptimizer : IMessageInterceptor {
 **Route to different handlers** based on flags and tags:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Flags-Tags, Dynamic-Routing, Handler-Selection]
+description: Dynamic handler selection based on flags and tags for flexible routing
+---
 // Handler factory that selects implementation based on context
 public class ContextAwareHandlerFactory<T> : ICommandHandler<T> where T : ICommand {
     private readonly IServiceProvider _serviceProvider;
@@ -405,6 +488,13 @@ public class ContextAwareHandlerFactory<T> : ICommandHandler<T> where T : IComma
     }
 }
 
+```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Flags-Tags, Routing-Rules, Handler-Selection]
+description: Context-based routing rules for handler type determination
+---
 // Routing rules based on context
 public class HandlerRoutingRules : IHandlerRoutingRules {
     public async Task<Type> DetermineHandlerType<T>(MessageContext context) {
@@ -436,6 +526,12 @@ public class HandlerRoutingRules : IHandlerRoutingRules {
 **Control flag behavior** through configuration:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Flags-Tags, Configuration, Environment-Management]
+description: Flag management configuration with environment-based defaults and validation
+---
 services.AddWhizbang(options => {
     options.Flags(flags => {
         // Environment-based flag defaults
@@ -465,6 +561,12 @@ services.AddWhizbang(options => {
 **Manage tag propagation and cleanup**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Flags-Tags, Tag-Lifecycle, Management]
+description: Tag lifecycle management with automatic addition and cleanup
+---
 public class TagLifecycleManager : IMessageInterceptor {
     public async Task<TResponse> Intercept<TRequest, TResponse>(
         TRequest message,

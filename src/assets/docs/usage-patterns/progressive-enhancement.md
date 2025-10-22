@@ -265,7 +265,16 @@ public class ResilientHandler : IHandle<ProcessPayment> {
 
 ### Database Schema
 
-```sql
+```sql{
+title: "Outbox Pattern Database Schema"
+description: "Database tables for durable messaging with outbox and inbox patterns"
+framework: "PostgreSQL"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Database Schema", "Outbox Pattern", "Durable Messaging"]
+filename: "whizbang_outbox.sql"
+showLineNumbers: true
+}
 -- Outbox table for durable messaging
 CREATE TABLE whizbang_outbox (
     id BIGSERIAL PRIMARY KEY,
@@ -931,21 +940,48 @@ public class ModeBenchmarks {
 ### Do's
 
 ✅ **Start with the simplest mode that works**
-```csharp
+```csharp{
+title: "Progressive Mode Selection"
+description: "Start simple and scale when needed"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Progressive Enhancement", "Mode Selection", "Best Practices"]
+filename: "ModeSelection.cs"
+usingStatements: ["Whizbang"]
+}
 // Development: UseInProcessMode()
 // Production: Start with UseDurableMode()
 // Scale when needed
 ```
 
 ✅ **Keep handlers focused on business logic**
-```csharp
+```csharp{
+title: "Clean Handler Design"
+description: "Focus handlers on business logic only"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Handler Design", "Best Practices", "Clean Code"]
+filename: "CleanHandler.cs"
+usingStatements: ["Whizbang"]
+}
 public OrderCreated Handle(CreateOrder cmd) {
     // Only business logic, no infrastructure
 }
 ```
 
 ✅ **Use aspects for cross-cutting concerns**
-```csharp
+```csharp{
+title: "Cross-Cutting Concerns with Aspects"
+description: "Use attributes for logging, validation, and transactions"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Aspects", "Cross-Cutting Concerns", "Attributes"]
+filename: "OrderHandler.cs"
+usingStatements: ["Whizbang"]
+}
 [Logged]
 [Validated]
 [Transactional]
@@ -953,7 +989,16 @@ public class OrderHandler : IHandle<CreateOrder>
 ```
 
 ✅ **Test handlers independently of mode**
-```csharp
+```csharp{
+title: "Cross-Mode Testing"
+description: "Test handlers work across all modes"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Testing", "Cross-Mode", "Theory Tests"]
+filename: "CrossModeTests.cs"
+usingStatements: ["Xunit", "Whizbang"]
+}
 [Theory]
 [InlineData("InProcess")]
 [InlineData("Durable")]
@@ -963,7 +1008,15 @@ public async Task TestAcrossModes(string mode)
 ### Don'ts
 
 ❌ **Don't add mode-specific logic to handlers**
-```csharp
+```csharp{
+title: "Anti-Pattern: Mode-Specific Logic"
+description: "Don't add mode-specific logic to handlers"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Anti-Pattern", "Bad Practice", "Mode-Specific"]
+filename: "BadModeLogic.cs"
+}
 // BAD
 if (IsDistributedMode()) {
     // Special distributed logic
@@ -971,13 +1024,29 @@ if (IsDistributedMode()) {
 ```
 
 ❌ **Don't skip modes unnecessarily**
-```csharp
+```csharp{
+title: "Anti-Pattern: Skipping Modes"
+description: "Don't jump directly to complex modes"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Anti-Pattern", "Progressive Enhancement", "Evolution"]
+filename: "ModeProgression.cs"
+}
 // BAD: Jumping straight to event sourcing
 // GOOD: Progress through modes as needed
 ```
 
 ❌ **Don't mix modes in same deployment**
-```csharp
+```csharp{
+title: "Anti-Pattern: Mixed Modes"
+description: "Don't mix different modes in same deployment"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Anti-Pattern", "Deployment", "Consistency"]
+filename: "MixedModes.cs"
+}
 // BAD: Some handlers durable, others distributed
 // GOOD: Consistent mode across application
 ```

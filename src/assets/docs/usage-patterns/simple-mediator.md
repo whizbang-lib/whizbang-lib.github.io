@@ -47,7 +47,16 @@ graph LR
 
 ### Required Packages
 
-```xml
+```xml{
+title: "Required Package Reference"
+description: "Add Whizbang.Core NuGet package to your project"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Simple Mediator", "NuGet", "Installation"]
+filename: "YourProject.csproj"
+showLineNumbers: true
+}
 <PackageReference Include="Whizbang.Core" Version="1.0.0" />
 ```
 
@@ -526,7 +535,17 @@ public class PerspectiveTests {
 
 ### Avoid Direct Handler Calls
 
-```csharp
+```csharp{
+title: "Proper Handler Usage Pattern"
+description: "Use the dispatcher instead of injecting handlers directly"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Simple Mediator", "Best Practices", "Anti-Patterns"]
+filename: "OrderService.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang"]
+}
 // ❌ BAD - Don't inject and call handlers directly
 public class OrderService {
     private readonly CreateOrderHandler _handler;
@@ -548,7 +567,17 @@ public class OrderService {
 
 ### Use Return Types to Express Intent
 
-```csharp
+```csharp{
+title: "Return Type Semantics Examples"
+description: "Express intent clearly through return types for proper event flow"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Simple Mediator", "Return Types", "Best Practices", "Events"]
+filename: "ReturnTypeExamples.cs"
+showLineNumbers: true
+usingStatements: ["System"]
+}
 // ❌ BAD - Unclear what happens with the result
 public object Handle(CreateOrder cmd) {
     return new { OrderId = Guid.NewGuid() };
@@ -567,7 +596,17 @@ public (OrderCreated, SendEmail) Handle(CreateOrder cmd) {
 
 ### Avoid Business Logic in Controllers
 
-```csharp
+```csharp{
+title: "Controller Logic Separation"
+description: "Keep business logic in handlers, not controllers"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Simple Mediator", "Controllers", "Separation of Concerns", "Best Practices"]
+filename: "OrderController.cs"
+showLineNumbers: true
+usingStatements: ["Microsoft.AspNetCore.Mvc", "System.Threading.Tasks"]
+}
 // ❌ BAD - Business logic in controller
 [HttpPost]
 public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
@@ -589,14 +628,34 @@ public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
 ## Progressive Enhancement
 
 ### Start Simple
-```csharp
+```csharp{
+title: "Phase 1: Simple In-Process Configuration"
+description: "Start with simple in-process messaging like MediatR"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Simple Mediator", "Configuration", "Progressive Enhancement", "In-Process"]
+filename: "Program.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "Microsoft.Extensions.DependencyInjection"]
+}
 // Phase 1: Simple in-process (like MediatR)
 builder.Services.AddWhizbang()
     .UseInProcessMode();
 ```
 
 ### Add Durability When Needed
-```csharp
+```csharp{
+title: "Phase 2: Durable Mode Configuration"
+description: "Add persistence and retry capabilities like Wolverine"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Simple Mediator", "Configuration", "Progressive Enhancement", "Durability", "PostgreSQL"]
+filename: "Program.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "Microsoft.Extensions.DependencyInjection"]
+}
 // Phase 2: Add persistence and retry (like Wolverine)
 builder.Services.AddWhizbang()
     .UseDurableMode()
@@ -605,7 +664,17 @@ builder.Services.AddWhizbang()
 ```
 
 ### Scale to Distributed
-```csharp
+```csharp{
+title: "Phase 3: Distributed Mode Configuration"
+description: "Scale to microservices architecture like MassTransit"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Simple Mediator", "Configuration", "Progressive Enhancement", "Distributed", "Kafka", "Microservices"]
+filename: "Program.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "Microsoft.Extensions.DependencyInjection"]
+}
 // Phase 3: Microservices (like MassTransit)
 builder.Services.AddWhizbang()
     .UseDistributedMode()
@@ -614,7 +683,17 @@ builder.Services.AddWhizbang()
 ```
 
 ### Enable Event Sourcing
-```csharp
+```csharp{
+title: "Phase 4: Event Sourcing Configuration"
+description: "Enable full event sourcing capabilities unique to Whizbang"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Simple Mediator", "Configuration", "Progressive Enhancement", "Event Sourcing", "Projections"]
+filename: "Program.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "Microsoft.Extensions.DependencyInjection"]
+}
 // Phase 4: Full event sourcing (unique to Whizbang)
 builder.Services.AddWhizbang()
     .UseEventSourcedMode()
@@ -640,7 +719,17 @@ builder.Services.AddWhizbang()
 - Adaptive runtime optimization
 
 ### Monitoring with Aspects
-```csharp
+```csharp{
+title: "Monitoring with Aspects"
+description: "Built-in observability through declarative aspects"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Simple Mediator", "Aspects", "Monitoring", "Observability", "Logging"]
+filename: "OrderHandler.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "System"]
+}
 // Built-in observability via aspects
 [Observed] // Automatic telemetry
 [Timed]    // Performance metrics
@@ -657,7 +746,17 @@ public class OrderHandler : IHandle<CreateOrder> {
 ```
 
 ### Error Handling with Result Types
-```csharp
+```csharp{
+title: "Error Handling with Result Types"
+description: "Use Result types for robust error handling without exceptions"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Simple Mediator", "Error Handling", "Result Types", "Best Practices"]
+filename: "OrderHandler.cs"
+showLineNumbers: true
+usingStatements: ["System"]
+}
 public Result<OrderCreated> Handle(CreateOrder cmd) {
     if (!IsValid(cmd)) {
         return Result.Failure<OrderCreated>("Validation failed");

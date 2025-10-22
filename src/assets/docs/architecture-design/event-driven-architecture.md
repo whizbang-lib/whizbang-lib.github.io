@@ -40,6 +40,12 @@ Both modes use the same components and patterns. The only difference is whether 
 **Purpose**: Receives commands, makes decisions, emits events
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Receptors, Event-Driven, CQRS]
+description: Universal receptor interface that works in both event-driven and event-sourced modes
+---
 // Same interface works in both modes!
 public class OrderReceptor : IReceptor<CreateOrder> {
     public OrderCreated Receive(CreateOrder cmd, IOrderLens lens) {
@@ -64,6 +70,12 @@ public class OrderReceptor : IReceptor<CreateOrder> {
 **Purpose**: Updates views and projections from events
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Perspectives, Event-Driven, Projections]
+description: Perspective that updates multiple data stores from events, working identically in both modes
+---
 // Perspectives work identically in both modes
 public class OrderPerspective : IPerspectiveOf<OrderCreated> {
     public async Task Update(OrderCreated e) {
@@ -86,6 +98,12 @@ public class OrderPerspective : IPerspectiveOf<OrderCreated> {
 **Purpose**: Provides read-only access to current state
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Lenses, Read-Model, Query-Interface]
+description: Read-only lens interface providing consistent data access regardless of execution mode
+---
 // Lenses provide consistent reads regardless of mode
 public interface IOrderLens {
     Order Focus(Guid id);                           // Get single item
@@ -99,6 +117,12 @@ public interface IOrderLens {
 **Purpose**: Routes commands to receptors and events to perspectives
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Dispatcher, CQRS, Message-Routing]
+description: Core dispatcher interface for command routing, event broadcasting, and query execution
+---
 public interface IDispatcher {
     Task<TEvent> Dispatch<TEvent>(ICommand<TEvent> command);
     Task Broadcast(IEvent @event);
@@ -111,6 +135,12 @@ public interface IDispatcher {
 This pattern works identically in both modes:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Universal-Pattern, Business-Logic, Event-Driven]
+description: Universal pattern showing receptor and perspective working identically in both modes
+---
 public class TransferMoneyReceptor : IReceptor<TransferMoney> {
     public MoneyTransferred Receive(TransferMoney cmd, IAccountLens lens) {
         // Read current state through lens
@@ -149,6 +179,12 @@ public class AccountPerspective : IPerspectiveOf<MoneyTransferred> {
 Configure behavior per-receptor using policies:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Policy-Configuration, Mode-Selection, Hybrid]
+description: Configuration showing mixed modes within same application using policies
+---
 services.AddWhizbang()
     .UseDispatcher(dispatcher => {
         // Default mode for all receptors
@@ -170,6 +206,12 @@ services.AddWhizbang()
 ### Phase 1: Event-Driven (Stateless Receptors)
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Event-Driven, Stateless-Receptors, Phase-1]
+description: Event-driven mode with stateless receptor getting state from lens
+---
 // Stateless receptor gets state from lens
 public class OrderReceptor : IReceptor<ShipOrder> {
     public OrderShipped Receive(ShipOrder cmd, IOrderLens lens) {
@@ -187,6 +229,12 @@ public class OrderReceptor : IReceptor<ShipOrder> {
 ### Phase 2: Event-Sourced (Stateful Receptors)
 
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [Architecture, Event-Sourcing, Stateful-Receptors, Phase-2]
+description: Event-sourced mode with stateful receptor maintaining state from events
+---
 // Same receptor, now stateful
 [EventSourced]
 public class OrderReceptor : IReceptor<ShipOrder> {
@@ -210,7 +258,13 @@ public class OrderReceptor : IReceptor<ShipOrder> {
 ## The Flow
 
 ### Event-Driven Mode
-```
+```text
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Event-Driven, Flow-Diagram, Synchronous]
+description: Event-driven mode flow with immediate database updates
+---
 Command → Dispatcher → Receptor → Event
                            ↓
                     Perspective → Database (immediate)
@@ -219,7 +273,13 @@ Command → Dispatcher → Receptor → Event
 ```
 
 ### Event-Sourced Mode
-```
+```text
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [Architecture, Event-Sourcing, Flow-Diagram, Asynchronous]
+description: Event-sourced mode flow with ledger persistence and async perspective updates
+---
 Command → Dispatcher → Receptor → Event
                            ↓
                         Ledger (persist)
@@ -235,6 +295,12 @@ Command → Dispatcher → Receptor → Event
 No direct database writes. All state changes flow through events:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Best-Practices, Events-As-Write-Model, Anti-Patterns]
+description: Comparison showing wrong direct database writes vs correct event-driven approach
+---
 // ❌ WRONG - Direct database write
 public void Handle(CreateOrder cmd) {
     var order = new Order { ... };
@@ -252,6 +318,12 @@ public OrderCreated Receive(CreateOrder cmd) {
 Lenses never modify state, they only observe:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Best-Practices, Read-Only-Lenses, Anti-Patterns]
+description: Comparison showing wrong lens with write methods vs correct read-only lens
+---
 // ❌ WRONG - Lens with write methods
 public interface IOrderLens {
     void Save(Order order);  // Don't do this!
@@ -268,6 +340,12 @@ public interface IOrderLens {
 All database updates happen in perspectives:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Best-Practices, Perspective-Writes, Separation-Of-Concerns]
+description: Proper perspective implementation handling all database writes
+---
 public class OrderPerspective : IPerspectiveOf<OrderCreated> {
     public async Task Update(OrderCreated e) {
         // ALL writes happen here
@@ -297,6 +375,12 @@ public class OrderPerspective : IPerspectiveOf<OrderCreated> {
 Moving from Event-Driven to Event-Sourced is seamless:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Migration-Strategy, Progressive-Enhancement, Evolution]
+description: Step-by-step migration from event-driven to event-sourced without code changes
+---
 // Step 1: You're already Event-Driven
 services.AddWhizbang()
     .UseDispatcher(d => d.DefaultPolicy = new EventDrivenPolicy());
@@ -315,6 +399,12 @@ services.AddWhizbang()
 ## Real-World Example
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Real-World-Example, Multiple-Perspectives, Checkout-Process]
+description: Complete checkout example showing receptor with multiple perspectives handling different concerns
+---
 // This receptor works in BOTH modes without changes
 public class CheckoutReceptor : IReceptor<Checkout> {
     public CheckoutCompleted Receive(Checkout cmd, ICheckoutLens lens) {

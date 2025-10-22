@@ -22,7 +22,7 @@
     "title": "Architecture Overview",
     "category": "Architecture & Design",
     "order": 1,
-    "description": "Explore Whizbang's layered architecture that scales from simple in-process mediator to full distributed event-sourced systems with domain ownership and driver-based design.",
+    "description": "Explore Whizbang's layered architecture that scales from event-driven development to full distributed event-sourced systems with receptors, perspectives, lenses, and domain ownership.",
     "videos": [],
     "examples": []
   },
@@ -104,6 +104,15 @@
     "category": "Core Concepts",
     "order": 1,
     "description": "Master the four foundational concepts of Whizbang - Events, Commands, Aggregates, and Projections - essential for building effective CQRS and event-sourced systems.",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "core-concepts/dispatcher",
+    "title": "Dispatcher & Policies",
+    "category": "Core Concepts",
+    "order": 5,
+    "description": "The Dispatcher coordinates all message flow between receptors, perspectives, and lenses, with policies controlling behavior and execution strategies",
     "videos": [],
     "examples": []
   },
@@ -391,6 +400,14 @@
     "title": "Lakehouse Streaming",
     "category": "Roadmap",
     "order": 3,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "test-error-display",
+    "title": "Test Error Display",
+    "category": "Test",
     "description": "",
     "videos": [],
     "examples": []

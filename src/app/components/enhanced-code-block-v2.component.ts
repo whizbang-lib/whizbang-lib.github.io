@@ -37,6 +37,9 @@ interface CodeBlockOptions {
   framework?: string;
   difficulty?: string;
   usingStatements?: string[];
+  // Error handling for missing front-matter
+  missingFrontMatter?: boolean;
+  errorMessage?: string;
 }
 
 @Component({
@@ -60,7 +63,23 @@ interface CodeBlockOptions {
   template: `
     <div class="enhanced-code-block" 
          [class.collapsible]="isCollapsible" 
-         [class.collapsed]="collapsed">
+         [class.collapsed]="collapsed"
+         [class.missing-front-matter]="options.missingFrontMatter">
+      
+      <!-- Error Display for Missing Front-Matter -->
+      <div class="front-matter-error" *ngIf="options.missingFrontMatter">
+        <div class="error-content">
+          <i class="pi pi-exclamation-triangle error-icon"></i>
+          <div class="error-message">
+            <strong>Missing Front-Matter</strong>
+            <p>{{ options.errorMessage }}</p>
+            <details class="error-details">
+              <summary>Example Front-Matter</summary>
+              <pre class="example-front-matter">{{ getExampleFrontMatter() }}</pre>
+            </details>
+          </div>
+        </div>
+      </div>
       
       <!-- Header with metadata -->
       <div class="code-header" *ngIf="hasHeader()">
@@ -696,7 +715,8 @@ export class EnhancedCodeBlockV2Component implements OnInit, OnDestroy, OnChange
   // Component interface methods
   hasHeader(): boolean {
     return !!(this.options.title || this.options.filename || this.options.language || 
-             this.options.githubUrl || this.options.showCopyButton !== false || this.isCollapsible);
+             this.options.githubUrl || this.options.showCopyButton !== false || this.isCollapsible ||
+             this.options.missingFrontMatter);
   }
   
   hasMetadata(): boolean {
@@ -984,6 +1004,22 @@ export class EnhancedCodeBlockV2Component implements OnInit, OnDestroy, OnChange
       default:
         return 'txt';
     }
+  }
+
+  getExampleFrontMatter(): string {
+    const language = this.options.language || 'csharp';
+    return `\`\`\`${language}{
+title: "Descriptive Title"
+description: "Clear explanation of what this code demonstrates"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Tag1", "Tag2", "Tag3"]
+nugetPackages: ["Package.Name"]
+filename: "ExampleFile.${this.getFileExtension()}"
+usingStatements: ["System", "System.Threading.Tasks"]
+showLineNumbers: true
+}`;
   }
 
 }

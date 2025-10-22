@@ -316,7 +316,17 @@ public record EventAuditRecord {
 
 2. **Creates Registrations for Each Concrete Type**: For every event type matching the generic constraint:
 
-   ```csharp
+   ```csharp{
+   title: "Generic Method Registration Example"
+   description: "How source generator creates registrations for generic subscription methods"
+   framework: "NET8"
+   category: "Projections"
+   difficulty: "ADVANCED"
+   tags: ["Projections", "Source Generation", "Generic Methods"]
+   filename: "SourceGenerationExample.cs"
+   usingStatements: ["System", "System.Threading", "System.Threading.Tasks"]
+   showLineNumbers: true
+   }
    // You write this ONE generic method:
    public Task OnEvent<TEvent>([WhizbangSubscribe] TEvent @event, CancellationToken ct)
        where TEvent : IEvent { }
@@ -431,7 +441,17 @@ graph TD
 
 ## Valid Subscription Patterns
 
-```csharp
+```csharp{
+title: "Valid Subscription Patterns"
+description: "Examples of all valid projection subscription patterns supported by Whizbang"
+framework: "NET8"
+category: "Projections"
+difficulty: "INTERMEDIATE"
+tags: ["Projections", "Subscriptions", "Patterns", "Examples"]
+filename: "SubscriptionPatterns.cs"
+usingStatements: ["System", "System.Threading", "System.Threading.Tasks"]
+showLineNumbers: true
+}
 // ✅ VALID - Specific event type
 public Task Handle([WhizbangSubscribe] OrderPlaced @event, CancellationToken ct) { }
 
@@ -500,7 +520,17 @@ sequenceDiagram
     Router->>Router: All projections complete
 ```
 
-```csharp
+```csharp{
+title: "Auto-Registration Example"
+description: "How subscriptions are automatically registered by the source generator"
+framework: "NET8"
+category: "Projections"
+difficulty: "INTERMEDIATE"
+tags: ["Projections", "Auto-Registration", "Source Generation"]
+filename: "AutoRegistrationExample.cs"
+usingStatements: ["System", "System.Threading", "System.Threading.Tasks"]
+showLineNumbers: true
+}
 // This subscription is automatically registered
 public Task OnOrderPlaced([WhizbangSubscribe] OrderPlaced @event, CancellationToken ct) {
     // Source generator creates registration code like:

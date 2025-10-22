@@ -31,6 +31,12 @@ Whizbang solves these with:
 ### Aspects as Attributes
 
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [AOP, Aspects, Attributes, Handlers]
+description: Basic aspect attribute usage on a command handler
+---
 [Logged]                    // Add structured logging
 [Timed]                     // Track execution time
 [Cached(Duration = "5m")]   // Cache results
@@ -70,6 +76,12 @@ graph LR
 ### Logging Aspect
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Logging, Structured-Logging, Configuration]
+description: Configured logging aspect with structured output
+---
 [Logged(
     Level = LogLevel.Information,
     IncludeParameters = true,
@@ -104,6 +116,12 @@ public class OrderHandler : IHandle<CreateOrder> {
 ### Caching Aspect
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Caching, Cache-Invalidation, Performance]
+description: Caching aspect with custom key and invalidation strategies
+---
 [Cached(
     Duration = "5m",                    // Cache for 5 minutes
     Key = "{CustomerId}:{OrderId}",     // Custom cache key
@@ -131,6 +149,12 @@ public class UpdateOrderHandler : IHandle<UpdateOrder> {
 ### Retry Aspect
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Retry, Resilience, Error-Handling]
+description: Retry aspect with exponential backoff and conditional logic
+---
 [Retry(
     MaxAttempts = 3,
     Backoff = BackoffStrategy.Exponential,
@@ -156,6 +180,12 @@ public class PaymentHandler : IHandle<ProcessPayment> {
 ### Authorization Aspect
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Authorization, Security, Role-Based-Security]
+description: Authorization aspects with role-based and resource-based access control
+---
 [Authorized(
     Roles = ["Admin", "Manager"],
     Policies = ["OrderManagement"],
@@ -185,6 +215,12 @@ public class DeleteOrderHandler : IHandle<DeleteOrder> {
 ### Validation Aspect
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Validation, Data-Annotations, FluentValidation]
+description: Validation aspect with data annotations and custom rules
+---
 [Validated(
     Mode = ValidationMode.Strict,
     ThrowOnFailure = true,
@@ -211,6 +247,12 @@ public record CreateOrder(
 ### Transaction Aspect
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Transactions, ACID, Database]
+description: Transactional aspect with custom isolation and rollback rules
+---
 [Transactional(
     IsolationLevel = IsolationLevel.ReadCommitted,
     Timeout = "30s",
@@ -232,6 +274,12 @@ public class TransferMoneyHandler : IHandle<TransferMoney> {
 ### Metrics Aspect
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Metrics, Observability, Telemetry]
+description: Metrics aspect with counters, histograms and custom tags
+---
 [Metrics(
     Counter = "orders.created",
     Histogram = "order.processing.duration",
@@ -255,6 +303,12 @@ public class CreateOrderHandler : IHandle<CreateOrder> {
 ### Simple Custom Aspect
 
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [AOP, Custom-Aspects, Audit, Interceptors]
+description: Custom audit aspect implementation with interception
+---
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public class AuditAttribute : AspectAttribute {
     public override async Task<T> InterceptAsync<T>(
@@ -291,6 +345,12 @@ public class AuditAttribute : AspectAttribute {
 ### Advanced Custom Aspect with Source Generator
 
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [AOP, Source-Generation, Rate-Limiting, Code-Generation]
+description: Advanced aspect with source generator for rate limiting
+---
 // Aspect definition
 [AspectGenerator]
 public class RateLimitAttribute : AspectAttribute {
@@ -323,6 +383,12 @@ public static class RateLimitAspectGenerator {
 ### Sequential Composition
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Aspect-Composition, Execution-Order]
+description: Sequential aspect composition and execution order
+---
 // Aspects execute in order
 [First]   // Executes first
 [Second]  // Executes second
@@ -335,6 +401,12 @@ public class Handler : IHandle<Command> {
 ### Conditional Composition
 
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [AOP, Conditional-Aspects, Runtime-Configuration]
+description: Conditional aspect composition based on runtime conditions
+---
 [ConditionalAspect(When = "Environment == 'Production'", Apply = typeof(AuditAspect))]
 [ConditionalAspect(When = "User.IsAdmin", Apply = typeof(AdminLoggingAspect))]
 public class Handler : IHandle<Command> {
@@ -345,6 +417,12 @@ public class Handler : IHandle<Command> {
 ### Composite Aspects
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Composite-Aspects, Reusability]
+description: Composite aspect pattern for reusable aspect combinations
+---
 // Define a composite aspect
 [CompositeAspect]
 [Logged]
@@ -365,6 +443,12 @@ public class OrderHandler : IHandle<CreateOrder> {
 ### Pure Function Enforcement
 
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [AOP, Pure-Functions, Compile-Time-Verification]
+description: Pure function enforcement with compile-time verification
+---
 [Pure] // Compile-time verification
 public class CalculationHandler : IHandle<Calculate> {
     public Result Handle(Calculate cmd) {
@@ -385,6 +469,12 @@ public class CalculationHandler : IHandle<Calculate> {
 ### Effect Tracking
 
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [AOP, Effect-Tracking, Compile-Time-Verification]
+description: Effect tracking with compile-time verification of side effects
+---
 [Effects(
     Reads = ["Database", "Cache"],
     Writes = ["Database"],
@@ -406,6 +496,12 @@ public class OrderHandler : IHandle<ProcessOrder> {
 ### Aspect Compatibility Checking
 
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [AOP, Aspect-Compatibility, Compile-Time-Validation]
+description: Compile-time detection of incompatible aspect combinations
+---
 // Source generator detects incompatible aspects
 [Cached]        // ❌ Compile error: Cannot cache with [NoCache]
 [NoCache]       
@@ -422,6 +518,12 @@ public class Handler { }
 ### Zero-Overhead Aspects
 
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [AOP, Source-Generation, Performance-Optimization]
+description: Zero-overhead aspect implementation via source generation
+---
 // Source generator creates optimized code
 [Logged]
 [Timed]
@@ -457,6 +559,12 @@ public class Handler_Generated : IHandle<Command> {
 ### Aspect Caching
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Performance, Caching, Optimization]
+description: Aspect instance caching for performance optimization
+---
 // Aspects instances are cached and reused
 [Expensive] // This aspect instance is created once and reused
 public class Handler : IHandle<Command> {
@@ -469,6 +577,12 @@ public class Handler : IHandle<Command> {
 ### Unit Testing
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Testing, Unit-Tests, Verification]
+description: Unit testing handlers with aspect verification
+---
 [Test]
 public async Task Handler_WithAspects_LogsAndTimes() {
     // Arrange
@@ -492,6 +606,12 @@ public async Task Handler_WithAspects_LogsAndTimes() {
 ### Integration Testing
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Testing, Integration-Tests, Production-Testing]
+description: Integration testing with production aspect profiles
+---
 [Test]
 public async Task Handler_WithProductionAspects_WorksCorrectly() {
     await Whizbang.Test<OrderHandler>()
@@ -511,6 +631,12 @@ public async Task Handler_WithProductionAspects_WorksCorrectly() {
 ### IntelliSense Support
 
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [AOP, IDE-Integration, IntelliSense, Tooling]
+description: IDE support for aspect suggestions and execution order visualization
+---
 // IDE suggests applicable aspects based on handler type
 [Wh| // IDE suggests: WhizbangCached, WhizbangLogged, WhizbangRetry...
 
@@ -526,6 +652,12 @@ public class Handler {
 ### Refactoring Support
 
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [AOP, IDE-Integration, Refactoring, Tooling]
+description: IDE refactoring support for aspects and composites
+---
 // Rename aspect updates all usages
 [MyCustomAspect] // F2 rename updates everywhere
 public class Handler { }
@@ -542,6 +674,12 @@ public class Handler { }
 
 ✅ **Use aspects for cross-cutting concerns**
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [AOP, Best-Practices, Cross-Cutting-Concerns]
+description: Using aspects for cross-cutting concerns
+---
 [Logged]
 [Authorized]
 [Transactional]
@@ -549,17 +687,35 @@ public class Handler { }
 
 ✅ **Keep aspects focused and single-purpose**
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [AOP, Best-Practices, Single-Responsibility]
+description: Keeping aspects focused and single-purpose
+---
 [Cached]  // Just caching
 [Logged]  // Just logging
 ```
 
 ✅ **Compose aspects for complex scenarios**
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Best-Practices, Composite-Aspects]
+description: Composing aspects for complex scenarios
+---
 [StandardSecurity]  // Composite of auth, audit, encryption
 ```
 
 ✅ **Test aspects independently**
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Best-Practices, Testing]
+description: Testing aspects independently
+---
 AspectTester.Test<LoggingAspect>().VerifyBehavior();
 ```
 
@@ -567,17 +723,35 @@ AspectTester.Test<LoggingAspect>().VerifyBehavior();
 
 ❌ **Don't put business logic in aspects**
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [AOP, Anti-Patterns, Bad-Practices]
+description: Anti-pattern - putting business logic in aspects
+---
 [CalculateTax] // Bad: Business logic belongs in handler
 ```
 
 ❌ **Don't create circular aspect dependencies**
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [AOP, Anti-Patterns, Circular-Dependencies]
+description: Anti-pattern - circular aspect dependencies
+---
 [AspectA(DependsOn = "AspectB")]
 [AspectB(DependsOn = "AspectA")] // Circular!
 ```
 
 ❌ **Don't overuse aspects**
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [AOP, Anti-Patterns, Over-Engineering]
+description: Anti-pattern - overusing aspects obscures logic
+---
 // Too many aspects obscure logic
 [Aspect1][Aspect2][Aspect3][Aspect4][Aspect5]...
 ```

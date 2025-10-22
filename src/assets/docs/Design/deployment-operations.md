@@ -16,6 +16,12 @@ Whizbang is designed as an embedded library that runs within developer services,
 **Whizbang runs embedded** within your application, not as a separate service:
 
 ```csharp
+---
+category: Design
+difficulty: BEGINNER
+tags: [Design, Deployment, Embedded-Library, ASP.NET-Core]
+description: Basic embedded library setup within ASP.NET Core application
+---
 // Your service with Whizbang embedded
 public class Program {
     public static void Main(string[] args) {
@@ -50,6 +56,12 @@ public class Program {
 #### 1. Monolithic Deployment
 
 ```yaml
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Deployment, Kubernetes, Monolithic-Deployment]
+description: Kubernetes deployment configuration for monolithic service architecture
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -94,6 +106,12 @@ spec:
 #### 2. Microservices Deployment
 
 ```yaml
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Deployment, Kubernetes, Microservices, Separation-of-Concerns]
+description: Kubernetes deployment for microservices with separated command and projection services
+---
 # Command Service
 apiVersion: apps/v1
 kind: Deployment
@@ -137,6 +155,12 @@ spec:
 #### 3. Domain-per-Service Deployment
 
 ```yaml
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Deployment, Kubernetes, Domain-per-Service]
+description: Domain-per-service deployment pattern with domain ownership configuration
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -174,6 +198,12 @@ spec:
 **Comprehensive health monitoring** ready for Kubernetes probes:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Deployment, Health-Checks, Monitoring]
+description: Comprehensive health check configuration for production readiness
+---
 services.AddWhizbang(options => {
     options.HealthChecks(health => {
         // Core infrastructure health
@@ -211,6 +241,12 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions {
 **Detailed health check implementation**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Deployment, Health-Checks, Implementation]
+description: Detailed health check implementation for infrastructure components
+---
 public class WhizbangHealthCheck : IHealthCheck {
     private readonly IEventStore _eventStore;
     private readonly IMessageBroker _messageBroker;
@@ -271,6 +307,12 @@ public class WhizbangHealthCheck : IHealthCheck {
 **Proper integration** with .NET hosting lifetime for clean shutdown:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Deployment, Graceful-Shutdown, Hosting-Integration]
+description: .NET hosted service integration with graceful shutdown support
+---
 public class WhizbangHostedService : IHostedService, IDisposable {
     private readonly IWhizbangRuntime _runtime;
     private readonly ILogger<WhizbangHostedService> _logger;
@@ -326,6 +368,12 @@ public class WhizbangHostedService : IHostedService, IDisposable {
 **SIGTERM handling** for Kubernetes graceful shutdown:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Deployment, Graceful-Shutdown, Kubernetes-Integration]
+description: Kubernetes SIGTERM handling with graceful shutdown and load balancer drain
+---
 public class GracefulShutdownService : BackgroundService {
     private readonly IHostApplicationLifetime _applicationLifetime;
     private readonly IWhizbangRuntime _runtime;
@@ -369,7 +417,13 @@ public class GracefulShutdownService : BackgroundService {
 
 **Flexible configuration** for different deployment environments:
 
-```csharp
+```json
+---
+category: Design
+difficulty: BEGINNER
+tags: [Design, Deployment, Configuration, Environment-Management]
+description: Environment-specific configuration management with base and override files
+---
 // appsettings.json (base configuration)
 {
   "Whizbang": {
@@ -433,6 +487,12 @@ public class GracefulShutdownService : BackgroundService {
 **Secure credential handling**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Deployment, Security, Secret-Management]
+description: Secure credential handling with Azure Key Vault and Kubernetes secrets
+---
 // Using Azure Key Vault
 builder.Configuration.AddAzureKeyVault(
     new Uri("https://myapp-keyvault.vault.azure.net/"),
@@ -469,6 +529,12 @@ services.AddWhizbang(options => {
 **Comprehensive monitoring stack** integration:
 
 ```yaml
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Deployment, Monitoring, Prometheus, Grafana]
+description: Production monitoring setup with Prometheus and Grafana dashboard configuration
+---
 # Prometheus ServiceMonitor for metrics scraping
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -515,6 +581,12 @@ data:
 **Structured logging** for centralized log management:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Deployment, Logging, Structured-Logging]
+description: Structured logging configuration for centralized log management
+---
 services.AddWhizbang(options => {
     options.Logging(logging => {
         logging.StructuredLogging = true;
@@ -553,6 +625,12 @@ services.AddWhizbang(options => {
 **Scale-out patterns** for high throughput:
 
 ```yaml
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Deployment, Kubernetes, Auto-Scaling, HPA]
+description: Horizontal pod autoscaler configuration with custom metrics
+---
 # Horizontal Pod Autoscaler
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -592,6 +670,12 @@ spec:
 **Resource optimization** for different workloads:
 
 ```yaml
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Deployment, Kubernetes, Resource-Optimization, Vertical-Scaling]
+description: Resource optimization configurations for different workload types
+---
 # Command-heavy service
 apiVersion: apps/v1
 kind: Deployment

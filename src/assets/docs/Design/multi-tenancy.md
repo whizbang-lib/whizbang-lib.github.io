@@ -16,6 +16,12 @@ Whizbang provides comprehensive multi-tenancy support with flexible tenant isola
 **Row-level tenant isolation** using tenant ID columns:
 
 ```sql
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Multi-Tenancy, SQL, Row-Level-Security]
+description: SQL schema for tenant-isolated events table with row-level security
+---
 -- Events table with tenant isolation
 CREATE TABLE events (
     event_id BIGSERIAL PRIMARY KEY,
@@ -53,6 +59,12 @@ CREATE POLICY tenant_isolation_projections ON projections
 **Complete database separation** per tenant:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Multi-Tenancy, Configuration, Separate-Databases]
+description: Configuration for complete database separation per tenant
+---
 services.AddWhizbang(options => {
     options.MultiTenancy(tenancy => {
         tenancy.Strategy = TenancyStrategy.SeparateDatabases;
@@ -72,6 +84,12 @@ services.AddWhizbang(options => {
 **Table partitioning** by tenant for performance:
 
 ```sql
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Multi-Tenancy, SQL, Table-Partitioning, Performance]
+description: Table partitioning by tenant for performance optimization
+---
 -- Partitioned events table
 CREATE TABLE events (
     event_id BIGSERIAL,
@@ -98,6 +116,12 @@ CREATE TABLE events_p3 PARTITION OF events FOR VALUES WITH (MODULUS 4, REMAINDER
 **Standard GUID-based tenant identification**:
 
 ```csharp
+---
+category: Design
+difficulty: BEGINNER
+tags: [Design, Multi-Tenancy, Domain-Models, Tenant-ID]
+description: Default tenant ID definition using standard property conventions
+---
 // Default: Look for TenantId property
 public class Order : Aggregate {
     public Guid Id { get; private set; }
@@ -125,6 +149,12 @@ public class Order : Aggregate {
 **Multi-field tenant identification**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Multi-Tenancy, Composite-Tenant-ID, Configuration]
+description: Multi-field tenant identification for complex organizational structures
+---
 services.AddWhizbang(options => {
     options.MultiTenancy(tenancy => {
         tenancy.TenantIdComposition<Order>(composition => {
@@ -154,6 +184,12 @@ public class Order : Aggregate {
 **Complex tenant identification logic**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Multi-Tenancy, Custom-Resolution, Business-Logic]
+description: Custom tenant identification logic for complex business scenarios
+---
 services.AddWhizbang(options => {
     options.MultiTenancy(tenancy => {
         tenancy.TenantResolver<Order>(order => {
@@ -172,6 +208,12 @@ services.AddWhizbang(options => {
 ### Tenant Context Propagation
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Multi-Tenancy, Context-Management, Interfaces]
+description: Tenant context interface for managing current tenant state
+---
 public interface ITenantContext {
     string? CurrentTenantId { get; }
     void SetTenant(string tenantId);
@@ -179,6 +221,13 @@ public interface ITenantContext {
     bool HasTenant { get; }
 }
 
+```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Multi-Tenancy, ASP.NET-Core, Middleware]
+description: ASP.NET Core middleware for automatic tenant context propagation
+---
 // ASP.NET Core middleware
 public class TenantContextMiddleware {
     public async Task InvokeAsync(HttpContext context, RequestDelegate next) {
@@ -221,6 +270,12 @@ public class TenantContextMiddleware {
 ### Tenant-Aware Command/Event Handling
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Multi-Tenancy, Command-Handlers, Domain-Logic]
+description: Tenant-aware command handler implementation with context validation
+---
 public class PlaceOrderHandler : ICommandHandler<PlaceOrder> {
     private readonly ITenantContext _tenantContext;
     private readonly IOrderRepository _repository;
@@ -254,6 +309,12 @@ public class PlaceOrderHandler : ICommandHandler<PlaceOrder> {
 ### Projection-Level Isolation
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Multi-Tenancy, Projections, Tenant-Isolation]
+description: Tenant-specific projection configuration with isolation controls
+---
 services.AddProjection<OrderSummaryProjection>(options => {
     options.TenantIsolation(isolation => {
         isolation.Strategy = ProjectionTenantStrategy.TenantSpecific;
@@ -282,6 +343,12 @@ public class OrderSummaryProjection : IProjectionHandler<OrderPlaced> {
 **Global projections that aggregate across tenants**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Multi-Tenancy, Projections, Cross-Tenant, Analytics]
+description: Cross-tenant projections for global analytics and reporting
+---
 services.AddProjection<GlobalAnalyticsProjection>(options => {
     options.TenantIsolation(isolation => {
         isolation.Strategy = ProjectionTenantStrategy.CrossTenant;
@@ -310,6 +377,12 @@ public class GlobalAnalyticsProjection : IProjectionHandler<OrderPlaced> {
 ### PostgreSQL Driver
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Multi-Tenancy, Drivers, PostgreSQL, Event-Store]
+description: PostgreSQL driver implementation with tenant isolation support
+---
 public class PostgresTenantDriver : IEventStoreDriver {
     public async Task<IEnumerable<Event>> ReadEvents(string streamId, string? tenantId = null) {
         var sql = tenantId != null 
@@ -340,6 +413,12 @@ public class PostgresTenantDriver : IEventStoreDriver {
 ### Abstract Driver Interface
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Multi-Tenancy, Drivers, Interfaces, Architecture]
+description: Abstract driver interface for tenant-aware data operations
+---
 public interface ITenantAwareDriver {
     Task<T> Load<T>(string id, string? tenantId = null);
     Task Save<T>(T entity, string? tenantId = null);
@@ -356,6 +435,12 @@ public interface ITenantAwareDriver {
 ### Tenant-Based Authorization
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Multi-Tenancy, Security, Authorization]
+description: Tenant-based authorization configuration with isolation enforcement
+---
 services.AddWhizbang(options => {
     options.Authorization(auth => {
         auth.RequireTenantContext = true;
@@ -394,6 +479,12 @@ public class OrderController : ControllerBase {
 ### Row-Level Security Integration
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Multi-Tenancy, PostgreSQL, Row-Level-Security]
+description: PostgreSQL row-level security integration for tenant isolation
+---
 services.AddWhizbang(options => {
     options.UsePostgres(connectionString, postgres => {
         postgres.EnableRowLevelSecurity = true;
@@ -401,6 +492,13 @@ services.AddWhizbang(options => {
     });
 });
 
+```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Multi-Tenancy, PostgreSQL, Connection-Factory]
+description: Database connection factory with automatic tenant context setting
+---
 // Automatically sets tenant context for all database operations
 public class PostgresTenantConnectionFactory : IDbConnectionFactory {
     public async Task<IDbConnection> CreateConnection() {
@@ -425,6 +523,12 @@ public class PostgresTenantConnectionFactory : IDbConnectionFactory {
 ### Comprehensive Multi-Tenancy Setup
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Multi-Tenancy, Configuration, Comprehensive-Setup]
+description: Comprehensive multi-tenancy configuration with all options
+---
 services.AddWhizbang(options => {
     options.MultiTenancy(tenancy => {
         // Tenant identification
@@ -465,6 +569,12 @@ services.AddWhizbang(options => {
 ### Tenant Onboarding Workflow
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Multi-Tenancy, Onboarding, Tenant-Lifecycle]
+description: Tenant onboarding workflow with resource provisioning
+---
 public class TenantOnboardingService {
     public async Task OnboardTenant(string tenantId, TenantConfiguration config) {
         // Create tenant-specific database resources

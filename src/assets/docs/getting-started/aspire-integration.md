@@ -24,13 +24,29 @@ With Aspire integration, you get:
 
 ### 1. Install Aspire Workload
 
-```bash
+```bash{
+title: "Install Aspire Workload"
+description: "Install the .NET Aspire workload for local development"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "BEGINNER"
+tags: ["Getting Started", "Aspire", "Installation", "Setup"]
+showLineNumbers: false
+}
 dotnet workload install aspire
 ```
 
 ### 2. Add Whizbang Aspire Package
 
-```bash
+```bash{
+title: "Add Whizbang Aspire Package"
+description: "Install the Whizbang Aspire integration package"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "BEGINNER"
+tags: ["Getting Started", "Aspire", "Installation", "NuGet"]
+showLineNumbers: false
+}
 dotnet add package Whizbang.Aspire
 ```
 
@@ -120,7 +136,15 @@ app.Run();
 
 ### 5. Run Everything
 
-```bash
+```bash{
+title: "Run Aspire AppHost"
+description: "Start all services and infrastructure with a single command"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "BEGINNER"
+tags: ["Getting Started", "Aspire", "Local Development", "Orchestration"]
+showLineNumbers: false
+}
 dotnet run --project AppHost
 ```
 
@@ -356,7 +380,15 @@ builder.Build().Run();
 
 **Running**:
 
-```bash
+```bash{
+title: "Run Complete Microservices Setup"
+description: "Start the full microservices architecture with Aspire"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "ADVANCED"
+tags: ["Getting Started", "Aspire", "Microservices", "Orchestration"]
+showLineNumbers: false
+}
 dotnet run --project AppHost
 ```
 
@@ -377,7 +409,16 @@ dotnet run --project AppHost
 
 Aspire manages configuration across all services:
 
-```json
+```json{
+title: "Aspire Configuration Structure"
+description: "Example of how Aspire auto-configures Whizbang settings"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "INTERMEDIATE"
+tags: ["Getting Started", "Aspire", "Configuration", "JSON"]
+filename: "appsettings.json"
+showLineNumbers: true
+}
 {
   "Aspire": {
     "Whizbang": {
@@ -482,7 +523,15 @@ Tests run against **real infrastructure** (Postgres, Kafka, etc.) managed by Asp
 
 Generate deployment artifacts from Aspire:
 
-```bash
+```bash{
+title: "Aspire Deployment Commands"
+description: "Generate deployment artifacts and deploy with Aspire"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "ADVANCED"
+tags: ["Getting Started", "Aspire", "Deployment", "Kubernetes", "Docker"]
+showLineNumbers: true
+}
 # Generate Kubernetes manifests
 dotnet run --project AppHost -- publish --output-path ./deploy/k8s
 

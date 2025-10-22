@@ -39,6 +39,12 @@ All of these concepts share the same dispatcher model, dependency injection patt
 **Write your business logic once. Run it anywhere.** Whizbang provides a unified mental model that scales from event-driven development to complex distributed event-sourced systems—without changing your receptors.
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Philosophy, Universal-Design, Mode-Switching, Progressive-Enhancement]
+description: Single receptor working across all modes with configuration-based mode switching
+---
 // This SAME receptor works across ALL modes
 public class OrderReceptor : IReceptor<CreateOrder> {
     public OrderCreated Receive(CreateOrder cmd) {
@@ -59,6 +65,12 @@ services.AddWhizbang(d => d.UseEventSourcing());       // Event sourcing with le
 **What you return determines what happens.** No configuration files, no routing tables, no ceremony. Your intent is clear from your code:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Philosophy, Return-Type-Semantics, Message-Patterns, Railway-Oriented]
+description: Return type semantics demonstrating how different return types determine behavior
+---
 // Single return = single effect
 return new OrderCreated();                           // Publishes event
 
@@ -77,6 +89,12 @@ yield return new OrderProcessed();                  // IAsyncEnumerable
 **Cross-cutting concerns are first-class citizens.** Through source generators and compile-time weaving, aspects like logging, retry, caching, and authorization are declarative and performant:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Philosophy, Aspect-Oriented, Cross-Cutting-Concerns, Declarative]
+description: Aspect-oriented design with declarative attributes for cross-cutting concerns
+---
 [Logged]
 [Cached(Duration = "5m")]
 [Retry(3, Backoff = "exponential")]
@@ -144,6 +162,12 @@ This prevents the "event spaghetti" problem where no one knows who publishes wha
 Mark a receptor as `pure` and the Roslyn analyzer **forbids hidden side effects**—guaranteeing your receptor is a true function from input to output.
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Philosophy, Pure-Functions, Compile-Time-Safety, Side-Effects]
+description: Pure function example with compile-time verification preventing side effects
+---
 [Pure]
 public OrderCalculated Receive(CalculateOrder cmd) {
     // ✅ Pure computation allowed
@@ -159,6 +183,12 @@ public OrderCalculated Receive(CalculateOrder cmd) {
 **Your code expresses intent through conventions.** Return types determine behavior. Attributes declare aspects. Source generators eliminate boilerplate. No XML files, no complex registration, no ceremony.
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Philosophy, Convention-Over-Configuration, Return-Types, Declarative]
+description: Convention-based programming showing how return types and attributes express intent
+---
 // Return type determines what happens
 public OrderCreated Receive(CreateOrder cmd) => new OrderCreated();      // Event to perspectives
 public ProcessPayment Receive(OrderCreated e) => new ProcessPayment();   // Command to other receptor
@@ -197,6 +227,12 @@ Your domain logic never needs to worry about duplicate messages.
 **Catch errors during build, not at runtime.** Through source generators and Roslyn analyzers, Whizbang provides unprecedented compile-time verification:
 
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [Philosophy, Compile-Time-Safety, Source-Generators, Effect-Tracking]
+description: Compile-time safety with pure functions and effect declarations verified by source generators
+---
 [Pure]
 public class CalculationReceptor : IReceptor<Calculate> {
     public Result Receive(Calculate cmd) {

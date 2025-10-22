@@ -44,7 +44,14 @@ graph LR
 
 ### Step 1: Create a New Project
 
-```bash
+```bash{
+title: "Create New Web API Project"
+description: "Create a new ASP.NET Core Web API project named MyApp"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "BEGINNER"
+tags: ["Commands", "Setup", "dotnet", "Project Creation"]
+}
 dotnet new webapi -n MyApp
 cd MyApp
 ```
@@ -53,7 +60,14 @@ cd MyApp
 
 For this tutorial, we'll start with just the core package:
 
-```bash
+```bash{
+title: "Install Whizbang Core Package"
+description: "Add the Whizbang.Core NuGet package for event-driven architecture"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "BEGINNER"
+tags: ["Commands", "Installation", "dotnet", "Package Management"]
+}
 dotnet add package Whizbang.Core
 ```
 
@@ -240,13 +254,27 @@ app.Run();
 
 ### Step 5: Run the Application
 
-```bash
+```bash{
+title: "Run the Application"
+description: "Start the ASP.NET Core Web API application"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "BEGINNER"
+tags: ["Commands", "dotnet", "Execution"]
+}
 dotnet run
 ```
 
 Test with curl:
 
-```bash
+```bash{
+title: "Test Order API Endpoint"
+description: "Send a POST request to create a new order using curl"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "BEGINNER"
+tags: ["Commands", "Testing", "API", "curl"]
+}
 curl -X POST http://localhost:5000/orders \
   -H "Content-Type: application/json" \
   -d '{
@@ -291,7 +319,14 @@ sequenceDiagram
 
 ### Step 1: Install Event Sourcing Package
 
-```bash
+```bash{
+title: "Install Event Sourcing Packages"
+description: "Add Whizbang.EventSourcing and database provider packages"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "BEGINNER"
+tags: ["Commands", "Installation", "dotnet", "Package Management", "Event Sourcing"]
+}
 dotnet add package Whizbang.EventSourcing
 dotnet add package Whizbang.Postgres  # Or Whizbang.SqlServer, Whizbang.EntityFramework, etc.
 ```

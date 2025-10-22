@@ -24,7 +24,17 @@ Think of perspectives as event handlers that maintain materialized views. Each p
 
 ## The Core Interface
 
-```csharp
+```csharp{
+title: "Core Perspective Interface"
+description: "The fundamental interface for all perspectives in Whizbang"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Perspectives", "Interface", "Events"]
+filename: "IPerspectiveOf.cs"
+usingStatements: ["System.Threading.Tasks"]
+showLineNumbers: true
+}
 public interface IPerspectiveOf<TEvent> {
     Task Update(TEvent @event);
 }
@@ -37,7 +47,17 @@ Simple, yet powerful - perspectives react to specific events and update their vi
 ### In Event-Driven Mode
 Events flow directly from receptors to perspectives in the same transaction:
 
-```csharp
+```csharp{
+title: "Event-Driven Mode Flow"
+description: "How events flow from receptors to perspectives in Event-Driven mode"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Perspectives", "Event-Driven", "Receptors"]
+filename: "OrderPerspective.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 // Receptor emits event
 public OrderCreated Receive(CreateOrder cmd) {
     return new OrderCreated(Guid.NewGuid(), cmd.CustomerId);
@@ -58,7 +78,17 @@ public class OrderPerspective : IPerspectiveOf<OrderCreated> {
 ### In Event-Sourced Mode
 Events are first persisted to the ledger, then perspectives update asynchronously:
 
-```csharp
+```csharp{
+title: "Event-Sourced Mode Execution"
+description: "Same perspective code executed asynchronously from event stream"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Perspectives", "Event-Sourced", "Asynchronous"]
+filename: "OrderPerspective.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 // Same perspective code, different execution model
 public class OrderPerspective : IPerspectiveOf<OrderCreated> {
     public async Task Update(OrderCreated e) {
@@ -76,7 +106,17 @@ public class OrderPerspective : IPerspectiveOf<OrderCreated> {
 
 Different perspectives provide different views of the same events:
 
-```csharp
+```csharp{
+title: "Multiple Perspectives Pattern"
+description: "Different perspectives provide different views of the same events"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Perspectives", "Multiple Views", "Data Projection"]
+filename: "OrderPerspectives.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 // Order list for display
 public class OrderListPerspective : IPerspectiveOf<OrderCreated> {
     public async Task Update(OrderCreated e) {
@@ -131,7 +171,17 @@ public class AnalyticsPerspective : IPerspectiveOf<OrderCreated> {
 
 Perspectives can handle multiple event types to maintain complex views:
 
-```csharp
+```csharp{
+title: "Multi-Event Perspective"
+description: "Perspective handling multiple event types to maintain complex views"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "ADVANCED"
+tags: ["Perspectives", "Multi-Event", "Order Status"]
+filename: "OrderStatusPerspective.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 public class OrderStatusPerspective : 
     IPerspectiveOf<OrderCreated>,
     IPerspectiveOf<OrderPaid>,
@@ -179,7 +229,17 @@ public class OrderStatusPerspective :
 
 Perspectives excel at maintaining denormalized views for query performance:
 
-```csharp
+```csharp{
+title: "Denormalized Order Summary Perspective"
+description: "Perspective maintaining denormalized views with customer data for query performance"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "ADVANCED"
+tags: ["Perspectives", "Denormalization", "Performance", "Views"]
+filename: "OrderSummaryPerspective.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 public class OrderSummaryPerspective : 
     IPerspectiveOf<OrderCreated>,
     IPerspectiveOf<ItemAdded>,
@@ -215,7 +275,17 @@ public class OrderSummaryPerspective :
 
 Perspectives handle cache updates and invalidation:
 
-```csharp
+```csharp{
+title: "Cache Management Perspective"
+description: "Perspective handling cache updates and invalidation patterns"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Perspectives", "Caching", "Invalidation", "Performance"]
+filename: "CachePerspective.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 public class CachePerspective : 
     IPerspectiveOf<OrderCreated>,
     IPerspectiveOf<OrderUpdated> {
@@ -248,7 +318,17 @@ public class CachePerspective :
 
 Configure perspectives behavior via the dispatcher:
 
-```csharp
+```csharp{
+title: "Perspective Configuration"
+description: "Configuring perspective behavior via the dispatcher with buffering, concurrency, and error handling"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Perspectives", "Configuration", "Dispatcher", "Performance"]
+filename: "Program.cs"
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Whizbang"]
+showLineNumbers: true
+}
 services.AddWhizbang()
     .UseDispatcher(dispatcher => {
         // Register all perspectives
@@ -272,7 +352,17 @@ services.AddWhizbang()
 
 Perspectives can process events in batches for efficiency:
 
-```csharp
+```csharp{
+title: "Batched Processing Perspective"
+description: "Perspective processing multiple events in batches for improved efficiency"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "ADVANCED"
+tags: ["Perspectives", "Batching", "Performance", "Bulk Operations"]
+filename: "BatchedPerspective.cs"
+usingStatements: ["System", "System.Collections.Generic", "System.Linq", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 public class BatchedPerspective : IBatchPerspectiveOf<OrderCreated> {
     public async Task UpdateBatch(IEnumerable<OrderCreated> events) {
         // Process multiple events efficiently
@@ -298,7 +388,17 @@ public class BatchedPerspective : IBatchPerspectiveOf<OrderCreated> {
 
 Ensure perspectives are idempotent for reliability:
 
-```csharp
+```csharp{
+title: "Idempotent Perspective Pattern"
+description: "Ensuring perspectives are idempotent for reliability and duplicate event handling"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Perspectives", "Idempotency", "Reliability", "Error Handling"]
+filename: "IdempotentOrderPerspective.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 public class IdempotentOrderPerspective : IPerspectiveOf<OrderCreated> {
     public async Task Update(OrderCreated e) {
         // Check if already processed
@@ -321,7 +421,17 @@ public class IdempotentOrderPerspective : IPerspectiveOf<OrderCreated> {
 
 Perspectives are easy to test in isolation:
 
-```csharp
+```csharp{
+title: "Testing Perspectives in Isolation"
+description: "Unit tests demonstrating how to test perspectives independently with mocked dependencies"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Perspectives", "Testing", "Unit Tests", "Mocking"]
+filename: "OrderPerspectiveTests.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Xunit", "Whizbang"]
+showLineNumbers: true
+}
 [Fact]
 public async Task OrderPerspective_CreatesOrder_WhenOrderCreatedEventReceived() {
     // Arrange
@@ -363,14 +473,34 @@ public async Task CachePerspective_InvalidatesCache_WhenOrderUpdated() {
 ### Do's
 
 ✅ **Make perspectives idempotent**
-```csharp
+```csharp{
+title: "Idempotent Perspective Best Practice"
+description: "Using upsert operations to ensure perspectives can safely handle duplicate events"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Perspectives", "Best Practices", "Idempotency"]
+filename: "IdempotentPerspective.cs"
+usingStatements: ["System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 public async Task Update(OrderCreated e) {
     await db.Orders.Upsert(e.OrderId, order);  // Idempotent
 }
 ```
 
 ✅ **Handle failures gracefully**
-```csharp
+```csharp{
+title: "Graceful Error Handling in Perspectives"
+description: "Implementing error handling and dead letter patterns for perspective failures"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Perspectives", "Error Handling", "Dead Letter", "Resilience"]
+filename: "ResilientPerspective.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 public async Task Update(OrderCreated e) {
     try {
         await externalService.Notify(e);
@@ -381,14 +511,34 @@ public async Task Update(OrderCreated e) {
 ```
 
 ✅ **Keep perspectives focused**
-```csharp
+```csharp{
+title: "Single Responsibility Perspectives"
+description: "Keeping perspectives focused on a single responsibility for maintainability"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Perspectives", "Single Responsibility", "Best Practices"]
+filename: "FocusedPerspectives.cs"
+usingStatements: ["Whizbang"]
+showLineNumbers: true
+}
 // Each perspective has a single responsibility
 public class EmailPerspective : IPerspectiveOf<OrderCreated> { }
 public class InventoryPerspective : IPerspectiveOf<OrderCreated> { }
 ```
 
 ✅ **Use batching for performance**
-```csharp
+```csharp{
+title: "Batching for Performance"
+description: "Using batch operations to improve perspective performance with bulk database operations"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Perspectives", "Batching", "Performance", "Best Practices"]
+filename: "BatchPerspective.cs"
+usingStatements: ["System.Collections.Generic", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 public async Task UpdateBatch(IEnumerable<OrderCreated> events) {
     await db.BulkInsert(events);
 }
@@ -397,7 +547,17 @@ public async Task UpdateBatch(IEnumerable<OrderCreated> events) {
 ### Don'ts
 
 ❌ **Don't emit events from perspectives**
-```csharp
+```csharp{
+title: "Anti-Pattern: Emitting Events from Perspectives"
+description: "What NOT to do - perspectives should react to events, not emit them"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Perspectives", "Anti-Patterns", "Best Practices"]
+filename: "BadPerspective.cs"
+usingStatements: ["System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 // BAD - Perspectives react, they don't decide
 public async Task Update(OrderCreated e) {
     await dispatcher.Send(new SendEmail());  // Don't do this!
@@ -405,7 +565,17 @@ public async Task Update(OrderCreated e) {
 ```
 
 ❌ **Don't call other perspectives directly**
-```csharp
+```csharp{
+title: "Anti-Pattern: Direct Perspective Calls"
+description: "What NOT to do - let the dispatcher handle perspective coordination"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Perspectives", "Anti-Patterns", "Dispatcher"]
+filename: "BadPerspectiveCoordination.cs"
+usingStatements: ["System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 // BAD - Let the dispatcher handle coordination
 public async Task Update(OrderCreated e) {
     await otherPerspective.Update(e);  // Don't do this!
@@ -413,7 +583,17 @@ public async Task Update(OrderCreated e) {
 ```
 
 ❌ **Don't make business decisions**
-```csharp
+```csharp{
+title: "Anti-Pattern: Business Logic in Perspectives"
+description: "What NOT to do - business decisions belong in receptors, not perspectives"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Perspectives", "Anti-Patterns", "Business Logic"]
+filename: "BadBusinessLogicPerspective.cs"
+usingStatements: ["System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 // BAD - Business logic belongs in receptors
 public async Task Update(OrderCreated e) {
     if (e.Total > 1000) {  // Business rule doesn't belong here
@@ -428,7 +608,17 @@ public async Task Update(OrderCreated e) {
 
 Maintain time-based views:
 
-```csharp
+```csharp{
+title: "Temporal Statistics Perspective"
+description: "Maintaining time-based views with daily statistics and aggregations"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "ADVANCED"
+tags: ["Perspectives", "Temporal", "Statistics", "Aggregation"]
+filename: "DailyStatsPerspective.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 public class DailyStatsPerspective : IPerspectiveOf<OrderCreated> {
     public async Task Update(OrderCreated e) {
         var date = e.Timestamp.Date;
@@ -446,7 +636,17 @@ public class DailyStatsPerspective : IPerspectiveOf<OrderCreated> {
 
 Update graph databases or relationship stores:
 
-```csharp
+```csharp{
+title: "Graph Database Perspective"
+description: "Updating graph databases and relationship stores from events"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "ADVANCED"
+tags: ["Perspectives", "Graph Database", "Relationships", "Neo4j"]
+filename: "GraphPerspective.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 public class GraphPerspective : IPerspectiveOf<OrderCreated> {
     public async Task Update(OrderCreated e) {
         await graph.CreateNode("Order", e.OrderId);
@@ -464,7 +664,17 @@ public class GraphPerspective : IPerspectiveOf<OrderCreated> {
 
 Feed ML models or feature stores:
 
-```csharp
+```csharp{
+title: "Machine Learning Feature Store Perspective"
+description: "Feeding ML models and feature stores with event data for customer analytics"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "ADVANCED"
+tags: ["Perspectives", "Machine Learning", "Feature Store", "Analytics"]
+filename: "MLPerspective.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 public class MLPerspective : IPerspectiveOf<OrderCreated> {
     public async Task Update(OrderCreated e) {
         await featureStore.Update("customer_features", e.CustomerId, new {

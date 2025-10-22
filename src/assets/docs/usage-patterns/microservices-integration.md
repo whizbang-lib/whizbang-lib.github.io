@@ -106,7 +106,16 @@ graph TB
 
 ## Example: Aspire Configuration
 
-```csharp
+```csharp{
+title: "Aspire App Host Configuration"
+description: "Placeholder for .NET Aspire distributed application setup"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "ADVANCED"
+tags: ["Aspire", "Microservices", "Distributed Applications"]
+filename: "Program.cs"
+usingStatements: ["Microsoft.Extensions.Hosting"]
+}
 // Placeholder for Aspire app host configuration
 var builder = DistributedApplication.CreateBuilder(args);
 

@@ -11,7 +11,17 @@ Projection methods can return metadata about the processing outcome using `Proje
 
 ## ProjectionReturnType Enum
 
-```csharp
+```csharp{
+title: "ProjectionReturnType Enum"
+description: "Enumeration defining the possible return values for projection methods"
+framework: "NET8"
+category: "Projections"
+difficulty: "BEGINNER"
+tags: ["Projections", "Return Values", "Enums"]
+filename: "ProjectionReturnType.cs"
+usingStatements: ["System"]
+showLineNumbers: true
+}
 public enum ProjectionReturnType {
     Accepted,  // Event was processed successfully (default)
     Ignored    // Event was intentionally ignored/skipped
@@ -391,7 +401,17 @@ public class OrderHistory {
 
 Return values enable rich metrics and dashboards:
 
-```csharp
+```csharp{
+title: "Automatic Metrics Tracking"
+description: "Example metrics automatically tracked by Whizbang for projection return values"
+framework: "NET8"
+category: "Projections"
+difficulty: "INTERMEDIATE"
+tags: ["Metrics", "Observability", "Monitoring"]
+filename: "MetricsExample.cs"
+usingStatements: ["System"]
+showLineNumbers: true
+}
 // Whizbang automatically tracks these metrics:
 // - whizbang_projection_events_accepted{projection="OrderProjection", event="OrderPlaced"}
 // - whizbang_projection_events_ignored{projection="OrderProjection", event="OrderPlaced"}
@@ -428,7 +448,17 @@ sum(rate(whizbang_projection_events_accepted[5m])) by (tenant_id)
 
 ### 1. Be Explicit When Filtering
 
-```csharp
+```csharp{
+title: "Explicit Filtering Best Practice"
+description: "Best practices for explicit return value usage vs implicit behavior"
+framework: "NET8"
+category: "Projections"
+difficulty: "BEGINNER"
+tags: ["Best Practices", "Return Values", "Explicit Programming"]
+filename: "ExplicitFilteringExample.cs"
+usingStatements: ["System", "System.Threading", "System.Threading.Tasks"]
+showLineNumbers: true
+}
 // ✅ GOOD - Explicit and clear
 if (@event.IsExpired) {
     return projection.Return(ProjectionReturnType.Ignored);
@@ -442,7 +472,17 @@ if (@event.IsExpired) {
 
 ### 2. Use Ignored for Intentional Filtering
 
-```csharp
+```csharp{
+title: "Intentional Filtering vs Error Handling"
+description: "Correct usage of Ignored for filtering vs incorrect usage for error handling"
+framework: "NET8"
+category: "Projections"
+difficulty: "INTERMEDIATE"
+tags: ["Best Practices", "Error Handling", "Filtering"]
+filename: "FilteringVsErrorHandling.cs"
+usingStatements: ["System", "System.Threading", "System.Threading.Tasks"]
+showLineNumbers: true
+}
 // ✅ GOOD - Intentional filtering (return Ignored)
 if (eventContext.Security.TenantId != _currentTenantId) {
     return projection.Return(ProjectionReturnType.Ignored);
@@ -458,7 +498,17 @@ try {
 
 ### 3. Document Ignored Reasons
 
-```csharp
+```csharp{
+title: "Documented Filtering Reasons"
+description: "Best practice for documenting why events are ignored with clear comments"
+framework: "NET8"
+category: "Projections"
+difficulty: "BEGINNER"
+tags: ["Best Practices", "Documentation", "Code Comments"]
+filename: "DocumentedFilteringExample.cs"
+usingStatements: ["System", "System.Threading", "System.Threading.Tasks"]
+showLineNumbers: true
+}
 // ✅ GOOD - Comment explains why event is ignored
 public Task OnOrderPlaced(
     [WhizbangSubscribe] OrderPlaced @event,

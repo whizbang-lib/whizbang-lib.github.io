@@ -166,7 +166,16 @@ public class EnvironmentSeeder : IHostedService {
 
 Use Kubernetes init containers for pre-startup seeding:
 
-```yaml
+```yaml{
+title: "Kubernetes Init Container for Data Seeding"
+description: "Kubernetes deployment configuration with init container for data seeding"
+framework: "Kubernetes"
+category: "Advanced"
+difficulty: "ADVANCED"
+tags: ["Kubernetes", "Seeding", "Deployment", "Init Containers"]
+filename: "orders-service-deployment.yaml"
+showLineNumbers: true
+}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -192,7 +201,17 @@ spec:
 
 **Application code**:
 
-```csharp
+```csharp{
+title: "Program.cs Seeding Logic"
+description: "Application startup logic for seed-only mode"
+framework: "NET8"
+category: "Advanced"
+difficulty: "INTERMEDIATE"
+tags: ["Seeding", "Startup", "Program.cs"]
+filename: "Program.cs"
+usingStatements: ["Microsoft.Extensions.DependencyInjection"]
+showLineNumbers: true
+}
 // In Program.cs
 if (args.Contains("--seed-only")) {
     await SeedDataAsync(app.Services);

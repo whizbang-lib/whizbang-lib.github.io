@@ -15,7 +15,14 @@ In Whizbang, **what you return determines what happens next**. This simple yet p
 ## Core Philosophy
 
 Traditional messaging libraries require explicit configuration:
+
 ```csharp
+---
+category: Core Concepts
+difficulty: BEGINNER
+tags: [Traditional-Messaging, Configuration, Explicit-Calls]
+description: Traditional messaging approach with explicit method calls
+---
 // Traditional approach - configuration separate from logic
 await bus.Publish(event1);
 await bus.Send(command1);
@@ -24,7 +31,14 @@ await bus.Defer(message1, TimeSpan.FromMinutes(5));
 ```
 
 Whizbang's approach - return values drive behavior:
+
 ```csharp
+---
+category: Core Concepts
+difficulty: BEGINNER
+tags: [Return-Type-Semantics, Convention-Over-Configuration, Intent]
+description: Whizbang's return-based messaging with clear intent
+---
 // Whizbang - intent is clear from return type
 return event1;                                    // Publishes event
 return command1;                                  // Sends command  
@@ -37,6 +51,12 @@ return message1.After(TimeSpan.FromMinutes(5));  // Defers message
 ### Single Message Return
 
 ```csharp
+---
+category: Core Concepts
+difficulty: BEGINNER
+tags: [Return-Type-Semantics, Single-Message, Event-Publishing]
+description: Single message return publishes event automatically
+---
 public class OrderHandler : IHandle<CreateOrder> {
     // Returning a single message publishes it as an event
     public OrderCreated Handle(CreateOrder cmd) {
@@ -46,7 +66,8 @@ public class OrderHandler : IHandle<CreateOrder> {
 }
 ```
 
-**Behavior**: 
+**Behavior**:
+
 - If return type implements `IEvent` → Publish to all subscribers
 - If return type implements `ICommand` → Send to single handler
 - If return type implements `IResponse` → Reply to original sender
@@ -54,6 +75,12 @@ public class OrderHandler : IHandle<CreateOrder> {
 ### Void Return (Fire-and-Forget)
 
 ```csharp
+---
+category: Core Concepts
+difficulty: BEGINNER
+tags: [Return-Type-Semantics, Void-Return, Fire-And-Forget]
+description: Void return for fire-and-forget operations
+---
 public class NotificationHandler : IHandle<SendNotification> {
     // Void means no follow-up messages
     public void Handle(SendNotification cmd) {
@@ -68,6 +95,12 @@ public class NotificationHandler : IHandle<SendNotification> {
 ### Task Return (Async Void)
 
 ```csharp
+---
+category: Core Concepts
+difficulty: BEGINNER
+tags: [Return-Type-Semantics, Async-Void, Task-Return]
+description: Async Task return for asynchronous fire-and-forget operations
+---
 public class EmailHandler : IHandle<SendEmail> {
     // Async with no result
     public async Task Handle(SendEmail cmd) {
@@ -84,6 +117,12 @@ public class EmailHandler : IHandle<SendEmail> {
 ### Tuple Return (Multiple Effects)
 
 ```csharp
+---
+category: Core Concepts
+difficulty: INTERMEDIATE
+tags: [Return-Type-Semantics, Tuple-Return, Multiple-Effects]
+description: Tuple return for multiple cascading messages
+---
 public class OrderHandler : IHandle<CreateOrder> {
     // Return multiple messages in one operation
     public (OrderCreated, ProcessPayment, SendConfirmation) Handle(CreateOrder cmd) {
@@ -103,6 +142,12 @@ public class OrderHandler : IHandle<CreateOrder> {
 ### Result Type (Railway-Oriented Programming)
 
 ```csharp
+---
+category: Core Concepts
+difficulty: INTERMEDIATE
+tags: [Return-Type-Semantics, Result-Type, Railway-Oriented-Programming]
+description: Result type for success/failure handling with railway-oriented programming
+---
 public class OrderHandler : IHandle<CreateOrder> {
     // Result<T> for success/failure handling
     public Result<OrderCreated> Handle(CreateOrder cmd) {
@@ -129,13 +174,20 @@ public class PaymentHandler : IHandle<ProcessPayment> {
 }
 ```
 
-**Behavior**: 
+**Behavior**:
+
 - On Success → Process success value
 - On Failure → Handle error (can trigger compensation)
 
 ### IAsyncEnumerable (Streaming Results)
 
 ```csharp
+---
+category: Core Concepts
+difficulty: ADVANCED
+tags: [Return-Type-Semantics, Streaming, IAsyncEnumerable, Yield]
+description: IAsyncEnumerable return for streaming results as they're processed
+---
 public class BatchHandler : IHandle<ProcessBatch> {
     // Stream results as they're processed
     public async IAsyncEnumerable<OrderProcessed> Handle(ProcessBatch cmd) {
@@ -156,6 +208,12 @@ public class BatchHandler : IHandle<ProcessBatch> {
 ### Option Type (Maybe Monad)
 
 ```csharp
+---
+category: Core Concepts
+difficulty: INTERMEDIATE
+tags: [Return-Type-Semantics, Option-Type, Maybe-Monad, Null-Safety]
+description: Option type for queries that might return nothing
+---
 public class QueryHandler : IHandle<GetOrder> {
     // Option<T> for queries that might return nothing
     public Option<Order> Handle(GetOrder query) {
@@ -169,6 +227,7 @@ public class QueryHandler : IHandle<GetOrder> {
 ```
 
 **Behavior**:
+
 - Some(value) → Process the value
 - None → Handle absence (no error)
 
@@ -177,6 +236,12 @@ public class QueryHandler : IHandle<GetOrder> {
 ### Deferred Messages
 
 ```csharp
+---
+category: Core Concepts
+difficulty: INTERMEDIATE
+tags: [Return-Type-Semantics, Deferred-Messages, Scheduling, Time-Based]
+description: Deferred message return for scheduled future delivery
+---
 public class ReminderHandler : IHandle<ScheduleReminder> {
     // Defer message with fluent syntax
     public Deferred<SendReminder> Handle(ScheduleReminder cmd) {
@@ -197,6 +262,12 @@ public class ReminderHandler : IHandle<ScheduleReminder> {
 ### Saga Instructions
 
 ```csharp
+---
+category: Core Concepts
+difficulty: ADVANCED
+tags: [Return-Type-Semantics, Saga, Orchestration, Timeout-Handling]
+description: Saga action return for complex orchestration with timeout handling
+---
 public class OrderSaga : Saga<OrderState> {
     // Return saga instructions
     public SagaAction Handle(OrderCreated @event) {
@@ -217,6 +288,12 @@ public class OrderSaga : Saga<OrderState> {
 ### Batched Returns
 
 ```csharp
+---
+category: Core Concepts
+difficulty: INTERMEDIATE
+tags: [Return-Type-Semantics, Batch-Processing, Collections, LINQ]
+description: Collection return for batch message processing
+---
 public class BatchHandler : IHandle<ProcessOrders> {
     // Return collection of messages
     public IEnumerable<IMessage> Handle(ProcessOrders cmd) {
@@ -242,6 +319,12 @@ public class BatchHandler : IHandle<ProcessOrders> {
 ### Conditional Returns
 
 ```csharp
+---
+category: Core Concepts
+difficulty: INTERMEDIATE
+tags: [Return-Type-Semantics, Pattern-Matching, Conditional-Logic, Switch-Expressions]
+description: Conditional return using pattern matching and switch expressions
+---
 public class ConditionalHandler : IHandle<ProcessOrder> {
     // Use pattern matching for conditional returns
     public IMessage Handle(ProcessOrder cmd) {
@@ -262,6 +345,12 @@ public class ConditionalHandler : IHandle<ProcessOrder> {
 ### Nested Tuples for Grouping
 
 ```csharp
+---
+category: Core Concepts
+difficulty: ADVANCED
+tags: [Return-Type-Semantics, Nested-Tuples, Message-Grouping, Complex-Returns]
+description: Nested tuples for grouping related messages logically
+---
 public class ComplexHandler : IHandle<ComplexCommand> {
     // Group related messages
     public ((OrderCreated, InventoryReserved), (SendEmail, LogActivity)) Handle(ComplexCommand cmd) {
@@ -281,6 +370,12 @@ public class ComplexHandler : IHandle<ComplexCommand> {
 ### Discriminated Unions
 
 ```csharp
+---
+category: Core Concepts
+difficulty: ADVANCED
+tags: [Return-Type-Semantics, Discriminated-Unions, OneOf, Outcome-Based-Returns]
+description: Discriminated union return for different outcomes
+---
 public class PaymentHandler : IHandle<ProcessPayment> {
     // Return different types based on outcome
     public OneOf<PaymentSucceeded, PaymentFailed, PaymentPending> Handle(ProcessPayment cmd) {
@@ -299,6 +394,12 @@ public class PaymentHandler : IHandle<ProcessPayment> {
 ### Recursive Returns
 
 ```csharp
+---
+category: Core Concepts
+difficulty: ADVANCED
+tags: [Return-Type-Semantics, Recursive-Processing, Tree-Structures]
+description: Recursive handler return for tree/graph processing
+---
 public class RecursiveHandler : IHandle<ProcessNode> {
     // Return can trigger same handler recursively
     public IEnumerable<ProcessNode> Handle(ProcessNode cmd) {
@@ -315,6 +416,12 @@ public class RecursiveHandler : IHandle<ProcessNode> {
 ### Priority and Headers
 
 ```csharp
+---
+category: Core Concepts
+difficulty: INTERMEDIATE
+tags: [Return-Type-Semantics, Message-Metadata, Priority, Headers]
+description: Message with metadata for priority and header configuration
+---
 public class PriorityHandler : IHandle<CreateOrder> {
     public MessageWithMetadata<OrderCreated> Handle(CreateOrder cmd) {
         var order = CreateOrder(cmd);
@@ -331,6 +438,12 @@ public class PriorityHandler : IHandle<CreateOrder> {
 ### Routing Instructions
 
 ```csharp
+---
+category: Core Concepts
+difficulty: INTERMEDIATE
+tags: [Return-Type-Semantics, Message-Routing, Regional-Routing, Queue-Selection]
+description: Routed message return for regional queue selection
+---
 public class RoutingHandler : IHandle<RouteOrder> {
     public RoutedMessage Handle(RouteOrder cmd) {
         return new ProcessOrder(cmd.OrderId)
@@ -350,6 +463,12 @@ public class RoutingHandler : IHandle<RouteOrder> {
 ### Return Type Validation
 
 ```csharp
+---
+category: Core Concepts
+difficulty: ADVANCED
+tags: [Return-Type-Semantics, Compile-Time-Validation, Pure-Functions]
+description: Compile-time validation of return types and pure function constraints
+---
 // Source generator validates return types
 public class InvalidHandler : IHandle<CreateOrder> {
     // ❌ Compile error: Handler must return a message type
@@ -375,6 +494,12 @@ public class PureHandler : IHandle<Calculate> {
 ### Effect Tracking
 
 ```csharp
+---
+category: Core Concepts
+difficulty: ADVANCED
+tags: [Return-Type-Semantics, Effect-Tracking, Compile-Time-Validation]
+description: Effect tracking validation of return types against declared effects
+---
 [Effects(Publishes = "OrderEvents")]
 public class TrackedHandler : IHandle<CreateOrder> {
     // ✅ Valid: Return type matches declared effects
@@ -447,6 +572,13 @@ public async Task Handler_ReturnsCorrectMessageTypes() {
         );
 }
 
+```csharp
+---
+category: Core Concepts
+difficulty: INTERMEDIATE
+tags: [Return-Type-Semantics, Testing, Streaming, IAsyncEnumerable]
+description: Testing streaming return values with IAsyncEnumerable
+---
 [Test]
 public async Task Handler_StreamingReturn_YieldsAllItems() {
     var handler = new BatchHandler();
@@ -466,45 +598,95 @@ public async Task Handler_StreamingReturn_YieldsAllItems() {
 ### Do's
 
 ✅ **Use specific return types for clarity**
+
 ```csharp
+---
+category: Core Concepts
+difficulty: BEGINNER
+tags: [Return-Type-Semantics, Best-Practices, Clear-Intent]
+description: Using specific return types for clarity
+---
 public OrderCreated Handle(CreateOrder cmd)  // Clear intent
 ```
 
 ✅ **Leverage tuples for related messages**
+
 ```csharp
+---
+category: Core Concepts
+difficulty: INTERMEDIATE
+tags: [Return-Type-Semantics, Best-Practices, Tuple-Returns]
+description: Leveraging tuples for related messages
+---
 public (OrderCreated, SendEmail) Handle(CreateOrder cmd)
 ```
 
 ✅ **Use Result<T> for fallible operations**
+
 ```csharp
+---
+category: Core Concepts
+difficulty: INTERMEDIATE
+tags: [Return-Type-Semantics, Best-Practices, Result-Type, Error-Handling]
+description: Using Result<T> for fallible operations
+---
 public Result<PaymentProcessed> Handle(ProcessPayment cmd)
 ```
 
 ✅ **Stream large result sets**
+
 ```csharp
+---
+category: Core Concepts
+difficulty: ADVANCED
+tags: [Return-Type-Semantics, Best-Practices, Streaming, Large-Results]
+description: Streaming large result sets with IAsyncEnumerable
+---
 public async IAsyncEnumerable<Result> Handle(LargeQuery query)
 ```
 
 ### Don'ts
 
 ❌ **Don't use generic object returns**
+
 ```csharp
+---
+category: Core Concepts
+difficulty: BEGINNER
+tags: [Return-Type-Semantics, Anti-Patterns, Type-Safety]
+description: Anti-pattern - using generic object returns loses type safety
+---
 public object Handle(Command cmd)  // Loses type safety
 ```
 
 ❌ **Don't mix unrelated messages in tuples**
+
 ```csharp
+---
+category: Core Concepts
+difficulty: BEGINNER
+tags: [Return-Type-Semantics, Anti-Patterns, Unrelated-Messages]
+description: Anti-pattern - mixing unrelated messages in tuples
+---
 public (OrderCreated, UnrelatedUserLogout) Handle(CreateOrder cmd)
 ```
 
 ❌ **Don't ignore return values in tests**
+
 ```csharp
+---
+category: Core Concepts
+difficulty: BEGINNER
+tags: [Return-Type-Semantics, Anti-Patterns, Testing, Ignored-Returns]
+description: Anti-pattern - ignoring return values in tests
+---
 handler.Handle(cmd);  // Should verify return value
 ```
 
 ## Summary
 
 Return type semantics in Whizbang provide:
+
 - **Clear intent** from method signatures
 - **Zero configuration** message routing
 - **Type safety** with compile-time verification

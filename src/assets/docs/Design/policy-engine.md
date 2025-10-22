@@ -45,6 +45,12 @@ The Policy Engine is the **universal configuration scoping mechanism** for Whizb
 **Policies handle behavioral configuration** that varies by context, environment, message type, or runtime conditions:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Policy-Engine, Configuration, Behavioral-Configuration]
+description: Policy-based vs direct configuration showing separation of infrastructure and behavioral settings
+---
 services.AddWhizbang(options => {
     // INFRASTRUCTURE CONFIGURATION (Direct)
     // - Connection strings, driver selection, basic setup
@@ -91,6 +97,12 @@ services.AddWhizbang(options => {
 **All Whizbang configuration can be scoped using policies**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Policy-Engine, Universal-Configuration, Complex-Policies]
+description: Comprehensive example showing all Whizbang features configured through unified policy system
+---
 services.AddWhizbang(options => {
     options.Policies(policies => {
         // === CONCURRENCY STRATEGY POLICIES ===
@@ -178,6 +190,12 @@ services.AddWhizbang(options => {
 ### Policy Combination Strategies
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Policy-Engine, Policy-Combination, Venn-Diagrams]
+description: Advanced policy combination strategies using intersection, union, and exclusion operations
+---
 // Venn diagram-style policy combinations
 policies.Combine(
     // Policy A: High-priority customers
@@ -206,6 +224,12 @@ policies.Combine(
 ### Canned/Static Policies
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Policy-Engine, Canned-Policies, Reusable-Patterns]
+description: Pre-defined reusable policies for common scenarios with override capabilities
+---
 // Pre-defined policies for common scenarios
 public static class WhizbangPolicies {
     public static Policy LoadTestingPolicy => new PolicyBuilder()
@@ -252,6 +276,12 @@ services.AddWhizbang(options => {
 **Flags carry through entire message journey**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Policy-Engine, Cross-Service-Propagation, Debugging]
+description: Flag propagation across service boundaries maintaining context through entire message journey
+---
 // Initial command with debugging flags
 var command = new PlaceOrder(orderId, customerId, items);
 await _mediator.Send(command, context => {
@@ -282,6 +312,12 @@ public class InventoryHandler : IEventHandler<OrderPlaced> {
 ### Data Scrubbing with Policy-Based Duplication
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Policy-Engine, Data-Scrubbing, Environment-Promotion]
+description: Policy-based data scrubbing when promoting production data to QA environment
+---
 // Production to QA data flow with scrubbing
 policies.When(ctx => ctx.HasTag("production-data") && ctx.HasFlag(WhizbangFlags.QA))
         .Then(action => action.DuplicateMessage())
@@ -308,6 +344,12 @@ public class DataScrubbingHandler : IMessageInterceptor {
 ### Dynamic Handler Routing
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Policy-Engine, Dynamic-Routing, Handler-Selection]
+description: Dynamic handler routing based on flags and tags with conditional registration
+---
 // Route to different handlers based on flags/tags
 policies.When(ctx => ctx.HasTag("high-value-customer"))
         .Then(action => action.RouteToHandler<PremiumOrderHandler>())
@@ -330,6 +372,12 @@ services.AddWhizbang(options => {
 ### IDE Debugging Support
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Policy-Engine, IDE-Integration, Debugging, Time-Travel]
+description: Advanced debugging support with IDE integration, breakpoints, and state inspection
+---
 // IDE cursor/scrubbing mode
 policies.When(ctx => ctx.HasFlag(WhizbangFlags.CursorMode))
         .Then(action => action.EnableStepByStepExecution())
@@ -369,6 +417,12 @@ public class StateInspectionInterceptor : IMessageInterceptor {
 ### Core Interfaces
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Policy-Engine, Core-Interfaces, Implementation]
+description: Core policy engine interfaces and action types for implementing the policy system
+---
 public interface IPolicyEngine {
     Task<PolicyResult> EvaluateAsync<T>(T message, MessageContext context);
     void RegisterPolicy(IPolicy policy);
@@ -401,6 +455,12 @@ public class ScrubDataAction : PolicyAction { }
 **Context provides strongly-typed matching methods**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Policy-Engine, Message-Context, Strongly-Typed]
+description: Typed policy methods with strongly-typed context matching and clean policy configuration
+---
 public class MessageContext {
     // Core properties
     public string CorrelationId { get; set; }
@@ -474,6 +534,12 @@ services.AddWhizbang(options => {
 **Every policy generates a deterministic hash** for tracing and debugging:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Policy-Engine, Policy-Hashing, Debugging, Tracing]
+description: Policy hashing and tracing infrastructure for debugging and policy identification
+---
 public interface IPolicy {
     string Name { get; }
     int Priority { get; }
@@ -523,6 +589,12 @@ public class AppliedPolicy {
 **Policy decisions are traced through OpenTelemetry**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Policy-Engine, Distributed-Tracing, OpenTelemetry]
+description: Distributed tracing integration showing policy decisions in OpenTelemetry traces
+---
 public class PolicyTracingInterceptor : IMessageInterceptor {
     public async Task<TResponse> Intercept<TRequest, TResponse>(
         TRequest message,
@@ -569,6 +641,12 @@ public class PolicyTracingInterceptor : IMessageInterceptor {
 **Source generator creates policy metadata** for IDE tooling:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Policy-Engine, Source-Generation, IDE-Integration]
+description: Source-generated metadata enabling IDE navigation and policy impact analysis
+---
 // Generated policy metadata for IDE navigation
 [GeneratedCode("Whizbang.SourceGenerator")]
 public static class PolicyMetadata {
@@ -661,6 +739,12 @@ public class OrderSummaryProjection { // 📋 2 policies affect this projection
 **Access policy decisions at runtime**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Policy-Engine, Runtime-Debugging, HTTP-Headers]
+description: Runtime policy debugging middleware exposing policy decisions through HTTP headers
+---
 public class PolicyDebugMiddleware {
     public async Task InvokeAsync(HttpContext context, RequestDelegate next) {
         // Inject policy debug header
@@ -692,6 +776,12 @@ public class PolicyDebugMiddleware {
 ### Policy Evaluation Pipeline
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Policy-Engine, Pipeline, Pre-Post-Execution]
+description: Policy evaluation pipeline with pre and post-execution action application
+---
 public class PolicyEvaluationPipeline : IMessageInterceptor {
     private readonly IPolicyEngine _policyEngine;
     
@@ -724,6 +814,12 @@ public class PolicyEvaluationPipeline : IMessageInterceptor {
 ### Configuration Integration
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Policy-Engine, Configuration-Integration, Environment-Based]
+description: Environment-based policy loading with configuration integration and team-specific policies
+---
 // Environment-based policy loading
 services.AddWhizbang(options => {
     options.Policies(policies => {

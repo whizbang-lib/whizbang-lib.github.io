@@ -56,7 +56,16 @@ graph TB
 
 ### Required Packages
 
-```xml
+```xml{
+title: "Required NuGet Packages"
+description: "Core packages needed for CQRS implementation with Whizbang"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Usage Patterns", "CQRS", "NuGet Packages"]
+filename: "ProjectFile.csproj"
+showLineNumbers: true
+}
 <PackageReference Include="Whizbang.Core" Version="1.0.0" />
 <PackageReference Include="Whizbang.EventSourcing" Version="1.0.0" />
 <PackageReference Include="Whizbang.Projections" Version="1.0.0" />
@@ -874,7 +883,17 @@ public class OrderListProjectionTests {
 
 ### Don't Query Write Models
 
-```csharp
+```csharp{
+title: "Don't Query Write Models"
+description: "Avoid querying aggregates for read operations - use optimized read models instead"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "CQRS", "Anti-Patterns", "Best Practices"]
+filename: "ReadModelVsAggregate.cs"
+showLineNumbers: true
+usingStatements: ["System", "System.Collections.Generic", "System.Linq", "System.Threading.Tasks"]
+}
 // ❌ BAD - Querying aggregates for read operations
 public async Task<List<Order>> GetOrders() {
     var aggregates = await _repository.GetAll<OrderAggregate>();
@@ -889,7 +908,17 @@ public async Task<List<OrderListItem>> GetOrders() {
 
 ### Handle Eventual Consistency
 
-```csharp
+```csharp{
+title: "Handle Eventual Consistency"
+description: "Account for eventual consistency between write and read models in CQRS"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "CQRS", "Eventual Consistency", "Best Practices"]
+filename: "EventualConsistency.cs"
+showLineNumbers: true
+usingStatements: ["System", "System.Threading.Tasks"]
+}
 // ❌ BAD - Expecting immediate consistency
 var orderId = await CreateOrder(command);
 var order = await GetOrder(orderId); // May not exist yet!
@@ -902,7 +931,17 @@ var order = await GetOrder(orderId);
 
 ### Avoid Complex Projections
 
-```csharp
+```csharp{
+title: "Avoid Complex Projections"
+description: "Keep projections focused on single responsibility rather than doing multiple things"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "CQRS", "Projections", "Single Responsibility", "Best Practices"]
+filename: "ProjectionResponsibility.cs"
+showLineNumbers: true
+usingStatements: ["System", "System.Threading.Tasks"]
+}
 // ❌ BAD - Projection doing too much
 public async Task Handle(OrderCreated @event) {
     await UpdateOrderList();
@@ -921,7 +960,17 @@ public class EmailNotificationHandler { /* Sends emails only */ }
 
 ### Add Multiple Read Stores
 
-```csharp
+```csharp{
+title: "Multiple Read Stores"
+description: "Configure different storage technologies for different read model needs"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "ADVANCED"
+tags: ["Usage Patterns", "CQRS", "Multiple Stores", "Storage Options"]
+filename: "MultipleStoresConfiguration.cs"
+showLineNumbers: true
+usingStatements: ["System", "Whizbang.Projections"]
+}
 // Configure different stores for different needs
 config.UseProjections(options => {
     // PostgreSQL for transactional queries
@@ -947,7 +996,17 @@ See **[Saga Orchestration](saga-orchestration.md)** for coordinating multi-aggre
 
 ### Add Real-Time Updates
 
-```csharp
+```csharp{
+title: "Real-Time Updates with SignalR"
+description: "Add real-time notifications to CQRS projections using SignalR"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "ADVANCED"
+tags: ["Usage Patterns", "CQRS", "SignalR", "Real-Time", "Notifications"]
+filename: "RealTimeNotifications.cs"
+showLineNumbers: true
+usingStatements: ["Microsoft.AspNetCore.SignalR", "System", "System.Threading.Tasks"]
+}
 // SignalR for real-time notifications
 public class OrderHub : Hub {
     public async Task SubscribeToOrders(Guid customerId) {
@@ -974,7 +1033,17 @@ public async Task Handle(OrderCreated @event) {
 
 ### Read Model Rebuild
 
-```csharp
+```csharp{
+title: "Read Model Rebuild"
+description: "Rebuild read models from events for data recovery or schema changes"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "CQRS", "Projections", "Rebuild", "Maintenance"]
+filename: "ReadModelRebuild.cs"
+showLineNumbers: true
+usingStatements: ["System", "System.Threading.Tasks"]
+}
 // Rebuild read models from events
 await projectionManager.RebuildProjection<OrderListProjection>(
     fromPosition: EventPosition.Start,
@@ -984,7 +1053,17 @@ await projectionManager.RebuildProjection<OrderListProjection>(
 
 ### Monitoring and Health Checks
 
-```csharp
+```csharp{
+title: "Monitoring and Health Checks"
+description: "Monitor CQRS projection health and performance"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "CQRS", "Monitoring", "Health Checks", "Production"]
+filename: "CQRSMonitoring.cs"
+showLineNumbers: true
+usingStatements: ["Microsoft.Extensions.DependencyInjection"]
+}
 // Monitor projection lag
 services.AddHealthChecks()
     .AddCheck<ProjectionLagHealthCheck>("projection-lag")

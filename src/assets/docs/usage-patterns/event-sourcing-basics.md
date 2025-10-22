@@ -62,7 +62,16 @@ sequenceDiagram
 
 ### Required Packages
 
-```xml
+```xml{
+title: "Required NuGet Packages"
+description: "Core packages needed for event sourcing with Whizbang"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Usage Patterns", "Event Sourcing", "NuGet Packages"]
+filename: "ProjectFile.csproj"
+showLineNumbers: true
+}
 <PackageReference Include="Whizbang.Core" Version="1.0.0" />
 <PackageReference Include="Whizbang.EventSourcing" Version="1.0.0" />
 ```
@@ -721,7 +730,17 @@ public class OrderAggregateTests {
 
 ### Don't Modify Events After Creation
 
-```csharp
+```csharp{
+title: "Don't Modify Events After Creation"
+description: "Events must be immutable - create new events with correct data instead"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Usage Patterns", "Event Sourcing", "Immutability", "Best Practices"]
+filename: "ImmutableEvents.cs"
+showLineNumbers: true
+usingStatements: ["System"]
+}
 // ❌ BAD - Events are immutable
 var @event = new OrderCreated(...);
 @event.TotalAmount = 100; // Compiler error - records are immutable
@@ -732,7 +751,17 @@ var @event = new OrderCreated(..., TotalAmount: 100, ...);
 
 ### Avoid Side Effects in Event Handlers
 
-```csharp
+```csharp{
+title: "Avoid Side Effects in Event Handlers"
+description: "Keep event handlers pure - only update state, no side effects"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "Event Sourcing", "Pure Functions", "Best Practices"]
+filename: "PureEventHandlers.cs"
+showLineNumbers: true
+usingStatements: ["System"]
+}
 // ❌ BAD - Side effects in When method
 protected void When(OrderShipped @event) {
     Status = OrderStatus.Shipped;
@@ -748,7 +777,17 @@ protected void When(OrderShipped @event) {
 
 ### Don't Query in Receptors
 
-```csharp
+```csharp{
+title: "Don't Query in Receptors"
+description: "Keep receptors pure by avoiding external queries - use lenses or pass data in commands"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "ADVANCED"
+tags: ["Usage Patterns", "Event Sourcing", "Receptors", "Pure Functions"]
+filename: "PureReceptors.cs"
+showLineNumbers: true
+usingStatements: ["System", "System.Threading.Tasks"]
+}
 // ❌ BAD - Receptor querying external data
 public class OrderReceptor : IReceptor<ShipOrderCommand> {
     public async Task<OrderShipped> Receive(ShipOrderCommand cmd) {
@@ -769,7 +808,17 @@ public OrderShipped Receive(ShipOrderCommand cmd, IInventoryLens lens) {
 
 ### Add Snapshots for Performance
 
-```csharp
+```csharp{
+title: "Add Snapshots for Performance"
+description: "Implement snapshots to optimize event replay for aggregates with many events"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "ADVANCED"
+tags: ["Usage Patterns", "Event Sourcing", "Snapshots", "Performance"]
+filename: "SnapshotOptimization.cs"
+showLineNumbers: true
+usingStatements: ["System", "System.Collections.Generic", "System.Linq"]
+}
 // Configure snapshot strategy
 ledger.EnableSnapshots(snapshot => {
     snapshot.Frequency = 10; // Every 10 events
@@ -808,7 +857,17 @@ See **[Perspectives Documentation](/docs/core-concepts/perspectives)** for detai
 
 ### Scale with Event Streams
 
-```csharp
+```csharp{
+title: "Scale with Event Streams"
+description: "Configure multiple event streams for better performance and scalability"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "ADVANCED"
+tags: ["Usage Patterns", "Event Sourcing", "Scaling", "Streams"]
+filename: "EventStreamScaling.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "System"]
+}
 // Configure multiple streams
 dispatcher.UseEventSourcing(es => {
     es.UseLedger(ledger => {
@@ -830,7 +889,17 @@ dispatcher.UseEventSourcing(es => {
 
 ### Event Schema Evolution
 
-```csharp
+```csharp{
+title: "Event Schema Evolution"
+description: "Version your events and provide migration logic for schema changes"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "ADVANCED"
+tags: ["Usage Patterns", "Event Sourcing", "Schema Evolution", "Versioning"]
+filename: "EventVersioning.cs"
+showLineNumbers: true
+usingStatements: ["System"]
+}
 // Version your events
 public record OrderCreatedV2(
     // New fields...

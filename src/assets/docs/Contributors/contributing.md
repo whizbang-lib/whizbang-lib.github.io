@@ -66,20 +66,38 @@ Ready to code? Great! Please:
 
 ### Clone the Repository
 
-```bash
+```bash{
+title: "Clone Repository"
+description: "Clone the Whizbang repository locally"
+category: "Contributors"
+difficulty: "BEGINNER"
+tags: ["Git", "Setup"]
+}
 git clone https://github.com/whizbang-lib/whizbang.git
 cd whizbang
 ```
 
 ### Build the Solution
 
-```bash
+```bash{
+title: "Build Solution"
+description: "Build the entire Whizbang solution"
+category: "Contributors"
+difficulty: "BEGINNER"
+tags: ["Build", "Setup"]
+}
 dotnet build
 ```
 
 ### Run Tests
 
-```bash
+```bash{
+title: "Run Tests"
+description: "Run unit and integration tests with optional coverage"
+category: "Contributors"
+difficulty: "BEGINNER"
+tags: ["Testing", "Coverage"]
+}
 # Run all tests
 dotnet test
 
@@ -91,7 +109,13 @@ dotnet test /p:CollectCoverage=true
 
 For integration tests, you'll need Postgres and Kafka:
 
-```bash
+```bash{
+title: "Start Infrastructure"
+description: "Start Postgres and Kafka for integration tests"
+category: "Contributors"
+difficulty: "BEGINNER"
+tags: ["Docker", "Infrastructure", "Testing"]
+}
 docker-compose up -d
 ```
 
@@ -137,7 +161,13 @@ whizbang/
 
 ### 1. Create a Branch
 
-```bash
+```bash{
+title: "Create Feature Branch"
+description: "Create a new feature branch from develop"
+category: "Contributors"
+difficulty: "BEGINNER"
+tags: ["Git", "Branching"]
+}
 git checkout develop
 git pull origin develop
 git checkout -b feature/my-awesome-feature
@@ -154,7 +184,13 @@ git checkout -b feature/my-awesome-feature
 
 We use [Conventional Commits](https://www.conventionalcommits.org/):
 
-```bash
+```bash{
+title: "Conventional Commits"
+description: "Examples of conventional commit messages"
+category: "Contributors"
+difficulty: "BEGINNER"
+tags: ["Git", "Commits", "Conventional Commits"]
+}
 git commit -m "feat: add support for SQL Server driver"
 git commit -m "fix: correct optimistic concurrency check"
 git commit -m "docs: add examples for projections"
@@ -171,7 +207,13 @@ Commit types:
 
 ### 4. Push and Create PR
 
-```bash
+```bash{
+title: "Push Feature Branch"
+description: "Push feature branch to origin for PR creation"
+category: "Contributors"
+difficulty: "BEGINNER"
+tags: ["Git", "Push"]
+}
 git push origin feature/my-awesome-feature
 ```
 
@@ -201,7 +243,17 @@ Once approved, a maintainer will merge your PR. Congrats! 🎉
 
 Example:
 
-```csharp
+```csharp{
+title: "Unit Test Example"
+description: "Example unit test for domain logic"
+framework: "NET8"
+category: "Contributors"
+difficulty: "INTERMEDIATE"
+tags: ["Testing", "Unit Tests", "xUnit"]
+nugetPackages: ["xunit", "FluentAssertions"]
+usingStatements: ["Xunit", "FluentAssertions"]
+showLineNumbers: false
+}
 public class OrderTests {
     [Fact]
     public void PlaceOrder_WithValidItems_EmitsOrderPlacedEvent() {
@@ -227,7 +279,17 @@ public class OrderTests {
 
 Example:
 
-```csharp
+```csharp{
+title: "Integration Test Example"
+description: "Example integration test for event store"
+framework: "NET8"
+category: "Contributors"
+difficulty: "INTERMEDIATE"
+tags: ["Testing", "Integration Tests", "Event Store"]
+nugetPackages: ["xunit", "FluentAssertions"]
+usingStatements: ["System.Threading.Tasks", "Xunit", "FluentAssertions"]
+showLineNumbers: false
+}
 public class EventStoreIntegrationTests : IClassFixture<PostgresFixture> {
     [Fact]
     public async Task AppendAndLoad_RoundTrip_PreservesEvents() {

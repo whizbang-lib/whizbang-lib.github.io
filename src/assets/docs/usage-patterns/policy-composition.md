@@ -584,45 +584,115 @@ public async Task Fallback_ProvidesAlternativeValue() {
 ### Do's
 
 ✅ **Layer policies appropriately**
-```csharp
+```csharp{
+title: "Layer Policies Appropriately"
+description: "Proper layering of resilience policies for comprehensive protection"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "Policies", "Resilience", "Best Practices"]
+filename: "PolicyLayering.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "System"]
+}
 [Retry(3)]           // Inner - handles transient failures
 [CircuitBreaker(5)]  // Middle - prevents cascading failures
 [Timeout(10)]        // Outer - ensures bounded execution time
 ```
 
 ✅ **Use specific exception handling**
-```csharp
+```csharp{
+title: "Use Specific Exception Handling"
+description: "Configure policies to handle only specific exception types"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "Policies", "Exception Handling", "Best Practices"]
+filename: "SpecificExceptionHandling.cs"
+showLineNumbers: true
+usingStatements: ["System"]
+}
 [Retry(3, RetryOn = new[] { typeof(TransientException) })]
 ```
 
 ✅ **Monitor and log policy actions**
-```csharp
+```csharp{
+title: "Monitor and Log Policy Actions"
+description: "Add monitoring and logging to policy executions for observability"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "Policies", "Monitoring", "Best Practices"]
+filename: "PolicyMonitoring.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "System"]
+}
 [Retry(3, OnRetry = nameof(LogRetry))]
 ```
 
 ✅ **Test failure scenarios**
-```csharp
+```csharp{
+title: "Test Failure Scenarios"
+description: "Test how policies handle various failure conditions"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "Policies", "Testing", "Best Practices"]
+filename: "PolicyTesting.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang.Testing", "System.Threading.Tasks"]
+}
 await test.SimulateFailures(3).WhenHandled();
 ```
 
 ### Don'ts
 
 ❌ **Don't retry non-idempotent operations**
-```csharp
+```csharp{
+title: "Don't Retry Non-Idempotent Operations"
+description: "Avoid retrying operations that can cause side effects like duplicate charges"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "Policies", "Anti-Patterns", "Idempotency"]
+filename: "NonIdempotentRetry.cs"
+showLineNumbers: true
+usingStatements: ["System"]
+}
 // Bad: Payment might be charged multiple times
 [Retry(3)]
 public PaymentCharged ChargePayment(ChargeCard cmd)
 ```
 
 ❌ **Don't set timeouts shorter than retries**
-```csharp
+```csharp{
+title: "Don't Set Timeouts Shorter Than Retries"
+description: "Ensure timeout values account for total retry duration"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "Policies", "Anti-Patterns", "Timeouts"]
+filename: "TimeoutRetryConflict.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "System"]
+}
 // Bad: Timeout will trigger before retries complete
 [Retry(3, DelayMs = 5000)]
 [Timeout(Seconds = 10)]
 ```
 
 ❌ **Don't ignore circuit breaker state**
-```csharp
+```csharp{
+title: "Don't Ignore Circuit Breaker State"
+description: "Always monitor and track circuit breaker health and state changes"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "Policies", "Anti-Patterns", "Monitoring"]
+filename: "CircuitBreakerMonitoring.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "System"]
+}
 // Bad: No monitoring of circuit breaker health
 [CircuitBreaker(5)]
 // Should add telemetry to track circuit state

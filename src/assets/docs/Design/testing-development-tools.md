@@ -16,9 +16,22 @@ Whizbang provides comprehensive testing utilities and development tools to ensur
 **Comprehensive testing library** with fluent APIs for all Whizbang scenarios:
 
 ```csharp
+---
+category: Design
+difficulty: BEGINNER
+tags: [Design, Testing, Package-Installation, Setup]
+description: Installing and setting up the Whizbang testing package
+---
 // Install the testing package
 dotnet add package Whizbang.Testing
 
+```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Testing, Test-Fixtures, In-Memory-Drivers]
+description: Test fixture setup with in-memory drivers for fast unit testing
+---
 // Test fixture setup
 public class OrderServiceTests {
     private readonly WhizbangTestFixture _fixture;
@@ -41,6 +54,12 @@ public class OrderServiceTests {
 **Given/When/Then fluent API** for event sourcing scenarios:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Testing, Given-When-Then, Event-Sourcing]
+description: Given/When/Then fluent API for event sourcing test scenarios
+---
 [Test]
 public async Task PlaceOrder_WithValidCustomer_ShouldEmitOrderPlaced() {
     // Arrange & Act & Assert in fluent chain
@@ -61,6 +80,13 @@ public async Task PlaceOrder_WithValidCustomer_ShouldEmitOrderPlaced() {
         .ShouldNotEmitEvent<OrderRejected>();
 }
 
+```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Testing, Error-Scenarios, Event-Validation]
+description: Testing error scenarios with event validation assertions
+---
 [Test]
 public async Task PlaceOrder_WithInvalidCustomer_ShouldEmitOrderRejected() {
     await _fixture
@@ -79,6 +105,12 @@ public async Task PlaceOrder_WithInvalidCustomer_ShouldEmitOrderRejected() {
 **Feed events and assert projection state**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Testing, Projections, Lifecycle-Testing]
+description: Projection testing with event feeding and state assertions
+---
 [Test]
 public async Task OrderSummaryProjection_ShouldTrackOrderLifecycle() {
     await _fixture
@@ -113,6 +145,12 @@ public async Task OrderSummaryProjection_WithMissingEvents_ShouldHandleGracefull
 **Test policy rules and combinations**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Testing, Policy-Testing, Load-Testing]
+description: Testing policy rules and their effects on system behavior
+---
 [Test]
 public async Task LoadTestingPolicy_ShouldSkipProjections() {
     await _fixture
@@ -142,6 +180,12 @@ public async Task VIPCustomerPolicy_ShouldRouteToSpecialHandler() {
 **Test long-running process coordination**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Testing, Sagas, Workflow-Coordination]
+description: Testing long-running saga workflows with command coordination
+---
 [Test]
 public async Task OrderFulfillmentSaga_ShouldCoordinateFullWorkflow() {
     await _fixture
@@ -168,6 +212,12 @@ public async Task OrderFulfillmentSaga_ShouldCoordinateFullWorkflow() {
 **Real drivers with test containers**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Testing, Integration-Testing, TestContainers]
+description: Integration testing with real infrastructure using TestContainers
+---
 [Test]
 public async Task OrderService_IntegrationTest_WithRealDatabase() {
     // Uses TestContainers for real PostgreSQL
@@ -200,6 +250,12 @@ public async Task OrderService_IntegrationTest_WithRealDatabase() {
 **Comprehensive command-line interface** for project management:
 
 ```bash
+---
+category: Design
+difficulty: BEGINNER
+tags: [Design, CLI, Project-Scaffolding, Templates]
+description: CLI commands for project scaffolding and code generation
+---
 # Project scaffolding
 whizbang new --template microservice --name OrderService
 whizbang new --template monolith --name ECommerceApp
@@ -229,6 +285,13 @@ whizbang migrate --apply --backup
 ### CLI Implementation Architecture
 
 ```csharp
+```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, CLI, Command-Structure, Implementation]
+description: CLI command structure implementation with subcommands
+---
 // CLI command structure
 [Command("whizbang")]
 public class WhizbangCliCommand {
@@ -269,6 +332,12 @@ public class WhizbangCliCommand {
 **Templates and extensions** for rapid development:
 
 ```xml
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Templates, Visual-Studio, Project-Templates]
+description: Visual Studio template configuration for rapid development
+---
 <!-- dotnet new templates -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -287,6 +356,12 @@ public class WhizbangCliCommand {
 **Live Templates for common patterns**:
 
 ```csharp
+---
+category: Design
+difficulty: BEGINNER
+tags: [Design, Live-Templates, Code-Generation, Commands]
+description: Live templates for common Whizbang patterns and boilerplate
+---
 // Command template
 public record $COMMAND_NAME$(
     $PARAMETERS$
@@ -326,6 +401,12 @@ public class $PROJECTION_NAME$ : IProjectionHandler<$EVENT_TYPE$> {
 **Real-time monitoring and debugging interface**:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Web-Dashboard, Real-Time-Monitoring, Configuration]
+description: Web dashboard configuration for real-time monitoring and debugging
+---
 // Dashboard startup
 public class WhizbangDashboard {
     public static void ConfigureDashboard(WebApplicationBuilder builder) {
@@ -380,6 +461,12 @@ public class WhizbangDashboard {
 **Visual Studio Code Extension** with advanced features:
 
 ```typescript
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, IDE-Extensions, VSCode, Event-Stream-Navigation]
+description: VSCode extension implementation for advanced Whizbang development features
+---
 // VSCode extension main functionality
 export function activate(context: vscode.ExtensionContext) {
     // Register command for event stream navigation
@@ -412,6 +499,13 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(navigateCommand, hoverProvider, codeLensProvider);
 }
 
+```typescript
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, IDE-Extensions, Hover-Provider, Type-Metadata]
+description: Hover provider implementation for type metadata and handler information
+---
 class WhizbangHoverProvider implements vscode.HoverProvider {
     async provideHover(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.Hover | undefined> {
         const word = document.getWordRangeAtPosition(position);
@@ -446,6 +540,12 @@ class WhizbangHoverProvider implements vscode.HoverProvider {
 **Optimized in-memory implementations** for rapid testing:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, In-Memory-Drivers, Unit-Testing, Fast-Testing]
+description: In-memory event store implementation optimized for unit testing
+---
 // In-memory event store
 public class InMemoryEventStore : IEventStoreDriver {
     private readonly ConcurrentDictionary<string, List<StoredEvent>> _streams = new();
@@ -477,6 +577,13 @@ public class InMemoryEventStore : IEventStoreDriver {
     }
 }
 
+```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, In-Memory-Drivers, Projection-Testing, Fast-Testing]
+description: In-memory projection store for fast unit test execution
+---
 // In-memory projection store
 public class InMemoryProjectionStore : IProjectionDriver {
     private readonly ConcurrentDictionary<string, Dictionary<string, object>> _projections = new();

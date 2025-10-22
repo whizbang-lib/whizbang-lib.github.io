@@ -15,6 +15,12 @@ Whizbang implements a hybrid event store and projection architecture that separa
 
 **Events Table** (Immutable Event Stream):
 ```sql
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Architecture, Event-Store, SQL, JSONB]
+description: SQL schema for events table with JSONB data storage
+---
 CREATE TABLE events (
     event_id BIGSERIAL PRIMARY KEY,
     stream_id VARCHAR(255) NOT NULL,
@@ -33,6 +39,12 @@ CREATE INDEX idx_tenant ON events(tenant_id) WHERE tenant_id IS NOT NULL;
 
 **Projections Tables** (Mutable JSONB Documents):
 ```sql
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Architecture, Projections, SQL, JSONB]
+description: SQL schema for projections table with mutable JSONB documents
+---
 CREATE TABLE projections (
     projection_name VARCHAR(255) NOT NULL,
     document_id VARCHAR(255) NOT NULL,
@@ -58,6 +70,12 @@ CREATE INDEX idx_projection_tenant ON projections(projection_name, tenant_id);
 ### Schema-Free Evolution
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Schema-Evolution, Domain-Models]
+description: Schema evolution example showing projection changes without migrations
+---
 // V1 Projection
 public class OrderSummaryProjection {
     public Guid OrderId { get; set; }
@@ -82,6 +100,12 @@ public class OrderSummaryProjection {
 Whizbang supports **zero-downtime projection rebuilds** using temporary table swapping:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Configuration, Atomic-Operations]
+description: Configuration for atomic projection rebuilds with zero downtime
+---
 services.AddProjection<OrderSummaryProjection>(options => {
     options.RebuildStrategy = RebuildStrategy.AtomicSwap;
 });
@@ -99,6 +123,12 @@ services.AddProjection<OrderSummaryProjection>(options => {
 Projections use **driver-based storage** for flexibility:
 
 ```csharp
+---
+category: Design
+difficulty: BEGINNER
+tags: [Design, Configuration, Drivers, PostgreSQL, MongoDB]
+description: Driver configuration for different projection storage backends
+---
 // PostgreSQL JSONB Driver (default)
 services.AddWhizbang(options => {
     options.UsePostgresProjections(connectionString);
@@ -127,6 +157,12 @@ services.AddWhizbang(options => {
 Whizbang supports **snapshot-assisted replays** to reduce replay overhead:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Aggregates, Snapshots, Performance]
+description: Aggregate with automatic snapshotting for replay optimization
+---
 public class OrderAggregate : Aggregate {
     public Guid Id { get; private set; }
     public decimal Total { get; private set; }
@@ -154,6 +190,12 @@ public class OrderAggregate : Aggregate {
 ### Snapshot Storage
 
 ```sql
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Snapshots, SQL, Performance]
+description: SQL schema for snapshot storage with JSONB data
+---
 CREATE TABLE snapshots (
     stream_id VARCHAR(255) NOT NULL,
     snapshot_version BIGINT NOT NULL,
@@ -174,6 +216,12 @@ When replaying events for projection rebuilds:
 4. **Non-atomic replays only** - atomic replays always start from beginning
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Snapshots, Replay, Performance-Optimization]
+description: Smart replay strategy using snapshots to reduce event processing
+---
 // Smart replay from event #50,000
 var snapshot = await snapshotStore.GetLatestBefore(streamId, eventNumber: 50000);
 if (snapshot != null && snapshot.Version >= 49900) { // Within 100 events
@@ -189,6 +237,12 @@ if (snapshot != null && snapshot.Version >= 49900) { // Within 100 events
 ### Projection Handler Registration
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Event-Handlers, Domain-Logic]
+description: Projection handler implementation for multiple event types
+---
 public class OrderSummaryProjection : IProjectionHandler<OrderPlaced>,
                                      IProjectionHandler<OrderUpdated>,
                                      IProjectionHandler<OrderShipped> {
@@ -218,6 +272,12 @@ public class OrderSummaryProjection : IProjectionHandler<OrderPlaced>,
 ### Projection Configuration
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Projections, Configuration, Multi-Tenancy]
+description: Advanced projection configuration with partitioning and rebuild strategies
+---
 services.AddProjection<OrderSummaryProjection>(projection => {
     projection.ProjectionName = "order-summary";
     projection.PartitionBy = order => order.CustomerId; // Multi-tenant partitioning
@@ -230,6 +290,12 @@ services.AddProjection<OrderSummaryProjection>(projection => {
 ### Driver Interface
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Drivers, Interfaces, Architecture]
+description: Projection driver interface for pluggable storage backends
+---
 public interface IProjectionDriver {
     Task Store<T>(string projectionName, string documentId, T document, string? tenantId = null);
     Task<T?> Load<T>(string projectionName, string documentId, string? tenantId = null);
@@ -251,6 +317,12 @@ public interface IProjectionDriver {
 ### Events and Projections in Different Databases
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Configuration, Multi-Database, Architecture]
+description: Configuration for separating events and projections across different databases
+---
 services.AddWhizbang(options => {
     // Events in PostgreSQL
     options.UsePostgresEventStore("Host=events-db;Database=events");

@@ -510,7 +510,16 @@ services.AddWhizbang(dispatcher => {
 ### Do's
 
 ✅ **Start with sensible defaults**
-```csharp
+```csharp{
+title: "Sensible Defaults Pattern"
+description: "Start with framework defaults and override only what's needed"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Policies", "Configuration", "Best Practices"]
+filename: "DefaultPolicies.cs"
+usingStatements: ["Whizbang"]
+}
 // Use framework defaults first
 dispatcher.UseDefaults();
 
@@ -520,7 +529,16 @@ dispatcher.ForReceptor<SpecialReceptor>()
 ```
 
 ✅ **Layer policies logically**
-```csharp
+```csharp{
+title: "Policy Layering Pattern"
+description: "Layer policies from general to specific"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Policies", "Layering", "Best Practices"]
+filename: "PolicyLayering.cs"
+usingStatements: ["Whizbang"]
+}
 // Layer from general to specific
 dispatcher
     .UseGlobalPolicy(globalSecurity)
@@ -529,7 +547,16 @@ dispatcher
 ```
 
 ✅ **Test policy behavior**
-```csharp
+```csharp{
+title: "Policy Testing Pattern"
+description: "Test that policies are applied correctly"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Testing", "Policies", "Verification"]
+filename: "PolicyTests.cs"
+usingStatements: ["Xunit", "Whizbang"]
+}
 [Fact]
 public async Task PolicyAppliesCorrectly() {
     var dispatcher = CreateTestDispatcher()
@@ -544,7 +571,16 @@ public async Task PolicyAppliesCorrectly() {
 ### Don'ts
 
 ❌ **Don't over-configure**
-```csharp
+```csharp{
+title: "Anti-Pattern: Over-Configuration"
+description: "Don't add too many policies to simple components"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Anti-Pattern", "Over-Configuration", "Policies"]
+filename: "OverConfiguration.cs"
+usingStatements: ["Whizbang"]
+}
 // BAD - Too many specific policies
 dispatcher.ForReceptor<SimpleReceptor>()
     .UsePolicy(policy1)
@@ -554,7 +590,16 @@ dispatcher.ForReceptor<SimpleReceptor>()
 ```
 
 ❌ **Don't ignore policy conflicts**
-```csharp
+```csharp{
+title: "Anti-Pattern: Policy Conflicts"
+description: "Don't create conflicting policy configurations"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Anti-Pattern", "Policy Conflicts", "Configuration"]
+filename: "PolicyConflicts.cs"
+usingStatements: ["Whizbang", "System"]
+}
 // BAD - Conflicting timeout policies
 dispatcher
     .UseGlobalPolicy(new TimeoutPolicy { Timeout = TimeSpan.FromSeconds(30) })

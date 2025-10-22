@@ -16,6 +16,12 @@ Whizbang provides robust schema evolution capabilities using JSONB storage and f
 Events stored in **JSONB format** naturally support schema evolution:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Schema-Evolution, Event-Versioning, Backward-Compatibility]
+description: Event schema evolution from V1 to V3 with backward-compatible changes
+---
 // V1 Event
 public record OrderPlaced(
     Guid OrderId,
@@ -52,6 +58,12 @@ public record OrderPlaced(
 Projections can evolve independently of events:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Schema-Evolution, Projections, JSONB-Storage]
+description: Projection schema evolution without database migrations using JSONB
+---
 // V1 Projection
 public class OrderSummary {
     public Guid OrderId { get; set; }
@@ -101,11 +113,24 @@ public class OrderSummaryProjection : IProjectionHandler<OrderPlaced> {
 **Convert old events to new schema on read**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Schema-Evolution, Upcasting, Event-Transformation]
+description: Event upcasting interface for converting old events to new schemas
+---
 public interface IEventUpcaster<TOld, TNew> {
     TNew Upcast(TOld oldEvent);
     bool CanUpcast(Type eventType, int version);
 }
 
+```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Schema-Evolution, Upcasting, Implementation]
+description: Concrete upcaster implementation for event version migration
+---
 // Upcast V1 OrderPlaced to V2
 public class OrderPlacedV1ToV2Upcaster : IEventUpcaster<OrderPlacedV1, OrderPlaced> {
     public OrderPlaced Upcast(OrderPlacedV1 oldEvent) {
@@ -136,6 +161,12 @@ services.AddWhizbang(options => {
 **Keep multiple event versions active**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Schema-Evolution, Multiple-Versions, Event-Handlers]
+description: Supporting multiple event versions simultaneously with separate handlers
+---
 // Multiple handlers for different versions
 public class OrderPlacedV1Handler : IEventHandler<OrderPlacedV1> {
     public async Task Handle(OrderPlacedV1 @event, EventContext context) {
@@ -170,6 +201,12 @@ services.AddWhizbang(options => {
 **Centralized schema management**:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Schema-Evolution, Schema-Registry, Centralized-Management]
+description: Centralized schema registry configuration for schema management
+---
 services.AddWhizbang(options => {
     options.EventVersioning(versioning => {
         versioning.UseSchemaRegistry(registry => {
@@ -195,6 +232,12 @@ public record OrderPlaced(
 ### Abstract Driver Interface
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Schema-Evolution, Driver-Interface, Serialization]
+description: Driver interface for schema evolution with versioning support
+---
 public interface ISchemaEvolutionDriver {
     // Serialization with versioning
     Task<byte[]> Serialize<T>(T @event, int? version = null);
@@ -223,6 +266,12 @@ public class SchemaInfo {
 ### PostgreSQL JSONB Driver Implementation
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Schema-Evolution, PostgreSQL, JSONB-Implementation]
+description: PostgreSQL JSONB driver implementation for schema evolution
+---
 public class PostgresSchemaEvolutionDriver : ISchemaEvolutionDriver {
     public async Task<byte[]> Serialize<T>(T @event, int? version = null) {
         var eventType = typeof(T);
@@ -270,12 +319,25 @@ public class PostgresSchemaEvolutionDriver : ISchemaEvolutionDriver {
 ### Driver-Specific LINQ Implementation
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Schema-Evolution, LINQ-Support, Querying]
+description: Driver interface for schema-aware LINQ querying
+---
 public interface IQueryEvolutionDriver {
     IQueryable<T> Query<T>() where T : class;
     IQueryable<T> QueryVersion<T>(int version) where T : class;
     IQueryable<object> QueryAllVersions(Type eventType);
 }
 
+```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Schema-Evolution, PostgreSQL, JSONB-Queries]
+description: PostgreSQL implementation with JSONB operators for evolved schemas
+---
 // PostgreSQL implementation with JSONB operators
 public class PostgresQueryDriver : IQueryEvolutionDriver {
     public IQueryable<T> Query<T>() where T : class {
@@ -307,6 +369,12 @@ public class PostgresQueryDriver : IQueryEvolutionDriver {
 ### Schema-Aware Query Extensions
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Schema-Evolution, LINQ-Extensions, Query-Helpers]
+description: Extension methods for schema-aware querying and filtering
+---
 public static class SchemaQueryExtensions {
     public static IQueryable<T> WhereSchemaVersion<T>(this IQueryable<T> query, int version) {
         // Filter by schema version
@@ -339,6 +407,12 @@ var recentOrdersWithTags = await _context.Query<OrderSummary>()
 ### Driver-Level Blue/Green Implementation
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Schema-Evolution, Blue-Green-Deployment, Driver-Interface]
+description: Driver interface for blue/green projection deployments
+---
 public interface IBlueGreenDriver {
     Task<string> CreateGreenDeployment(string projectionName);
     Task BuildGreenProjection(string projectionName, string greenVersion);
@@ -389,6 +463,12 @@ public class PostgresBlueGreenDriver : IBlueGreenDriver {
 ### Comprehensive Schema Evolution Setup
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Schema-Evolution, Configuration, Comprehensive-Setup]
+description: Comprehensive schema evolution configuration with all options
+---
 services.AddWhizbang(options => {
     options.SchemaEvolution(evolution => {
         // Storage format
@@ -421,6 +501,12 @@ services.AddWhizbang(options => {
 ### Event Versioning Best Practices
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Schema-Evolution, Best-Practices, Backward-Compatibility]
+description: Best practices for event versioning and schema evolution
+---
 // 1. Always make fields optional when adding them
 public record OrderPlaced(
     Guid OrderId,

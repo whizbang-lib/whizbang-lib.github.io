@@ -25,6 +25,12 @@ The dashboard offers:
 ### NuGet Package
 
 ```bash
+---
+category: Observability
+difficulty: BEGINNER
+tags: [Installation, NuGet, Dashboard, Package-Management]
+description: Install Whizbang Dashboard NuGet package
+---
 dotnet add package Whizbang.Dashboard
 ```
 
@@ -33,6 +39,12 @@ dotnet add package Whizbang.Dashboard
 Or run as a separate service:
 
 ```bash
+---
+category: Observability
+difficulty: BEGINNER
+tags: [Global-Tool, Dashboard, Standalone, CLI]
+description: Install and run dashboard as standalone global tool
+---
 dotnet tool install --global Whizbang.Dashboard
 whizbang-dashboard --port 5050
 ```
@@ -41,18 +53,13 @@ whizbang-dashboard --port 5050
 
 Add to your ASP.NET Core application:
 
-```csharp{
-title: "Embed Dashboard in Application"
-description: "Add dashboard to existing ASP.NET Core app"
-framework: "NET8"
-category: "Observability"
-difficulty: "BEGINNER"
-tags: ["Dashboard", "Setup"]
-nugetPackages: ["Whizbang.Dashboard", "Microsoft.AspNetCore"]
-filename: "Program.cs"
-usingStatements: ["Microsoft.AspNetCore.Builder", "Whizbang.Dashboard"]
-showLineNumbers: true
-}
+```csharp
+---
+category: Observability
+difficulty: BEGINNER
+tags: [Dashboard, Setup, ASP.NET-Core, Configuration]
+description: Embed dashboard in existing ASP.NET Core application
+---
 using Microsoft.AspNetCore.Builder;
 using Whizbang.Dashboard;
 
@@ -184,17 +191,13 @@ API Gateway         Orders Service      Inventory Service    Payment Service
 
 The dashboard integrates with OpenTelemetry traces:
 
-```csharp{
-title: "OpenTelemetry Integration"
-description: "Dashboard reads OpenTelemetry traces"
-framework: "NET8"
-category: "Observability"
-difficulty: "INTERMEDIATE"
-tags: ["OpenTelemetry", "Tracing", "Dashboard"]
-nugetPackages: ["Whizbang.Dashboard", "Whizbang.OpenTelemetry"]
-usingStatements: ["Whizbang.Dashboard", "Microsoft.Extensions.DependencyInjection"]
-showLineNumbers: true
-}
+```csharp
+---
+category: Observability
+difficulty: INTERMEDIATE
+tags: [OpenTelemetry, Tracing, Dashboard, Integration, Jaeger, Zipkin]
+description: Dashboard integration with OpenTelemetry, Jaeger, and Zipkin
+---
 using Whizbang.Dashboard;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -451,17 +454,13 @@ Find specific messages:
 
 Dashboard updates in real-time via SignalR:
 
-```csharp{
-title: "Real-Time Dashboard Updates"
-description: "Dashboard receives live updates via SignalR"
-framework: "NET8"
-category: "Observability"
-difficulty: "INTERMEDIATE"
-tags: ["Dashboard", "SignalR", "Real-Time"]
-nugetPackages: ["Whizbang.Dashboard", "Microsoft.AspNetCore.SignalR"]
-usingStatements: ["Whizbang.Dashboard", "Microsoft.Extensions.DependencyInjection"]
-showLineNumbers: true
-}
+```csharp
+---
+category: Observability
+difficulty: INTERMEDIATE
+tags: [Dashboard, SignalR, Real-Time, Push-Notifications]
+description: Real-time dashboard updates with SignalR and push notifications
+---
 using Whizbang.Dashboard;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -490,17 +489,13 @@ services.AddWhizbangDashboard(options => {
 
 Protect the dashboard:
 
-```csharp{
-title: "Dashboard Authentication"
-description: "Secure dashboard with authentication"
-framework: "NET8"
-category: "Security"
-difficulty: "INTERMEDIATE"
-tags: ["Dashboard", "Authentication", "Security"]
-nugetPackages: ["Whizbang.Dashboard", "Microsoft.AspNetCore.Authentication"]
-usingStatements: ["Whizbang.Dashboard", "Microsoft.Extensions.DependencyInjection"]
-showLineNumbers: true
-}
+```csharp
+---
+category: Observability
+difficulty: INTERMEDIATE
+tags: [Dashboard, Authentication, Security, Authorization]
+description: Secure dashboard with authentication and role-based access
+---
 using Whizbang.Dashboard;
 using Microsoft.Extensions.DependencyInjection;
 

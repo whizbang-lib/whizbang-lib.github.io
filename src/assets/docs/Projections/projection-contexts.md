@@ -56,7 +56,17 @@ EventContext is **pure data** (no side effects) that provides rich metadata abou
 
 ### EventContext Structure
 
-```csharp
+```csharp{
+title: "EventContext Structure"
+description: "Complete structure of EventContext with system metadata, security context, event metadata, and tracing information"
+framework: "NET8"
+category: "Projections"
+difficulty: "INTERMEDIATE"
+tags: ["Projections", "EventContext", "Structure", "Metadata"]
+filename: "EventContext.cs"
+usingStatements: ["System", "System.Collections.Generic"]
+showLineNumbers: true
+}
 public class EventContext {
     // System metadata
     public SystemData System { get; init; }
@@ -247,7 +257,17 @@ While EventContext is pure data, **ProjectionContext** provides database operati
 
 ### ProjectionContext Structure
 
-```csharp
+```csharp{
+title: "ProjectionContext Structure"
+description: "Complete structure of ProjectionContext with projection metadata, service information, and projection store operations"
+framework: "NET8"
+category: "Projections"
+difficulty: "INTERMEDIATE"
+tags: ["Projections", "ProjectionContext", "Structure", "CRUD Operations"]
+filename: "ProjectionContext.cs"
+usingStatements: ["System", "System.Collections.Generic", "System.Threading", "System.Threading.Tasks"]
+showLineNumbers: true
+}
 public class ProjectionContext {
     // Projection metadata
     public ProjectionMetadata Projection { get; init; }

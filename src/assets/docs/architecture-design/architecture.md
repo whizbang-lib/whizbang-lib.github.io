@@ -12,7 +12,13 @@ Whizbang is built on a layered architecture that supports scaling from event-dri
 
 ## Architectural Layers
 
-```
+```text
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Layered-Architecture, System-Design]
+description: Layered architecture diagram showing the separation between application layer, Whizbang dispatcher, driver layer, and infrastructure
+---
 ┌─────────────────────────────────────────────────────────────┐
 │                     Application Layer                       │
 │  (Your Domain Code: Receptors, Perspectives, Lenses)        │
@@ -94,7 +100,13 @@ Perspectives can be:
 
 The **AOP Pipeline** weaves cross-cutting concerns through source generation:
 
-```
+```text
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, AOP, Pipeline, Cross-Cutting-Concerns]
+description: Aspect-oriented pipeline showing how cross-cutting concerns are applied through message processing
+---
 Incoming Message
       ↓
   [Logged] - Structured logging aspect
@@ -135,6 +147,12 @@ Every stage is **pluggable** and **observable**.
 **Orchestration** - A central coordinator issues commands and listens for events:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Sagas, Orchestration, Long-Running-Processes]
+description: Example of saga orchestration pattern for order fulfillment process
+---
 public class OrderFulfillmentSaga : Saga {
     public async Task Handle(OrderPlaced @event) {
         await Send(new ReserveInventory(@event.OrderId));
@@ -182,6 +200,12 @@ Whizbang enforces **explicit domain ownership** to prevent distributed system ch
 Commands are **sent TO** the service that owns the receptor:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Domain-Ownership, Commands, CQRS]
+description: Example of command with domain ownership declaration
+---
 [OwnedBy("Orders")]  // This command belongs to the Orders service
 public record PlaceOrder(Guid OrderId, Guid CustomerId, List<OrderItem> Items);
 ```
@@ -195,6 +219,12 @@ When you send a command:
 Events are **emitted FROM** the service that owns the domain:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Domain-Ownership, Events, CQRS]
+description: Example of event with domain ownership declaration
+---
 [OwnedBy("Orders")]  // This event comes from the Orders service
 public record OrderPlaced(Guid OrderId, Guid CustomerId, DateTimeOffset PlacedAt);
 ```
@@ -208,6 +238,12 @@ Other services can subscribe to `OrderPlaced` events:
 When a new service subscribes to events for the first time, it can **backfill from the beginning**:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Perspectives, Event-Sourcing, Backfilling]
+description: Configuration for perspective with event subscription and backfilling from beginning
+---
 services.AddPerspective<OrderHistoryPerspective>(options => {
     options.Subscribe<OrderPlaced>();
     options.Subscribe<OrderShipped>();
@@ -226,7 +262,13 @@ This allows new perspectives to be built from existing event history.
 
 ### Single Process (Event-Driven Mode)
 
-```
+```text
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Deployment, Single-Process, Event-Driven]
+description: Single process deployment architecture with in-memory runtime and local database
+---
 ┌─────────────────────────────┐
 │   ASP.NET Core Web API      │
 │                             │
@@ -248,7 +290,13 @@ Perfect for:
 
 ### Multi-Service (Distributed)
 
-```
+```text
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Microservices, Distributed, Event-Driven]
+description: Multi-service distributed architecture with dedicated databases and shared message broker
+---
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
 │   Orders    │      │  Inventory  │      │  Shipping   │
 │   Service   │      │   Service   │      │   Service   │
@@ -274,7 +322,13 @@ Each service:
 
 ### Multi-Region (Disaster Recovery)
 
-```
+```text
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [Architecture, Multi-Region, Disaster-Recovery, Replication]
+description: Multi-region architecture with synchronized ledgers and mirrored message brokers for disaster recovery
+---
         Region 1                         Region 2
 ┌─────────────────────┐         ┌─────────────────────┐
 │  Primary Services   │         │  Replica Services   │
@@ -297,6 +351,12 @@ Whizbang provides four deployment modes, all using the **exact same receptor cod
 
 ### Mode 1: Event-Driven Development
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Configuration, Event-Driven, Development]
+description: Basic event-driven mode configuration for development scenarios
+---
 services.AddWhizbang(dispatcher => {
     dispatcher.UseEventDrivenMode();
 });
@@ -307,6 +367,12 @@ services.AddWhizbang(dispatcher => {
 
 ### Mode 2: Event-Driven Production
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Configuration, Event-Driven, Production, Persistence]
+description: Event-driven production configuration with persistent perspectives
+---
 services.AddWhizbang(dispatcher => {
     dispatcher.UseEventDrivenMode();
     dispatcher.Perspectives.UsePostgreSQL(connectionString);
@@ -318,6 +384,12 @@ services.AddWhizbang(dispatcher => {
 
 ### Mode 3: Event-Driven Distributed
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Configuration, Event-Driven, Distributed, Messaging]
+description: Event-driven distributed configuration with Kafka relays and persistent perspectives
+---
 services.AddWhizbang(dispatcher => {
     dispatcher.UseEventDrivenMode();
     dispatcher.UseRelays(relays => relays.UseKafka(kafkaConfig));
@@ -330,6 +402,12 @@ services.AddWhizbang(dispatcher => {
 
 ### Mode 4: Event-Sourced with Ledger
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [Architecture, Configuration, Event-Sourcing, Ledger, Advanced]
+description: Event-sourced configuration with ledger and persistent perspectives
+---
 services.AddWhizbang(dispatcher => {
     dispatcher.UseEventSourcing(es => {
         es.UseLedger(ledgerConfig);
@@ -350,6 +428,12 @@ Within any mode, Whizbang supports three execution patterns:
 Receptor executes **synchronously** within the caller's transaction:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Execution-Patterns, Inline, Synchronous]
+description: Inline execution pattern with synchronous receptor execution and perspective updates
+---
 var @event = await dispatcher.Send(new PlaceOrder(...));
 // Receptor executed, events appended, perspectives updated—all before returning
 ```
@@ -364,6 +448,12 @@ Best for:
 Receptor executes **asynchronously** in a background worker:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Execution-Patterns, Async, Background-Processing]
+description: Async execution pattern with background worker processing
+---
 await dispatcher.Publish(new PlaceOrder(...));
 // Command written to queue, returns immediately
 // Receptor executes in background worker
@@ -379,6 +469,12 @@ Best for:
 Multiple messages **batched together** for efficiency:
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Architecture, Execution-Patterns, Batched, Performance]
+description: Batched execution pattern for improved throughput with multiple commands
+---
 await dispatcher.PublishBatch(new[] {
     new PlaceOrder(...),
     new PlaceOrder(...),

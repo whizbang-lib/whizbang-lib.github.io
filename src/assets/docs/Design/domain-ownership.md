@@ -24,6 +24,12 @@ Each level can override previous levels, giving developers full control.
 **Automatic ownership** derived from namespace structure:
 
 ```csharp
+---
+category: Design
+difficulty: BEGINNER
+tags: [Domain-Ownership, Namespace-Convention, Commands, Events]
+description: Automatic domain ownership derived from namespace structure
+---
 // Orders domain
 namespace MyApp.Orders.Commands {
     public record PlaceOrder(Guid OrderId, Guid CustomerId, List<OrderItem> Items);
@@ -45,6 +51,12 @@ namespace MyApp.Inventory.Commands {
 ### Namespace Policy Configuration
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Domain-Ownership, Configuration, Namespace-Policy, Setup]
+description: Configuring namespace extraction policies for domain ownership
+---
 services.AddWhizbang(options => {
     options.DomainOwnership(ownership => {
         // Configure namespace extraction policies
@@ -76,6 +88,12 @@ services.AddWhizbang(options => {
 **Explicit declaration** using attributes:
 
 ```csharp
+---
+category: Design
+difficulty: BEGINNER
+tags: [Domain-Ownership, Attributes, Explicit-Declaration, Override]
+description: Explicit domain ownership declaration using attributes
+---
 [OwnedBy("Orders")]
 public record PlaceOrder(Guid OrderId, Guid CustomerId, List<OrderItem> Items);
 
@@ -92,6 +110,12 @@ namespace MyApp.Shared.Commands {
 ### Attribute Policies
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Domain-Ownership, Attribute-Policy, Configuration, Custom-Attributes]
+description: Configuring attribute-based ownership policies
+---
 services.AddWhizbang(options => {
     options.DomainOwnership(ownership => {
         ownership.AttributePolicy(policy => {
@@ -115,6 +139,12 @@ services.AddWhizbang(options => {
 **Centralized registration** in Program.cs:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Domain-Ownership, Configuration, Domain-Registration, Centralized-Config]
+description: Centralized domain registration with explicit ownership
+---
 services.AddWhizbang(options => {
     options.DomainOwnership(ownership => {
         // Register domains with explicit ownership
@@ -143,6 +173,12 @@ services.AddWhizbang(options => {
 ### Interface-Based Ownership
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Domain-Ownership, Interface-Based, Marker-Interfaces, Configuration]
+description: Interface-based domain ownership with marker interfaces
+---
 // Domain marker interfaces
 public interface IOrderCommand : ICommand { }
 public interface IInventoryCommand : ICommand { }
@@ -165,6 +201,12 @@ services.AddWhizbang(options => {
 ### Inheritance-Based Ownership
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Domain-Ownership, Inheritance-Based, Base-Classes, Configuration]
+description: Inheritance-based domain ownership with base command classes
+---
 // Base classes for domains
 public abstract class OrderCommand : ICommand {
     // Common order command properties
@@ -194,6 +236,12 @@ services.AddWhizbang(options => {
 **Developer controls the order** of ownership determination:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Domain-Ownership, Precedence-Order, Configuration, Custom-Rules]
+description: Custom ownership precedence order configuration
+---
 services.AddWhizbang(options => {
     options.DomainOwnership(ownership => {
         // Custom precedence order
@@ -220,6 +268,12 @@ services.AddWhizbang(options => {
 ### Multi-Level Namespace Extraction
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Domain-Ownership, Namespace-Extraction, Multi-Level, Custom-Logic]
+description: Multi-level namespace extraction with complex custom logic
+---
 services.AddWhizbang(options => {
     options.DomainOwnership(ownership => {
         ownership.NamespacePolicy(policy => {
@@ -249,6 +303,12 @@ services.AddWhizbang(options => {
 ### Conditional Ownership Rules
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Domain-Ownership, Conditional-Rules, Assembly-Based, Integration-Events]
+description: Conditional ownership rules based on type patterns and assemblies
+---
 services.AddWhizbang(options => {
     options.DomainOwnership(ownership => {
         ownership.ConditionalRules(rules => {
@@ -271,6 +331,12 @@ services.AddWhizbang(options => {
 ### Assembly-Based Policies
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Domain-Ownership, Assembly-Based, Assembly-Mapping, Naming-Convention]
+description: Assembly-based domain ownership with naming conventions
+---
 services.AddWhizbang(options => {
     options.DomainOwnership(ownership => {
         ownership.AssemblyPolicy(policy => {
@@ -292,6 +358,12 @@ services.AddWhizbang(options => {
 ### Ownership Discovery API
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Domain-Ownership, Runtime-Resolution, API, Interface]
+description: Domain ownership resolver API for runtime discovery
+---
 public interface IDomainOwnershipResolver {
     string ResolveDomain<T>();
     string ResolveDomain(Type type);
@@ -301,6 +373,13 @@ public interface IDomainOwnershipResolver {
 }
 
 // Usage
+```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Domain-Ownership, Controllers, Usage-Example]
+description: Example of using domain ownership resolver in a controller
+---
 public class OrderController : ControllerBase {
     private readonly IDomainOwnershipResolver _ownership;
     
@@ -325,6 +404,12 @@ public class OrderController : ControllerBase {
 **Roslyn analyzer** enforces ownership rules:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Domain-Ownership, Compile-Time-Validation, Source-Generators]
+description: Compile-time validation of domain ownership rules with Roslyn analyzers
+---
 // This will generate a compile error
 [OwnedBy("Orders")]
 public record PlaceOrder(...);
@@ -339,6 +424,12 @@ public class InventoryHandler : ICommandHandler<PlaceOrder> {
 ### Source Generator Support
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Domain-Ownership, Source-Generation, Code-Generation]
+description: Auto-generated domain ownership registry for runtime lookups
+---
 // Generated at compile time
 [GeneratedCode("Whizbang.SourceGenerator")]
 public static class DomainOwnershipRegistry {
@@ -361,6 +452,12 @@ public static class DomainOwnershipRegistry {
 ### In-Process Routing
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Domain-Ownership, Routing, In-Process-Communication]
+description: Local command routing within the same domain service
+---
 // Same domain - route locally
 var command = new PlaceOrder(...);
 var domain = _ownership.ResolveDomain<PlaceOrder>(); // "Orders"
@@ -371,6 +468,12 @@ await handler.Handle(command);
 ### Cross-Service Routing
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Domain-Ownership, Routing, Cross-Service-Communication]
+description: Cross-service command routing based on domain ownership
+---
 // Different domain - route via message broker
 var command = new ReserveStock(...);
 var domain = _ownership.ResolveDomain<ReserveStock>(); // "Inventory"

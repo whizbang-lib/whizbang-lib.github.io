@@ -26,6 +26,12 @@ Each library requires different patterns, different abstractions, and different 
 ## The Whizbang Solution: Progressive Enhancement
 
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [Progressive-Enhancement, Unified-Model, Configuration]
+description: Same handler code works across all modes with progressive enhancement
+---
 // This SAME handler works across ALL modes
 public class OrderHandler : IHandle<CreateOrder> {
     public OrderCreated Handle(CreateOrder cmd, IOrderRepository repo) {
@@ -82,6 +88,12 @@ Runtime code generation like Wolverine. Zero-allocation patterns. Adaptive optim
 ### Return Type Semantics
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Return-Type-Semantics, Effects, Streaming, Railway-Oriented-Programming]
+description: Return type semantics demonstrating different effect patterns
+---
 public class OrderHandler {
     // Single return = single effect
     public OrderCreated Handle(CreateOrder cmd) => 
@@ -113,6 +125,12 @@ public class OrderHandler {
 ### Aspect-Oriented Programming
 
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [AOP, Aspects, Source-Generation, Pure-Functions]
+description: Aspect-oriented programming with compile-time verification
+---
 [Logged]
 [Timed]
 [Cached(Duration = "5m")]
@@ -130,6 +148,12 @@ public class OrderHandler : IHandle<CreateOrder> {
 ### Pure Functions with Effect Tracking
 
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [Pure-Functions, Effect-Tracking, Compile-Time-Verification]
+description: Pure functions with effect tracking and compile-time enforcement
+---
 [Pure] // Enforced at compile time
 public OrderCalculated Calculate(Order order) {
     // ✅ Pure computation allowed
@@ -152,6 +176,12 @@ public async Task<OrderCreated> Handle(CreateOrder cmd) {
 ### Compile-Time Verification
 
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [Event-Sourcing, Aggregates, Compile-Time-Verification, Pure-Event-Application]
+description: Event sourced aggregate with compile-time verification
+---
 [EventSourced]
 public class Order : Aggregate {
     [Pure] // Verified: no side effects in event application
@@ -176,6 +206,12 @@ public class Order : Aggregate {
 
 ### Mode 1: In-Process (Development/Monolith)
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [Configuration, In-Process-Mode, Development]
+description: In-process mode configuration for development and monoliths
+---
 services.AddWhizbang()
     .UseInProcessMode()
     .WithInMemoryStorage();
@@ -187,6 +223,12 @@ services.AddWhizbang()
 
 ### Mode 2: Durable (Single Service)
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Configuration, Durable-Mode, Persistence, Outbox-Pattern]
+description: Durable mode with PostgreSQL and outbox pattern
+---
 services.AddWhizbang()
     .UseDurableMode()
     .UsePostgreSQL(connectionString)
@@ -199,6 +241,12 @@ services.AddWhizbang()
 
 ### Mode 3: Distributed (Microservices)
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [Configuration, Distributed-Mode, Kafka, Saga-Orchestration, Distributed-Tracing]
+description: Distributed mode with Kafka, saga orchestration, and tracing
+---
 services.AddWhizbang()
     .UseDistributedMode()
     .UseKafka(config)
@@ -212,6 +260,12 @@ services.AddWhizbang()
 
 ### Mode 4: Event-Sourced (Event-Driven)
 ```csharp
+---
+category: Architecture
+difficulty: ADVANCED
+tags: [Configuration, Event-Sourcing, Event-Store, Projections, Snapshots]
+description: Event sourced mode with projections and snapshots
+---
 services.AddWhizbang()
     .UseEventSourcedMode()
     .UseEventStore(config)
@@ -227,6 +281,12 @@ services.AddWhizbang()
 
 ### IDE Integration
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [IDE-Integration, IntelliSense, Developer-Experience, Tooling]
+description: IDE integration with IntelliSense and code generation
+---
 // IntelliSense knows about aspects and suggests appropriate ones
 [Wh| // IDE suggests: WhizbangHandler, WhizbangSaga, WhizbangProjection
 
@@ -238,6 +298,12 @@ public class OrderHandler {
 
 ### Testing Excellence
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Testing, Aspects, Production-Testing, Verification]
+description: Testing with production aspects and comprehensive verification
+---
 [Test]
 public async Task OrderHandler_CreatesOrder_WithAllAspects() {
     await Whizbang.Test<OrderHandler>()
@@ -253,6 +319,12 @@ public async Task OrderHandler_CreatesOrder_WithAllAspects() {
 
 ### Observability Built-In
 ```csharp
+---
+category: Architecture
+difficulty: INTERMEDIATE
+tags: [Observability, OpenTelemetry, Tracing, Metrics, Logging]
+description: Built-in observability with automatic OpenTelemetry integration
+---
 // Automatic OpenTelemetry integration
 [Observed]
 public class OrderHandler {
@@ -271,6 +343,12 @@ public class OrderHandler {
 
 ### From MediatR
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [Migration, MediatR, Comparison, Simplification]
+description: Migration from MediatR showing simplified interface
+---
 // Before (MediatR)
 public class Handler : IRequestHandler<Command, Result> {
     public Task<Result> Handle(Command request, CancellationToken ct) { }
@@ -284,6 +362,12 @@ public class Handler : IHandle<Command> {
 
 ### From MassTransit
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [Migration, MassTransit, Comparison, Context-Via-Aspects]
+description: Migration from MassTransit with cleaner interface
+---
 // Before (MassTransit)
 public class Consumer : IConsumer<Message> {
     public async Task Consume(ConsumeContext<Message> context) { }
@@ -297,6 +381,12 @@ public class Handler : IHandle<Message> {
 
 ### From Wolverine
 ```csharp
+---
+category: Architecture
+difficulty: BEGINNER
+tags: [Migration, Wolverine, Return-Type-Semantics, Comparison]
+description: Migration from Wolverine preserving return type semantics
+---
 // Before (Wolverine)
 public static class Handler {
     public static Result Handle(Command cmd) { }

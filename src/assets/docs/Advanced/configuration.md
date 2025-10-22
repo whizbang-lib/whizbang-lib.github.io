@@ -13,7 +13,17 @@ Whizbang provides a comprehensive configuration system that allows you to custom
 
 ### Minimal Setup
 
-```csharp
+```csharp{
+title: "Minimal Whizbang Setup"
+description: "Basic Whizbang configuration with assembly scanning"
+framework: "NET8"
+category: "Configuration"
+difficulty: "BEGINNER"
+tags: ["Setup", "Configuration", "Assembly Scanning"]
+filename: "Program.cs"
+usingStatements: ["Microsoft.AspNetCore.Builder", "Whizbang"]
+showLineNumbers: true
+}
 // Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,7 +38,17 @@ app.Run();
 
 ### With Storage Backend
 
-```csharp
+```csharp{
+title: "Whizbang with Storage Backend"
+description: "Configuration with PostgreSQL event store"
+framework: "NET8"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["Event Store", "PostgreSQL", "Storage"]
+filename: "Program.cs"
+usingStatements: ["Whizbang", "Whizbang.EventSourcing"]
+showLineNumbers: true
+}
 builder.Services.AddWhizbang(options => {
     options.ScanAssembly(typeof(Program).Assembly);
     
@@ -45,7 +65,17 @@ builder.Services.AddWhizbang(options => {
 
 ### Event Store Options
 
-```csharp
+```csharp{
+title: "PostgreSQL Event Store Configuration"
+description: "Detailed PostgreSQL event store options"
+framework: "NET8"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["Event Store", "PostgreSQL", "Schema", "Snapshots"]
+filename: "Program.cs"
+usingStatements: ["Whizbang.EventSourcing"]
+showLineNumbers: true
+}
 options.UseEventSourcing(es => {
     es.UsePostgres(connectionString, postgres => {
         postgres.SchemaName = "events";
@@ -58,7 +88,17 @@ options.UseEventSourcing(es => {
 
 ### Projection Store Options
 
-```csharp
+```csharp{
+title: "Projection Store Configuration"
+description: "Multiple projection store options including PostgreSQL and MongoDB"
+framework: "NET8"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["Projections", "PostgreSQL", "MongoDB", "Storage"]
+filename: "Program.cs"
+usingStatements: ["Whizbang.Projections"]
+showLineNumbers: true
+}
 options.UseProjections(proj => {
     // Use same database as event store
     proj.UseSameStoreAsEvents();
@@ -80,7 +120,17 @@ options.UseProjections(proj => {
 
 ### In-Process Messaging
 
-```csharp
+```csharp{
+title: "In-Process Messaging Configuration"
+description: "Configure in-process messaging for single application"
+framework: "NET8"
+category: "Configuration"
+difficulty: "BEGINNER"
+tags: ["Messaging", "In-Process"]
+filename: "Program.cs"
+usingStatements: ["Whizbang.Messaging"]
+showLineNumbers: true
+}
 options.UseMessaging(msg => {
     msg.UseInProcess(); // Default - all handlers run in same process
 });
@@ -88,7 +138,17 @@ options.UseMessaging(msg => {
 
 ### Distributed Messaging
 
-```csharp
+```csharp{
+title: "Distributed Messaging with Kafka"
+description: "Configure Kafka for distributed messaging with retry policies"
+framework: "NET8"
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["Messaging", "Kafka", "Distributed", "Retry Policy"]
+filename: "Program.cs"
+usingStatements: ["System", "Whizbang.Messaging"]
+showLineNumbers: true
+}
 options.UseMessaging(msg => {
     msg.UseKafka(kafka => {
         kafka.BootstrapServers = "localhost:9092";
@@ -107,7 +167,17 @@ options.UseMessaging(msg => {
 
 ### Outbox Pattern
 
-```csharp
+```csharp{
+title: "Outbox Pattern Configuration"
+description: "Configure outbox pattern for reliable message delivery"
+framework: "NET8"
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["Outbox Pattern", "Messaging", "Reliability"]
+filename: "Program.cs"
+usingStatements: ["System", "Whizbang.Messaging"]
+showLineNumbers: true
+}
 options.UseMessaging(msg => {
     msg.UseOutbox(outbox => {
         outbox.ProcessingInterval = TimeSpan.FromSeconds(5);
@@ -122,7 +192,17 @@ options.UseMessaging(msg => {
 
 ### Assembly Scanning
 
-```csharp
+```csharp{
+title: "Assembly Scanning Configuration"
+description: "Configure assembly scanning for handlers and aggregates"
+framework: "NET8"
+category: "Configuration"
+difficulty: "BEGINNER"
+tags: ["Assembly Scanning", "Handlers", "Discovery"]
+filename: "Program.cs"
+usingStatements: ["Whizbang"]
+showLineNumbers: true
+}
 options.ScanAssembly(typeof(Program).Assembly);
 options.ScanAssemblies(
     typeof(OrderHandlers).Assembly,
@@ -135,7 +215,17 @@ options.ScanCurrentDirectory();
 
 ### Manual Registration
 
-```csharp
+```csharp{
+title: "Manual Handler Registration"
+description: "Manually register specific handlers instead of assembly scanning"
+framework: "NET8"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["Handlers", "Registration", "Manual"]
+filename: "Program.cs"
+usingStatements: ["Whizbang"]
+showLineNumbers: true
+}
 options.RegisterHandlers(handlers => {
     handlers.RegisterCommandHandler<PlaceOrderHandler>();
     handlers.RegisterEventHandler<OrderPlacedHandler>();
@@ -145,7 +235,17 @@ options.RegisterHandlers(handlers => {
 
 ### Handler Lifetime
 
-```csharp
+```csharp{
+title: "Handler Lifetime Configuration"
+description: "Configure service lifetimes for handlers"
+framework: "NET8"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["Handlers", "Lifetime", "Dependency Injection"]
+filename: "Program.cs"
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Whizbang"]
+showLineNumbers: true
+}
 options.ConfigureHandlers(handlers => {
     handlers.DefaultLifetime = ServiceLifetime.Scoped;
     
@@ -158,7 +258,17 @@ options.ConfigureHandlers(handlers => {
 
 ### Registration and Subscriptions
 
-```csharp
+```csharp{
+title: "Projection Registration and Subscriptions"
+description: "Register projections with event subscriptions and partitioning"
+framework: "NET8"
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["Projections", "Event Subscriptions", "Partitioning", "Backfill"]
+filename: "Program.cs"
+usingStatements: ["System", "Whizbang.Projections"]
+showLineNumbers: true
+}
 options.UseProjections(proj => {
     proj.RegisterProjection<OrderSummaryProjection>(p => {
         p.Subscribe<OrderPlacedEvent>();
@@ -176,7 +286,17 @@ options.UseProjections(proj => {
 
 ### Performance Tuning
 
-```csharp
+```csharp{
+title: "Projection Performance Tuning"
+description: "Configure projection performance settings for batch processing"
+framework: "NET8"
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["Projections", "Performance", "Batch Processing", "Concurrency"]
+filename: "Program.cs"
+usingStatements: ["System", "Whizbang.Projections"]
+showLineNumbers: true
+}
 proj.ConfigurePerformance(perf => {
     perf.BatchSize = 1000;
     perf.ConcurrentPartitions = Environment.ProcessorCount;
@@ -189,7 +309,17 @@ proj.ConfigurePerformance(perf => {
 
 ### OpenTelemetry Integration
 
-```csharp
+```csharp{
+title: "OpenTelemetry Observability Configuration"
+description: "Configure OpenTelemetry with Jaeger and Application Insights exporters"
+framework: "NET8"
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["Observability", "OpenTelemetry", "Jaeger", "Application Insights"]
+filename: "Program.cs"
+usingStatements: ["System", "Microsoft.Extensions.Configuration", "Whizbang.Observability"]
+showLineNumbers: true
+}
 options.UseObservability(obs => {
     obs.UseOpenTelemetry(otel => {
         otel.ServiceName = "my-whizbang-service";
@@ -214,7 +344,17 @@ options.UseObservability(obs => {
 
 ### Logging Configuration
 
-```csharp
+```csharp{
+title: "Logging Configuration"
+description: "Configure structured logging with correlation IDs"
+framework: "NET8"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["Logging", "Structured Logging", "Correlation IDs"]
+filename: "Program.cs"
+usingStatements: ["Microsoft.Extensions.Logging", "Whizbang.Logging"]
+showLineNumbers: true
+}
 options.UseLogging(logging => {
     logging.LogLevel = LogLevel.Information;
     logging.LogCommands = true;
@@ -231,7 +371,17 @@ options.UseLogging(logging => {
 
 ### Authentication & Authorization
 
-```csharp
+```csharp{
+title: "Security and Authorization Configuration"
+description: "Configure authentication, authorization, and multi-tenancy"
+framework: "NET8"
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["Security", "Authentication", "Authorization", "Multi-Tenancy"]
+filename: "Program.cs"
+usingStatements: ["Whizbang.Security"]
+showLineNumbers: true
+}
 options.UseSecurity(security => {
     // Require authentication for all commands
     security.RequireAuthentication = true;
@@ -256,7 +406,17 @@ options.UseSecurity(security => {
 
 ### Data Protection
 
-```csharp
+```csharp{
+title: "Data Protection and Encryption"
+description: "Configure data encryption with Azure Key Vault integration"
+framework: "NET8"
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["Security", "Encryption", "Azure Key Vault", "Data Protection"]
+filename: "Program.cs"
+usingStatements: ["System", "Whizbang.Security"]
+showLineNumbers: true
+}
 options.UseSecurity(security => {
     security.UseEncryption(encryption => {
         encryption.EncryptSensitiveFields = true;
@@ -275,7 +435,17 @@ options.UseSecurity(security => {
 
 ### Connection Pooling
 
-```csharp
+```csharp{
+title: "Database Connection Pooling"
+description: "Configure database connection pool settings for performance"
+framework: "NET8"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["Performance", "Database", "Connection Pooling"]
+filename: "Program.cs"
+usingStatements: ["System", "Whizbang.Performance"]
+showLineNumbers: true
+}
 options.ConfigurePerformance(perf => {
     perf.DatabaseConnections = conn => {
         conn.MaxPoolSize = 100;
@@ -288,7 +458,17 @@ options.ConfigurePerformance(perf => {
 
 ### Caching
 
-```csharp
+```csharp{
+title: "Distributed Caching Configuration"
+description: "Configure Redis caching for aggregates and projections"
+framework: "NET8"
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["Caching", "Redis", "Performance", "Distributed Cache"]
+filename: "Program.cs"
+usingStatements: ["System", "Whizbang.Caching"]
+showLineNumbers: true
+}
 options.UseCaching(cache => {
     cache.UseDistributedCache(dist => {
         dist.UseRedis(redis => {
@@ -311,7 +491,17 @@ options.UseCaching(cache => {
 
 ### Development Environment
 
-```csharp
+```csharp{
+title: "Development Environment Configuration"
+description: "Configure development-specific settings and features"
+framework: "NET8"
+category: "Configuration"
+difficulty: "BEGINNER"
+tags: ["Development", "Environment", "In-Memory Storage", "Swagger"]
+filename: "Program.cs"
+usingStatements: ["Microsoft.Extensions.Hosting", "Whizbang"]
+showLineNumbers: true
+}
 if (builder.Environment.IsDevelopment()) {
     options.UseDevelopmentDefaults(dev => {
         dev.UseInMemoryStorage = true;
@@ -324,7 +514,17 @@ if (builder.Environment.IsDevelopment()) {
 
 ### Production Environment
 
-```csharp
+```csharp{
+title: "Production Environment Configuration"
+description: "Configure production-specific optimizations and monitoring"
+framework: "NET8"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["Production", "Environment", "Optimizations", "Monitoring"]
+filename: "Program.cs"
+usingStatements: ["Microsoft.Extensions.Hosting", "Microsoft.Extensions.Logging", "Whizbang"]
+showLineNumbers: true
+}
 if (builder.Environment.IsProduction()) {
     options.UseProductionDefaults(prod => {
         prod.EnableOptimizations = true;
@@ -366,7 +566,17 @@ if (builder.Environment.IsProduction()) {
 }
 ```
 
-```csharp
+```csharp{
+title: "Loading Configuration from appsettings.json"
+description: "Load Whizbang configuration from appsettings.json section"
+framework: "NET8"
+category: "Configuration"
+difficulty: "BEGINNER"
+tags: ["Configuration", "appsettings.json", "Settings"]
+filename: "Program.cs"
+usingStatements: ["Microsoft.Extensions.Configuration", "Whizbang"]
+showLineNumbers: true
+}
 // Load from configuration
 options.ConfigureFromSection(builder.Configuration.GetSection("Whizbang"));
 ```
@@ -375,7 +585,17 @@ options.ConfigureFromSection(builder.Configuration.GetSection("Whizbang"));
 
 ### Configuration Validation
 
-```csharp
+```csharp{
+title: "Configuration Validation"
+description: "Enable configuration validation with custom validators"
+framework: "NET8"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["Validation", "Configuration", "Startup"]
+filename: "Program.cs"
+usingStatements: ["Whizbang"]
+showLineNumbers: true
+}
 options.ValidateConfiguration = true;
 options.ValidateOnStartup = true;
 
@@ -385,7 +605,17 @@ options.AddConfigurationValidator<CustomConfigValidator>();
 
 ### Health Checks
 
-```csharp
+```csharp{
+title: "Health Checks Configuration"
+description: "Add Whizbang health checks for monitoring system components"
+framework: "NET8"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["Health Checks", "Monitoring", "Diagnostics"]
+filename: "Program.cs"
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Whizbang.HealthChecks"]
+showLineNumbers: true
+}
 builder.Services.AddHealthChecks()
     .AddWhizbangHealthChecks(); // Adds event store, projections, messaging health checks
 ```

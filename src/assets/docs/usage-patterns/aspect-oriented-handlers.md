@@ -810,14 +810,34 @@ internal class UserHandler_Generated : IHandle<GetUser> {
 ### Do's
 
 ✅ **Use aspects for cross-cutting concerns**
-```csharp
+```csharp{
+title: "Use Aspects for Cross-Cutting Concerns"
+description: "Apply aspects for infrastructure concerns like logging, validation, and caching"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Usage Patterns", "AOP", "Cross-Cutting", "Best Practices"]
+filename: "AspectUsage.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "System"]
+}
 [Logged]
 [Validated]
 [Cached]
 ```
 
 ✅ **Keep handlers focused on business logic**
-```csharp
+```csharp{
+title: "Keep Handlers Focused on Business Logic"
+description: "Handlers should contain only business logic with aspects handling infrastructure"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Usage Patterns", "AOP", "Clean Code", "Best Practices"]
+filename: "FocusedHandler.cs"
+showLineNumbers: true
+usingStatements: ["System"]
+}
 public OrderCreated Handle(CreateOrder cmd) {
     // Only business logic, no infrastructure
     return CreateOrder(cmd);
@@ -825,7 +845,17 @@ public OrderCreated Handle(CreateOrder cmd) {
 ```
 
 ✅ **Order aspects correctly**
-```csharp
+```csharp{
+title: "Order Aspects Correctly"
+description: "Proper ordering of aspects for logical execution flow"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "AOP", "Aspect Ordering", "Best Practices"]
+filename: "AspectOrdering.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "System"]
+}
 [Logged]        // Outermost - see everything
 [Authorized]    // Check auth before validation
 [Validated]     // Validate before execution
@@ -833,7 +863,17 @@ public OrderCreated Handle(CreateOrder cmd) {
 ```
 
 ✅ **Test aspects in isolation**
-```csharp
+```csharp{
+title: "Test Aspects in Isolation"
+description: "Test aspect behavior separately from business logic"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "AOP", "Testing", "Best Practices"]
+filename: "AspectTesting.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang.Testing", "System.Threading.Tasks"]
+}
 await Test<Handler>()
     .WithAspect<CachedAttribute>()
     .VerifyBehavior();
@@ -842,7 +882,17 @@ await Test<Handler>()
 ### Don'ts
 
 ❌ **Don't mix aspects with manual concerns**
-```csharp
+```csharp{
+title: "Don't Mix Aspects with Manual Concerns"
+description: "Avoid redundant manual logging when using logging aspects"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Usage Patterns", "AOP", "Anti-Patterns", "Best Practices"]
+filename: "AspectAntiPatterns.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "System"]
+}
 [Logged]
 public Result Handle(Command cmd) {
     _logger.Log("Starting");  // Don't - redundant with aspect
@@ -850,12 +900,32 @@ public Result Handle(Command cmd) {
 ```
 
 ❌ **Don't create aspects for business logic**
-```csharp
+```csharp{
+title: "Don't Create Aspects for Business Logic"
+description: "Aspects should be for cross-cutting concerns, not business logic"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "BEGINNER"
+tags: ["Usage Patterns", "AOP", "Anti-Patterns", "Business Logic"]
+filename: "BusinessLogicAspect.cs"
+showLineNumbers: true
+usingStatements: ["System"]
+}
 [CalculateTax]  // Bad - business logic not cross-cutting
 ```
 
 ❌ **Don't ignore aspect overhead in hot paths**
-```csharp
+```csharp{
+title: "Consider Aspect Overhead"
+description: "Be careful with verbose aspects in performance-critical paths"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Usage Patterns", "AOP", "Performance", "Best Practices"]
+filename: "AspectPerformance.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "System"]
+}
 [Logged(LogInputs = true)]  // Careful with large objects
 public Result Handle(LargeDataQuery query)
 ```

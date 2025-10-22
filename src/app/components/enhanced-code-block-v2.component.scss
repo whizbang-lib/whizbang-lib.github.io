@@ -1245,3 +1245,100 @@
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     }
 }
+
+// =============================================================================
+// Error Display for Missing Front-Matter
+// =============================================================================
+
+.enhanced-code-block.missing-front-matter {
+    border-left: 4px solid #ff6b6b;
+    background: #fff5f5;
+    
+    &:global(.dark-theme) {
+        background: #2a1a1a;
+        border-left-color: #ff8a80;
+    }
+}
+
+.front-matter-error {
+    background: linear-gradient(135deg, #ff6b6b, #ff8787);
+    color: white;
+    padding: wb-spacing('md');
+    margin-bottom: wb-spacing('sm');
+    border-radius: wb-border-radius('md') wb-border-radius('md') 0 0;
+    
+    .error-content {
+        display: flex;
+        align-items: flex-start;
+        gap: wb-spacing('sm');
+    }
+    
+    .error-icon {
+        font-size: 1.25rem;
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+    
+    .error-message {
+        flex: 1;
+        
+        strong {
+            display: block;
+            font-size: 1.1rem;
+            margin-bottom: wb-spacing('xs');
+        }
+        
+        p {
+            margin: 0 0 wb-spacing('sm') 0;
+            opacity: 0.9;
+            line-height: 1.4;
+        }
+    }
+    
+    .error-details {
+        margin-top: wb-spacing('sm');
+        
+        summary {
+            cursor: pointer;
+            font-weight: 500;
+            margin-bottom: wb-spacing('xs');
+            padding: wb-spacing('xs');
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: wb-border-radius('sm');
+            
+            &:hover {
+                background: rgba(255, 255, 255, 0.15);
+            }
+        }
+        
+        .example-front-matter {
+            background: rgba(0, 0, 0, 0.2);
+            color: #fff;
+            padding: wb-spacing('sm');
+            border-radius: wb-border-radius('sm');
+            font-family: var(--code-font-family);
+            font-size: 0.85rem;
+            line-height: 1.4;
+            margin-top: wb-spacing('xs');
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    }
+}
+
+// Dark theme adjustments
+:root[data-theme="dark"] {
+    .front-matter-error {
+        background: linear-gradient(135deg, #d63384, #e85a96);
+        
+        .error-details .example-front-matter {
+            background: rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+    }
+    
+    .enhanced-code-block.missing-front-matter {
+        background: #1a0d0d;
+        border-left-color: #ff8a80;
+    }
+}

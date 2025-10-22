@@ -77,7 +77,17 @@ stateDiagram-v2
 
 ## Example: Order Fulfillment Saga
 
-```csharp
+```csharp{
+title: "Order Fulfillment Saga Example"
+description: "Placeholder for comprehensive saga implementation example"
+framework: "NET8"
+category: "Usage Patterns"
+difficulty: "ADVANCED"
+tags: ["Sagas", "Orchestration", "Workflow"]
+nugetPackages: ["Whizbang.Sagas"]
+usingStatements: ["Whizbang.Sagas"]
+showLineNumbers: true
+}
 // Placeholder for comprehensive saga implementation example
 public class OrderFulfillmentSaga : Saga<OrderFulfillmentState> {
     // Implementation details coming soon

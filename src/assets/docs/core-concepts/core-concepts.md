@@ -65,7 +65,16 @@ public record OrderCancelled(
 
 Events are stored in **streams**, one stream per aggregate instance:
 
-```
+```text{
+title: "Event Stream Structure"
+description: "Visual representation of how events are stored in streams with sequence numbers"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Events", "Streams", "Event Sourcing"]
+filename: "event-stream-example.txt"
+showLineNumbers: false
+}
 Stream: "Order-{orderId}"
   [0] OrderPlaced
   [1] OrderItemAdded
@@ -572,7 +581,16 @@ When this projection starts:
 - **Commands** → **Aggregates** (write side)
 - **Queries** → **Projections** (read side)
 
-```
+```text{
+title: "CQRS Architecture Pattern"
+description: "Visual diagram showing command-query separation with aggregates and projections"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["CQRS", "Architecture", "Commands", "Queries", "Projections"]
+filename: "cqrs-diagram.txt"
+showLineNumbers: false
+}
      Command                   Event                   Query
         ↓                        ↓                        ↓
    ┌─────────┐             ┌──────────┐            ┌──────────┐

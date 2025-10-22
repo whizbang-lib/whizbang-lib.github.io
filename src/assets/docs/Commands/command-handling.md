@@ -54,7 +54,17 @@ This constraint ensures:
 
 ## CommandContext Structure
 
-```csharp
+```csharp{
+title: "CommandContext Structure"
+description: "Core structure for command handling context with event emission and security"
+framework: "NET8"
+category: "Commands"
+difficulty: "INTERMEDIATE"
+tags: ["Commands", "Context", "Security", "Events"]
+filename: "CommandContext.cs"
+usingStatements: ["System", "System.Threading.Tasks"]
+showLineNumbers: true
+}
 public class CommandContext {
     // Command metadata
     public CommandMetadata Command { get; init; }
@@ -161,7 +171,17 @@ public record OrderItem {
 
 ### ✅ In Command Handlers (Business Logic Layer)
 
-```csharp
+```csharp{
+title: "Allowed Operations in Command Handlers"
+description: "Examples of what you can do within command handlers for business logic"
+framework: "NET8"
+category: "Commands"
+difficulty: "BEGINNER"
+tags: ["Commands", "Business Logic", "Best Practices"]
+filename: "CommandHandlerOperations.cs"
+usingStatements: ["System", "System.Threading.Tasks"]
+showLineNumbers: true
+}
 // ✅ CAN use DateTime.UtcNow for business decisions
 var expiresAt = DateTime.UtcNow.AddDays(90);
 
@@ -192,7 +212,17 @@ await context.Send(new ReserveInventory { ... }, ct);
 
 ### ❌ Outside Command Handlers
 
-```csharp
+```csharp{
+title: "Forbidden Operations Outside Command Handlers"
+description: "Examples of what you cannot do outside of command handling context"
+framework: "NET8"
+category: "Commands"
+difficulty: "BEGINNER"
+tags: ["Commands", "Anti-patterns", "Best Practices", "Events"]
+filename: "ForbiddenOperations.cs"
+usingStatements: ["System", "System.Threading.Tasks"]
+showLineNumbers: true
+}
 // ❌ CANNOT emit events directly - no CommandContext
 public class SomeService {
     private readonly IEventStore _eventStore;

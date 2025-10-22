@@ -48,9 +48,16 @@ export class CodeBlockParser {
     // Parse regular code blocks (without metadata)
     // NOTE: Skip mermaid blocks - they are handled separately by the markdown page component
     const regularCodeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-    let regularMatch;
-
-    while ((regularMatch = regularCodeBlockRegex.exec(processedContent)) !== null) {
+    
+    // First, collect all matches to avoid issues with modifying the string during iteration
+    const regularMatches = Array.from(processedContent.matchAll(regularCodeBlockRegex));
+    
+    // Create an array to store the blocks in order
+    const regularCodeBlocks = [];
+    
+    // Process matches in order to create code blocks
+    for (let i = 0; i < regularMatches.length; i++) {
+      const regularMatch = regularMatches[i];
       const language = regularMatch[1] || 'text';
 
       // Skip mermaid blocks - they need to be rendered with Mermaid.js, not as code blocks
@@ -59,24 +66,46 @@ export class CodeBlockParser {
       }
 
       const code = regularMatch[2].trim();
-      const placeholder = `[CODE_BLOCK_${blockIndex}]`;
+      const placeholder = `[CODE_BLOCK_${blockIndex + i}]`;
       
-      // Create basic options for regular code blocks
+      // Check if this is a code language that should have front-matter
+      const shouldHaveFrontMatter = ['csharp', 'cs', 'c#', 'javascript', 'js', 'typescript', 'ts', 'json', 'xml', 'yaml', 'yml', 'bash', 'sh', 'powershell', 'ps1', 'sql', 'html', 'css', 'scss', 'python', 'py', 'java', 'go', 'rust', 'php'].includes(language.toLowerCase());
+      
+      // Create options for regular code blocks
       const options = {
         language: language,
         showLineNumbers: true,
         showCopyButton: true,
-        collapsible: false
+        collapsible: false,
+        // Add error flag for missing front-matter
+        missingFrontMatter: shouldHaveFrontMatter,
+        errorMessage: shouldHaveFrontMatter ? 
+          `⚠️ Missing Front-Matter: This ${language} codeblock needs metadata. Add front-matter like: \`\`\`${language}{title: "...", description: "...", framework: "NET8", category: "...", difficulty: "BEGINNER|INTERMEDIATE|ADVANCED", tags: [...]}` : 
+          undefined
       };
       
-      codeBlocks.push({
+      regularCodeBlocks.push({
         code,
         options,
-        placeholder
+        placeholder,
+        match: regularMatch[0]
       });
-      
-      // Replace the code block with a placeholder
-      processedContent = processedContent.replace(regularMatch[0], placeholder);
+    }
+    
+    // Now replace all matches in reverse order to avoid index shifting, but add to codeBlocks in forward order
+    for (let i = regularCodeBlocks.length - 1; i >= 0; i--) {
+      const block = regularCodeBlocks[i];
+      processedContent = processedContent.replace(block.match, block.placeholder);
+    }
+    
+    // Add blocks to codeBlocks array in the correct order
+    for (let i = 0; i < regularCodeBlocks.length; i++) {
+      const block = regularCodeBlocks[i];
+      codeBlocks.push({
+        code: block.code,
+        options: block.options,
+        placeholder: block.placeholder
+      });
       blockIndex++;
     }
     

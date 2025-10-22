@@ -55,7 +55,18 @@ sequenceDiagram
 
 ## Example Projection
 
-```csharp
+```csharp{
+title: "Order Summary Projection"
+description: "Example projection that creates read models from domain events"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Projections", "Read Models", "CQRS", "Order Summary"]
+filename: "OrderSummaryProjection.cs"
+nugetPackages: ["Whizbang.Projections"]
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang"]
+showLineNumbers: true
+}
 public class OrderSummaryProjection {
     private readonly IProjectionStore<OrderSummary> _store;
 
@@ -114,7 +125,18 @@ public class OrderSummary {
 
 ## Configuration
 
-```csharp
+```csharp{
+title: "Projection Configuration"
+description: "Configuring projections with event subscriptions and backfilling"
+framework: "NET8"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["Projections", "Configuration", "Event Subscriptions"]
+filename: "Program.cs"
+nugetPackages: ["Whizbang.Core", "Microsoft.Extensions.DependencyInjection"]
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Whizbang"]
+showLineNumbers: true
+}
 services.AddWhizbang(options => {
     options.UseProjections(proj => {
         // Register projection

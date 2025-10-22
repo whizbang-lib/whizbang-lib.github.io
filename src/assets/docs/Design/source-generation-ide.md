@@ -16,6 +16,12 @@ Whizbang uses advanced source generation and IDE integration to provide a seamle
 **Incremental source generator** with orchestrated pipeline stages for optimal performance:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Source-Generation, Incremental-Generation, Pipeline-Architecture]
+description: Single incremental source generator with orchestrated pipeline stages
+---
 [Generator]
 public class WhizbangSourceGenerator : IIncrementalGenerator {
     public void Initialize(IncrementalGeneratorInitializationContext context) {
@@ -66,6 +72,12 @@ public class WhizbangSourceGenerator : IIncrementalGenerator {
 **Detailed timing and logging** for optimization:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Source-Generation, Performance-Tracking, Build-Optimization]
+description: Performance tracking for source generation stages with detailed timing
+---
 public class GenerationPerformanceTracker {
     private readonly Dictionary<string, Stopwatch> _stageTimers = new();
     
@@ -98,6 +110,12 @@ public class GenerationPerformanceTracker {
 **Cross-assembly handler discovery** and registration:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Source-Generation, Multi-Project-Aggregation, Code-Generation]
+description: Generated registry that aggregates handlers across multiple projects
+---
 // Generated registry aggregates across projects
 [GeneratedCode("Whizbang.SourceGenerator")]
 public static class WhizbangGeneratedRegistry {
@@ -136,6 +154,12 @@ public static class WhizbangGeneratedRegistry {
 **GitLens-style navigation** through event streams and handlers:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, IDE-Integration, Navigation-Service, Event-Stream-Navigation]
+description: Navigation service interface for GitLens-style event stream traversal
+---
 public interface IWhizbangNavigationService {
     Task<EventStreamInfo> GetEventStreamAsync(string streamId);
     Task<IEnumerable<HandlerInfo>> GetHandlersForEventAsync(Type eventType);
@@ -154,6 +178,13 @@ public class EventFlowDiagram {
     public List<SagaInfo> TriggeredSagas { get; set; }
 }
 
+```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, IDE-Integration, Code-Lens-Provider, Event-Flow-Visualization]
+description: Code lens provider for displaying event flow information in IDE
+---
 // Usage in IDE extension
 public class WhizbangCodeLensProvider : CodeLensProvider {
     public override async Task<CodeLens[]> ProvideCodeLensesAsync(Document document) {
@@ -234,6 +265,12 @@ public class WhizbangCodeLensProvider : CodeLensProvider {
 **Compile-time enforcement** of domain ownership rules:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Code-Analyzers, Domain-Ownership, Compile-Time-Validation]
+description: Roslyn analyzer for compile-time domain ownership validation
+---
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class DomainOwnershipAnalyzer : DiagnosticAnalyzer {
     public static readonly DiagnosticDescriptor CrossDomainHandlerRule = new(
@@ -281,6 +318,12 @@ public class DomainOwnershipAnalyzer : DiagnosticAnalyzer {
 **Automatic fixes** for common patterns:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Code-Fixes, Domain-Ownership, Automatic-Fixes]
+description: Code fix provider for automatic domain ownership attribute addition
+---
 [ExportCodeFixProvider(LanguageNames.CSharp)]
 public class AddDomainOwnershipCodeFixProvider : CodeFixProvider {
     public override async Task RegisterCodeFixesAsync(CodeFixContext context) {
@@ -332,6 +375,12 @@ public class AddDomainOwnershipCodeFixProvider : CodeFixProvider {
 **Clear, debuggable generated code** with source maps:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Source-Generation, Transparent-Code, Debug-Experience]
+description: Clear, debuggable generated code with source maps and metadata
+---
 // Generated handler registry with clear structure
 [GeneratedCode("Whizbang.SourceGenerator", "1.0.0")]
 public static partial class OrderServiceHandlerRegistry {
@@ -374,6 +423,12 @@ public static partial class OrderServiceHandlerRegistry {
 **No "magic" - clear understanding** of what's happening:
 
 ```csharp
+---
+category: Design
+difficulty: INTERMEDIATE
+tags: [Design, Source-Generation, Debug-Experience, Service-Registration]
+description: Debug-friendly service registration with detailed logging
+---
 // Debug-friendly service registration
 public static class WhizbangServiceCollectionExtensions {
     public static IServiceCollection AddWhizbangGeneratedServices(this IServiceCollection services) {
@@ -405,6 +460,12 @@ public class DetailedHandlerRegistrationLogger : IHandlerRegistrationLogger {
 **Only regenerate what changed** for fast incremental builds:
 
 ```csharp
+---
+category: Design
+difficulty: ADVANCED
+tags: [Design, Source-Generation, Incremental-Generation, Performance-Optimization]
+description: Incremental generation context for tracking file changes and optimization
+---
 public class IncrementalGenerationContext {
     private readonly ConcurrentDictionary<string, string> _fileHashes = new();
     
