@@ -936,6 +936,12 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
         icon: 'pi pi-video',
         command: () => this.router.navigate(['/videos']),
         styleClass: this.isActiveRoute('/videos') ? 'active-menu-item' : ''
+      },
+      {
+        label: 'Roadmap',
+        icon: 'pi pi-map',
+        command: () => this.router.navigate(['/roadmap']),
+        styleClass: this.isActiveRoute('/roadmap') ? 'active-menu-item' : ''
       }
     ];
 
@@ -976,6 +982,12 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
         icon: 'pi pi-video',
         command: () => this.router.navigate(['/videos']),
         styleClass: this.isActiveRoute('/videos') ? 'active-menu-item' : ''
+      },
+      {
+        label: 'Roadmap',
+        icon: 'pi pi-map',
+        command: () => this.router.navigate(['/roadmap']),
+        styleClass: this.isActiveRoute('/roadmap') ? 'active-menu-item' : ''
       }
     ];
 

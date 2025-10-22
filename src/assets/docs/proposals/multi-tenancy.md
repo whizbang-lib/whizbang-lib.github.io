@@ -58,13 +58,14 @@ CREATE POLICY tenant_isolation_projections ON projections
 
 **Complete database separation** per tenant:
 
-```csharp
----
-category: Design
-difficulty: ADVANCED
-tags: [Design, Multi-Tenancy, Configuration, Separate-Databases]
-description: Configuration for complete database separation per tenant
----
+```csharp{
+title: "Separate Database Configuration",
+description: "Configuration for complete database separation per tenant",
+category: "Design",
+difficulty: "ADVANCED",
+tags: ["Multi-Tenancy", "Configuration", "Separate-Databases", "Database-Per-Tenant"],
+framework: "NET8"
+}
 services.AddWhizbang(options => {
     options.MultiTenancy(tenancy => {
         tenancy.Strategy = TenancyStrategy.SeparateDatabases;
@@ -115,13 +116,14 @@ CREATE TABLE events_p3 PARTITION OF events FOR VALUES WITH (MODULUS 4, REMAINDER
 
 **Standard GUID-based tenant identification**:
 
-```csharp
----
-category: Design
-difficulty: BEGINNER
-tags: [Design, Multi-Tenancy, Domain-Models, Tenant-ID]
-description: Default tenant ID definition using standard property conventions
----
+```csharp{
+title: "Default Tenant ID Definition",
+description: "Standard tenant ID definition using property conventions and strong types",
+category: "Design",
+difficulty: "BEGINNER",
+tags: ["Multi-Tenancy", "Domain-Models", "Tenant-ID", "Strong-Types"],
+framework: "NET8"
+}
 // Default: Look for TenantId property
 public class Order : Aggregate {
     public Guid Id { get; private set; }
@@ -148,13 +150,14 @@ public class Order : Aggregate {
 
 **Multi-field tenant identification**:
 
-```csharp
----
-category: Design
-difficulty: INTERMEDIATE
-tags: [Design, Multi-Tenancy, Composite-Tenant-ID, Configuration]
-description: Multi-field tenant identification for complex organizational structures
----
+```csharp{
+title: "Composite Tenant ID Configuration",
+description: "Multi-field tenant identification for complex organizational structures",
+category: "Design",
+difficulty: "INTERMEDIATE",
+tags: ["Multi-Tenancy", "Composite-Tenant-ID", "Configuration", "Organization-Structure"],
+framework: "NET8"
+}
 services.AddWhizbang(options => {
     options.MultiTenancy(tenancy => {
         tenancy.TenantIdComposition<Order>(composition => {
@@ -183,13 +186,14 @@ public class Order : Aggregate {
 
 **Complex tenant identification logic**:
 
-```csharp
----
-category: Design
-difficulty: ADVANCED
-tags: [Design, Multi-Tenancy, Custom-Resolution, Business-Logic]
-description: Custom tenant identification logic for complex business scenarios
----
+```csharp{
+title: "Custom Tenant Resolution",
+description: "Custom tenant identification logic for complex business scenarios",
+category: "Design",
+difficulty: "ADVANCED",
+tags: ["Multi-Tenancy", "Custom-Resolution", "Business-Logic", "Configuration"],
+framework: "NET8"
+}
 services.AddWhizbang(options => {
     options.MultiTenancy(tenancy => {
         tenancy.TenantResolver<Order>(order => {
@@ -207,13 +211,14 @@ services.AddWhizbang(options => {
 
 ### Tenant Context Propagation
 
-```csharp
----
-category: Design
-difficulty: INTERMEDIATE
-tags: [Design, Multi-Tenancy, Context-Management, Interfaces]
-description: Tenant context interface for managing current tenant state
----
+```csharp{
+title: "Tenant Context Interface",
+description: "Interface for managing current tenant state and context",
+category: "Design",
+difficulty: "INTERMEDIATE",
+tags: ["Multi-Tenancy", "Context-Management", "Interfaces", "State-Management"],
+framework: "NET8"
+}
 public interface ITenantContext {
     string? CurrentTenantId { get; }
     void SetTenant(string tenantId);
@@ -221,13 +226,14 @@ public interface ITenantContext {
     bool HasTenant { get; }
 }
 
-```csharp
----
-category: Design
-difficulty: INTERMEDIATE
-tags: [Design, Multi-Tenancy, ASP.NET-Core, Middleware]
-description: ASP.NET Core middleware for automatic tenant context propagation
----
+```csharp{
+title: "Tenant Context Middleware",
+description: "ASP.NET Core middleware for automatic tenant context propagation from multiple sources",
+category: "Design",
+difficulty: "INTERMEDIATE",
+tags: ["Multi-Tenancy", "ASP.NET-Core", "Middleware", "Context-Propagation"],
+framework: "NET8"
+}
 // ASP.NET Core middleware
 public class TenantContextMiddleware {
     public async Task InvokeAsync(HttpContext context, RequestDelegate next) {
@@ -269,13 +275,14 @@ public class TenantContextMiddleware {
 
 ### Tenant-Aware Command/Event Handling
 
-```csharp
----
-category: Design
-difficulty: INTERMEDIATE
-tags: [Design, Multi-Tenancy, Command-Handlers, Domain-Logic]
-description: Tenant-aware command handler implementation with context validation
----
+```csharp{
+title: "Tenant-Aware Command Handler",
+description: "Command handler implementation with tenant context validation and isolation",
+category: "Design",
+difficulty: "INTERMEDIATE",
+tags: ["Multi-Tenancy", "Command-Handlers", "Domain-Logic", "Context-Validation"],
+framework: "NET8"
+}
 public class PlaceOrderHandler : ICommandHandler<PlaceOrder> {
     private readonly ITenantContext _tenantContext;
     private readonly IOrderRepository _repository;
@@ -308,13 +315,14 @@ public class PlaceOrderHandler : ICommandHandler<PlaceOrder> {
 
 ### Projection-Level Isolation
 
-```csharp
----
-category: Design
-difficulty: INTERMEDIATE
-tags: [Design, Multi-Tenancy, Projections, Tenant-Isolation]
-description: Tenant-specific projection configuration with isolation controls
----
+```csharp{
+title: "Tenant-Specific Projection",
+description: "Tenant-specific projection configuration with isolation controls",
+category: "Design",
+difficulty: "INTERMEDIATE",
+tags: ["Multi-Tenancy", "Projections", "Tenant-Isolation", "Event-Handling"],
+framework: "NET8"
+}
 services.AddProjection<OrderSummaryProjection>(options => {
     options.TenantIsolation(isolation => {
         isolation.Strategy = ProjectionTenantStrategy.TenantSpecific;
@@ -342,13 +350,14 @@ public class OrderSummaryProjection : IProjectionHandler<OrderPlaced> {
 
 **Global projections that aggregate across tenants**:
 
-```csharp
----
-category: Design
-difficulty: ADVANCED
-tags: [Design, Multi-Tenancy, Projections, Cross-Tenant, Analytics]
-description: Cross-tenant projections for global analytics and reporting
----
+```csharp{
+title: "Cross-Tenant Analytics Projection",
+description: "Cross-tenant projection for global analytics and reporting across all tenants",
+category: "Design",
+difficulty: "ADVANCED",
+tags: ["Multi-Tenancy", "Projections", "Cross-Tenant", "Analytics", "Global-Data"],
+framework: "NET8"
+}
 services.AddProjection<GlobalAnalyticsProjection>(options => {
     options.TenantIsolation(isolation => {
         isolation.Strategy = ProjectionTenantStrategy.CrossTenant;
@@ -376,13 +385,14 @@ public class GlobalAnalyticsProjection : IProjectionHandler<OrderPlaced> {
 
 ### PostgreSQL Driver
 
-```csharp
----
-category: Design
-difficulty: ADVANCED
-tags: [Design, Multi-Tenancy, Drivers, PostgreSQL, Event-Store]
-description: PostgreSQL driver implementation with tenant isolation support
----
+```csharp{
+title: "PostgreSQL Tenant-Aware Driver",
+description: "PostgreSQL driver implementation with tenant isolation support for event storage",
+category: "Design",
+difficulty: "ADVANCED",
+tags: ["Multi-Tenancy", "Drivers", "PostgreSQL", "Event-Store", "Data-Access"],
+framework: "NET8"
+}
 public class PostgresTenantDriver : IEventStoreDriver {
     public async Task<IEnumerable<Event>> ReadEvents(string streamId, string? tenantId = null) {
         var sql = tenantId != null 
@@ -412,13 +422,14 @@ public class PostgresTenantDriver : IEventStoreDriver {
 
 ### Abstract Driver Interface
 
-```csharp
----
-category: Design
-difficulty: INTERMEDIATE
-tags: [Design, Multi-Tenancy, Drivers, Interfaces, Architecture]
-description: Abstract driver interface for tenant-aware data operations
----
+```csharp{
+title: "Tenant-Aware Driver Interface",
+description: "Abstract driver interface for tenant-aware data operations with cross-tenant support",
+category: "Design",
+difficulty: "INTERMEDIATE",
+tags: ["Multi-Tenancy", "Drivers", "Interfaces", "Architecture", "Data-Access"],
+framework: "NET8"
+}
 public interface ITenantAwareDriver {
     Task<T> Load<T>(string id, string? tenantId = null);
     Task Save<T>(T entity, string? tenantId = null);
@@ -434,13 +445,14 @@ public interface ITenantAwareDriver {
 
 ### Tenant-Based Authorization
 
-```csharp
----
-category: Design
-difficulty: INTERMEDIATE
-tags: [Design, Multi-Tenancy, Security, Authorization]
-description: Tenant-based authorization configuration with isolation enforcement
----
+```csharp{
+title: "Tenant-Based Authorization",
+description: "Tenant-based authorization configuration with isolation enforcement and policies",
+category: "Design",
+difficulty: "INTERMEDIATE",
+tags: ["Multi-Tenancy", "Security", "Authorization", "ASP.NET-Core", "Policies"],
+framework: "NET8"
+}
 services.AddWhizbang(options => {
     options.Authorization(auth => {
         auth.RequireTenantContext = true;
@@ -478,13 +490,14 @@ public class OrderController : ControllerBase {
 
 ### Row-Level Security Integration
 
-```csharp
----
-category: Design
-difficulty: ADVANCED
-tags: [Design, Multi-Tenancy, PostgreSQL, Row-Level-Security]
-description: PostgreSQL row-level security integration for tenant isolation
----
+```csharp{
+title: "Row-Level Security Configuration",
+description: "PostgreSQL row-level security integration for automatic tenant isolation",
+category: "Design",
+difficulty: "ADVANCED",
+tags: ["Multi-Tenancy", "PostgreSQL", "Row-Level-Security", "Configuration"],
+framework: "NET8"
+}
 services.AddWhizbang(options => {
     options.UsePostgres(connectionString, postgres => {
         postgres.EnableRowLevelSecurity = true;
@@ -492,13 +505,14 @@ services.AddWhizbang(options => {
     });
 });
 
-```csharp
----
-category: Design
-difficulty: ADVANCED
-tags: [Design, Multi-Tenancy, PostgreSQL, Connection-Factory]
-description: Database connection factory with automatic tenant context setting
----
+```csharp{
+title: "Tenant-Aware Connection Factory",
+description: "Database connection factory with automatic tenant context setting for RLS",
+category: "Design",
+difficulty: "ADVANCED",
+tags: ["Multi-Tenancy", "PostgreSQL", "Connection-Factory", "Context-Propagation"],
+framework: "NET8"
+}
 // Automatically sets tenant context for all database operations
 public class PostgresTenantConnectionFactory : IDbConnectionFactory {
     public async Task<IDbConnection> CreateConnection() {
@@ -522,13 +536,14 @@ public class PostgresTenantConnectionFactory : IDbConnectionFactory {
 
 ### Comprehensive Multi-Tenancy Setup
 
-```csharp
----
-category: Design
-difficulty: ADVANCED
-tags: [Design, Multi-Tenancy, Configuration, Comprehensive-Setup]
-description: Comprehensive multi-tenancy configuration with all options
----
+```csharp{
+title: "Comprehensive Multi-Tenancy Setup",
+description: "Complete multi-tenancy configuration with all options and strategies",
+category: "Design",
+difficulty: "ADVANCED",
+tags: ["Multi-Tenancy", "Configuration", "Comprehensive-Setup", "Production-Ready"],
+framework: "NET8"
+}
 services.AddWhizbang(options => {
     options.MultiTenancy(tenancy => {
         // Tenant identification
@@ -568,13 +583,14 @@ services.AddWhizbang(options => {
 
 ### Tenant Onboarding Workflow
 
-```csharp
----
-category: Design
-difficulty: INTERMEDIATE
-tags: [Design, Multi-Tenancy, Onboarding, Tenant-Lifecycle]
-description: Tenant onboarding workflow with resource provisioning
----
+```csharp{
+title: "Tenant Onboarding Service",
+description: "Tenant onboarding workflow with resource provisioning and initialization",
+category: "Design",
+difficulty: "INTERMEDIATE",
+tags: ["Multi-Tenancy", "Onboarding", "Tenant-Lifecycle", "Resource-Provisioning"],
+framework: "NET8"
+}
 public class TenantOnboardingService {
     public async Task OnboardTenant(string tenantId, TenantConfiguration config) {
         // Create tenant-specific database resources
