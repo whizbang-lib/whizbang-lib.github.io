@@ -500,7 +500,7 @@ public class OrdersController : ControllerBase {
             request.ShippingAddress
         );
         
-        var result = await _mediator.Send(command, cancellationToken);
+        var result = await _dispatcher.Send(command, cancellationToken);
         
         return CreatedAtAction(
             nameof(GetOrder),
@@ -515,8 +515,8 @@ public class OrdersController : ControllerBase {
         [FromBody] ShipOrderRequest request,
         CancellationToken cancellationToken) {
         
-        var command = new ShipOrderCommand(orderId);
-        var result = await _mediator.Send(command, cancellationToken);
+        var command = new ShipOrderCommand(orderId, "", ""); // TODO: Get tracking details
+        var result = await _dispatcher.Send(command, cancellationToken);
         
         return Ok(result);
     }
@@ -746,22 +746,22 @@ protected void When(OrderShipped @event) {
 }
 ```
 
-### Don't Query in Aggregates
+### Don't Query in Receptors
 
 ```csharp
-// ❌ BAD - Aggregate querying external data
-public class OrderAggregate : Aggregate {
-    public async Task Ship() {
-        var inventory = await _inventoryService.Check(); // NO! Aggregates are pure
+// ❌ BAD - Receptor querying external data
+public class OrderReceptor : IReceptor<ShipOrderCommand> {
+    public async Task<OrderShipped> Receive(ShipOrderCommand cmd) {
+        var inventory = await _inventoryService.Check(); // NO! Receptors should be pure
     }
 }
 
-// ✅ GOOD - Pass data to aggregate methods
-public void Ship(bool inventoryAvailable) {
-    if (!inventoryAvailable) {
+// ✅ GOOD - Use lenses for validation or pass data in command
+public OrderShipped Receive(ShipOrderCommand cmd, IInventoryLens lens) {
+    if (!lens.IsAvailable(cmd.OrderId)) {
         throw new DomainException("Insufficient inventory");
     }
-    Apply(new OrderShipped(...));
+    return new OrderShipped(...);
 }
 ```
 
@@ -771,55 +771,60 @@ public void Ship(bool inventoryAvailable) {
 
 ```csharp
 // Configure snapshot strategy
-options.EnableSnapshots(snapshot => {
+ledger.EnableSnapshots(snapshot => {
     snapshot.Frequency = 10; // Every 10 events
     snapshot.Strategy = SnapshotStrategy.Automatic;
 });
 
-// Implement snapshot interface
-public class OrderAggregate : Aggregate, ISnapshotable {
+// Implement snapshot interface on receptor
+[EventSourced]
+public class OrderReceptor : IReceptor<CreateOrderCommand>, ISnapshotable {
+    // ... receptor implementation ...
+    
     public Snapshot TakeSnapshot() {
         return new OrderSnapshot {
-            Id = Id,
-            CustomerId = CustomerId,
-            Items = Items.ToList(),
-            Status = Status,
-            Version = Version
+            Id = id,
+            CustomerId = customerId,
+            Items = items.ToList(),
+            Status = status,
+            Version = GetVersion()
         };
     }
     
     public void RestoreFromSnapshot(Snapshot snapshot) {
         var orderSnapshot = (OrderSnapshot)snapshot;
-        Id = orderSnapshot.Id;
-        CustomerId = orderSnapshot.CustomerId;
-        Items = orderSnapshot.Items;
-        Status = orderSnapshot.Status;
-        Version = orderSnapshot.Version;
+        id = orderSnapshot.Id;
+        customerId = orderSnapshot.CustomerId;
+        items = orderSnapshot.Items;
+        status = orderSnapshot.Status;
+        SetVersion(orderSnapshot.Version);
     }
 }
 ```
 
-### Add Projections for Queries
+### Add Perspectives for Queries
 
-See **[CQRS Implementation](cqrs-implementation.md)** for detailed projection patterns.
+See **[Perspectives Documentation](/docs/core-concepts/perspectives)** for detailed perspective patterns.
 
 ### Scale with Event Streams
 
 ```csharp
 // Configure multiple streams
-config.UseEventSourcing(options => {
-    options.ConfigureStreams(streams => {
-        streams.PartitionBy<OrderAggregate>(a => a.CustomerId);
-        streams.EnableParallelProcessing(maxDegree: 4);
+dispatcher.UseEventSourcing(es => {
+    es.UseLedger(ledger => {
+        ledger.ConfigureStreams(streams => {
+            streams.PartitionBy<OrderReceptor>(r => r.CustomerId);
+            streams.EnableParallelProcessing(maxDegree: 4);
+        });
     });
 });
 ```
 
 ## Related Patterns
 
-- **[Simple Mediator Pattern](simple-mediator.md)** - Start without persistence
-- **[CQRS Implementation](cqrs-implementation.md)** - Optimize reads with projections
-- **[Saga Orchestration](saga-orchestration.md)** - Coordinate multi-aggregate workflows
+- **[Event-Driven Dispatcher Pattern](simple-mediator.md)** - Start without event sourcing
+- **[Perspectives Documentation](/docs/core-concepts/perspectives)** - Optimize reads with multiple views
+- **[Saga Orchestration](saga-orchestration.md)** - Coordinate multi-receptor workflows
 
 ## Production Considerations
 
@@ -852,7 +857,7 @@ public record OrderCreatedV2(
 
 ## Next Steps
 
-- Learn about **[CQRS Implementation](cqrs-implementation.md)** for read model optimization
+- Learn about **[Perspectives](/docs/core-concepts/perspectives)** for read model optimization
 - Explore **[Saga Orchestration](saga-orchestration.md)** for complex workflows
-- Review **[Aggregates Documentation](/docs/core-concepts/aggregates)** for advanced patterns
-- Check out **[Projections](/docs/projections/projection-contexts)** for building read models
+- Review **[Receptors Documentation](/docs/core-concepts/receptors)** for advanced patterns
+- Check out **[Lenses](/docs/core-concepts/lenses)** for building query interfaces

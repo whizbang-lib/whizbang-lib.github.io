@@ -24,7 +24,17 @@ Think of a receptor as a pure decision function: given a command and current sta
 
 ## The Universal Interface
 
-```csharp
+```csharp{
+title: "Universal Receptor Interface"
+description: "The core interface that works for both Event-Driven and Event-Sourced modes"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Receptors", "Interface", "Universal"]
+filename: "IReceptor.cs"
+usingStatements: ["System"]
+showLineNumbers: true
+}
 public interface IReceptor<TCommand> {
     object Receive(TCommand command);
 }
@@ -40,7 +50,17 @@ The return type determines what happens:
 
 In Event-Driven mode, receptors are stateless and get current state from Lenses:
 
-```csharp
+```csharp{
+title: "Stateless Receptor with Lens"
+description: "Event-Driven mode receptor that gets state from lens parameters"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Receptors", "Stateless", "Event-Driven", "Lenses"]
+filename: "OrderReceptor.cs"
+usingStatements: ["System", "Whizbang"]
+showLineNumbers: true
+}
 public class OrderReceptor : IReceptor<CreateOrder> {
     // Stateless - gets state from lens parameter
     public OrderCreated Receive(CreateOrder cmd, IOrderLens lens) {
@@ -79,7 +99,19 @@ public class OrderReceptor : IReceptor<CreateOrder> {
 
 In Event-Sourced mode, receptors maintain internal state rebuilt from events:
 
-```csharp
+```csharp{
+title: "Stateful Event-Sourced Receptor"
+description: "Event-Sourced mode receptor with internal state maintained from events"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "ADVANCED"
+tags: ["Receptors", "Stateful", "Event-Sourced", "State Management"]
+filename: "OrderReceptor.cs"
+nugetPackages: ["Whizbang.EventSourcing"]
+usingStatements: ["System", "System.Collections.Generic", "System.Linq", "Whizbang"]
+showLineNumbers: true
+highlightLines: [1, 17, 29, 46]
+}
 [EventSourced]
 public class OrderReceptor : 
     IReceptor<CreateOrder>,
@@ -157,7 +189,17 @@ public class OrderReceptor :
 
 What you return determines what happens:
 
-```csharp
+```csharp{
+title: "Return Type Semantics"
+description: "Different return types control how events are published"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Receptors", "Return Types", "Events"]
+filename: "PaymentReceptor.cs"
+usingStatements: ["System", "Whizbang"]
+showLineNumbers: true
+}
 public class PaymentReceptor : IReceptor<ProcessPayment> {
     // Single event - published to perspectives
     public PaymentProcessed Receive(ProcessPayment cmd) {
@@ -189,7 +231,16 @@ public class PaymentReceptor : IReceptor<ProcessPayment> {
 Receptors naturally evolve from stateless to stateful as complexity grows:
 
 ### Stage 1: Simple Stateless
-```csharp
+```csharp{
+title: "Evolution Stage 1: Simple Stateless"
+description: "Starting with a simple stateless receptor"
+framework: "NET8"
+category: "Evolution"
+difficulty: "BEGINNER"
+tags: ["Receptors", "Evolution", "Simple"]
+filename: "ProductReceptor.cs"
+usingStatements: ["System", "Whizbang"]
+}
 public class ProductReceptor : IReceptor<CreateProduct> {
     public ProductCreated Receive(CreateProduct cmd) {
         return new ProductCreated(Guid.NewGuid(), cmd.Name, cmd.Price);
@@ -198,7 +249,17 @@ public class ProductReceptor : IReceptor<CreateProduct> {
 ```
 
 ### Stage 2: Stateless with Validation
-```csharp
+```csharp{
+title: "Evolution Stage 2: Stateless with Validation"
+description: "Adding validation using lens for state access"
+framework: "NET8"
+category: "Evolution"
+difficulty: "INTERMEDIATE"
+tags: ["Receptors", "Evolution", "Validation", "Lenses"]
+filename: "ProductReceptor.cs"
+usingStatements: ["System", "Whizbang"]
+showLineNumbers: true
+}
 public class ProductReceptor : IReceptor<CreateProduct> {
     public ProductCreated Receive(CreateProduct cmd, IProductLens lens) {
         if (lens.Exists(p => p.Name == cmd.Name)) {
@@ -211,7 +272,16 @@ public class ProductReceptor : IReceptor<CreateProduct> {
 ```
 
 ### Stage 3: Multiple Commands
-```csharp
+```csharp{
+title: "Evolution Stage 3: Multiple Commands"
+description: "Multiple related commands suggesting need for state"
+framework: "NET8"
+category: "Evolution"
+difficulty: "INTERMEDIATE"
+tags: ["Receptors", "Evolution", "Multiple Commands"]
+filename: "ProductReceptor.cs"
+usingStatements: ["Whizbang"]
+}
 public class ProductReceptor : 
     IReceptor<CreateProduct>,
     IReceptor<UpdatePrice>,
@@ -222,7 +292,18 @@ public class ProductReceptor :
 ```
 
 ### Stage 4: Stateful (Event-Sourced)
-```csharp
+```csharp{
+title: "Evolution Stage 4: Stateful Event-Sourced"
+description: "Final evolution to stateful receptor with internal state"
+framework: "NET8"
+category: "Evolution"
+difficulty: "ADVANCED"
+tags: ["Receptors", "Evolution", "Event-Sourced", "Stateful"]
+filename: "ProductReceptor.cs"
+nugetPackages: ["Whizbang.EventSourcing"]
+usingStatements: ["System", "Whizbang"]
+showLineNumbers: true
+}
 [EventSourced]
 public class ProductReceptor : 
     IReceptor<CreateProduct>,
@@ -241,7 +322,18 @@ public class ProductReceptor :
 
 Configure receptors via policies:
 
-```csharp
+```csharp{
+title: "Receptor Configuration"
+description: "Configuring receptors with policies and assembly scanning"
+framework: "NET8"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["Receptors", "Configuration", "Policies"]
+filename: "Program.cs"
+nugetPackages: ["Whizbang.Core", "Microsoft.Extensions.DependencyInjection"]
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "System", "Whizbang"]
+showLineNumbers: true
+}
 services.AddWhizbang()
     .UseDispatcher(dispatcher => {
         // Register all receptors
@@ -266,7 +358,16 @@ services.AddWhizbang()
 ### Do's
 
 ✅ **Keep receptors focused on decisions**
-```csharp
+```csharp{
+title: "Best Practice: Focus on Decisions"
+description: "Keep receptors focused on business logic and decisions"
+framework: "NET8"
+category: "Best Practices"
+difficulty: "BEGINNER"
+tags: ["Receptors", "Best Practices", "Business Logic"]
+filename: "OrderReceptor.cs"
+usingStatements: ["Whizbang"]
+}
 public OrderCreated Receive(CreateOrder cmd) {
     // Only business logic and decision making
     return new OrderCreated(...);
@@ -274,19 +375,46 @@ public OrderCreated Receive(CreateOrder cmd) {
 ```
 
 ✅ **Use descriptive event names**
-```csharp
+```csharp{
+title: "Best Practice: Descriptive Event Names"
+description: "Use clear, descriptive names for events"
+framework: "NET8"
+category: "Best Practices"
+difficulty: "BEGINNER"
+tags: ["Receptors", "Best Practices", "Event Naming"]
+filename: "OrderReceptor.cs"
+usingStatements: ["Whizbang"]
+}
 return new OrderShipmentInitiated(...);  // Clear what happened
 ```
 
 ✅ **Validate business rules**
-```csharp
+```csharp{
+title: "Best Practice: Validate Business Rules"
+description: "Enforce business rules with clear validation"
+framework: "NET8"
+category: "Best Practices"
+difficulty: "BEGINNER"
+tags: ["Receptors", "Best Practices", "Validation"]
+filename: "OrderReceptor.cs"
+usingStatements: ["System"]
+}
 if (status != OrderStatus.Paid) {
     throw new BusinessRuleViolationException("Order must be paid");
 }
 ```
 
 ✅ **Return events for all state changes**
-```csharp
+```csharp{
+title: "Best Practice: Return Events for State Changes"
+description: "Always return events for state changes"
+framework: "NET8"
+category: "Best Practices"
+difficulty: "BEGINNER"
+tags: ["Receptors", "Best Practices", "Events"]
+filename: "ProductReceptor.cs"
+usingStatements: ["Whizbang"]
+}
 public PriceUpdated Receive(UpdatePrice cmd) {
     return new PriceUpdated(id, oldPrice, cmd.NewPrice);
 }
@@ -295,7 +423,16 @@ public PriceUpdated Receive(UpdatePrice cmd) {
 ### Don'ts
 
 ❌ **Don't perform side effects**
-```csharp
+```csharp{
+title: "Anti-Pattern: Side Effects"
+description: "DON'T perform side effects in receptors"
+framework: "NET8"
+category: "Anti-Patterns"
+difficulty: "BEGINNER"
+tags: ["Receptors", "Anti-Patterns", "Side Effects"]
+filename: "OrderReceptor.cs"
+usingStatements: ["Whizbang"]
+}
 // BAD - Side effect in receptor
 public OrderCreated Receive(CreateOrder cmd) {
     emailService.SendEmail(...);  // Don't do this!
@@ -305,13 +442,31 @@ public OrderCreated Receive(CreateOrder cmd) {
 ```
 
 ❌ **Don't mix read and write concerns**
-```csharp
+```csharp{
+title: "Anti-Pattern: Read/Write Mixing"
+description: "DON'T mix read and write concerns in receptors"
+framework: "NET8"
+category: "Anti-Patterns"
+difficulty: "BEGINNER"
+tags: ["Receptors", "Anti-Patterns", "CQRS"]
+filename: "OrderReceptor.cs"
+usingStatements: ["Whizbang"]
+}
 // BAD - Receptor shouldn't query
 public OrderList Receive(GetOrders query) {  // Use Lens instead
 ```
 
 ❌ **Don't mutate command parameters**
-```csharp
+```csharp{
+title: "Anti-Pattern: Mutating Commands"
+description: "DON'T mutate command parameters"
+framework: "NET8"
+category: "Anti-Patterns"
+difficulty: "BEGINNER"
+tags: ["Receptors", "Anti-Patterns", "Immutability"]
+filename: "OrderReceptor.cs"
+usingStatements: ["System.Collections.Generic"]
+}
 // BAD - Commands are immutable
 cmd.Items.Add(newItem);  // Don't modify!
 ```
@@ -320,7 +475,20 @@ cmd.Items.Add(newItem);  // Don't modify!
 
 Receptors are easy to test because they're pure decision functions:
 
-```csharp
+```csharp{
+title: "Testing Receptors"
+description: "Unit testing receptors as pure decision functions"
+framework: "NET8"
+category: "Testing"
+difficulty: "INTERMEDIATE"
+tags: ["Receptors", "Testing", "Unit Tests"]
+filename: "OrderReceptorTests.cs"
+nugetPackages: ["xunit"]
+testFile: "OrderReceptorTests.cs"
+testMethod: "CreateOrder_ValidCommand_ReturnsOrderCreatedEvent"
+usingStatements: ["System", "Xunit", "Whizbang"]
+showLineNumbers: true
+}
 [Fact]
 public void CreateOrder_ValidCommand_ReturnsOrderCreatedEvent() {
     // Arrange
@@ -357,7 +525,17 @@ public void ShipOrder_UnpaidOrder_ThrowsException() {
 
 ### Compensating Events
 
-```csharp
+```csharp{
+title: "Compensating Events Pattern"
+description: "Returning compensating events for complex operations"
+framework: "NET8"
+category: "Advanced"
+difficulty: "ADVANCED"
+tags: ["Receptors", "Compensating Events", "Advanced"]
+filename: "PaymentReceptor.cs"
+usingStatements: ["System", "Whizbang"]
+showLineNumbers: true
+}
 public class PaymentReceptor : IReceptor<RefundPayment> {
     public (PaymentRefunded, InventoryReleased) Receive(RefundPayment cmd) {
         if (status != PaymentStatus.Completed) {
@@ -375,7 +553,17 @@ public class PaymentReceptor : IReceptor<RefundPayment> {
 
 ### Conditional Events
 
-```csharp
+```csharp{
+title: "Conditional Events Pattern"
+description: "Returning different events based on current state"
+framework: "NET8"
+category: "Advanced"
+difficulty: "ADVANCED"
+tags: ["Receptors", "Conditional Events", "State-Based"]
+filename: "OrderReceptor.cs"
+usingStatements: ["System", "Whizbang"]
+showLineNumbers: true
+}
 public class OrderReceptor : IReceptor<CompleteOrder> {
     public object Receive(CompleteOrder cmd) {
         return status switch {
@@ -392,7 +580,17 @@ public class OrderReceptor : IReceptor<CompleteOrder> {
 
 ### Saga Initiation
 
-```csharp
+```csharp{
+title: "Saga Initiation Pattern"
+description: "Starting distributed transactions with multiple events"
+framework: "NET8"
+category: "Advanced"
+difficulty: "ADVANCED"
+tags: ["Receptors", "Sagas", "Distributed Transactions"]
+filename: "CheckoutReceptor.cs"
+usingStatements: ["Whizbang"]
+showLineNumbers: true
+}
 public class CheckoutReceptor : IReceptor<Checkout> {
     public (CheckoutStarted, ReserveInventory, ProcessPayment) Receive(Checkout cmd) {
         // Start a distributed transaction

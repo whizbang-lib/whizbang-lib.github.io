@@ -27,11 +27,38 @@
     "examples": []
   },
   {
+    "slug": "architecture-design/aspect-oriented-programming",
+    "title": "Aspect-Oriented Programming in Whizbang",
+    "category": "Architecture & Design",
+    "order": 4,
+    "description": "Comprehensive guide to Whizbang's aspect-oriented programming system powered by source generators",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "architecture-design/event-driven-architecture",
+    "title": "Event-Driven Architecture",
+    "category": "Architecture & Design",
+    "order": 4,
+    "description": "Understanding Whizbang's Event-Driven and Event-Sourced modes - how the same code works in both paradigms",
+    "videos": [],
+    "examples": []
+  },
+  {
     "slug": "architecture-design/philosophy",
     "title": "Philosophy & Design Principles",
     "category": "Architecture & Design",
     "order": 2,
     "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "architecture-design/whizbang-unified-vision",
+    "title": "Whizbang Unified Vision",
+    "category": "Architecture & Design",
+    "order": 3,
+    "description": "The unified architecture vision for Whizbang - combining the best of all messaging libraries with aspect-oriented programming",
     "videos": [],
     "examples": []
   },
@@ -81,6 +108,24 @@
     "examples": []
   },
   {
+    "slug": "core-concepts/lenses",
+    "title": "Lenses",
+    "category": "Core Concepts",
+    "order": 4,
+    "description": "Lenses - read-only interfaces for querying data in Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "core-concepts/perspectives",
+    "title": "Perspectives",
+    "category": "Core Concepts",
+    "order": 3,
+    "description": "Perspectives - how events create different views of your data in Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
     "slug": "core-concepts/projections",
     "title": "Projections",
     "category": "Core Concepts",
@@ -90,11 +135,29 @@
     "examples": []
   },
   {
+    "slug": "core-concepts/receptors",
+    "title": "Receptors",
+    "category": "Core Concepts",
+    "order": 2,
+    "description": "Receptors - the universal pattern for receiving commands and making decisions in Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
     "slug": "core-concepts/repositories-and-helpers",
     "title": "Repositories and CQRS Helpers",
     "category": "Core Concepts",
     "order": 2,
     "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "core-concepts/return-type-semantics",
+    "title": "Return Type Semantics",
+    "category": "Core Concepts",
+    "order": 5,
+    "description": "How return types determine behavior in Whizbang - the foundation of convention over configuration",
     "videos": [],
     "examples": []
   },
@@ -247,7 +310,7 @@
     "title": "Getting Started",
     "category": "Getting Started",
     "order": 1,
-    "description": "Learn how to build your first Whizbang application with this hands-on tutorial covering CQRS, event sourcing, and projections from simple to scale.",
+    "description": "Learn how to build your first Whizbang application with this hands-on tutorial covering event-driven architecture, receptors, perspectives, lenses, and event sourcing from simple to scale.",
     "videos": [],
     "examples": []
   },
@@ -333,6 +396,15 @@
     "examples": []
   },
   {
+    "slug": "usage-patterns/aspect-oriented-handlers",
+    "title": "Aspect-Oriented Handlers",
+    "category": "Usage Patterns",
+    "order": 8,
+    "description": "Implementing cross-cutting concerns through aspect-oriented programming with source generators",
+    "videos": [],
+    "examples": []
+  },
+  {
     "slug": "usage-patterns/cqrs-implementation",
     "title": "CQRS Implementation",
     "category": "Usage Patterns",
@@ -369,6 +441,24 @@
     "examples": []
   },
   {
+    "slug": "usage-patterns/policy-composition",
+    "title": "Policy Composition",
+    "category": "Usage Patterns",
+    "order": 7,
+    "description": "Building resilient applications with composable policies for retry, circuit breaking, timeouts, and fallbacks",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "usage-patterns/progressive-enhancement",
+    "title": "Progressive Enhancement",
+    "category": "Usage Patterns",
+    "order": 9,
+    "description": "Scale your application from simple in-process to distributed event-sourced systems without changing handler code",
+    "videos": [],
+    "examples": []
+  },
+  {
     "slug": "usage-patterns/saga-orchestration",
     "title": "Saga Orchestration",
     "category": "Usage Patterns",
@@ -379,10 +469,10 @@
   },
   {
     "slug": "usage-patterns/simple-mediator",
-    "title": "Simple Mediator Pattern",
+    "title": "Event-Driven Dispatcher Pattern",
     "category": "Usage Patterns",
     "order": 1,
-    "description": "Learn how to implement a simple in-process mediator pattern with Whizbang for command and query handling without persistence",
+    "description": "Learn how to implement event-driven architecture with Whizbang using receptors, perspectives, and lenses",
     "videos": [],
     "examples": []
   }

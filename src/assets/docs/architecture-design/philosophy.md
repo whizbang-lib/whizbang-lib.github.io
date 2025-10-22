@@ -7,7 +7,7 @@ tags: philosophy, design-principles, vision
 
 # Philosophy & Design Principles
 
-Whizbang is a unified event-sourced data and messaging runtime for .NET that collapses the complexity of MartenDB, Wolverine, MassTransit, and MediatR into a single cohesive platform with one mental model.
+Whizbang is a unified event-driven and event-sourced runtime for .NET that collapses the complexity of MartenDB, Wolverine, MassTransit, and MediatR into a single cohesive platform with receptors, perspectives, and lenses.
 
 ## Core Philosophy
 
@@ -25,32 +25,33 @@ This approach provides:
 
 Teams waste cognitive energy context-switching between different APIs, patterns, and abstractions. Whizbang provides **one set of primitives** for:
 
-- **Aggregates** - Write-side domain models that enforce business rules
-- **Projections** - Read-side models optimized for queries
+- **Receptors** - Decision-makers that receive commands and emit events
+- **Perspectives** - Event handlers that update read models and external systems
+- **Lenses** - Read-only interfaces for querying data
 - **Commands** - Requests to change state, routed to domain owners
-- **Queries** - Requests for data, executed against projections
+- **Events** - Immutable facts that represent state changes
 - **Sagas** - Long-running processes that coordinate across domains
 
-All of these concepts share the same handler model, dependency injection patterns, and testing approaches. Learn once, apply everywhere.
+All of these concepts share the same dispatcher model, dependency injection patterns, and testing approaches. Learn once, apply everywhere.
 
 ### One Runtime. Any Mode. Every Pattern.
 
-**Write your business logic once. Run it anywhere.** Whizbang provides a unified mental model that scales from simple in-process messaging to complex distributed event-sourced systems—without changing your handlers.
+**Write your business logic once. Run it anywhere.** Whizbang provides a unified mental model that scales from event-driven development to complex distributed event-sourced systems—without changing your receptors.
 
 ```csharp
-// This SAME handler works across ALL modes
-public class OrderHandler : IHandle<CreateOrder> {
-    public OrderCreated Handle(CreateOrder cmd) {
+// This SAME receptor works across ALL modes
+public class OrderReceptor : IReceptor<CreateOrder> {
+    public OrderCreated Receive(CreateOrder cmd) {
         // Your business logic here
         return new OrderCreated(cmd.OrderId);
     }
 }
 
 // Mode switching is just configuration
-services.AddWhizbang().UseInProcessMode();    // Development
-services.AddWhizbang().UseDurableMode();      // Single service
-services.AddWhizbang().UseDistributedMode();  // Microservices
-services.AddWhizbang().UseEventSourcedMode(); // Event sourcing
+services.AddWhizbang(d => d.UseEventDrivenMode());     // Development
+services.AddWhizbang(d => d.UseEventDrivenMode());     // Production with perspectives
+services.AddWhizbang(d => d.UseDistributedMode());     // Microservices with relays
+services.AddWhizbang(d => d.UseEventSourcing());       // Event sourcing with ledger
 ```
 
 ### Return Type Semantics
@@ -80,9 +81,9 @@ yield return new OrderProcessed();                  // IAsyncEnumerable
 [Cached(Duration = "5m")]
 [Retry(3, Backoff = "exponential")]
 [Authorized(Role = "Admin")]
-public class OrderHandler : IHandle<CreateOrder> {
+public class OrderReceptor : IReceptor<CreateOrder> {
     [Pure] // Compile-time verification of no side effects
-    public OrderCreated Handle(CreateOrder cmd) {
+    public OrderCreated Receive(CreateOrder cmd) {
         // All aspects automatically applied
         return new OrderCreated(cmd.OrderId);
     }
@@ -93,24 +94,24 @@ public class OrderHandler : IHandle<CreateOrder> {
 
 Whizbang is designed for **the full spectrum**:
 
-**Simple Start**: Use Whizbang as an in-process mediator for CQRS without any infrastructure dependencies. Perfect for small apps or getting started.
+**Simple Start**: Use Whizbang as event-driven architecture with in-memory perspectives. Perfect for development and simple applications.
 
-**Growth Path**: Add event sourcing, projections, and persistence as your needs grow. Every feature is opt-in.
+**Growth Path**: Add perspective persistence, event sourcing with ledger, and distributed relays as your needs grow. Every feature is opt-in.
 
 **Enterprise Scale**: Deploy across microservices with message brokers, multiple databases, multi-region disaster recovery, and Kubernetes auto-scaling.
 
-**The same code works at every scale.** Your simple mediator handlers become distributed message handlers without rewrites.
+**The same code works at every scale.** Your simple receptors become distributed event-sourced receptors without rewrites.
 
 ### Progressive Enhancement
 
 **Start simple. Add complexity only when needed.** Every Whizbang application follows the same growth path:
 
-1. **In-Process** - Simple mediator, no infrastructure
-2. **Durable** - Add persistence and retry
-3. **Distributed** - Scale across services
-4. **Event-Sourced** - Full event sourcing when needed
+1. **Event-Driven Development** - Stateless receptors with in-memory perspectives
+2. **Event-Driven Production** - Persistent perspectives with retry
+3. **Event-Driven Distributed** - Scale across services with relays
+4. **Event-Sourced** - Stateful receptors with ledger when needed
 
-The same handler code works at every level. No rewrites as you scale.
+The same receptor code works at every level. No rewrites as you scale.
 
 ## Design Principles
 
@@ -136,19 +137,19 @@ Swap drivers through configuration, not code changes. Start with SQLite for loca
 
 This prevents the "event spaghetti" problem where no one knows who publishes what, or where to send commands.
 
-### 3. Handlers as Pure Functions
+### 3. Receptors as Pure Functions
 
-**Handlers are just C# methods that return results or new messages.** No magic base classes, no required interfaces (unless you want them), no framework coupling.
+**Receptors are just C# methods that return events.** No magic base classes, no required interfaces (unless you want them), no framework coupling.
 
-Mark a handler as `pure` and the Roslyn analyzer **forbids hidden side effects**—guaranteeing your handler is a true function from input to output.
+Mark a receptor as `pure` and the Roslyn analyzer **forbids hidden side effects**—guaranteeing your receptor is a true function from input to output.
 
 ```csharp
 [Pure]
-public OrderCalculated Calculate(CalculateOrder cmd) {
+public OrderCalculated Receive(CalculateOrder cmd) {
     // ✅ Pure computation allowed
     return new OrderCalculated(cmd.Items.Sum(i => i.Price));
     
-    // ❌ Compile error: Side effects not allowed in pure handler
+    // ❌ Compile error: Side effects not allowed in pure receptor
     // await database.SaveAsync(result);
 }
 ```
@@ -159,9 +160,9 @@ public OrderCalculated Calculate(CalculateOrder cmd) {
 
 ```csharp
 // Return type determines what happens
-public OrderCreated Handle(CreateOrder cmd) => new OrderCreated();        // Event
-public ProcessPayment Handle(OrderCreated e) => new ProcessPayment();     // Command
-public void Handle(LogActivity cmd) => Console.WriteLine(cmd.Message);   // Fire-and-forget
+public OrderCreated Receive(CreateOrder cmd) => new OrderCreated();      // Event to perspectives
+public ProcessPayment Receive(OrderCreated e) => new ProcessPayment();   // Command to other receptor
+public void Receive(LogActivity cmd) => Console.WriteLine(cmd.Message);  // Fire-and-forget
 
 // Attributes declare behavior
 [Idempotent]     // Automatic deduplication
@@ -173,10 +174,10 @@ public void Handle(LogActivity cmd) => Console.WriteLine(cmd.Message);   // Fire
 
 **Problems found in production are 10x more expensive than problems found in development.** Whizbang includes:
 
-- **OpenTelemetry traces** for every message, event, and projection
-- **Live dashboard** showing message lag, projection health, and error rates
+- **OpenTelemetry traces** for every command, event, and perspective update
+- **Live dashboard** showing message lag, perspective health, and error rates
 - **Distributed tracing** across services and message brokers
-- **Performance budgets** that alert when handlers exceed latency targets
+- **Performance budgets** that alert when receptors exceed latency targets
 
 Observability is not bolted on—it's built into the core runtime.
 
@@ -184,10 +185,10 @@ Observability is not bolted on—it's built into the core runtime.
 
 **Messages may be delivered more than once.** Whizbang ensures:
 
-- **Exactly-once semantics** for event handling and projection updates
+- **Exactly-once semantics** for event handling and perspective updates
 - **Automatic deduplication** based on message IDs
 - **Outbox/Inbox pattern** for reliable message delivery across service boundaries
-- **Idempotent consumers** that can safely process the same event multiple times
+- **Idempotent perspectives** that can safely process the same event multiple times
 
 Your domain logic never needs to worry about duplicate messages.
 
@@ -197,8 +198,8 @@ Your domain logic never needs to worry about duplicate messages.
 
 ```csharp
 [Pure]
-public class CalculationHandler : IHandle<Calculate> {
-    public Result Handle(Calculate cmd) {
+public class CalculationReceptor : IReceptor<Calculate> {
+    public Result Receive(Calculate cmd) {
         // ✅ Pure computation allowed
         var result = cmd.A + cmd.B;
         
@@ -210,7 +211,7 @@ public class CalculationHandler : IHandle<Calculate> {
 }
 
 [Effects(Writes = "Orders", Publishes = "OrderEvents")]
-public class OrderHandler : IHandle<CreateOrder> {
+public class OrderReceptor : IReceptor<CreateOrder> {
     // Source generator verifies declared effects match actual usage
 }
 ```
@@ -223,7 +224,7 @@ public class OrderHandler : IHandle<CreateOrder> {
 - **Native AOT** - Full trimming and AOT compilation support
 - **Assembly trimming** - Only include what you use
 - **Struct messages** - Stack allocation for small messages
-- **Object pooling** - Automatic pooling of handlers and messages
+- **Object pooling** - Automatic pooling of receptors and messages
 - **SIMD operations** - Vectorized operations where applicable
 
 Deploy as a tiny container or serverless function without compromise.
@@ -318,10 +319,10 @@ You're not locked into our opinions if your scenario demands something different
 
 **Whizbang Differences**:
 
-- **Event sourcing**: MediatR has no event sourcing. Whizbang includes full event store support.
-- **Projections**: MediatR has no read model support. Whizbang includes projection engine.
+- **Event sourcing**: MediatR has no event sourcing. Whizbang includes full ledger support.
+- **Perspectives**: MediatR has no read model support. Whizbang includes perspective engine.
 - **Distributed messaging**: MediatR is in-process only. Whizbang scales to microservices.
-- **Growth path**: With MediatR, scaling to distributed requires a complete rewrite. With Whizbang, the same handler code works at every scale.
+- **Growth path**: With MediatR, scaling to distributed requires a complete rewrite. With Whizbang, the same receptor code works at every scale.
 
 **When to choose MediatR**: You're building a simple monolith and will never need event sourcing or microservices.
 
@@ -342,10 +343,10 @@ You're not locked into our opinions if your scenario demands something different
 
 **Whizbang Differences**:
 
-- **Event sourcing**: MassTransit has no event sourcing. Whizbang includes event store.
-- **Projections**: MassTransit has no read model support. Whizbang includes projection engine.
-- **All-in-one**: MassTransit focuses on messaging. Whizbang integrates messaging + event sourcing + projections.
-- **Mediator**: MassTransit requires a broker even for in-process. Whizbang starts as a simple mediator.
+- **Event sourcing**: MassTransit has no event sourcing. Whizbang includes ledger.
+- **Perspectives**: MassTransit has no read model support. Whizbang includes perspective engine.
+- **All-in-one**: MassTransit focuses on messaging. Whizbang integrates messaging + event sourcing + perspectives.
+- **Event-driven**: MassTransit requires a broker even for in-process. Whizbang starts as event-driven architecture.
 
 **When to choose MassTransit**: You only need messaging and already have event sourcing/projections handled separately.
 
@@ -367,8 +368,8 @@ You're not locked into our opinions if your scenario demands something different
 **Whizbang Differences**:
 
 - **Licensing**: NServiceBus requires paid license for production. Whizbang is open source.
-- **Event sourcing**: NServiceBus has no event sourcing. Whizbang includes event store.
-- **Projections**: NServiceBus has no read model engine. Whizbang includes projection engine.
+- **Event sourcing**: NServiceBus has no event sourcing. Whizbang includes ledger.
+- **Perspectives**: NServiceBus has no read model engine. Whizbang includes perspective engine.
 - **Dashboard**: NServiceBus has separate tools (ServicePulse, ServiceInsight). Whizbang has integrated dashboard.
 
 **When to choose NServiceBus**: You need enterprise support and are willing to pay for it.
@@ -392,7 +393,7 @@ You're not locked into our opinions if your scenario demands something different
 
 - **C#-first**: Equinox is F#-first. Whizbang is designed for C# developers.
 - **Messaging**: Equinox has no built-in messaging. Whizbang includes distributed messaging.
-- **Projections**: Equinox requires separate Propulsion library. Whizbang includes projection engine.
+- **Perspectives**: Equinox requires separate Propulsion library. Whizbang includes perspective engine.
 - **Dashboard**: Equinox has no dashboard. Whizbang includes web dashboard.
 - **Aspire**: Equinox has no Aspire integration. Whizbang has first-class Aspire support.
 
@@ -416,7 +417,7 @@ You're not locked into our opinions if your scenario demands something different
 **Whizbang Differences**:
 
 - **Database dependency**: EventStoreDB is a separate database to run. Whizbang works with databases you already have (Postgres, SQL Server, etc.).
-- **CQRS framework**: EventStoreDB is just storage. Whizbang includes mediator, messaging, projections, and dashboard.
+- **CQRS framework**: EventStoreDB is just storage. Whizbang includes dispatcher, messaging, perspectives, and dashboard.
 - **Driver-based**: Whizbang isn't locked to one database. EventStoreDB is a single product.
 
 **When to choose EventStoreDB**: You want the absolute best event store and are willing to run a dedicated database.
@@ -430,9 +431,9 @@ You're not locked into our opinions if your scenario demands something different
 | Feature | Whizbang | Marten + Wolverine | MediatR | MassTransit | NServiceBus | Equinox | EventStoreDB |
 |---------|----------|-------------------|---------|-------------|-------------|---------|--------------|
 | **Event Sourcing** | ✅ Built-in | ✅ Marten | ❌ | ❌ | ❌ | ✅ Library | ✅ Database |
-| **Projections** | ✅ Built-in | ✅ Marten | ❌ | ❌ | ❌ | ⚠️ Propulsion | ✅ Built-in |
+| **Perspectives** | ✅ Built-in | ✅ Marten | ❌ | ❌ | ❌ | ⚠️ Propulsion | ✅ Built-in |
 | **Messaging** | ✅ Built-in | ✅ Wolverine | ❌ | ✅ Core focus | ✅ Core focus | ❌ | ❌ |
-| **Mediator** | ✅ Built-in | ✅ Wolverine | ✅ Core focus | ⚠️ Via broker | ❌ | ❌ | ❌ |
+| **Event-Driven** | ✅ Built-in | ✅ Wolverine | ✅ Core focus | ⚠️ Via broker | ❌ | ❌ | ❌ |
 | **Multi-database** | ✅ Yes | ❌ Postgres only | N/A | N/A | N/A | ✅ Yes | ❌ Own DB |
 | **Dashboard** | ✅ Included | ❌ | ❌ | ❌ | ✅ Paid tools | ❌ | ✅ UI |
 | **Multi-tenancy** | ✅ First-class | ⚠️ Manual | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -440,7 +441,7 @@ You're not locked into our opinions if your scenario demands something different
 | **License** | 🟢 Open source | 🟢 Open source | 🟢 Open source | 🟢 Apache 2.0 | 🔴 Commercial | 🟢 Apache 2.0 | 🟡 Free/Paid |
 | **C# vs F#** | C#-first | C#-first | C#-first | C#-first | C#-first | F#-first | Language-agnostic |
 
-**Key Insight**: Whizbang is the only library that combines event sourcing, projections, messaging, mediator, multi-tenancy, and dashboard into a single, cohesive runtime with multi-database support.
+**Key Insight**: Whizbang is the only library that combines event sourcing, perspectives, messaging, event-driven patterns, multi-tenancy, and dashboard into a single, cohesive runtime with multi-database support.
 
 ## Our Stance
 
@@ -460,6 +461,6 @@ Now that you understand Whizbang's philosophy and design principles:
 
 - [**Getting Started**](./getting-started.md) - Build your first Whizbang application with a step-by-step tutorial
 - [**Package Structure**](./package-structure.md) - Learn about all available NuGet packages and their dependencies
-- [**Core Concepts**](./core-concepts.md) - Deep dive into commands, events, projections, and aggregates
+- [**Core Concepts**](/docs/core-concepts/receptors) - Deep dive into receptors, perspectives, lenses, and events
 
 **We are building Whizbang to be the pit of success for event-sourced, message-driven systems in .NET.**

@@ -1,21 +1,21 @@
 ---
-title: Simple Mediator Pattern
+title: Event-Driven Dispatcher Pattern
 category: Usage Patterns
 order: 1
-tags: mediator, getting-started, cqrs, beginner
-description: Learn how to implement a simple in-process mediator pattern with Whizbang for command and query handling without persistence
+tags: dispatcher, event-driven, receptor, perspective, lens, beginner
+description: Learn how to implement event-driven architecture with Whizbang using receptors, perspectives, and lenses
 ---
 
-# Simple Mediator Pattern
+# Event-Driven Dispatcher Pattern
 
 ## Overview
 
-The Simple Mediator pattern is your entry point into the Whizbang library. It provides a clean way to handle commands and queries in your application using the mediator pattern, without the complexity of event sourcing or persistence. This pattern is perfect for:
+The Event-Driven Dispatcher pattern is your entry point into the Whizbang library. It provides a clean way to handle commands and queries using event-driven architecture, where all state changes flow through events. This pattern is perfect for:
 
-- Getting started with CQRS concepts
-- Building simple applications with clear separation of concerns
-- Refactoring existing code to use command/query patterns
-- Learning Whizbang's core concepts before adding complexity
+- Getting started with event-driven concepts
+- Building applications with clear separation between reads and writes
+- Learning the receptor/perspective/lens pattern
+- Starting with Event-Driven mode before adding Event Sourcing
 
 ### Key Benefits
 
@@ -29,16 +29,18 @@ The Simple Mediator pattern is your entry point into the Whizbang library. It pr
 
 ```mermaid
 graph LR
-    Client[Client/Controller] --> Mediator[Whizbang Mediator]
-    Mediator --> CH[Command Handler]
-    Mediator --> QH[Query Handler]
-    CH --> Service[Business Logic]
-    QH --> Service
-    Service --> Response[Response]
+    Client[Client/Controller] --> Dispatcher[Whizbang Dispatcher]
+    Dispatcher --> Receptor[Receptor]
+    Receptor --> Event[Event]
+    Event --> Perspective[Perspective]
+    Perspective --> DB[Database]
+    Client --> Lens[Lens]
+    Lens --> DB
     
-    style Mediator fill:#0066cc,color:#fff
-    style CH fill:#28a745,color:#fff
-    style QH fill:#17a2b8,color:#fff
+    style Dispatcher fill:#0066cc,color:#fff
+    style Receptor fill:#28a745,color:#fff
+    style Perspective fill:#ffc107,color:#000
+    style Lens fill:#17a2b8,color:#fff
 ```
 
 ## Core Components
@@ -49,14 +51,15 @@ graph LR
 <PackageReference Include="Whizbang.Core" Version="1.0.0" />
 ```
 
-### The Unified Approach
+### The Event-Driven Approach
 
-Whizbang uses a single, simple pattern for all handlers:
+Whizbang uses a unified event-driven pattern:
 
-- **One Interface**: `IHandle<T>` for all message types
+- **Receptors**: Receive commands and emit events
+- **Perspectives**: React to events and update views
+- **Lenses**: Provide read-only access to data
+- **All writes through events**: Even in non-event-sourced mode
 - **Return Type Semantics**: What you return determines what happens
-- **Aspect Attributes**: Declarative cross-cutting concerns
-- **No Ceremony**: No base classes, no complex registration
 
 ## Step-by-Step Implementation
 
@@ -116,17 +119,17 @@ public record OrderItem(
 );
 ```
 
-### Step 2: Implement Handlers with Return Type Semantics
+### Step 2: Implement Receptors with Return Type Semantics
 
 ```csharp{
-title: "Handler Implementation - Unified Approach"
-description: "Simple handlers with return type semantics and aspects"
+title: "Receptor Implementation - Event-Driven Approach"
+description: "Receptors emit events, perspectives handle writes"
 framework: "NET8"
 category: "Domain Logic"
 difficulty: "BEGINNER"
-tags: ["Handlers", "Return Types", "Aspects"]
+tags: ["Receptors", "Events", "Perspectives", "Lenses"]
 nugetPackages: ["Whizbang.Core"]
-filename: "OrderHandlers.cs"
+filename: "OrderReceptors.cs"
 showLineNumbers: true
 highlightLines: [8, 13, 29, 45]
 usingStatements: ["Whizbang", "System", "System.Linq"]
@@ -135,56 +138,46 @@ using Whizbang;
 using System;
 using System.Linq;
 
-namespace MyApp.Orders.Handlers;
+namespace MyApp.Orders.Receptors;
 
-// Command handler with aspects
+// Receptor with aspects - receives commands, emits events
 [Logged]
 [Validated]
 [Transactional]
-public class CreateOrderHandler : IHandle<CreateOrder> {
-    private readonly IOrderRepository _repository;
-    
-    // Return type determines behavior: OrderCreated event will be published
-    public OrderCreated Handle(CreateOrder cmd, IOrderRepository repository) {
+public class CreateOrderReceptor : IReceptor<CreateOrder> {
+    // Return type determines behavior: OrderCreated event flows to perspectives
+    public OrderCreated Receive(CreateOrder cmd, IOrderLens lens) {
+        // Validate using lens (read-only)
+        if (!lens.CustomerExists(cmd.CustomerId)) {
+            throw new CustomerNotFoundException();
+        }
+        
         // Calculate total
         var totalAmount = cmd.Items.Sum(i => i.Quantity * i.UnitPrice);
         
-        // Create order
-        var order = new Order {
-            Id = Guid.NewGuid(),
-            CustomerId = cmd.CustomerId,
-            Items = cmd.Items,
-            TotalAmount = totalAmount,
-            ShippingAddress = cmd.ShippingAddress,
-            Status = "Pending",
-            CreatedAt = DateTime.UtcNow
-        };
-        
-        // Save order
-        repository.Save(order);
-        
-        // Return event - Whizbang publishes it automatically
+        // Emit event - perspectives handle all writes
         return new OrderCreated(
-            order.Id,
-            order.CustomerId,
-            order.TotalAmount,
-            order.CreatedAt
+            Guid.NewGuid(),
+            cmd.CustomerId,
+            totalAmount,
+            DateTime.UtcNow
         );
     }
 }
 
-// Query handler with caching aspect
-[Cached(Duration = "5m")]
-public class GetOrderByIdHandler : IHandle<GetOrderById> {
-    // Return type is inferred from query
-    public OrderDetails Handle(GetOrderById query, IOrderRepository repository) {
-        var order = repository.GetById(query.OrderId);
+// Lens provides read-only queries
+public class OrderLens : IOrderLens {
+    private readonly IDatabase db;
+    
+    [Cached(Duration = "5m")]
+    public OrderDetails Focus(Guid orderId) {
+        var order = db.Orders.Find(orderId);
         
         if (order == null) {
-            throw new NotFoundException($"Order {query.OrderId} not found");
+            throw new NotFoundException($"Order {orderId} not found");
         }
         
-        // Map to response
+        // Return read-only view
         return new OrderDetails(
             order.Id,
             order.CustomerId,
@@ -194,28 +187,91 @@ public class GetOrderByIdHandler : IHandle<GetOrderById> {
             order.CreatedAt
         );
     }
+    
+    public bool CustomerExists(Guid customerId) {
+        return db.Customers.Any(c => c.Id == customerId);
+    }
 }
 
-// Handler returning multiple effects via tuple
-public class ProcessOrderHandler : IHandle<ProcessOrder> {
-    // Tuple return = multiple cascading messages
-    public (OrderProcessed, SendEmail, UpdateInventory) Handle(ProcessOrder cmd) {
-        // Process order logic...
+// Receptor returning multiple events via tuple
+public class ProcessOrderReceptor : IReceptor<ProcessOrder> {
+    // Tuple return = multiple events flow to perspectives
+    public (OrderProcessed, EmailQueued, InventoryReserved) Receive(ProcessOrder cmd) {
+        // Make decisions, emit events
         
         return (
             new OrderProcessed(cmd.OrderId),
-            new SendEmail(cmd.CustomerEmail, "Order confirmed"),
-            new UpdateInventory(cmd.Items)
+            new EmailQueued(cmd.CustomerEmail, "Order confirmed"),
+            new InventoryReserved(cmd.Items)
         );
     }
 }
 ```
 
-### Step 3: Wire Up Your Application
+### Step 3: Implement Perspectives for Write Operations
+
+```csharp{
+title: "Perspective Implementation - Handle All Writes"
+description: "Perspectives react to events and update storage"
+framework: "NET8"
+category: "Domain Logic"
+difficulty: "BEGINNER"
+tags: ["Perspectives", "Events", "Database Updates"]
+nugetPackages: ["Whizbang.Core"]
+filename: "OrderPerspectives.cs"
+showLineNumbers: true
+usingStatements: ["Whizbang", "System", "System.Threading.Tasks"]
+}
+using Whizbang;
+using System;
+using System.Threading.Tasks;
+
+namespace MyApp.Orders.Perspectives;
+
+// Perspective handles all database writes
+public class OrderPerspective : IPerspectiveOf<OrderCreated> {
+    private readonly IDatabase db;
+    
+    public async Task Update(OrderCreated e) {
+        // Create order in database
+        await db.Orders.Add(new Order {
+            Id = e.OrderId,
+            CustomerId = e.CustomerId,
+            Total = e.TotalAmount,
+            Status = "Pending",
+            CreatedAt = e.CreatedAt
+        });
+        
+        await db.SaveChanges();
+    }
+}
+
+// Multiple perspectives can react to same event
+public class CustomerStatsPerspective : IPerspectiveOf<OrderCreated> {
+    private readonly IDatabase db;
+    
+    public async Task Update(OrderCreated e) {
+        await db.CustomerStats.IncrementOrderCount(e.CustomerId);
+        await db.CustomerStats.UpdateLastOrderDate(e.CustomerId, e.CreatedAt);
+    }
+}
+
+// Cache perspective
+public class CachePerspective : IPerspectiveOf<OrderCreated> {
+    private readonly ICache cache;
+    
+    public async Task Update(OrderCreated e) {
+        // Invalidate customer cache
+        await cache.Remove($"customer:{e.CustomerId}:orders");
+    }
+}
+```
+
+### Step 4: Wire Up Your Application
 
 ```csharp{
 title: "Service Configuration"
-description: "Progressive enhancement - start simple, scale when needed"
+description: "Configure dispatcher with receptors, perspectives, and lenses"
 framework: "NET8"
 category: "Configuration"
 difficulty: "BEGINNER"
@@ -229,33 +285,31 @@ usingStatements: ["Whizbang", "Microsoft.Extensions.DependencyInjection"]
 using Whizbang;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using MyApp.Orders.Handlers;
+using MyApp.Orders.Receptors;
+using MyApp.Orders.Perspectives;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Start simple - In-process mode (like MediatR)
+// Configure Event-Driven mode
 builder.Services.AddWhizbang()
-    .RegisterHandlersFromAssembly(typeof(Program).Assembly)
-    .UseInProcessMode();  // No infrastructure needed
+    .UseDispatcher(dispatcher => {
+        dispatcher.DefaultPolicy = new EventDrivenPolicy();
+        
+        // Register components
+        dispatcher.RegisterReceptorsFromAssembly(typeof(Program).Assembly);
+        dispatcher.RegisterPerspectivesFromAssembly(typeof(Program).Assembly);
+        dispatcher.RegisterLensesFromAssembly(typeof(Program).Assembly);
+    });
 
-// Register your services
-builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-builder.Services.AddScoped<IInventoryService, InventoryService>();
+// Register lenses (read-only queries)
+builder.Services.AddScoped<IOrderLens, OrderLens>();
+builder.Services.AddScoped<ICustomerLens, CustomerLens>();
 
-// When ready for durability (like Wolverine)
-// builder.Services.AddWhizbang()
-//     .UseDurableMode()
-//     .UsePostgreSQL(connectionString);
+// When ready for Event-Sourcing
+// dispatcher.ForReceptor<Order>().UsePolicy(new EventSourcedPolicy());
 
-// When scaling to microservices (like MassTransit)
-// builder.Services.AddWhizbang()
-//     .UseDistributedMode()
-//     .UseKafka(kafkaConfig);
-
-// When you need event sourcing (unique to Whizbang)
-// builder.Services.AddWhizbang()
-//     .UseEventSourcedMode()
-//     .UseEventStore(eventStoreConfig);
+// When scaling to distributed
+// dispatcher.UseRelay<KafkaRelay>();
 
 builder.Services.AddControllers();
 
@@ -270,12 +324,12 @@ app.Run();
 ## Complete Example
 
 ```csharp{
-title: "Complete Mediator Pattern Example"
-description: "Full working example with API controller using the unified approach"
+title: "Complete Event-Driven Example"
+description: "Full working example with receptors, perspectives, and lenses"
 framework: "NET8"
 category: "Complete Example"
 difficulty: "BEGINNER"
-tags: ["API", "Controller", "Mediator", "Complete"]
+tags: ["API", "Controller", "Dispatcher", "Event-Driven", "Complete"]
 nugetPackages: ["Whizbang.Core", "Microsoft.AspNetCore.Mvc"]
 filename: "OrdersController.cs"
 showLineNumbers: true
@@ -294,10 +348,12 @@ namespace MyApp.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 public class OrdersController : ControllerBase {
-    private readonly IWhizbang _whizbang;
+    private readonly IDispatcher _dispatcher;
+    private readonly IOrderLens _orderLens;
     
-    public OrdersController(IWhizbang whizbang) {
-        _whizbang = whizbang;
+    public OrdersController(IDispatcher dispatcher, IOrderLens orderLens) {
+        _dispatcher = dispatcher;
+        _orderLens = orderLens;
     }
     
     [HttpPost]
@@ -312,9 +368,9 @@ public class OrdersController : ControllerBase {
         );
         
         try {
-            // Send command - return type determines behavior
-            var result = await _whizbang.Send(command);
-            return Ok(result);
+            // Dispatcher routes to receptor, event flows to perspectives
+            var @event = await _dispatcher.Dispatch(command);
+            return Ok(@event);
         }
         catch (ValidationException ex) {
             return BadRequest(new { error = ex.Message });
@@ -326,13 +382,10 @@ public class OrdersController : ControllerBase {
     
     [HttpGet("{orderId}")]
     public async Task<ActionResult<OrderDetails>> GetOrder(Guid orderId) {
-        // Create query
-        var query = new GetOrderById(orderId);
-        
         try {
-            // Send query through whizbang
-            var result = await _whizbang.Send(query);
-            return Ok(result);
+            // Use lens for queries (read-only)
+            var order = _orderLens.Focus(orderId);
+            return Ok(order);
         }
         catch (NotFoundException ex) {
             return NotFound(new { error = ex.Message });
@@ -341,14 +394,14 @@ public class OrdersController : ControllerBase {
     
     [HttpPost("{orderId}/process")]
     public async Task<ActionResult> ProcessOrder(Guid orderId) {
-        // Handler returns tuple - all messages are processed
-        var (orderProcessed, emailSent, inventoryUpdated) = 
-            await _whizbang.Send(new ProcessOrder(orderId));
+        // Receptor returns tuple - all events flow to perspectives
+        var (orderProcessed, emailQueued, inventoryReserved) = 
+            await _dispatcher.Dispatch(new ProcessOrder(orderId));
         
         return Ok(new {
             orderId = orderProcessed.OrderId,
-            emailSent = emailSent.Sent,
-            inventoryUpdated = inventoryUpdated.UpdatedCount
+            emailQueued = emailQueued.QueueId,
+            inventoryReserved = inventoryReserved.ReservationId
         });
     }
 }
@@ -363,11 +416,11 @@ public record CreateOrderRequest(
 
 ## Testing Strategy
 
-### Unit Testing Handlers
+### Unit Testing Receptors and Perspectives
 
 ```csharp{
-title: "Handler Unit Tests"
-description: "Test handlers with aspects in isolation"
+title: "Receptor and Perspective Unit Tests"
+description: "Test receptors and perspectives in isolation"
 framework: "NET8"
 category: "Testing"
 difficulty: "BEGINNER"
@@ -383,15 +436,16 @@ using Xunit;
 using System;
 using System.Collections.Generic;
 using MyApp.Orders;
-using MyApp.Orders.Handlers;
+using MyApp.Orders.Receptors;
+using MyApp.Orders.Perspectives;
 
 namespace MyApp.Tests.Orders;
 
-public class CreateOrderHandlerTests {
+public class CreateOrderReceptorTests {
     [Fact]
-    public void Handle_ValidCommand_ReturnsOrderCreatedEvent() {
+    public void Receive_ValidCommand_ReturnsOrderCreatedEvent() {
         // Arrange
-        var handler = new CreateOrderHandler();
+        var receptor = new CreateOrderReceptor();
         var command = new CreateOrder(
             Guid.NewGuid(),
             new List<OrderItem> {
@@ -400,57 +454,57 @@ public class CreateOrderHandlerTests {
             "123 Main St"
         );
         
-        var repository = new FakeOrderRepository();
+        var lens = Mock.Of<IOrderLens>(l => 
+            l.CustomerExists(It.IsAny<Guid>()) == true
+        );
         
-        // Act - Handler with dependency injection
-        var result = handler.Handle(command, repository);
+        // Act - Receptor emits event
+        var @event = receptor.Receive(command, lens);
         
-        // Assert - Return type determines behavior
-        Assert.NotNull(result);
-        Assert.IsType<OrderCreated>(result);
-        Assert.Equal(20.00m, result.TotalAmount);
-        Assert.True(repository.WasCalled);
+        // Assert - Event emitted
+        Assert.NotNull(@event);
+        Assert.IsType<OrderCreated>(@event);
+        Assert.Equal(20.00m, @event.TotalAmount);
     }
     
     [Fact]
-    public void Handle_MultipleEffects_ReturnsTuple() {
+    public void Receive_ProcessOrder_ReturnsMultipleEvents() {
         // Arrange
-        var handler = new ProcessOrderHandler();
+        var receptor = new ProcessOrderReceptor();
         var command = new ProcessOrder(Guid.NewGuid());
         
-        // Act - Handler returns tuple
-        var (processed, email, inventory) = handler.Handle(command);
+        // Act - Receptor returns tuple of events
+        var (processed, emailQueued, inventoryReserved) = receptor.Receive(command);
         
-        // Assert - All effects returned
+        // Assert - All events emitted
         Assert.NotNull(processed);
-        Assert.NotNull(email);
-        Assert.NotNull(inventory);
+        Assert.NotNull(emailQueued);
+        Assert.NotNull(inventoryReserved);
         Assert.Equal(command.OrderId, processed.OrderId);
     }
 }
 
-// Test with aspects
-public class AspectTests {
+// Test Perspectives
+public class PerspectiveTests {
     [Fact]
-    public async Task Handler_WithCacheAspect_CachesResult() {
+    public async Task OrderPerspective_UpdatesDatabase_WhenOrderCreatedReceived() {
         // Arrange
-        var test = await Whizbang.Test<GetOrderByIdHandler>()
-            .WithAspects() // Include production aspects
-            .Given(new GetOrderById(Guid.NewGuid()))
-            .WhenHandled();
+        var db = new InMemoryDatabase();
+        var perspective = new OrderPerspective(db);
+        var @event = new OrderCreated {
+            OrderId = Guid.NewGuid(),
+            CustomerId = Guid.NewGuid(),
+            TotalAmount = 100.00m
+        };
         
-        // First call
-        var result1 = test.Result;
+        // Act - Perspective handles write
+        await perspective.Update(@event);
         
-        // Second call - should be cached
-        var result2 = await test.HandleAgain();
-        
-        // Assert
-        test.Aspect<CacheAspect>()
-            .ShouldHaveHit("order:*")
-            .WithinDuration("5m");
-        
-        Assert.Same(result1, result2); // Same instance from cache
+        // Assert - Database updated
+        var order = await db.Orders.Find(@event.OrderId);
+        Assert.NotNull(order);
+        Assert.Equal(@event.CustomerId, order.CustomerId);
+        Assert.Equal(@event.TotalAmount, order.Total);
     }
     
     [Fact]

@@ -24,7 +24,17 @@ Think of a lens as a window into your data - you can look through it from differ
 
 ## The Lens Interface Pattern
 
-```csharp
+```csharp{
+title: "Order Lens Interface"
+description: "Basic lens interface pattern with core query methods"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Lenses", "Interfaces", "CQRS"]
+filename: "IOrderLens.cs"
+usingStatements: ["System", "System.Collections.Generic", "System.Linq.Expressions"]
+showLineNumbers: true
+}
 public interface IOrderLens {
     // Focus on a single item
     Order Focus(Guid id);
@@ -46,7 +56,17 @@ public interface IOrderLens {
 ## Core Lens Methods
 
 ### Focus - Single Item Retrieval
-```csharp
+```csharp{
+title: "Customer Lens Focus Method"
+description: "Implementing the Focus method for single item retrieval"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Lenses", "Focus", "Single Item"]
+filename: "CustomerLens.cs"
+usingStatements: ["System", "System.Threading.Tasks", "System.Linq"]
+showLineNumbers: true
+}
 public interface ICustomerLens {
     Customer Focus(Guid customerId);
     Task<Customer> FocusAsync(Guid customerId);
@@ -63,7 +83,17 @@ public class CustomerLens : ICustomerLens {
 ```
 
 ### View - Filtered Collections
-```csharp
+```csharp{
+title: "Order Lens View Methods"
+description: "Implementing View methods for filtered collections"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Lenses", "View", "Filtering"]
+filename: "OrderLens.cs"
+usingStatements: ["System", "System.Collections.Generic", "System.Linq.Expressions", "System.Linq"]
+showLineNumbers: true
+}
 public interface IOrderLens {
     IEnumerable<Order> View(Expression<Func<Order, bool>> filter);
     IEnumerable<Order> ViewByCustomer(Guid customerId);
@@ -83,7 +113,17 @@ public class OrderLens : IOrderLens {
 ```
 
 ### Glimpse - Summaries and Projections
-```csharp
+```csharp{
+title: "Inventory Lens Glimpse Methods"
+description: "Implementing Glimpse methods for summaries and projections"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Lenses", "Glimpse", "Inventory", "Summaries"]
+filename: "InventoryLens.cs"
+usingStatements: ["System", "System.Collections.Generic"]
+showLineNumbers: true
+}
 public interface IInventoryLens {
     InventorySummary Glimpse(Guid productId);
     StockLevel GlimpseStock(Guid productId);
@@ -106,7 +146,17 @@ public class InventoryLens : IInventoryLens {
 ```
 
 ### Exists - Efficient Existence Checks
-```csharp
+```csharp{
+title: "Product Lens Exists Methods"
+description: "Efficient existence checks with conditions"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Lenses", "Exists", "Efficiency"]
+filename: "ProductLens.cs"
+usingStatements: ["System", "System.Linq.Expressions", "System.Linq"]
+showLineNumbers: true
+}
 public interface IProductLens {
     bool Exists(Guid productId);
     bool Exists(Expression<Func<Product, bool>> condition);
@@ -128,7 +178,17 @@ public class ProductLens : IProductLens {
 
 Lenses provide state for stateless receptors:
 
-```csharp
+```csharp{
+title: "Lens Usage in Receptors"
+description: "Using lenses to provide state for stateless receptors"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Lenses", "Receptors", "Validation"]
+filename: "OrderReceptor.cs"
+usingStatements: ["System", "Whizbang"]
+showLineNumbers: true
+}
 public class OrderReceptor : IReceptor<CreateOrder> {
     public OrderCreated Receive(CreateOrder cmd, IOrderLens orderLens, ICustomerLens customerLens) {
         // Use lenses to validate
@@ -161,7 +221,17 @@ public class OrderReceptor : IReceptor<CreateOrder> {
 
 Combine multiple data sources into a unified view:
 
-```csharp
+```csharp{
+title: "Composite Checkout Lens"
+description: "Combining multiple data sources into a unified view for checkout"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Lenses", "Composite", "Checkout"]
+filename: "CheckoutLens.cs"
+usingStatements: ["System", "System.Collections.Generic"]
+showLineNumbers: true
+}
 public interface ICheckoutLens {
     CheckoutContext PrepareCheckout(Guid customerId, List<CartItem> items);
 }
@@ -194,7 +264,17 @@ public class CheckoutLens : ICheckoutLens {
 
 Optimize read performance with caching:
 
-```csharp
+```csharp{
+title: "Cached Product Lens"
+description: "Optimizing read performance with caching decorator pattern"
+framework: "NET8"
+category: "Performance"
+difficulty: "INTERMEDIATE"
+tags: ["Lenses", "Caching", "Performance"]
+filename: "CachedProductLens.cs"
+usingStatements: ["System", "System.Collections.Generic", "System.Linq"]
+showLineNumbers: true
+}
 public class CachedProductLens : IProductLens {
     private readonly IProductLens innerLens;
     private readonly ICache cache;
@@ -221,7 +301,17 @@ public class CachedProductLens : IProductLens {
 
 Support pagination for large result sets:
 
-```csharp
+```csharp{
+title: "Paged Query Lens"
+description: "Supporting pagination for large result sets"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["Lenses", "Pagination", "Performance"]
+filename: "OrderLens.cs"
+usingStatements: ["System", "System.Linq", "System.Linq.Expressions"]
+showLineNumbers: true
+}
 public interface IOrderLens {
     PagedResult<Order> ViewPaged(int page, int pageSize, Expression<Func<Order, bool>> filter = null);
 }
@@ -256,7 +346,17 @@ public class OrderLens : IOrderLens {
 
 Provide pre-calculated aggregations:
 
-```csharp
+```csharp{
+title: "Statistics Aggregate Lens"
+description: "Providing pre-calculated aggregations and metrics"
+framework: "NET8"
+category: "Analytics"
+difficulty: "INTERMEDIATE"
+tags: ["Lenses", "Statistics", "Aggregation"]
+filename: "StatisticsLens.cs"
+usingStatements: ["System", "System.Collections.Generic", "System.Linq"]
+showLineNumbers: true
+}
 public interface IStatisticsLens {
     OrderStatistics GetOrderStats(DateTime from, DateTime to);
     CustomerMetrics GetCustomerMetrics(Guid customerId);
@@ -285,7 +385,18 @@ public class StatisticsLens : IStatisticsLens {
 
 Integrate with search infrastructure:
 
-```csharp
+```csharp{
+title: "ElasticSearch Lens"
+description: "Integrating with search infrastructure for advanced queries"
+framework: "NET8"
+category: "Search"
+difficulty: "ADVANCED"
+tags: ["Lenses", "Search", "ElasticSearch"]
+filename: "ElasticSearchLens.cs"
+nugetPackages: ["Elasticsearch.Net", "NEST"]
+usingStatements: ["System", "System.Collections.Generic", "Nest"]
+showLineNumbers: true
+}
 public interface ISearchLens {
     SearchResults<Product> SearchProducts(string query, SearchOptions options);
     IEnumerable<SearchSuggestion> GetSuggestions(string prefix);
@@ -323,7 +434,18 @@ public class ElasticSearchLens : ISearchLens {
 
 Configure lenses with the dispatcher:
 
-```csharp
+```csharp{
+title: "Lens Configuration"
+description: "Configuring lenses with the Whizbang dispatcher"
+framework: "NET8"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["Lenses", "Configuration", "Dependency Injection"]
+filename: "Program.cs"
+nugetPackages: ["Whizbang.Core", "Microsoft.Extensions.DependencyInjection"]
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Whizbang"]
+showLineNumbers: true
+}
 services.AddWhizbang()
     .UseDispatcher(dispatcher => {
         // Register lenses
@@ -350,7 +472,20 @@ services.Decorate<IProductLens, CachedProductLens>();
 
 Lenses are easy to test and mock:
 
-```csharp
+```csharp{
+title: "Testing Lenses"
+description: "Unit testing lenses with in-memory data and mocking"
+framework: "NET8"
+category: "Testing"
+difficulty: "INTERMEDIATE"
+tags: ["Lenses", "Testing", "Unit Tests", "Mocking"]
+filename: "OrderLensTests.cs"
+nugetPackages: ["xunit", "Moq"]
+testFile: "OrderLensTests.cs"
+testMethod: "OrderLens_ViewByCustomer_ReturnsCustomerOrders"
+usingStatements: ["System", "System.Linq", "Xunit", "Moq"]
+showLineNumbers: true
+}
 [Fact]
 public void OrderLens_ViewByCustomer_ReturnsCustomerOrders() {
     // Arrange
@@ -391,26 +526,62 @@ public void OrderReceptor_ThrowsException_WhenCustomerNotFound() {
 ### Do's
 
 ✅ **Keep lenses read-only**
-```csharp
+```csharp{
+title: "Read-Only Lens Interface"
+description: "Best practice: Keep lenses read-only"
+framework: "NET8"
+category: "Best Practices"
+difficulty: "BEGINNER"
+tags: ["Lenses", "Best Practices", "Read-Only"]
+filename: "IOrderLens.cs"
+usingStatements: ["System"]
+}
 public interface IOrderLens {
     Order Focus(Guid id);  // Read-only methods only
 }
 ```
 
 ✅ **Use specific method names**
-```csharp
+```csharp{
+title: "Specific Method Names"
+description: "Best practice: Use specific method names for clear intent"
+framework: "NET8"
+category: "Best Practices"
+difficulty: "BEGINNER"
+tags: ["Lenses", "Best Practices", "Method Naming"]
+filename: "IOrderLens.cs"
+usingStatements: ["System", "System.Collections.Generic"]
+}
 IEnumerable<Order> ViewPending();      // Clear intent
 IEnumerable<Order> ViewByDateRange(DateTime from, DateTime to);
 ```
 
 ✅ **Optimize for common queries**
-```csharp
+```csharp{
+title: "Optimized Common Queries"
+description: "Best practice: Optimize for common query patterns"
+framework: "NET8"
+category: "Best Practices"
+difficulty: "INTERMEDIATE"
+tags: ["Lenses", "Best Practices", "Performance"]
+filename: "ICustomerLens.cs"
+usingStatements: ["System"]
+}
 // Pre-calculate common aggregations
 CustomerDashboard GetCustomerDashboard(Guid customerId);
 ```
 
 ✅ **Return immutable data**
-```csharp
+```csharp{
+title: "Return Immutable Data"
+description: "Best practice: Return immutable data collections"
+framework: "NET8"
+category: "Best Practices"
+difficulty: "BEGINNER"
+tags: ["Lenses", "Best Practices", "Immutable"]
+filename: "OrderLens.cs"
+usingStatements: ["System", "System.Collections.Generic", "System.Linq"]
+}
 public IReadOnlyList<Order> ViewRecent() {
     return db.Orders.OrderByDescending(o => o.CreatedAt)
         .Take(10)
@@ -422,7 +593,16 @@ public IReadOnlyList<Order> ViewRecent() {
 ### Don'ts
 
 ❌ **Don't include write operations**
-```csharp
+```csharp{
+title: "Anti-Pattern: Write Operations"
+description: "DON'T include write operations in lenses"
+framework: "NET8"
+category: "Anti-Patterns"
+difficulty: "BEGINNER"
+tags: ["Lenses", "Anti-Patterns", "Read-Only"]
+filename: "IOrderLens.cs"
+usingStatements: ["System"]
+}
 // BAD - Lenses are read-only
 public interface IOrderLens {
     void Save(Order order);  // Don't do this!
@@ -430,7 +610,16 @@ public interface IOrderLens {
 ```
 
 ❌ **Don't return mutable entities**
-```csharp
+```csharp{
+title: "Mutable vs Immutable Returns"
+description: "BAD: Mutable entities vs GOOD: Immutable views"
+framework: "NET8"
+category: "Anti-Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Lenses", "Anti-Patterns", "Immutable"]
+filename: "OrderLens.cs"
+usingStatements: ["System"]
+}
 // BAD - Returns mutable entity
 public Order Focus(Guid id) {
     return db.Orders.Find(id);  // Can be modified
@@ -444,7 +633,16 @@ public OrderView Focus(Guid id) {
 ```
 
 ❌ **Don't perform business logic**
-```csharp
+```csharp{
+title: "Anti-Pattern: Business Logic"
+description: "DON'T perform business logic in lenses"
+framework: "NET8"
+category: "Anti-Patterns"
+difficulty: "INTERMEDIATE"
+tags: ["Lenses", "Anti-Patterns", "Business Logic"]
+filename: "OrderLens.cs"
+usingStatements: ["System", "System.Collections.Generic", "System.Linq"]
+}
 // BAD - Business logic in lens
 public IEnumerable<Order> ViewDiscounted() {
     return db.Orders.Where(o => {
@@ -461,7 +659,17 @@ public IEnumerable<Order> ViewDiscounted() {
 
 Read from pre-computed materialized views:
 
-```csharp
+```csharp{
+title: "Materialized View Lens"
+description: "Reading from pre-computed materialized views"
+framework: "NET8"
+category: "Advanced"
+difficulty: "ADVANCED"
+tags: ["Lenses", "Materialized Views", "Performance"]
+filename: "MaterializedOrderLens.cs"
+usingStatements: ["System", "System.Collections.Generic", "System.Linq"]
+showLineNumbers: true
+}
 public class MaterializedOrderLens : IOrderLens {
     // Read from denormalized view maintained by perspectives
     public OrderSummary Glimpse(Guid orderId) {
@@ -478,7 +686,17 @@ public class MaterializedOrderLens : IOrderLens {
 
 Query data from multiple services:
 
-```csharp
+```csharp{
+title: "Cross-Service Lens"
+description: "Querying data from multiple distributed services"
+framework: "NET8"
+category: "Advanced"
+difficulty: "ADVANCED"
+tags: ["Lenses", "Distributed", "Microservices"]
+filename: "DistributedCustomerLens.cs"
+usingStatements: ["System", "System.Threading.Tasks"]
+showLineNumbers: true
+}
 public class DistributedCustomerLens : ICustomerLens {
     private readonly IOrderService orderService;
     private readonly IPaymentService paymentService;
@@ -503,7 +721,18 @@ public class DistributedCustomerLens : ICustomerLens {
 
 In Event-Sourced mode, query historical state:
 
-```csharp
+```csharp{
+title: "Time-Travel Lens"
+description: "Querying historical state in event-sourced systems"
+framework: "NET8"
+category: "Advanced"
+difficulty: "ADVANCED"
+tags: ["Lenses", "Event Sourcing", "Time Travel"]
+filename: "HistoricalOrderLens.cs"
+nugetPackages: ["Whizbang.EventSourcing"]
+usingStatements: ["System", "System.Collections.Generic", "Whizbang"]
+showLineNumbers: true
+}
 public interface IHistoricalLens {
     Order FocusAsOf(Guid orderId, DateTime pointInTime);
     IEnumerable<Order> ViewAsOf(DateTime pointInTime);

@@ -2,7 +2,7 @@
 title: Getting Started
 category: Getting Started
 order: 1
-description: Learn how to build your first Whizbang application with this hands-on tutorial covering CQRS, event sourcing, and projections from simple to scale.
+description: Learn how to build your first Whizbang application with this hands-on tutorial covering event-driven architecture, receptors, perspectives, lenses, and event sourcing from simple to scale.
 tags: tutorial, quickstart, installation
 ---
 
@@ -12,14 +12,14 @@ tags: tutorial, quickstart, installation
 
 **What you'll build:**
 
-1. ✅ **Simple CQRS** - Command handlers with `Whizbang.Core` (in-process mediator)
-2. ✅ **Event Sourcing** - Aggregates and event streams with `Whizbang.EventSourcing`
-3. ✅ **Read Models** - Projections for efficient queries with `Whizbang.Projections`
+1. ✅ **Event-Driven Architecture** - Receptors, Perspectives, and Lenses with `Whizbang.Core`
+2. ✅ **Event Sourcing** - Stateful receptors and ledger with `Whizbang.EventSourcing`
+3. ✅ **Multiple Perspectives** - Different views of the same events for efficient queries
 
 ```mermaid
 graph LR
-    A[Simple CQRS] -->|Add Event Store| B[Event Sourcing]
-    B -->|Add Projections| C[Full CQRS/ES]
+    A[Event-Driven] -->|Add Ledger| B[Event-Sourced]
+    B -->|Add Perspectives| C[Full Event Architecture]
 
     class A layer-command
     class B layer-event
@@ -57,28 +57,31 @@ For this tutorial, we'll start with just the core package:
 dotnet add package Whizbang.Core
 ```
 
-**What is Whizbang.Core?** The minimal foundation - just an in-process mediator with handler routing. Perfect for learning CQRS basics. We'll add event sourcing and projections later in this tutorial.
+**What is Whizbang.Core?** The foundation for event-driven architecture - includes dispatcher, receptors, perspectives, and lenses. Perfect for learning event-driven patterns where all writes flow through events. We'll add event sourcing later in this tutorial.
 
 ---
 
-## Your First Command and Handler
+## Your First Command and Receptor
 
-Let's build a simple order system with CQRS (Command Query Responsibility Segregation).
+Let's build a simple order system with event-driven architecture.
 
 ```mermaid
 sequenceDiagram
     participant API as API Endpoint
-    participant WB as Whizbang Mediator
-    participant H as PlaceOrderHandler
+    participant D as Dispatcher
+    participant R as OrderReceptor
+    participant P as OrderPerspective
+    participant DB as Database
 
-    API->>WB: Send(PlaceOrder)
-    WB->>H: Handle(PlaceOrder)
-    H->>H: Validate command
-    H->>H: Create order
-    H-->>WB: OrderPlacedResult
-    WB-->>API: OrderPlacedResult
+    API->>D: Dispatch(PlaceOrder)
+    D->>R: Receive(PlaceOrder)
+    R->>R: Validate with Lens
+    R-->>D: OrderPlaced event
+    D->>P: Update(OrderPlaced)
+    P->>DB: Write order
+    D-->>API: OrderPlaced event
 
-    Note over API,H: In-memory mediator pattern<br/>No persistence yet
+    Note over API,DB: Event-driven pattern<br/>All writes through events
 ```
 
 ### Step 1: Define a Command
@@ -112,55 +115,101 @@ public record OrderItem(
 );
 ```
 
-### Step 2: Create a Handler
+### Step 2: Create a Receptor
 
-Create `Handlers/PlaceOrderHandler.cs`:
+Create `Receptors/PlaceOrderReceptor.cs`:
 
 ```csharp{
-title: "PlaceOrder Handler"
-description: "Handler that processes PlaceOrder commands"
+title: "PlaceOrder Receptor"
+description: "Receptor that processes PlaceOrder commands"
 framework: "NET8"
 category: "Getting Started"
 difficulty: "BEGINNER"
-tags: ["Handlers", "CQRS", "Commands"]
-filename: "Handlers/PlaceOrderHandler.cs"
-usingStatements: ["System", "System.Threading.Tasks", "MyApp.Commands"]
+tags: ["Receptors", "Event-Driven", "Commands"]
+filename: "Receptors/PlaceOrderReceptor.cs"
+usingStatements: ["System", "Whizbang", "MyApp.Commands", "MyApp.Events"]
 showLineNumbers: true
 }
 using System;
-using System.Threading.Tasks;
+using Whizbang;
 using MyApp.Commands;
+using MyApp.Events;
 
-namespace MyApp.Handlers;
+namespace MyApp.Receptors;
 
-public class PlaceOrderHandler {
-    public async Task<OrderPlacedResult> Handle(PlaceOrder command) {
+public class PlaceOrderReceptor : IReceptor<PlaceOrder> {
+    public OrderPlaced Receive(PlaceOrder command) {
         // Validate
         if (command.Items.Count == 0) {
             throw new InvalidOperationException("Order must have at least one item");
         }
 
-        // Create order
+        // Create event
         var orderId = Guid.NewGuid();
         var total = command.Items.Sum(i => i.Price * i.Quantity);
 
-        // TODO: Persist to database
-
-        // Return result
-        return new OrderPlacedResult(orderId, total);
+        // Return event - perspective will handle persistence
+        return new OrderPlaced(
+            orderId,
+            command.CustomerId,
+            DateTimeOffset.UtcNow,
+            command.Items,
+            total
+        );
     }
 }
-
-public record OrderPlacedResult(Guid OrderId, decimal Total);
 ```
 
-### Step 3: Configure Whizbang
+### Step 3: Create a Perspective
+
+Create `Perspectives/OrderPerspective.cs`:
+
+```csharp{
+title: "Order Perspective"
+description: "Perspective that handles OrderPlaced events"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "BEGINNER"
+tags: ["Perspectives", "Event-Driven", "Database"]
+filename: "Perspectives/OrderPerspective.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang", "MyApp.Events"]
+showLineNumbers: true
+}
+using System;
+using System.Threading.Tasks;
+using Whizbang;
+using MyApp.Events;
+
+namespace MyApp.Perspectives;
+
+public class OrderPerspective : IPerspectiveOf<OrderPlaced> {
+    private readonly IOrderDatabase db;
+    
+    public OrderPerspective(IOrderDatabase db) {
+        _db = db;
+    }
+    
+    public async Task Update(OrderPlaced @event) {
+        // Perspective handles all writes
+        await _db.Orders.Add(new Order {
+            Id = @event.OrderId,
+            CustomerId = @event.CustomerId,
+            PlacedAt = @event.PlacedAt,
+            Total = @event.Total,
+            Status = "Placed"
+        });
+        await _db.SaveChanges();
+    }
+}
+```
+
+### Step 4: Configure Whizbang
 
 Update `Program.cs`:
 
 ```csharp{
 title: "Whizbang Configuration"
-description: "Configure Whizbang in ASP.NET Core"
+description: "Configure Whizbang dispatcher in ASP.NET Core"
 framework: "NET8"
 category: "Getting Started"
 difficulty: "BEGINNER"
@@ -173,23 +222,23 @@ using Whizbang;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add Whizbang
+// Add Whizbang dispatcher
 builder.Services.AddWhizbang(options => {
-    // Scan this assembly for handlers
+    // Scan this assembly for receptors and perspectives
     options.ScanAssembly(typeof(Program).Assembly);
 });
 
 var app = builder.Build();
 
-app.MapPost("/orders", async (PlaceOrder command, IWhizbang whizbang) => {
-    var result = await whizbang.Send(command);
-    return Results.Ok(result);
+app.MapPost("/orders", async (PlaceOrder command, IDispatcher dispatcher) => {
+    var @event = await dispatcher.Send(command);
+    return Results.Ok(new { OrderId = @event.OrderId, Total = @event.Total });
 });
 
 app.Run();
 ```
 
-### Step 4: Run the Application
+### Step 5: Run the Application
 
 ```bash
 dotnet run
@@ -208,34 +257,34 @@ curl -X POST http://localhost:5000/orders \
   }'
 ```
 
-**Congratulations!** You've created your first Whizbang command handler. Right now it's just an in-process mediator, but we'll add event sourcing next.
+**Congratulations!** You've created your first Whizbang event-driven application with receptors and perspectives. All writes flow through events, making the transition to event sourcing seamless!
 
 ---
 
 ## Adding Event Sourcing
 
-Let's upgrade to event sourcing so we have a complete audit trail of all orders.
+Let's upgrade to event sourcing with stateful receptors and a ledger for complete audit trail.
 
 ```mermaid
 sequenceDiagram
     participant API as API Endpoint
-    participant H as Handler
-    participant A as Order Aggregate
-    participant R as Repository
-    participant ES as Event Store
+    participant D as Dispatcher
+    participant R as OrderReceptor
+    participant L as Ledger
+    participant P as Perspective
 
-    API->>H: Handle(PlaceOrder)
-    H->>A: new Order(customerId, items)
-    A->>A: Validate business rules
-    A->>A: Apply(OrderPlaced)
-    Note over A: Event updates<br/>aggregate state
-    H->>R: SaveAsync(order)
-    R->>ES: Append events to stream
-    ES-->>R: Saved
-    R-->>H: Success
-    H-->>API: OrderPlacedResult
+    API->>D: Send(PlaceOrder)
+    D->>R: Receive(PlaceOrder)
+    R->>R: Validate business rules
+    R->>R: Apply(OrderPlaced)
+    Note over R: Event updates<br/>receptor state
+    D->>L: Append events to stream
+    L-->>D: Events saved
+    D->>P: Update(OrderPlaced)
+    P->>P: Update read models
+    D-->>API: OrderPlaced event
 
-    Note over API,ES: Events stored as immutable log<br/>Complete audit trail
+    Note over API,P: Events stored as immutable log<br/>Complete audit trail
 ```
 
 > 📦 **Learn more:** See [Whizbang.EventSourcing](./package-structure.md#whizbangeventsourcing) in the Package Structure guide for ORM options, database support, and advanced configuration.
@@ -284,72 +333,81 @@ public record OrderShipped(
 );
 ```
 
-### Step 3: Create an Aggregate
+### Step 3: Create a Stateful Receptor
 
-Create `Domain/Order.cs`:
+Create `Receptors/OrderReceptor.cs`:
 
 ```csharp{
-title: "Order Aggregate"
-description: "Event-sourced aggregate for orders"
+title: "Event-Sourced Order Receptor"
+description: "Stateful receptor for event-sourced orders"
 framework: "NET8"
 category: "Event Sourcing"
 difficulty: "INTERMEDIATE"
-tags: ["Aggregates", "Event Sourcing", "Domain-Driven Design"]
-filename: "Domain/Order.cs"
-usingStatements: ["System", "Whizbang", "MyApp.Events"]
+tags: ["Receptors", "Event Sourcing", "Stateful"]
+filename: "Receptors/OrderReceptor.cs"
+usingStatements: ["System", "Whizbang", "MyApp.Commands", "MyApp.Events"]
 showLineNumbers: true
 }
 using System;
 using Whizbang;
+using MyApp.Commands;
 using MyApp.Events;
 
-namespace MyApp.Domain;
+namespace MyApp.Receptors;
 
-public class Order : Aggregate {
-    public Guid Id { get; private set; }
-    public Guid CustomerId { get; private set; }
-    public OrderStatus Status { get; private set; }
-    public List<OrderItem> Items { get; private set; } = new();
-    public decimal Total { get; private set; }
+[EventSourced]
+public class OrderReceptor : 
+    IReceptor<PlaceOrder>,
+    IReceptor<ShipOrder> {
+    
+    private Guid id;
+    private Guid customerId;
+    private OrderStatus status;
+    private List<OrderItem> items = new();
+    private decimal total;
 
-    // Constructor for new orders
-    public Order(Guid customerId, List<OrderItem> items) {
-        if (items.Count == 0) {
+    // Command handler for new orders
+    public OrderPlaced Receive(PlaceOrder command) {
+        if (id != Guid.Empty) {
+            throw new InvalidOperationException("Order already exists");
+        }
+        
+        if (command.Items.Count == 0) {
             throw new InvalidOperationException("Order must have items");
         }
 
-        var total = items.Sum(i => i.Price * i.Quantity);
+        var orderTotal = command.Items.Sum(i => i.Price * i.Quantity);
 
-        Apply(new OrderPlaced(
+        return new OrderPlaced(
             Guid.NewGuid(),
-            customerId,
+            command.CustomerId,
             DateTimeOffset.UtcNow,
-            items,
-            total
-        ));
+            command.Items,
+            orderTotal
+        );
     }
-
-    // Event handler - updates state when event is applied
-    private void When(OrderPlaced @event) {
-        Id = @event.OrderId;
-        CustomerId = @event.CustomerId;
-        Status = OrderStatus.Placed;
-        Items = @event.Items;
-        Total = @event.Total;
-    }
-
-    // Command method - ship the order
-    public void Ship(string trackingNumber) {
-        if (Status != OrderStatus.Placed) {
+    
+    // Command handler for shipping
+    public OrderShipped Receive(ShipOrder command) {
+        if (status != OrderStatus.Placed) {
             throw new InvalidOperationException("Only placed orders can be shipped");
         }
 
-        Apply(new OrderShipped(Id, DateTimeOffset.UtcNow, trackingNumber));
+        return new OrderShipped(id, DateTimeOffset.UtcNow, command.TrackingNumber);
     }
 
-    // Event handler
-    private void When(OrderShipped @event) {
-        Status = OrderStatus.Shipped;
+    // Event handler - updates internal state
+    public void Absorb(OrderPlaced @event) {
+        id = @event.OrderId;
+        customerId = @event.CustomerId;
+        status = OrderStatus.Placed;
+        items = @event.Items.ToList();
+        total = @event.Total;
+    }
+
+    // Event handler - updates internal state
+    public void Absorb(OrderShipped @event) {
+        status = OrderStatus.Shipped;
     }
 }
 
@@ -359,48 +417,45 @@ public enum OrderStatus {
     Delivered,
     Cancelled
 }
+
+public record ShipOrder(Guid OrderId, string TrackingNumber);
 ```
 
-### Step 4: Update Handler to Use Aggregate
+### Step 4: Add Event Definitions
 
-Update `Handlers/PlaceOrderHandler.cs`:
+Update `Events/OrderEvents.cs` with shipping event:
 
 ```csharp{
-title: "Updated PlaceOrder Handler"
-description: "Handler using event-sourced aggregate"
+title: "Complete Order Domain Events"
+description: "Events representing complete order lifecycle"
 framework: "NET8"
 category: "Event Sourcing"
-difficulty: "INTERMEDIATE"
-tags: ["Handlers", "Aggregates", "Event Sourcing"]
-filename: "Handlers/PlaceOrderHandler.cs"
-usingStatements: ["System", "System.Threading.Tasks", "Whizbang", "MyApp.Commands", "MyApp.Domain"]
+difficulty: "BEGINNER"
+tags: ["Events", "Event Sourcing", "Domain Events"]
+filename: "Events/OrderEvents.cs"
+usingStatements: ["System", "Whizbang"]
 showLineNumbers: true
 }
 using System;
-using System.Threading.Tasks;
 using Whizbang;
-using MyApp.Commands;
-using MyApp.Domain;
 
-namespace MyApp.Handlers;
+namespace MyApp.Events;
 
-public class PlaceOrderHandler {
-    private readonly IRepository<Order> _repository;
+[OwnedBy("Orders")]
+public record OrderPlaced(
+    Guid OrderId,
+    Guid CustomerId,
+    DateTimeOffset PlacedAt,
+    List<OrderItem> Items,
+    decimal Total
+);
 
-    public PlaceOrderHandler(IRepository<Order> repository) {
-        _repository = repository;
-    }
-
-    public async Task<OrderPlacedResult> Handle(PlaceOrder command) {
-        // Create aggregate (generates OrderPlaced event)
-        var order = new Order(command.CustomerId, command.Items);
-
-        // Save aggregate (events appended to event store)
-        await _repository.SaveAsync(order);
-
-        return new OrderPlacedResult(order.Id, order.Total);
-    }
-}
+[OwnedBy("Orders")]
+public record OrderShipped(
+    Guid OrderId,
+    DateTimeOffset ShippedAt,
+    string TrackingNumber
+);
 ```
 
 ### Step 5: Configure Event Sourcing
@@ -409,7 +464,7 @@ Update `Program.cs`:
 
 ```csharp{
 title: "Event Sourcing Configuration"
-description: "Configure Whizbang with event sourcing and Postgres"
+description: "Configure Whizbang dispatcher with event sourcing and ledger"
 framework: "NET8"
 category: "Event Sourcing"
 difficulty: "INTERMEDIATE"
@@ -422,20 +477,23 @@ using Whizbang;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddWhizbang(options => {
-    options.ScanAssembly(typeof(Program).Assembly);
+builder.Services.AddWhizbang(dispatcher => {
+    dispatcher.RegisterReceptorsFromAssembly(typeof(Program).Assembly);
+    dispatcher.RegisterPerspectivesFromAssembly(typeof(Program).Assembly);
 
-    // Enable event sourcing
-    options.UseEventSourcing(es => {
-        es.UsePostgres(builder.Configuration.GetConnectionString("EventStore"));
+    // Enable event sourcing with ledger
+    dispatcher.UseEventSourcing(es => {
+        es.UseLedger(ledger => {
+            ledger.UsePostgres(builder.Configuration.GetConnectionString("EventStore"));
+        });
     });
 });
 
 var app = builder.Build();
 
-app.MapPost("/orders", async (PlaceOrder command, IWhizbang whizbang) => {
-    var result = await whizbang.Send(command);
-    return Results.Ok(result);
+app.MapPost("/orders", async (PlaceOrder command, IDispatcher dispatcher) => {
+    var @event = await dispatcher.Send(command);
+    return Results.Ok(new { OrderId = @event.OrderId, Total = @event.Total });
 });
 
 app.Run();
@@ -451,13 +509,13 @@ Add connection string to `appsettings.json`:
 }
 ```
 
-**Now you have full event sourcing!** Every order is stored as a stream of events, providing a complete audit trail.
+**Now you have full event sourcing!** Receptors maintain state from events stored in the ledger, providing a complete audit trail and the ability to replay state from any point in time.
 
 ---
 
-## Adding Projections (Read Models)
+## Adding Multiple Perspectives (Read Models)
 
-Let's add a projection to efficiently query order history.
+Let's add additional perspectives to maintain different views of order data for efficient queries.
 
 ```mermaid
 graph TB
@@ -491,34 +549,36 @@ graph TB
     class RM layer-read
 ```
 
-> 📦 **Learn more:** See [Whizbang.Projections](./package-structure.md#whizbangprojections) in the Package Structure guide for advanced projection patterns, subscription options, and database integration.
+> 📦 **Learn more:** See [Whizbang.Perspectives](./package-structure.md#whizbangperspectives) in the Package Structure guide for advanced perspective patterns and database integration.
 
-### Step 1: Install Projections Package
+### Step 1: Create Order History Lens
 
-```bash
-dotnet add package Whizbang.Projections
-```
-
-### Step 2: Define Read Model
-
-Create `Projections/OrderHistoryItem.cs`:
+Create `Lenses/IOrderLens.cs`:
 
 ```csharp{
-title: "Order History Read Model"
-description: "Denormalized read model for querying order history"
+title: "Order Lens Interface"
+description: "Read-only lens for querying orders"
 framework: "NET8"
-category: "Projections"
+category: "Lenses"
 difficulty: "BEGINNER"
-tags: ["Projections", "Read Models", "CQRS"]
-filename: "Projections/OrderHistoryItem.cs"
-usingStatements: ["System"]
+tags: ["Lenses", "Queries", "Read-Only"]
+filename: "Lenses/IOrderLens.cs"
+usingStatements: ["System", "System.Linq.Expressions"]
 showLineNumbers: true
 }
 using System;
+using System.Linq.Expressions;
 
-namespace MyApp.Projections;
+namespace MyApp.Lenses;
 
-public class OrderHistoryItem {
+public interface IOrderLens {
+    OrderSummary Focus(Guid orderId);
+    IEnumerable<OrderSummary> ViewByCustomer(Guid customerId);
+    IEnumerable<OrderSummary> View(Expression<Func<OrderSummary, bool>> filter);
+    bool Exists(Guid orderId);
+}
+
+public class OrderSummary {
     public Guid OrderId { get; set; }
     public Guid CustomerId { get; set; }
     public DateTimeOffset PlacedAt { get; set; }
@@ -528,121 +588,187 @@ public class OrderHistoryItem {
 }
 ```
 
-### Step 3: Create Projection Handler
+### Step 2: Create Order History Perspective
 
-Create `Projections/OrderHistoryProjection.cs`:
+Create `Perspectives/OrderHistoryPerspective.cs`:
 
 ```csharp{
-title: "Order History Projection"
-description: "Projection that builds order history from events"
+title: "Order History Perspective"
+description: "Perspective that maintains order history for queries"
 framework: "NET8"
-category: "Projections"
+category: "Perspectives"
 difficulty: "INTERMEDIATE"
-tags: ["Projections", "Event Handlers", "CQRS"]
-filename: "Projections/OrderHistoryProjection.cs"
-usingStatements: ["System", "System.Threading.Tasks", "Whizbang", "MyApp.Events"]
+tags: ["Perspectives", "Read Models", "Multiple Views"]
+filename: "Perspectives/OrderHistoryPerspective.cs"
+usingStatements: ["System", "System.Threading.Tasks", "Whizbang", "MyApp.Events", "MyApp.Lenses"]
 showLineNumbers: true
 }
 using System;
 using System.Threading.Tasks;
 using Whizbang;
 using MyApp.Events;
+using MyApp.Lenses;
 
-namespace MyApp.Projections;
+namespace MyApp.Perspectives;
 
-public class OrderHistoryProjection {
-    private readonly IProjectionStore<OrderHistoryItem> _store;
+public class OrderHistoryPerspective : 
+    IPerspectiveOf<OrderPlaced>,
+    IPerspectiveOf<OrderShipped> {
+    
+    private readonly IOrderHistoryDatabase db;
 
-    public OrderHistoryProjection(IProjectionStore<OrderHistoryItem> store) {
-        _store = store;
+    public OrderHistoryPerspective(IOrderHistoryDatabase db) {
+        _db = db;
     }
 
-    public async Task Handle(OrderPlaced @event) {
-        await _store.UpsertAsync(@event.OrderId, new OrderHistoryItem {
+    public async Task Update(OrderPlaced @event) {
+        await _db.OrderHistory.Add(new OrderSummary {
             OrderId = @event.OrderId,
             CustomerId = @event.CustomerId,
             PlacedAt = @event.PlacedAt,
             Total = @event.Total,
             Status = "Placed"
         });
+        await _db.SaveChanges();
     }
 
-    public async Task Handle(OrderShipped @event) {
-        await _store.UpdateAsync(@event.OrderId, item => {
-            item.ShippedAt = @event.ShippedAt;
-            item.Status = "Shipped";
-        });
+    public async Task Update(OrderShipped @event) {
+        var order = await _db.OrderHistory.Get(@event.OrderId);
+        order.ShippedAt = @event.ShippedAt;
+        order.Status = "Shipped";
+        await _db.SaveChanges();
     }
 }
 ```
 
-### Step 4: Configure Projection
+### Step 3: Implement Order Lens
+
+Create `Lenses/OrderLens.cs`:
+
+```csharp{
+title: "Order Lens Implementation"
+description: "Lens implementation for querying order history"
+framework: "NET8"
+category: "Lenses"
+difficulty: "INTERMEDIATE"
+tags: ["Lenses", "Implementation", "Database"]
+filename: "Lenses/OrderLens.cs"
+usingStatements: ["System", "System.Linq.Expressions", "MyApp.Lenses"]
+showLineNumbers: true
+}
+using System;
+using System.Linq.Expressions;
+using MyApp.Lenses;
+
+namespace MyApp.Lenses;
+
+public class OrderLens : IOrderLens {
+    private readonly IOrderHistoryDatabase db;
+
+    public OrderLens(IOrderHistoryDatabase db) {
+        _db = db;
+    }
+
+    public OrderSummary Focus(Guid orderId) {
+        return _db.OrderHistory.FirstOrDefault(o => o.OrderId == orderId);
+    }
+
+    public IEnumerable<OrderSummary> ViewByCustomer(Guid customerId) {
+        return _db.OrderHistory
+            .Where(o => o.CustomerId == customerId)
+            .OrderByDescending(o => o.PlacedAt);
+    }
+
+    public IEnumerable<OrderSummary> View(Expression<Func<OrderSummary, bool>> filter) {
+        return _db.OrderHistory.Where(filter);
+    }
+
+    public bool Exists(Guid orderId) {
+        return _db.OrderHistory.Any(o => o.OrderId == orderId);
+    }
+}
+```
+
+### Step 4: Configure Multiple Perspectives
 
 Update `Program.cs`:
 
 ```csharp{
-title: "Projection Configuration"
-description: "Configure projections in Whizbang"
+title: "Multiple Perspectives Configuration"
+description: "Configure multiple perspectives in Whizbang dispatcher"
 framework: "NET8"
-category: "Projections"
+category: "Perspectives"
 difficulty: "INTERMEDIATE"
-tags: ["Configuration", "Projections"]
+tags: ["Configuration", "Perspectives", "Multiple Views"]
 filename: "Program.cs"
-usingStatements: ["Whizbang", "Microsoft.Extensions.DependencyInjection", "MyApp.Events"]
+usingStatements: ["Whizbang", "Microsoft.Extensions.DependencyInjection", "MyApp.Lenses"]
 showLineNumbers: true
 }
 using Whizbang;
+using MyApp.Lenses;
 
-builder.Services.AddWhizbang(options => {
-    options.ScanAssembly(typeof(Program).Assembly);
-    options.UseEventSourcing(es => es.UsePostgres(connectionString));
-
-    // Add projections
-    options.UseProjections(proj => {
-        proj.RegisterProjection<OrderHistoryProjection>(p => {
-            p.Subscribe<OrderPlaced>();
-            p.Subscribe<OrderShipped>();
+builder.Services.AddWhizbang(dispatcher => {
+    dispatcher.RegisterReceptorsFromAssembly(typeof(Program).Assembly);
+    dispatcher.RegisterPerspectivesFromAssembly(typeof(Program).Assembly);
+    
+    // Register lenses
+    dispatcher.RegisterLensesFromAssembly(typeof(Program).Assembly);
+    
+    dispatcher.UseEventSourcing(es => {
+        es.UseLedger(ledger => {
+            ledger.UsePostgres(connectionString);
         });
     });
 });
+
+// Register lens implementations
+builder.Services.AddScoped<IOrderLens, OrderLens>();
 ```
 
-### Step 5: Query the Projection
+### Step 5: Query via Lens
 
 Add query endpoint:
 
 ```csharp{
-title: "Query Order History"
-description: "Query endpoint for order history projection"
+title: "Query Order History via Lens"
+description: "Query endpoint using order lens for read operations"
 framework: "NET8"
-category: "Projections"
+category: "Lenses"
 difficulty: "BEGINNER"
-tags: ["Queries", "Projections", "API"]
+tags: ["Queries", "Lenses", "API"]
 filename: "Program.cs"
-usingStatements: ["Whizbang", "Microsoft.AspNetCore.Builder", "System"]
+usingStatements: ["Microsoft.AspNetCore.Builder", "System", "MyApp.Lenses"]
 showLineNumbers: true
 }
-app.MapGet("/customers/{customerId}/orders", async (
+app.MapGet("/customers/{customerId}/orders", (
     Guid customerId,
-    IProjectionStore<OrderHistoryItem> store
+    IOrderLens lens
 ) => {
-    var orders = await store.QueryAsync(o => o.CustomerId == customerId);
+    var orders = lens.ViewByCustomer(customerId);
     return Results.Ok(orders);
+});
+
+app.MapGet("/orders/{orderId}", (
+    Guid orderId,
+    IOrderLens lens
+) => {
+    var order = lens.Focus(orderId);
+    return order != null ? Results.Ok(order) : Results.NotFound();
 });
 ```
 
-**Now you have CQRS!** Commands go to aggregates (write side), queries go to projections (read side).
+**Now you have complete CQRS!** Commands go to receptors (decision-making), events flow to perspectives (write side), and queries use lenses (read side). Multiple perspectives can maintain different views of the same events.
 
 ---
 
 ## Next Steps
 
-You've built a complete CQRS/Event Sourcing application with Whizbang! Here's what to explore next:
+You've built a complete Event-Driven and Event-Sourced application with Whizbang! Here's what to explore next:
 
 - [**Philosophy**](./philosophy.md) - Understand Whizbang's design principles and architectural philosophy
-- [**Core Concepts**](./core-concepts.md) - Deep dive into events, commands, aggregates, and projections
+- [**Core Concepts**](./core-concepts.md) - Deep dive into receptors, perspectives, lenses, and events
 - [**Package Structure**](./package-structure.md) - Learn about all available packages
-- [**Testing**](./testing.md) - Test your event-sourced applications
-- [**Distributed Messaging**](./distributed-messaging.md) - Scale to microservices with message brokers
-- [**Sagas**](./sagas.md) - Coordinate long-running processes across aggregates
-- [**Observability**](./observability.md) - Monitor your event-sourced systems
+- [**Testing**](./testing.md) - Test your event-driven and event-sourced applications
+- [**Distributed Messaging**](./distributed-messaging.md) - Scale to microservices with relays and message brokers
+- [**Sagas**](./sagas.md) - Coordinate long-running processes across receptors
+- [**Observability**](./observability.md) - Monitor your event-driven systems

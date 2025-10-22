@@ -80,33 +80,39 @@ public class OrderHandler : IHandle<CreateOrder> {
 ### Configuration
 
 ```csharp{
-title: "In-Process Mode Configuration"
-description: "Perfect for development and testing - zero infrastructure"
+title: "Event-Driven Development Configuration"
+description: "Perfect for development and testing - in-memory events"
 framework: "NET8"
 category: "Configuration"
 difficulty: "BEGINNER"
-tags: ["In-Process", "Development", "Configuration"]
+tags: ["Event-Driven", "Development", "Configuration"]
 nugetPackages: ["Whizbang.Core"]
-filename: "Program.InProcess.cs"
+filename: "Program.Development.cs"
 showLineNumbers: true
 usingStatements: ["Whizbang", "Microsoft.Extensions.DependencyInjection"]
 }
 // Program.cs - Development mode
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddWhizbang()
-    .UseInProcessMode()  // Everything runs in-memory
-    .RegisterHandlersFromAssembly(typeof(Program).Assembly);
+builder.Services.AddWhizbang(dispatcher => {
+    // Event-driven mode with in-memory processing
+    dispatcher.RegisterReceptorsFromAssembly(typeof(Program).Assembly);
+    dispatcher.RegisterPerspectivesFromAssembly(typeof(Program).Assembly);
+    dispatcher.RegisterLensesFromAssembly(typeof(Program).Assembly);
+    
+    // No persistence in development
+    dispatcher.UseInMemoryPerspectives();
+});
 
-// No database required for development
-builder.Services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
+// In-memory lens implementations
+builder.Services.AddSingleton<IOrderLens, InMemoryOrderLens>();
 
 var app = builder.Build();
 
-app.MapPost("/orders", async (CreateOrder cmd, IWhizbang whizbang) => {
+app.MapPost("/orders", async (CreateOrder cmd, IDispatcher dispatcher) => {
     // Executes immediately, synchronously
-    var result = await whizbang.Send(cmd);
-    return Results.Ok(result);
+    var @event = await dispatcher.Send(cmd);
+    return Results.Ok(new { OrderId = @event.OrderId, Total = @event.Total });
 });
 
 app.Run();
@@ -115,58 +121,58 @@ app.Run();
 ### Characteristics
 
 ```csharp{
-title: "In-Process Mode Behavior"
-description: "How handlers execute in development mode"
+title: "Event-Driven Development Behavior"
+description: "How receptors execute in development mode"
 framework: "NET8"
 category: "Behavior"
 difficulty: "BEGINNER"
-tags: ["In-Process", "Execution", "Development"]
+tags: ["Event-Driven", "Execution", "Development"]
 nugetPackages: ["Whizbang.Core"]
-filename: "InProcessBehavior.cs"
+filename: "EventDrivenBehavior.cs"
 showLineNumbers: true
 usingStatements: ["Whizbang", "System.Diagnostics"]
 }
-public class InProcessExample {
-    public async Task DemonstrateInProcess(IWhizbang whizbang) {
+public class EventDrivenExample {
+    public async Task DemonstrateEventDriven(IDispatcher dispatcher) {
         var stopwatch = Stopwatch.StartNew();
         
         // Immediate, synchronous execution
-        var result = await whizbang.Send(new CreateOrder {
+        var @event = await dispatcher.Send(new CreateOrder {
             CustomerId = Guid.NewGuid(),
             Items = new[] { new OrderItem("SKU-1", 2, 10.00m) }
         });
         
-        // Handler executed in same thread
+        // Receptor executed in same thread
         Console.WriteLine($"Thread: {Thread.CurrentThread.ManagedThreadId}");
         Console.WriteLine($"Duration: {stopwatch.ElapsedMilliseconds}ms");
         // Output: Thread: 1, Duration: 5ms
         
-        // Events published synchronously
-        // All subscribers notified immediately
-        // No persistence, no retries
+        // Events flow to perspectives synchronously
+        // All perspectives updated immediately
+        // No ledger persistence in development
     }
 }
 
 // Testing is simple
 [Fact]
-public async Task InProcessMode_ExecutesImmediately() {
-    var whizbang = new WhizbangBuilder()
-        .UseInProcessMode()
+public async Task EventDrivenMode_ExecutesImmediately() {
+    var dispatcher = new DispatcherBuilder()
+        .UseEventDrivenMode()
         .Build();
     
-    var result = await whizbang.Send(new CreateOrder());
+    var @event = await dispatcher.Send(new CreateOrder());
     
-    Assert.NotNull(result);
-    Assert.IsType<OrderCreated>(result);
+    Assert.NotNull(@event);
+    Assert.IsType<OrderCreated>(@event);
 }
 ```
 
 ### When to Use
 
-- **Local development** - Fast feedback loop
-- **Unit testing** - No infrastructure dependencies
-- **Prototyping** - Rapid iteration
-- **Simple applications** - When you don't need durability
+- **Local development** - Fast feedback loop with event-driven patterns
+- **Unit testing** - No infrastructure dependencies, pure receptor testing
+- **Prototyping** - Rapid iteration with event flows
+- **Simple applications** - When you don't need event persistence
 
 ## Mode 2: Durable (Single Service)
 
@@ -282,10 +288,10 @@ CREATE TABLE whizbang_inbox (
 
 ### When to Use
 
-- **Production monoliths** - Reliability without distribution
-- **High-value operations** - Can't afford to lose messages
-- **Background processing** - Decouple API from processing
-- **Retry requirements** - Handle transient failures
+- **Production systems** - Reliability with perspective persistence
+- **High-value operations** - Can't afford to lose events
+- **Background processing** - Decouple API from perspective updates
+- **Retry requirements** - Handle transient perspective failures
 
 ## Mode 3: Distributed (Microservices)
 
@@ -439,10 +445,10 @@ public class DistributedQuery : IHandle<GetOrderStatus> {
 
 ### When to Use
 
-- **Microservice architecture** - Independent service scaling
-- **Team boundaries** - Different teams own different services  
-- **Technology diversity** - Services in different languages
-- **Geographic distribution** - Services in different regions
+- **Microservice architecture** - Independent service scaling with relays
+- **Team boundaries** - Different teams own different receptors/domains  
+- **Technology diversity** - Services in different languages sharing events
+- **Geographic distribution** - Services in different regions with event streaming
 
 ## Mode 4: Event-Sourced (CQRS/ES)
 
@@ -699,11 +705,11 @@ public class TimeTravelExample {
 
 ### When to Use
 
-- **Audit requirements** - Complete history of all changes
-- **Complex domains** - Rich business logic with many state transitions
-- **Debugging needs** - Replay events to understand issues
-- **Analytics** - Build new projections from historical data
-- **Compliance** - Prove system state at any point in time
+- **Audit requirements** - Complete history of all changes in ledger
+- **Complex domains** - Rich business logic with stateful receptors
+- **Debugging needs** - Replay events to understand receptor state
+- **Analytics** - Build new perspectives from historical events
+- **Compliance** - Prove receptor state at any point in time
 
 ## Migration Strategies
 
@@ -1068,16 +1074,16 @@ public class EnterprisePhase {
 ## Summary
 
 Progressive Enhancement in Whizbang allows you to:
-- **Start simple** with in-process mode
-- **Add durability** when you need reliability
-- **Scale to microservices** when teams grow
-- **Embrace event sourcing** when the domain demands it
+- **Start simple** with event-driven development mode
+- **Add persistence** when you need reliability with perspectives
+- **Scale to distributed** when teams grow with relays
+- **Embrace event sourcing** when the domain demands stateful receptors
 
-All without changing your handler code. This is the power of Whizbang's unified architecture - write once, scale infinitely.
+All without changing your receptor code. This is the power of Whizbang's unified architecture - write once, scale infinitely.
 
 ## Next Steps
 
-- Review **[Simple Mediator Pattern](simple-mediator.md)** to start with basics
-- Explore **[Event Sourcing Basics](event-sourcing-basics.md)** for advanced patterns
-- Learn about **[Distributed Messaging](distributed-messaging.md)** for microservices
-- See **[CQRS Implementation](cqrs-implementation.md)** for read/write separation
+- Review **[Event-Driven Dispatcher Pattern](simple-mediator.md)** to start with basics
+- Explore **[Event Sourcing Basics](event-sourcing-basics.md)** for stateful receptor patterns
+- Learn about **[Receptors](/docs/core-concepts/receptors)** for command handling
+- See **[Perspectives](/docs/core-concepts/perspectives)** for event handling and read models

@@ -2,27 +2,27 @@
 title: Architecture Overview
 category: Architecture & Design
 order: 1
-description: Explore Whizbang's layered architecture that scales from simple in-process mediator to full distributed event-sourced systems with domain ownership and driver-based design.
+description: Explore Whizbang's layered architecture that scales from event-driven development to full distributed event-sourced systems with receptors, perspectives, lenses, and domain ownership.
 tags: architecture, design, system-design
 ---
 
 # Architecture Overview
 
-Whizbang is built on a layered architecture that supports scaling from a simple in-process mediator to a full distributed event-sourced system.
+Whizbang is built on a layered architecture that supports scaling from event-driven development to a full distributed event-sourced system with receptors, perspectives, and lenses.
 
 ## Architectural Layers
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     Application Layer                       │
-│  (Your Domain Code: Aggregates, Projections, Handlers)      │
+│  (Your Domain Code: Receptors, Perspectives, Lenses)        │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                    Whizbang Runtime                          │
+│                    Whizbang Dispatcher                       │
 │  • Message Routing        • Event Sourcing Engine            │
-│  • Command Handling       • Projection Management            │
-│  • Event Publishing       • Saga Coordination                │
+│  • Receptor Execution     • Perspective Management           │
+│  • Event Publishing       • Ledger Coordination              │
 │  • Idempotence            • Observability Pipeline           │
 └─────────────────────────────────────────────────────────────┘
                             ↓
@@ -41,50 +41,50 @@ Whizbang is built on a layered architecture that supports scaling from a simple 
 
 ## Core Components
 
-### 1. Message Router with Return Type Semantics
+### 1. Dispatcher with Return Type Semantics
 
-The **Message Router** is the heart of Whizbang. It interprets handler return types to determine behavior:
+The **Dispatcher** is the heart of Whizbang. It interprets receptor return types to determine behavior:
 
-- Routes **commands** to their owning domain's handlers
-- Publishes **events** to all interested subscribers  
-- Executes **queries** against projections
+- Routes **commands** to their owning domain's receptors
+- Publishes **events** to all interested perspectives  
+- Executes **queries** against lenses
 - Coordinates **sagas** across long-running processes
-- **Return type semantics** - What you return determines what happens:
-  - Single message return → Publish/Send based on type
-  - Tuple return → Multiple cascading messages
+- **Return type semantics** - What receptors return determines what happens:
+  - Single event return → Published to perspectives
+  - Tuple return → Multiple cascading events
   - Void return → Fire-and-forget execution
-  - IAsyncEnumerable → Streaming results
+  - Result<T> return → Success/failure handling
 
-All message routing respects **domain ownership**—commands must be sent to the service that owns that aggregate, while events are broadcast from the owning domain to subscribers.
+All message routing respects **domain ownership**—commands must be sent to the service that owns that receptor, while events are broadcast from the owning domain to perspectives.
 
-### 2. Event Store
+### 2. Ledger
 
-The **Event Store** is the source of truth for all state changes. It:
+The **Ledger** is the source of truth for all state changes in event-sourced mode. It:
 
-- Appends events to immutable streams (one stream per aggregate)
+- Appends events to immutable streams (one stream per receptor)
 - Supports **time-based queries** (get all events before/after a timestamp)
-- Enables **backfilling** new projections from historical events
-- Provides **global ordering** for cross-aggregate event streams
-- Implements **optimistic concurrency** for aggregate updates
+- Enables **backfilling** new perspectives from historical events
+- Provides **global ordering** for cross-receptor event streams
+- Implements **optimistic concurrency** for receptor updates
 
-The Event Store is **driver-based**, supporting:
+The Ledger is **driver-based**, supporting:
 - Postgres (JSONB + sequential IDs)
 - SQL Server (JSON columns + IDENTITY)
 - MySQL (JSON columns + auto-increment)
 - Cosmos DB (native event streams)
 - LiteFS/SQLite (binary codec for edge deployments)
 
-### 3. Projection Engine
+### 3. Perspective Engine
 
-The **Projection Engine** builds read models from event streams. It:
+The **Perspective Engine** builds read models from event streams. It:
 
 - Subscribes to event streams (local or from remote services)
-- Applies events to projection handlers in order
+- Applies events to perspective handlers in order
 - Tracks **checkpoint positions** to resume after restarts
 - Supports **parallel processing** across partitions
-- Handles **schema migrations** for evolving projections
+- Handles **schema migrations** for evolving perspectives
 
-Projections can be:
+Perspectives can be:
 - **Inline** - Updated synchronously within the same transaction as event append
 - **Async** - Updated in background workers for eventual consistency
 - **Cached** - Materialized in-memory for ultra-low latency
@@ -109,11 +109,11 @@ Incoming Message
       ↓
   [Timed] - Performance metrics aspect
       ↓
-  Handler Execution
+  Receptor Execution
       ↓
   [Transactional] - Database transaction aspect
       ↓
-  Event Append / Projection Update
+  Event Append / Perspective Update
       ↓
   [Outbox] - Distributed messaging aspect
       ↓
@@ -130,7 +130,7 @@ Every stage is **pluggable** and **observable**.
 
 ### 5. Saga Coordinator
 
-**Sagas** orchestrate long-running processes across multiple aggregates or services. Whizbang supports two saga styles:
+**Sagas** orchestrate long-running processes across multiple receptors or services. Whizbang supports two saga styles:
 
 **Orchestration** - A central coordinator issues commands and listens for events:
 
@@ -152,14 +152,14 @@ public class OrderFulfillmentSaga : Saga {
 
 **Choreography** - Each service reacts to events and publishes new ones (no central coordinator).
 
-Sagas are persisted as event streams and can be replayed or debugged like any other aggregate.
+Sagas are persisted as event streams and can be replayed or debugged like any other receptor.
 
 ### 6. Outbox/Inbox Pattern
 
 For **distributed messaging**, Whizbang implements the Outbox/Inbox pattern to ensure exactly-once delivery:
 
 **Outbox** (Publishing Service):
-1. Handler executes and appends events to event store
+1. Receptor executes and appends events to ledger
 2. Events also written to **outbox table** in same transaction
 3. Background worker publishes outbox messages to message broker
 4. Messages marked as published after broker confirms
@@ -168,7 +168,7 @@ For **distributed messaging**, Whizbang implements the Outbox/Inbox pattern to e
 1. Message arrives from broker
 2. Stored in **inbox table** with unique message ID
 3. If message ID exists (duplicate), skip processing
-4. Otherwise, process handler and mark message as complete
+4. Otherwise, process receptor and mark message as complete
 5. Periodic cleanup of old inbox entries
 
 This pattern guarantees **at-least-once delivery** from the broker combined with **idempotent handling** for exactly-once semantics.
@@ -179,7 +179,7 @@ Whizbang enforces **explicit domain ownership** to prevent distributed system ch
 
 ### Commands
 
-Commands are **sent TO** the service that owns the aggregate:
+Commands are **sent TO** the service that owns the receptor:
 
 ```csharp
 [OwnedBy("Orders")]  // This command belongs to the Orders service
@@ -187,7 +187,7 @@ public record PlaceOrder(Guid OrderId, Guid CustomerId, List<OrderItem> Items);
 ```
 
 When you send a command:
-- In a **monolith**, it's routed to the local handler
+- In a **monolith**, it's routed to the local receptor
 - In **microservices**, it's routed to the Orders service via the message broker
 
 ### Events
@@ -208,23 +208,23 @@ Other services can subscribe to `OrderPlaced` events:
 When a new service subscribes to events for the first time, it can **backfill from the beginning**:
 
 ```csharp
-services.AddProjection<OrderHistoryProjection>(options => {
+services.AddPerspective<OrderHistoryPerspective>(options => {
     options.Subscribe<OrderPlaced>();
     options.Subscribe<OrderShipped>();
     options.BackfillFrom = DateTimeOffset.MinValue;  // Start from the beginning
 });
 ```
 
-The projection engine will:
-1. Query the Orders service's event store for all historical events
-2. Apply them to the projection in order
+The perspective engine will:
+1. Query the Orders service's ledger for all historical events
+2. Apply them to the perspective in order
 3. Continue processing new events as they arrive
 
-This allows new projections to be built from existing event history.
+This allows new perspectives to be built from existing event history.
 
 ## Scaling Patterns
 
-### Single Process (Mediator Mode)
+### Single Process (Event-Driven Mode)
 
 ```
 ┌─────────────────────────────┐
@@ -242,9 +242,9 @@ This allows new projections to be built from existing event history.
 ```
 
 Perfect for:
-- Monolithic applications
+- Event-driven applications
 - Local development
-- Simple CQRS without microservices
+- Simple event-driven patterns without event sourcing
 
 ### Multi-Service (Distributed)
 
@@ -267,7 +267,7 @@ Perfect for:
 ```
 
 Each service:
-- Has its own event store for **database isolation**
+- Has its own ledger for **database isolation**
 - Publishes events to the shared message broker
 - Subscribes to events from other services
 - Routes commands to owning services
@@ -279,7 +279,7 @@ Each service:
 ┌─────────────────────┐         ┌─────────────────────┐
 │  Primary Services   │         │  Replica Services   │
 │                     │         │                     │
-│  Event Stores       │◄───────►│  Event Stores       │
+│  Ledgers            │◄───────►│  Ledgers            │
 │  (Postgres)         │  Sync   │  (Postgres)         │
 └─────────────────────┘         └─────────────────────┘
          ↓                               ↓
@@ -289,51 +289,57 @@ Each service:
 └─────────────────────┘         └─────────────────────┘
 ```
 
-Event streams are replicated across regions for disaster recovery. Region 2 can take over if Region 1 fails.
+Event streams in ledgers are replicated across regions for disaster recovery. Region 2 can take over if Region 1 fails.
 
 ## Progressive Enhancement Modes
 
-Whizbang provides four deployment modes, all using the **exact same handler code**:
+Whizbang provides four deployment modes, all using the **exact same receptor code**:
 
-### Mode 1: In-Process (Development)
+### Mode 1: Event-Driven Development
 ```csharp
-services.AddWhizbang().UseInProcessMode();
+services.AddWhizbang(dispatcher => {
+    dispatcher.UseEventDrivenMode();
+});
 ```
-- No infrastructure dependencies
-- Immediate execution
+- No persistence dependencies
+- Immediate execution with in-memory perspectives
 - Perfect for development and testing
 
-### Mode 2: Durable (Single Service)
+### Mode 2: Event-Driven Production
 ```csharp
-services.AddWhizbang()
-    .UseDurableMode()
-    .UsePostgreSQL(connectionString);
+services.AddWhizbang(dispatcher => {
+    dispatcher.UseEventDrivenMode();
+    dispatcher.Perspectives.UsePostgreSQL(connectionString);
+});
 ```
-- Persistent message queue
-- Automatic retry on failure
-- Outbox pattern for reliability
+- Persistent perspectives
+- Automatic retry on perspective failures
+- Durable event processing
 
-### Mode 3: Distributed (Microservices)
+### Mode 3: Event-Driven Distributed
 ```csharp
-services.AddWhizbang()
-    .UseDistributedMode()
-    .UseKafka(kafkaConfig)
-    .UsePostgreSQL(connectionString);
+services.AddWhizbang(dispatcher => {
+    dispatcher.UseEventDrivenMode();
+    dispatcher.UseRelays(relays => relays.UseKafka(kafkaConfig));
+    dispatcher.Perspectives.UsePostgreSQL(connectionString);
+});
 ```
-- Cross-service messaging
+- Cross-service messaging with relays
 - Service discovery
 - Distributed tracing
 
-### Mode 4: Event-Sourced (Full CQRS/ES)
+### Mode 4: Event-Sourced with Ledger
 ```csharp
-services.AddWhizbang()
-    .UseEventSourcedMode()
-    .UseEventStore(eventStoreConfig)
-    .UseProjections(projectionConfig);
+services.AddWhizbang(dispatcher => {
+    dispatcher.UseEventSourcing(es => {
+        es.UseLedger(ledgerConfig);
+    });
+    dispatcher.Perspectives.UsePostgreSQL(connectionString);
+});
 ```
-- Complete event sourcing
+- Complete event sourcing with stateful receptors
 - Time travel debugging
-- Projection rebuilding
+- Perspective rebuilding from ledger
 
 ## Message Execution Patterns
 
@@ -341,11 +347,11 @@ Within any mode, Whizbang supports three execution patterns:
 
 ### Inline Mode
 
-Handler executes **synchronously** within the caller's transaction:
+Receptor executes **synchronously** within the caller's transaction:
 
 ```csharp
-var result = await whizbang.Send(new PlaceOrder(...));
-// Handler executed, events appended, projections updated—all before returning
+var @event = await dispatcher.Send(new PlaceOrder(...));
+// Receptor executed, events appended, perspectives updated—all before returning
 ```
 
 Best for:
@@ -353,14 +359,14 @@ Best for:
 - Simple CRUD operations
 - Local development
 
-### Durable Mode
+### Async Mode
 
-Handler executes **asynchronously** in a background worker:
+Receptor executes **asynchronously** in a background worker:
 
 ```csharp
-await whizbang.Publish(new PlaceOrder(...));
+await dispatcher.Publish(new PlaceOrder(...));
 // Command written to queue, returns immediately
-// Handler executes in background worker
+// Receptor executes in background worker
 ```
 
 Best for:
@@ -373,7 +379,7 @@ Best for:
 Multiple messages **batched together** for efficiency:
 
 ```csharp
-await whizbang.PublishBatch(new[] {
+await dispatcher.PublishBatch(new[] {
     new PlaceOrder(...),
     new PlaceOrder(...),
     new PlaceOrder(...)
@@ -386,12 +392,12 @@ Best for:
 - Scheduled jobs
 - Data migration
 
-**The same handler code works in all three modes.** Toggle via configuration, not code changes.
+**The same receptor code works in all three modes.** Toggle via configuration, not code changes.
 
 ## Next Steps
 
 Now that you understand the overall architecture, dive into:
 
-- [**Core Concepts**](./core-concepts.md) - Deep dive into Events, Commands, Aggregates, Projections
+- [**Core Concepts**](/docs/core-concepts/receptors) - Deep dive into Receptors, Perspectives, and Lenses
 - [**Package Structure**](./package-structure.md) - Which NuGet packages to install
 - [**Getting Started**](./getting-started.md) - Build your first Whizbang application
