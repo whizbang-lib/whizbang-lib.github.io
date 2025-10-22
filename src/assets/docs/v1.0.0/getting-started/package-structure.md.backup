@@ -1,0 +1,2131 @@
+---
+title: Package Structure
+category: Getting Started
+order: 2
+tags: nuget, packages, installation, dependencies
+---
+
+# Package Structure
+
+Whizbang is distributed as a suite of NuGet packages, allowing you to install only what you need. This keeps your application lean and supports AOT compilation.
+
+## Core Packages
+
+### Whizbang.Core
+
+**The minimal foundation for all Whizbang applications.**
+
+```bash
+dotnet add package Whizbang.Core
+```
+
+**Includes:**
+- Message routing (commands, events, queries)
+- In-memory mediator
+- Handler discovery and execution
+- Basic pipeline (validation, authorization hooks)
+- No persistence, no external messaging
+
+**Use when:**
+- Building a simple CQRS application
+- You don't need event sourcing or projections
+- In-process messaging is sufficient
+- Learning Whizbang
+
+**Example:**
+
+```csharp{
+title: "Simple Mediator Setup - Complete Program.cs"
+description: "Complete example showing Whizbang.Core as an in-process mediator with handler discovery"
+framework: "NET8"
+category: "Getting Started"
+difficulty: "BEGINNER"
+tags: ["Mediator", "CQRS", "Setup", "Program.cs"]
+nugetPackages: ["Whizbang.Core"]
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.Hosting", "Whizbang"]
+showLineNumbers: true
+collapsedLines: [1-3, 25-35]
+}
+// Stage 1: Imports
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Whizbang;
+
+// Stage 2: Host builder setup
+var builder = Host.CreateApplicationBuilder(args);
+
+// Stage 3: Register Whizbang mediator (in-memory only)
+builder.Services.AddWhizbang(options => {
+    // OPTION A: Source generator approach (recommended)
+    // Handlers decorated with [WhizbangHandler] are auto-discovered at compile time
+    options.RegisterGeneratedHandlers();
+
+    // OPTION B: Explicit registration
+    // Manually register each handler for fine-grained control
+    // options.RegisterHandler<PlaceOrder, PlaceOrderHandler>();
+    // options.RegisterHandler<CancelOrder, CancelOrderHandler>();
+});
+
+// Stage 4: Build and run
+var app = builder.Build();
+await app.RunAsync();
+
+// Stage 5: Example handler decorated with [WhizbangHandler]
+[WhizbangHandler]  // Source generator picks this up
+public class PlaceOrderHandler : ICommandHandler<PlaceOrder, OrderResult> {
+    public async Task<OrderResult> Handle(PlaceOrder command, CancellationToken ct) {
+        // Business logic here
+        return new OrderResult(command.OrderId);
+    }
+}
+```
+
+**Handler Discovery Approaches:**
+
+Whizbang is **100% AOT-compatible** and supports **two ways** to register handlers:
+
+1. **Source Generator (Recommended)**: Decorate handlers with `[WhizbangHandler]` attribute. At compile time, a source generator discovers all marked handlers and generates registration code. Call `options.RegisterGeneratedHandlers()` to use them.
+
+   ```csharp
+   // Handler definition
+   [WhizbangHandler]
+   public class PlaceOrderHandler : ICommandHandler<PlaceOrder, OrderResult> { ... }
+
+   // Registration
+   options.RegisterGeneratedHandlers();
+   ```
+
+   **Benefits:**
+   - Zero runtime reflection
+   - AOT-safe
+   - Automatic discovery at compile time
+   - No manual registration needed
+
+2. **Explicit Registration**: Manually register each handler. Gives you full control and is AOT-safe.
+
+   ```csharp
+   options.RegisterHandler<PlaceOrder, PlaceOrderHandler>();
+   options.RegisterHandler<CancelOrder, CancelOrderHandler>();
+   ```
+
+   **Benefits:**
+   - Fine-grained control over registration
+   - No attributes in domain code
+   - Explicit and obvious
+   - AOT-safe
+
+**Note**: The `[WhizbangHandler]` attribute can be placed on:
+- The handler class itself
+- A base class the handler inherits from
+- An interface the handler implements
+
+The source generator will discover handlers through any of these paths.
+
+**Attribute Naming**: All Whizbang attributes use the `Whizbang` prefix for consistency and to avoid naming collisions (`[WhizbangHandler]`, `[WhizbangProjection]`, `[WhizbangSubscribe]`).
+
+---
+
+### Whizbang.EventSourcing
+
+**Event sourcing and aggregate support.**
+
+```bash
+dotnet add package Whizbang.EventSourcing
+```
+
+**Includes:**
+- Event store abstraction
+- Aggregate base classes
+- Event stream management
+- Optimistic concurrency
+- Event versioning
+- Requires a persistence driver (see below)
+
+**Use when:**
+- You need event sourcing
+- Building event-sourced aggregates
+- You want complete audit trails
+
+**Example:**
+
+```csharp{
+title: "Event Sourcing Setup - Complete Program.cs"
+description: "Complete example adding event sourcing to your application"
+framework: "NET8"
+category: "Event Sourcing"
+difficulty: "INTERMEDIATE"
+tags: ["Event Sourcing", "Aggregates", "Setup", "Program.cs"]
+nugetPackages: ["Whizbang.Core", "Whizbang.EventSourcing"]
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.Hosting", "Whizbang"]
+showLineNumbers: true
+collapsedLines: [1-3, 7-8]
+}
+// Stage 1: Imports
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Whizbang;
+
+// Stage 2: Host builder setup
+var builder = Host.CreateApplicationBuilder(args);
+
+// Stage 3: Register Whizbang with event sourcing
+builder.Services.AddWhizbang(options => {
+    // Register handlers (using source generator)
+    options.RegisterGeneratedHandlers();
+
+    // Stage 4: Enable event sourcing
+    options.UseEventSourcing(es => {
+        // For production, use an ORM integration (see ORM Integrations section)
+        // es.UseEntityFramework(ef => ef.UseNpgsql(connectionString));
+        // es.UseDapper(d => d.UseNpgsql(connectionString));
+
+        // For development/testing, use in-memory store
+        es.UseInMemoryStore();
+    });
+});
+
+// Stage 5: Build and run
+var app = builder.Build();
+await app.RunAsync();
+```
+
+---
+
+### Whizbang.Projections
+
+**Read-side projections and CQRS queries.**
+
+```bash
+dotnet add package Whizbang.Projections
+```
+
+**Includes:**
+- Projection engine
+- Event subscription management
+- Checkpoint tracking
+- Backfilling from event history
+- Parallel processing across partitions
+
+**Use when:**
+- Building read models from events
+- Implementing CQRS
+- You need denormalized views for queries
+
+**Example:**
+
+```csharp{
+title: "Projections Setup - Complete Program.cs"
+description: "Complete example adding projection support with attribute-based registration"
+framework: "NET8"
+category: "Projections"
+difficulty: "INTERMEDIATE"
+tags: ["Projections", "CQRS", "Read Models", "Program.cs"]
+nugetPackages: ["Whizbang.Core", "Whizbang.EventSourcing", "Whizbang.Projections"]
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.Hosting", "Whizbang", "System.Threading.Tasks", "System.Threading"]
+showLineNumbers: true
+collapsedLines: [1-3, 7-8, 28-30]
+}
+// Stage 1: Imports
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Whizbang;
+
+// Stage 2: Host builder setup
+var builder = Host.CreateApplicationBuilder(args);
+
+// Stage 3: Register Whizbang with projections
+builder.Services.AddWhizbang(options => {
+    options.RegisterGeneratedHandlers();
+    options.UseEventSourcing(es => es.UseInMemoryStore());
+
+    // Stage 4: Enable projections
+    options.UseProjections(proj => {
+        // OPTION A: Attribute-based registration (recommended)
+        // Projections decorated with [Projection] are auto-discovered
+        proj.RegisterGeneratedProjections();
+
+        // OPTION B: Manual registration
+        // proj.RegisterProjection<OrderHistoryProjection>();
+        // proj.RegisterProjection<CustomerSummaryProjection>();
+    });
+});
+
+// Stage 5: Build and run
+var app = builder.Build();
+await app.RunAsync();
+
+// Stage 6: Example projection with attribute-based event subscriptions
+[WhizbangProjection]  // Source generator picks this up
+public class OrderHistoryProjection {
+    private readonly List<OrderSummary> _orders = new();
+
+    // Subscribe to events using [WhizbangSubscribe] attribute on method parameter
+    public Task Handle([WhizbangSubscribe] OrderPlaced @event, CancellationToken ct) {
+        _orders.Add(new OrderSummary(
+            @event.OrderId,
+            @event.CustomerId,
+            @event.Total,
+            "Placed"
+        ));
+        return Task.CompletedTask;
+    }
+
+    public Task Handle([WhizbangSubscribe] OrderShipped @event, CancellationToken ct) {
+        var order = _orders.First(o => o.OrderId == @event.OrderId);
+        order.Status = "Shipped";
+        return Task.CompletedTask;
+    }
+
+    // Query method (not a subscription)
+    public IEnumerable<OrderSummary> GetOrders() => _orders;
+}
+
+public record OrderSummary(Guid OrderId, Guid CustomerId, decimal Total, string Status) {
+    public string Status { get; set; } = Status;
+}
+```
+
+**Projection Registration Approaches:**
+
+Whizbang supports **two ways** to register projections:
+
+1. **Attribute-Based (Recommended for AOT)**: Decorate projection classes with `[WhizbangProjection]` and mark event handler parameters with `[WhizbangSubscribe]`.
+
+   ```csharp
+   [WhizbangProjection]  // Can be on class, base class, or interface
+   public class OrderHistoryProjection {
+       public Task Handle([WhizbangSubscribe] OrderPlaced @event, CancellationToken ct) {
+           // Handle event
+       }
+   }
+
+   // Registration
+   proj.RegisterGeneratedProjections();
+   ```
+
+2. **Manual Registration**: Explicitly register each projection.
+
+   ```csharp
+   proj.RegisterProjection<OrderHistoryProjection>();
+   proj.RegisterProjection<CustomerSummaryProjection>();
+   ```
+
+**Event Subscription with `[WhizbangSubscribe]` Attribute:**
+
+- Place `[WhizbangSubscribe]` directly on the method parameter representing the event
+- Only **one parameter per method** can have `[WhizbangSubscribe]`
+- Additional parameters (like `CancellationToken`, injected services, `EventContext`, `ProjectionContext`) are allowed
+- **Method names are flexible**: Use `Handle`, `On`, `When`, or any descriptive name you prefer
+- **Auto-registration**: The source generator automatically wires subscriptions to service configuration
+- The source generator validates subscription rules at compile time
+- **Supports polymorphism**: Subscribe to base classes or interfaces to handle multiple event types
+
+**For complete details, see:**
+
+- [Projection Subscriptions](./Projections/projection-subscriptions.md) - Event subscription patterns (polymorphism, generics, flexible method naming)
+- [Projection Contexts](./Projections/projection-contexts.md) - EventContext and ProjectionContext injection
+- [Projection Purity](./Projections/projection-purity.md) - Maintaining pure, deterministic projections
+- [Projection Return Values](./Projections/projection-return-values.md) - Using return values for observability
+
+See [Projection Subscriptions](./Projections/projection-subscriptions.md) for complete examples of:
+- Flexible method naming patterns
+- Context injection (EventContext, ProjectionContext)
+- Polymorphic subscriptions (base classes, interfaces, generics)
+- Subscription rules and validation
+
+**Note**: The `[WhizbangProjection]` attribute can be placed on:
+- The projection class itself
+- A base class the projection inherits from
+- An interface the projection implements
+
+The source generator will discover projections through any of these paths.
+
+---
+
+### Whizbang.Messaging
+
+**Distributed messaging and outbox/inbox patterns.**
+
+```bash
+dotnet add package Whizbang.Messaging
+description: "Accessing system metadata, security context, and tracing information"
+framework: "NET8"
+category: "Projections"
+difficulty: "INTERMEDIATE"
+tags: ["Projections", "EventContext", "Security", "Multi-Tenancy"]
+nugetPackages: ["Whizbang.Core", "Whizbang.Projections"]
+usingStatements: ["System", "System.Threading", "System.Threading.Tasks"]
+showLineNumbers: true
+}
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+// EventContext structure (pure data, no side effects)
+public class EventContext {
+    // System metadata
+    public SystemData System { get; init; }
+
+    // Security and multi-tenancy context
+    public SecurityContext Security { get; init; }
+
+    // Event-specific metadata
+    public EventMetadata Event { get; init; }
+
+    // Distributed tracing information
+    public TracingContext Tracing { get; init; }
+}
+
+public class SystemData {
+    // System-generated metadata
+    public DateTime Timestamp { get; init; }
+    public string MachineName { get; init; }
+    public string Environment { get; init; }
+    public long EventSequenceNumber { get; init; }
+
+    // Custom system metadata (extensible)
+    public IReadOnlyDictionary<string, object> CustomMetadata { get; init; }
+}
+
+public class SecurityContext {
+    // User information
+    public Guid? UserId { get; init; }
+    public string UserName { get; init; }
+    public IReadOnlyList<string> Roles { get; init; }
+
+    // Multi-tenancy
+    public Guid? TenantId { get; init; }
+    public string TenantName { get; init; }
+
+    // Permissions (evaluated at command/event creation time)
+    public IReadOnlyList<string> Permissions { get; init; }
+
+    // Service trust boundary
+    public bool IsTrustedService { get; init; }
+    public string ServiceName { get; init; }
+}
+
+public class EventMetadata {
+    // Event identification
+    public Guid EventId { get; init; }
+    public string EventType { get; init; }
+    public int EventVersion { get; init; }
+
+    // Causation (what caused this event)
+    public Guid? CausationId { get; init; }  // Command that caused this event
+    public string CausationType { get; init; }
+
+    // Custom event metadata
+    public IReadOnlyDictionary<string, object> CustomMetadata { get; init; }
+}
+
+public class TracingContext {
+    // Distributed tracing
+    public string CorrelationId { get; init; }  // End-to-end request tracking
+    public string TraceId { get; init; }        // OpenTelemetry trace ID
+    public string SpanId { get; init; }         // OpenTelemetry span ID
+
+    // Message journey
+    public int HopCount { get; init; }          // Number of services traversed
+    public DateTime InitiatedAt { get; init; }  // When the original request started
+}
+
+// Example projection using EventContext
+[WhizbangProjection]
+public class TenantOrderHistoryProjection {
+    private readonly Dictionary<Guid, List<TenantOrderRecord>> _ordersByTenant = new();
+
+    public Task Handle(
+        [WhizbangSubscribe] OrderPlaced @event,
+        EventContext context,
+        CancellationToken ct) {
+        // Use security context for tenant isolation
+        if (!context.Security.TenantId.HasValue) {
+            throw new InvalidOperationException("TenantId is required for order events");
+        }
+
+        var tenantId = context.Security.TenantId.Value;
+
+        // Create tenant-scoped record with rich context
+        var record = new TenantOrderRecord {
+            OrderId = @event.OrderId,
+            TenantId = tenantId,
+            TenantName = context.Security.TenantName,
+            CustomerId = @event.CustomerId,
+            Total = @event.Total,
+
+            // System metadata
+            PlacedAt = context.System.Timestamp,
+            PlacedBy = context.Security.UserName,
+            PlacedByUserId = context.Security.UserId,
+
+            // Tracing
+            CorrelationId = context.Tracing.CorrelationId,
+            OriginatedAt = context.Tracing.InitiatedAt,
+
+            // Event metadata
+            EventId = context.Event.EventId,
+            CausationId = context.Event.CausationId  // The PlaceOrder command ID
+        };
+
+        if (!_ordersByTenant.ContainsKey(tenantId)) {
+            _ordersByTenant[tenantId] = new List<TenantOrderRecord>();
+        }
+
+        _ordersByTenant[tenantId].Add(record);
+
+        return Task.CompletedTask;
+    }
+
+    // Query methods (tenant-scoped)
+    public IEnumerable<TenantOrderRecord> GetOrdersForTenant(Guid tenantId) {
+        return _ordersByTenant.TryGetValue(tenantId, out var orders)
+            ? orders
+            : Enumerable.Empty<TenantOrderRecord>();
+    }
+}
+
+public record TenantOrderRecord {
+    public Guid OrderId { get; init; }
+    public Guid TenantId { get; init; }
+    public string TenantName { get; init; }
+    public Guid CustomerId { get; init; }
+    public decimal Total { get; init; }
+
+    // System metadata
+    public DateTime PlacedAt { get; init; }
+    public string PlacedBy { get; init; }
+    public Guid? PlacedByUserId { get; init; }
+
+    // Tracing
+    public string CorrelationId { get; init; }
+    public DateTime OriginatedAt { get; init; }
+
+    // Event lineage
+    public Guid EventId { get; init; }
+    public Guid? CausationId { get; init; }
+}
+```
+
+**EventContext Benefits:**
+
+1. **Multi-Tenancy**: Access tenant context for data isolation
+2. **Security**: User, roles, permissions available for authorization
+3. **Auditing**: Track who did what and when
+4. **Tracing**: End-to-end request tracking with correlation IDs
+5. **Causation**: Link events back to originating commands
+6. **Pure Data**: All context is immutable, enabling pure function projections
+7. **Extensible**: Custom metadata dictionaries for app-specific data
+
+**Purity Guarantees:**
+
+EventContext is designed to maintain projection purity:
+
+- **Immutable**: All properties are `init`-only
+- **No side effects**: Contains only data, no methods with side effects
+- **No I/O**: No database, file system, or network access
+- **Deterministic**: Same event + context always produces same projection state
+- **Roslyn Analyzers**: Whizbang.Analyzers enforces purity rules at compile time
+
+---
+
+**ProjectionContext Injection:**
+
+While EventContext is pure data, **ProjectionContext** provides database operations and projection metadata. It can be injected at the method level or constructor level.
+
+```csharp{
+title: "ProjectionContext for Database Operations"
+description: "Using ProjectionContext for CRUD operations in projections"
+framework: "NET8"
+category: "Projections"
+difficulty: "INTERMEDIATE"
+tags: ["Projections", "ProjectionContext", "CRUD", "Database"]
+nugetPackages: ["Whizbang.Core", "Whizbang.Projections"]
+usingStatements: ["System", "System.Threading", "System.Threading.Tasks"]
+showLineNumbers: true
+}
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+// ProjectionContext structure
+public class ProjectionContext {
+    // Projection metadata
+    public ProjectionMetadata Projection { get; init; }
+
+    // Service information
+    public ServiceMetadata Service { get; init; }
+
+    // Database operations (Create, Update, Patch, Delete)
+    public IProjectionStore Store { get; init; }
+}
+
+public class ProjectionMetadata {
+    public string ProjectionName { get; init; }
+    public string ProjectionVersion { get; init; }
+    public Type ProjectionType { get; init; }
+    public DateTime StartedAt { get; init; }
+
+    // Custom projection metadata
+    public IReadOnlyDictionary<string, object> CustomMetadata { get; init; }
+}
+
+public class ServiceMetadata {
+    public string ServiceName { get; init; }
+    public string ServiceVersion { get; init; }
+    public string Environment { get; init; }
+    public string MachineName { get; init; }
+}
+
+public interface IProjectionStore {
+    // Create
+    Task CreateAsync<TProjection>(TProjection projection, CancellationToken ct = default)
+        where TProjection : class;
+
+    // Read (for checking existence or retrieving current state)
+    Task<TProjection?> GetAsync<TProjection>(object key, CancellationToken ct = default)
+        where TProjection : class;
+
+    // Update (replace entire document)
+    Task UpdateAsync<TProjection>(object key, TProjection projection, CancellationToken ct = default)
+        where TProjection : class;
+
+    // Patch (partial update)
+    Task PatchAsync<TProjection>(object key, Action<TProjection> patchAction, CancellationToken ct = default)
+        where TProjection : class;
+
+    // Delete
+    Task DeleteAsync<TProjection>(object key, CancellationToken ct = default)
+        where TProjection : class;
+
+    // Batch operations
+    Task CreateManyAsync<TProjection>(IEnumerable<TProjection> projections, CancellationToken ct = default)
+        where TProjection : class;
+}
+
+// Return values for projection methods
+public enum ProjectionReturnType {
+    Accepted,  // Event was processed successfully (default)
+    Ignored    // Event was intentionally ignored/skipped
+}
+
+public static class ProjectionContextExtensions {
+    // Return a projection outcome (metadata only, no side effects)
+    public static Task Return(this ProjectionContext context, ProjectionReturnType returnType) {
+        context.RecordOutcome(returnType);
+        return Task.CompletedTask;
+    }
+}
+
+// Example 1: Method-level injection
+[WhizbangProjection]
+public class OrderSummaryProjection {
+    // Method names can be ANYTHING - not just "Handle"
+    public async Task OnOrderPlaced(
+        [WhizbangSubscribe] OrderPlaced @event,
+        ProjectionContext projection,
+        EventContext eventContext,
+        CancellationToken ct) {
+        var summary = new OrderSummary {
+            OrderId = @event.OrderId,
+            CustomerId = @event.CustomerId,
+            Total = @event.Total,
+            Status = "Placed",
+            PlacedAt = eventContext.System.Timestamp,
+            TenantId = eventContext.Security.TenantId
+        };
+
+        // Create the projection in the database
+        await projection.Store.CreateAsync(summary, ct);
+    }
+
+    public async Task OnOrderShipped(
+        [WhizbangSubscribe] OrderShipped @event,
+        ProjectionContext projection,
+        EventContext eventContext,
+        CancellationToken ct) {
+        // Patch the existing projection (partial update)
+        await projection.Store.PatchAsync<OrderSummary>(
+            @event.OrderId,
+            order => {
+                order.Status = "Shipped";
+                order.ShippedAt = eventContext.System.Timestamp;  // ✅ Use event timestamp, not DateTime.UtcNow
+                order.TrackingNumber = @event.TrackingNumber;
+            },
+            ct);
+    }
+
+    public async Task OnOrderCancelled(
+        [WhizbangSubscribe] OrderCancelled @event,
+        ProjectionContext projection,
+        CancellationToken ct) {
+        // Delete the projection
+        await projection.Store.DeleteAsync<OrderSummary>(@event.OrderId, ct);
+
+        // Return Accepted (default - optional, but explicit is better)
+        return projection.Return(ProjectionReturnType.Accepted);
+    }
+
+    public Task OnOrderRefunded(
+        [WhizbangSubscribe] OrderRefunded @event,
+        ProjectionContext projection,
+        EventContext eventContext,
+        CancellationToken ct) {
+        // Only process refunds for recent orders
+        var orderAge = DateTime.UtcNow - eventContext.System.Timestamp;
+        if (orderAge > TimeSpan.FromDays(90)) {
+            // Event is too old, ignore it
+            return projection.Return(ProjectionReturnType.Ignored);
+        }
+
+        // Process the refund
+        // ... (update logic here)
+
+        // If no explicit return, Accepted is assumed
+        return Task.CompletedTask;  // Implicitly Accepted
+    }
+}
+
+// Example 2: Constructor-level injection
+[WhizbangProjection]
+public class CustomerOrderHistoryProjection {
+    private readonly ProjectionContext _projection;
+
+    // Constructor injection of ProjectionContext
+    public CustomerOrderHistoryProjection(ProjectionContext projection) {
+        _projection = projection;
+    }
+
+    public async Task WhenOrderPlaced(
+        [WhizbangSubscribe] OrderPlaced @event,
+        EventContext eventContext,
+        CancellationToken ct) {
+        // Get existing customer history or create new
+        var history = await _projection.Store.GetAsync<CustomerHistory>(@event.CustomerId, ct)
+            ?? new CustomerHistory { CustomerId = @event.CustomerId, Orders = new List<OrderRecord>() };
+
+        // Add order to history
+        history.Orders.Add(new OrderRecord {
+            OrderId = @event.OrderId,
+            Total = @event.Total,
+            PlacedAt = eventContext.System.Timestamp
+        });
+
+        // Update the projection
+        await _projection.Store.UpdateAsync(@event.CustomerId, history, ct);
+    }
+
+    public async Task WhenOrderCancelled(
+        [WhizbangSubscribe] OrderCancelled @event,
+        CancellationToken ct) {
+        // Patch to remove the cancelled order from history
+        await _projection.Store.PatchAsync<CustomerHistory>(
+            @event.OrderId,
+            history => history.Orders.RemoveAll(o => o.OrderId == @event.OrderId),
+            ct);
+    }
+}
+
+// Projection models
+public class OrderSummary {
+    public Guid OrderId { get; set; }
+    public Guid CustomerId { get; set; }
+    public decimal Total { get; set; }
+    public string Status { get; set; }
+    public DateTime PlacedAt { get; set; }
+    public DateTime? ShippedAt { get; set; }
+    public string? TrackingNumber { get; set; }
+    public Guid? TenantId { get; set; }
+}
+
+public class CustomerHistory {
+    public Guid CustomerId { get; set; }
+    public List<OrderRecord> Orders { get; set; }
+}
+
+public class OrderRecord {
+    public Guid OrderId { get; set; }
+    public decimal Total { get; set; }
+    public DateTime PlacedAt { get; set; }
+}
+```
+
+**ProjectionContext Benefits:**
+
+1. **Database Operations**: Built-in CRUD operations (Create, Update, Patch, Delete)
+2. **Projection Metadata**: Access projection name, version, and custom metadata
+3. **Service Context**: Know which service and environment the projection is running in
+4. **Flexible Injection**: Inject at method or constructor level based on your needs
+5. **Batch Operations**: Efficient bulk creates for high-throughput scenarios
+6. **Return Values**: Signal processing outcomes with `Return()` method
+
+---
+
+**Projection Return Values:**
+
+Projection methods can return metadata about the processing outcome using `ProjectionContext.Return()`. This is **metadata only** with **no side effects** - it's for observability and metrics.
+
+```csharp{
+title: "Projection Return Values"
+description: "Using return values to signal projection processing outcomes"
+framework: "NET8"
+category: "Projections"
+difficulty: "BEGINNER"
+tags: ["Projections", "Return Values", "Observability"]
+nugetPackages: ["Whizbang.Core", "Whizbang.Projections"]
+usingStatements: ["System", "System.Threading", "System.Threading.Tasks"]
+showLineNumbers: true
+}
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+[WhizbangProjection]
+public class OrderProjection {
+    // Example 1: Explicit Accepted return (default behavior)
+    public async Task OnOrderPlaced(
+        [WhizbangSubscribe] OrderPlaced @event,
+        ProjectionContext projection,
+        CancellationToken ct) {
+        await projection.Store.CreateAsync(new OrderSummary { ... }, ct);
+
+        // Explicitly signal success (optional - this is the default)
+        return projection.Return(ProjectionReturnType.Accepted);
+    }
+
+    // Example 2: Implicit Accepted (no return statement)
+    public async Task OnOrderShipped(
+        [WhizbangSubscribe] OrderShipped @event,
+        ProjectionContext projection,
+        CancellationToken ct) {
+        await projection.Store.PatchAsync<OrderSummary>(
+            @event.OrderId,
+            order => order.Status = "Shipped",
+            ct);
+
+        // No explicit return = Accepted (default)
+    }
+
+    // Example 3: Ignored return (event intentionally skipped)
+    public Task OnOrderEvent(
+        [WhizbangSubscribe] OrderEvent @event,
+        ProjectionContext projection,
+        EventContext eventContext,
+        CancellationToken ct) {
+        // Only process events for current tenant
+        if (eventContext.Security.TenantId != projection.Service.CurrentTenantId) {
+            // Different tenant - ignore this event
+            return projection.Return(ProjectionReturnType.Ignored);
+        }
+
+        // Process the event
+        // ...
+
+        return projection.Return(ProjectionReturnType.Accepted);
+    }
+
+    // Example 4: Conditional ignore based on event data
+    public async Task OnOrderUpdated(
+        [WhizbangSubscribe] OrderUpdated @event,
+        ProjectionContext projection,
+        CancellationToken ct) {
+        // Get current projection state
+        var current = await projection.Store.GetAsync<OrderSummary>(@event.OrderId, ct);
+
+        // Ignore if projection doesn't exist (might be deleted)
+        if (current == null) {
+            return projection.Return(ProjectionReturnType.Ignored);
+        }
+
+        // Ignore if event is older than current state (out-of-order delivery)
+        if (@event.Version <= current.Version) {
+            return projection.Return(ProjectionReturnType.Ignored);
+        }
+
+        // Update the projection
+        await projection.Store.UpdateAsync(@event.OrderId, new OrderSummary { ... }, ct);
+
+        return projection.Return(ProjectionReturnType.Accepted);
+    }
+
+    // Example 5: Business rule filtering (via event data, not projection logic)
+    public Task OnOrderPlaced(
+        [WhizbangSubscribe] OrderPlaced @event,
+        ProjectionContext projection,
+        CancellationToken ct) {
+        // ✅ CORRECT: Business logic should be in the event itself
+        // The OrderPlaced event should include an IsExpired flag or ExpiresAt timestamp
+        // Set by business logic at command handling time
+
+        if (@event.IsExpired) {
+            // Event already marked as expired by business logic
+            return projection.Return(ProjectionReturnType.Ignored);
+        }
+
+        // Process non-expired event
+        // ...
+
+        return Task.CompletedTask;  // Implicitly Accepted
+    }
+}
+```
+
+**Return Value Semantics:**
+
+| Return Type | Meaning | Use When | Metrics Impact |
+|------------|---------|----------|----------------|
+| **Accepted** | Event was processed successfully | Default behavior, projection state updated | Increments `events_processed` counter |
+| **Ignored** | Event was intentionally skipped | Filtering, tenant isolation, deduplication | Increments `events_ignored` counter |
+
+**Important Notes:**
+
+1. **No Side Effects**: Return values are **metadata only** - they don't affect event flow or projection state
+2. **Default is Accepted**: If you don't explicitly return, `Accepted` is assumed
+3. **Observability**: Return values are recorded for metrics, logging, and dashboard visualization
+4. **No Error Return**: Errors should throw exceptions, not return a status code
+5. **Pure Metadata**: Return values don't trigger any framework behavior - they're for observability
+
+**Common Use Cases for Ignored:**
+
+1. **Tenant Isolation**: Skip events for different tenants
+2. **Version Checking**: Skip out-of-order or duplicate events
+3. **Event Data Filtering**: Filter based on flags/data in the event itself (set by business logic)
+4. **Projection Existence**: Ignore updates to deleted projections
+5. **Feature Flags**: Skip events when feature is disabled for this service (flag from config, not time-based)
+6. **Event Type Filtering**: Ignore specific event types this projection doesn't care about
+
+**Metrics and Observability:**
+
+Return values enable rich metrics and dashboards:
+
+```csharp
+// Whizbang automatically tracks these metrics:
+// - whizbang_projection_events_accepted{projection="OrderProjection", event="OrderPlaced"}
+// - whizbang_projection_events_ignored{projection="OrderProjection", event="OrderPlaced"}
+// - whizbang_projection_acceptance_rate{projection="OrderProjection"}
+```
+
+These metrics help you:
+
+- Monitor projection health
+- Detect misconfigured filters
+- Track tenant-specific processing rates
+- Identify projection bottlenecks
+- Debug event flow issues
+
+---
+
+**Projection Purity and Determinism:**
+
+**CRITICAL**: Projections must be **pure functions** and **deterministic**. The same event must ALWAYS produce the same projection state, regardless of when it's processed.
+
+```csharp{
+title: "Projection Purity - Do's and Don'ts"
+description: "Maintaining pure, deterministic projections"
+framework: "NET8"
+category: "Projections"
+difficulty: "INTERMEDIATE"
+tags: ["Projections", "Purity", "Best Practices"]
+nugetPackages: ["Whizbang.Core", "Whizbang.Projections"]
+usingStatements: ["System", "System.Threading", "System.Threading.Tasks"]
+showLineNumbers: true
+}
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+[WhizbangProjection]
+public class GoodProjection {
+    // ✅ CORRECT: Use event timestamp from EventContext
+    public async Task OnOrderPlaced(
+        [WhizbangSubscribe] OrderPlaced @event,
+        ProjectionContext projection,
+        EventContext eventContext,
+        CancellationToken ct) {
+        var summary = new OrderSummary {
+            OrderId = @event.OrderId,
+            PlacedAt = eventContext.System.Timestamp,  // ✅ Deterministic
+            ExpiresAt = @event.ExpiresAt                // ✅ From event (business logic set this)
+        };
+
+        await projection.Store.CreateAsync(summary, ct);
+    }
+
+    // ✅ CORRECT: Business logic in event, not projection
+    public Task OnOrderPlaced2(
+        [WhizbangSubscribe] OrderPlaced @event,
+        ProjectionContext projection,
+        CancellationToken ct) {
+        // Event already contains IsExpired flag (set by business logic)
+        if (@event.IsExpired) {
+            return projection.Return(ProjectionReturnType.Ignored);
+        }
+
+        // Process non-expired order
+        return Task.CompletedTask;
+    }
+
+    // ✅ CORRECT: Use data from event or context
+    public async Task OnOrderShipped(
+        [WhizbangSubscribe] OrderShipped @event,
+        ProjectionContext projection,
+        EventContext eventContext,
+        CancellationToken ct) {
+        await projection.Store.PatchAsync<OrderSummary>(
+            @event.OrderId,
+            order => {
+                order.Status = "Shipped";
+                order.ShippedAt = eventContext.System.Timestamp;  // ✅ From context
+                order.TrackingNumber = @event.TrackingNumber;      // ✅ From event
+            },
+            ct);
+    }
+}
+
+[WhizbangProjection]
+public class BadProjection {
+    // ❌ WRONG: DateTime.UtcNow is non-deterministic
+    public async Task OnOrderPlaced(
+        [WhizbangSubscribe] OrderPlaced @event,
+        ProjectionContext projection,
+        CancellationToken ct) {
+        var summary = new OrderSummary {
+            OrderId = @event.OrderId,
+            PlacedAt = DateTime.UtcNow,  // ❌ NON-DETERMINISTIC - Will be different on replay!
+        };
+
+        await projection.Store.CreateAsync(summary, ct);
+        // 💥 Whizbang.Analyzers will flag this as a compile error
+    }
+
+    // ❌ WRONG: Business logic in projection
+    public Task OnOrderPlaced2(
+        [WhizbangSubscribe] OrderPlaced @event,
+        ProjectionContext projection,
+        EventContext eventContext,
+        CancellationToken ct) {
+        // ❌ WRONG: Calculating expiration in projection is business logic
+        var age = DateTime.UtcNow - eventContext.System.Timestamp;  // ❌ Non-deterministic
+        if (age > TimeSpan.FromDays(90)) {
+            return projection.Return(ProjectionReturnType.Ignored);
+        }
+
+        // Business logic belongs in command handler or aggregate, not projection!
+        return Task.CompletedTask;
+        // 💥 Whizbang.Analyzers will flag DateTime.UtcNow usage
+    }
+
+    // ❌ WRONG: Random values
+    public async Task OnOrderPlaced3(
+        [WhizbangSubscribe] OrderPlaced @event,
+        ProjectionContext projection,
+        CancellationToken ct) {
+        var summary = new OrderSummary {
+            OrderId = @event.OrderId,
+            RandomValue = Random.Shared.Next()  // ❌ NON-DETERMINISTIC
+        };
+
+        await projection.Store.CreateAsync(summary, ct);
+        // 💥 Whizbang.Analyzers will flag Random usage
+    }
+
+    // ❌ WRONG: External I/O in projection
+    public async Task OnOrderPlaced4(
+        [WhizbangSubscribe] OrderPlaced @event,
+        ProjectionContext projection,
+        CancellationToken ct) {
+        // ❌ WRONG: Calling external API is non-deterministic
+        var customerData = await _httpClient.GetAsync($"https://api/customers/{@event.CustomerId}");
+
+        // External data can change - not deterministic!
+        // 💥 Whizbang.Analyzers will flag external I/O
+    }
+}
+```
+
+**Purity Rules:**
+
+Projections must follow these rules to remain pure and deterministic:
+
+| ❌ **NEVER Use** | ✅ **Instead Use** | **Why** |
+|-----------------|-------------------|---------|
+| `DateTime.UtcNow` | `eventContext.System.Timestamp` | Current time is non-deterministic |
+| `DateTime.Now` | `eventContext.System.Timestamp` | Current time is non-deterministic |
+| `Random` / `Guid.NewGuid()` | Data from event or context | Random values are non-deterministic |
+| External API calls | Data in event | External data can change |
+| Database reads (outside projection store) | Data in event | External data can change |
+| File I/O | Data in event | External data can change |
+| Environment variables | `eventContext` or config in event | Environment can change |
+| Business logic calculations | Business logic sets flags in event | Projections transform, don't decide |
+
+**Where Business Logic Belongs:**
+
+```csharp
+// ✅ CORRECT: Business logic in command handler or aggregate
+public class PlaceOrderHandler : ICommandHandler<PlaceOrder, OrderPlaced> {
+    public async Task<OrderPlaced> Handle(PlaceOrder command, CancellationToken ct) {
+        // ✅ Business logic happens HERE
+        // - Validate the order
+        // - Check inventory
+        // - Calculate totals
+        // - Apply business rules
+        // - Decide if order should be marked as expired
+
+        var expiresAt = DateTime.UtcNow.AddDays(90);  // ✅ Business decision
+        var isExpired = false;  // ✅ Business decision
+        var status = "Placed";   // ✅ Business decision
+
+        // Create event POCO with results of business logic
+        // Event is just a data container - NO logic in the event class itself
+        var @event = new OrderPlaced {
+            OrderId = command.OrderId,
+            CustomerId = command.CustomerId,
+            Total = command.Total,
+            ExpiresAt = expiresAt,      // ✅ Set by handler
+            IsExpired = isExpired,       // ✅ Set by handler
+            Status = status              // ✅ Set by handler
+        };
+
+        return @event;
+    }
+}
+
+// ✅ CORRECT: Event is just a POCO (Plain Old CLR Object)
+// NO business logic, NO methods (except maybe ToString for debugging)
+// Just immutable data describing what happened
+public record OrderPlaced {
+    public Guid OrderId { get; init; }
+    public Guid CustomerId { get; init; }
+    public decimal Total { get; init; }
+    public DateTime ExpiresAt { get; init; }     // ✅ Data only
+    public bool IsExpired { get; init; }         // ✅ Data only
+    public string Status { get; init; }          // ✅ Data only
+
+    // ❌ NO business logic methods like:
+    // public bool ShouldExpire() => DateTime.UtcNow > ExpiresAt;
+    // public void MarkAsExpired() => IsExpired = true;
+    // Events are immutable data - handlers make decisions, events record them
+}
+
+// ✅ CORRECT: Projection just transforms event data
+[WhizbangProjection]
+public class OrderProjection {
+    public async Task OnOrderPlaced(
+        [WhizbangSubscribe] OrderPlaced @event,
+        ProjectionContext projection,
+        CancellationToken ct) {
+        // ✅ No business logic - just transform POCO event to read model
+        var summary = new OrderSummary {
+            OrderId = @event.OrderId,
+            ExpiresAt = @event.ExpiresAt,    // ✅ Copy from event (handler set this)
+            IsExpired = @event.IsExpired,     // ✅ Copy from event (handler set this)
+            Status = @event.Status            // ✅ Copy from event (handler set this)
+        };
+
+        if (@event.IsExpired) {
+            // Simple filtering based on event data (not a business decision)
+            return projection.Return(ProjectionReturnType.Ignored);
+        }
+
+        await projection.Store.CreateAsync(summary, ct);
+    }
+}
+```
+
+**The Three-Layer Architecture:**
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│ Command Handler / Aggregate (Business Logic Layer)     │
+│ - Validates commands                                    │
+│ - Applies business rules                                │
+│ - Makes decisions                                       │
+│ - Creates event POCOs with decision results             │
+│ - CAN emit other commands (sagas, process managers)    │
+│ - CAN use DateTime.UtcNow, Random, external APIs       │
+└──────┬──────────────────────────────────────────┬───────┘
+       │ Emits Events                             │ Emits Commands
+       ↓                                          ↓
+┌──────────────────────────┐    ┌────────────────────────────┐
+│ Event (Data Layer)       │    │ Command (Data Layer)       │
+│ - POCO with properties   │    │ - POCO with properties     │
+│ - NO logic, NO methods   │    │ - NO logic, NO methods     │
+│ - Describes what happened│    │ - Describes intent/action  │
+└────────┬─────────────────┘    └────────────────────────────┘
+         │ Consumed by
+         ↓
+┌─────────────────────────────────────────────────────────┐
+│ Projection (Read Model Layer)                          │
+│ - Pure transformation of event data                    │
+│ - NO business logic                                    │
+│ - NO DateTime.UtcNow, Random, external APIs            │
+│ - ONLY uses data from event or EventContext            │
+│ - Deterministic and can be replayed from events        │
+└─────────────────────────────────────────────────────────┘
+```
+
+### CRITICAL: Events Can ONLY Be Emitted via Command Handling
+
+Events are the result of command processing - they cannot be created directly. You **must** send a command to emit an event.
+
+```csharp
+// ✅ CORRECT: Events emitted via CommandContext during command handling
+public class PlaceOrderHandler : ICommandHandler<PlaceOrder, OrderPlaced> {
+    public async Task<OrderPlaced> Handle(
+        PlaceOrder command,
+        CommandContext context,  // ✅ Context for emitting events and commands
+        CancellationToken ct) {
+
+        // Business logic
+        var expiresAt = DateTime.UtcNow.AddDays(90);
+
+        // ✅ Emit event via CommandContext - the ONLY way to create events
+        var @event = context.EmitEvent(new OrderPlaced {
+            OrderId = command.OrderId,
+            CustomerId = command.CustomerId,
+            Total = command.Total,
+            ExpiresAt = expiresAt
+        });
+
+        // ✅ Handler can also emit follow-up commands via CommandContext
+        await context.Send(new ReserveInventory {
+            OrderId = command.OrderId,
+            Items = command.Items
+        }, ct);
+
+        await context.Send(new NotifyCustomer {
+            CustomerId = command.CustomerId,
+            Message = "Your order has been placed"
+        }, ct);
+
+        return @event;
+    }
+}
+
+// ❌ WRONG: Cannot emit events directly - no CommandContext
+public class SomeService {
+    private readonly IEventStore _eventStore;
+
+    public async Task DoSomething() {
+        // ❌ FORBIDDEN: Cannot create events outside of command handling
+        var @event = new OrderPlaced { ... };
+        await _eventStore.AppendAsync(@event);  // 💥 Compile error - not allowed!
+
+        // ✅ CORRECT: Must send a command instead
+        await _whizbang.Send(new PlaceOrder { ... });
+        // The command handler will emit the event via CommandContext
+    }
+}
+
+// ❌ WRONG: Projections cannot emit events
+[WhizbangProjection]
+public class BadProjection {
+    public async Task OnOrderPlaced(
+        [WhizbangSubscribe] OrderPlaced @event,
+        CancellationToken ct) {
+
+        // ❌ FORBIDDEN: Projections cannot emit events
+        // No CommandContext available - projections are read-side only
+        var newEvent = new OrderProcessed { ... };  // 💥 Cannot emit
+
+        // ✅ CORRECT: If you need to trigger something, emit a command
+        await _whizbang.Send(new ProcessOrder { ... });
+        // The command handler will emit events
+    }
+}
+```
+
+**Why This Constraint Matters:**
+
+1. **Single Source of Truth**: All events originate from command handling - clear causation
+2. **Auditability**: Every event has a corresponding command that caused it
+3. **Authorization**: Commands are the authorization boundary - validate before creating events
+4. **Business Logic Encapsulation**: Events are created only after business rules pass
+5. **Transaction Boundary**: Command handling is the transaction boundary for event emission
+6. **Event Context**: CommandContext automatically populates EventContext metadata (user, tenant, etc.)
+
+**CommandContext Structure:**
+
+```csharp
+public class CommandContext {
+    // Command metadata
+    public CommandMetadata Command { get; init; }
+
+    // Security context (from command initiator)
+    public SecurityContext Security { get; init; }
+
+    // Emit events - ONLY way to create events
+    public TEvent EmitEvent<TEvent>(TEvent @event) where TEvent : class;
+
+    // Emit follow-up commands
+    public Task Send<TCommand>(TCommand command, CancellationToken ct = default) where TCommand : class;
+
+    // Access to stores for reading (not writing - use events for that)
+    public IEventStore EventStore { get; init; }
+}
+
+public class CommandMetadata {
+    public Guid CommandId { get; init; }
+    public string CommandType { get; init; }
+    public DateTime ReceivedAt { get; init; }
+    public Guid CorrelationId { get; init; }
+}
+```
+
+**Command Emission Examples:**
+
+```csharp
+// Saga/Process Manager pattern - event handlers emit commands to orchestrate workflow
+public class OrderSagaHandler : IEventHandler<OrderPlaced> {
+    private readonly IWhizbang _whizbang;
+
+    public async Task Handle(OrderPlaced @event, CancellationToken ct) {
+        // ✅ Event handler can emit commands (but NOT events)
+
+        // Step 1: Reserve inventory
+        await _whizbang.Send(new ReserveInventory {
+            OrderId = @event.OrderId,
+            Items = @event.Items
+        }, ct);
+
+        // Step 2: Authorize payment
+        await _whizbang.Send(new AuthorizePayment {
+            OrderId = @event.OrderId,
+            Amount = @event.Total,
+            CustomerId = @event.CustomerId
+        }, ct);
+    }
+}
+
+// Aggregate can emit events via CommandContext
+public class OrderAggregate : Aggregate {
+    public async Task PlaceOrder(PlaceOrder command, CommandContext context) {
+        // Apply business rules
+        var expiresAt = DateTime.UtcNow.AddDays(90);
+
+        // ✅ Emit event via CommandContext
+        var @event = context.EmitEvent(new OrderPlaced {
+            OrderId = Id,
+            CustomerId = command.CustomerId,
+            Total = command.Total,
+            ExpiresAt = expiresAt
+        });
+
+        // ✅ Aggregate can also emit follow-up commands via CommandContext
+        await context.Send(new SendOrderConfirmationEmail {
+            OrderId = Id,
+            CustomerEmail = command.CustomerEmail
+        });
+    }
+}
+```
+
+**Use Cases for Command Emission:**
+
+1. **Sagas / Process Managers**: Orchestrate multi-step workflows across aggregates/services
+2. **Command Chaining**: Break complex operations into smaller, coordinated commands
+3. **Side Effects**: Trigger notifications, emails, integrations
+4. **Compensating Actions**: Send rollback commands if a step fails
+5. **Distributed Transactions**: Coordinate actions across multiple bounded contexts
+6. **Workflow Automation**: Trigger next steps in business processes
+
+**Why Purity Matters:**
+
+1. **Replay**: Events can be replayed to rebuild projections - must produce same result
+2. **Testing**: Pure functions are easy to test - same input, same output
+3. **Debugging**: Deterministic behavior makes bugs reproducible
+4. **Scaling**: Multiple projection instances can process same events safely
+5. **Time Travel**: Can replay events from any point in time
+6. **Auditing**: Projection state is always verifiable from event stream
+
+**Whizbang.Analyzers Enforcement:**
+
+The `Whizbang.Analyzers` package enforces purity at compile time:
+
+- ✅ Detects `DateTime.UtcNow` / `DateTime.Now` usage → **Compile error**
+- ✅ Detects `Random` / `Guid.NewGuid()` usage → **Compile error**
+- ✅ Detects external I/O (HttpClient, file system, etc.) → **Compile error**
+- ✅ Detects database calls outside `ProjectionContext.Store` → **Compile error**
+- ✅ Warns about complex business logic in projections → **Warning**
+
+**Summary:**
+
+- **Events = POCOs** (Plain Old CLR Objects) - just data models with properties, no logic
+- **Commands = POCOs** (Plain Old CLR Objects) - just data models describing intent, no logic
+- **Business Logic = Command handlers and aggregates** - make decisions, emit events via CommandContext
+- **Projections = Pure transformations** - transform event data to read models
+- **Event Emission Rule**: Events can ONLY be emitted via CommandContext during command handling
+- **Separation of concerns**:
+  - Command Handlers/Aggregates: Execute business logic via CommandContext, emit events and commands
+  - Events: Immutable data (POCOs) describing what happened - created ONLY via CommandContext
+  - Commands: Immutable data (POCOs) describing what should happen
+  - Projections: Transform event data into queryable read models (pure, no business logic, read-only)
+
+---
+
+**Key Design Points:**
+
+- **Method names are flexible**: Use `OnOrderPlaced`, `WhenOrderShipped`, or any descriptive name
+- **`[WhizbangSubscribe]` auto-registers**: The source generator automatically wires subscriptions to service configuration
+- **Constructor injection**: ProjectionContext can be injected once at construction time
+- **Method injection**: ProjectionContext can be injected per-method for more granular control
+- **Async operations**: All Store operations are async for non-blocking I/O
+
+**Auto-Registration via Source Generator:**
+
+When you use `[WhizbangSubscribe]` on a method parameter, the source generator:
+
+1. Discovers the subscription at compile time
+2. Generates registration code linking the event type to the projection method
+3. Automatically configures the service to route events to this projection
+4. No manual registration needed - just mark with `[WhizbangSubscribe]`
+
+```csharp
+// This subscription is automatically registered
+public Task OnOrderPlaced([WhizbangSubscribe] OrderPlaced @event, CancellationToken ct) {
+    // The source generator creates registration code like:
+    // services.Subscribe<OrderPlaced, OrderSummaryProjection>(
+    //     projection => projection.OnOrderPlaced);
+}
+```
+
+**Note**: The `[WhizbangProjection]` attribute can be placed on:
+- The projection class itself
+- A base class the projection inherits from
+- An interface the projection implements
+
+The source generator will discover projections through any of these paths.
+
+---
+
+### Whizbang.Messaging
+
+**Distributed messaging and outbox/inbox patterns.**
+
+```bash
+dotnet add package Whizbang.Messaging
+```
+
+**Includes:**
+- Message broker abstraction
+- Outbox/Inbox pattern for exactly-once delivery
+- Domain ownership routing
+- Saga coordination
+- Requires a messaging driver (see below)
+
+**Use when:**
+- Building microservices
+- You need distributed messaging
+- Commands/events cross service boundaries
+
+**Example:**
+
+```csharp{
+title: "Distributed Messaging Setup - Complete Program.cs"
+description: "Complete example configuring Whizbang for microservices with message broker"
+framework: "NET8"
+category: "Distributed Systems"
+difficulty: "ADVANCED"
+tags: ["Messaging", "Microservices", "Distributed Systems", "Program.cs"]
+nugetPackages: ["Whizbang.Core", "Whizbang.Messaging", "Whizbang.Kafka"]
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.Hosting", "Whizbang"]
+showLineNumbers: true
+collapsedLines: [1-3, 7-8, 36-38]
+}
+// Stage 1: Imports
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Whizbang;
+
+// Stage 2: Host builder setup
+var builder = Host.CreateApplicationBuilder(args);
+
+// Stage 3: Register Whizbang with distributed messaging
+builder.Services.AddWhizbang(options => {
+    options.RegisterGeneratedHandlers();
+    options.UseEventSourcing(es => es.UseInMemoryStore());
+
+    // Stage 4: Enable distributed messaging
+    options.UseMessaging(msg => {
+        // Register logical domain ownership (no URLs - services communicate via broker)
+        msg.UseDomainOwnership(domains => {
+            // Declare which domains THIS service owns
+            domains.RegisterDomain("Orders");    // This service owns Orders domain
+            domains.RegisterDomain("Payments");  // This service owns Payments domain
+
+            // Other domains owned by other services:
+            // - "Inventory" owned by Inventory service
+            // - "Shipping" owned by Shipping service
+        });
+
+        // Configure message broker (how services actually communicate)
+        msg.UseKafka(kafka => {
+            kafka.BootstrapServers = "localhost:9092";
+
+            // Topic routing based on domain ownership
+            kafka.CommandTopicPattern = "commands.{domain}";  // commands.Orders, commands.Inventory
+            kafka.EventTopicPattern = "events.{domain}";      // events.Orders, events.Payments
+        });
+
+        // Enable exactly-once semantics
+        msg.UseOutbox();  // Reliable message publishing (transactional)
+        msg.UseInbox();   // Idempotent message consumption (deduplication)
+    });
+});
+
+// Stage 5: Build and run
+var app = builder.Build();
+await app.RunAsync();
+```
+
+**Domain Ownership Explained:**
+
+Domain ownership is **logical**, not physical. Services declare which domains they own, and Whizbang routes messages based on ownership:
+
+- **Commands** are sent TO the domain owner
+- **Events** are published BY the domain owner
+- Services communicate via **message broker** (not HTTP endpoints)
+
+**Example Message Flow:**
+
+```csharp
+// Inventory service sends PlaceOrder command
+// → Whizbang routes to Kafka topic "commands.Orders"
+// → Orders service (domain owner) receives and handles it
+await whizbang.Send(new PlaceOrder(...));
+
+// Orders service publishes OrderPlaced event
+// → Whizbang publishes to Kafka topic "events.Orders"
+// → All interested services (Inventory, Shipping, etc.) receive it
+await whizbang.Publish(new OrderPlaced(...));
+```
+
+**Routing Configuration:**
+
+The message broker driver handles physical routing. Different deployment scenarios use different configurations:
+
+1. **In-Process (Monolith)**: All domains in one service, in-memory routing
+2. **Microservices (Kafka)**: Domains in separate services, Kafka topics
+3. **Kubernetes (RabbitMQ)**: Pods communicate via RabbitMQ exchanges
+4. **Hybrid**: Some domains in-process, others distributed
+
+The domain registration stays the same—only the messaging driver configuration changes.
+
+---
+
+## ORM Integrations
+
+Whizbang uses ORMs (not custom database drivers) for persistence, allowing you to leverage existing tools and database compatibility.
+
+### Whizbang.EntityFramework
+
+**Entity Framework Core integration for event store and projections.**
+
+```bash
+dotnet add package Whizbang.EntityFramework
+```
+
+**Features:**
+- Works with ANY EF Core database provider (Postgres, SQL Server, MySQL, SQLite, Cosmos DB, etc.)
+- Automatic migrations for event store schema
+- DbContext integration for projections
+- Change tracking for optimistic concurrency
+- Full LINQ query support for projections
+- Shadow properties for metadata
+
+**Use when:**
+- You're already using Entity Framework Core
+- You want automatic migrations and schema management
+- You need complex LINQ queries in projections
+- You prefer convention-over-configuration
+
+**Example with Postgres:**
+
+```csharp{
+title: "Entity Framework with Postgres"
+description: "Using EF Core with Postgres for event store and projections"
+framework: "NET8"
+category: "Persistence"
+difficulty: "INTERMEDIATE"
+tags: ["Entity Framework", "Postgres", "Event Store", "ORM"]
+nugetPackages: ["Whizbang.Core", "Whizbang.EventSourcing", "Whizbang.EntityFramework", "Npgsql.EntityFrameworkCore.PostgreSQL"]
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Whizbang"]
+showLineNumbers: true
+}
+using Microsoft.Extensions.DependencyInjection;
+using Whizbang;
+
+var services = new ServiceCollection();
+
+services.AddWhizbang(options => {
+    options.UseEventSourcing(es => {
+        es.UseEntityFramework(ef => {
+            // Use any EF Core database provider
+            ef.UseNpgsql("Host=localhost;Database=myapp;Username=user;Password=pass");
+
+            // Optional: customize event store schema
+            ef.EventStoreSchema = "events";
+            ef.EnableSensitiveDataLogging = false;
+        });
+    });
+});
+```
+
+**Example with SQL Server:**
+
+```csharp{
+title: "Entity Framework with SQL Server"
+description: "Using EF Core with SQL Server for event store"
+framework: "NET8"
+category: "Persistence"
+difficulty: "INTERMEDIATE"
+tags: ["Entity Framework", "SQL Server", "Event Store", "ORM"]
+nugetPackages: ["Whizbang.Core", "Whizbang.EventSourcing", "Whizbang.EntityFramework", "Microsoft.EntityFrameworkCore.SqlServer"]
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Whizbang"]
+showLineNumbers: true
+}
+using Microsoft.Extensions.DependencyInjection;
+using Whizbang;
+
+var services = new ServiceCollection();
+
+services.AddWhizbang(options => {
+    options.UseEventSourcing(es => {
+        es.UseEntityFramework(ef => {
+            ef.UseSqlServer("Server=localhost;Database=myapp;Trusted_Connection=True;");
+        });
+    });
+});
+```
+
+---
+
+### Whizbang.Dapper
+
+**Dapper integration for high-performance event store and projections.**
+
+```bash
+dotnet add package Whizbang.Dapper
+```
+
+**Features:**
+- Works with ANY ADO.NET database provider (Postgres, SQL Server, MySQL, SQLite, Oracle, etc.)
+- Minimal overhead - nearly raw SQL performance
+- Explicit control over SQL queries
+- Bulk insert optimizations for event batches
+- Custom type handlers for domain types
+- Multi-database support in single application
+
+**Use when:**
+- Performance is critical
+- You want explicit control over SQL
+- You're comfortable writing queries
+- You need the absolute fastest event sourcing
+- You're using multiple database types
+
+**Example with Postgres:**
+
+```csharp{
+title: "Dapper with Postgres"
+description: "Using Dapper with Postgres for high-performance event store"
+framework: "NET8"
+category: "Persistence"
+difficulty: "INTERMEDIATE"
+tags: ["Dapper", "Postgres", "Event Store", "Performance", "ORM"]
+nugetPackages: ["Whizbang.Core", "Whizbang.EventSourcing", "Whizbang.Dapper", "Npgsql"]
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Whizbang"]
+showLineNumbers: true
+}
+using Microsoft.Extensions.DependencyInjection;
+using Whizbang;
+
+var services = new ServiceCollection();
+
+services.AddWhizbang(options => {
+    options.UseEventSourcing(es => {
+        es.UseDapper(dapper => {
+            dapper.UseNpgsql("Host=localhost;Database=myapp;Username=user;Password=pass");
+
+            // Optional: customize SQL queries for specific database optimizations
+            dapper.UseJsonBinaryFormat = true;  // Postgres JSONB
+            dapper.BatchSize = 1000;            // Bulk insert optimization
+        });
+    });
+});
+```
+
+**Example with SQL Server:**
+
+```csharp{
+title: "Dapper with SQL Server"
+description: "Using Dapper with SQL Server for event store"
+framework: "NET8"
+category: "Persistence"
+difficulty: "INTERMEDIATE"
+tags: ["Dapper", "SQL Server", "Event Store", "Performance", "ORM"]
+nugetPackages: ["Whizbang.Core", "Whizbang.EventSourcing", "Whizbang.Dapper", "Microsoft.Data.SqlClient"]
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Whizbang"]
+showLineNumbers: true
+}
+using Microsoft.Extensions.DependencyInjection;
+using Whizbang;
+
+var services = new ServiceCollection();
+
+services.AddWhizbang(options => {
+    options.UseEventSourcing(es => {
+        es.UseDapper(dapper => {
+            dapper.UseSqlServer("Server=localhost;Database=myapp;Trusted_Connection=True;");
+
+            // SQL Server optimizations
+            dapper.UseMemoryOptimizedTables = true;
+            dapper.EnableChangeTracking = true;
+        });
+    });
+});
+```
+
+---
+
+### Whizbang.NHibernate
+
+**NHibernate integration for event store and projections.**
+
+```bash
+dotnet add package Whizbang.NHibernate
+```
+
+**Features:**
+- Works with ANY NHibernate-supported database (Postgres, SQL Server, MySQL, Oracle, SQLite, etc.)
+- Mature ORM with extensive database support
+- XML or fluent mapping configuration
+- Advanced caching strategies (first-level, second-level, query cache)
+- Lazy loading and eager fetching strategies
+- Supports legacy database schemas
+
+**Use when:**
+- You're already using NHibernate
+- You need advanced caching strategies
+- You're working with legacy database schemas
+- You require complex mapping scenarios
+- You want mature, battle-tested ORM
+
+**Example with Postgres:**
+
+```csharp{
+title: "NHibernate with Postgres"
+description: "Using NHibernate with Postgres for event store"
+framework: "NET8"
+category: "Persistence"
+difficulty: "ADVANCED"
+tags: ["NHibernate", "Postgres", "Event Store", "ORM"]
+nugetPackages: ["Whizbang.Core", "Whizbang.EventSourcing", "Whizbang.NHibernate", "NHibernate", "NHibernate.Driver.NpgsqlDriver"]
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Whizbang", "NHibernate.Cfg"]
+showLineNumbers: true
+}
+using Microsoft.Extensions.DependencyInjection;
+using NHibernate.Cfg;
+using Whizbang;
+
+var services = new ServiceCollection();
+
+services.AddWhizbang(options => {
+    options.UseEventSourcing(es => {
+        es.UseNHibernate(nh => {
+            nh.ConfigureWith(cfg => {
+                cfg.DataBaseIntegration(db => {
+                    db.ConnectionString = "Host=localhost;Database=myapp;Username=user;Password=pass";
+                    db.Driver<NpgsqlDriver>();
+                    db.Dialect<PostgreSQLDialect>();
+                });
+
+                // Optional: enable second-level cache
+                cfg.Cache(c => {
+                    c.UseSecondLevelCache = true;
+                    c.UseQueryCache = true;
+                });
+            });
+        });
+    });
+});
+```
+
+---
+
+### Choosing an ORM
+
+**Entity Framework** - Best for:
+- General-purpose applications
+- Automatic migrations
+- Convention-over-configuration
+- Complex LINQ queries
+- Most .NET developers (familiar)
+
+**Dapper** - Best for:
+- High-performance scenarios
+- Explicit SQL control
+- Minimal overhead
+- Large event volumes
+- Polyglot persistence (multiple databases)
+
+**NHibernate** - Best for:
+- Legacy database integration
+- Advanced caching requirements
+- Complex mapping scenarios
+- Enterprise applications with existing NHibernate usage
+
+---
+
+## Messaging Drivers
+
+### Whizbang.Kafka
+
+**Apache Kafka adapter for distributed messaging.**
+
+```bash
+dotnet add package Whizbang.Kafka
+```
+
+**Features:**
+- High throughput
+- Partition-aware consumers
+- Compacted topics for snapshots
+- Exactly-once semantics
+
+**Use when:**
+- Building event-driven microservices at scale
+- You need event replay and time-travel capabilities
+
+---
+
+### Whizbang.RabbitMQ
+
+**RabbitMQ adapter for distributed messaging.**
+
+```bash
+dotnet add package Whizbang.RabbitMQ
+```
+
+**Features:**
+- Flexible routing
+- Priority queues
+- Dead-letter exchanges
+- Publisher confirms
+
+---
+
+### Whizbang.AzureServiceBus
+
+**Azure Service Bus adapter.**
+
+```bash
+dotnet add package Whizbang.AzureServiceBus
+```
+
+**Features:**
+- Managed service (no infrastructure)
+- Sessions for ordered processing
+- Duplicate detection
+- Integration with Azure ecosystem
+
+---
+
+### Whizbang.AWSSQS
+
+**AWS SQS/SNS adapter.**
+
+```bash
+dotnet add package Whizbang.AWSSQS
+```
+
+**Features:**
+- Managed service
+- FIFO queues for ordering
+- Integration with AWS ecosystem
+
+---
+
+## Observability Packages
+
+### Whizbang.OpenTelemetry
+
+**OpenTelemetry integration.**
+
+```bash
+dotnet add package Whizbang.OpenTelemetry
+```
+
+**Includes:**
+- Automatic tracing for all messages
+- Metrics for throughput, latency, errors
+- Distributed context propagation
+
+---
+
+### Whizbang.Dashboard
+
+**Web-based monitoring dashboard.**
+
+```bash
+dotnet add package Whizbang.Dashboard
+```
+
+**Features:**
+- Live message flow visualization
+- Projection lag monitoring
+- Error tracking
+- Performance metrics
+
+---
+
+## Developer Packages
+
+### Whizbang.Analyzers
+
+**Roslyn analyzers for compile-time validation.**
+
+```bash
+dotnet add package Whizbang.Analyzers
+```
+
+**Includes:**
+
+- **Projection Purity Checks**: Enforce pure functions in projections
+  - No field/property mutations outside method scope
+  - No I/O operations (file system, network, database writes)
+  - No static mutation
+  - No logging or side effects in projection handlers
+- **Handler Validation**: Enforce `[Pure]` attribute on command/query handlers
+- **Domain Ownership**: Detect missing domain ownership attributes
+- **Naming Conventions**: Validate event and command naming conventions
+- **Async Patterns**: Check for synchronous I/O in async handlers
+- **Subscription Rules**: Validate `[WhizbangSubscribe]` usage (one per method, etc.)
+- **Security Context**: Warn when security-sensitive operations lack tenant/user validation
+
+**Purity Enforcement Example:**
+
+```csharp
+[WhizbangProjection]
+public class OrderProjection {
+    private readonly ILogger _logger;  // ⚠️ Warning: Injected services should be read-only
+
+    // ✅ VALID - Pure projection handler
+    public Task Handle([WhizbangSubscribe] OrderPlaced @event, CancellationToken ct) {
+        // Pure state updates only
+        return Task.CompletedTask;
+    }
+
+    // ❌ ERROR - Side effect detected (logging)
+    public Task Handle([WhizbangSubscribe] OrderShipped @event, CancellationToken ct) {
+        _logger.LogInformation("Order shipped");  // 💥 Compile error: Side effect in projection
+        return Task.CompletedTask;
+    }
+
+    // ❌ ERROR - I/O operation detected
+    public async Task Handle([WhizbangSubscribe] OrderCancelled @event, CancellationToken ct) {
+        await File.WriteAllTextAsync("log.txt", "cancelled");  // 💥 Compile error: I/O in projection
+    }
+}
+```
+
+---
+
+### Whizbang.Testing
+
+**Testing utilities and in-memory doubles.**
+
+```bash
+dotnet add package Whizbang.Testing
+```
+
+**Includes:**
+- In-memory event store
+- Fake message bus
+- Projection test helpers
+- Aggregate test fixtures
+
+---
+
+## Customizable Attributes
+
+Whizbang uses attributes for source generator discovery (`[WhizbangHandler]`, `[WhizbangProjection]`, `[WhizbangSubscribe]`), and these attributes are **customizable** to fit your team's preferences or naming conventions.
+
+**Why the `Whizbang` prefix?** All attributes use consistent `Whizbang` prefix to:
+
+- Avoid naming collisions with other frameworks (e.g., generic `[Handler]` attribute)
+- Provide clear visual indication of framework-specific attributes
+- Enable easy searching across codebase (`grep "WhizbangHandler"`)
+- Maintain consistent naming convention
+
+### Using Custom Attribute Names
+
+You can configure Whizbang to recognize alternate attribute names:
+
+```csharp{
+title: "Custom Attribute Names Configuration"
+description: "Configure Whizbang to use custom attribute names"
+framework: "NET8"
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["Attributes", "Source Generator", "Configuration"]
+nugetPackages: ["Whizbang.Core"]
+usingStatements: ["Microsoft.Extensions.DependencyInjection", "Whizbang"]
+showLineNumbers: true
+}
+using Microsoft.Extensions.DependencyInjection;
+using Whizbang;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.AddWhizbang(options => {
+    // Configure custom attribute names
+    options.Attributes(attr => {
+        // Use your own handler attribute name
+        attr.HandlerAttribute = "MyCompany.CommandHandlerAttribute";
+
+        // Use your own projection attribute name
+        attr.ProjectionAttribute = "MyCompany.ProjectionAttribute";
+
+        // Use your own subscription attribute name
+        attr.SubscribeAttribute = "MyCompany.EventSubscriptionAttribute";
+    });
+
+    options.RegisterGeneratedHandlers();
+    options.UseProjections(proj => proj.RegisterGeneratedProjections());
+});
+```
+
+### Source-Generated Attributes (Future)
+
+In future versions, Whizbang may provide **source-generated attributes** that are automatically created in your project:
+
+```csharp
+// Auto-generated by Whizbang source generator
+namespace MyCompany;
+
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface)]
+public class CommandHandlerAttribute : Attribute { }
+
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface)]
+public class ProjectionAttribute : Attribute { }
+
+[AttributeUsage(AttributeTargets.Parameter)]
+public class EventSubscriptionAttribute : Attribute { }
+```
+
+**Benefits:**
+- No dependency on `Whizbang.Core` in your domain layer
+- Your own namespace and naming conventions
+- Still compatible with Whizbang's source generator
+- Enables clean architecture (domain doesn't reference framework)
+
+### Why Customizable Attributes?
+
+1. **Team Conventions**: Match your existing attribute naming patterns
+2. **Clean Architecture**: Keep framework attributes out of domain layer
+3. **Legacy Integration**: Reuse existing attributes from other frameworks
+4. **Multi-Framework**: Use same attributes with multiple frameworks
+
+---
+
+## Package Decision Tree
+
+```
+Do you need event sourcing?
+├─ NO → Whizbang.Core (mediator only)
+└─ YES → Whizbang.Core + Whizbang.EventSourcing
+          └─ Choose an ORM integration:
+              ├─ Whizbang.EntityFramework (recommended for most)
+              ├─ Whizbang.Dapper (high performance)
+              └─ Whizbang.NHibernate (enterprise/legacy)
+
+Do you need read models?
+└─ YES → Add Whizbang.Projections
+
+Are you building microservices?
+└─ YES → Add Whizbang.Messaging
+          └─ Choose a messaging driver:
+              ├─ Whizbang.Kafka
+              ├─ Whizbang.RabbitMQ
+              ├─ Whizbang.AzureServiceBus
+              └─ Whizbang.AWSSQS
+
+Do you need observability?
+└─ YES → Add Whizbang.OpenTelemetry or Whizbang.Dashboard
+
+Are you developing/testing?
+└─ YES → Add Whizbang.Testing and Whizbang.Analyzers
+```
+
+---
+
+## Typical Configurations
+
+### Simple Monolith
+
+```bash
+dotnet add package Whizbang.Core
+dotnet add package Whizbang.EventSourcing
+dotnet add package Whizbang.EntityFramework
+dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
+```
+
+---
+
+### Monolith with Read Models
+
+```bash
+dotnet add package Whizbang.Core
+dotnet add package Whizbang.EventSourcing
+dotnet add package Whizbang.Projections
+dotnet add package Whizbang.EntityFramework
+dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
+```
+
+---
+
+### High-Performance Monolith
+
+```bash
+dotnet add package Whizbang.Core
+dotnet add package Whizbang.EventSourcing
+dotnet add package Whizbang.Projections
+dotnet add package Whizbang.Dapper
+dotnet add package Npgsql
+```
+
+---
+
+### Microservices with Kafka
+
+```bash
+dotnet add package Whizbang.Core
+dotnet add package Whizbang.EventSourcing
+dotnet add package Whizbang.Projections
+dotnet add package Whizbang.Messaging
+dotnet add package Whizbang.EntityFramework
+dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
+dotnet add package Whizbang.Kafka
+dotnet add package Whizbang.OpenTelemetry
+```
+
+---
+
+### Enterprise with SQL Server
+
+```bash
+dotnet add package Whizbang.Core
+dotnet add package Whizbang.EventSourcing
+dotnet add package Whizbang.Projections
+dotnet add package Whizbang.NHibernate
+dotnet add package NHibernate
+dotnet add package NHibernate.Driver.MicrosoftDataSqlClientDriver
+```
+
+---
+
+## Next Steps
+
+- [**Getting Started**](./getting-started.md) - Build your first Whizbang application
+- [**Driver System**](./drivers.md) - Learn how to implement custom drivers
+- [**Testing**](./testing.md) - Test your event-sourced applications

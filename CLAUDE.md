@@ -18,8 +18,8 @@ npm run preview # Serve production build locally
 ### Build Process
 The `npm start` and `npm run build` commands automatically execute:
 1. `node src/scripts/gen-docs-list.mjs` - Generates documentation listing
-2. `node src/scripts/gen-docs-index.mjs` - Creates docs index with metadata
-3. `./build-search-index.sh` - Builds search indices
+2. `node src/scripts/gen-docs-index-versioned.mjs` - Creates version-aware docs index with metadata
+3. `./build-search-index.sh` - Builds search indices with version support
 
 ### Change Verification Requirements
 
@@ -67,10 +67,52 @@ For comprehensive information on specific topics, refer to these focused documen
 - **Documentation-First**: Write docs BEFORE implementation
 - **Test-Driven Examples**: All examples must have corresponding tests
 - **Mobile-First Design**: Progressive disclosure, touch-friendly
-- **Roadmap Separation**: Unreleased features in `Roadmap/` directory only
+- **Version-Based Organization**: Released features in version folders (v1.0.0/, v1.1.0/), unreleased in state folders (drafts/, proposals/, backlog/, declined/)
 - **SEO Optimization**: Comprehensive structured data automatically generated for all pages
 
+## Versioning System
+
+This project implements a comprehensive documentation versioning system with filesystem-based organization:
+
+### Version Structure
+```
+src/assets/docs/
+├── v1.0.0/           # Released versions (folders with version numbers)
+├── v1.1.0/
+├── v1.2.0/
+├── drafts/           # Draft documentation for unreleased features
+├── proposals/        # Feature proposals and design documents
+├── backlog/          # Future feature documentation
+└── declined/         # Declined feature documentation
+```
+
+### Key Features
+- **Version Dropdown**: Dynamic version selector in header showing released, development, and planned versions
+- **Interactive Headers**: All headers auto-generate kebab-case anchors with hover link icons and copy-to-clipboard
+- **Enhanced Callouts**: Five callout types (`:::new`, `:::updated`, `:::deprecated`, `:::planned`, `:::new{type="breaking"}`)
+- **Cross-Version Linking**: Planned callouts can link to future versions with validation
+- **Version-Aware Search**: Search results filter by current version with "All versions" option
+- **State Navigation**: Browse drafts, proposals, backlog, and declined features
+
+### Services
+- **VersionService** (`src/app/services/version.service.ts`): Core version management with Angular signals
+- **HeaderProcessorService** (`src/app/services/header-processor.service.ts`): Automatic header processing and anchor generation  
+- **CalloutProcessorService** (`src/app/services/callout-processor.service.ts`): Enhanced callout system with styling
+
+### Configuration
+Each version/state folder contains `_folder.md` with metadata:
+```yaml
+---
+title: "Version 1.0.0"
+description: "Initial stable release"
+releaseDate: "2024-01-15"
+status: "released"
+---
+```
+
 ## Current Development Status
+
+**Documentation Versioning System**: Complete - Comprehensive filesystem-based versioning with interactive features.
 
 **SEO Enhancement**: Complete - Comprehensive structured data, meta descriptions, XML sitemap, and alt text optimization.
 

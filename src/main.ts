@@ -12,6 +12,7 @@ import { HttpClientModule } from '@angular/common/http';
 import { MessageService } from 'primeng/api';
 import { ThemeService } from './app/services/theme.service';
 import { ThemeConfigService } from './app/services/theme-config.service';
+import { ScrollManagementService } from './app/services/scroll-management.service';
 
 // Import highlight.js for syntax highlighting
 import hljs from 'highlight.js/lib/core';
@@ -36,6 +37,14 @@ hljs.registerLanguage('xml', xml);
 function initializeTheme(themeConfigService: ThemeConfigService) {
   return () => {
     themeConfigService.initialize();
+  };
+}
+
+// Scroll management initialization function
+function initializeScrollManagement(scrollManagementService: ScrollManagementService) {
+  return () => {
+    // Service is already initialized by injection, this ensures it's constructed early
+    return Promise.resolve();
   };
 }
 
@@ -68,6 +77,13 @@ bootstrapApplication(AppComponent, {
       provide: APP_INITIALIZER,
       useFactory: initializeTheme,
       deps: [ThemeConfigService],
+      multi: true
+    },
+    // Initialize scroll management
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeScrollManagement,
+      deps: [ScrollManagementService],
       multi: true
     }
   ]

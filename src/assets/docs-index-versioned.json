@@ -1,0 +1,627 @@
+[
+  {
+    "version": "v1.0.0",
+    "metadata": {
+      "folderType": "version",
+      "version": "v1.0.0",
+      "releaseDate": "2024-12-01",
+      "status": "released",
+      "theme": "Initial Release"
+    },
+    "docs": [
+      {
+        "slug": "v1.0.0/advanced/advanced-scenarios",
+        "title": "Advanced Scenarios",
+        "category": "Advanced",
+        "order": 1,
+        "description": "\n# Advanced Scenarios\n\nThis document covers advanced scenarios for production deployments, including data seeding, Backend-for-Frontend (BFF) patterns, and central control commands.\n\n## Data Seeding in Scaled Environments\n\nWhen deploying to scaled-out environments (Kubernetes, multiple replicas), data seeding must be coordinated to avoid duplicates or race conditions.\n\n### Coordinated Seeding\n\n```csharp{\ntitle: \"Coordinated Data Seeding\"\ndescription: \"Seed data in scaled environments without duplicates\"\nframework: \"NET8\"\ncategory: \"Deployment\"\ndifficulty: \"ADVANCED\"\ntags: [\"Seeding\", \"Deployment\", \"Kubernetes\"]\nnugetPackages: [\"Whizbang.Core\", \"Whizbang.EventSourcing\"]\nusingStatements: [\"Microsoft.Extensions.Hosting\", \"Whizbang\", \"System\", \"System.Threading.Tasks\"]\nshowLineNumbers: true\n}\nusing System;\nusing System.Threading.Tasks;\nusing Microsoft.Extensions.Hosting;\nusing Whizbang;\n\npublic class DataSeeder : IHostedService {\n    private readonly IWhizbang _whizbang;\n    private readonly IDistributedLock _distributedLock;\n\n    public DataSeeder(IWhizbang whizbang, IDistributedLock distributedLock) {\n        _whizbang = whizbang;\n        _distributedLock = distributedLock;\n    }\n\n    public async Task StartAsync(CancellationToken cancellationToken) {\n        // Only ONE replica seeds data (distributed lock)\n        await using var @lock = await _distributedLock.AcquireAsync(\"data-seeding\", TimeSpan.FromMinutes(5));\n\n        if (@lock != null) {\n            await SeedDataAsync();\n        }\n    }\n\n    private async Task SeedDataAsync() {\n        // Check if already seeded\n        var alreadySeeded = await CheckIfSeededAsync();\n        if (alreadySeeded) {\n            return;\n        }\n\n        // Seed master data\n        await SeedProductCatalogAsync();\n        await SeedDefaultTenantsAsync();\n        await SeedReferenceDataAsync();\n\n        // Mark as seeded\n        await MarkAsSeededAsync();\n    }\n\n    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;\n}\n```\n\n### Idempotent Seeding\n\nMake seeding operations idempotent:\n\n```csharp{\ntitle: \"Idempotent Seeding\"\ndescription: \"Seed data that can be run multiple times safely\"\nframework: \"NET8\"\ncategory: \"Deployment\"\ndifficulty: \"INTERMEDIATE\"\ntags: [\"Seeding\", \"Idempotence\"]\nnugetPackages: [\"Whizbang.Core\", \"Whizbang.EventSourcing\"]\nusingStatements: [\"System\", \"System.Threading.Tasks\", \"Whizbang\"]\nshowLineNumbers: true\n}\nusing System;\nusing System.Threading.Tasks;\nusing Whizbang;\n\npublic class ProductCatalogSeeder {\n    private readonly IRepository<ProductCatalog> _repository;\n\n    public ProductCatalogSeeder(IRepository<ProductCatalog> repository) {\n        _repository = repository;\n    }\n\n    public async Task SeedAsync() {\n        // Idempotent: only create if doesn't exist\n        var catalog = await _repository.FindAsync(WellKnownIds.DefaultCatalog);\n\n        if (catalog == null) {\n            catalog = new ProductCatalog(WellKnownIds.DefaultCatalog, \"Default Catalog\");\n\n            catalog.AddProduct(new Product(\"Widget\", 19.99m));\n            catalog.AddProduct(new Product(\"Gadget\", 29.99m));\n            catalog.AddProduct(new Product(\"Doohickey\", 39.99m));\n\n            await _repository.SaveAsync(catalog);\n        }\n    }\n}\n```\n\n### Environment-Specific Seeding\n\nDifferent data for dev/staging/production:\n\n```csharp{\ntitle: \"Environment-Specific Seeding\"\ndescription: \"Seed different data per environment\"\nframework: \"NET8\"\ncategory: \"Deployment\"\ndifficulty: \"INTERMEDIATE\"\ntags: [\"Seeding\", \"Environments\"]\nnugetPackages: [\"Whizbang.Core\", \"Microsoft.Extensions.Hosting\"]\nusingStatements: [\"Microsoft.Extensions.Hosting\", \"System.Threading.Tasks\"]\nshowLineNumbers: true\n}\nusing System.Threading.Tasks;\nusing Microsoft.Extensions.Hosting;\n\npublic class EnvironmentSeeder : IHostedService {\n    private readonly IHostEnvironment _env;\n    private readonly IDataSeeder _seeder;\n\n    public EnvironmentSeeder(IHostEnvironment env, IDataSeeder seeder) {\n        _env = env;\n        _seeder = seeder;\n    }\n\n    public async Task StartAsync(CancellationToken cancellationToken) {\n        if (_env.IsDevelopment()) {\n            // Seed lots of test data for local development\n            await _seeder.SeedDevelopmentDataAsync();\n            await _seeder.SeedTestTenantsAsync(count: 10);\n            await _seeder.SeedSampleOrdersAsync(count: 1000);\n        }\n        else if (_env.IsStaging()) {\n            // Seed realistic production-like data\n            await _seeder.SeedProductionLikeDataAsync();\n            await _seeder.SeedTestTenantsAsync(count: 2);  // Fewer test tenants\n        }\n        else if (_env.IsProduction()) {\n            // Only seed essential master data\n            await _seeder.SeedMasterDataAsync();\n            // Do NOT seed test data in production\n        }\n    }\n\n    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;\n}\n```\n\n### Kubernetes Init Container Seeding\n\nUse Kubernetes init containers for pre-startup seeding:\n\n```yaml{\ntitle: \"Kubernetes Init Container for Data Seeding\"\ndescription: \"Kubernetes deployment configuration with init container for data seeding\"\nframework: \"Kubernetes\"\ncategory: \"Advanced\"\ndifficulty: \"ADVANCED\"\ntags: [\"Kubernetes\", \"Seeding\", \"Deployment\", \"Init Containers\"]\nfilename: \"orders-service-deployment.yaml\"\nshowLineNumbers: true\n}\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: orders-service\nspec:\n  replicas: 3\n  template:\n    spec:\n      # Init container runs BEFORE main container\n      initContainers:\n      - name: seed-data\n        image: myapp/orders-service:latest\n        command: [\"dotnet\", \"OrdersService.dll\", \"--seed-only\"]\n        env:\n        - name: ASPNETCORE_ENVIRONMENT\n          value: \"Production\"\n\n      # Main application container\n      containers:\n      - name: orders-service\n        image: myapp/orders-service:latest\n```\n\n**Application code**:\n\n```csharp{\ntitle: \"Program.cs Seeding Logic\"\ndescription: \"Application startup logic for seed-only mode\"\nframework: \"NET8\"\ncategory: \"Advanced\"\ndifficulty: \"INTERMEDIATE\"\ntags: [\"Seeding\", \"Startup\", \"Program.cs\"]\nfilename: \"Program.cs\"\nusingStatements: [\"Microsoft.Extensions.DependencyInjection\"]\nshowLineNumbers: true\n}\n// In Program.cs\nif (args.Contains(\"--seed-only\")) {\n    await SeedDataAsync(app.Services);\n    return;  // Exit after seeding\n}\n\nawait app.RunAsync();  // Normal startup\n```\n\n",
+        "tags": "seeding, bff, control-plane, scaled-environments",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/advanced/configuration",
+        "title": "Configuration",
+        "category": "Advanced",
+        "order": 1,
+        "description": "",
+        "tags": "configuration, setup, dependency-injection, options",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/architecture-design/architecture",
+        "title": "Architecture Overview",
+        "category": "Architecture & Design",
+        "order": 1,
+        "description": "Explore Whizbang's layered architecture that scales from event-driven development to full distributed event-sourced systems with receptors, perspectives, lenses, and domain ownership.",
+        "tags": "architecture, design, system-design",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/architecture-design/aspect-oriented-programming",
+        "title": "Aspect-Oriented Programming in Whizbang",
+        "category": "Architecture & Design",
+        "order": 4,
+        "description": "Comprehensive guide to Whizbang's aspect-oriented programming system powered by source generators",
+        "tags": "aop, aspects, cross-cutting-concerns, source-generators, compile-time",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/architecture-design/event-driven-architecture",
+        "title": "Event-Driven Architecture",
+        "category": "Architecture & Design",
+        "order": 4,
+        "description": "Understanding Whizbang's Event-Driven and Event-Sourced modes - how the same code works in both paradigms",
+        "tags": "event-driven, event-sourced, architecture, receptor, perspective, lens",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/architecture-design/philosophy",
+        "title": "Philosophy & Design Principles",
+        "category": "Architecture & Design",
+        "order": 2,
+        "description": "\n# Philosophy & Design Principles\n\nWhizbang is a unified event-driven and event-sourced runtime for .NET that collapses the complexity of MartenDB, Wolverine, MassTransit, and MediatR into a single cohesive platform with receptors, perspectives, and lenses.\n\n## Core Philosophy\n\n### Events as the Source of Truth\n\n**Events are immutable facts that have happened.** In Whizbang, events are not just notifications—they are the authoritative record of everything that has occurred in your system. All aggregates and projections can be rebuilt or reimagined from the event stream at any time, even years after initial deployment.\n\nThis approach provides:\n- **Complete audit trail** - Every state change is recorded forever\n- **Time travel debugging** - Replay events to understand how state evolved\n- **Flexible projections** - Build new read models from existing events\n- **Migration freedom** - Refactor your domain model without losing history\n\n### Single Surface Area\n\nTeams waste cognitive energy context-switching between different APIs, patterns, and abstractions. Whizbang provides **one set of primitives** for:\n\n- **Receptors** - Decision-makers that receive commands and emit events\n- **Perspectives** - Event handlers that update read models and external systems\n- **Lenses** - Read-only interfaces for querying data\n- **Commands** - Requests to change state, routed to domain owners\n- **Events** - Immutable facts that represent state changes\n- **Sagas** - Long-running processes that coordinate across domains\n\nAll of these concepts share the same dispatcher model, dependency injection patterns, and testing approaches. Learn once, apply everywhere.\n\n### One Runtime. Any Mode. Every Pattern.\n\n**Write your business logic once. Run it anywhere.** Whizbang provides a unified mental model that scales from event-driven development to complex distributed event-sourced systems—without changing your receptors.\n\n```csharp\n",
+        "tags": "philosophy, design-principles, vision",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/architecture-design/whizbang-unified-vision",
+        "title": "Whizbang Unified Vision",
+        "category": "Architecture & Design",
+        "order": 3,
+        "description": "The unified architecture vision for Whizbang - combining the best of all messaging libraries with aspect-oriented programming",
+        "tags": "vision, architecture, unified-model, aop, progressive-enhancement",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/commands/command-handling",
+        "title": "Command Handling",
+        "category": "Commands",
+        "order": 1,
+        "description": "\n# Command Handling\n\nCommands represent intent or actions in your system. Command handlers contain business logic, validate commands, apply business rules, and emit events to record what happened.\n\n## CRITICAL: Events Can ONLY Be Emitted via Command Handling\n\nEvents are the result of command processing - they cannot be created directly. You **must** send a command to emit an event.\n\n```mermaid\nsequenceDiagram\n    participant User\n    participant API as API/Service\n    participant Handler as Command Handler\n    participant Context as CommandContext\n    participant EventStore as Event Store\n    participant Projection as Projections\n\n    User->>API: Send Command<br/>(PlaceOrder)\n    API->>Handler: Handle(command, context)\n\n    Note over Handler: ✅ Validate command<br/>✅ Apply business rules<br/>✅ Make decisions\n\n    Handler->>Context: EmitEvent(OrderPlaced)<br/>⚠️ ONLY way to create events\n    Context->>Context: Populate EventContext<br/>(user, tenant, timestamp)\n    Context->>EventStore: Append event\n    EventStore-->>Context: Event persisted\n    Context-->>Handler: Event emitted\n\n    Handler->>Context: Send(ReserveInventory)<br/>✅ Emit follow-up commands\n    Context->>API: Route command\n\n    Handler-->>API: Return event\n    API-->>User: Success\n\n    EventStore->>Projection: Notify subscribers\n    Note over Projection: ✅ Pure transformation<br/>❌ NO event emission\n```\n\nThis constraint ensures:\n\n1. **Single Source of Truth**: All events originate from command handling - clear causation\n2. **Auditability**: Every event has a corresponding command that caused it\n3. **Authorization**: Commands are the authorization boundary - validate before creating events\n4. **Business Logic Encapsulation**: Events are created only after business rules pass\n5. **Transaction Boundary**: Command handling is the transaction boundary for event emission\n6. **Event Context**: CommandContext automatically populates EventContext metadata (user, tenant, etc.)\n\n## CommandContext Structure\n\n```csharp{\ntitle: \"CommandContext Structure\"\ndescription: \"Core structure for command handling context with event emission and security\"\nframework: \"NET8\"\ncategory: \"Commands\"\ndifficulty: \"INTERMEDIATE\"\ntags: [\"Commands\", \"Context\", \"Security\", \"Events\"]\nfilename: \"CommandContext.cs\"\nusingStatements: [\"System\", \"System.Threading.Tasks\"]\nshowLineNumbers: true\n}\npublic class CommandContext {\n    // Command metadata\n    public CommandMetadata Command { get; init; }\n\n    // Security context (from command initiator)\n    public SecurityContext Security { get; init; }\n\n    // Emit events - ONLY way to create events\n    public TEvent EmitEvent<TEvent>(TEvent @event) where TEvent : class;\n\n    // Emit follow-up commands\n    public Task Send<TCommand>(TCommand command, CancellationToken ct = default) where TCommand : class;\n\n    // Access to stores for reading (not writing - use events for that)\n    public IEventStore EventStore { get; init; }\n}\n\npublic class CommandMetadata {\n    public Guid CommandId { get; init; }\n    public string CommandType { get; init; }\n    public DateTime ReceivedAt { get; init; }\n    public Guid CorrelationId { get; init; }\n}\n```\n\n## Basic Command Handler\n\n```csharp{\ntitle: \"Basic Command Handler with Event Emission\"\ndescription: \"Command handler that validates, applies business logic, and emits events\"\nframework: \"NET8\"\ncategory: \"Commands\"\ndifficulty: \"BEGINNER\"\ntags: [\"Commands\", \"Command Handlers\", \"Events\", \"Business Logic\"]\nnugetPackages: [\"Whizbang.Core\"]\nusingStatements: [\"System\", \"System.Threading\", \"System.Threading.Tasks\"]\nshowLineNumbers: true\n}\nusing System;\nusing System.Threading;\nusing System.Threading.Tasks;\n\n// ✅ CORRECT: Command handler contains business logic\npublic class PlaceOrderHandler : ICommandHandler<PlaceOrder, OrderPlaced> {\n    public async Task<OrderPlaced> Handle(\n        PlaceOrder command,\n        CommandContext context,  // ✅ Context for emitting events and commands\n        CancellationToken ct) {\n\n        // ✅ Business logic happens HERE\n        // - Validate the order\n        // - Check inventory\n        // - Calculate totals\n        // - Apply business rules\n        // - Decide if order should be marked as expired\n\n        var expiresAt = DateTime.UtcNow.AddDays(90);  // ✅ Business decision\n        var isExpired = false;  // ✅ Business decision\n        var status = \"Placed\";   // ✅ Business decision\n\n        // ✅ Emit event via CommandContext - the ONLY way to create events\n        var @event = context.EmitEvent(new OrderPlaced {\n            OrderId = command.OrderId,\n            CustomerId = command.CustomerId,\n            Total = command.Total,\n            ExpiresAt = expiresAt,      // ✅ Set by handler\n            IsExpired = isExpired,       // ✅ Set by handler\n            Status = status              // ✅ Set by handler\n        });\n\n        return @event;\n    }\n}\n\n// ✅ CORRECT: Command is a POCO (Plain Old CLR Object)\npublic record PlaceOrder {\n    public Guid OrderId { get; init; }\n    public Guid CustomerId { get; init; }\n    public decimal Total { get; init; }\n    public List<OrderItem> Items { get; init; }\n}\n\n// ✅ CORRECT: Event is a POCO - describes what happened\npublic record OrderPlaced {\n    public Guid OrderId { get; init; }\n    public Guid CustomerId { get; init; }\n    public decimal Total { get; init; }\n    public DateTime ExpiresAt { get; init; }     // ✅ Data only (set by handler)\n    public bool IsExpired { get; init; }         // ✅ Data only (set by handler)\n    public string Status { get; init; }          // ✅ Data only (set by handler)\n\n    // ❌ NO business logic methods like:\n    // public bool ShouldExpire() => DateTime.UtcNow > ExpiresAt;\n    // Events are immutable data - handlers make decisions, events record them\n}\n\npublic record OrderItem {\n    public Guid ProductId { get; init; }\n    public int Quantity { get; init; }\n}\n```\n\n## What You CAN and CANNOT Do\n\n### ✅ In Command Handlers (Business Logic Layer)\n\n```csharp{\ntitle: \"Allowed Operations in Command Handlers\"\ndescription: \"Examples of what you can do within command handlers for business logic\"\nframework: \"NET8\"\ncategory: \"Commands\"\ndifficulty: \"BEGINNER\"\ntags: [\"Commands\", \"Business Logic\", \"Best Practices\"]\nfilename: \"CommandHandlerOperations.cs\"\nusingStatements: [\"System\", \"System.Threading.Tasks\"]\nshowLineNumbers: true\n}\n// ✅ CAN use DateTime.UtcNow for business decisions\nvar expiresAt = DateTime.UtcNow.AddDays(90);\n\n// ✅ CAN use Random or Guid.NewGuid()\nvar confirmationCode = Random.Shared.Next(100000, 999999);\n\n// ✅ CAN call external APIs\nvar customerData = await _customerService.GetCustomerAsync(command.CustomerId, ct);\n\n// ✅ CAN read from databases\nvar product = await _productRepository.GetAsync(command.ProductId, ct);\n\n// ✅ CAN perform calculations and validations\nif (command.Total <= 0) {\n    throw new InvalidOperationException(\"Order total must be positive\");\n}\n\n// ✅ CAN make business decisions\nvar needsApproval = command.Total > 10000;\nvar discount = customer.IsPremium ? 0.10m : 0;\n\n// ✅ CAN emit events via CommandContext\nvar @event = context.EmitEvent(new OrderPlaced { ... });\n\n// ✅ CAN emit follow-up commands via CommandContext\nawait context.Send(new ReserveInventory { ... }, ct);\n```\n\n### ❌ Outside Command Handlers\n\n```csharp{\ntitle: \"Forbidden Operations Outside Command Handlers\"\ndescription: \"Examples of what you cannot do outside of command handling context\"\nframework: \"NET8\"\ncategory: \"Commands\"\ndifficulty: \"BEGINNER\"\ntags: [\"Commands\", \"Anti-patterns\", \"Best Practices\", \"Events\"]\nfilename: \"ForbiddenOperations.cs\"\nusingStatements: [\"System\", \"System.Threading.Tasks\"]\nshowLineNumbers: true\n}\n// ❌ CANNOT emit events directly - no CommandContext\npublic class SomeService {\n    private readonly IEventStore _eventStore;\n\n    public async Task DoSomething() {\n        // ❌ FORBIDDEN: Cannot create events outside of command handling\n        var @event = new OrderPlaced { ... };\n        await _eventStore.AppendAsync(@event);  // 💥 Compile error - not allowed!\n\n        // ✅ CORRECT: Must send a command instead\n        await _whizbang.Send(new PlaceOrder { ... });\n        // The command handler will emit the event via CommandContext\n    }\n}\n\n// ❌ CANNOT emit events from projections\n[WhizbangProjection]\npublic class BadProjection {\n    public async Task OnOrderPlaced(\n        [WhizbangSubscribe] OrderPlaced @event,\n        CancellationToken ct) {\n\n        // ❌ FORBIDDEN: Projections cannot emit events\n        // No CommandContext available - projections are read-side only\n        var newEvent = new OrderProcessed { ... };  // 💥 Cannot emit\n\n        // ✅ CORRECT: If you need to trigger something, emit a command\n        await _whizbang.Send(new ProcessOrder { ... });\n        // The command handler will emit events\n    }\n}\n```\n\n## Command Emission (Sagas and Process Managers)\n\nHandlers can emit follow-up commands to coordinate workflows:\n\n```csharp{\ntitle: \"Command Emission in Handlers\"\ndescription: \"Emitting follow-up commands for workflow coordination\"\nframework: \"NET8\"\ncategory: \"Commands\"\ndifficulty: \"INTERMEDIATE\"\ntags: [\"Commands\", \"Sagas\", \"Workflows\", \"Process Managers\"]\nnugetPackages: [\"Whizbang.Core\"]\nusingStatements: [\"System\", \"System.Threading\", \"System.Threading.Tasks\"]\nshowLineNumbers: true\n}\nusing System;\nusing System.Threading;\nusing System.Threading.Tasks;\n\n// Command handler emits both events and commands\npublic class PlaceOrderHandler : ICommandHandler<PlaceOrder, OrderPlaced> {\n    public async Task<OrderPlaced> Handle(\n        PlaceOrder command,\n        CommandContext context,\n        CancellationToken ct) {\n\n        // Business logic\n        var expiresAt = DateTime.UtcNow.AddDays(90);\n\n        // ✅ Emit event via CommandContext\n        var @event = context.EmitEvent(new OrderPlaced {\n            OrderId = command.OrderId,\n            CustomerId = command.CustomerId,\n            Total = command.Total,\n            ExpiresAt = expiresAt\n        });\n\n        // ✅ Emit follow-up commands to coordinate workflow\n        await context.Send(new ReserveInventory {\n            OrderId = command.OrderId,\n            Items = command.Items\n        }, ct);\n\n        await context.Send(new NotifyCustomer {\n            CustomerId = command.CustomerId,\n            Message = \"Your order has been placed\"\n        }, ct);\n\n        return @event;\n    }\n}\n\n// Saga pattern - event handlers emit commands to orchestrate workflow\npublic class OrderSagaHandler : IEventHandler<OrderPlaced> {\n    private readonly IWhizbang _whizbang;\n\n    public async Task Handle(OrderPlaced @event, CancellationToken ct) {\n        // ✅ Event handler can emit commands (but NOT events)\n\n        // Step 1: Reserve inventory\n        await _whizbang.Send(new ReserveInventory {\n            OrderId = @event.OrderId,\n            Items = @event.Items\n        }, ct);\n\n        // Step 2: Authorize payment\n        await _whizbang.Send(new AuthorizePayment {\n            OrderId = @event.OrderId,\n            Amount = @event.Total,\n            CustomerId = @event.CustomerId\n        }, ct);\n    }\n}\n```\n\n## Aggregate Command Handling\n\nAggregates can also emit events via CommandContext:\n\n```csharp{\ntitle: \"Aggregate Command Handling\"\ndescription: \"Using aggregates to handle commands and emit events\"\nframework: \"NET8\"\ncategory: \"Commands\"\ndifficulty: \"ADVANCED\"\ntags: [\"Aggregates\", \"Commands\", \"Events\", \"DDD\"]\nnugetPackages: [\"Whizbang.Core\", \"Whizbang.EventSourcing\"]\nusingStatements: [\"System\", \"System.Collections.Generic\", \"System.Threading.Tasks\"]\nshowLineNumbers: true\n}\nusing System;\nusing System.Collections.Generic;\nusing System.Threading.Tasks;\n\n// Aggregate can emit events via CommandContext\npublic class OrderAggregate : Aggregate {\n    private Guid _orderId;\n    private OrderStatus _status;\n    private List<OrderItem> _items = new();\n\n    public async Task PlaceOrder(PlaceOrder command, CommandContext context) {\n        // Apply business rules\n        if (_status != OrderStatus.None) {\n            throw new InvalidOperationException(\"Order already placed\");\n        }\n\n        var expiresAt = DateTime.UtcNow.AddDays(90);\n\n        // ✅ Emit event via CommandContext\n        var @event = context.EmitEvent(new OrderPlaced {\n            OrderId = command.OrderId,\n            CustomerId = command.CustomerId,\n            Total = command.Total,\n            ExpiresAt = expiresAt\n        });\n\n        // Apply event to aggregate state\n        Apply(@event);\n\n        // ✅ Aggregate can also emit follow-up commands via CommandContext\n        await context.Send(new SendOrderConfirmationEmail {\n            OrderId = command.OrderId,\n            CustomerEmail = command.CustomerEmail\n        });\n    }\n\n    public async Task ShipOrder(ShipOrder command, CommandContext context) {\n        // Validate state\n        if (_status != OrderStatus.Placed) {\n            throw new InvalidOperationException(\"Order cannot be shipped in current state\");\n        }\n\n        // ✅ Emit event via CommandContext\n        var @event = context.EmitEvent(new OrderShipped {\n            OrderId = command.OrderId,\n            TrackingNumber = command.TrackingNumber\n        });\n\n        Apply(@event);\n\n        // ✅ Emit follow-up command\n        await context.Send(new NotifyCustomerOfShipment {\n            OrderId = command.OrderId,\n            TrackingNumber = command.TrackingNumber\n        });\n    }\n\n    // Event handlers update aggregate state\n    private void Apply(OrderPlaced @event) {\n        _orderId = @event.OrderId;\n        _status = OrderStatus.Placed;\n    }\n\n    private void Apply(OrderShipped @event) {\n        _status = OrderStatus.Shipped;\n    }\n}\n\npublic enum OrderStatus {\n    None,\n    Placed,\n    Shipped,\n    Delivered,\n    Cancelled\n}\n```\n\n## Use Cases for Command Emission\n\n1. **Sagas / Process Managers**: Orchestrate multi-step workflows across aggregates/services\n2. **Command Chaining**: Break complex operations into smaller, coordinated commands\n3. **Side Effects**: Trigger notifications, emails, integrations\n4. **Compensating Actions**: Send rollback commands if a step fails\n5. **Distributed Transactions**: Coordinate actions across multiple bounded contexts\n6. **Workflow Automation**: Trigger next steps in business processes\n\n### Saga Workflow Example\n\n```mermaid\nsequenceDiagram\n    participant User\n    participant OrderService\n    participant OrderSaga\n    participant InventoryService\n    participant PaymentService\n    participant ShippingService\n\n    User->>OrderService: PlaceOrder Command\n    OrderService->>OrderService: Validate & Emit OrderPlaced Event\n    OrderService-->>User: Order Created\n\n    OrderService->>OrderSaga: OrderPlaced Event\n\n    Note over OrderSaga: Saga orchestrates<br/>multi-step workflow\n\n    OrderSaga->>InventoryService: ReserveInventory Command\n    InventoryService->>InventoryService: Reserve & Emit InventoryReserved\n    InventoryService-->>OrderSaga: Success\n\n    OrderSaga->>PaymentService: AuthorizePayment Command\n    PaymentService->>PaymentService: Authorize & Emit PaymentAuthorized\n    PaymentService-->>OrderSaga: Success\n\n    OrderSaga->>ShippingService: ScheduleShipment Command\n    ShippingService->>ShippingService: Schedule & Emit ShipmentScheduled\n    ShippingService-->>OrderSaga: Success\n\n    Note over OrderSaga: Workflow complete!<br/>All steps succeeded\n\n    alt Payment Fails\n        PaymentService-->>OrderSaga: Payment Failed\n        OrderSaga->>InventoryService: ReleaseInventory Command\n        Note over OrderSaga: Compensating action<br/>rollback inventory\n    end\n```\n\n## The Three-Layer Architecture\n\n```mermaid\ngraph TB\n    subgraph BusinessLogic[\"Command Handler / Aggregate (Business Logic Layer)\"]\n        BL1[\"✅ Validates commands\"]\n        BL2[\"✅ Applies business rules\"]\n        BL3[\"✅ Makes decisions\"]\n        BL4[\"✅ Creates event POCOs with results\"]\n        BL5[\"✅ CAN emit commands (sagas)\"]\n        BL6[\"✅ CAN use DateTime.UtcNow, Random, APIs\"]\n    end\n\n    subgraph DataLayer[\"Data Layer (POCOs - No Logic)\"]\n        Event[\"Event<br/>- Properties only<br/>- NO methods<br/>- Describes what happened\"]\n        Command[\"Command<br/>- Properties only<br/>- NO methods<br/>- Describes intent\"]\n    end\n\n    subgraph ReadModel[\"Projection (Read Model Layer)\"]\n        P1[\"✅ Pure transformation of event data\"]\n        P2[\"❌ NO business logic\"]\n        P3[\"❌ NO DateTime.UtcNow, Random, APIs\"]\n        P4[\"✅ ONLY event data or EventContext\"]\n        P5[\"✅ Deterministic and replayable\"]\n    end\n\n    BusinessLogic -->|Emits Events| Event\n    BusinessLogic -->|Emits Commands| Command\n    Event -->|Consumed by| ReadModel\n    Command -->|Handled by| BusinessLogic\n\n    style BusinessLogic fill:#d4edda,stroke:#28a745,stroke-width:2px\n    style DataLayer fill:#fff3cd,stroke:#ffc107,stroke-width:2px\n    style ReadModel fill:#cce5ff,stroke:#004085,stroke-width:2px\n    style Event fill:#fff3cd,stroke:#ffc107,stroke-width:2px\n    style Command fill:#fff3cd,stroke:#ffc107,stroke-width:2px\n```\n\n## Commands vs Events vs Queries\n\n| Aspect | Command | Event | Query |\n|",
+        "tags": "commands, command-handlers, command-context, events, business-logic",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/contributors/coding-standards",
+        "title": "Coding Standards",
+        "category": "Contributors",
+        "order": 2,
+        "description": "",
+        "tags": "code-style, conventions, c-sharp, best-practices",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/contributors/contributing",
+        "title": "Contributing to Whizbang",
+        "category": "Contributors",
+        "order": 1,
+        "description": "",
+        "tags": "contributing, development, open-source",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/aggregates",
+        "title": "Aggregates",
+        "category": "Core Concepts",
+        "order": 2,
+        "description": "",
+        "tags": "aggregates, event-sourcing, domain-driven-design, ddd",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts",
+        "title": "Core Concepts",
+        "category": "Core Concepts",
+        "order": 1,
+        "description": "Master the four foundational concepts of Whizbang - Events, Commands, Aggregates, and Projections - essential for building effective CQRS and event-sourced systems.",
+        "tags": "events, commands, aggregates, projections, domain-driven-design",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/dispatcher",
+        "title": "Dispatcher & Policies",
+        "category": "Core Concepts",
+        "order": 5,
+        "description": "The Dispatcher coordinates all message flow between receptors, perspectives, and lenses, with policies controlling behavior and execution strategies",
+        "tags": "dispatcher, policies, configuration, coordination",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/lenses",
+        "title": "Lenses",
+        "category": "Core Concepts",
+        "order": 4,
+        "description": "Lenses - read-only interfaces for querying data in Whizbang",
+        "tags": "lenses, queries, read-model, cqrs, read-only",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/perspectives",
+        "title": "Perspectives",
+        "category": "Core Concepts",
+        "order": 3,
+        "description": "Perspectives - how events create different views of your data in Whizbang",
+        "tags": "perspectives, projections, views, event-driven, cqrs",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/projections",
+        "title": "Projections",
+        "category": "Core Concepts",
+        "order": 3,
+        "description": "",
+        "tags": "projections, read-models, cqrs, event-handlers",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/receptors",
+        "title": "Receptors",
+        "category": "Core Concepts",
+        "order": 2,
+        "description": "Receptors - the universal pattern for receiving commands and making decisions in Whizbang",
+        "tags": "receptors, commands, decisions, event-driven, event-sourced",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/repositories-and-helpers",
+        "title": "Repositories and CQRS Helpers",
+        "category": "Core Concepts",
+        "order": 2,
+        "description": "",
+        "tags": "repositories, cqrs, helpers, patterns",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/return-type-semantics",
+        "title": "Return Type Semantics",
+        "category": "Core Concepts",
+        "order": 5,
+        "description": "How return types determine behavior in Whizbang - the foundation of convention over configuration",
+        "tags": "return-types, semantics, handlers, conventions, core-concept",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/testing123",
+        "title": "Testing 123",
+        "category": "Core Concepts",
+        "order": 99,
+        "description": "",
+        "tags": "testing, version-switching, navigation",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/examples/enhanced-csharp-examples",
+        "title": "C# Code Examples",
+        "category": "Examples",
+        "order": 1,
+        "description": "",
+        "tags": "csharp, examples, syntax-highlighting, metadata",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/getting-started/aspire-integration",
+        "title": ".NET Aspire Integration",
+        "category": "Getting Started",
+        "order": 3,
+        "description": "",
+        "tags": "aspire, local-development, orchestration, docker",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/getting-started",
+        "title": "Getting Started",
+        "category": "Getting Started",
+        "order": 1,
+        "description": "Learn how to build your first Whizbang application with this hands-on tutorial covering event-driven architecture, receptors, perspectives, lenses, and event sourcing from simple to scale.",
+        "tags": "tutorial, quickstart, installation",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/getting-started/package-structure",
+        "title": "Package Structure",
+        "category": "Getting Started",
+        "order": 2,
+        "description": "\n# Package Structure\n\n**This is a reference guide** to all available Whizbang NuGet packages, their capabilities, and how to choose the right ones for your application.\n\n> 💡 **New to Whizbang?** Start with the [**Getting Started Tutorial**](./getting-started.md) for hands-on, step-by-step learning. Come back here when you need detailed package information.\n\n## Overview\n\nWhizbang is distributed as a suite of NuGet packages, allowing you to install only what you need. This keeps your application lean and supports AOT compilation.\n\n**Package Philosophy:**\n\n- **Start minimal** - Begin with `Whizbang.Core` (just the mediator)\n- **Add as needed** - Install event sourcing, projections, messaging only when required\n- **Choose your stack** - Pick your preferred ORM (EF Core, Dapper, NHibernate) and message broker\n- **Stay lean** - No forced dependencies, excellent for AOT compilation\n\n```mermaid\n%%{init: {'flowchart': {'nodeSpacing': 800}, 'themeVariables': {'fontSize': '200px'}}}%%\ngraph LR\n    subgraph ORM[\"ORM Integrations\"]\n        WhizEF[Whizbang.EntityFramework<br/>EF Core Integration]\n        WhizDapper[Whizbang.Dapper<br/>Dapper Integration]\n        WhizNH[Whizbang.NHibernate<br/>NHibernate Integration]\n    end\n\n    subgraph Core[\"Core Packages\"]\n        WhizCore[Whizbang.Core<br/>Mediator, Handlers, Pipeline]\n        WhizES[Whizbang.EventSourcing<br/>Event Store, Aggregates]\n        WhizProj[Whizbang.Projections<br/>Read Models, Subscriptions]\n        WhizMsg[Whizbang.Messaging<br/>Distributed Messaging, Outbox/Inbox]\n    end\n\n    subgraph Messaging[\"Message Broker Adapters\"]\n        WhizKafka[Whizbang.Kafka]\n        WhizRabbit[Whizbang.RabbitMQ]\n        WhizASB[Whizbang.AzureServiceBus]\n        WhizSQS[Whizbang.AWSSQS]\n    end\n\n    subgraph Observability[\"Observability\"]\n        WhizOTel[Whizbang.OpenTelemetry<br/>Tracing, Metrics]\n        WhizDash[Whizbang.Dashboard<br/>Monitoring UI]\n    end\n\n    subgraph Dev[\"Developer Tools\"]\n        WhizAnalyzers[Whizbang.Analyzers<br/>Roslyn Analyzers, Purity Checks]\n        WhizTesting[Whizbang.Testing<br/>In-Memory Doubles, Test Helpers]\n    end\n\n    ORM -.->|Require| WhizES\n    Messaging -.->|Require| WhizMsg\n\n    WhizES --> WhizCore\n    WhizProj --> WhizCore\n    WhizProj --> WhizES\n    WhizMsg --> WhizCore\n```\n\n### Functional Area Color Key\n\nThe diagram uses color-coded edges to indicate functional areas:\n\n- 🟢 **Green (Core)** - Core business logic and domain functionality\n- 🔴 **Red (Event)** - Event sourcing, data persistence, and event handling\n- 🔵 **Blue (Read)** - Read models, projections, and query operations\n- 🟡 **Yellow (Command)** - Commands, write operations, and distributed messaging\n- 🔷 **Teal (Observability)** - Telemetry, metrics, tracing, and monitoring\n- 🟣 **Purple (Infrastructure)** - Developer tools, analyzers, and testing utilities\n\n## Core Packages\n\n### Whizbang.Core\n\n**The minimal foundation for all Whizbang applications.**\n\n```bash{\ntitle: \"Install Whizbang.Core Package\"\ndescription: \"Install the minimal foundation package for Whizbang applications\"\nframework: \"NET8\"\ncategory: \"Getting Started\"\ndifficulty: \"BEGINNER\"\ntags: [\"Getting Started\", \"Packages\", \"Installation\", \"Core\"]\nshowLineNumbers: false\n}\ndotnet add package Whizbang.Core\n```\n\n**Includes:**\n\n- Message routing (commands, events, queries)\n- In-memory mediator\n- Handler discovery and execution\n- Basic pipeline (validation, authorization hooks)\n- No persistence, no external messaging\n\n**Use when:**\n\n- Building a simple CQRS application\n- You don't need event sourcing or projections\n- In-process messaging is sufficient\n- Learning Whizbang\n\n**Example:**\n\n```csharp{\ntitle: \"Simple Mediator Setup - Complete Program.cs\"\ndescription: \"Complete example showing Whizbang.Core as an in-process mediator with handler discovery\"\nframework: \"NET8\"\ncategory: \"Getting Started\"\ndifficulty: \"BEGINNER\"\ntags: [\"Mediator\", \"CQRS\", \"Setup\", \"Program.cs\"]\nnugetPackages: [\"Whizbang.Core\"]\nusingStatements: [\"Microsoft.Extensions.DependencyInjection\", \"Microsoft.Extensions.Hosting\", \"Whizbang\"]\nshowLineNumbers: true\ncollapsedLines: [1-3, 25-35]\n}\n// Stage 1: Imports\nusing Microsoft.Extensions.DependencyInjection;\nusing Microsoft.Extensions.Hosting;\nusing Whizbang;\n\n// Stage 2: Host builder setup\nvar builder = Host.CreateApplicationBuilder(args);\n\n// Stage 3: Register Whizbang mediator (in-memory only)\nbuilder.Services.AddWhizbang(options => {\n    // OPTION A: Source generator approach (recommended)\n    // Handlers decorated with [WhizbangHandler] are auto-discovered at compile time\n    options.RegisterGeneratedHandlers();\n\n    // OPTION B: Explicit registration\n    // Manually register each handler for fine-grained control\n    // options.RegisterHandler<PlaceOrder, PlaceOrderHandler>();\n    // options.RegisterHandler<CancelOrder, CancelOrderHandler>();\n});\n\n// Stage 4: Build and run\nvar app = builder.Build();\nawait app.RunAsync();\n\n// Stage 5: Example handler decorated with [WhizbangHandler]\n[WhizbangHandler]  // Source generator picks this up\npublic class PlaceOrderHandler : ICommandHandler<PlaceOrder, OrderResult> {\n    public async Task<OrderResult> Handle(PlaceOrder command, CancellationToken ct) {\n        // Business logic here\n        return new OrderResult(command.OrderId);\n    }\n}\n```\n\n**Handler Discovery Approaches:**\n\nWhizbang is **100% AOT-compatible** and supports **two ways** to register handlers:\n\n1. **Source Generator (Recommended)**: Decorate handlers with `[WhizbangHandler]` attribute. At compile time, a source generator discovers all marked handlers and generates registration code. Call `options.RegisterGeneratedHandlers()` to use them.\n\n   ```csharp\n   // Handler definition\n   [WhizbangHandler]\n   public class PlaceOrderHandler : ICommandHandler<PlaceOrder, OrderResult> { ... }\n\n   // Registration\n   options.RegisterGeneratedHandlers();\n   ```\n\n   **Benefits:**\n   - Zero runtime reflection\n   - AOT-safe\n   - Automatic discovery at compile time\n   - No manual registration needed\n\n2. **Explicit Registration**: Manually register each handler. Gives you full control and is AOT-safe.\n\n   ```csharp\n   options.RegisterHandler<PlaceOrder, PlaceOrderHandler>();\n   options.RegisterHandler<CancelOrder, CancelOrderHandler>();\n   ```\n\n   **Benefits:**\n   - Fine-grained control over registration\n   - No attributes in domain code\n   - Explicit and obvious\n   - AOT-safe\n\n**Note**: The `[WhizbangHandler]` attribute can be placed on:\n\n- The handler class itself\n- A base class the handler inherits from\n- An interface the handler implements\n\nThe source generator will discover handlers through any of these paths.\n\n**Attribute Naming**: All Whizbang attributes use the `Whizbang` prefix for consistency and to avoid naming collisions (`[WhizbangHandler]`, `[WhizbangProjection]`, `[WhizbangSubscribe]`).\n\n",
+        "tags": "nuget, packages, installation, dependencies",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/observability/dashboard",
+        "title": "Whizbang Dashboard",
+        "category": "Observability",
+        "order": 1,
+        "description": "\n# Whizbang Dashboard\n\nThe **Whizbang Dashboard** is a separate web application (package: `Whizbang.Dashboard`) that provides real-time visualization of your event-sourced, message-driven system.\n\n## Overview\n\nThe dashboard offers:\n\n- **Message Journey Visualization** - See the complete lifecycle of commands and events\n- **Distributed Tracing** - Track messages across microservices\n- **Projection Health** - Monitor projection lag and errors\n- **Event Stream Explorer** - Browse aggregate event streams\n- **Performance Metrics** - Throughput, latency, error rates\n- **Control Plane** - Send control commands to services\n\n## Installation\n\n### NuGet Package\n\n```bash\n",
+        "tags": "dashboard, observability, tracing, visualization, monitoring",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/projections/projection-contexts",
+        "title": "Projection Contexts",
+        "category": "Projections",
+        "order": 3,
+        "description": "\n# Projection Contexts\n\nWhizbang provides two types of context for projections:\n\n1. **EventContext** - Rich event metadata (pure data, no side effects)\n2. **ProjectionContext** - Projection-specific operations and metadata (CRUD operations, projection info)\n\nBoth can be injected at the method level or constructor level.\n\n```mermaid\ngraph LR\n    Event[Event] --> Handler[Projection Handler]\n\n    subgraph Contexts[\"Injected Contexts\"]\n        EC[EventContext<br/>Pure Data Only]\n        PC[ProjectionContext<br/>With CRUD Operations]\n    end\n\n    subgraph ECData[\"EventContext Contents\"]\n        System[System Data<br/>Timestamp, Machine, etc.]\n        Security[Security Context<br/>User, Tenant, Roles]\n        EventMeta[Event Metadata<br/>EventId, Causation]\n        Tracing[Tracing Context<br/>CorrelationId, TraceId]\n    end\n\n    subgraph PCData[\"ProjectionContext Contents\"]\n        ProjMeta[Projection Metadata<br/>Name, Version, Type]\n        ServiceMeta[Service Metadata<br/>Environment, Machine]\n        Store[Projection Store<br/>Create, Update, Patch, Delete]\n    end\n\n    EC --> ECData\n    PC --> PCData\n\n    Handler --> EC\n    Handler --> PC\n    PC --> Store\n\n    style Event fill:#fff3cd,stroke:#ffc107,stroke-width:2px\n    style Handler fill:#cce5ff,stroke:#004085,stroke-width:2px\n    style EC fill:#d4edda,stroke:#28a745,stroke-width:2px\n    style PC fill:#d1ecf1,stroke:#0c5460,stroke-width:2px\n    style Store fill:#f8d7da,stroke:#dc3545,stroke-width:2px\n```\n\n## EventContext Injection\n\nEventContext is **pure data** (no side effects) that provides rich metadata about every event.\n\n### EventContext Structure\n\n```csharp{\ntitle: \"EventContext Structure\"\ndescription: \"Complete structure of EventContext with system metadata, security context, event metadata, and tracing information\"\nframework: \"NET8\"\ncategory: \"Projections\"\ndifficulty: \"INTERMEDIATE\"\ntags: [\"Projections\", \"EventContext\", \"Structure\", \"Metadata\"]\nfilename: \"EventContext.cs\"\nusingStatements: [\"System\", \"System.Collections.Generic\"]\nshowLineNumbers: true\n}\npublic class EventContext {\n    // System metadata\n    public SystemData System { get; init; }\n\n    // Security and multi-tenancy context\n    public SecurityContext Security { get; init; }\n\n    // Event-specific metadata\n    public EventMetadata Event { get; init; }\n\n    // Distributed tracing information\n    public TracingContext Tracing { get; init; }\n}\n\npublic class SystemData {\n    // System-generated metadata\n    public DateTime Timestamp { get; init; }\n    public string MachineName { get; init; }\n    public string Environment { get; init; }\n    public long EventSequenceNumber { get; init; }\n\n    // Custom system metadata (extensible)\n    public IReadOnlyDictionary<string, object> CustomMetadata { get; init; }\n}\n\npublic class SecurityContext {\n    // User information\n    public Guid? UserId { get; init; }\n    public string UserName { get; init; }\n    public IReadOnlyList<string> Roles { get; init; }\n\n    // Multi-tenancy\n    public Guid? TenantId { get; init; }\n    public string TenantName { get; init; }\n\n    // Permissions (evaluated at command/event creation time)\n    public IReadOnlyList<string> Permissions { get; init; }\n\n    // Service trust boundary\n    public bool IsTrustedService { get; init; }\n    public string ServiceName { get; init; }\n}\n\npublic class EventMetadata {\n    // Event identification\n    public Guid EventId { get; init; }\n    public string EventType { get; init; }\n    public int EventVersion { get; init; }\n\n    // Causation (what caused this event)\n    public Guid? CausationId { get; init; }  // Command that caused this event\n    public string CausationType { get; init; }\n\n    // Custom event metadata\n    public IReadOnlyDictionary<string, object> CustomMetadata { get; init; }\n}\n\npublic class TracingContext {\n    // Distributed tracing\n    public string CorrelationId { get; init; }  // End-to-end request tracking\n    public string TraceId { get; init; }        // OpenTelemetry trace ID\n    public string SpanId { get; init; }         // OpenTelemetry span ID\n\n    // Message journey\n    public int HopCount { get; init; }          // Number of services traversed\n    public DateTime InitiatedAt { get; init; }  // When the original request started\n}\n```\n\n### EventContext Usage Example\n\n```csharp{\ntitle: \"EventContext Usage in Projections\"\ndescription: \"Accessing system metadata, security context, and tracing information\"\nframework: \"NET8\"\ncategory: \"Projections\"\ndifficulty: \"INTERMEDIATE\"\ntags: [\"Projections\", \"EventContext\", \"Security\", \"Multi-Tenancy\"]\nnugetPackages: [\"Whizbang.Core\", \"Whizbang.Projections\"]\nusingStatements: [\"System\", \"System.Threading\", \"System.Threading.Tasks\"]\nshowLineNumbers: true\n}\nusing System;\nusing System.Threading;\nusing System.Threading.Tasks;\n\n[WhizbangProjection]\npublic class TenantOrderHistoryProjection {\n    private readonly Dictionary<Guid, List<TenantOrderRecord>> _ordersByTenant = new();\n\n    public Task OnOrderPlaced(\n        [WhizbangSubscribe] OrderPlaced @event,\n        EventContext context,\n        CancellationToken ct) {\n        // Use security context for tenant isolation\n        if (!context.Security.TenantId.HasValue) {\n            throw new InvalidOperationException(\"TenantId is required for order events\");\n        }\n\n        var tenantId = context.Security.TenantId.Value;\n\n        // Create tenant-scoped record with rich context\n        var record = new TenantOrderRecord {\n            OrderId = @event.OrderId,\n            TenantId = tenantId,\n            TenantName = context.Security.TenantName,\n            CustomerId = @event.CustomerId,\n            Total = @event.Total,\n\n            // System metadata\n            PlacedAt = context.System.Timestamp,\n            PlacedBy = context.Security.UserName,\n            PlacedByUserId = context.Security.UserId,\n\n            // Tracing\n            CorrelationId = context.Tracing.CorrelationId,\n            OriginatedAt = context.Tracing.InitiatedAt,\n\n            // Event metadata\n            EventId = context.Event.EventId,\n            CausationId = context.Event.CausationId  // The PlaceOrder command ID\n        };\n\n        if (!_ordersByTenant.ContainsKey(tenantId)) {\n            _ordersByTenant[tenantId] = new List<TenantOrderRecord>();\n        }\n\n        _ordersByTenant[tenantId].Add(record);\n\n        return Task.CompletedTask;\n    }\n\n    // Query methods (tenant-scoped)\n    public IEnumerable<TenantOrderRecord> GetOrdersForTenant(Guid tenantId) {\n        return _ordersByTenant.TryGetValue(tenantId, out var orders)\n            ? orders\n            : Enumerable.Empty<TenantOrderRecord>();\n    }\n}\n\npublic record TenantOrderRecord {\n    public Guid OrderId { get; init; }\n    public Guid TenantId { get; init; }\n    public string TenantName { get; init; }\n    public Guid CustomerId { get; init; }\n    public decimal Total { get; init; }\n\n    // System metadata\n    public DateTime PlacedAt { get; init; }\n    public string PlacedBy { get; init; }\n    public Guid? PlacedByUserId { get; init; }\n\n    // Tracing\n    public string CorrelationId { get; init; }\n    public DateTime OriginatedAt { get; init; }\n\n    // Event lineage\n    public Guid EventId { get; init; }\n    public Guid? CausationId { get; init; }\n}\n```\n\n### EventContext Benefits\n\n1. **Multi-Tenancy**: Access tenant context for data isolation\n2. **Security**: User, roles, permissions available for authorization\n3. **Auditing**: Track who did what and when\n4. **Tracing**: End-to-end request tracking with correlation IDs\n5. **Causation**: Link events back to originating commands\n6. **Pure Data**: All context is immutable, enabling pure function projections\n7. **Extensible**: Custom metadata dictionaries for app-specific data\n\n### Purity Guarantees\n\nEventContext is designed to maintain projection purity:\n\n- **Immutable**: All properties are `init`-only\n- **No side effects**: Contains only data, no methods with side effects\n- **No I/O**: No database, file system, or network access\n- **Deterministic**: Same event + context always produces same projection state\n- **Roslyn Analyzers**: Whizbang.Analyzers enforces purity rules at compile time\n\n",
+        "tags": "projections, eventcontext, projectioncontext, context-injection",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/projections/projection-purity",
+        "title": "Projection Purity",
+        "category": "Projections",
+        "order": 4,
+        "description": "\n# Projection Purity\n\n**CRITICAL**: Projections must be **pure functions** and **deterministic**. The same event must ALWAYS produce the same projection state, regardless of when it's processed.\n\n## The Purity Rule\n\nProjections are **read-side transformations** that convert event data into queryable read models. They must:\n\n- Be deterministic (same input = same output)\n- Have no side effects\n- Use only data from events or EventContext\n- Never perform business logic\n\n## Good vs Bad Projections\n\n### ✅ Good Projection (Pure)\n\n```csharp{\ntitle: \"Pure Projection Example\"\ndescription: \"Correct projection using only event data and EventContext\"\nframework: \"NET8\"\ncategory: \"Projections\"\ndifficulty: \"INTERMEDIATE\"\ntags: [\"Projections\", \"Purity\", \"Best Practices\"]\nnugetPackages: [\"Whizbang.Core\", \"Whizbang.Projections\"]\nusingStatements: [\"System\", \"System.Threading\", \"System.Threading.Tasks\"]\nshowLineNumbers: true\n}\nusing System;\nusing System.Threading;\nusing System.Threading.Tasks;\n\n[WhizbangProjection]\npublic class GoodProjection {\n    // ✅ CORRECT: Use event timestamp from EventContext\n    public async Task OnOrderPlaced(\n        [WhizbangSubscribe] OrderPlaced @event,\n        ProjectionContext projection,\n        EventContext eventContext,\n        CancellationToken ct) {\n        var summary = new OrderSummary {\n            OrderId = @event.OrderId,\n            PlacedAt = eventContext.System.Timestamp,  // ✅ Deterministic\n            ExpiresAt = @event.ExpiresAt,              // ✅ From event (business logic set this)\n            CustomerId = @event.CustomerId,\n            Total = @event.Total\n        };\n\n        await projection.Store.CreateAsync(summary, ct);\n    }\n\n    // ✅ CORRECT: Business logic decision in event, not projection\n    public Task OnOrderPlaced2(\n        [WhizbangSubscribe] OrderPlaced @event,\n        ProjectionContext projection,\n        CancellationToken ct) {\n        // Event already contains IsExpired flag (set by business logic)\n        if (@event.IsExpired) {\n            return projection.Return(ProjectionReturnType.Ignored);\n        }\n\n        // Process non-expired order\n        return Task.CompletedTask;\n    }\n\n    // ✅ CORRECT: Use data from event or context\n    public async Task OnOrderShipped(\n        [WhizbangSubscribe] OrderShipped @event,\n        ProjectionContext projection,\n        EventContext eventContext,\n        CancellationToken ct) {\n        await projection.Store.PatchAsync<OrderSummary>(\n            @event.OrderId,\n            order => {\n                order.Status = \"Shipped\";\n                order.ShippedAt = eventContext.System.Timestamp;  // ✅ From context\n                order.TrackingNumber = @event.TrackingNumber;      // ✅ From event\n            },\n            ct);\n    }\n}\n\npublic class OrderSummary {\n    public Guid OrderId { get; set; }\n    public DateTime PlacedAt { get; set; }\n    public DateTime ExpiresAt { get; set; }\n    public Guid CustomerId { get; set; }\n    public decimal Total { get; set; }\n    public string Status { get; set; }\n    public DateTime? ShippedAt { get; set; }\n    public string TrackingNumber { get; set; }\n}\n```\n\n### ❌ Bad Projection (Impure)\n\n```csharp{\ntitle: \"Impure Projection Example\"\ndescription: \"Common purity violations and how to avoid them\"\nframework: \"NET8\"\ncategory: \"Projections\"\ndifficulty: \"INTERMEDIATE\"\ntags: [\"Projections\", \"Anti-Patterns\", \"Common Mistakes\"]\nnugetPackages: [\"Whizbang.Core\", \"Whizbang.Projections\"]\nusingStatements: [\"System\", \"System.IO\", \"System.Threading\", \"System.Threading.Tasks\"]\nshowLineNumbers: true\n}\nusing System;\nusing System.IO;\nusing System.Threading;\nusing System.Threading.Tasks;\n\n[WhizbangProjection]\npublic class BadProjection {\n    // ❌ WRONG: DateTime.UtcNow is non-deterministic\n    public async Task OnOrderPlaced(\n        [WhizbangSubscribe] OrderPlaced @event,\n        ProjectionContext projection,\n        CancellationToken ct) {\n        var summary = new OrderSummary {\n            OrderId = @event.OrderId,\n            PlacedAt = DateTime.UtcNow,  // ❌ NON-DETERMINISTIC - Will be different on replay!\n        };\n\n        await projection.Store.CreateAsync(summary, ct);\n        // 💥 Whizbang.Analyzers will flag this as a compile error\n    }\n\n    // ❌ WRONG: Business logic in projection\n    public Task OnOrderPlaced2(\n        [WhizbangSubscribe] OrderPlaced @event,\n        ProjectionContext projection,\n        EventContext eventContext,\n        CancellationToken ct) {\n        // ❌ WRONG: Calculating expiration in projection is business logic\n        var age = DateTime.UtcNow - eventContext.System.Timestamp;  // ❌ Non-deterministic\n        if (age > TimeSpan.FromDays(90)) {\n            return projection.Return(ProjectionReturnType.Ignored);\n        }\n\n        // Business logic belongs in command handler or aggregate, not projection!\n        return Task.CompletedTask;\n        // 💥 Whizbang.Analyzers will flag DateTime.UtcNow usage\n    }\n\n    // ❌ WRONG: Random values\n    public async Task OnOrderPlaced3(\n        [WhizbangSubscribe] OrderPlaced @event,\n        ProjectionContext projection,\n        CancellationToken ct) {\n        var summary = new OrderSummary {\n            OrderId = @event.OrderId,\n            RandomValue = Random.Shared.Next()  // ❌ NON-DETERMINISTIC\n        };\n\n        await projection.Store.CreateAsync(summary, ct);\n        // 💥 Whizbang.Analyzers will flag Random usage\n    }\n\n    // ❌ WRONG: External I/O in projection\n    public async Task OnOrderPlaced4(\n        [WhizbangSubscribe] OrderPlaced @event,\n        ProjectionContext projection,\n        HttpClient httpClient,\n        CancellationToken ct) {\n        // ❌ WRONG: Calling external API is non-deterministic\n        var customerData = await httpClient.GetAsync($\"https://api/customers/{@event.CustomerId}\");\n\n        // External data can change - not deterministic!\n        // 💥 Whizbang.Analyzers will flag external I/O\n    }\n\n    // ❌ WRONG: File I/O in projection\n    public async Task OnOrderPlaced5(\n        [WhizbangSubscribe] OrderPlaced @event,\n        CancellationToken ct) {\n        // ❌ WRONG: File writes are side effects\n        await File.WriteAllTextAsync(\"orders.log\", @event.OrderId.ToString());\n        // 💥 Whizbang.Analyzers will flag file I/O\n    }\n}\n\npublic class OrderSummary {\n    public Guid OrderId { get; set; }\n    public DateTime PlacedAt { get; set; }\n    public int RandomValue { get; set; }\n}\n```\n\n## Purity Rules\n\nProjections must follow these rules to remain pure and deterministic:\n\n| ❌ **NEVER Use** | ✅ **Instead Use** | **Why** |\n|",
+        "tags": "projections, purity, determinism, best-practices, analyzers",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/projections/projection-return-values",
+        "title": "Projection Return Values",
+        "category": "Projections",
+        "order": 5,
+        "description": "\n# Projection Return Values\n\nProjection methods can return metadata about the processing outcome using `ProjectionContext.Return()`. This is **metadata only** with **no side effects** - it's purely for observability and metrics.\n\n## ProjectionReturnType Enum\n\n```csharp{\ntitle: \"ProjectionReturnType Enum\"\ndescription: \"Enumeration defining the possible return values for projection methods\"\nframework: \"NET8\"\ncategory: \"Projections\"\ndifficulty: \"BEGINNER\"\ntags: [\"Projections\", \"Return Values\", \"Enums\"]\nfilename: \"ProjectionReturnType.cs\"\nusingStatements: [\"System\"]\nshowLineNumbers: true\n}\npublic enum ProjectionReturnType {\n    Accepted,  // Event was processed successfully (default)\n    Ignored    // Event was intentionally ignored/skipped\n}\n```\n\n## Return Value Semantics\n\n| Return Type | Meaning | Use When | Metrics Impact |\n|",
+        "tags": "projections, return-values, observability, metrics, monitoring",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/projections/projection-subscriptions",
+        "title": "Projection Subscriptions",
+        "category": "Projections",
+        "order": 2,
+        "description": "",
+        "tags": "projections, subscriptions, events, polymorphism, generics",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/test-features",
+        "title": "Test New Features",
+        "category": "Test",
+        "order": 1,
+        "description": "Test page for new header and callout features",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/usage-patterns/aspect-oriented-handlers",
+        "title": "Aspect-Oriented Handlers",
+        "category": "Usage Patterns",
+        "order": 8,
+        "description": "Implementing cross-cutting concerns through aspect-oriented programming with source generators",
+        "tags": "aspects, aop, cross-cutting-concerns, handlers, decorators",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/usage-patterns/cqrs-implementation",
+        "title": "CQRS Implementation",
+        "category": "Usage Patterns",
+        "order": 3,
+        "description": "Implement Command Query Responsibility Segregation (CQRS) with Whizbang to separate read and write models for optimal performance",
+        "tags": "cqrs, projections, read-models, query-optimization, intermediate",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/usage-patterns/distributed-messaging",
+        "title": "Distributed Messaging",
+        "category": "Usage Patterns",
+        "order": 4,
+        "description": "Implement distributed messaging patterns with Whizbang for reliable communication across service boundaries",
+        "tags": "distributed, messaging, microservices, outbox, inbox, advanced",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/usage-patterns/event-sourcing-basics",
+        "title": "Event Sourcing Basics",
+        "category": "Usage Patterns",
+        "order": 2,
+        "description": "Learn the fundamentals of event sourcing with Whizbang - storing state changes as events and rebuilding state through event replay",
+        "tags": "event-sourcing, aggregates, persistence, intermediate",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/usage-patterns/microservices-integration",
+        "title": "Microservices Integration",
+        "category": "Usage Patterns",
+        "order": 6,
+        "description": "Build and deploy microservices with Whizbang and .NET Aspire for production-ready distributed systems",
+        "tags": "microservices, aspire, deployment, kubernetes, service-mesh, advanced",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/usage-patterns/policy-composition",
+        "title": "Policy Composition",
+        "category": "Usage Patterns",
+        "order": 7,
+        "description": "Building resilient applications with composable policies for retry, circuit breaking, timeouts, and fallbacks",
+        "tags": "policies, resilience, retry, circuit-breaker, composition",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/usage-patterns/progressive-enhancement",
+        "title": "Progressive Enhancement",
+        "category": "Usage Patterns",
+        "order": 9,
+        "description": "Scale your application from simple in-process to distributed event-sourced systems without changing handler code",
+        "tags": "progressive-enhancement, scaling, modes, evolution, architecture",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/usage-patterns/saga-orchestration",
+        "title": "Saga Orchestration",
+        "category": "Usage Patterns",
+        "order": 5,
+        "description": "Implement saga patterns with Whizbang to orchestrate complex multi-step business processes with compensation",
+        "tags": "saga, orchestration, workflow, compensation, state-machine, advanced",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/usage-patterns/simple-mediator",
+        "title": "Event-Driven Dispatcher Pattern",
+        "category": "Usage Patterns",
+        "order": 1,
+        "description": "Learn how to implement event-driven architecture with Whizbang using receptors, perspectives, and lenses",
+        "tags": "dispatcher, event-driven, receptor, perspective, lens, beginner",
+        "version": "v1.0.0"
+      }
+    ]
+  },
+  {
+    "version": "v1.0.1",
+    "metadata": {
+      "folderType": "version",
+      "version": "v1.0.1",
+      "status": "planned",
+      "estimatedDate": "2025-02-01",
+      "theme": "Bug Fixes & Improvements"
+    },
+    "docs": [
+      {
+        "slug": "v1.0.1/bug-fixes",
+        "title": "Bug Fixes and Improvements",
+        "category": "Release Notes",
+        "order": 1,
+        "description": "",
+        "tags": "bug-fixes, improvements, stability",
+        "version": "v1.0.1",
+        "unreleased": true,
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "version": "v1.1.0",
+    "metadata": {
+      "folderType": "version",
+      "version": "v1.1.0",
+      "status": "beta",
+      "estimatedDate": "2025-01-15",
+      "theme": "Advanced Projection Management"
+    },
+    "docs": [
+      {
+        "slug": "v1.1.0/backups-and-snapshots",
+        "title": "Backups and Snapshots",
+        "category": "Roadmap",
+        "order": 2,
+        "description": "\n# Backups and Snapshots\n\n⚠️ **FUTURE FEATURE - NOT YET RELEASED**\n\nThis documentation describes backup and snapshot support planned for v1.1.0.\nThese features are not available in the current release.\n\n**Status**: Planned\n**Target Version**: 1.1.0\n\n",
+        "tags": "backups, snapshots, disaster-recovery, point-in-time-recovery",
+        "version": "v1.1.0",
+        "unreleased": true,
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "version": "v1.2.0",
+    "metadata": {
+      "folderType": "version",
+      "version": "v1.2.0",
+      "status": "alpha",
+      "estimatedDate": "2025-03-15",
+      "theme": "Distributed Messaging & Scalability"
+    },
+    "docs": [
+      {
+        "slug": "v1.2.0/distributed-messaging",
+        "title": "Distributed Messaging",
+        "category": "Roadmap",
+        "order": 1,
+        "description": "\n# Distributed Messaging\n\n⚠️ **FUTURE FEATURE - NOT YET RELEASED**\n\nThis documentation describes distributed messaging support planned for v1.0.0.\nThis feature is not available in the current release.\n\n**Status**: Planned\n**Target Version**: 1.0.0\n\n",
+        "tags": "microservices, messaging, kafka, distributed-systems",
+        "version": "v1.2.0",
+        "unreleased": true,
+        "status": "planned"
+      },
+      {
+        "slug": "v1.2.0/lakehouse-streaming",
+        "title": "Lakehouse Streaming",
+        "category": "Roadmap",
+        "order": 3,
+        "description": "\n# Lakehouse Streaming\n\n⚠️ **FUTURE FEATURE - NOT YET RELEASED**\n\nThis documentation describes lakehouse streaming support planned for v1.2.0.\nThis feature is not available in the current release.\n\n**Status**: Planned\n**Target Version**: 1.2.0\n\n",
+        "tags": "analytics, data-lake, lakehouse, streaming, parquet",
+        "version": "v1.2.0",
+        "unreleased": true,
+        "status": "planned"
+      }
+    ]
+  },
+  {
+    "state": "drafts",
+    "metadata": {
+      "folderType": "state",
+      "state": "drafts",
+      "description": "Documentation currently being written and developed"
+    },
+    "docs": [
+      {
+        "slug": "drafts/test-error-display",
+        "title": "Test Error Display",
+        "category": "Test",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "drafts"
+      }
+    ]
+  },
+  {
+    "state": "proposals",
+    "metadata": {
+      "folderType": "state",
+      "state": "proposals",
+      "description": "Proposed features and documentation under consideration"
+    },
+    "docs": [
+      {
+        "slug": "proposals/advanced-features",
+        "title": "Advanced Features",
+        "category": "Architecture & Design",
+        "order": 10,
+        "description": "\n# Advanced Features\n\nWhizbang includes advanced features for enterprise scenarios, including cross-aggregate transactions, performance monitoring, Kubernetes operators, and debugging tools.\n\n## Cross-Aggregate Transactions\n\n### Unit of Work Pattern\n\n**Coordinate transactions across multiple aggregates** while maintaining consistency:\n\n```csharp\n",
+        "tags": "unit-of-work, performance-budgets, kubernetes-operator, tracing, debugging",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/concurrency-control",
+        "title": "Concurrency Control",
+        "category": "Architecture & Design",
+        "order": 5,
+        "description": "\n# Concurrency Control\n\nWhizbang provides flexible concurrency control mechanisms to handle concurrent updates to aggregates, supporting multiple strategies that developers can choose globally or per-operation.\n\n## Concurrency Strategies\n\n### A. Expected Version (Default)\n\n**Standard event sourcing pattern** - explicitly specify the expected version:\n\n```csharp\n",
+        "tags": "concurrency, optimistic-locking, versioning, marten",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/core-concepts/testing123",
+        "title": "Testing 123",
+        "category": "Architecture & Design",
+        "order": 99,
+        "description": "",
+        "tags": "testing, version-switching, navigation, proposals",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/deployment-operations",
+        "title": "Deployment & Operations",
+        "category": "Architecture & Design",
+        "order": 15,
+        "description": "\n# Deployment & Operations\n\nWhizbang is designed as an embedded library that runs within developer services, providing comprehensive operational hooks for production deployment, monitoring, and lifecycle management.\n\n## Deployment Model\n\n### Embedded Library Architecture\n\n**Whizbang runs embedded** within your application, not as a separate service:\n\n```csharp\n",
+        "tags": "deployment, operations, kubernetes, health-checks, graceful-shutdown",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/domain-ownership",
+        "title": "Domain Ownership",
+        "category": "Architecture & Design",
+        "order": 6,
+        "description": "\n# Domain Ownership\n\nWhizbang enforces explicit domain ownership to prevent distributed system chaos. Every command and event has a clear owner, enabling proper routing, authorization, and system boundaries.\n\n## Ownership Determination Order\n\nDomain ownership is determined in **user-configurable order**, with this **default precedence**:\n\n1. **Namespace Convention** (highest priority)\n2. **Attributes** \n3. **Configuration-Driven** (lowest priority)\n\nEach level can override previous levels, giving developers full control.\n\n## 1. Namespace Convention (Default First)\n\n**Automatic ownership** derived from namespace structure:\n\n```csharp\n",
+        "tags": "domain-ownership, commands, events, namespace-policies, attributes",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/event-store-projections",
+        "title": "Event Store & Projection Architecture",
+        "category": "Architecture & Design",
+        "order": 4,
+        "description": "\n# Event Store & Projection Architecture\n\nWhizbang implements a hybrid event store and projection architecture that separates event persistence from projection storage, enabling flexible schema evolution and high-performance querying.\n\n## Core Architecture\n\n### Hybrid Storage Design\n\n**Events Table** (Immutable Event Stream):\n```sql\n",
+        "tags": "event-store, projections, architecture, jsonb, snapshots",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/flags-tags-system",
+        "title": "Flags & Tags System",
+        "category": "Architecture & Design",
+        "order": 11,
+        "description": "\n# Flags & Tags System\n\nWhizbang provides a sophisticated flags and tags system for message context, enabling dynamic behavior modification, cross-service debugging, and flexible routing throughout the entire message lifecycle.\n\n## Core Concepts\n\n### Flags (Library-Defined)\n\n**Hardcoded enum flags** provided by Whizbang for common scenarios:\n\n```csharp\n",
+        "tags": "flags, tags, message-context, routing, debugging, cross-service",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/multi-tenancy",
+        "title": "Multi-Tenancy",
+        "category": "Architecture & Design",
+        "order": 8,
+        "description": "\n# Multi-Tenancy\n\nWhizbang provides comprehensive multi-tenancy support with flexible tenant isolation strategies, from single database with row-level security to complete database separation.\n\n## Tenant Isolation Strategies\n\n### Single Database with Tenant ID\n\n**Row-level tenant isolation** using tenant ID columns:\n\n```sql\n",
+        "tags": "multi-tenancy, tenant-isolation, partitioning, data-isolation",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/observability-metrics",
+        "title": "Observability & Metrics",
+        "category": "Architecture & Design",
+        "order": 14,
+        "description": "\n# Observability & Metrics\n\nWhizbang provides comprehensive observability with policy-driven metrics collection, OpenTelemetry integration, and custom field attributes for rich monitoring and debugging capabilities.\n\n## Metrics Architecture\n\n### Default Metrics (Always Enabled)\n\n**Core performance and health metrics** essential for operation:\n\n```csharp\n",
+        "tags": "observability, metrics, opentelemetry, monitoring, performance",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/open-questions",
+        "title": "Open Design Questions - RESOLVED",
+        "category": "Architecture & Design",
+        "order": 3,
+        "description": "\n# Open Design Questions - RESOLVED ✅\n\n**Status**: All critical and important design questions have been resolved and documented in detailed specification documents.\n\nThis document previously captured open questions and architectural decisions for Whizbang. **All questions have now been resolved** and documented in comprehensive specifications.\n\n## 🔴 Critical Decisions - ALL RESOLVED ✅\n\n**All critical decisions have been resolved and documented**. See the detailed specifications below:\n\n### 1. Handler Discovery Mechanism ✅ **RESOLVED**\n**Decision**: Hybrid approach (Source Generators + Explicit Registration)\n- **Detailed Specification**: [Domain Ownership](./domain-ownership.md)\n\n### 2. Handler Method Signature Conventions ✅ **RESOLVED**\n**Decision**: Convention-based with Source Generator support\n- **Detailed Specification**: [Domain Ownership](./domain-ownership.md)\n\n### 3. Event Store Schema Design ✅ **RESOLVED**\n**Decision**: Hybrid approach (Separate Events and Projections with JSONB)\n- **Detailed Specification**: [Event Store & Projections](./event-store-projections.md)\n\n### 4. Optimistic Concurrency Strategy ✅ **RESOLVED**\n**Decision**: Support all strategies (Expected Version, Timestamp-Based, Automatic Retry)\n- **Detailed Specification**: [Concurrency Control](./concurrency-control.md)\n\n### 5. Domain Ownership Declaration ✅ **RESOLVED**\n**Decision**: Configurable precedence order (Namespace → Attributes → Configuration)\n- **Detailed Specification**: [Domain Ownership](./domain-ownership.md)\n\n",
+        "tags": "architecture, design-decisions, resolved, specifications",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/policy-engine",
+        "title": "Policy Engine",
+        "category": "Architecture & Design",
+        "order": 12,
+        "description": "\n# Policy Engine\n\nWhizbang includes a sophisticated policy engine that enables flexible, rule-based configuration for routing, behavior modification, and system adaptation across the entire message lifecycle.\n\n## Core Architecture\n\nThe Policy Engine is the **universal configuration scoping mechanism** for Whizbang. Rather than having separate configuration systems for each feature, policies provide a unified way to apply configuration based on context, conditions, and scope.\n\n**Every configurable aspect of Whizbang can use policies** to determine when and how configuration should be applied:\n\n- **Concurrency strategies** - Which concurrency approach to use based on message type/context\n- **Observability levels** - How much detail to capture based on flags/environment\n- **Performance budgets** - Different performance expectations for different scenarios\n- **Serialization formats** - Which serializer to use for different drivers/contexts\n- **Multi-tenancy isolation** - Tenant-specific behavior and storage strategies\n- **Domain ownership** - Dynamic ownership rules based on context\n- **Error handling** - Different resilience policies for different message types\n- **Routing decisions** - Which handlers to use based on flags/tags\n- **Security policies** - Authentication/authorization rules based on context\n\n**Policies can evaluate any aspect of the system state**:\n- **Message content** - Properties, types, values within commands/events\n- **Message context** - Flags, tags, correlation IDs, tenant information\n- **System state** - Current load, resource utilization, error rates\n- **Environment** - Development, staging, production, feature flags\n- **User context** - Authentication, authorization, user roles\n- **Time-based conditions** - Business hours, maintenance windows, seasons\n- **Domain context** - Which domain owns the message, cross-domain interactions\n- **Infrastructure state** - Database health, message broker status\n- **Custom conditions** - Any developer-defined evaluation criteria\n\n> **📋 Message Context**: While policies can evaluate any system aspect, the [**Flags & Tags System**](./flags-tags-system.md) provides a convenient way to carry context through message flows.\n\n## Configuration Architecture Principles\n\n### Policy-Based vs Direct Configuration\n\n**Policies handle behavioral configuration** that varies by context, environment, message type, or runtime conditions:\n\n```csharp\n",
+        "tags": "policy-engine, rules, behavior-modification, routing, configuration",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/projection-management",
+        "title": "Projection Management",
+        "category": "Architecture & Design",
+        "order": 7,
+        "description": "\n# Projection Management\n\nWhizbang provides comprehensive projection management including checkpoints, backfilling strategies, system events for on-demand rebuilds, and flexible storage options.\n\n## Checkpoint Storage\n\nProjections track their progress through **checkpoint storage**, supporting multiple strategies:\n\n### A. Same Database (Default)\n\n**Transactional consistency** - checkpoints and projections updated together:\n\n```csharp\n",
+        "tags": "projections, backfilling, checkpoints, system-events, rebuilding",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/schema-evolution",
+        "title": "Schema Evolution & Event Versioning",
+        "category": "Architecture & Design",
+        "order": 9,
+        "description": "\n# Schema Evolution & Event Versioning\n\nWhizbang provides robust schema evolution capabilities using JSONB storage and flexible driver interfaces, allowing events and projections to evolve over time without breaking existing systems.\n\n## JSONB-Based Schema Evolution\n\n### Flexible Event Schema\n\nEvents stored in **JSONB format** naturally support schema evolution:\n\n```csharp\n",
+        "tags": "schema-evolution, event-versioning, jsonb, upcasting, backward-compatibility",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/source-generation-ide",
+        "title": "Source Generation & IDE Integration",
+        "category": "Architecture & Design",
+        "order": 12,
+        "description": "\n# Source Generation & IDE Integration\n\nWhizbang uses advanced source generation and IDE integration to provide a seamless developer experience with compile-time validation, intelligent navigation, and powerful debugging tools.\n\n## Source Generator Architecture\n\n### Single Pipeline Generator\n\n**Incremental source generator** with orchestrated pipeline stages for optimal performance:\n\n```csharp\n",
+        "tags": "source-generation, ide-integration, analyzers, navigation, debugging",
+        "version": "proposals"
+      },
+      {
+        "slug": "proposals/testing-development-tools",
+        "title": "Testing & Development Tools",
+        "category": "Architecture & Design",
+        "order": 13,
+        "description": "\n# Testing & Development Tools\n\nWhizbang provides comprehensive testing utilities and development tools to ensure a productive developer experience from local development to production deployment.\n\n## Testing Framework\n\n### Whizbang.Testing Package\n\n**Comprehensive testing library** with fluent APIs for all Whizbang scenarios:\n\n```csharp\n",
+        "tags": "testing, development-tools, cli, ide-extensions, dashboard",
+        "version": "proposals"
+      }
+    ]
+  },
+  {
+    "state": "backlog",
+    "metadata": {
+      "folderType": "state",
+      "state": "backlog",
+      "description": "Approved features awaiting scheduling and development"
+    },
+    "docs": []
+  },
+  {
+    "state": "declined",
+    "metadata": {
+      "folderType": "state",
+      "state": "declined",
+      "description": "Declined proposals archived for reference"
+    },
+    "docs": []
+  }
+]

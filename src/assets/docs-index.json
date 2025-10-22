@@ -1,177 +1,46 @@
 [
   {
-    "slug": "advanced/advanced-scenarios",
-    "title": "Advanced Scenarios",
-    "category": "Advanced",
-    "order": 1,
+    "slug": "backlog/_folder",
+    "title": "Development Backlog",
+    "category": "backlog",
+    "description": "Approved features awaiting scheduling and development",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "declined/_folder",
+    "title": "Declined Proposals",
+    "category": "declined",
+    "description": "Declined proposals archived for reference",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "drafts/_folder",
+    "title": "Draft Documentation",
+    "category": "drafts",
+    "description": "Documentation currently being written and developed",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "drafts/test-error-display",
+    "title": "Test Error Display",
+    "category": "Test",
     "description": "",
     "videos": [],
     "examples": []
   },
   {
-    "slug": "advanced/configuration",
-    "title": "Configuration",
-    "category": "Advanced",
-    "order": 1,
-    "description": "",
+    "slug": "proposals/_folder",
+    "title": "Proposed Features",
+    "category": "proposals",
+    "description": "Proposed features and documentation under consideration",
     "videos": [],
     "examples": []
   },
   {
-    "slug": "architecture-design/architecture",
-    "title": "Architecture Overview",
-    "category": "Architecture & Design",
-    "order": 1,
-    "description": "Explore Whizbang's layered architecture that scales from event-driven development to full distributed event-sourced systems with receptors, perspectives, lenses, and domain ownership.",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "architecture-design/aspect-oriented-programming",
-    "title": "Aspect-Oriented Programming in Whizbang",
-    "category": "Architecture & Design",
-    "order": 4,
-    "description": "Comprehensive guide to Whizbang's aspect-oriented programming system powered by source generators",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "architecture-design/event-driven-architecture",
-    "title": "Event-Driven Architecture",
-    "category": "Architecture & Design",
-    "order": 4,
-    "description": "Understanding Whizbang's Event-Driven and Event-Sourced modes - how the same code works in both paradigms",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "architecture-design/philosophy",
-    "title": "Philosophy & Design Principles",
-    "category": "Architecture & Design",
-    "order": 2,
-    "description": "",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "architecture-design/whizbang-unified-vision",
-    "title": "Whizbang Unified Vision",
-    "category": "Architecture & Design",
-    "order": 3,
-    "description": "The unified architecture vision for Whizbang - combining the best of all messaging libraries with aspect-oriented programming",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "commands/command-handling",
-    "title": "Command Handling",
-    "category": "Commands",
-    "order": 1,
-    "description": "",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "contributors/coding-standards",
-    "title": "Coding Standards",
-    "category": "Contributors",
-    "order": 2,
-    "description": "",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "contributors/contributing",
-    "title": "Contributing to Whizbang",
-    "category": "Contributors",
-    "order": 1,
-    "description": "",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "core-concepts/aggregates",
-    "title": "Aggregates",
-    "category": "Core Concepts",
-    "order": 2,
-    "description": "",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "core-concepts",
-    "title": "Core Concepts",
-    "category": "Core Concepts",
-    "order": 1,
-    "description": "Master the four foundational concepts of Whizbang - Events, Commands, Aggregates, and Projections - essential for building effective CQRS and event-sourced systems.",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "core-concepts/dispatcher",
-    "title": "Dispatcher & Policies",
-    "category": "Core Concepts",
-    "order": 5,
-    "description": "The Dispatcher coordinates all message flow between receptors, perspectives, and lenses, with policies controlling behavior and execution strategies",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "core-concepts/lenses",
-    "title": "Lenses",
-    "category": "Core Concepts",
-    "order": 4,
-    "description": "Lenses - read-only interfaces for querying data in Whizbang",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "core-concepts/perspectives",
-    "title": "Perspectives",
-    "category": "Core Concepts",
-    "order": 3,
-    "description": "Perspectives - how events create different views of your data in Whizbang",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "core-concepts/projections",
-    "title": "Projections",
-    "category": "Core Concepts",
-    "order": 3,
-    "description": "",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "core-concepts/receptors",
-    "title": "Receptors",
-    "category": "Core Concepts",
-    "order": 2,
-    "description": "Receptors - the universal pattern for receiving commands and making decisions in Whizbang",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "core-concepts/repositories-and-helpers",
-    "title": "Repositories and CQRS Helpers",
-    "category": "Core Concepts",
-    "order": 2,
-    "description": "",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "core-concepts/return-type-semantics",
-    "title": "Return Type Semantics",
-    "category": "Core Concepts",
-    "order": 5,
-    "description": "How return types determine behavior in Whizbang - the foundation of convention over configuration",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "design/advanced-features",
+    "slug": "proposals/advanced-features",
     "title": "Advanced Features",
     "category": "Architecture & Design",
     "order": 10,
@@ -180,7 +49,7 @@
     "examples": []
   },
   {
-    "slug": "design/concurrency-control",
+    "slug": "proposals/concurrency-control",
     "title": "Concurrency Control",
     "category": "Architecture & Design",
     "order": 5,
@@ -189,7 +58,7 @@
     "examples": []
   },
   {
-    "slug": "design/deployment-operations",
+    "slug": "proposals/deployment-operations",
     "title": "Deployment & Operations",
     "category": "Architecture & Design",
     "order": 15,
@@ -198,7 +67,7 @@
     "examples": []
   },
   {
-    "slug": "design/domain-ownership",
+    "slug": "proposals/domain-ownership",
     "title": "Domain Ownership",
     "category": "Architecture & Design",
     "order": 6,
@@ -207,7 +76,7 @@
     "examples": []
   },
   {
-    "slug": "design/event-store-projections",
+    "slug": "proposals/event-store-projections",
     "title": "Event Store & Projection Architecture",
     "category": "Architecture & Design",
     "order": 4,
@@ -216,7 +85,7 @@
     "examples": []
   },
   {
-    "slug": "design/flags-tags-system",
+    "slug": "proposals/flags-tags-system",
     "title": "Flags & Tags System",
     "category": "Architecture & Design",
     "order": 11,
@@ -225,7 +94,7 @@
     "examples": []
   },
   {
-    "slug": "design/multi-tenancy",
+    "slug": "proposals/multi-tenancy",
     "title": "Multi-Tenancy",
     "category": "Architecture & Design",
     "order": 8,
@@ -234,7 +103,7 @@
     "examples": []
   },
   {
-    "slug": "design/observability-metrics",
+    "slug": "proposals/observability-metrics",
     "title": "Observability & Metrics",
     "category": "Architecture & Design",
     "order": 14,
@@ -243,7 +112,7 @@
     "examples": []
   },
   {
-    "slug": "design/open-questions",
+    "slug": "proposals/open-questions",
     "title": "Open Design Questions - RESOLVED",
     "category": "Architecture & Design",
     "order": 3,
@@ -252,7 +121,7 @@
     "examples": []
   },
   {
-    "slug": "design/policy-engine",
+    "slug": "proposals/policy-engine",
     "title": "Policy Engine",
     "category": "Architecture & Design",
     "order": 12,
@@ -261,7 +130,7 @@
     "examples": []
   },
   {
-    "slug": "design/projection-management",
+    "slug": "proposals/projection-management",
     "title": "Projection Management",
     "category": "Architecture & Design",
     "order": 7,
@@ -270,7 +139,7 @@
     "examples": []
   },
   {
-    "slug": "design/schema-evolution",
+    "slug": "proposals/schema-evolution",
     "title": "Schema Evolution & Event Versioning",
     "category": "Architecture & Design",
     "order": 9,
@@ -279,7 +148,7 @@
     "examples": []
   },
   {
-    "slug": "design/source-generation-ide",
+    "slug": "proposals/source-generation-ide",
     "title": "Source Generation & IDE Integration",
     "category": "Architecture & Design",
     "order": 12,
@@ -288,7 +157,7 @@
     "examples": []
   },
   {
-    "slug": "design/testing-development-tools",
+    "slug": "proposals/testing-development-tools",
     "title": "Testing & Development Tools",
     "category": "Architecture & Design",
     "order": 13,
@@ -297,7 +166,186 @@
     "examples": []
   },
   {
-    "slug": "examples/enhanced-csharp-examples",
+    "slug": "v1.0.0/_folder",
+    "title": "Release v1.0.0 - Initial Release",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/advanced/advanced-scenarios",
+    "title": "Advanced Scenarios",
+    "category": "Advanced",
+    "order": 1,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/advanced/configuration",
+    "title": "Configuration",
+    "category": "Advanced",
+    "order": 1,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/architecture-design/architecture",
+    "title": "Architecture Overview",
+    "category": "Architecture & Design",
+    "order": 1,
+    "description": "Explore Whizbang's layered architecture that scales from event-driven development to full distributed event-sourced systems with receptors, perspectives, lenses, and domain ownership.",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/architecture-design/aspect-oriented-programming",
+    "title": "Aspect-Oriented Programming in Whizbang",
+    "category": "Architecture & Design",
+    "order": 4,
+    "description": "Comprehensive guide to Whizbang's aspect-oriented programming system powered by source generators",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/architecture-design/event-driven-architecture",
+    "title": "Event-Driven Architecture",
+    "category": "Architecture & Design",
+    "order": 4,
+    "description": "Understanding Whizbang's Event-Driven and Event-Sourced modes - how the same code works in both paradigms",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/architecture-design/philosophy",
+    "title": "Philosophy & Design Principles",
+    "category": "Architecture & Design",
+    "order": 2,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/architecture-design/whizbang-unified-vision",
+    "title": "Whizbang Unified Vision",
+    "category": "Architecture & Design",
+    "order": 3,
+    "description": "The unified architecture vision for Whizbang - combining the best of all messaging libraries with aspect-oriented programming",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/commands/command-handling",
+    "title": "Command Handling",
+    "category": "Commands",
+    "order": 1,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/contributors/coding-standards",
+    "title": "Coding Standards",
+    "category": "Contributors",
+    "order": 2,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/contributors/contributing",
+    "title": "Contributing to Whizbang",
+    "category": "Contributors",
+    "order": 1,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/aggregates",
+    "title": "Aggregates",
+    "category": "Core Concepts",
+    "order": 2,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/core-concepts",
+    "title": "Core Concepts",
+    "category": "Core Concepts",
+    "order": 1,
+    "description": "Master the four foundational concepts of Whizbang - Events, Commands, Aggregates, and Projections - essential for building effective CQRS and event-sourced systems.",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/dispatcher",
+    "title": "Dispatcher & Policies",
+    "category": "Core Concepts",
+    "order": 5,
+    "description": "The Dispatcher coordinates all message flow between receptors, perspectives, and lenses, with policies controlling behavior and execution strategies",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/lenses",
+    "title": "Lenses",
+    "category": "Core Concepts",
+    "order": 4,
+    "description": "Lenses - read-only interfaces for querying data in Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/perspectives",
+    "title": "Perspectives",
+    "category": "Core Concepts",
+    "order": 3,
+    "description": "Perspectives - how events create different views of your data in Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/projections",
+    "title": "Projections",
+    "category": "Core Concepts",
+    "order": 3,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/receptors",
+    "title": "Receptors",
+    "category": "Core Concepts",
+    "order": 2,
+    "description": "Receptors - the universal pattern for receiving commands and making decisions in Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/repositories-and-helpers",
+    "title": "Repositories and CQRS Helpers",
+    "category": "Core Concepts",
+    "order": 2,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/return-type-semantics",
+    "title": "Return Type Semantics",
+    "category": "Core Concepts",
+    "order": 5,
+    "description": "How return types determine behavior in Whizbang - the foundation of convention over configuration",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/examples/enhanced-csharp-examples",
     "title": "C# Code Examples",
     "category": "Examples",
     "order": 1,
@@ -306,7 +354,7 @@
     "examples": []
   },
   {
-    "slug": "getting-started/aspire-integration",
+    "slug": "v1.0.0/getting-started/aspire-integration",
     "title": ".NET Aspire Integration",
     "category": "Getting Started",
     "order": 3,
@@ -315,7 +363,7 @@
     "examples": []
   },
   {
-    "slug": "getting-started",
+    "slug": "v1.0.0/getting-started/getting-started",
     "title": "Getting Started",
     "category": "Getting Started",
     "order": 1,
@@ -324,7 +372,7 @@
     "examples": []
   },
   {
-    "slug": "getting-started/package-structure",
+    "slug": "v1.0.0/getting-started/package-structure",
     "title": "Package Structure",
     "category": "Getting Started",
     "order": 2,
@@ -333,7 +381,7 @@
     "examples": []
   },
   {
-    "slug": "observability/dashboard",
+    "slug": "v1.0.0/observability/dashboard",
     "title": "Whizbang Dashboard",
     "category": "Observability",
     "order": 1,
@@ -342,7 +390,7 @@
     "examples": []
   },
   {
-    "slug": "projections/projection-contexts",
+    "slug": "v1.0.0/projections/projection-contexts",
     "title": "Projection Contexts",
     "category": "Projections",
     "order": 3,
@@ -351,7 +399,7 @@
     "examples": []
   },
   {
-    "slug": "projections/projection-purity",
+    "slug": "v1.0.0/projections/projection-purity",
     "title": "Projection Purity",
     "category": "Projections",
     "order": 4,
@@ -360,7 +408,7 @@
     "examples": []
   },
   {
-    "slug": "projections/projection-return-values",
+    "slug": "v1.0.0/projections/projection-return-values",
     "title": "Projection Return Values",
     "category": "Projections",
     "order": 5,
@@ -369,7 +417,7 @@
     "examples": []
   },
   {
-    "slug": "projections/projection-subscriptions",
+    "slug": "v1.0.0/projections/projection-subscriptions",
     "title": "Projection Subscriptions",
     "category": "Projections",
     "order": 2,
@@ -378,42 +426,16 @@
     "examples": []
   },
   {
-    "slug": "roadmap/backups-and-snapshots",
-    "title": "Backups and Snapshots",
-    "category": "Roadmap",
-    "order": 2,
-    "description": "",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "roadmap/distributed-messaging",
-    "title": "Distributed Messaging",
-    "category": "Roadmap",
-    "order": 1,
-    "description": "",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "roadmap/lakehouse-streaming",
-    "title": "Lakehouse Streaming",
-    "category": "Roadmap",
-    "order": 3,
-    "description": "",
-    "videos": [],
-    "examples": []
-  },
-  {
-    "slug": "test-error-display",
-    "title": "Test Error Display",
+    "slug": "v1.0.0/test-features",
+    "title": "Test New Features",
     "category": "Test",
-    "description": "",
+    "order": 1,
+    "description": "Test page for new header and callout features",
     "videos": [],
     "examples": []
   },
   {
-    "slug": "usage-patterns/aspect-oriented-handlers",
+    "slug": "v1.0.0/usage-patterns/aspect-oriented-handlers",
     "title": "Aspect-Oriented Handlers",
     "category": "Usage Patterns",
     "order": 8,
@@ -422,7 +444,7 @@
     "examples": []
   },
   {
-    "slug": "usage-patterns/cqrs-implementation",
+    "slug": "v1.0.0/usage-patterns/cqrs-implementation",
     "title": "CQRS Implementation",
     "category": "Usage Patterns",
     "order": 3,
@@ -431,7 +453,7 @@
     "examples": []
   },
   {
-    "slug": "usage-patterns/distributed-messaging",
+    "slug": "v1.0.0/usage-patterns/distributed-messaging",
     "title": "Distributed Messaging",
     "category": "Usage Patterns",
     "order": 4,
@@ -440,7 +462,7 @@
     "examples": []
   },
   {
-    "slug": "usage-patterns/event-sourcing-basics",
+    "slug": "v1.0.0/usage-patterns/event-sourcing-basics",
     "title": "Event Sourcing Basics",
     "category": "Usage Patterns",
     "order": 2,
@@ -449,7 +471,7 @@
     "examples": []
   },
   {
-    "slug": "usage-patterns/microservices-integration",
+    "slug": "v1.0.0/usage-patterns/microservices-integration",
     "title": "Microservices Integration",
     "category": "Usage Patterns",
     "order": 6,
@@ -458,7 +480,7 @@
     "examples": []
   },
   {
-    "slug": "usage-patterns/policy-composition",
+    "slug": "v1.0.0/usage-patterns/policy-composition",
     "title": "Policy Composition",
     "category": "Usage Patterns",
     "order": 7,
@@ -467,7 +489,7 @@
     "examples": []
   },
   {
-    "slug": "usage-patterns/progressive-enhancement",
+    "slug": "v1.0.0/usage-patterns/progressive-enhancement",
     "title": "Progressive Enhancement",
     "category": "Usage Patterns",
     "order": 9,
@@ -476,7 +498,7 @@
     "examples": []
   },
   {
-    "slug": "usage-patterns/saga-orchestration",
+    "slug": "v1.0.0/usage-patterns/saga-orchestration",
     "title": "Saga Orchestration",
     "category": "Usage Patterns",
     "order": 5,
@@ -485,11 +507,71 @@
     "examples": []
   },
   {
-    "slug": "usage-patterns/simple-mediator",
+    "slug": "v1.0.0/usage-patterns/simple-mediator",
     "title": "Event-Driven Dispatcher Pattern",
     "category": "Usage Patterns",
     "order": 1,
     "description": "Learn how to implement event-driven architecture with Whizbang using receptors, perspectives, and lenses",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.1/_folder",
+    "title": "Release v1.0.1 - Bug Fixes & Improvements",
+    "category": "v1.0.1",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.1/bug-fixes",
+    "title": "Bug Fixes and Improvements",
+    "category": "Release Notes",
+    "order": 1,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.1.0/_folder",
+    "title": "Release v1.1.0 - Advanced Projection Management",
+    "category": "v1.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.1.0/backups-and-snapshots",
+    "title": "Backups and Snapshots",
+    "category": "Roadmap",
+    "order": 2,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.2.0/_folder",
+    "title": "Release v1.2.0 - Distributed Messaging & Scalability",
+    "category": "v1.2.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.2.0/distributed-messaging",
+    "title": "Distributed Messaging",
+    "category": "Roadmap",
+    "order": 1,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.2.0/lakehouse-streaming",
+    "title": "Lakehouse Streaming",
+    "category": "Roadmap",
+    "order": 3,
+    "description": "",
     "videos": [],
     "examples": []
   }

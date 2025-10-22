@@ -1,13 +1,16 @@
-import { Component, inject, signal, OnInit, computed, OnDestroy } from '@angular/core';
+import { Component, inject, signal, OnInit, computed, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { DividerModule } from 'primeng/divider';
 import { TooltipModule } from 'primeng/tooltip';
 import { EnvironmentAwareDocsService, MenuItem } from '../services/environment-aware-docs.service';
+import { VersionAwareNavigationService, VersionAwareMenuItem } from '../services/version-aware-navigation.service';
 import { CustomNavigationMenuComponent, CustomMenuItem } from './custom-navigation-menu.component';
+import { VersionSelectorComponent } from './version-selector.component';
 import { ThemeService, ThemeMode } from '../services/theme.service';
 import { UserPreferencesService } from '../services/user-preferences.service';
+import { VersionService } from '../services/version.service';
 import { MenuItem as PrimeMenuItem } from 'primeng/api';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
@@ -21,7 +24,8 @@ import { filter } from 'rxjs/operators';
     ButtonModule,
     DividerModule,
     TooltipModule,
-    CustomNavigationMenuComponent
+    CustomNavigationMenuComponent,
+    VersionSelectorComponent
   ],
   template: `
     <button 
@@ -65,6 +69,7 @@ import { filter } from 'rxjs/operators';
             [menuItems]="customMenuItems()"
             [nestingLevel]="0">
           </wb-custom-navigation-menu>
+          
         </div>
 
         <p-divider></p-divider>
@@ -620,6 +625,16 @@ import { filter } from 'rxjs/operators';
       white-space: nowrap;
     }
 
+    .version-selector-wrapper {
+      padding: 0.5rem 1rem;
+    }
+
+    /* Override version selector styles for sidebar */
+    .version-selector-wrapper :host ::ng-deep .version-selector-btn {
+      width: 100%;
+      justify-content: space-between;
+    }
+
     .sidebar-footer {
       margin-top: auto;
       padding: 1rem;
@@ -795,12 +810,91 @@ import { filter } from 'rxjs/operators';
       background-color: #e5e7eb !important;
     }
 
+    /* Version-aware menu item styling */
+    :host ::ng-deep .unified-nav-menu .version-specific {
+      position: relative;
+    }
+
+    :host ::ng-deep .unified-nav-menu .version-specific::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--blue-500);
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* Documentation state indicators */
+    :host ::ng-deep .unified-nav-menu .state-drafts::before {
+      background: var(--orange-500);
+    }
+
+    :host ::ng-deep .unified-nav-menu .state-proposals::before {
+      background: var(--purple-500);
+    }
+
+    :host ::ng-deep .unified-nav-menu .state-backlog::before {
+      background: var(--cyan-500);
+    }
+
+    :host ::ng-deep .unified-nav-menu .state-declined::before {
+      background: var(--red-500);
+    }
+
+    /* Version badge for menu items */
+    :host ::ng-deep .unified-nav-menu .version-specific .p-panelmenu-header-label::after,
+    :host ::ng-deep .unified-nav-menu .version-specific .p-menuitem-text::after {
+      content: attr(data-version);
+      font-size: 0.7rem;
+      padding: 0.125rem 0.375rem;
+      margin-left: 0.5rem;
+      background: var(--blue-100);
+      color: var(--blue-700);
+      border-radius: 0.25rem;
+      font-weight: 500;
+    }
+
+    [data-theme="dark"] :host ::ng-deep .unified-nav-menu .version-specific .p-panelmenu-header-label::after,
+    [data-theme="dark"] :host ::ng-deep .unified-nav-menu .version-specific .p-menuitem-text::after {
+      background: var(--blue-900);
+      color: var(--blue-200);
+    }
+
+    /* Documentation version selector styling */
+    .docs-version-selector {
+      margin: 0.75rem 0;
+      padding: 0.75rem 1rem;
+      background: var(--wb-surface-section);
+      border-radius: 0.375rem;
+      border: 1px solid var(--wb-surface-border);
+    }
+
+    .version-selector-header .sidebar-section-title {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.75rem;
+    }
+
+    .docs-version-selector .version-selector-wrapper {
+      padding: 0;
+    }
+
+    /* Override version selector styles for inline documentation display */
+    .docs-version-selector :host ::ng-deep .version-selector-btn {
+      width: 100%;
+      justify-content: space-between;
+      font-size: 0.875rem;
+    }
+
   `]
 })
 export class HamburgerMenuComponent implements OnInit, OnDestroy {
   
   private router = inject(Router);
   private docsMenuService = inject(EnvironmentAwareDocsService);
+  private versionAwareNavService = inject(VersionAwareNavigationService);
+  private versionService = inject(VersionService);
   protected themeService = inject(ThemeService);
   private userPreferencesService = inject(UserPreferencesService);
   
@@ -809,7 +903,17 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
   // Use preferences service for menu visibility
   menuVisible = this.userPreferencesService.sidebarOpen;
   docsMenuItems = signal<MenuItem[]>([]);
+  versionAwareMenuItems = signal<VersionAwareMenuItem[]>([]);
   currentUrl = signal<string>('');
+
+  constructor() {
+    // Set up reactive effect to reload navigation when version changes
+    effect(() => {
+      const currentVersion = this.versionService.currentVersion();
+      // Reload navigation menu items when version changes
+      this.loadNavigationMenuItems();
+    });
+  }
 
   // Convert to PrimeNG MenuItem structure - the standard way
   menuItems = computed(() => {
@@ -851,7 +955,7 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
     return items;
   });
 
-  // Convert to Custom MenuItem structure for our new component
+  // Convert to Custom MenuItem structure for our new component with version awareness
   customMenuItems = computed(() => {
     const currentUrl = this.currentUrl();
     const items: CustomMenuItem[] = [
@@ -875,18 +979,39 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
       }
     ];
 
-    // Add documentation with sub-items
-    const docs = this.docsMenuItems();
-    if (docs.length > 0) {
-      const docsItem: CustomMenuItem = {
-        label: 'Documentation',
-        icon: 'pi pi-book',
-        items: this.convertToCustomMenuItems(docs),
-        expanded: this.shouldExpandDocs(currentUrl),
-        styleClass: this.isActiveRoute('/docs') ? 'active-menu-item' : ''
-      };
-      items.push(docsItem);
+    // Add documentation with version selector at the top
+    // ALWAYS show documentation section, even if no content
+    const currentVersionDocs = this.getCurrentVersionFilteredDocs();
+    const docsSubItems: CustomMenuItem[] = [];
+    
+    // Add version selector as the FIRST item in documentation
+    docsSubItems.push({
+      label: 'Version',
+      icon: 'pi pi-tag',
+      isVersionSelector: true,
+      styleClass: 'version-selector-item'
+    });
+    
+    // Add the filtered documentation items (if any)
+    if (currentVersionDocs.length > 0) {
+      docsSubItems.push(...this.convertToCustomMenuItems(currentVersionDocs));
+    } else {
+      // Add a placeholder when no content is available
+      docsSubItems.push({
+        label: 'No content available for this version',
+        icon: 'pi pi-info-circle',
+        styleClass: 'no-content-placeholder'
+      });
     }
+    
+    const docsItem: CustomMenuItem = {
+      label: 'Documentation',
+      icon: 'pi pi-book',
+      items: docsSubItems,
+      expanded: this.shouldExpandDocs(currentUrl),
+      styleClass: this.isActiveRoute('/docs') ? 'active-menu-item' : ''
+    };
+    items.push(docsItem);
 
     return items;
   });
@@ -933,6 +1058,70 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Helper method to convert version-aware menu items to Custom MenuItem
+  private convertVersionAwareToCustomMenuItems(menuItems: VersionAwareMenuItem[]): CustomMenuItem[] {
+    return menuItems.map(item => {
+      const menuItem: CustomMenuItem = {
+        label: item.label,
+        command: item.slug ? () => {
+          const urlParts = ['docs', ...item.slug.split('/').filter(part => part)];
+          this.router.navigate(urlParts);
+        } : undefined,
+        styleClass: this.getVersionAwareMenuItemClass(item)
+      };
+
+      if (item.items && item.items.length > 0) {
+        menuItem.items = this.convertVersionAwareToCustomMenuItems(item.items);
+        menuItem.expanded = this.shouldExpandVersionAwareMenuItem(item);
+      }
+
+      return menuItem;
+    });
+  }
+
+  private getVersionAwareMenuItemClass(item: VersionAwareMenuItem): string {
+    let classes = '';
+    
+    if (item.slug && this.isActiveDocsRoute(item.slug)) {
+      classes += 'active-menu-item ';
+    }
+    
+    if (item.isVersionSpecific) {
+      classes += 'version-specific ';
+    }
+    
+    if (item.documentationState) {
+      classes += `state-${item.documentationState} `;
+    }
+    
+    return classes.trim();
+  }
+
+  private shouldExpandVersionAwareMenuItem(item: VersionAwareMenuItem): boolean {
+    if (!item.items || item.items.length === 0) {
+      return false;
+    }
+    
+    // Expand if any child item is active
+    return this.hasActiveVersionAwareChild(item);
+  }
+
+  private hasActiveVersionAwareChild(item: VersionAwareMenuItem): boolean {
+    const currentUrl = this.currentUrl();
+    
+    // Check if this item's slug matches current route
+    if (item.slug && this.isActiveDocsRoute(item.slug)) {
+      return true;
+    }
+    
+    // Check children recursively
+    if (item.items) {
+      return item.items.some(child => this.hasActiveVersionAwareChild(child));
+    }
+    
+    return false;
+  }
+
   ngOnInit() {
     // Initialize current URL
     this.currentUrl.set(this.router.url);
@@ -944,7 +1133,17 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
       this.currentUrl.set(event.url);
     });
 
-    // Initialize docs menu items
+    // Load navigation menu items initially
+    this.loadNavigationMenuItems();
+
+    // Initialize body class based on saved preference
+    if (this.menuVisible()) {
+      document.body.classList.add('sidebar-open');
+    }
+  }
+
+  private loadNavigationMenuItems(): void {
+    // Initialize docs menu items (fallback)
     this.docsMenuService.generateMenuItems((slug: string) => {
       // Split slug into segments to avoid %2F encoding
       const urlParts = ['docs', ...slug.split('/').filter(part => part)];
@@ -953,10 +1152,198 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
       this.docsMenuItems.set(menuItems);
     });
 
-    // Initialize body class based on saved preference
-    if (this.menuVisible()) {
-      document.body.classList.add('sidebar-open');
+    // Initialize version-aware navigation menu items (with error handling)
+    try {
+      this.versionAwareNavService.generateCurrentVersionMenuItems((slug: string) => {
+        // Split slug into segments to avoid %2F encoding
+        const urlParts = ['docs', ...slug.split('/').filter(part => part)];
+        this.router.navigate(urlParts);
+      }).subscribe({
+        next: (versionAwareMenuItems) => {
+          this.versionAwareMenuItems.set(versionAwareMenuItems);
+        },
+        error: (error) => {
+          console.warn('Failed to load version-aware navigation items:', error);
+          // Fallback to regular docs menu items
+        }
+      });
+    } catch (error) {
+      console.warn('Error initializing version-aware navigation:', error);
+      // The fallback docs menu items will be used instead
     }
+  }
+
+  /**
+   * Get current version filtered documentation items
+   */
+  private getCurrentVersionFilteredDocs(): MenuItem[] {
+    const currentUrl = this.currentUrl();
+    const allDocs = this.docsMenuItems();
+    let filteredDocs: MenuItem[] = [];
+    
+    // Determine if we're in a state route (like /docs/proposals) or a version route
+    if (currentUrl.startsWith('/docs/')) {
+      const docPath = currentUrl.replace('/docs/', '').split('/')[0];
+      
+      // Check if this is a state by looking up in available states
+      const availableStates = this.versionService.availableStates();
+      const matchingState = availableStates.find(s => s.state === docPath);
+      
+      if (matchingState) {
+        filteredDocs = this.filterDocumentationByState(allDocs, docPath);
+      } else {
+        // Check if docPath looks like a version (e.g., v1.0.1)
+        if (this.isVersionPrefix(docPath)) {
+          // Use the version from the URL
+          filteredDocs = this.filterDocumentationByVersion(allDocs, docPath);
+        } else {
+          // Use current version for regular documentation
+          const currentVersion = this.versionService.currentVersion();
+          filteredDocs = this.filterDocumentationByVersion(allDocs, currentVersion);
+        }
+      }
+    } else {
+      // Use current version for regular documentation
+      const currentVersion = this.versionService.currentVersion();
+      filteredDocs = this.filterDocumentationByVersion(allDocs, currentVersion);
+    }
+    
+    // Add Overview item at the beginning if there are docs
+    if (filteredDocs.length > 0) {
+      // Determine the correct root path for Overview based on current context
+      let overviewSlug = '';
+      
+      if (currentUrl.startsWith('/docs/')) {
+        const docPath = currentUrl.replace('/docs/', '').split('/')[0];
+        
+        // Check if this is a state by looking up in available states
+        const availableStates = this.versionService.availableStates();
+        const matchingState = availableStates.find(s => s.state === docPath);
+        
+        if (matchingState) {
+          // For state routes, use just the state name as the slug
+          overviewSlug = docPath;
+        } else {
+          // For version routes, use the current version
+          overviewSlug = this.versionService.currentVersion();
+        }
+      } else {
+        // Default to current version
+        overviewSlug = this.versionService.currentVersion();
+      }
+      
+      const overviewItem: MenuItem = {
+        label: 'Overview',
+        slug: overviewSlug
+      };
+      
+      // Insert Overview at the beginning
+      return [overviewItem, ...filteredDocs];
+    }
+    
+    return filteredDocs;
+  }
+
+  /**
+   * Extract state from URL like /docs/proposals -> "proposals"
+   */
+  private extractStateFromUrl(url: string): string {
+    const match = url.match(/^\/docs\/([^\/]+)/);
+    return match ? match[1] : '';
+  }
+
+  /**
+   * Filter documentation items by state (drafts, proposals, etc.)
+   */
+  private filterDocumentationByState(docs: MenuItem[], targetState: string): MenuItem[] {
+    const filtered = docs.filter(doc => {
+      // If the doc has a slug, check if it starts with the target state
+      if (doc.slug) {
+        const slugParts = doc.slug.split('/');
+        const docState = slugParts[0];
+        
+        // Show docs that belong to the current state
+        // Also exclude state folder entries (like "proposals/_folder")
+        if (docState === targetState) {
+          const isStateFolder = doc.slug === `${targetState}/_folder`;
+          return !isStateFolder;
+        }
+        return false;
+      }
+      
+      // For items with sub-items, recursively filter and keep if any match
+      if (doc.items && doc.items.length > 0) {
+        const filteredItems = this.filterDocumentationByState(doc.items, targetState);
+        if (filteredItems.length > 0) {
+          return true; // Keep this parent if it has matching children
+        }
+      }
+      
+      return false;
+    }).map(doc => {
+      // If this doc has items, update them with the filtered results
+      if (doc.items && doc.items.length > 0) {
+        return {
+          ...doc,
+          items: this.filterDocumentationByState(doc.items, targetState)
+        };
+      }
+      return doc;
+    });
+    
+    return filtered;
+  }
+
+  /**
+   * Filter documentation items by version
+   */
+  private filterDocumentationByVersion(docs: MenuItem[], targetVersion: string): MenuItem[] {
+    return docs.filter(doc => {
+      // If the doc has a slug, check if it starts with the target version
+      if (doc.slug) {
+        const slugParts = doc.slug.split('/');
+        const docVersion = slugParts[0];
+        
+        // ONLY show docs that belong to the current version
+        // Exclude all version-specific paths and documentation states
+        // Also exclude version folder entries (like "v1.0.0/_folder")
+        if (docVersion === targetVersion) {
+          // Exclude the version folder itself
+          const isVersionFolder = doc.slug === `${targetVersion}/_folder`;
+          return !isVersionFolder;
+        }
+        return false;
+      }
+      
+      // If doc has children, recursively filter them
+      if (doc.items && doc.items.length > 0) {
+        const filteredChildren = this.filterDocumentationByVersion(doc.items, targetVersion);
+        if (filteredChildren.length > 0) {
+          return {
+            ...doc,
+            items: filteredChildren
+          };
+        }
+      }
+      
+      return false;
+    }).map(doc => {
+      // For docs with children, update the children array
+      if (doc.items && doc.items.length > 0) {
+        return {
+          ...doc,
+          items: this.filterDocumentationByVersion(doc.items, targetVersion)
+        };
+      }
+      return doc;
+    });
+  }
+
+  /**
+   * Check if a string looks like a version prefix (e.g., "v1.0.0")
+   */
+  private isVersionPrefix(str: string): boolean {
+    return /^v\d+\.\d+\.\d+(-\w+)?$/.test(str);
   }
 
   ngOnDestroy() {
@@ -1000,7 +1387,7 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
     return currentUrl === expectedPath || currentUrl.startsWith(expectedPath + '/');
   }
 
-  private shouldExpandDocs(currentUrl: string): boolean {
+  shouldExpandDocs(currentUrl: string): boolean {
     return currentUrl.startsWith('/docs');
   }
 

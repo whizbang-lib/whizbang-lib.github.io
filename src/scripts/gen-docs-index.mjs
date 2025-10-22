@@ -30,9 +30,18 @@ async function processDirectory(dir, relativeDir = '') {
     if (entry.isDirectory()) {
       await processDirectory(fullPath, relativePath);
     } else if (entry.name.endsWith('.md')) {
-      const { data } = matter(await fs.readFile(fullPath, 'utf8'));
+      const fileContent = await fs.readFile(fullPath, 'utf8');
+      const { data, content } = matter(fileContent);
       const filename = path.basename(entry.name, '.md');
       const slug = data.slug || (relativeDir ? `${relativeDir}/${filename}` : filename);
+      
+      // Extract title from frontmatter or H1 header
+      let title = data.title;
+      if (!title) {
+        // Look for H1 header in markdown content
+        const h1Match = content.match(/^#\s+(.+)$/m);
+        title = h1Match ? h1Match[1].trim() : filename;
+      }
       
       // Determine category - use file's category or infer from folder
       let category = data.category;
@@ -50,7 +59,7 @@ async function processDirectory(dir, relativeDir = '') {
       
       out.push({
         slug: finalSlug,
-        title: data.title || filename,
+        title: title,
         category: category,
         order: data.order,
         description: data.description || '',

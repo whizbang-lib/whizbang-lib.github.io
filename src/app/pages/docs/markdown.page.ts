@@ -13,11 +13,17 @@ import { SeoService } from '../../services/seo.service';
 import { BreadcrumbService } from '../../services/breadcrumb.service';
 import { BreadcrumbComponent, BreadcrumbItem } from '../../components/breadcrumb.component';
 import { StructuredDataService } from '../../services/structured-data.service';
+import { HeaderProcessorService, HeaderInfo } from '../../services/header-processor.service';
+import { CalloutProcessorService, CalloutInfo } from '../../services/callout-processor.service';
+import { VersionService } from '../../services/version.service';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 import { trigger, transition, style, animate } from '@angular/animations';
 
 @Component({
   standalone: true,
-  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule, BreadcrumbComponent],
+  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule, BreadcrumbComponent, ToastModule],
+  providers: [MessageService],
   template: `
     <div>
       <!-- Loading state with fade-in animation -->
@@ -45,8 +51,171 @@ import { trigger, transition, style, animate } from '@angular/animations';
           <wb-example [id]="example"></wb-example>
         </div>
       </div>
+      
+      <!-- Toast notifications -->
+      <p-toast></p-toast>
     </div>
   `,
+  styles: [`
+    :host ::ng-deep .doc-header {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 2rem;
+      margin-bottom: 1rem;
+      scroll-margin-top: 2rem; /* Account for sticky header */
+    }
+    
+    :host ::ng-deep .header-text {
+      flex: 1;
+    }
+    
+    :host ::ng-deep .header-link-btn {
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      background: none;
+      border: none;
+      color: var(--primary-color);
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 0.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+    
+    :host ::ng-deep .header-link-btn:hover {
+      background: var(--surface-hover);
+    }
+    
+    :host ::ng-deep .header-link-btn:focus {
+      opacity: 1;
+      outline: 2px solid var(--primary-color);
+      outline-offset: 2px;
+    }
+    
+    :host ::ng-deep .doc-header:hover .header-link-btn {
+      opacity: 1;
+    }
+    
+    :host ::ng-deep .header-link-btn i {
+      font-size: 0.875rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      :host ::ng-deep .header-link-btn {
+        opacity: 1; /* Always show on mobile for touch accessibility */
+      }
+    }
+    
+    /* Callout styles */
+    :host ::ng-deep .callout {
+      margin: 1.5rem 0;
+      border-radius: 0.5rem;
+      border-left: 4px solid;
+      background: var(--surface-card);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    
+    :host ::ng-deep .callout-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      background: rgba(var(--primary-color-rgb), 0.05);
+      border-bottom: 1px solid var(--surface-border);
+    }
+    
+    :host ::ng-deep .callout-content {
+      padding: 1rem;
+      color: var(--text-color);
+      line-height: 1.6;
+    }
+    
+    :host ::ng-deep .callout-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      background: var(--primary-color);
+      color: var(--primary-color-text);
+    }
+    
+    :host ::ng-deep .callout-link {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+    
+    :host ::ng-deep .callout-link:hover {
+      color: var(--primary-color-text);
+    }
+    
+    :host ::ng-deep .callout-placeholder-text {
+      color: var(--text-color-secondary);
+      font-size: 0.875rem;
+      font-style: italic;
+    }
+    
+    /* Callout type-specific styles */
+    :host ::ng-deep .callout-new {
+      border-left-color: #10b981; /* Green */
+    }
+    
+    :host ::ng-deep .callout-new .callout-badge {
+      background: #10b981;
+      color: white;
+    }
+    
+    :host ::ng-deep .callout-updated {
+      border-left-color: #3b82f6; /* Blue */
+    }
+    
+    :host ::ng-deep .callout-updated .callout-badge {
+      background: #3b82f6;
+      color: white;
+    }
+    
+    :host ::ng-deep .callout-breaking {
+      border-left-color: #ef4444; /* Red */
+    }
+    
+    :host ::ng-deep .callout-breaking .callout-badge {
+      background: #ef4444;
+      color: white;
+    }
+    
+    :host ::ng-deep .callout-deprecated {
+      border-left-color: #f59e0b; /* Orange */
+    }
+    
+    :host ::ng-deep .callout-deprecated .callout-badge {
+      background: #f59e0b;
+      color: white;
+    }
+    
+    :host ::ng-deep .callout-planned {
+      border-left-color: #8b5cf6; /* Purple */
+    }
+    
+    :host ::ng-deep .callout-planned .callout-badge {
+      background: #8b5cf6;
+      color: white;
+    }
+    
+    :host ::ng-deep .callout-placeholder {
+      opacity: 0.8;
+      border-style: dashed;
+    }
+  `],
   animations: [
     trigger('fadeIn', [
       transition(':enter', [
@@ -67,6 +236,10 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
   private seoService = inject(SeoService);
   private breadcrumbService = inject(BreadcrumbService);
   private structuredDataService = inject(StructuredDataService);
+  private headerProcessor = inject(HeaderProcessorService);
+  private calloutProcessor = inject(CalloutProcessorService);
+  private versionService = inject(VersionService);
+  private messageService = inject(MessageService);
 
   @ViewChild('codeBlockContainer', { read: ViewContainerRef }) codeBlockContainer!: ViewContainerRef;
 
@@ -74,10 +247,14 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
   videos = signal<string[]>([]);
   examples = signal<string[]>([]);
   breadcrumbs = signal<BreadcrumbItem[]>([]);
+  headers = signal<HeaderInfo[]>([]);
+  callouts = signal<CalloutInfo[]>([]);
   isContentReady = signal(false);
 
   private allCodeBlocks: any[] = [];
   private codeComponentRefs: ComponentRef<EnhancedCodeBlockV2Component>[] = [];
+  private intersectionObserver?: IntersectionObserver;
+  private currentActiveHeader?: string;
 
   constructor() {
     // Listen for theme changes and re-render Mermaid diagrams
@@ -88,6 +265,13 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         setTimeout(() => this.reRenderMermaidBlocks(), 100);
       }
     });
+    
+    // Setup global copy function for header links
+    if (typeof window !== 'undefined') {
+      (window as any).copyHeaderLink = (anchor: string) => {
+        this.copyHeaderLink(anchor);
+      };
+    }
   }
 
   ngOnInit() {
@@ -112,39 +296,130 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
 
   private async resolveMarkdownPath(urlPath: string): Promise<string> {
     try {
-      // Load the docs index to find the actual file path
-      const docsIndex = await this.http.get<any[]>('assets/docs-index.json').toPromise();
+      // Get current version from VersionService
+      const currentVersion = this.versionService.currentVersion();
       
-      // Find the entry that matches the URL path
-      const docEntry = docsIndex?.find(doc => doc.slug === urlPath);
+      // Get docs for current version
+      const versionDocs = this.versionService.getCurrentVersionDocs();
       
-      if (docEntry) {
-        // If we found an entry, construct the path based on the original slug structure
-        // For clean index routes, we need to map back to the actual file path
-        if (docEntry.slug === urlPath && !urlPath.includes('/')) {
-          // This is likely a clean index route, try the folder/filename pattern first
-          const expectedPath = `assets/docs/${urlPath}/${urlPath}.md`;
+      // Check if this is a state route (proposals, drafts, etc.) vs version route
+      const availableStates = this.versionService.availableStates();
+      const isStateRoute = availableStates.some(state => urlPath.startsWith(state.state));
+      
+      
+      let docEntry;
+      
+      if (isStateRoute) {
+        // For state routes, we need to get all docs and filter by state
+        const stateName = availableStates.find(state => urlPath.startsWith(state.state))?.state;
+        if (stateName) {
+          // Get all docs from the versioned index
+          const versionedIndex = this.versionService.versionedIndex();
+          const allDocs = versionedIndex.flatMap(entry => entry.docs);
           
-          // Check if the file exists by attempting to load it
-          try {
-            await this.http.get(expectedPath, { responseType: 'text' }).toPromise();
-            return expectedPath;
-          } catch {
-            // If the folder/filename pattern doesn't work, fall back to the direct path
-            return `assets/docs/${urlPath}.md`;
+          // If the URL path is exactly the state name, treat it as the Overview page
+          if (urlPath === stateName) {
+            // Try to find _folder first for Overview page
+            docEntry = allDocs.find((doc: any) => doc.slug === `${stateName}/_folder`);
+            
+            // If no _folder entry found, create a synthetic entry for the _folder file
+            if (!docEntry) {
+              docEntry = {
+                slug: `${stateName}/_folder`,
+                title: `${stateName} Overview`,
+                category: 'Overview'
+              };
+            }
+          } else {
+            // First try exact match
+            docEntry = allDocs.find((doc: any) => doc.slug === urlPath);
+            
+            // If no exact match, try with /_folder suffix for directory pages
+            if (!docEntry) {
+              docEntry = allDocs.find((doc: any) => doc.slug === `${urlPath}/_folder`);
+            }
+          }
+        }
+      } else {
+        // Check if the URL path is exactly a version (Overview page)
+        const availableVersions = this.versionService.availableVersions();
+        const isVersionOverview = availableVersions.some(v => v.version === urlPath);
+        
+        if (isVersionOverview) {
+          // For version Overview pages, load the _folder.md file
+          // Use getDocsForVersionOrState to get docs for the specific version
+          const specificVersionDocs = this.versionService.getDocsForVersionOrState(urlPath);
+          docEntry = specificVersionDocs.find(doc => doc.slug === `${urlPath}/_folder`);
+          
+          // If not found in versioned index, create a synthetic entry for the _folder file
+          if (!docEntry) {
+            docEntry = {
+              slug: `${urlPath}/_folder`,
+              title: `${urlPath} Overview`,
+              category: 'Overview'
+            };
           }
         } else {
-          // For non-index routes, use the slug as-is
-          return `assets/docs/${docEntry.slug}.md`;
+          // For version routes, extract the actual path after the version prefix
+          let actualPath = urlPath;
+          if (urlPath.startsWith(`${currentVersion}/`)) {
+            actualPath = urlPath.substring(`${currentVersion}/`.length);
+          }
+          
+          // First, try to find exact match with actual path in current version
+          docEntry = versionDocs.find(doc => doc.slug === `${currentVersion}/${actualPath}`);
+          
+          // If no exact match, try finding just by the path part (without version prefix)
+          if (!docEntry) {
+            docEntry = versionDocs.find(doc => {
+              const slugParts = doc.slug.split('/');
+              const pathPart = slugParts.slice(1).join('/'); // Remove version prefix
+              return pathPart === actualPath;
+            });
+          }
         }
       }
       
-      // Fallback: use the URL path directly
-      return `assets/docs/${urlPath}.md`;
+      if (docEntry) {
+        // Use the full slug from the index to construct the file path
+        const fullSlug = docEntry.slug;
+        // Handle path construction differently for state routes vs version routes
+        const slugParts = fullSlug.split('/');
+        
+        if (isStateRoute) {
+          // For state routes, use the full slug as-is (no version prefix to remove)
+          return `assets/docs/${fullSlug}.md`;
+        } else {
+          // For version routes, use the existing logic
+          const pathPart = slugParts.slice(1).join('/'); // Remove version prefix
+          
+          if (!pathPart.includes('/') || pathPart === urlPath) {
+            const fileName = slugParts[slugParts.length - 1];
+            
+            // Try folder/filename pattern first
+            const expectedPath = `assets/docs/${fullSlug}/${fileName}.md`;
+            
+            try {
+              await this.http.get(expectedPath, { responseType: 'text' }).toPromise();
+              return expectedPath;
+            } catch {
+              // Fall back to direct path
+              return `assets/docs/${fullSlug}.md`;
+            }
+          } else {
+            // For non-index routes, use the slug as-is
+            return `assets/docs/${fullSlug}.md`;
+          }
+        }
+      }
+      
+      // Fallback: try with current version prefix
+      return `assets/docs/${currentVersion}/${urlPath}.md`;
     } catch (error) {
       console.error('Error resolving markdown path:', error);
-      // Fallback: use the URL path directly
-      return `assets/docs/${urlPath}.md`;
+      // Fallback: try with production version prefix
+      const productionVersion = this.versionService.getProductionVersion();
+      return `assets/docs/${productionVersion}/${urlPath}.md`;
     }
   }
   
@@ -181,6 +456,8 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         if (this.allCodeBlocks.length === 0) {
           await this.renderMermaidBlocks();
           this.isContentReady.set(true);
+          // Setup scroll spy after content is ready
+          setTimeout(() => this.setupScrollSpy(), 100);
         }
         return;
       }
@@ -219,6 +496,8 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
       setTimeout(async () => {
         await this.renderMermaidBlocks();
         this.isContentReady.set(true);
+        // Setup scroll spy after content is ready
+        setTimeout(() => this.setupScrollSpy(), 100);
       }, 500);
     });
   }
@@ -268,8 +547,16 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         const { processedContent, codeBlocks } = this.codeBlockParser.parseAllCodeBlocks(content);
         this.allCodeBlocks = codeBlocks;
 
+        // Process headers for interactive functionality
+        const { processedContent: contentWithHeaders, headers } = this.headerProcessor.processHeaders(processedContent);
+        this.headers.set(headers);
+
+        // Process callouts for enhanced documentation
+        const { processedContent: contentWithCallouts, callouts } = this.calloutProcessor.processCallouts(contentWithHeaders);
+        this.callouts.set(callouts);
+
         // Parse the rest of the content (videos, examples)
-        const { processedContent: finalContent, videos, examples } = this.parseCustomComponents(processedContent);
+        const { processedContent: finalContent, videos, examples } = this.parseCustomComponents(contentWithCallouts);
 
         this.processedContent.set(finalContent);
         this.videos.set(videos);
@@ -287,6 +574,8 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         } else {
           // No code blocks to process, content is ready immediately
           this.isContentReady.set(true);
+          // Setup scroll spy after content is ready
+          setTimeout(() => this.setupScrollSpy(), 100);
         }
       },
       error: (error) => {
@@ -294,6 +583,7 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         this.processedContent.set('# Content not found\n\nThe requested page could not be loaded.');
         // Show error content immediately
         this.isContentReady.set(true);
+        // No need for scroll spy setup on error pages
       }
     });
   }
@@ -443,9 +733,10 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
       const currentUrl = `${window.location.origin}${this.router.url}`;
       const urlPath = this.route.snapshot.url.map(segment => segment.path).join('/');
       
-      // Load docs index to get page metadata
-      const docsIndex = await this.http.get<any[]>('assets/docs-index.json').toPromise();
-      const docEntry = docsIndex?.find(doc => doc.slug === urlPath);
+      // Load docs for current version to get page metadata
+      const currentVersion = this.versionService.currentVersion();
+      const versionDocs = this.versionService.getCurrentVersionDocs();
+      const docEntry = versionDocs.find(doc => doc.slug === `${currentVersion}/${urlPath}` || doc.slug.endsWith(`/${urlPath}`));
       
       if (docEntry) {
         // Parse frontmatter to get additional metadata
@@ -520,9 +811,10 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
       const currentUrl = `${window.location.origin}${this.router.url}`;
       const urlPath = this.route.snapshot.url.map(segment => segment.path).join('/');
       
-      // Load docs index to get page metadata
-      const docsIndex = await this.http.get<any[]>('assets/docs-index.json').toPromise();
-      const docEntry = docsIndex?.find(doc => doc.slug === urlPath);
+      // Load docs for current version to get page metadata
+      const currentVersion = this.versionService.currentVersion();
+      const versionDocs = this.versionService.getCurrentVersionDocs();
+      const docEntry = versionDocs.find(doc => doc.slug === `${currentVersion}/${urlPath}` || doc.slug.endsWith(`/${urlPath}`));
       
       if (docEntry) {
         // Parse frontmatter to get additional metadata
@@ -566,7 +858,135 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  /**
+   * Copy header link to clipboard
+   */
+  copyHeaderLink(anchor: string): void {
+    const fullUrl = `${window.location.origin}${window.location.pathname}${anchor}`;
+    
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(fullUrl).then(() => {
+        this.showCopySuccessMessage();
+      }).catch(() => {
+        this.fallbackCopyToClipboard(fullUrl);
+      });
+    } else {
+      this.fallbackCopyToClipboard(fullUrl);
+    }
+  }
+
+  /**
+   * Fallback copy method for older browsers
+   */
+  private fallbackCopyToClipboard(text: string): void {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    
+    try {
+      document.execCommand('copy');
+      this.showCopySuccessMessage();
+    } catch (err) {
+      console.error('Failed to copy text:', err);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Copy Failed',
+        detail: 'Unable to copy link to clipboard',
+        life: 3000
+      });
+    } finally {
+      document.body.removeChild(textArea);
+    }
+  }
+
+  /**
+   * Show success message for copied link
+   */
+  private showCopySuccessMessage(): void {
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Link Copied',
+      detail: 'Section link copied to clipboard',
+      life: 2000
+    });
+  }
+
+  /**
+   * Setup scroll spy to update URL with current header anchor
+   */
+  private setupScrollSpy(): void {
+    // Clean up existing observer
+    if (this.intersectionObserver) {
+      this.intersectionObserver.disconnect();
+    }
+
+    // Only setup scroll spy if we have headers
+    const headerElements = document.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
+    if (headerElements.length === 0) return;
+
+    // Create intersection observer to watch headers
+    this.intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        // Find all visible headers
+        const visibleHeaders = entries
+          .filter(entry => entry.isIntersecting)
+          .map(entry => ({
+            id: entry.target.id,
+            top: entry.boundingClientRect.top,
+            element: entry.target as HTMLElement
+          }))
+          .sort((a, b) => a.top - b.top); // Sort by position on screen
+
+        // Get the header that's most recent in the top half of the viewport
+        const viewportHeight = window.innerHeight;
+        const topHalfThreshold = viewportHeight / 2;
+
+        let targetHeader = visibleHeaders.find(header => header.top <= topHalfThreshold);
+        
+        // If no header is in the top half, use the first visible one
+        if (!targetHeader && visibleHeaders.length > 0) {
+          targetHeader = visibleHeaders[0];
+        }
+
+        // Update URL if we have a target header and it's different from current
+        if (targetHeader && targetHeader.id !== this.currentActiveHeader) {
+          this.currentActiveHeader = targetHeader.id;
+          this.updateUrlWithAnchor(targetHeader.id);
+        }
+      },
+      {
+        // Trigger when headers cross the top half of the viewport
+        rootMargin: '-25% 0px -50% 0px',
+        threshold: [0, 0.25, 0.5, 0.75, 1]
+      }
+    );
+
+    // Observe all header elements
+    headerElements.forEach(header => {
+      this.intersectionObserver!.observe(header);
+    });
+  }
+
+  /**
+   * Update URL with anchor without triggering navigation
+   */
+  private updateUrlWithAnchor(anchor: string): void {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.hash = `#${anchor}`;
+    
+    // Update URL without triggering navigation
+    window.history.replaceState(null, '', currentUrl.toString());
+  }
+
   ngOnDestroy() {
+    // Clean up scroll spy observer
+    if (this.intersectionObserver) {
+      this.intersectionObserver.disconnect();
+    }
+    
     // Clean up SEO metadata when component is destroyed
     this.seoService.clearPageMetadata();
     

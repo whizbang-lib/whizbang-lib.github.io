@@ -1,7 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { map, shareReplay, tap, catchError } from 'rxjs/operators';
+import { VersionService } from './version.service';
+import { Router } from '@angular/router';
 
 export interface SearchChunk {
   id: string;
@@ -35,6 +37,9 @@ export class SearchService {
   private chunksMap: Map<string, SearchChunk> = new Map();
   private currentQuery$ = new BehaviorSubject<string>('');
   private highlightedTerms$ = new BehaviorSubject<string[]>([]);
+
+  private versionService = inject(VersionService);
+  private router = inject(Router);
 
   constructor(private http: HttpClient) {
     // Try enhanced index first, then fallback to original
@@ -108,8 +113,11 @@ export class SearchService {
 
       const searchResults: SearchResult[] = [];
       
-      // Search through all documents and chunks
-      this.documentsMap.forEach(document => {
+      // Filter documents by current version/state context
+      const filteredDocuments = this.getDocumentsForCurrentContext();
+      
+      // Search through filtered documents and chunks
+      filteredDocuments.forEach(document => {
         document.chunks.forEach(chunk => {
           const score = this.calculateRelevanceScore(query, document, chunk);
           if (score > 0) {
@@ -246,5 +254,79 @@ export class SearchService {
     } catch (error) {
       console.warn('Failed to load cached search index:', error);
     }
+  }
+
+  /**
+   * Filter documents to only show content from current version/state context
+   */
+  private getDocumentsForCurrentContext(): SearchDocument[] {
+    const currentUrl = this.router.url;
+    const allDocuments = Array.from(this.documentsMap.values());
+    
+    // If not in docs section, return all documents
+    if (!currentUrl.startsWith('/docs')) {
+      return allDocuments;
+    }
+    
+    // Extract the doc path after /docs/
+    const docPath = currentUrl.replace('/docs/', '').split('/')[0];
+    
+    // If we're at the docs root, use current version
+    if (!docPath) {
+      const currentVersion = this.versionService.currentVersion();
+      return this.filterDocumentsByVersion(allDocuments, currentVersion);
+    }
+    
+    // Check if this is a state route (proposals, drafts, etc.)
+    const availableStates = this.versionService.availableStates();
+    const matchingState = availableStates.find(s => s.state === docPath);
+    
+    if (matchingState) {
+      // Filter by state
+      return this.filterDocumentsByState(allDocuments, docPath);
+    } else {
+      // Check if this is a version route
+      const availableVersions = this.versionService.availableVersions();
+      const matchingVersion = availableVersions.find(v => v.version === docPath);
+      
+      if (matchingVersion) {
+        // Filter by specific version
+        return this.filterDocumentsByVersion(allDocuments, docPath);
+      } else {
+        // This might be a sub-path within a version, use current version
+        const currentVersion = this.versionService.currentVersion();
+        return this.filterDocumentsByVersion(allDocuments, currentVersion);
+      }
+    }
+  }
+
+  private filterDocumentsByVersion(documents: SearchDocument[], targetVersion: string): SearchDocument[] {
+    return documents.filter(doc => {
+      const slugParts = doc.slug.split('/');
+      const docVersion = slugParts[0];
+      
+      // Include documents that belong to the target version
+      // Exclude _folder entries (they're handled by Overview pages)
+      if (docVersion === targetVersion) {
+        const isVersionFolder = doc.slug === `${targetVersion}/_folder`;
+        return !isVersionFolder;
+      }
+      return false;
+    });
+  }
+
+  private filterDocumentsByState(documents: SearchDocument[], targetState: string): SearchDocument[] {
+    return documents.filter(doc => {
+      const slugParts = doc.slug.split('/');
+      const docState = slugParts[0];
+      
+      // Include documents that belong to the target state
+      // Exclude _folder entries (they're handled by Overview pages)
+      if (docState === targetState) {
+        const isStateFolder = doc.slug === `${targetState}/_folder`;
+        return !isStateFolder;
+      }
+      return false;
+    });
   }
 }

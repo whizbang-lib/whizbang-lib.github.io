@@ -1,12 +1,16 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { BreadcrumbItem } from '../components/breadcrumb.component';
+import { VersionService } from './version.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class BreadcrumbService {
   private http = inject(HttpClient);
+  private router = inject(Router);
+  private versionService = inject(VersionService);
   private docsIndex: any[] = [];
 
   constructor() {
@@ -57,6 +61,45 @@ export class BreadcrumbService {
 
     // Extract the actual doc path (remove 'docs/' prefix)
     const docPath = urlPath.replace(/^docs\//, '');
+    const pathParts = docPath.split('/');
+    
+    // Check if the first part is a version or state
+    const firstPart = pathParts[0];
+    let versionOrStateLabel = '';
+    let versionOrStateUrl = '';
+    
+    // Check if it's a state (proposals, drafts, etc.)
+    const availableStates = this.versionService.availableStates();
+    const matchingState = availableStates.find(s => s.state === firstPart);
+    
+    if (matchingState) {
+      versionOrStateLabel = matchingState.displayName;
+      versionOrStateUrl = `/docs/${firstPart}`;
+    } else {
+      // Check if it's a version
+      const availableVersions = this.versionService.availableVersions();
+      const matchingVersion = availableVersions.find(v => v.version === firstPart);
+      
+      if (matchingVersion) {
+        versionOrStateLabel = matchingVersion.displayName;
+        versionOrStateUrl = `/docs/${firstPart}`;
+      }
+    }
+    
+    // If we found a version or state, add it to breadcrumbs
+    if (versionOrStateLabel) {
+      const isVersionOrStateOnly = pathParts.length === 1;
+      breadcrumbs.push({
+        label: versionOrStateLabel,
+        url: isVersionOrStateOnly ? undefined : versionOrStateUrl,
+        isActive: isVersionOrStateOnly
+      });
+      
+      // If we're at just the version/state root, we're done
+      if (isVersionOrStateOnly) {
+        return breadcrumbs;
+      }
+    }
     
     // Find the document in the index
     const docEntry = this.docsIndex.find(doc => doc.slug === docPath);
@@ -98,10 +141,10 @@ export class BreadcrumbService {
       });
     } else {
       // Fallback: generate breadcrumbs from URL structure
-      const pathParts = docPath.split('/');
       let currentPath = 'docs';
+      const startIndex = versionOrStateLabel ? 1 : 0; // Skip version/state part if already added
 
-      for (let i = 0; i < pathParts.length; i++) {
+      for (let i = startIndex; i < pathParts.length; i++) {
         const part = pathParts[i];
         currentPath += '/' + part;
         const isLast = i === pathParts.length - 1;
