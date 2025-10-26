@@ -26,7 +26,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
         (click)="versionPanel.toggle($event)"
         [attr.aria-label]="'Select version'">
         <span class="version-label">{{ currentVersionDisplay() }}</span>
-        <i class="pi pi-chevron-down version-chevron"></i>
+        <i class="pi pi-chevron-down version-chevron" [class.lightMode]="light-mode"></i>
       </button>
       
       <!-- Version Selection Panel -->
@@ -140,15 +140,37 @@ import { toSignal } from '@angular/core/rxjs-interop';
       font-size: 0.875rem;
     }
     
+    /* Light mode styling for better visibility */
+    :root:not([data-theme="dark"]) .version-selector-btn {
+      border-color: #d1d5db !important;
+    }
+    
+    /* Override PrimeNG outlined button styling in light mode */
+    :root:not([data-theme="dark"]) .p-button-outlined.version-selector-btn {
+      border-color: #d1d5db !important;
+      color: #374151 !important;
+    }
+    
     .version-label {
-      font-weight: 500;
+      font-weight: 600;
+      color: #9ca3af !important;
+    }
+    
+    /* Light mode label color for better visibility */
+    :root:not([data-theme="dark"]) .version-label {
+      color: #374151 !important;
     }
     
     .version-chevron {
       font-size: 0.75rem;
       transition: transform 0.2s ease;
     }
-    
+
+    /* Light mode chevron color for better visibility */
+    :root:not([data-theme="dark"]) .version-chevron {
+      color: #6b7280 !important;
+    }
+
     :host ::ng-deep .version-selector-panel .p-popover-content {
       padding: 0;
       max-height: 400px;
@@ -195,7 +217,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
       align-items: center;
       justify-content: space-between;
       padding: 0.75rem;
-      border: 1px solid var(--surface-border);
+      border: 1px solid #e5e7eb;
       border-radius: 0.375rem;
       background: var(--surface-card);
       color: var(--text-color);
@@ -204,6 +226,10 @@ import { toSignal } from '@angular/core/rxjs-interop';
       font-size: 0.875rem;
       text-align: left;
       width: 100%;
+    }
+    
+    :host-context([data-theme="dark"]) .version-option {
+      border-color: var(--surface-border);
     }
     
     .version-option:hover:not(.disabled) {
@@ -305,6 +331,7 @@ export class VersionSelectorComponent {
   readonly versionService = inject(VersionService);
   private router = inject(Router);
   private scrollManagement = inject(ScrollManagementService);
+  public lightMode = false;
   
   // Track current URL to understand context
   private readonly currentUrl = toSignal(

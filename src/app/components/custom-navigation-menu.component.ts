@@ -7,6 +7,7 @@ import { VersionSelectorComponent } from './version-selector.component';
 export interface CustomMenuItem {
   label: string;
   icon?: string;
+  lightMode: boolean;
   command?: () => void;
   items?: CustomMenuItem[];
   expanded?: boolean;
@@ -219,9 +220,9 @@ export interface CustomMenuItem {
     .version-selector-item {
       padding: 0.75rem 1rem;
       margin: 0.25rem 0;
-      background: var(--wb-surface-section);
+      background: transparent;
       border-radius: 0.375rem;
-      border: 1px solid var(--wb-surface-border);
+      border: none;
     }
 
     .version-selector-header {
@@ -231,22 +232,23 @@ export interface CustomMenuItem {
     }
 
     .version-selector-header .nav-icon {
-      color: var(--wb-text-secondary);
+      color: #ffffff;
       margin-right: 0.5rem;
       font-size: 0.875rem;
     }
 
     .version-selector-label {
       font-size: 0.75rem;
-      font-weight: 600;
+      font-weight: 600 !important;
       text-transform: uppercase;
-      color: var(--wb-text-secondary);
+      color: #9ca3af !important;
       letter-spacing: 0.05em;
     }
 
     .version-selector-wrapper {
       padding: 0;
     }
+    
 
     /* Override version selector styles for inline display */
     .version-selector-wrapper :host ::ng-deep .version-selector-btn {

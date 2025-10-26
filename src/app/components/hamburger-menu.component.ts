@@ -635,6 +635,34 @@ import { filter } from 'rxjs/operators';
       justify-content: space-between;
     }
 
+    /* Fix version selector button border visibility in light mode */
+    :root:not([data-theme="dark"]) .sidebar-section :host ::ng-deep .version-selector-btn {
+      border-color: #d1d5db !important;
+    }
+    
+    /* Override PrimeNG button styling specifically in sidebar for light mode - very specific selectors */
+    :root:not([data-theme="dark"]) .push-sidebar .sidebar-section :host ::ng-deep .p-button.p-component.p-button-outlined.version-selector-btn {
+      border-color: #d1d5db !important;
+      color: #374151 !important;
+      --p-button-outlined-border-color: #d1d5db !important;
+      --p-button-outlined-color: #374151 !important;
+    }
+    
+    /* Fix chevron arrow color in sidebar for light mode */
+    :root:not([data-theme="dark"]) .push-sidebar .sidebar-section :host ::ng-deep .version-chevron {
+      color: #6b7280 !important;
+    }
+    
+    /* Alternative approach - target the button more directly */
+    :root:not([data-theme="dark"]) .push-sidebar :host ::ng-deep button[aria-label="Select version"] {
+      border-color: #d1d5db !important;
+      color: #374151 !important;
+    }
+    
+    :root:not([data-theme="dark"]) .push-sidebar :host ::ng-deep button[aria-label="Select version"] .version-chevron {
+      color: #6b7280 !important;
+    }
+
     .sidebar-footer {
       margin-top: auto;
       padding: 1rem;
@@ -866,9 +894,9 @@ import { filter } from 'rxjs/operators';
     .docs-version-selector {
       margin: 0.75rem 0;
       padding: 0.75rem 1rem;
-      background: var(--wb-surface-section);
+      background: transparent;
       border-radius: 0.375rem;
-      border: 1px solid var(--wb-surface-border);
+      border: none;
     }
 
     .version-selector-header .sidebar-section-title {
@@ -885,6 +913,32 @@ import { filter } from 'rxjs/operators';
       width: 100%;
       justify-content: space-between;
       font-size: 0.875rem;
+    }
+    
+    
+    /* Remove background from Documentation section content area */
+    :host ::ng-deep .unified-nav-menu .p-panelmenu-content {
+      background: transparent !important;
+    }
+    
+    /* Remove background from Documentation panel itself */
+    :host ::ng-deep .unified-nav-menu .p-panelmenu-panel {
+      background: transparent !important;
+    }
+    
+    /* Ensure version selector container has no background */
+    :host ::ng-deep .unified-nav-menu .docs-version-selector {
+      background: transparent !important;
+    }
+    
+    /* Override the Documentation menu item to remove its background completely */
+    :host ::ng-deep .unified-nav-menu .p-panelmenu-panel:nth-child(5) .p-panelmenu-header-link {
+      background: transparent !important;
+    }
+    
+    /* Alternative: Target any panel menu that contains docs-version-selector */
+    :host ::ng-deep .unified-nav-menu .p-panelmenu-panel:has(.docs-version-selector) > .p-panelmenu-header > .p-panelmenu-header-link {
+      background: transparent !important;
     }
 
   `]
@@ -969,25 +1023,29 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
         label: 'Home',
         icon: 'pi pi-home',
         command: () => this.router.navigate(['/']),
-        styleClass: this.isActiveRoute('/') ? 'active-menu-item' : ''
+        styleClass: this.isActiveRoute('/') ? 'active-menu-item' : '',
+        lightMode: this.themeService.isLightTheme(),
       },
       {
         label: 'Examples',
         icon: 'pi pi-code',
         command: () => this.router.navigate(['/examples']),
-        styleClass: this.isActiveRoute('/examples') ? 'active-menu-item' : ''
+        styleClass: this.isActiveRoute('/examples') ? 'active-menu-item' : '',
+        lightMode: this.themeService.isLightTheme(),
       },
       {
         label: 'Videos',
         icon: 'pi pi-video',
         command: () => this.router.navigate(['/videos']),
-        styleClass: this.isActiveRoute('/videos') ? 'active-menu-item' : ''
+        styleClass: this.isActiveRoute('/videos') ? 'active-menu-item' : '',
+        lightMode: this.themeService.isLightTheme(),
       },
       {
         label: 'Roadmap',
         icon: 'pi pi-map',
         command: () => this.router.navigate(['/roadmap']),
-        styleClass: this.isActiveRoute('/roadmap') ? 'active-menu-item' : ''
+        styleClass: this.isActiveRoute('/roadmap') ? 'active-menu-item' : '',
+        lightMode: this.themeService.isLightTheme(),
       }
     ];
 
@@ -1001,7 +1059,8 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
       label: 'Version',
       icon: 'pi pi-tag',
       isVersionSelector: true,
-      styleClass: 'version-selector-item'
+      styleClass: 'version-selector-item',
+      lightMode: this.themeService.isLightTheme(),
     });
     
     // Add the filtered documentation items (if any)
@@ -1012,7 +1071,8 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
       docsSubItems.push({
         label: 'No content available for this version',
         icon: 'pi pi-info-circle',
-        styleClass: 'no-content-placeholder'
+        styleClass: 'no-content-placeholder',
+        lightMode: this.themeService.isLightTheme(),
       });
     }
     
@@ -1020,6 +1080,7 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
       label: 'Documentation',
       icon: 'pi pi-book',
       items: docsSubItems,
+      lightMode: this.themeService.isLightTheme(),
       expanded: this.shouldExpandDocs(currentUrl),
       styleClass: this.isActiveRoute('/docs') ? 'active-menu-item' : ''
     };
@@ -1058,7 +1119,8 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
           const urlParts = ['docs', ...item.slug.split('/').filter(part => part)];
           this.router.navigate(urlParts);
         } : undefined,
-        styleClass: item.slug && this.isActiveDocsRoute(item.slug) ? 'active-menu-item' : ''
+        styleClass: item.slug && this.isActiveDocsRoute(item.slug) ? 'active-menu-item' : '',
+        lightMode: this.themeService.isLightTheme(),
       };
 
       if (item.items && item.items.length > 0) {
@@ -1079,7 +1141,8 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
           const urlParts = ['docs', ...item.slug.split('/').filter(part => part)];
           this.router.navigate(urlParts);
         } : undefined,
-        styleClass: this.getVersionAwareMenuItemClass(item)
+        styleClass: this.getVersionAwareMenuItemClass(item),
+        lightMode: this.themeService.isLightTheme(),
       };
 
       if (item.items && item.items.length > 0) {

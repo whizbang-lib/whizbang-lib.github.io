@@ -1311,3 +1311,35 @@ mark.search-highlight {
     stroke-width: 0.125em !important;
   }
 }
+
+// =============================================================================
+// Fix version selector button visibility in light mode
+// =============================================================================
+:root:not([data-theme="dark"]) {
+  // Extremely specific selector to override PrimeNG theme for version selector
+  wb-hamburger-menu .push-sidebar .sidebar-section wb-version-selector .p-button.p-component.p-button-outlined.version-selector-btn {
+    border-color: #6b7280 !important;
+    color: #374151 !important;
+  }
+  
+  // Also target by aria-label for maximum specificity - match icon/label color
+  wb-hamburger-menu .push-sidebar button[aria-label="Select version"] {
+    border-color: #6b7280 !important;
+    color: #374151 !important;
+  }
+  
+  // Fix chevron arrow color to match icon/label
+  wb-hamburger-menu .push-sidebar button[aria-label="Select version"] .version-chevron {
+    color: #6b7280 !important;
+  }
+  
+  // Fix version icon (tag icon) color in light mode
+  wb-hamburger-menu .push-sidebar .nav-icon.pi-tag {
+    color: #6b7280 !important;
+  }
+  
+  // Fix version label text to match the icon color
+  wb-hamburger-menu .push-sidebar .version-selector-label {
+    color: #6b7280 !important;
+  }
+}
