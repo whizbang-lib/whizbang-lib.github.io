@@ -1041,6 +1041,57 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
         lightMode: this.themeService.isLightTheme(),
       },
       {
+        label: 'Concepts & Patterns',
+        icon: 'pi pi-shapes',
+        items: [
+          {
+            label: 'Overview',
+            command: () => this.router.navigate(['/patterns']),
+            styleClass: this.isActiveRoute('/patterns') && !this.currentUrl().includes('/patterns/') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          },
+          {
+            label: 'Receptor Pattern',
+            command: () => this.router.navigate(['/patterns/receptor']),
+            styleClass: this.isActiveRoute('/patterns/receptor') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          },
+          {
+            label: 'Perspective Pattern',
+            command: () => this.router.navigate(['/patterns/perspective']),
+            styleClass: this.isActiveRoute('/patterns/perspective') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          },
+          {
+            label: 'Lens Pattern',
+            command: () => this.router.navigate(['/patterns/lens']),
+            styleClass: this.isActiveRoute('/patterns/lens') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          },
+          {
+            label: 'Dispatcher Pattern',
+            command: () => this.router.navigate(['/patterns/dispatcher']),
+            styleClass: this.isActiveRoute('/patterns/dispatcher') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          },
+          {
+            label: 'Policy Pattern',
+            command: () => this.router.navigate(['/patterns/policy']),
+            styleClass: this.isActiveRoute('/patterns/policy') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          },
+          {
+            label: 'Ledger Pattern',
+            command: () => this.router.navigate(['/patterns/ledger']),
+            styleClass: this.isActiveRoute('/patterns/ledger') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          }
+        ],
+        expanded: this.shouldExpandPatterns(currentUrl),
+        styleClass: this.isActiveRoute('/patterns') ? 'active-menu-item' : '',
+        lightMode: this.themeService.isLightTheme(),
+      },
+      {
         label: 'Roadmap',
         icon: 'pi pi-map',
         command: () => this.router.navigate(['/roadmap']),
@@ -1249,177 +1300,78 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get current version filtered documentation items
+   * Get current version filtered documentation items using version-aware navigation
    */
   private getCurrentVersionFilteredDocs(): MenuItem[] {
     const currentUrl = this.currentUrl();
-    const allDocs = this.docsMenuItems();
-    let filteredDocs: MenuItem[] = [];
+    const currentVersion = this.versionService.currentVersion();
     
-    // Determine if we're in a state route (like /docs/proposals) or a version route
-    if (currentUrl.startsWith('/docs/')) {
-      const docPath = currentUrl.replace('/docs/', '').split('/')[0];
-      
-      // Check if this is a state by looking up in available states
-      const availableStates = this.versionService.availableStates();
-      const matchingState = availableStates.find(s => s.state === docPath);
-      
-      if (matchingState) {
-        filteredDocs = this.filterDocumentationByState(allDocs, docPath);
-      } else {
-        // Check if docPath looks like a version (e.g., v1.0.1)
-        if (this.isVersionPrefix(docPath)) {
-          // Use the version from the URL
-          filteredDocs = this.filterDocumentationByVersion(allDocs, docPath);
-        } else {
-          // Use current version for regular documentation
-          const currentVersion = this.versionService.currentVersion();
-          filteredDocs = this.filterDocumentationByVersion(allDocs, currentVersion);
-        }
-      }
-    } else {
-      // Use current version for regular documentation
-      const currentVersion = this.versionService.currentVersion();
-      filteredDocs = this.filterDocumentationByVersion(allDocs, currentVersion);
-    }
+    // Get version-specific docs from VersionService
+    const versionDocs = this.versionService.getCurrentVersionDocs();
+    
+    // Convert DocMeta to MenuItem format
+    const convertedDocs = this.convertDocMetaToMenuItem(versionDocs);
     
     // Add Overview item at the beginning if there are docs
-    if (filteredDocs.length > 0) {
-      // Determine the correct root path for Overview based on current context
-      let overviewSlug = '';
-      
-      if (currentUrl.startsWith('/docs/')) {
-        const docPath = currentUrl.replace('/docs/', '').split('/')[0];
-        
-        // Check if this is a state by looking up in available states
-        const availableStates = this.versionService.availableStates();
-        const matchingState = availableStates.find(s => s.state === docPath);
-        
-        if (matchingState) {
-          // For state routes, use just the state name as the slug
-          overviewSlug = docPath;
-        } else {
-          // For version routes, use the current version
-          overviewSlug = this.versionService.currentVersion();
-        }
-      } else {
-        // Default to current version
-        overviewSlug = this.versionService.currentVersion();
-      }
-      
+    if (convertedDocs.length > 0) {
       const overviewItem: MenuItem = {
         label: 'Overview',
-        slug: overviewSlug
+        slug: currentVersion
       };
       
       // Insert Overview at the beginning
-      return [overviewItem, ...filteredDocs];
+      return [overviewItem, ...convertedDocs];
     }
     
-    return filteredDocs;
+    return convertedDocs;
   }
 
   /**
-   * Extract state from URL like /docs/proposals -> "proposals"
+   * Convert DocMeta objects to MenuItem format for navigation
    */
-  private extractStateFromUrl(url: string): string {
-    const match = url.match(/^\/docs\/([^\/]+)/);
-    return match ? match[1] : '';
-  }
+  private convertDocMetaToMenuItem(docs: any[]): MenuItem[] {
+    const menuItems: MenuItem[] = [];
+    const categories = new Map<string, MenuItem[]>();
 
-  /**
-   * Filter documentation items by state (drafts, proposals, etc.)
-   */
-  private filterDocumentationByState(docs: MenuItem[], targetState: string): MenuItem[] {
-    const filtered = docs.filter(doc => {
-      // If the doc has a slug, check if it starts with the target state
-      if (doc.slug) {
-        const slugParts = doc.slug.split('/');
-        const docState = slugParts[0];
-        
-        // Show docs that belong to the current state
-        // Also exclude state folder entries (like "proposals/_folder")
-        if (docState === targetState) {
-          const isStateFolder = doc.slug === `${targetState}/_folder`;
-          return !isStateFolder;
+    docs.forEach(doc => {
+      const menuItem: MenuItem = {
+        label: doc.title,
+        slug: doc.slug
+      };
+
+      if (doc.category) {
+        if (!categories.has(doc.category)) {
+          categories.set(doc.category, []);
         }
-        return false;
+        categories.get(doc.category)!.push(menuItem);
+      } else {
+        menuItems.push(menuItem);
       }
-      
-      // For items with sub-items, recursively filter and keep if any match
-      if (doc.items && doc.items.length > 0) {
-        const filteredItems = this.filterDocumentationByState(doc.items, targetState);
-        if (filteredItems.length > 0) {
-          return true; // Keep this parent if it has matching children
-        }
-      }
-      
-      return false;
-    }).map(doc => {
-      // If this doc has items, update them with the filtered results
-      if (doc.items && doc.items.length > 0) {
-        return {
-          ...doc,
-          items: this.filterDocumentationByState(doc.items, targetState)
-        };
-      }
-      return doc;
     });
-    
-    return filtered;
-  }
 
-  /**
-   * Filter documentation items by version
-   */
-  private filterDocumentationByVersion(docs: MenuItem[], targetVersion: string): MenuItem[] {
-    return docs.filter(doc => {
-      // If the doc has a slug, check if it starts with the target version
-      if (doc.slug) {
-        const slugParts = doc.slug.split('/');
-        const docVersion = slugParts[0];
-        
-        // ONLY show docs that belong to the current version
-        // Exclude all version-specific paths and documentation states
-        // Also exclude version folder entries (like "v1.0.0/_folder")
-        if (docVersion === targetVersion) {
-          // Exclude the version folder itself
-          const isVersionFolder = doc.slug === `${targetVersion}/_folder`;
-          return !isVersionFolder;
-        }
-        return false;
-      }
-      
-      // If doc has children, recursively filter them
-      if (doc.items && doc.items.length > 0) {
-        const filteredChildren = this.filterDocumentationByVersion(doc.items, targetVersion);
-        if (filteredChildren.length > 0) {
-          return {
-            ...doc,
-            items: filteredChildren
-          };
-        }
-      }
-      
-      return false;
-    }).map(doc => {
-      // For docs with children, update the children array
-      if (doc.items && doc.items.length > 0) {
-        return {
-          ...doc,
-          items: this.filterDocumentationByVersion(doc.items, targetVersion)
-        };
-      }
-      return doc;
+    // Sort items within categories by order
+    categories.forEach(items => {
+      items.sort((a, b) => {
+        const docA = docs.find(d => d.slug === a.slug);
+        const docB = docs.find(d => d.slug === b.slug);
+        return (docA?.order || 999) - (docB?.order || 999);
+      });
     });
+
+    // Add categorized items to menu (sorted by category name)
+    const sortedCategories = Array.from(categories.keys()).sort();
+    sortedCategories.forEach(categoryName => {
+      const categoryItem: MenuItem = {
+        label: categoryName,
+        slug: '',
+        items: categories.get(categoryName)
+      };
+      menuItems.push(categoryItem);
+    });
+
+    return menuItems;
   }
 
-  /**
-   * Check if a string looks like a version prefix (e.g., "v1.0.0")
-   */
-  private isVersionPrefix(str: string): boolean {
-    return /^v\d+\.\d+\.\d+(-\w+)?$/.test(str);
-  }
 
   ngOnDestroy() {
     this.routerSubscription?.unsubscribe();
@@ -1464,6 +1416,10 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
 
   shouldExpandDocs(currentUrl: string): boolean {
     return currentUrl.startsWith('/docs');
+  }
+
+  shouldExpandPatterns(currentUrl: string): boolean {
+    return currentUrl.startsWith('/patterns');
   }
 
   private shouldExpandMenuItem(item: MenuItem): boolean {

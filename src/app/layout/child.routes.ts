@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 export const childRoutes: Routes = [
   { path: '', loadComponent: () => import('../pages/home/home.page').then(m => m.HomePage) },
   { path: 'docs', loadChildren: () => import('../pages/docs/docs.routes').then(m => m.DOC_ROUTES) },
+  { path: 'patterns', loadChildren: () => import('../pages/patterns/patterns.routes').then(m => m.PATTERN_ROUTES) },
   { path: 'roadmap', loadComponent: () => import('../pages/roadmap/roadmap.page').then(m => m.RoadmapPage) },
   { path: 'examples', loadComponent: () => import('../pages/examples/examples.page').then(m => m.ExamplesPage) },
   { path: 'videos', loadComponent: () => import('../pages/videos/videos.page').then(m => m.VideosPage) },

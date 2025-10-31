@@ -184,6 +184,11 @@ import { SeoService } from '../../services/seo.service';
       padding: 0;
     }
 
+    /* Hide the opposite content in timeline to fix alignment */
+    :host ::ng-deep .version-timeline .p-timeline-event-opposite {
+      display: none !important;
+    }
+
     .timeline-card {
       background: var(--surface-card);
       border: 1px solid var(--surface-border);

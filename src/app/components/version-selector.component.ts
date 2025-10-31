@@ -26,7 +26,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
         (click)="versionPanel.toggle($event)"
         [attr.aria-label]="'Select version'">
         <span class="version-label">{{ currentVersionDisplay() }}</span>
-        <i class="pi pi-chevron-down version-chevron" [class.lightMode]="light-mode"></i>
+        <i class="pi pi-chevron-down version-chevron"></i>
       </button>
       
       <!-- Version Selection Panel -->

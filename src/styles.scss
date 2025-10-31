@@ -877,42 +877,29 @@ mark.search-highlight {
   }
 
   // === GLOBAL MARKER (ARROWHEAD) STYLING ===
-  // Fix for Mermaid.js arrowhead visibility - make them MASSIVE (50x)
+  // Properly sized arrow markers for readability and closer spacing
   svg defs marker {
-    width: 500px !important;   // 50x larger than default ~10px
-    height: 500px !important;  // 50x larger than default ~10px
+    width: 6px !important;
+    height: 6px !important;
     
     path {
-      fill: #64748b !important;     // Dark gray for default arrows
-      stroke: #64748b !important;   // Add stroke for more visibility
-      stroke-width: 20px !important; // Much thicker stroke
-      transform: scale(50) !important; // Make arrowhead 50x larger
+      fill: #64748b !important;
+      stroke: #64748b !important;
+      stroke-width: 1px !important;
     }
   }
 
-  // Ensure edge link paths are visible and much thicker
+  // Normal-sized edge link paths
   svg path.flowchart-link {
     stroke: #64748b !important;
-    stroke-width: 20px !important;  // Make lines much thicker
+    stroke-width: 2px !important;
   }
 
-  // Force visible arrow markers using CSS since Mermaid isn't generating them
+  // Normal arrow markers
   svg path[marker-end] {
     stroke: #64748b !important;
-    stroke-width: 20px !important;
-    stroke-linecap: round !important;
-  }
-
-  // Try to create arrow-like endings using stroke properties
-  svg path[marker-end]::after {
-    content: '';
-    display: block;
-    width: 0;
-    height: 0;
-    border-left: 20px solid #64748b;
-    border-top: 10px solid transparent;
-    border-bottom: 10px solid transparent;
-    position: absolute;
+    stroke-width: 2px !important;
+    stroke-linecap: butt !important;
   }
 }
 
@@ -1030,42 +1017,29 @@ mark.search-highlight {
   }
 
   // === GLOBAL MARKER (ARROWHEAD) STYLING ===
-  // Fix for Mermaid.js arrowhead visibility - make them MASSIVE (50x)
+  // Properly sized arrow markers for readability
   svg defs marker {
-    width: 500px !important;   // 50x larger than default ~10px
-    height: 500px !important;  // 50x larger than default ~10px
+    width: 12px !important;
+    height: 12px !important;
     
     path {
-      fill: #94a3b8 !important;     // Light gray for default arrows
-      stroke: #94a3b8 !important;   // Add stroke for more visibility
-      stroke-width: 20px !important; // Much thicker stroke
-      transform: scale(50) !important; // Make arrowhead 50x larger
+      fill: #94a3b8 !important;
+      stroke: #94a3b8 !important;
+      stroke-width: 1px !important;
     }
   }
 
-  // Ensure edge link paths are visible and much thicker
+  // Normal-sized edge link paths
   svg path.flowchart-link {
     stroke: #94a3b8 !important;
-    stroke-width: 20px !important;  // Make lines much thicker
+    stroke-width: 2px !important;
   }
 
-  // Force visible arrow markers using CSS since Mermaid isn't generating them
+  // Normal arrow markers
   svg path[marker-end] {
     stroke: #94a3b8 !important;
-    stroke-width: 20px !important;
+    stroke-width: 2px !important;
     stroke-linecap: round !important;
-  }
-
-  // Try to create arrow-like endings using stroke properties
-  svg path[marker-end]::after {
-    content: '';
-    display: block;
-    width: 0;
-    height: 0;
-    border-left: 20px solid #94a3b8;
-    border-top: 10px solid transparent;
-    border-bottom: 10px solid transparent;
-    position: absolute;
   }
 
   // === ARCHITECTURAL LAYERS (Semantic Meaning) ===

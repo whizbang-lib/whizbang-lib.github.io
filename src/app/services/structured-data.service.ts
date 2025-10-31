@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { BreadcrumbItem } from '../components/breadcrumb.component';
 
-interface DocumentMetadata {
+export interface DocumentMetadata {
   title: string;
   description: string;
   category: string;
@@ -9,7 +9,7 @@ interface DocumentMetadata {
   order?: number;
 }
 
-interface CodeExample {
+export interface CodeExample {
   title?: string;
   description?: string;
   language: string;

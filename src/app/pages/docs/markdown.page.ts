@@ -607,11 +607,11 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
           if (commentNode.textContent === placeholder.replace('<!--', '').replace('-->', '')) {
             // Render the mermaid diagram with alt text
             const id = `mermaid-diagram-${i}`;
-            const { svg, altText } = await this.mermaidService.renderDiagram(id, code);
+            const { svg, altText, isTimeline } = await this.mermaidService.renderDiagram(id, code);
 
             // Create container
             const container = document.createElement('div');
-            container.className = 'mermaid-diagram';
+            container.className = isTimeline ? 'mermaid-diagram timeline-diagram' : 'mermaid-diagram';
             container.innerHTML = svg;
 
             // Add accessible alt text to the SVG
@@ -634,6 +634,9 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
             if (svgElement) {
               this.mermaidService.applyNodeClassesToEdges(svgElement);
             }
+            
+            // Add maximize button to the container
+            this.mermaidService.addMaximizeButton(container);
             break;
           }
         }
@@ -654,9 +657,10 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
       try {
         // Re-render the diagram with new theme
         const id = `mermaid-diagram-${i}-rerender-${Date.now()}`;
-        const { svg } = await this.mermaidService.renderDiagram(id, code);
+        const { svg, isTimeline } = await this.mermaidService.renderDiagram(id, code);
 
-        // Update container content
+        // Update container class and content
+        container.className = isTimeline ? 'mermaid-diagram timeline-diagram' : 'mermaid-diagram';
         container.innerHTML = svg;
 
         // Apply node classes to edges after SVG is updated
@@ -664,6 +668,9 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         if (svgElement) {
           this.mermaidService.applyNodeClassesToEdges(svgElement);
         }
+        
+        // Add maximize button to the container
+        this.mermaidService.addMaximizeButton(container as HTMLElement);
       } catch (error) {
         console.error('Failed to re-render mermaid diagram:', error);
       }

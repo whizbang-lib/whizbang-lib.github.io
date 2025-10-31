@@ -1,12 +1,16 @@
-import { Injectable, inject, effect } from '@angular/core';
+import { Injectable, inject, effect, ApplicationRef, createComponent, EnvironmentInjector, ComponentRef } from '@angular/core';
 import mermaid from 'mermaid';
 import { ThemeService } from './theme.service';
+import { MermaidFullscreenModalComponent } from '../components/mermaid-fullscreen-modal.component';
 
-@Injectable({ providedIn: 'root' })
+  @Injectable({ providedIn: 'root' })
 export class MermaidService {
   private initialized = false;
   private themeService = inject(ThemeService);
   private currentTheme: 'light' | 'dark' = 'light';
+  private appRef = inject(ApplicationRef);
+  private injector = inject(EnvironmentInjector);
+  private modalComponentRef: ComponentRef<MermaidFullscreenModalComponent> | null = null;
 
   constructor() {
     this.initializeMermaid();
@@ -38,13 +42,23 @@ export class MermaidService {
         deterministicIds: true,  // Consistent IDs for repeatability
         maxTextSize: 90000,  // Increase text limit
         themeCSS: `
-          /* Force consistent sizing regardless of content */
+          /* Default sizing for non-timeline diagrams */
           svg {
             width: 1200px !important;
-            height: 800px !important;
+            height: 600px !important;
             min-width: 1200px !important;
-            min-height: 800px !important;
+            min-height: 600px !important;
           }
+          
+          /* Default container sizing for non-timeline diagrams */
+          .mermaid,
+          .mermaid-diagram {
+            width: 1200px !important;
+            min-width: 1200px !important;
+            max-width: none !important;
+            overflow-x: auto !important;
+          }
+          
           /* Global spacing and layout overrides - remove scaling */
           .cluster-label foreignObject {
             overflow: visible !important;
@@ -101,8 +115,8 @@ export class MermaidService {
             text-align: center !important;
             white-space: nowrap !important;
             margin-bottom: 150px !important;
-            padding: 60px 80px !important;
-            margin-top: 50px !important;
+            padding: 5px 5px !important;
+            margin-top: 10px !important;
             display: inline-block !important;
           }
           /* Remove font CSS from here */
@@ -136,6 +150,7 @@ export class MermaidService {
           path.edge {
             stroke-width: 16px !important;
           }
+          
           .cluster-label {
             margin-top: 40px !important;
             padding-top: 30px !important;
@@ -163,27 +178,111 @@ export class MermaidService {
             margin-left: 200px !important;
           }
           defs marker {
-            width: 500px !important;
-            height: 500px !important;
+            width: 8px !important;
+            height: 8px !important;
+            refX: 10 !important;
+            refY: 6 !important;
+            markerWidth: 8px !important;
+            markerHeight: 8px !important;
           }
           defs marker path {
             fill: ${isDark ? '#94a3b8' : '#64748b'} !important;
             stroke: ${isDark ? '#94a3b8' : '#64748b'} !important;
-            stroke-width: 20px !important;
-            transform: scale(50) !important;
+            stroke-width: 1px !important;
           }
+          
+          /* Subgraph/cluster background colors for better visibility */
+          .cluster rect {
+            fill: ${isDark ? '#1e293b' : '#f8fafc'} !important;
+            stroke: ${isDark ? '#475569' : '#cbd5e1'} !important;
+            stroke-width: 2px !important;
+            rx: 8px !important;
+            ry: 8px !important;
+          }
+          
+          /* Target large background rectangles that are subgraph containers */
+          g[id*="cluster"] > rect:first-child {
+            fill: ${isDark ? '#1e293b' : '#f8fafc'} !important;
+            stroke: ${isDark ? '#475569' : '#cbd5e1'} !important;
+            stroke-width: 2px !important;
+            stroke-dasharray: none !important;
+            rx: 8px !important;
+            ry: 8px !important;
+            opacity: 0.8 !important;
+          }
+          
+          /* Target rectangles with specific patterns indicating subgraph boundaries */
+          rect[style*="stroke-dasharray"] {
+            fill: ${isDark ? '#1e293b' : '#f8fafc'} !important;
+            stroke: ${isDark ? '#475569' : '#cbd5e1'} !important;
+            stroke-width: 2px !important;
+            rx: 8px !important;
+            ry: 8px !important;
+            opacity: 0.8 !important;
+          }
+          /* Timeline-specific styling - applied via JavaScript class */
+          .timeline-diagram g[class*="section"] text {
+            font-size: 14px !important;
+            line-height: 1.4 !important;
+          }
+          
+          .timeline-diagram .lineWrapper line {
+            stroke-width: 3px !important;
+            stroke-dasharray: none !important;
+          }
+          
+          .timeline-diagram .timeline-line {
+            stroke-width: 3px !important;
+          }
+          
+          .timeline-diagram g:first-of-type line {
+            stroke-width: 3px !important;
+          }
+          
+          .timeline-diagram line[stroke="#CCCCCC"],
+          .timeline-diagram line[stroke="#ccc"],
+          .timeline-diagram line[stroke="gray"],
+          .timeline-diagram line[stroke="#999"] {
+            /* Timeline lines extend full width */
+          }
+          
+          .timeline-diagram g {
+            max-width: none !important;
+            width: 100% !important;
+          }
+          
+          .timeline-diagram g[class*="section"] {
+            max-width: none !important;
+            flex: 1 !important;
+          }
+          
+          .timeline-diagram g[class*="section"] rect {
+            padding: 8px !important;
+          }
+          
+          .timeline-diagram g[class*="section"] text {
+            padding: 4px !important;
+            margin: 2px !important;
+          }
+          
         `,  // Style cluster/subgraph labels and arrowheads - centered with larger headers and HUGE arrows
         flowchart: {
           htmlLabels: true,  // Enable HTML labels for proper text rendering
           useMaxWidth: false,  // Disable auto-scaling
-          padding: 80,
-          diagramPadding: 80,
-          nodeSpacing: 300,  // Horizontal spacing between nodes in LR graphs (default - can be overridden per-diagram)
+          padding: 10,  // Reduced from 80
+          diagramPadding: 10,  // Reduced from 80
+          nodeSpacing: 100,  // Horizontal spacing between nodes in LR graphs (default - can be overridden per-diagram)
           rankSpacing: 300,  // Spacing between ranks/levels within the flowchart
           curve: 'basis',  // Use basis curve for smoother routing around obstacles
           subGraphTitleMargin: {
-            bottom: 300  // Space between subgraph title and content
+            bottom: 20  // Space between subgraph title and content
           }
+        },
+        timeline: {
+          disableMulticolor: false,
+          useMaxWidth: true,  // Enable responsive scaling to container width
+          padding: 20,
+          width: 0, // Let it expand naturally
         },
         arrowMarkerAbsolute: true,
         themeVariables: {
@@ -199,18 +298,18 @@ export class MermaidService {
             // Dark mode - force dark backgrounds everywhere
             darkMode: true,
 
-            // Primary colors (main nodes)
+            // Primary colors (main nodes) - darker backgrounds for better contrast
             primaryColor: '#1e3a5f',
             primaryTextColor: '#ffffff',
             primaryBorderColor: '#60a5fa',
 
-            // Secondary colors
+            // Secondary colors - make sure it's dark enough
             secondaryColor: '#1e293b',
             secondaryTextColor: '#ffffff',
             secondaryBorderColor: '#64748b',
 
-            // Tertiary colors
-            tertiaryColor: '#334155',
+            // Tertiary colors - darker backgrounds
+            tertiaryColor: '#0f172a',
             tertiaryTextColor: '#ffffff',
             tertiaryBorderColor: '#475569',
 
@@ -251,12 +350,19 @@ export class MermaidService {
             edgeLabelBackground: 'transparent',
             // edgeLabelText removed - we style this via CSS based on semantic layers
 
-            // Specific colors to override any light backgrounds
-            c0: '#1e3a5f',  // Used for first color in color scheme
-            c1: '#1e293b',  // Used for second color
-            c2: '#334155',  // Used for third color
-            c3: '#475569',  // Used for fourth color
-            c4: '#64748b',  // Used for fifth color
+            // Specific colors to override any light backgrounds - ALL DARK for proper contrast
+            c0: '#1e3a5f',  // Used for first color in color scheme - dark blue
+            c1: '#1e293b',  // Used for second color - dark slate
+            c2: '#0f172a',  // Used for third color - very dark
+            c3: '#1a2332',  // Used for fourth color - dark
+            c4: '#2d3748',  // Used for fifth color - dark gray
+            c5: '#1e3a5f',  // Additional colors
+            c6: '#1e293b',
+            c7: '#0f172a',
+            c8: '#1a2332',
+            c9: '#2d3748',
+            c10: '#1e3a5f',
+            c11: '#1e293b',
 
             // Pie chart colors (if used)
             pie1: '#1e3a5f',
@@ -305,7 +411,7 @@ export class MermaidService {
     }
   }
 
-  async renderDiagram(id: string, code: string, fontSize?: string): Promise<{ svg: string; altText?: string }> {
+  async renderDiagram(id: string, code: string, fontSize?: string): Promise<{ svg: string; altText?: string; isTimeline?: boolean }> {
     if (!this.initialized) {
       this.initializeMermaid();
     }
@@ -316,7 +422,7 @@ export class MermaidService {
       const isDark = this.themeService.isDarkTheme();
       
       // Calculate proportional spacing - 3x font size for header spacing
-      const headerSpacing = Math.round(baseFontSize * 3);
+      const headerSpacing = Math.round(baseFontSize * 1);
       
       // Create proportional themeCSS with scaled font sizes
       const scaledThemeCSS = `
@@ -359,6 +465,67 @@ export class MermaidService {
         g[id*="cluster"]:not(:first-child) {
           margin-left: ${Math.round(baseFontSize * 3)}px !important;
         }
+        ${isDark ? `
+        /* Force much darker backgrounds on ALL nodes in dark mode */
+        .node rect, .node polygon, .node circle, .node ellipse, .node path {
+          fill: #0f172a !important;
+          stroke: #475569 !important;
+        }
+        
+        /* More specific selectors to override mermaid's inline styles */
+        g.node rect, g.node polygon, g.node circle, g.node ellipse, g.node path {
+          fill: #0f172a !important;
+          stroke: #475569 !important;
+        }
+        
+        /* Target nodes by their role/class names */
+        .node.default rect, .node.default polygon, .node.default path {
+          fill: #1e293b !important;
+          stroke: #475569 !important;
+        }
+        
+        /* Specific colors for numbered nodes */
+        .node.c0 rect, .node.c0 polygon { 
+          fill: #1e293b !important;
+          stroke: #475569 !important;
+        }
+        .node.c1 rect, .node.c1 polygon { 
+          fill: #0f172a !important;
+          stroke: #475569 !important;
+        }
+        .node.c2 rect, .node.c2 polygon { 
+          fill: #1a1f2e !important;
+          stroke: #475569 !important;
+        }
+        .node.c3 rect, .node.c3 polygon { 
+          fill: #111827 !important;
+          stroke: #475569 !important;
+        }
+        .node.c4 rect, .node.c4 polygon { 
+          fill: #0c1118 !important;
+          stroke: #475569 !important;
+        }
+        
+        /* Target flowchart nodes specifically */
+        .flowchart-node rect {
+          fill: #0f172a !important;
+          stroke: #475569 !important;
+        }
+        
+        /* Force white text on all nodes with higher specificity */
+        .node text, .nodeLabel, .nodeLabel text, g.node text, .node .nodeLabel {
+          fill: #ffffff !important;
+          color: #ffffff !important;
+        }
+        /* Ensure cluster/subgraph backgrounds are also dark */
+        .cluster rect {
+          fill: #1e293b !important;
+          stroke: #475569 !important;
+          stroke-width: 2px !important;
+          rx: 8px !important;
+          ry: 8px !important;
+        }
+        ` : ''}
       `;
       
       // Update configuration with proportional spacing and HTML labels
@@ -367,14 +534,16 @@ export class MermaidService {
         flowchart: {
           htmlLabels: true,  // Enable HTML labels for proper text rendering
           useMaxWidth: false,
-          padding: 80,
-          diagramPadding: 80,
-          nodeSpacing: 600,  // Increased horizontal spacing between subgraphs
-          rankSpacing: 300,
+          padding: 20,
+          diagramPadding: 20,
+          nodeSpacing: 100,  // Increased horizontal spacing between subgraphs
+          rankSpacing: 100,
           curve: 'basis',
           subGraphTitleMargin: {
+            top: 0,
             bottom: headerSpacing  // Proportional header spacing (3x font size)
-          }
+          },
+          titleTopMargin: 10,
         },
         themeVariables: {
           fontSize: fontSize,
@@ -394,11 +563,19 @@ export class MermaidService {
     const svgDoc = parser.parseFromString(result.svg, 'image/svg+xml');
     const svgElement = svgDoc.documentElement as unknown as SVGElement;
     
+    
     // First apply semantic classes to edges and labels
     this.applyNodeClassesToEdges(svgElement);
     
-    // Then add colored arrows based on semantic classes
+    // Add colored arrows based on semantic classes, preserving Mermaid's cluster boundary arrows
     this.addArrowMarkers(svgElement);
+    
+    // Force darker backgrounds in dark mode and add cluster backgrounds
+    const isDark = this.themeService.isDarkTheme();
+    if (isDark) {
+      this.forceDarkNodeBackgrounds(svgElement);
+    }
+    this.addClusterBackgrounds(svgElement);
     
     // If we used custom fontSize, restore the original configuration
     if (fontSize) {
@@ -411,7 +588,8 @@ export class MermaidService {
     
     return { 
       svg: new XMLSerializer().serializeToString(svgElement),
-      altText
+      altText,
+      isTimeline: false
     };
   }
 
@@ -426,8 +604,13 @@ export class MermaidService {
       svgElement.insertBefore(defs, svgElement.firstChild);
     }
     
+    // Clear only our semantic layer markers to avoid conflicts, preserve Mermaid's original markers
+    const existingCustomMarkers = defs.querySelectorAll('marker[id^="arrow-layer-"]');
+    existingCustomMarkers.forEach(marker => marker.remove());
+    
     // Semantic layer colors for arrows and lines
     const layerColors: { [key: string]: string } = {
+      'layer-default': '#393939',
       'layer-core': '#28a745',        // Green - Core Business Logic
       'layer-event': '#dc3545',       // Red - Event Sourcing & Persistence  
       'layer-read': '#004085',        // Blue - Read Models & Queries
@@ -440,15 +623,15 @@ export class MermaidService {
     Object.entries(layerColors).forEach(([layerClass, color]) => {
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
       marker.setAttribute('id', `arrow-${layerClass}`);
-      marker.setAttribute('viewBox', '0 0 10 10');
-      marker.setAttribute('refX', '8');
-      marker.setAttribute('refY', '3');
-      marker.setAttribute('markerWidth', '8');
-      marker.setAttribute('markerHeight', '8');
+      marker.setAttribute('viewBox', '0 0 12 12');
+      marker.setAttribute('refX', '10');
+      marker.setAttribute('refY', '6');
+      marker.setAttribute('markerWidth', '4');
+      marker.setAttribute('markerHeight', '4');
       marker.setAttribute('orient', 'auto');
       
       const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      polygon.setAttribute('points', '0,0 0,6 9,3');
+      polygon.setAttribute('points', '0,0 0,12 12,6');
       polygon.setAttribute('fill', color);
       
       marker.appendChild(polygon);
@@ -487,33 +670,9 @@ export class MermaidService {
         path.setAttribute('marker-end', `url(#arrow-${semanticClass})`);
         console.log(`Applied ${semanticClass} arrow and stroke to path ${index + 1} (${path.id})`);
       } else {
-        // Fallback to default arrow if no semantic class found
-        const defaultColor = '#64748b';
-        path.setAttribute('stroke', defaultColor);
-        path.setAttribute('stroke-width', '16');
-        path.setAttribute('style', `stroke: ${defaultColor} !important; stroke-width: 16px !important;`);
-        
-        // Create default arrow if not exists
-        if (!defs.querySelector('#arrow-default')) {
-          const defaultMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-          defaultMarker.setAttribute('id', 'arrow-default');
-          defaultMarker.setAttribute('viewBox', '0 0 10 10');
-          defaultMarker.setAttribute('refX', '8');
-          defaultMarker.setAttribute('refY', '3');
-          defaultMarker.setAttribute('markerWidth', '8');
-          defaultMarker.setAttribute('markerHeight', '8');
-          defaultMarker.setAttribute('orient', 'auto');
-          
-          const defaultPolygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-          defaultPolygon.setAttribute('points', '0,0 0,6 9,3');
-          defaultPolygon.setAttribute('fill', defaultColor);
-          
-          defaultMarker.appendChild(defaultPolygon);
-          defs.appendChild(defaultMarker);
-        }
-        
-        path.setAttribute('marker-end', 'url(#arrow-default)');
-        console.log(`Applied default arrow and stroke to path ${index + 1}`);
+        // Skip paths without semantic classes - these are likely cluster boundary crossings
+        // Let Mermaid handle these completely to preserve proper arrow positioning
+        console.log(`Skipping path ${index + 1} (${path.id}) - no semantic class, likely cluster boundary`);
       }
     });
     
@@ -804,6 +963,7 @@ export class MermaidService {
     console.log(`Mapped labels: ${edgeLabelToEdgeMap.size}`);
   }
 
+
   /**
    * Apply node classes to nodes, edges, and edge labels based on subgraph membership.
    * This allows all diagram elements to inherit colors from their semantic layer classes.
@@ -812,6 +972,7 @@ export class MermaidService {
   applyNodeClassesToEdges(svgElement: SVGElement): void {
     // Map subgraph IDs to their semantic classes
     const subgraphClassMap = new Map<string, string[]>([
+      ['Default', ['layer-default']],           // ORM Integrations - event/data layer
       ['ORM', ['layer-event']],           // ORM Integrations - event/data layer
       ['Messaging', ['layer-command']],   // Message Broker Adapters - command layer
       ['Dev', ['layer-infrastructure']],  // Developer Tools - infrastructure layer
@@ -880,8 +1041,32 @@ export class MermaidService {
         // Core packages: WhizCore, WhizES, WhizProj, WhizMsg
         return subgraphClassMap.get('Core');
       }
+      
+      // Receptor pattern specific nodes
+      if (nodeName.includes('Receptor') || nodeName === 'CommandReceptor' || nodeName === 'EventReceptor' || nodeName.includes('Mediator')) {
+        return subgraphClassMap.get('Core');
+      }
+      
+      // Architecture-related nodes are typically core business logic
+      if (nodeName === 'Architecture' || nodeName.includes('Architecture')) {
+        return subgraphClassMap.get('Core');
+      }
+      
+      // Context-related nodes are typically core business logic  
+      if (nodeName === 'Context' || nodeName.includes('Context')) {
+        return subgraphClassMap.get('Core');
+      }
+      
+      // Command and Event handling nodes
+      if (nodeName.includes('Command') || nodeName.includes('Event') || nodeName.includes('Log')) {
+        return subgraphClassMap.get('Core');
+      }
 
-      return undefined;
+      if (nodeName.includes('Query') || nodeName.includes('Cache') || nodeName.includes('Data Access')) {
+        return subgraphClassMap.get('ORM');
+      }
+
+      return subgraphClassMap.get('Default');
     };
 
     // Apply classes to all nodes based on their subgraph membership
@@ -900,6 +1085,7 @@ export class MermaidService {
 
     // Color map for semantic layers
     const layerColorMap: { [key: string]: string } = {
+      'layer-default': '#393939',
       'layer-core': '#28a745',
       'layer-event': '#dc3545',
       'layer-read': '#004085',
@@ -979,6 +1165,112 @@ export class MermaidService {
     // This method is kept for backward compatibility but is no longer used
     // Mermaid diagrams are now rendered directly in markdown.page.ts
     console.warn('MermaidService.renderDiagrams() is deprecated - diagrams are now rendered in markdown.page.ts');
+  }
+
+  /**
+   * Add a maximize button to a Mermaid diagram container
+   */
+  public addMaximizeButton(container: HTMLElement): void {
+    // Check if button already exists
+    if (container.querySelector('.mermaid-maximize-btn')) {
+      return;
+    }
+
+    // Create maximize button
+    const button = document.createElement('button');
+    button.className = 'mermaid-maximize-btn';
+    button.innerHTML = '<i class="pi pi-window-maximize"></i>';
+    button.title = 'View fullscreen';
+    button.setAttribute('aria-label', 'View diagram in fullscreen');
+    
+    // Style the button
+    button.style.cssText = `
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: var(--surface-hover);
+      border: 1px solid var(--surface-border);
+      color: var(--text-color);
+      border-radius: 0.25rem;
+      width: 2rem;
+      height: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      opacity: 0.7;
+      z-index: 10;
+    `;
+
+    // Add hover effect
+    button.addEventListener('mouseenter', () => {
+      button.style.opacity = '1';
+      button.style.background = 'var(--primary-color)';
+      button.style.color = 'var(--primary-color-text)';
+      button.style.transform = 'scale(1.1)';
+    });
+
+    button.addEventListener('mouseleave', () => {
+      button.style.opacity = '0.7';
+      button.style.background = 'var(--surface-hover)';
+      button.style.color = 'var(--text-color)';
+      button.style.transform = 'scale(1)';
+    });
+
+    // Handle click
+    button.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Open fullscreen modal
+      const svg = container.querySelector('svg');
+      if (svg) {
+        this.openFullscreenModal(svg as SVGElement);
+      }
+    });
+
+    // Make container position relative if not already
+    const computedStyle = window.getComputedStyle(container);
+    if (computedStyle.position === 'static') {
+      container.style.position = 'relative';
+    }
+
+    // Add button to container
+    container.appendChild(button);
+
+    // Show/hide button on container hover
+    container.addEventListener('mouseenter', () => {
+      button.style.opacity = '0.7';
+    });
+
+    container.addEventListener('mouseleave', () => {
+      button.style.opacity = '0';
+    });
+
+    // Initially hide the button
+    button.style.opacity = '0';
+  }
+
+  /**
+   * Open the fullscreen modal with a diagram
+   */
+  private openFullscreenModal(svgElement: SVGElement): void {
+    // Create modal component if it doesn't exist
+    if (!this.modalComponentRef) {
+      this.modalComponentRef = createComponent(MermaidFullscreenModalComponent, {
+        environmentInjector: this.injector
+      });
+      
+      // Attach to app
+      this.appRef.attachView(this.modalComponentRef.hostView);
+      
+      // Add to DOM
+      document.body.appendChild(this.modalComponentRef.location.nativeElement);
+    }
+
+    // Open the modal with the SVG
+    this.modalComponentRef.instance.open(svgElement);
   }
 
   /**
@@ -1128,5 +1420,233 @@ export class MermaidService {
     ).length;
     
     return `Class diagram showing ${classes} classes with ${relationships} relationships. Illustrates object-oriented design patterns and type hierarchies.`;
+  }
+
+
+  private forceDarkNodeBackgrounds(svgElement: SVGElement): void {
+    // Map light colors to dark mode equivalents using RGB values 
+    // (Mermaid often uses RGB instead of hex)
+    const colorMap: { [key: string]: { fill: string; stroke: string } } = {
+      // Light blue variations -> Dark blue
+      'rgb(218, 232, 252)': { fill: '#1e3a5f', stroke: '#2563eb' },
+      'rgb(204, 229, 255)': { fill: '#1e3a5f', stroke: '#2563eb' },
+      '#dae8fc': { fill: '#1e3a5f', stroke: '#2563eb' },
+      '#cce5ff': { fill: '#1e3a5f', stroke: '#2563eb' },
+      
+      // Light peach/orange variations -> Dark orange
+      'rgb(255, 230, 204)': { fill: '#7c2d12', stroke: '#ea580c' },
+      'rgb(255, 242, 204)': { fill: '#7c2d12', stroke: '#ea580c' },
+      '#ffe6cc': { fill: '#7c2d12', stroke: '#ea580c' },
+      '#fff2cc': { fill: '#7c2d12', stroke: '#ea580c' },
+      
+      // Light pink variations -> Dark pink
+      'rgb(248, 206, 204)': { fill: '#831843', stroke: '#db2777' },
+      'rgb(230, 204, 255)': { fill: '#581c87', stroke: '#9333ea' },
+      '#f8cecc': { fill: '#831843', stroke: '#db2777' },
+      '#e6ccff': { fill: '#581c87', stroke: '#9333ea' },
+      
+      // Light yellow variations -> Dark amber
+      'rgb(255, 244, 230)': { fill: '#78350f', stroke: '#d97706' },
+      '#fff4e6': { fill: '#78350f', stroke: '#d97706' },
+      
+      // Light purple variations -> Dark purple
+      'rgb(225, 213, 231)': { fill: '#4c1d95', stroke: '#7c3aed' },
+      '#e1d5e7': { fill: '#4c1d95', stroke: '#7c3aed' },
+      
+      // Light green variations -> Dark green
+      'rgb(213, 232, 212)': { fill: '#14532d', stroke: '#16a34a' },
+      '#d5e8d4': { fill: '#14532d', stroke: '#16a34a' },
+      
+      // Default fallback for unmapped colors
+      'default': { fill: '#1e293b', stroke: '#475569' }
+    };
+
+    console.log('🎨 Processing nodes for color mapping...');
+
+    // Process all node rectangles and polygons
+    const nodes = svgElement.querySelectorAll('g.node');
+    nodes.forEach((node: Element, index) => {
+      const rect = node.querySelector('rect, polygon, path');
+      const textElement = node.querySelector('text');
+      const text = textElement?.textContent || '';
+      
+      console.log(`Node ${index + 1}: "${text}"`);
+      
+      if (rect instanceof SVGElement) {
+        // Get the current fill color (try multiple sources)
+        const currentFill = rect.getAttribute('fill') || 
+                           rect.style.fill || 
+                           window.getComputedStyle(rect).fill || '';
+        
+        console.log(`  Current fill: "${currentFill}"`);
+        
+        // Normalize the color string for comparison
+        const normalizedFill = currentFill.toLowerCase().replace(/\s/g, '');
+        
+        // Find matching dark color by detecting color family
+        let darkColors: { fill: string; stroke: string } | null = null;
+        
+        // Try exact RGB color matching first
+        for (const [lightColor, darkColor] of Object.entries(colorMap)) {
+          if (lightColor !== 'default' && normalizedFill === lightColor) {
+            darkColors = darkColor;
+            console.log(`  ✅ Exact RGB match: ${lightColor} -> ${darkColor.fill}`);
+            break;
+          }
+        }
+        
+        // If no exact match, detect color family by RGB analysis  
+        if (!darkColors && currentFill.startsWith('rgb(')) {
+          // Parse RGB values from string like "rgb(227, 242, 253)"
+          const rgbMatch = currentFill.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+          if (rgbMatch) {
+            const [, r, g, b] = rgbMatch.map(Number);
+            
+            // Analyze color family based on dominant color channels
+            const isBlueish = b > r && b > g && b > 200; // High blue channel
+            const isGreenish = g > r && g > b && g > 200; // High green channel  
+            const isPinkish = r > g && r > b && r > 200; // High red channel
+            const isPurplish = r > 200 && b > 200 && g < r; // High red+blue, lower green
+            const isYellowish = r > 200 && g > 200 && b < 200; // High red+green, lower blue
+            const isTealish = g > 200 && b > 200 && r < g; // High green+blue, lower red
+            
+            if (isBlueish) {
+              darkColors = { fill: '#1e3a5f', stroke: '#2563eb' }; // Dark blue
+              console.log(`  🔵 RGB analysis: Blue family (${r},${g},${b}) -> Dark blue`);
+            } else if (isGreenish) {
+              darkColors = { fill: '#14532d', stroke: '#16a34a' }; // Dark green
+              console.log(`  🟢 RGB analysis: Green family (${r},${g},${b}) -> Dark green`);
+            } else if (isPinkish) {
+              darkColors = { fill: '#831843', stroke: '#db2777' }; // Dark pink
+              console.log(`  🩷 RGB analysis: Pink family (${r},${g},${b}) -> Dark pink`);
+            } else if (isPurplish) {
+              darkColors = { fill: '#4c1d95', stroke: '#7c3aed' }; // Dark purple
+              console.log(`  🟣 RGB analysis: Purple family (${r},${g},${b}) -> Dark purple`);
+            } else if (isYellowish) {
+              darkColors = { fill: '#78350f', stroke: '#d97706' }; // Dark amber
+              console.log(`  🟡 RGB analysis: Yellow family (${r},${g},${b}) -> Dark amber`);
+            } else if (isTealish) {
+              darkColors = { fill: '#134e4a', stroke: '#14b8a6' }; // Dark teal
+              console.log(`  🔷 RGB analysis: Teal family (${r},${g},${b}) -> Dark teal`);
+            } else {
+              // Light colors with balanced RGB - determine by subtle differences
+              if (r >= g && r >= b) {
+                darkColors = { fill: '#7c2d12', stroke: '#ea580c' }; // Orange for warm tones
+                console.log(`  🟠 RGB analysis: Warm tone (${r},${g},${b}) -> Dark orange`);
+              } else {
+                darkColors = { fill: '#1e293b', stroke: '#475569' }; // Default slate
+                console.log(`  ⚫ RGB analysis: Neutral tone (${r},${g},${b}) -> Dark slate`);
+              }
+            }
+          }
+        }
+        
+        // Final fallback - use variations based on position 
+        if (!darkColors) {
+          const defaultVariations = [
+            { fill: '#1e293b', stroke: '#475569' }, // Default dark slate
+            { fill: '#1f2937', stroke: '#4b5563' }, // Dark gray
+            { fill: '#374151', stroke: '#6b7280' }, // Lighter gray
+            { fill: '#0f172a', stroke: '#334155' }  // Very dark
+          ];
+          darkColors = defaultVariations[index % defaultVariations.length];
+          console.log(`  ⚫ Fallback variation ${index % defaultVariations.length}`);
+        }
+        
+        // Apply the dark mode colors with high specificity
+        rect.style.setProperty('fill', darkColors.fill, 'important');
+        rect.style.setProperty('stroke', darkColors.stroke, 'important');
+        rect.setAttribute('fill', darkColors.fill);
+        rect.setAttribute('stroke', darkColors.stroke);
+        
+        console.log(`  Applied: fill=${darkColors.fill}, stroke=${darkColors.stroke}`);
+      }
+    });
+
+    // Ensure text remains white for good contrast
+    const nodeTexts = svgElement.querySelectorAll('g.node text, .nodeLabel');
+    nodeTexts.forEach((text: Element) => {
+      if (text instanceof SVGTextElement || text instanceof HTMLElement) {
+        text.style.setProperty('fill', '#ffffff', 'important');
+        text.style.setProperty('color', '#ffffff', 'important');
+        text.setAttribute('fill', '#ffffff');
+      }
+    });
+    
+    console.log('🎨 Color mapping complete!');
+  }
+
+  /**
+   * Add background colors to cluster/subgraph rectangles for better visibility
+   */
+  private addClusterBackgrounds(svgElement: SVGElement): void {
+    const isDark = this.themeService.isDarkTheme();
+    
+    // Find cluster groups (subgraphs) by their structure
+    const clusterGroups = svgElement.querySelectorAll('g.cluster, g[id*="cluster"]');
+    
+    console.log(`🎨 Found ${clusterGroups.length} cluster groups`);
+    
+    clusterGroups.forEach((clusterGroup: Element, index) => {
+      // Look for the background rectangle within this cluster
+      const clusterRect = clusterGroup.querySelector('rect');
+      
+      if (clusterRect instanceof SVGRectElement) {
+        console.log(`  Processing cluster ${index + 1} background rectangle`);
+        
+        // Apply background colors specifically for cluster containers - darker for better visibility
+        const fillColor = isDark ? '#1e293b' : '#cbd5e1';
+        const strokeColor = isDark ? '#475569' : '#64748b';
+        
+        // Set styling with high specificity
+        clusterRect.style.setProperty('fill', fillColor, 'important');
+        clusterRect.style.setProperty('stroke', strokeColor, 'important');
+        clusterRect.style.setProperty('stroke-width', '2px', 'important');
+        clusterRect.style.setProperty('opacity', '0.9', 'important');
+        clusterRect.style.setProperty('fill-opacity', '0.9', 'important');
+        
+        // Also set attributes
+        clusterRect.setAttribute('fill', fillColor);
+        clusterRect.setAttribute('stroke', strokeColor);
+        clusterRect.setAttribute('stroke-width', '1');
+        
+        console.log(`    ✅ Applied cluster background: ${fillColor}`);
+      }
+    });
+    
+    // Alternative approach: Look for large rectangles that might be cluster backgrounds
+    const allRects = svgElement.querySelectorAll('rect');
+    let clusterCandidates = 0;
+    
+    allRects.forEach((rect: Element) => {
+      if (rect instanceof SVGRectElement) {
+        const width = parseFloat(rect.getAttribute('width') || '0');
+        const height = parseFloat(rect.getAttribute('height') || '0');
+        const currentFill = rect.getAttribute('fill') || '';
+        
+        // Look for large rectangles with transparent/white/light fills (typical cluster backgrounds)
+        if (width > 300 && height > 150 && 
+            (currentFill === 'none' || currentFill === 'transparent' || 
+             currentFill.includes('#fff') || currentFill.includes('rgb(255'))) {
+          
+          clusterCandidates++;
+          const fillColor = isDark ? '#1e293b' : '#cbd5e1';
+          const strokeColor = isDark ? '#475569' : '#64748b';
+          
+          rect.style.setProperty('fill', fillColor, 'important');
+          rect.style.setProperty('stroke', strokeColor, 'important');
+          rect.style.setProperty('stroke-width', '2px', 'important');
+          rect.style.setProperty('opacity', '0.9', 'important');
+          rect.style.setProperty('fill-opacity', '0.9', 'important');
+          
+          rect.setAttribute('fill', fillColor);
+          rect.setAttribute('stroke', strokeColor);
+          
+          console.log(`    ✅ Applied background to large rectangle: ${width}x${height}`);
+        }
+      }
+    });
+    
+    console.log(`🎨 Processed ${clusterCandidates} cluster candidate rectangles`);
   }
 }
