@@ -61,6 +61,21 @@ For comprehensive information on specific topics, refer to these focused documen
 - **[CODE_SAMPLES.editorconfig](CODE_SAMPLES.editorconfig)** - C# code style for examples (K&R/Egyptian braces)
 - **[DOCUMENTATION-STANDARDS.md](DOCUMENTATION-STANDARDS.md)** - Comprehensive documentation standards
 
+### ⚡ Slash Commands (`.claude/commands/`)
+
+Quick access to common workflows via `/command-name`:
+
+- `/verify` - **CRITICAL**: Verify UI changes with Playwright browser automation
+- `/build` - Production build with all pre-build steps
+- `/search-docs` - Search Whizbang documentation via MCP server
+- `/context-architecture` - Load site architecture and Angular 20 documentation
+- `/context-standards` - Load documentation and code standards
+- `/context-seo` - Load SEO optimization guidelines
+- `/context-versioning` - Load version management system documentation
+- `/context-planning` - Load planning system for complex features
+
+See `.claude/commands/` for all available commands.
+
 ## Key Principles
 
 - **C# Code Style**: All examples MUST follow K&R/Egyptian braces (opening brace on same line)
