@@ -1,4 +1,10 @@
 {
+  "MessageContext": {
+    "file": "src/Whizbang.Core/MessageContext.cs",
+    "line": 8,
+    "symbol": "MessageContext",
+    "docs": "core-concepts/message-context"
+  },
   "IReceptor": {
     "file": "src/Whizbang.Core/IReceptor.cs",
     "line": 10,
@@ -10,6 +16,12 @@
     "line": 9,
     "symbol": "IPerspectiveOf",
     "docs": "core-concepts/perspectives"
+  },
+  "IMessageContext": {
+    "file": "src/Whizbang.Core/IMessageContext.cs",
+    "line": 8,
+    "symbol": "IMessageContext",
+    "docs": "core-concepts/message-context"
   },
   "IEvent": {
     "file": "src/Whizbang.Core/IEvent.cs",
@@ -28,5 +40,29 @@
     "line": 7,
     "symbol": "ICommand",
     "docs": "messaging/commands-events"
+  },
+  "MessageHop": {
+    "file": "src/Whizbang.Core/Observability/MessageHop.cs",
+    "line": 29,
+    "symbol": "MessageHop",
+    "docs": "core-concepts/observability"
+  },
+  "MessageEnvelope": {
+    "file": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
+    "line": 13,
+    "symbol": "MessageEnvelope",
+    "docs": "core-concepts/observability"
+  },
+  "IMessageEnvelope": {
+    "file": "src/Whizbang.Core/Observability/IMessageEnvelope.cs",
+    "line": 12,
+    "symbol": "IMessageEnvelope",
+    "docs": "core-concepts/observability"
+  },
+  "ILensQuery": {
+    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
+    "line": 9,
+    "symbol": "ILensQuery",
+    "docs": "core-concepts/lenses"
   }
 }
