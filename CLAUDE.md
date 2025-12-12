@@ -177,5 +177,6 @@ For detailed status of all initiatives, see **[DEVELOPMENT-INITIATIVES.md](ai-do
 
 - **MCP Server**: Documentation server in `mcp-docs-server/` provides programmatic access to docs (see **[MCP-SERVERS.md](ai-docs/MCP-SERVERS.md)**)
 - **Code-Docs Linking**: Bidirectional navigation via `<docs>` tags, code-docs-map.json, and MCP tools (see Code-Docs Linking System above)
+- **Documentation Maintenance**: When library code changes public APIs, docs must be updated (see `/Users/philcarbone/src/whizbang/ai-docs/documentation-maintenance.md`)
 - **Planning System**: Use `plans/` folder for complex features (see **[PLANNING-SYSTEM.md](ai-docs/PLANNING-SYSTEM.md)**)
 - **Temporary Files**: Use `claude-scratch/` for temporary files, screenshots, etc.
