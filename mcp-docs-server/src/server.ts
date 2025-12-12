@@ -17,6 +17,10 @@ import { getUriScheme } from './utils/uri-parser.js';
 import { SearchIndex } from './utils/search-index.js';
 import { searchDocs, listDocsByCategory, getCategories } from './tools/search-tool.js';
 import { findExamples } from './tools/find-examples-tool.js';
+import { getCodeLocation } from './tools/code-location-tool.js';
+import { getRelatedDocs } from './tools/related-docs-tool.js';
+import { validateDocLinks } from './tools/validate-links-tool.js';
+import { loadCodeDocsMap, CodeDocsMap } from './utils/code-docs-map.js';
 import { generateExplainConceptPrompt } from './prompts/explain-concept.js';
 import { generateShowExamplePrompt } from './prompts/show-example.js';
 import { generateCompareApproachesPrompt } from './prompts/compare-approaches.js';
@@ -35,6 +39,7 @@ export class McpDocsServer {
   private config: McpDocsServerConfig;
   private fileLoader: FileLoader;
   private searchIndex: SearchIndex;
+  private codeDocsMap: CodeDocsMap;
 
   constructor(config: McpDocsServerConfig) {
     this.config = config;
@@ -49,6 +54,10 @@ export class McpDocsServer {
     // Initialize search index
     const searchIndexPath = path.join(config.docsPath || '', '../');
     this.searchIndex = new SearchIndex(searchIndexPath);
+
+    // Load code-docs mapping
+    const assetsPath = path.join(config.docsPath || '', '../');
+    this.codeDocsMap = loadCodeDocsMap(assetsPath);
 
     // Create server instance
     this.server = new Server(
@@ -221,6 +230,42 @@ export class McpDocsServer {
                 }
               }
             }
+          },
+          {
+            name: 'get-code-location',
+            description: 'Find code location implementing a concept (from code-docs mapping)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                concept: {
+                  type: 'string',
+                  description: 'Documentation concept or URL (e.g., "dispatcher" or "core-concepts/dispatcher")'
+                }
+              },
+              required: ['concept']
+            }
+          },
+          {
+            name: 'get-related-docs',
+            description: 'Get documentation URL for a code symbol (from code-docs mapping)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                symbol: {
+                  type: 'string',
+                  description: 'Code symbol name (e.g., "IDispatcher")'
+                }
+              },
+              required: ['symbol']
+            }
+          },
+          {
+            name: 'validate-doc-links',
+            description: 'Validate all code-docs links to ensure they point to valid documentation',
+            inputSchema: {
+              type: 'object',
+              properties: {}
+            }
           }
         ]
       };
@@ -274,6 +319,46 @@ export class McpDocsServer {
                 {
                   type: 'text',
                   text: JSON.stringify(grouped, null, 2)
+                }
+              ]
+            };
+          }
+
+          case 'get-code-location': {
+            const result = getCodeLocation(request.params.arguments as any, this.codeDocsMap);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2)
+                }
+              ]
+            };
+          }
+
+          case 'get-related-docs': {
+            const result = await getRelatedDocs(
+              request.params.arguments as any,
+              this.codeDocsMap,
+              this.searchIndex
+            );
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2)
+                }
+              ]
+            };
+          }
+
+          case 'validate-doc-links': {
+            const result = await validateDocLinks(this.codeDocsMap, this.searchIndex);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2)
                 }
               ]
             };
