@@ -1,0 +1,32 @@
+{
+  "IReceptor": {
+    "file": "src/Whizbang.Core/IReceptor.cs",
+    "line": 10,
+    "symbol": "IReceptor",
+    "docs": "core-concepts/receptors"
+  },
+  "IPerspectiveOf": {
+    "file": "src/Whizbang.Core/IPerspectiveOf.cs",
+    "line": 9,
+    "symbol": "IPerspectiveOf",
+    "docs": "core-concepts/perspectives"
+  },
+  "IEvent": {
+    "file": "src/Whizbang.Core/IEvent.cs",
+    "line": 7,
+    "symbol": "IEvent",
+    "docs": "messaging/commands-events"
+  },
+  "IDispatcher": {
+    "file": "src/Whizbang.Core/IDispatcher.cs",
+    "line": 14,
+    "symbol": "IDispatcher",
+    "docs": "core-concepts/dispatcher"
+  },
+  "ICommand": {
+    "file": "src/Whizbang.Core/ICommand.cs",
+    "line": 7,
+    "symbol": "ICommand",
+    "docs": "messaging/commands-events"
+  }
+}
