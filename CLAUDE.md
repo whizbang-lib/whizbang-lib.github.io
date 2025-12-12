@@ -21,6 +21,42 @@ The `npm start` and `npm run build` commands automatically execute:
 2. `node src/scripts/gen-docs-index-versioned.mjs` - Creates version-aware docs index with metadata
 3. `./build-search-index.sh` - Builds search indices with version support
 
+### Code-Docs Linking System
+
+This project implements bidirectional linking between library source code and documentation:
+
+**Architecture**:
+1. **`<docs>` XML tags** - Added to library source code (e.g., `/// <docs>core-concepts/dispatcher</docs>`)
+2. **generate-code-docs-map.mjs** - Script that scans library code and extracts mappings
+3. **code-docs-map.json** - Generated mapping file (file, line, symbol, docs URL)
+4. **MCP Server Tools** - Programmatic access to mappings
+
+**MCP Tools Available**:
+- `mcp__whizbang-docs__get-code-location` - Find code implementing a documentation concept
+- `mcp__whizbang-docs__get-related-docs` - Find documentation for a code symbol
+- `mcp__whizbang-docs__validate-doc-links` - Validate all code-docs links
+
+**Usage Examples**:
+```typescript
+// Find where IDispatcher is implemented
+mcp__whizbang-docs__get-code-location({ concept: "dispatcher" })
+// Returns: { found: true, file: "src/Whizbang.Core/IDispatcher.cs", line: 14, ... }
+
+// Find docs for IReceptor symbol
+mcp__whizbang-docs__get-related-docs({ symbol: "IReceptor" })
+// Returns: { found: true, url: "core-concepts/receptors", title: "Receptors", ... }
+
+// Validate all links
+mcp__whizbang-docs__validate-doc-links()
+// Returns: { valid: 5, broken: 0, details: [...] }
+```
+
+**Workflow**:
+1. Add `<docs>` tags to library source code (in sibling `whizbang/` repository)
+2. Run `node src/scripts/generate-code-docs-map.mjs` to regenerate mapping
+3. Use MCP tools to query and validate links
+4. Slash commands: `/rebuild-mcp` and `/verify-links` (see below)
+
 ### Change Verification Requirements
 
 **CRITICAL**: Claude MUST verify all UI/visual changes using Playwright browser automation before considering work complete:
@@ -68,6 +104,8 @@ Quick access to common workflows via `/command-name`:
 - `/verify` - **CRITICAL**: Verify UI changes with Playwright browser automation
 - `/build` - Production build with all pre-build steps
 - `/search-docs` - Search Whizbang documentation via MCP server
+- `/rebuild-mcp` - Rebuild code-docs map and restart MCP server
+- `/verify-links` - Validate all `<docs>` tags point to valid documentation
 - `/context-architecture` - Load site architecture and Angular 20 documentation
 - `/context-standards` - Load documentation and code standards
 - `/context-seo` - Load SEO optimization guidelines
@@ -138,5 +176,6 @@ For detailed status of all initiatives, see **[DEVELOPMENT-INITIATIVES.md](ai-do
 ## Notes
 
 - **MCP Server**: Documentation server in `mcp-docs-server/` provides programmatic access to docs (see **[MCP-SERVERS.md](ai-docs/MCP-SERVERS.md)**)
+- **Code-Docs Linking**: Bidirectional navigation via `<docs>` tags, code-docs-map.json, and MCP tools (see Code-Docs Linking System above)
 - **Planning System**: Use `plans/` folder for complex features (see **[PLANNING-SYSTEM.md](ai-docs/PLANNING-SYSTEM.md)**)
 - **Temporary Files**: Use `claude-scratch/` for temporary files, screenshots, etc.
