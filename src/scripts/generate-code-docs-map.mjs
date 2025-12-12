@@ -19,11 +19,16 @@
  */
 
 import { readFileSync, writeFileSync } from 'fs';
-import { join, relative } from 'path';
+import { join, relative, dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import { glob } from 'glob';
 
-const LIBRARY_PATH = '/Users/philcarbone/src/whizbang';
-const OUTPUT_PATH = 'src/assets/code-docs-map.json';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Configurable via environment variable, defaults to sibling directory
+const LIBRARY_PATH = process.env.WHIZBANG_LIB_PATH || resolve(__dirname, '../../../whizbang');
+const OUTPUT_PATH = resolve(__dirname, '../assets/code-docs-map.json');
 
 /**
  * Scans a C# file for <docs> tags and extracts code-docs mapping
