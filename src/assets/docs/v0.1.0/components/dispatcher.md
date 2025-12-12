@@ -71,27 +71,269 @@ Think of the dispatcher as the conductor of an orchestra - it ensures each compo
 ## Core Interface (v0.1.0)
 
 :::new
-The fundamental dispatcher interface:
+The fundamental dispatcher interface with three distinct patterns:
 :::
 
 ```csharp
 public interface IDispatcher {
-    // Send command to exactly one receptor
-    Task<TResult> Send<TResult>(ICommand<TResult> command);
-    
-    // Publish event to all interested perspectives
-    Task Publish<TEvent>(TEvent @event);
-    
-    // Get lens for queries
-    TLens GetLens<TLens>() where TLens : ILens;
-    
-    // Advanced: Send with context
-    Task<TResult> Send<TResult>(ICommand<TResult> command, IMessageContext context);
-    
-    // Advanced: Batch operations
-    Task<IEnumerable<TResult>> SendMany<TResult>(IEnumerable<ICommand<TResult>> commands);
+    // Send command - returns delivery receipt (can work over wire)
+    Task<IDeliveryReceipt> SendAsync(object message);
+    Task<IDeliveryReceipt> SendAsync(object message, IMessageContext context);
+
+    // Local invocation - returns typed result (in-process only, zero allocation)
+    Task<TResult> LocalInvokeAsync<TResult>(object message);
+    Task<TResult> LocalInvokeAsync<TResult>(object message, IMessageContext context);
+
+    // Publish event to all interested perspectives (fire-and-forget)
+    Task PublishAsync<TEvent>(TEvent @event);
+
+    // Batch operations
+    Task<IEnumerable<IDeliveryReceipt>> SendManyAsync(IEnumerable<object> messages);
+    Task<IEnumerable<TResult>> LocalInvokeManyAsync<TResult>(IEnumerable<object> messages);
 }
 ```
+
+## Three Dispatch Patterns
+
+### SendAsync - Command Dispatch with Acknowledgment
+
+**Use when**: Sending commands that may execute remotely or asynchronously
+
+```csharp
+// Returns delivery receipt, not business result
+var receipt = await dispatcher.SendAsync(new ProcessOrder(orderId));
+
+// Receipt contains delivery metadata
+Console.WriteLine($"Message {receipt.MessageId} delivered at {receipt.Timestamp}");
+Console.WriteLine($"Status: {receipt.Status}"); // Accepted, Queued, Delivered
+```
+
+**Characteristics**:
+- Returns `IDeliveryReceipt` with correlation info
+- Can work over network transports (future versions)
+- Supports inbox pattern and async workflows
+- Includes full observability envelope
+
+### LocalInvokeAsync - In-Process RPC
+
+**Use when**: Calling handlers within the same process and need the business result immediately
+
+```csharp
+// Returns typed business result
+var result = await dispatcher.LocalInvokeAsync<OrderCreated>(new CreateOrder(items));
+
+// Access business data directly
+Console.WriteLine($"Order created: {result.OrderId}");
+```
+
+**Characteristics**:
+- Returns strongly-typed business result
+- **In-process only** - throws if used with remote transport
+- **Zero allocation** - skips envelope creation for maximum performance
+- Target: < 20ns per invocation, 0 bytes allocated
+- Ideal for high-throughput local workflows
+
+### PublishAsync - Event Broadcasting
+
+**Use when**: Notifying multiple handlers about an event
+
+```csharp
+// Fire-and-forget to all subscribers
+await dispatcher.PublishAsync(new OrderPlaced(orderId));
+
+// All perspectives receive the event
+// - OrderPerspective updates order view
+// - InventoryPerspective reserves items
+// - NotificationPerspective sends email
+```
+
+**Characteristics**:
+- Fire-and-forget semantics
+- No return value
+- Fans out to all registered handlers
+- Handlers execute independently
+
+## When To Use Which Pattern
+
+| Pattern | Use Case | Returns | Can Go Over Wire | Performance Target |
+|---------|----------|---------|------------------|-------------------|
+| **SendAsync** | Async workflows, remote execution, inbox pattern | Delivery receipt | ✅ Yes (future) | Normal |
+| **LocalInvokeAsync** | High-throughput local calls, immediate results | Business result | ❌ No | < 20ns, 0B |
+| **PublishAsync** | Event notification, fan-out | void | ✅ Yes (future) | Normal |
+
+## Delivery Receipt
+
+The `IDeliveryReceipt` provides correlation and tracking information:
+
+```csharp
+public interface IDeliveryReceipt {
+    MessageId MessageId { get; }         // Unique message identifier
+    DateTimeOffset Timestamp { get; }     // When message was accepted
+    string Destination { get; }           // Where message was routed
+    DeliveryStatus Status { get; }        // Accepted, Queued, Delivered
+    IReadOnlyDictionary<string, object> Metadata { get; } // Extensible data
+}
+
+public enum DeliveryStatus {
+    Accepted,   // Message accepted by dispatcher
+    Queued,     // Message queued for async processing
+    Delivered   // Message delivered to handler
+}
+```
+
+## Pipeline Behaviors
+
+:::new
+v0.1.0 introduces pipeline behavior support for cross-cutting concerns:
+:::
+
+Pipeline behaviors allow you to inject middleware-style logic into the dispatch flow. Common use cases include:
+- **Inbox Pattern** - De-duplicate messages, ensure idempotency
+- **Validation** - Validate commands before execution
+- **Logging** - Log all messages and results
+- **Retry Logic** - Automatically retry failed operations
+- **Performance Monitoring** - Track execution times
+- **Transaction Management** - Wrap execution in transactions
+
+### IPipelineBehavior Interface
+
+```csharp
+public interface IPipelineBehavior<TRequest, TResponse> {
+    /// <summary>
+    /// Execute behavior and optionally call next in pipeline
+    /// </summary>
+    /// <param name="request">The message being dispatched</param>
+    /// <param name="next">Delegate to invoke next behavior or handler</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The response (potentially modified)</returns>
+    Task<TResponse> Handle(
+        TRequest request,
+        Func<Task<TResponse>> next,
+        CancellationToken cancellationToken = default
+    );
+}
+```
+
+### Example: Inbox Pattern Behavior
+
+```csharp
+public class InboxBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse> {
+    private readonly IInboxStore _inbox;
+
+    public async Task<TResponse> Handle(
+        TRequest request,
+        Func<Task<TResponse>> next,
+        CancellationToken cancellationToken
+    ) {
+        var messageId = GetMessageId(request);
+
+        // Check if already processed
+        if (await _inbox.HasProcessedAsync(messageId)) {
+            return await _inbox.GetResultAsync<TResponse>(messageId);
+        }
+
+        // Mark as processing
+        await _inbox.MarkProcessingAsync(messageId);
+
+        try {
+            // Execute handler
+            var response = await next();
+
+            // Store result
+            await _inbox.StoreResultAsync(messageId, response);
+
+            return response;
+        } catch (Exception ex) {
+            await _inbox.MarkFailedAsync(messageId, ex);
+            throw;
+        }
+    }
+}
+```
+
+### Example: Validation Behavior
+
+```csharp
+public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse> {
+    private readonly IValidator<TRequest> _validator;
+
+    public async Task<TResponse> Handle(
+        TRequest request,
+        Func<Task<TResponse>> next,
+        CancellationToken cancellationToken
+    ) {
+        // Validate request
+        var validationResult = await _validator.ValidateAsync(request);
+
+        if (!validationResult.IsValid) {
+            throw new ValidationException(validationResult.Errors);
+        }
+
+        // Continue pipeline
+        return await next();
+    }
+}
+```
+
+### Example: Logging Behavior
+
+```csharp
+public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse> {
+    private readonly ILogger _logger;
+
+    public async Task<TResponse> Handle(
+        TRequest request,
+        Func<Task<TResponse>> next,
+        CancellationToken cancellationToken
+    ) {
+        var requestName = typeof(TRequest).Name;
+        _logger.LogInformation("Handling {Request}", requestName);
+
+        var stopwatch = Stopwatch.StartNew();
+
+        try {
+            var response = await next();
+
+            stopwatch.Stop();
+            _logger.LogInformation(
+                "Handled {Request} in {Elapsed}ms",
+                requestName,
+                stopwatch.ElapsedMilliseconds
+            );
+
+            return response;
+        } catch (Exception ex) {
+            stopwatch.Stop();
+            _logger.LogError(
+                ex,
+                "Error handling {Request} after {Elapsed}ms",
+                requestName,
+                stopwatch.ElapsedMilliseconds
+            );
+            throw;
+        }
+    }
+}
+```
+
+### Registering Behaviors
+
+```csharp
+services.AddWhizbangDispatcher(dispatcher => {
+    // Behaviors execute in registration order
+    dispatcher.AddPipelineBehavior<InboxBehavior<,>>();
+    dispatcher.AddPipelineBehavior<ValidationBehavior<,>>();
+    dispatcher.AddPipelineBehavior<LoggingBehavior<,>>();
+});
+```
+
+### Performance Considerations
+
+Pipeline behaviors add overhead to each dispatch:
+- **Target**: < 5% overhead per behavior
+- **Recommendation**: Keep behaviors lightweight
+- **Optimization**: Use struct-based behaviors where possible
+- **Monitoring**: Track behavior execution times
 
 ## In-Memory Implementation
 

@@ -45,3 +45,4 @@ Thumbs.db
 # Playwright MCP screenshots and temporary files
 .playwright-mcp/
 claude-scratch/
+.vscode/
