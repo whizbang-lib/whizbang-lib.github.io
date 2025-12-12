@@ -23,14 +23,15 @@ export async function validateDocLinks(
   const validUrls = new Set<string>();
 
   for (const doc of allDocs) {
-    // Add both with and without .md extension
+    // Add slug as-is (e.g., "v0.1.0/core-concepts/dispatcher")
     validUrls.add(doc.slug);
     validUrls.add(doc.slug.replace(/\.md$/, ''));
 
-    // Also add URL path format (category/slug)
-    const urlPath = `${doc.category.toLowerCase().replace(/\s+/g, '-')}/${doc.slug}`;
-    validUrls.add(urlPath);
-    validUrls.add(urlPath.replace(/\.md$/, ''));
+    // Add slug without version prefix (e.g., "core-concepts/dispatcher")
+    // This matches what <docs> tags use in source code
+    const slugWithoutVersion = doc.slug.replace(/^v[\d.]+\//, '');
+    validUrls.add(slugWithoutVersion);
+    validUrls.add(slugWithoutVersion.replace(/\.md$/, ''));
   }
 
   return validateLinksUtil(codeDocsMap, validUrls);
