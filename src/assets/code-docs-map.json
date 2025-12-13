@@ -47,23 +47,47 @@
     "symbol": "ICommand",
     "docs": "messaging/commands-events"
   },
-  "MessageHop": {
-    "file": "src/Whizbang.Core/Observability/MessageHop.cs",
-    "line": 29,
-    "symbol": "MessageHop",
-    "docs": "core-concepts/observability"
-  },
-  "MessageEnvelope": {
-    "file": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
+  "ITransportManager": {
+    "file": "src/Whizbang.Core/Transports/ITransportManager.cs",
     "line": 13,
-    "symbol": "MessageEnvelope",
-    "docs": "core-concepts/observability"
+    "symbol": "ITransportManager",
+    "docs": "components/transports"
   },
-  "IMessageEnvelope": {
-    "file": "src/Whizbang.Core/Observability/IMessageEnvelope.cs",
-    "line": 12,
-    "symbol": "IMessageEnvelope",
-    "docs": "core-concepts/observability"
+  "ITransport": {
+    "file": "src/Whizbang.Core/Transports/ITransport.cs",
+    "line": 13,
+    "symbol": "ITransport",
+    "docs": "components/transports"
+  },
+  "ISubscription": {
+    "file": "src/Whizbang.Core/Transports/ISubscription.cs",
+    "line": 10,
+    "symbol": "ISubscription",
+    "docs": "components/transports"
+  },
+  "IPipelineBehavior": {
+    "file": "src/Whizbang.Core/Pipeline/IPipelineBehavior.cs",
+    "line": 17,
+    "symbol": "IPipelineBehavior",
+    "docs": "extensibility/hooks-and-middleware"
+  },
+  "PolicyDecisionTrail": {
+    "file": "src/Whizbang.Core/Policies/PolicyDecisionTrail.cs",
+    "line": 7,
+    "symbol": "PolicyDecisionTrail",
+    "docs": "infrastructure/policies"
+  },
+  "PolicyContext": {
+    "file": "src/Whizbang.Core/Policies/PolicyContext.cs",
+    "line": 14,
+    "symbol": "PolicyContext",
+    "docs": "infrastructure/policies"
+  },
+  "IPolicyEngine": {
+    "file": "src/Whizbang.Core/Policies/IPolicyEngine.cs",
+    "line": 7,
+    "symbol": "IPolicyEngine",
+    "docs": "infrastructure/policies"
   },
   "OutboxRecord": {
     "file": "src/Whizbang.Core/Messaging/OutboxRecord.cs",
@@ -88,5 +112,29 @@
     "line": 9,
     "symbol": "ILensQuery",
     "docs": "core-concepts/lenses"
+  },
+  "MessageHop": {
+    "file": "src/Whizbang.Core/Observability/MessageHop.cs",
+    "line": 29,
+    "symbol": "MessageHop",
+    "docs": "core-concepts/observability"
+  },
+  "MessageEnvelope": {
+    "file": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
+    "line": 13,
+    "symbol": "MessageEnvelope",
+    "docs": "core-concepts/observability"
+  },
+  "IMessageEnvelope": {
+    "file": "src/Whizbang.Core/Observability/IMessageEnvelope.cs",
+    "line": 12,
+    "symbol": "IMessageEnvelope",
+    "docs": "core-concepts/observability"
+  },
+  "IExecutionStrategy": {
+    "file": "src/Whizbang.Core/Execution/IExecutionStrategy.cs",
+    "line": 10,
+    "symbol": "IExecutionStrategy",
+    "docs": "components/dispatcher"
   }
 }
