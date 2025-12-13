@@ -35,11 +35,23 @@
     "symbol": "IDispatcher",
     "docs": "core-concepts/dispatcher"
   },
+  "IDeliveryReceipt": {
+    "file": "src/Whizbang.Core/IDeliveryReceipt.cs",
+    "line": 13,
+    "symbol": "IDeliveryReceipt",
+    "docs": "core-concepts/dispatcher"
+  },
   "ICommand": {
     "file": "src/Whizbang.Core/ICommand.cs",
     "line": 7,
     "symbol": "ICommand",
     "docs": "messaging/commands-events"
+  },
+  "ILensQuery": {
+    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
+    "line": 9,
+    "symbol": "ILensQuery",
+    "docs": "core-concepts/lenses"
   },
   "MessageHop": {
     "file": "src/Whizbang.Core/Observability/MessageHop.cs",
@@ -58,11 +70,5 @@
     "line": 12,
     "symbol": "IMessageEnvelope",
     "docs": "core-concepts/observability"
-  },
-  "ILensQuery": {
-    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
-    "line": 9,
-    "symbol": "ILensQuery",
-    "docs": "core-concepts/lenses"
   }
 }
