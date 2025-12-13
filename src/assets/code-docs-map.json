@@ -47,12 +47,6 @@
     "symbol": "ICommand",
     "docs": "messaging/commands-events"
   },
-  "ILensQuery": {
-    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
-    "line": 9,
-    "symbol": "ILensQuery",
-    "docs": "core-concepts/lenses"
-  },
   "MessageHop": {
     "file": "src/Whizbang.Core/Observability/MessageHop.cs",
     "line": 29,
@@ -70,5 +64,29 @@
     "line": 12,
     "symbol": "IMessageEnvelope",
     "docs": "core-concepts/observability"
+  },
+  "OutboxRecord": {
+    "file": "src/Whizbang.Core/Messaging/OutboxRecord.cs",
+    "line": 10,
+    "symbol": "OutboxRecord",
+    "docs": "messaging/outbox-pattern"
+  },
+  "InboxRecord": {
+    "file": "src/Whizbang.Core/Messaging/InboxRecord.cs",
+    "line": 10,
+    "symbol": "InboxRecord",
+    "docs": "messaging/inbox-pattern"
+  },
+  "IWorkCoordinator": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 11,
+    "symbol": "IWorkCoordinator",
+    "docs": "messaging/work-coordinator"
+  },
+  "ILensQuery": {
+    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
+    "line": 9,
+    "symbol": "ILensQuery",
+    "docs": "core-concepts/lenses"
   }
 }
