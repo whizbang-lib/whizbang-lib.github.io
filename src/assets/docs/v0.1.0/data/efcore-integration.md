@@ -827,6 +827,151 @@ public class OrderServiceIntegrationTests {
 
 ---
 
+## Native AOT Support
+
+:::new
+Whizbang's EF Core integration is **fully AOT-compatible** with zero reflection. The schema generation system uses source generators to pre-generate all SQL at build time.
+:::
+
+**Whizbang EF Core** is designed for Native AOT compilation from the ground up:
+- ✅ **Zero Reflection**: All schema SQL pre-generated at build time
+- ✅ **Embedded Resources**: Core infrastructure schema shipped as embedded SQL
+- ✅ **Source Generators**: Perspective tables generated from discovered types
+- ✅ **No IL3050 Warnings**: Fully compatible with `PublishAot=true`
+
+### How It Works
+
+When you build your application, the **EF Core source generator** runs automatically and:
+
+1. **Embeds Core Infrastructure Schema** - Reads pre-generated SQL from embedded resources (9 core tables: service_instances, message_deduplication, inbox, outbox, event_store, receptor_processing, perspective_checkpoints, request_response, sequences)
+
+2. **Discovers Perspective Tables** - Scans your DbContext for `PerspectiveRow<TModel>` properties and generates DDL at build time
+
+3. **Bundles Migration Scripts** - Embeds all PostgreSQL functions and migration SQL as string constants
+
+4. **Generates Extension Methods** - Creates `EnsureWhizbangDatabaseInitializedAsync()` that uses only `ExecuteSqlRawAsync()` (AOT-safe)
+
+### Schema Initialization
+
+Initialize your database schema with a single call:
+
+```csharp
+public class Program {
+    public static async Task Main(string[] args) {
+        var builder = WebApplication.CreateBuilder(args);
+
+        // Register DbContext
+        builder.Services.AddDbContext<OrderDbContext>(options => {
+            options.UseNpgsql(connectionString);
+        });
+
+        var app = builder.Build();
+
+        // Initialize Whizbang database schema (AOT-compatible!)
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
+        await dbContext.EnsureWhizbangDatabaseInitializedAsync();
+
+        await app.RunAsync();
+    }
+}
+```
+
+**What `EnsureWhizbangDatabaseInitializedAsync()` does**:
+1. Creates core infrastructure tables (9 tables)
+2. Creates perspective tables (one per `PerspectiveRow<TModel>` in your DbContext)
+3. Applies PostgreSQL functions and migrations
+4. All operations are **idempotent** (safe to call multiple times)
+
+### Generated Code Example
+
+When you build your project, the source generator creates this extension method:
+
+```csharp
+// Auto-generated: OrderDbContext_SchemaExtensions.g.cs
+public static partial class OrderDbContextSchemaExtensions {
+    public static async Task EnsureWhizbangDatabaseInitializedAsync(
+        this OrderDbContext dbContext,
+        ILogger? logger = null,
+        CancellationToken cancellationToken = default) {
+
+        // Step 1: Execute core infrastructure schema (embedded resource)
+        await ExecuteCoreInfrastructureSchemaAsync(dbContext, logger, cancellationToken);
+
+        // Step 2: Execute perspective tables (generated at build time)
+        await ExecutePerspectiveTablesAsync(dbContext, logger, cancellationToken);
+
+        // Step 3: Execute PostgreSQL functions (embedded migrations)
+        await ExecuteMigrationsAsync(dbContext, logger, cancellationToken);
+    }
+
+    private static async Task ExecuteCoreInfrastructureSchemaAsync(...) {
+        // Pre-generated SQL from PostgresSchemaBuilder (5,327 bytes)
+        const string CoreInfrastructureSchema = @"
+            CREATE TABLE IF NOT EXISTS wh_service_instances (...);
+            CREATE TABLE IF NOT EXISTS wh_message_deduplication (...);
+            -- ... all 9 tables
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(
+            CoreInfrastructureSchema,
+            cancellationToken
+        );
+    }
+
+    private static async Task ExecutePerspectiveTablesAsync(...) {
+        // Generated from discovered PerspectiveRow<TModel> types
+        const string PerspectiveTablesSchema = @"
+            CREATE TABLE IF NOT EXISTS wh_per_order (
+                stream_id UUID NOT NULL PRIMARY KEY,
+                data JSONB NOT NULL,
+                version BIGINT NOT NULL,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            -- ... one per perspective
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(
+            PerspectiveTablesSchema,
+            cancellationToken
+        );
+    }
+}
+```
+
+### Publishing with AOT
+
+Enable Native AOT in your `.csproj`:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PublishAot>true</PublishAot>
+  </PropertyGroup>
+</Project>
+```
+
+Build and publish:
+
+```bash
+dotnet publish -c Release -r linux-x64
+```
+
+**Result**: Self-contained executable with no reflection, fast startup, and minimal memory footprint.
+
+### Benefits of AOT Schema Generation
+
+| Benefit | Description |
+|---------|-------------|
+| **Zero Reflection** | No `GenerateCreateScript()` calls - all SQL pre-generated |
+| **Fast Startup** | No runtime schema inspection or compilation |
+| **Predictable** | Schema SQL version-controlled and visible in generated code |
+| **Debuggable** | View exact SQL being executed in `*.g.cs` files |
+| **Portable** | No .NET SDK required in production |
+
+---
+
 ## EF Core vs Dapper: When to Use What
 
 ### Use EF Core When:

@@ -47,6 +47,18 @@
     "symbol": "ICommand",
     "docs": "messaging/commands-events"
   },
+  "MessageId": {
+    "file": "src/Whizbang.Core/ValueObjects/MessageId.cs",
+    "line": 10,
+    "symbol": "MessageId",
+    "docs": "core-concepts/message-context"
+  },
+  "CorrelationId": {
+    "file": "src/Whizbang.Core/ValueObjects/CorrelationId.cs",
+    "line": 11,
+    "symbol": "CorrelationId",
+    "docs": "core-concepts/message-context"
+  },
   "ITransportManager": {
     "file": "src/Whizbang.Core/Transports/ITransportManager.cs",
     "line": 13,
@@ -65,12 +77,6 @@
     "symbol": "ISubscription",
     "docs": "components/transports"
   },
-  "IPipelineBehavior": {
-    "file": "src/Whizbang.Core/Pipeline/IPipelineBehavior.cs",
-    "line": 17,
-    "symbol": "IPipelineBehavior",
-    "docs": "extensibility/hooks-and-middleware"
-  },
   "PolicyDecisionTrail": {
     "file": "src/Whizbang.Core/Policies/PolicyDecisionTrail.cs",
     "line": 7,
@@ -88,6 +94,24 @@
     "line": 7,
     "symbol": "IPolicyEngine",
     "docs": "infrastructure/policies"
+  },
+  "IPipelineBehavior": {
+    "file": "src/Whizbang.Core/Pipeline/IPipelineBehavior.cs",
+    "line": 17,
+    "symbol": "IPipelineBehavior",
+    "docs": "extensibility/hooks-and-middleware"
+  },
+  "IPerspectiveStore": {
+    "file": "src/Whizbang.Core/Perspectives/IPerspectiveStore.cs",
+    "line": 9,
+    "symbol": "IPerspectiveStore",
+    "docs": "core-concepts/perspectives"
+  },
+  "IPerspectiveInvoker": {
+    "file": "src/Whizbang.Core/Perspectives/IPerspectiveInvoker.cs",
+    "line": 12,
+    "symbol": "IPerspectiveInvoker",
+    "docs": "core-concepts/perspectives"
   },
   "OutboxRecord": {
     "file": "src/Whizbang.Core/Messaging/OutboxRecord.cs",
@@ -123,6 +147,18 @@
     "file": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
     "line": 13,
     "symbol": "MessageEnvelope",
+    "docs": "core-concepts/observability"
+  },
+  "ITraceStore": {
+    "file": "src/Whizbang.Core/Observability/ITraceStore.cs",
+    "line": 9,
+    "symbol": "ITraceStore",
+    "docs": "core-concepts/observability"
+  },
+  "IServiceInstanceProvider": {
+    "file": "src/Whizbang.Core/Observability/IServiceInstanceProvider.cs",
+    "line": 11,
+    "symbol": "IServiceInstanceProvider",
     "docs": "core-concepts/observability"
   },
   "IMessageEnvelope": {
