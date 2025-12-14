@@ -21,6 +21,11 @@ import { getCodeLocation } from './tools/code-location-tool.js';
 import { getRelatedDocs } from './tools/related-docs-tool.js';
 import { validateDocLinks } from './tools/validate-links-tool.js';
 import { loadCodeDocsMap, CodeDocsMap } from './utils/code-docs-map.js';
+import { loadCodeTestsMap, CodeTestsMapData } from './utils/code-tests-map.js';
+import { getTestsForCode } from './tools/get-tests-for-code-tool.js';
+import { getCodeForTest } from './tools/get-code-for-test-tool.js';
+import { validateTestLinksFunc } from './tools/validate-test-links-tool.js';
+import { getCoverageStatsFunc } from './tools/get-coverage-stats-tool.js';
 import { generateExplainConceptPrompt } from './prompts/explain-concept.js';
 import { generateShowExamplePrompt } from './prompts/show-example.js';
 import { generateCompareApproachesPrompt } from './prompts/compare-approaches.js';
@@ -40,6 +45,7 @@ export class McpDocsServer {
   private fileLoader: FileLoader;
   private searchIndex: SearchIndex;
   private codeDocsMap: CodeDocsMap;
+  private codeTestsMap: CodeTestsMapData;
 
   constructor(config: McpDocsServerConfig) {
     this.config = config;
@@ -58,6 +64,9 @@ export class McpDocsServer {
     // Load code-docs mapping
     const assetsPath = path.join(config.docsPath || '', '../');
     this.codeDocsMap = loadCodeDocsMap(assetsPath);
+
+    // Load code-tests mapping
+    this.codeTestsMap = loadCodeTestsMap(assetsPath);
 
     // Create server instance
     this.server = new Server(
@@ -266,6 +275,50 @@ export class McpDocsServer {
               type: 'object',
               properties: {}
             }
+          },
+          {
+            name: 'get-tests-for-code',
+            description: 'Find tests for a given code symbol (from code-tests mapping)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                symbol: {
+                  type: 'string',
+                  description: 'Code symbol name (e.g., "IDispatcher", "Dispatcher")'
+                }
+              },
+              required: ['symbol']
+            }
+          },
+          {
+            name: 'get-code-for-test',
+            description: 'Find code tested by a given test method (from code-tests mapping)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                testKey: {
+                  type: 'string',
+                  description: 'Test key in format "TestClassName.TestMethodName" (e.g., "DispatcherTests.Dispatch_SendsMessageToCorrectReceptorAsync")'
+                }
+              },
+              required: ['testKey']
+            }
+          },
+          {
+            name: 'validate-test-links',
+            description: 'Validate all code-test links',
+            inputSchema: {
+              type: 'object',
+              properties: {}
+            }
+          },
+          {
+            name: 'get-coverage-stats',
+            description: 'Get test coverage statistics showing how many code symbols have tests',
+            inputSchema: {
+              type: 'object',
+              properties: {}
+            }
           }
         ]
       };
@@ -354,6 +407,54 @@ export class McpDocsServer {
 
           case 'validate-doc-links': {
             const result = await validateDocLinks(this.codeDocsMap, this.searchIndex);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2)
+                }
+              ]
+            };
+          }
+
+          case 'get-tests-for-code': {
+            const result = getTestsForCode(request.params.arguments as any, this.codeTestsMap);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2)
+                }
+              ]
+            };
+          }
+
+          case 'get-code-for-test': {
+            const result = getCodeForTest(request.params.arguments as any, this.codeTestsMap);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2)
+                }
+              ]
+            };
+          }
+
+          case 'validate-test-links': {
+            const result = validateTestLinksFunc({}, this.codeTestsMap);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2)
+                }
+              ]
+            };
+          }
+
+          case 'get-coverage-stats': {
+            const result = getCoverageStatsFunc({}, this.codeTestsMap);
             return {
               content: [
                 {

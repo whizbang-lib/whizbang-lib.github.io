@@ -57,6 +57,46 @@ mcp__whizbang-docs__validate-doc-links()
 3. Use MCP tools to query and validate links
 4. Slash commands: `/rebuild-mcp` and `/verify-links` (see below)
 
+### Code-Tests Linking System
+
+**NEW**: Bidirectional linking between library source code and tests for improved test coverage awareness:
+
+**Architecture**:
+1. **Convention-based discovery** - Automatically links tests to code via naming patterns (e.g., `DispatcherTests` → `Dispatcher`)
+2. **`<tests>` XML tags** (optional) - Manual override for complex cases (e.g., `/// <tests>Whizbang.Core.Tests/DispatcherTests.cs:Dispatch_SendsMessageToCorrectReceptorAsync</tests>`)
+3. **generate-code-tests-map.mjs** - Script that scans tests and source code
+4. **code-tests-map.json** - Bidirectional mapping file (code→tests, tests→code)
+5. **MCP Server Tools** - Programmatic access to test mappings
+
+**MCP Tools Available**:
+- `mcp__whizbang-docs__get-tests-for-code` - Find all tests for a code symbol
+- `mcp__whizbang-docs__get-code-for-test` - Find code tested by a test method
+- `mcp__whizbang-docs__validate-test-links` - Validate all code-test links
+- `mcp__whizbang-docs__get-coverage-stats` - Get test coverage statistics
+
+**Usage Examples**:
+```typescript
+// Find tests for IDispatcher
+mcp__whizbang-docs__get-tests-for-code({ symbol: "Dispatcher" })
+// Returns: { found: true, tests: [...], testCount: 15 }
+
+// Find code tested by a specific test
+mcp__whizbang-docs__get-code-for-test({ testKey: "DispatcherTests.Dispatch_SendsMessageToCorrectReceptorAsync" })
+// Returns: { found: true, code: [...], codeCount: 1 }
+
+// Get coverage statistics
+mcp__whizbang-docs__get-coverage-stats()
+// Returns: { totalCodeSymbols: 86, totalTestMethods: 1303, averageTestsPerSymbol: 15.1, ... }
+```
+
+**Workflow**:
+1. Write tests following naming convention (`ClassNameTests` tests `ClassName`)
+2. Optionally add `<tests>` tags for explicit links
+3. Run `node src/scripts/generate-code-tests-map.mjs` to regenerate mapping
+4. Use MCP tools to query test coverage
+
+**Status**: Phase 1 complete - Script-based generation and MCP tools operational. Source generator and analyzer planned for v2.
+
 ### Change Verification Requirements
 
 **CRITICAL**: Claude MUST verify all UI/visual changes using Playwright browser automation before considering work complete:
