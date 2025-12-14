@@ -1,8 +1,26 @@
 {
+  "TopicFilterGenerator": {
+    "file": "src/Whizbang.Generators/TopicFilterGenerator.cs",
+    "line": 14,
+    "symbol": "TopicFilterGenerator",
+    "docs": "source-generators/topic-filter-discovery"
+  },
+  "TopicFilterAttribute": {
+    "file": "src/Whizbang.Core/TopicFilterAttribute{TEnum}.cs",
+    "line": 9,
+    "symbol": "TopicFilterAttribute",
+    "docs": "messaging/topic-filters"
+  },
   "MessageContext": {
     "file": "src/Whizbang.Core/MessageContext.cs",
     "line": 8,
     "symbol": "MessageContext",
+    "docs": "core-concepts/message-context"
+  },
+  "IWhizbangIdProvider": {
+    "file": "src/Whizbang.Core/IWhizbangIdProvider.cs",
+    "line": 7,
+    "symbol": "IWhizbangIdProvider",
     "docs": "core-concepts/message-context"
   },
   "IReceptor": {
@@ -47,6 +65,12 @@
     "symbol": "ICommand",
     "docs": "messaging/commands-events"
   },
+  "IAggregateIdExtractor": {
+    "file": "src/Whizbang.Core/IAggregateIdExtractor.cs",
+    "line": 13,
+    "symbol": "IAggregateIdExtractor",
+    "docs": "infrastructure/policies"
+  },
   "MessageId": {
     "file": "src/Whizbang.Core/ValueObjects/MessageId.cs",
     "line": 10,
@@ -58,6 +82,12 @@
     "line": 11,
     "symbol": "CorrelationId",
     "docs": "core-concepts/message-context"
+  },
+  "ITransportReadinessCheck": {
+    "file": "src/Whizbang.Core/Transports/ITransportReadinessCheck.cs",
+    "line": 18,
+    "symbol": "ITransportReadinessCheck",
+    "docs": "components/transports"
   },
   "ITransportManager": {
     "file": "src/Whizbang.Core/Transports/ITransportManager.cs",
@@ -75,6 +105,12 @@
     "file": "src/Whizbang.Core/Transports/ISubscription.cs",
     "line": 10,
     "symbol": "ISubscription",
+    "docs": "components/transports"
+  },
+  "IMessageSerializer": {
+    "file": "src/Whizbang.Core/Transports/IMessageSerializer.cs",
+    "line": 15,
+    "symbol": "IMessageSerializer",
     "docs": "components/transports"
   },
   "PolicyDecisionTrail": {
@@ -113,30 +149,6 @@
     "symbol": "IPerspectiveInvoker",
     "docs": "core-concepts/perspectives"
   },
-  "OutboxRecord": {
-    "file": "src/Whizbang.Core/Messaging/OutboxRecord.cs",
-    "line": 10,
-    "symbol": "OutboxRecord",
-    "docs": "messaging/outbox-pattern"
-  },
-  "InboxRecord": {
-    "file": "src/Whizbang.Core/Messaging/InboxRecord.cs",
-    "line": 10,
-    "symbol": "InboxRecord",
-    "docs": "messaging/inbox-pattern"
-  },
-  "IWorkCoordinator": {
-    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 11,
-    "symbol": "IWorkCoordinator",
-    "docs": "messaging/work-coordinator"
-  },
-  "ILensQuery": {
-    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
-    "line": 9,
-    "symbol": "ILensQuery",
-    "docs": "core-concepts/lenses"
-  },
   "MessageHop": {
     "file": "src/Whizbang.Core/Observability/MessageHop.cs",
     "line": 29,
@@ -166,6 +178,30 @@
     "line": 12,
     "symbol": "IMessageEnvelope",
     "docs": "core-concepts/observability"
+  },
+  "OutboxRecord": {
+    "file": "src/Whizbang.Core/Messaging/OutboxRecord.cs",
+    "line": 10,
+    "symbol": "OutboxRecord",
+    "docs": "messaging/outbox-pattern"
+  },
+  "InboxRecord": {
+    "file": "src/Whizbang.Core/Messaging/InboxRecord.cs",
+    "line": 10,
+    "symbol": "InboxRecord",
+    "docs": "messaging/inbox-pattern"
+  },
+  "IWorkCoordinator": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 11,
+    "symbol": "IWorkCoordinator",
+    "docs": "messaging/work-coordinator"
+  },
+  "ILensQuery": {
+    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
+    "line": 9,
+    "symbol": "ILensQuery",
+    "docs": "core-concepts/lenses"
   },
   "IExecutionStrategy": {
     "file": "src/Whizbang.Core/Execution/IExecutionStrategy.cs",
