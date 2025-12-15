@@ -188,7 +188,8 @@ function buildBidirectionalMapping(sourceTagMappings, testConventionMappings, so
       sourceFile: mapping.sourceFile,
       sourceLine: mapping.sourceLine,
       sourceSymbol: mapping.sourceSymbol,
-      sourceType: mapping.sourceType
+      sourceType: mapping.sourceType,
+      linkSource: mapping.linkSource
     });
   }
 
