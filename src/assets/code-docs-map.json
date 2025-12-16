@@ -1,27 +1,33 @@
 {
   "TopicFilterGenerator": {
     "file": "src/Whizbang.Generators/TopicFilterGenerator.cs",
-    "line": 14,
+    "line": 25,
     "symbol": "TopicFilterGenerator",
     "docs": "source-generators/topic-filter-discovery"
   },
-  "TopicFilterAttribute": {
-    "file": "src/Whizbang.Core/TopicFilterAttribute{TEnum}.cs",
-    "line": 9,
-    "symbol": "TopicFilterAttribute",
-    "docs": "messaging/topic-filters"
+  "WhizbangIdServiceCollectionExtensions": {
+    "file": "src/Whizbang.Core/WhizbangIdServiceCollectionExtensions.cs",
+    "line": 10,
+    "symbol": "WhizbangIdServiceCollectionExtensions",
+    "docs": "core-concepts/whizbang-ids"
+  },
+  "WhizbangIdProviderRegistry": {
+    "file": "src/Whizbang.Core/WhizbangIdProviderRegistry.cs",
+    "line": 32,
+    "symbol": "WhizbangIdProviderRegistry",
+    "docs": "core-concepts/whizbang-ids"
   },
   "MessageContext": {
     "file": "src/Whizbang.Core/MessageContext.cs",
-    "line": 8,
+    "line": 16,
     "symbol": "MessageContext",
     "docs": "core-concepts/message-context"
   },
   "IWhizbangIdProvider": {
-    "file": "src/Whizbang.Core/IWhizbangIdProvider.cs",
-    "line": 7,
+    "file": "src/Whizbang.Core/IWhizbangIdProviderGeneric.cs",
+    "line": 41,
     "symbol": "IWhizbangIdProvider",
-    "docs": "core-concepts/message-context"
+    "docs": "core-concepts/whizbang-ids"
   },
   "IReceptor": {
     "file": "src/Whizbang.Core/IReceptor.cs",
@@ -29,23 +35,11 @@
     "symbol": "IReceptor",
     "docs": "core-concepts/receptors"
   },
-  "IPerspectiveOf": {
-    "file": "src/Whizbang.Core/IPerspectiveOf.cs",
-    "line": 9,
-    "symbol": "IPerspectiveOf",
-    "docs": "core-concepts/perspectives"
-  },
   "IMessageContext": {
     "file": "src/Whizbang.Core/IMessageContext.cs",
     "line": 8,
     "symbol": "IMessageContext",
     "docs": "core-concepts/message-context"
-  },
-  "IEvent": {
-    "file": "src/Whizbang.Core/IEvent.cs",
-    "line": 7,
-    "symbol": "IEvent",
-    "docs": "messaging/commands-events"
   },
   "IDispatcher": {
     "file": "src/Whizbang.Core/IDispatcher.cs",
@@ -103,13 +97,13 @@
   },
   "ISubscription": {
     "file": "src/Whizbang.Core/Transports/ISubscription.cs",
-    "line": 10,
+    "line": 17,
     "symbol": "ISubscription",
     "docs": "components/transports"
   },
   "IMessageSerializer": {
     "file": "src/Whizbang.Core/Transports/IMessageSerializer.cs",
-    "line": 15,
+    "line": 29,
     "symbol": "IMessageSerializer",
     "docs": "components/transports"
   },
@@ -121,27 +115,15 @@
   },
   "PolicyDecisionTrail": {
     "file": "src/Whizbang.Core/Policies/PolicyDecisionTrail.cs",
-    "line": 7,
+    "line": 15,
     "symbol": "PolicyDecisionTrail",
     "docs": "infrastructure/policies"
   },
   "PolicyContext": {
     "file": "src/Whizbang.Core/Policies/PolicyContext.cs",
-    "line": 14,
+    "line": 15,
     "symbol": "PolicyContext",
     "docs": "infrastructure/policies"
-  },
-  "IPolicyEngine": {
-    "file": "src/Whizbang.Core/Policies/IPolicyEngine.cs",
-    "line": 7,
-    "symbol": "IPolicyEngine",
-    "docs": "infrastructure/policies"
-  },
-  "IPerspectiveStore": {
-    "file": "src/Whizbang.Core/Perspectives/IPerspectiveStore.cs",
-    "line": 9,
-    "symbol": "IPerspectiveStore",
-    "docs": "core-concepts/perspectives"
   },
   "IPerspectiveInvoker": {
     "file": "src/Whizbang.Core/Perspectives/IPerspectiveInvoker.cs",
@@ -149,9 +131,21 @@
     "symbol": "IPerspectiveInvoker",
     "docs": "core-concepts/perspectives"
   },
+  "IWorkCoordinator": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 11,
+    "symbol": "IWorkCoordinator",
+    "docs": "messaging/work-coordinator"
+  },
+  "ILensQuery": {
+    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
+    "line": 9,
+    "symbol": "ILensQuery",
+    "docs": "core-concepts/lenses"
+  },
   "MessageHop": {
     "file": "src/Whizbang.Core/Observability/MessageHop.cs",
-    "line": 29,
+    "line": 39,
     "symbol": "MessageHop",
     "docs": "core-concepts/observability"
   },
@@ -167,41 +161,11 @@
     "symbol": "ITraceStore",
     "docs": "core-concepts/observability"
   },
-  "IServiceInstanceProvider": {
-    "file": "src/Whizbang.Core/Observability/IServiceInstanceProvider.cs",
-    "line": 11,
-    "symbol": "IServiceInstanceProvider",
-    "docs": "core-concepts/observability"
-  },
   "IMessageEnvelope": {
     "file": "src/Whizbang.Core/Observability/IMessageEnvelope.cs",
     "line": 12,
     "symbol": "IMessageEnvelope",
     "docs": "core-concepts/observability"
-  },
-  "ILensQuery": {
-    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
-    "line": 9,
-    "symbol": "ILensQuery",
-    "docs": "core-concepts/lenses"
-  },
-  "OutboxRecord": {
-    "file": "src/Whizbang.Core/Messaging/OutboxRecord.cs",
-    "line": 10,
-    "symbol": "OutboxRecord",
-    "docs": "messaging/outbox-pattern"
-  },
-  "InboxRecord": {
-    "file": "src/Whizbang.Core/Messaging/InboxRecord.cs",
-    "line": 10,
-    "symbol": "InboxRecord",
-    "docs": "messaging/inbox-pattern"
-  },
-  "IWorkCoordinator": {
-    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 11,
-    "symbol": "IWorkCoordinator",
-    "docs": "messaging/work-coordinator"
   },
   "IExecutionStrategy": {
     "file": "src/Whizbang.Core/Execution/IExecutionStrategy.cs",
