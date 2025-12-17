@@ -1,4 +1,10 @@
 {
+  "for": {
+    "file": "src/Whizbang.Data.Schema/DefaultValue.cs",
+    "line": 4,
+    "symbol": "for",
+    "docs": "extensibility/database-schema-framework"
+  },
   "TopicFilterGenerator": {
     "file": "src/Whizbang.Generators/TopicFilterGenerator.cs",
     "line": 25,
@@ -107,12 +113,6 @@
     "symbol": "IMessageSerializer",
     "docs": "components/transports"
   },
-  "IPipelineBehavior": {
-    "file": "src/Whizbang.Core/Pipeline/IPipelineBehavior.cs",
-    "line": 17,
-    "symbol": "IPipelineBehavior",
-    "docs": "extensibility/hooks-and-middleware"
-  },
   "PolicyDecisionTrail": {
     "file": "src/Whizbang.Core/Policies/PolicyDecisionTrail.cs",
     "line": 15,
@@ -125,23 +125,17 @@
     "symbol": "PolicyContext",
     "docs": "infrastructure/policies"
   },
+  "IPipelineBehavior": {
+    "file": "src/Whizbang.Core/Pipeline/IPipelineBehavior.cs",
+    "line": 17,
+    "symbol": "IPipelineBehavior",
+    "docs": "extensibility/hooks-and-middleware"
+  },
   "IPerspectiveInvoker": {
     "file": "src/Whizbang.Core/Perspectives/IPerspectiveInvoker.cs",
     "line": 12,
     "symbol": "IPerspectiveInvoker",
     "docs": "core-concepts/perspectives"
-  },
-  "IWorkCoordinator": {
-    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 11,
-    "symbol": "IWorkCoordinator",
-    "docs": "messaging/work-coordinator"
-  },
-  "ILensQuery": {
-    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
-    "line": 9,
-    "symbol": "ILensQuery",
-    "docs": "core-concepts/lenses"
   },
   "MessageHop": {
     "file": "src/Whizbang.Core/Observability/MessageHop.cs",
@@ -166,6 +160,18 @@
     "line": 12,
     "symbol": "IMessageEnvelope",
     "docs": "core-concepts/observability"
+  },
+  "ILensQuery": {
+    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
+    "line": 9,
+    "symbol": "ILensQuery",
+    "docs": "core-concepts/lenses"
+  },
+  "IWorkCoordinator": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 11,
+    "symbol": "IWorkCoordinator",
+    "docs": "messaging/work-coordinator"
   },
   "IExecutionStrategy": {
     "file": "src/Whizbang.Core/Execution/IExecutionStrategy.cs",
