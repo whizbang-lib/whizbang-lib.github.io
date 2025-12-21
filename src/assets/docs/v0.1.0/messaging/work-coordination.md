@@ -16,21 +16,22 @@ Messages are claimed using time-limited leases to prevent duplicate processing a
 - **Orphaned Work Recovery**: Messages with expired leases can be reclaimed by any active instance
 - **Atomic Claiming**: Lease acquisition happens atomically in the database via the `process_work_batch` function
 
-### Partition-Based Distribution
+### Virtual Partition Distribution
 
-Work is distributed across instances using consistent hashing and modulo-based partition assignment.
+Work is distributed across instances using consistent hashing on UUIDv7 identifiers - **no partition assignments table required**.
 
 **How It Works:**
 1. Each message's `stream_id` is hashed to determine its partition number (0-9999 by default)
-2. Partitions are distributed across active instances using modulo: `partition_number % active_instance_count = instance_index`
-3. Each instance claims partitions based on its index in the sorted list of active instances
-4. Partition ownership is tracked in the `wh_partition_assignments` table
+2. Instance ownership calculated algorithmically: `hashtext(stream_id::TEXT) % active_instance_count = hashtext(instance_id::TEXT) % active_instance_count`
+3. Each message stores `instance_id` when claimed to preserve assignment
+4. No `wh_partition_assignments` table - purely algorithmic
 
 **Benefits:**
-- **Fair Distribution**: Work is evenly distributed across instances
-- **Sticky Assignment**: Messages in the same stream always go to the same instance (until reassignment)
-- **Scalability**: Adding instances automatically redistributes partitions
-- **Fault Tolerance**: Failed instances release partitions for reassignment
+- **Fair Distribution**: Work evenly distributed via consistent hashing
+- **Sticky Assignment**: Same stream always maps to same instance (until rebalancing)
+- **Automatic Rebalancing**: Adding/removing instances triggers hash redistribution
+- **Self-Contained**: No external state - assignment based on UUID properties
+- **Fault Tolerance**: Failed instances release messages via lease expiry
 
 ### Stream Ordering Guarantees
 
@@ -48,13 +49,8 @@ Messages within the same stream are processed in strict temporal order, even acr
 
 **`wh_service_instances`** - Active instance registry
 - Tracks all service instances with heartbeat timestamps
-- Used to determine active instance count for partition distribution
+- Used to determine active instance count for virtual partition distribution
 - Stale instances (no heartbeat > threshold) are automatically removed
-
-**`wh_partition_assignments`** - Partition ownership
-- Maps partition numbers to instance IDs
-- Includes heartbeat timestamp for staleness detection
-- Cascade deletes when instance is removed
 
 **`wh_outbox`** - Outbound message queue
 - Messages awaiting publication to external transports

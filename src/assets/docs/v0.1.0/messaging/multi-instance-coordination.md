@@ -60,7 +60,7 @@ sequenceDiagram
 
 ### 2. Stale Instance Cleanup {#stale-instance-cleanup}
 
-**Rule**: Instances that stop heartbeating for longer than the stale threshold (default: 10 minutes) are automatically removed, releasing their partitions.
+**Rule**: Instances that stop heartbeating for longer than the stale threshold (default: 10 minutes) are automatically removed, releasing their messages.
 
 #### Sequence Diagram
 
@@ -72,7 +72,6 @@ sequenceDiagram
 
     I1->>DB: ProcessWorkBatch()
     DB->>DB: UPDATE wh_service_instances<br/>SET last_heartbeat_at = now<br/>WHERE instance_id = I1
-    DB->>DB: UPDATE wh_partition_assignments<br/>SET last_heartbeat = now<br/>WHERE instance_id = I1
     DB-->>I1: WorkBatch
 
     Note over I1: Instance 1 crashes<br/>(application stopped)
@@ -81,13 +80,13 @@ sequenceDiagram
 
     I2->>DB: ProcessWorkBatch()
     DB->>DB: DELETE FROM wh_service_instances<br/>WHERE last_heartbeat_at < now - INTERVAL '10 minutes'<br/>AND instance_id != I2
-    Note over DB: CASCADE DELETE triggers<br/>wh_partition_assignments rows deleted
+    DB->>DB: Release I1's messages:<br/>UPDATE wh_outbox SET instance_id=NULL, lease_expiry=NULL<br/>WHERE instance_id = I1
     DB->>DB: Count active instances:<br/>1 (only I2)
-    DB->>DB: Recalculate partition distribution<br/>(modulo 1 = all partitions to I2)
-    DB->>DB: Claim orphaned partitions<br/>from deleted Instance 1
+    DB->>DB: Recalculate hash distribution<br/>(all streams now owned by I2)
+    DB->>DB: Claim orphaned messages<br/>using hash-based ownership
     DB-->>I2: WorkBatch (includes I1's former work)
 
-    Note over I2: ✅ Instance 1 cleaned up<br/>Partitions reassigned<br/>Work processing continues
+    Note over I2: ✅ Instance 1 cleaned up<br/>Messages reassigned via hash<br/>Work processing continues
 ```
 
 **Timing Diagram**:
@@ -111,15 +110,15 @@ I1 ━━━━━━━━━━━━━━━━━━━━┃ Crash
 
 **Decision Matrix**:
 
-| Heartbeat Age | Instance State | Partitions | Action |
+| Heartbeat Age | Instance State | Messages | Action |
 |---|---|---|---|
 | < 10 minutes | Active | Retained | Normal operation |
 | > 10 minutes (same instance) | Active | Retained | Self-exception (don't delete self) |
-| > 10 minutes (other instance) | Stale | Released | DELETE instance, CASCADE partitions |
+| > 10 minutes (other instance) | Stale | Released | DELETE instance, release messages (instance_id=NULL) |
 
 ### 3. New Instance Joining {#new-instance-joining}
 
-**Rule**: When a new instance joins, it claims only unassigned partitions or partitions from stale instances. Active instances retain their partition assignments.
+**Rule**: When a new instance joins, hash distribution changes automatically. Existing messages retain their `instance_id`, while new messages follow the new hash distribution.
 
 #### Sequence Diagram
 
@@ -129,11 +128,11 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant I2 as Instance 2<br/>(New)
 
-    Note over I1: Instance 1 owns partitions 0, 2, 4, 6, 8<br/>(modulo 1, when alone)
+    Note over I1: Instance 1 processing all streams<br/>(alone, active_instance_count=1)
 
     I1->>DB: ProcessWorkBatch()
     DB->>DB: Heartbeat update
-    DB-->>I1: WorkBatch (from partitions 0,2,4,6,8)
+    DB-->>I1: WorkBatch (all streams)
 
     Note over I2: New Instance 2 starts
 
@@ -142,25 +141,34 @@ sequenceDiagram
     DB->>DB: Count active instances:<br/>SELECT COUNT(*) FROM wh_service_instances<br/>WHERE last_heartbeat_at >= stale_cutoff
     Note over DB: Result: 2 active instances
 
-    DB->>DB: Calculate fair share:<br/>CEIL(10000 / 2) = 5000 partitions per instance
-    DB->>DB: Modulo distribution:<br/>Partition % 2 = 0 → I1 (index 0)<br/>Partition % 2 = 1 → I2 (index 1)
-    DB->>DB: Claim partitions for I2:<br/>Only claim partitions where:<br/>1. partition % 2 = 1 (I2's modulo)<br/>2. NOT already owned by active instance<br/>3. OR owned by stale instance
-    DB->>DB: ON CONFLICT DO UPDATE<br/>WHERE current_owner = I2<br/>OR current_owner NOT IN (active_instances)
-    Note over DB: ✅ Partitions 1, 3, 5, 7, 9 claimed by I2<br/>❌ Partitions 0, 2, 4, 6, 8 RETAINED by I1<br/>(I1 is active, not stale)
-    DB-->>I2: WorkBatch (from partitions 1,3,5,7,9)
+    DB->>DB: Hash redistribution automatic:<br/>hashtext(stream_id) % 2 determines owner<br/>~50% of streams switch to I2
 
-    Note over I1,I2: Both instances continue processing<br/>No partition stealing occurred
+    I2->>DB: ProcessWorkBatch()
+    DB->>DB: Check orphaned messages<br/>with matching hash
+    Note over DB: Existing messages keep instance_id=I1<br/>(no stealing from active instance)
+    DB-->>I2: [] (no work yet)
+
+    Note over DB: New messages arrive
+
+    I1->>DB: ProcessWorkBatch(newOutboxMessages)
+    DB->>DB: Assign instance_id based on hash:<br/>Some to I1, some to I2
+    DB-->>I1: Messages assigned to I1
+
+    I2->>DB: ProcessWorkBatch()
+    DB->>DB: Claim messages with instance_id=I2
+    DB-->>I2: Messages assigned to I2
+
+    Note over I1,I2: Both instances process their assigned streams<br/>Hash distribution automatically balances load
 ```
 
-**Partition Ownership Table**:
+**Stream Distribution Example**:
 
-| Partition | Before (1 instance) | After (2 instances) | Reassigned? |
+| Stream ID Hash | Before (count=1) | After (count=2) | New Owner |
 |---|---|---|---|
-| 0 | Instance 1 | Instance 1 | No (I1 active) |
-| 1 | Instance 1 | Instance 2 | Yes (unassigned for I2) |
-| 2 | Instance 1 | Instance 1 | No (I1 active) |
-| 3 | Instance 1 | Instance 2 | Yes (unassigned for I2) |
-| 4 | Instance 1 | Instance 1 | No (I1 active) |
+| hashtext(s1) % n | 0 (I1) | 0 (I1) | No change |
+| hashtext(s2) % n | 0 (I1) | 1 (I2) | Redistributed |
+| hashtext(s3) % n | 0 (I1) | 0 (I1) | No change |
+| hashtext(s4) % n | 0 (I1) | 1 (I2) | Redistributed |
 | ... | ... | ... | ... |
 
 ### 4. Scheduled Retry Blocking {#scheduled-retry-blocking}
@@ -237,60 +245,11 @@ blocked    │
 | Processing | N/A | ❌ No | Active lease blocks |
 | Completed | N/A | ✅ Yes | Message done |
 
-### 5. Partition Reassignment {#partition-reassignment}
+### 5. Message Reassignment After Instance Failure {#message-reassignment}
 
-**Rule**: Partition ownership only changes when assigned to a stale instance or when unassigned. Active instances retain partitions.
+**Rule**: When an instance goes stale and its messages are released, they become claimable by any instance whose hash matches the stream.
 
-#### Sequence Diagram
-
-```mermaid
-sequenceDiagram
-    participant I1 as Instance 1<br/>(Goes Stale)
-    participant DB as PostgreSQL
-    participant I2 as Instance 2
-
-    Note over I1: Instance 1 owns partition 5
-
-    I1->>DB: ProcessWorkBatch()
-    DB->>DB: UPDATE wh_partition_assignments<br/>SET last_heartbeat = now<br/>WHERE instance_id = I1 AND partition_number = 5
-
-    Note over I1: Instance 1 stops heartbeating<br/>(crash, network issue, etc.)
-
-    Note over DB: Time passes (10+ minutes)
-
-    I2->>DB: ProcessWorkBatch()
-    DB->>DB: DELETE stale instances<br/>WHERE last_heartbeat_at < stale_cutoff
-    Note over DB: Instance 1 deleted<br/>CASCADE removes partition assignments
-
-    DB->>DB: Find orphaned work in partition 5
-    DB->>DB: INSERT INTO wh_partition_assignments<br/>(partition_number=5, instance_id=I2, ...)<br/>ON CONFLICT (partition_number) DO UPDATE<br/>SET instance_id = I2, ...<br/>WHERE current_owner = I2<br/>OR current_owner NOT IN (active_instances)
-    Note over DB: ✅ Partition 5 reassigned to I2<br/>(I1 was stale, not active)
-    DB-->>I2: WorkBatch (includes partition 5 work)
-
-    Note over I2: Instance 2 now owns partition 5
-```
-
-**ON CONFLICT Decision Logic**:
-
-```sql
-INSERT INTO wh_partition_assignments (...)
-ON CONFLICT (partition_number) DO UPDATE
-SET instance_id = EXCLUDED.instance_id
-WHERE
-  -- Allow update if:
-  wh_partition_assignments.instance_id = p_instance_id  -- Already own it (self)
-  OR wh_partition_assignments.instance_id NOT IN (      -- Or owner is stale
-    SELECT instance_id FROM wh_service_instances
-    WHERE last_heartbeat_at >= v_stale_cutoff
-  );
-```
-
-| Current Owner | New Claimant | Heartbeat Status | Reassignment | Reason |
-|---|---|---|---|---|
-| Instance 1 | Instance 1 | Active | ✅ Allow | Self-update (heartbeat) |
-| Instance 1 | Instance 2 | Active (I1) | ❌ Block | I1 is active (no stealing) |
-| Instance 1 | Instance 2 | Stale (I1) | ✅ Allow | I1 is stale (reassignment) |
-| NULL | Instance 2 | N/A | ✅ Allow | Unassigned partition |
+**Note**: This section describes the same concept as [Stale Instance Cleanup](#stale-instance-cleanup) but focuses on message-level reassignment rather than instance-level cleanup. See also [Instance Joining - Hash Redistribution](#instance-joining-hash-redistribution) for how new instances claim messages.
 
 ### 6. Lease Expiry and Orphaned Work {#lease-expiry}
 
@@ -312,7 +271,7 @@ sequenceDiagram
     Note over DB: Time passes (5+ minutes)<br/>Lease expires
 
     I2->>DB: ProcessWorkBatch()
-    DB->>DB: Find orphaned work:<br/>SELECT * FROM wh_outbox<br/>WHERE partition_number IN (owned_partitions)<br/>AND (instance_id IS NULL<br/>     OR lease_expiry IS NULL<br/>     OR lease_expiry < now)
+    DB->>DB: Find orphaned work:<br/>SELECT * FROM wh_outbox<br/>WHERE (hashtext(stream_id::TEXT) % active_count) =<br/>(hashtext(I2_id::TEXT) % active_count)<br/>AND (instance_id IS NULL<br/>     OR lease_expiry IS NULL<br/>     OR lease_expiry < now)
     DB->>DB: UPDATE wh_outbox<br/>SET instance_id = I2,<br/>lease_expiry = now + 5 min<br/>WHERE message_id IN (M1, M2)
     DB-->>I2: WorkBatch: M1, M2 (reclaimed)
 
@@ -407,6 +366,184 @@ graph TD
 - The application should handle deduplication (e.g., idempotent commands, unique constraints)
 - Whizbang's responsibility: Ensure at-least-once delivery (once in outbox → delivered to transport)
 
+### 9. Virtual Partition Assignment (Hash-Based) {#virtual-partition-assignment}
+
+**Rule**: Instance ownership is calculated algorithmically using consistent hashing on UUIDs. No partition assignments table is needed.
+
+**Formula**: `(hashtext(stream_id::TEXT) % active_instance_count) = (hashtext(instance_id::TEXT) % active_instance_count)`
+
+#### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant I1 as Instance 1<br/>(ID: aaa...111)
+    participant DB as PostgreSQL
+    participant I2 as Instance 2<br/>(ID: bbb...222)
+
+    Note over DB: Stream S1 (stream_id: ccc...333)<br/>Messages M1, M2 created
+
+    I1->>DB: ProcessWorkBatch()
+    DB->>DB: Count active instances: 2
+    DB->>DB: Hash stream_id: hashtext('ccc...333') % 2 = 0
+    DB->>DB: Hash instance I1: hashtext('aaa...111') % 2 = 0
+    DB->>DB: ✅ Match! (0 = 0)
+    DB->>DB: Claim M1, M2 for I1
+    DB-->>I1: M1, M2 (instance_id=I1, lease_expiry=now+5min)
+
+    Note over I1: I1 processes M1, M2
+
+    I2->>DB: ProcessWorkBatch()
+    DB->>DB: Hash stream_id: hashtext('ccc...333') % 2 = 0
+    DB->>DB: Hash instance I2: hashtext('bbb...222') % 2 = 1
+    DB->>DB: ❌ No match (0 ≠ 1)
+    DB->>DB: Cannot claim - wrong instance per hash
+    DB-->>I2: [] (empty)
+
+    Note over I2: I2 cannot claim Stream S1 messages<br/>Hash ownership belongs to I1
+```
+
+**Key Properties**:
+- **Self-contained**: Depends only on UUID values, not database state
+- **Deterministic**: Same UUIDs always produce same result
+- **No table lookups**: Pure computation (fast)
+- **Automatic rebalancing**: Adding instance changes modulo distribution
+
+### 10. Instance Transition - Stream Splitting Across Instances {#instance-transition-stream-split}
+
+**Rule**: When instances join/leave, hash distribution changes. Messages created before the change remain on original instance (via `instance_id` assignment), while new messages follow new hash distribution.
+
+**Critical Guarantee**: Earlier messages MUST complete on original instance before later messages can be claimed on new instance.
+
+#### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant I1 as Instance 1
+    participant DB as PostgreSQL
+    participant I2 as Instance 2<br/>(New)
+
+    Note over DB: Stream S, active_instance_count = 1<br/>hashtext(stream_id) % 1 = 0<br/>hashtext(I1_id) % 1 = 0<br/>✅ I1 owns all streams
+
+    I1->>DB: ProcessWorkBatch(newOutboxMessages: [M1, M2])
+    DB->>DB: Store M1 (created_at=10s, instance_id=I1)
+    DB->>DB: Store M2 (created_at=20s, instance_id=I1)
+    DB-->>I1: M1, M2
+
+    I1->>I1: Processing M1, M2...
+
+    Note over I2: Instance 2 starts
+
+    I2->>DB: ProcessWorkBatch()
+    DB->>DB: Register I2, active_instance_count = 2
+    Note over DB: Hash distribution changes!<br/>hashtext(stream_id) % 2 = 0<br/>hashtext(I1_id) % 2 = 0 ✅<br/>hashtext(I2_id) % 2 = 1 ❌<br/>Stream S still owned by I1
+
+    I1->>DB: ProcessWorkBatch(newOutboxMessages: [M3])
+    DB->>DB: Store M3 (created_at=30s)<br/>Hash: hashtext(stream_id) % 2 = 0<br/>Instance hash: hashtext(I1_id) % 2 = 0<br/>✅ Match - assign to I1
+    DB->>DB: instance_id = I1 (preserves assignment)
+    DB-->>I1: M3
+
+    Note over DB: Time passes, hash changes<br/>(simulating redistribution)
+
+    I1->>DB: ProcessWorkBatch(newOutboxMessages: [M4])
+    DB->>DB: Store M4 (created_at=40s)<br/>Hash: hashtext(stream_id_v2) % 2 = 1<br/>Instance hash: hashtext(I2_id) % 2 = 1<br/>✅ Match - assign to I2
+    DB->>DB: instance_id = I2 (new assignment)
+    DB-->>I1: []
+
+    I2->>DB: ProcessWorkBatch()
+    DB->>DB: Check M4 claimability
+    DB->>DB: NOT EXISTS check:<br/>Are there earlier messages (M1, M2, M3)<br/>still processing?
+    Note over DB: M1, M2, M3 still held by I1<br/>(instance_id=I1, lease_expiry>now)
+    DB->>DB: ❌ M4 BLOCKED<br/>Earlier messages M1-M3 on I1
+    DB-->>I2: [] (empty)
+
+    Note over I2: I2 cannot claim M4<br/>until I1 completes M1-M3
+
+    I1->>DB: ProcessWorkBatch(<br/>completions: [M1: Published, M2: Published, M3: Published])
+    DB->>DB: Delete M1, M2, M3 (completed)
+
+    I2->>DB: ProcessWorkBatch()
+    DB->>DB: NOT EXISTS check passes<br/>(no earlier messages with active leases)
+    DB-->>I2: M4
+
+    Note over I2: ✅ Stream ordering preserved<br/>M1-M3 completed on I1<br/>BEFORE M4 claimed by I2
+```
+
+**Decision Matrix**:
+
+| Earlier Messages | Later Message | Can Claim? | Reason |
+|---|---|---|---|
+| M1-M3 on I1 (processing) | M4 on I2 (new hash) | ❌ No | NOT EXISTS blocks |
+| M1-M3 completed/deleted | M4 on I2 (new hash) | ✅ Yes | No blocking messages |
+| M1-M3 on I1 (lease expired) | M4 on I2 (new hash) | ❌ No | Must reclaim M1-M3 first |
+| M1-M3 on I1 (scheduled retry) | M4 on I2 (new hash) | ❌ No | Scheduled blocks stream |
+
+**Key Guarantees**:
+- **Time-ordered processing**: M1 → M2 → M3 → M4 (by `created_at`)
+- **Cross-instance coordination**: I1 must finish before I2 can start
+- **Single-processing**: Each message claimed exactly once (within lease)
+- **Assignment preservation**: `instance_id` prevents mid-processing theft
+
+### 11. Instance Joining - Hash Redistribution {#instance-joining-hash-redistribution}
+
+**Rule**: When new instance joins, `active_instance_count` increases, changing hash modulo distribution. Existing messages retain original `instance_id`, new messages follow new distribution.
+
+#### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant I1 as Instance 1<br/>(Alone)
+    participant DB as PostgreSQL
+    participant I2 as Instance 2<br/>(Joins)
+
+    Note over DB: Stream S1: hashtext(s1) % 1 = 0<br/>Stream S2: hashtext(s2) % 1 = 0<br/>Both owned by I1 (only instance)
+
+    I1->>DB: ProcessWorkBatch()
+    DB->>DB: active_instance_count = 1
+    DB->>DB: All streams map to I1 (modulo 1)
+    DB-->>I1: Messages from S1, S2
+
+    Note over I2: Instance 2 starts
+
+    I2->>DB: ProcessWorkBatch()
+    DB->>DB: Register I2
+    DB->>DB: active_instance_count = 2
+    Note over DB: Hash redistribution!<br/>hashtext(s1) % 2 = 0 → I1<br/>hashtext(s2) % 2 = 1 → I2
+
+    I2->>DB: ProcessWorkBatch()
+    DB->>DB: Find orphaned/new messages
+    DB->>DB: Check Stream S1 messages:<br/>hashtext(s1) % 2 = 0<br/>hashtext(I2_id) % 2 = 1<br/>❌ No match - cannot claim
+    DB->>DB: Check Stream S2 messages:<br/>hashtext(s2) % 2 = 1<br/>hashtext(I2_id) % 2 = 1<br/>✅ Match - can claim!
+    DB->>DB: But existing S2 messages have instance_id=I1<br/>(assigned before I2 joined)<br/>❌ Cannot steal (I1 active)
+    DB-->>I2: [] (no work yet)
+
+    Note over DB: New message arrives for Stream S2
+
+    I1->>DB: ProcessWorkBatch(newInboxMessages: [M_S2_new])
+    DB->>DB: Store M_S2_new<br/>Hash: hashtext(s2) % 2 = 1<br/>Instance hash: hashtext(I2_id) % 2 = 1<br/>✅ Assign to I2 (new distribution)
+    DB->>DB: instance_id = I2
+
+    I2->>DB: ProcessWorkBatch()
+    DB->>DB: Find messages with instance_id=I2<br/>OR orphaned with matching hash
+    DB-->>I2: M_S2_new (newly assigned)
+
+    Note over I1,I2: I1 continues processing old S2 messages<br/>I2 processes new S2 messages<br/>Stream ordering preserved via NOT EXISTS
+```
+
+**Distribution Changes**:
+
+| Stream | Hash Value | Before (count=1) | After (count=2) | New Owner |
+|---|---|---|---|---|
+| S1 | `hashtext(s1) % n` | 0 (I1) | 0 (I1) | No change |
+| S2 | `hashtext(s2) % n` | 0 (I1) | 1 (I2) | Redistributed |
+| S3 | `hashtext(s3) % n` | 0 (I1) | 0 (I1) | No change |
+| S4 | `hashtext(s4) % n` | 0 (I1) | 1 (I2) | Redistributed |
+
+**Key Points**:
+- ~50% of streams redistribute when instance count doubles
+- Existing messages keep original `instance_id` (no stealing)
+- New messages follow new hash distribution
+- NOT EXISTS ensures ordering across transition
+
 ## Testing Scenarios
 
 Each coordination mechanism has corresponding integration tests that validate the behavior under various conditions:
@@ -479,11 +616,13 @@ Higher counts enable finer-grained distribution:
    FROM wh_service_instances;
    ```
 
-2. **Check partition ownership**:
+2. **Check hash-based ownership**:
    ```sql
-   SELECT partition_number, instance_id, last_heartbeat
-   FROM wh_partition_assignments
-   WHERE partition_number = <stuck_message_partition>;
+   -- Verify which instance should own this stream
+   SELECT
+     (abs(hashtext('<stream_id>'::TEXT)) % <partition_count>) AS partition_number,
+     (abs(hashtext('<stream_id>'::TEXT)) % <active_instance_count>) AS expected_instance_index;
+   -- Compare with actual instance assignment on message
    ```
 
 3. **Check stream ordering**:
