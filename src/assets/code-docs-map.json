@@ -1,4 +1,16 @@
 {
+  "with": {
+    "file": "src/Whizbang.Data.Schema/SequenceDefinition.cs",
+    "line": 4,
+    "symbol": "with",
+    "docs": "extensibility/database-schema-framework"
+  },
+  "ISchemaBuilder": {
+    "file": "src/Whizbang.Data.Schema/ISchemaBuilder.cs",
+    "line": 19,
+    "symbol": "ISchemaBuilder",
+    "docs": "data-access/schema-generation-pattern"
+  },
   "for": {
     "file": "src/Whizbang.Data.Schema/DefaultValue.cs",
     "line": 4,
@@ -71,6 +83,12 @@
     "symbol": "IAggregateIdExtractor",
     "docs": "infrastructure/policies"
   },
+  "table": {
+    "file": "src/Whizbang.Data.Schema/Schemas/PartitionAssignmentsSchema.cs",
+    "line": 6,
+    "symbol": "table",
+    "docs": "extensibility/database-schema-framework"
+  },
   "MessageId": {
     "file": "src/Whizbang.Core/ValueObjects/MessageId.cs",
     "line": 10,
@@ -113,18 +131,6 @@
     "symbol": "IMessageSerializer",
     "docs": "components/transports"
   },
-  "PolicyDecisionTrail": {
-    "file": "src/Whizbang.Core/Policies/PolicyDecisionTrail.cs",
-    "line": 15,
-    "symbol": "PolicyDecisionTrail",
-    "docs": "infrastructure/policies"
-  },
-  "PolicyContext": {
-    "file": "src/Whizbang.Core/Policies/PolicyContext.cs",
-    "line": 15,
-    "symbol": "PolicyContext",
-    "docs": "infrastructure/policies"
-  },
   "IPipelineBehavior": {
     "file": "src/Whizbang.Core/Pipeline/IPipelineBehavior.cs",
     "line": 17,
@@ -136,6 +142,30 @@
     "line": 12,
     "symbol": "IPerspectiveInvoker",
     "docs": "core-concepts/perspectives"
+  },
+  "IPerspectiveFor": {
+    "file": "src/Whizbang.Core/Perspectives/IPerspectiveFor.cs",
+    "line": 9,
+    "symbol": "IPerspectiveFor",
+    "docs": "core-concepts/perspectives"
+  },
+  "IGlobalPerspectiveFor": {
+    "file": "src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs",
+    "line": 10,
+    "symbol": "IGlobalPerspectiveFor",
+    "docs": "core-concepts/perspectives/multi-stream"
+  },
+  "PolicyDecisionTrail": {
+    "file": "src/Whizbang.Core/Policies/PolicyDecisionTrail.cs",
+    "line": 15,
+    "symbol": "PolicyDecisionTrail",
+    "docs": "infrastructure/policies"
+  },
+  "PolicyContext": {
+    "file": "src/Whizbang.Core/Policies/PolicyContext.cs",
+    "line": 15,
+    "symbol": "PolicyContext",
+    "docs": "infrastructure/policies"
   },
   "MessageHop": {
     "file": "src/Whizbang.Core/Observability/MessageHop.cs",
@@ -161,22 +191,16 @@
     "symbol": "IMessageEnvelope",
     "docs": "core-concepts/observability"
   },
-  "ILensQuery": {
-    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
-    "line": 9,
-    "symbol": "ILensQuery",
-    "docs": "core-concepts/lenses"
-  },
-  "IWorkCoordinator": {
-    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 11,
-    "symbol": "IWorkCoordinator",
-    "docs": "messaging/work-coordinator"
-  },
   "IExecutionStrategy": {
     "file": "src/Whizbang.Core/Execution/IExecutionStrategy.cs",
     "line": 10,
     "symbol": "IExecutionStrategy",
     "docs": "components/dispatcher"
+  },
+  "ILensQuery": {
+    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
+    "line": 9,
+    "symbol": "ILensQuery",
+    "docs": "core-concepts/lenses"
   }
 }

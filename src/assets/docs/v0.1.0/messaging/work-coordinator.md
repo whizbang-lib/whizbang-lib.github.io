@@ -666,8 +666,13 @@ public class WorkCoordinatorMetrics {
 
 ## Further Reading
 
+**Architecture**:
+- [Message Lifecycle & Architecture](../architecture/message-lifecycle.md) - **Complete flow with sequence diagrams** showing Commands, Events, Receptors, Perspectives, and all integration points
+
 **Core Concepts**:
 - [Dispatcher](../core-concepts/dispatcher.md) - Message routing
+- [Receptors](../core-concepts/receptors.md) - Message handlers and business logic
+- [Perspectives](../core-concepts/perspectives.md) - Event listeners for read models
 
 **Messaging Patterns**:
 - [Outbox Pattern](outbox-pattern.md) - Reliable event publishing
@@ -679,4 +684,4 @@ public class WorkCoordinatorMetrics {
 
 ---
 
-*Version 0.1.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 0.1.0 - Foundation Release | Last Updated: 2024-12-21*
