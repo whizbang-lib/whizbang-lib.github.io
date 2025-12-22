@@ -913,6 +913,10 @@ public class OrderRepository {
 
 ## Further Reading
 
+**Workers**:
+- [Perspective Worker](../workers/perspective-worker.md) - Checkpoint processing lifecycle and runtime behavior
+- [Execution Lifecycle](../workers/execution-lifecycle.md) - Startup/shutdown coordination
+
 **Core Concepts**:
 - [Perspectives](../core-concepts/perspectives.md) - Event-driven read models
 - [Observability](../core-concepts/observability.md) - Message hops and tracing
@@ -931,4 +935,4 @@ public class OrderRepository {
 
 ---
 
-*Version 0.1.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 0.1.0 - Foundation Release | Last Updated: 2025-12-21*

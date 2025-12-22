@@ -49,51 +49,21 @@ For basic perspective usage, see [Perspectives Guide](../core-concepts/perspecti
 
 ---
 
-## Architecture
+## Checkpoint System Overview
 
-### Checkpoint-Based Perspective System
+:::note
+For comprehensive coverage of perspective checkpoints including automatic creation, fuzzy type matching, error tracking, and the complete 4-phase checkpoint system, see [Perspective Worker](../workers/perspective-worker.md).
+:::
 
-```
-┌──────────────────────────────────────────────────────┐
-│  Event Store (wh_event_store)                        │
-│  ┌────────────────────────────────────────────────┐ │
-│  │ stream_id  | event_id (UUIDv7) | payload      │ │
-│  ├────────────────────────────────────────────────┤ │
-│  │ order-123  | uuid-001          | OrderCreated │ │
-│  │ order-123  | uuid-002          | OrderPaid    │ │
-│  │ order-123  | uuid-003          | OrderShipped │ │
-│  └────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────┘
-                      │
-                      │ Events flow to perspectives
-                      ↓
-┌──────────────────────────────────────────────────────┐
-│  Perspective Checkpoint (wh_perspective_checkpoints) │
-│  ┌────────────────────────────────────────────────┐ │
-│  │ stream_id  | perspective_name | last_event_id │ │
-│  ├────────────────────────────────────────────────┤ │
-│  │ order-123  | OrderSummary     | uuid-003      │ │ ← Processed up to OrderShipped
-│  │ order-123  | InventorySummary | uuid-002      │ │ ← Processed up to OrderPaid
-│  └────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────┘
-                      │
-                      │ Perspectives update read models
-                      ↓
-┌──────────────────────────────────────────────────────┐
-│  Read Model (order_summaries)                        │
-│  ┌────────────────────────────────────────────────┐ │
-│  │ order_id  | customer_id | status   | total    │ │
-│  ├────────────────────────────────────────────────┤ │
-│  │ order-123 | cust-456    | Shipped  | $99.99   │ │ ← Denormalized view
-│  └────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────┘
-```
-
-**Key Concepts**:
+**Core checkpoint concepts**:
 - **Event Store**: Immutable log of all events per stream
-- **Checkpoint**: Last processed event per (stream, perspective)
-- **Time-Travel**: Replay events from any checkpoint
-- **Multiple Perspectives**: Same events, different read models
+- **Checkpoint**: Last processed event per (stream, perspective) pair
+- **Auto-Creation**: Checkpoints created automatically when events arrive (Phase 1)
+- **Fuzzy Matching**: Perspectives matched to events via regex patterns (Phase 2)
+- **Processing**: PerspectiveWorker polls and processes checkpoints (Phase 3)
+- **Error Tracking**: Failed checkpoints persist error messages (Phase 4)
+
+See [Perspective Worker](../workers/perspective-worker.md) for detailed checkpoint lifecycle, sequence diagrams, and runtime behavior.
 
 ---
 
@@ -971,19 +941,26 @@ public class TimeravelPerspectiveTests {
 
 ## Further Reading
 
+**Workers**:
+- [Perspective Worker](../workers/perspective-worker.md) - **Comprehensive checkpoint lifecycle and 4-phase system**
+- [Execution Lifecycle](../workers/execution-lifecycle.md) - Startup/shutdown coordination
+- [Database Readiness](../workers/database-readiness.md) - Dependency coordination
+
 **Core Concepts**:
 - [Perspectives Guide](../core-concepts/perspectives.md) - Basic perspective usage
 - [Dispatcher](../core-concepts/dispatcher.md) - Publishing events
-- [Event Store](../data-access/event-store.md) - Event storage patterns
+- [Event Store](../data/event-store.md) - Event storage patterns
 
 **Extensibility**:
 - [Custom Receptors](custom-receptors.md) - Advanced receptor patterns
 - [Custom Storage](custom-storage.md) - Storage backend implementations
 
 **Data Access**:
-- [Perspectives Storage](../data-access/perspectives-storage.md) - Schema design
-- [Work Coordination](../messaging/work-coordination.md) - Checkpoint tracking
+- [Perspectives Storage](../data/perspectives-storage.md) - Schema design
+
+**Messaging**:
+- [Work Coordinator](../messaging/work-coordinator.md) - Atomic batch processing and checkpoint tracking
 
 ---
 
-*Version 0.1.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 0.1.0 - Foundation Release | Last Updated: 2025-12-21*

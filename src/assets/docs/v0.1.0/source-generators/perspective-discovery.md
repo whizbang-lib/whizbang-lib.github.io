@@ -737,6 +737,11 @@ public abstract class BasePerspective : IPerspectiveOf<OrderCreated> {
 **Messaging**:
 - [Work Coordinator](../messaging/work-coordinator.md) - Atomic batch processing
 
+**Workers**:
+- [Perspective Worker](../workers/perspective-worker.md) - Checkpoint processing lifecycle and runtime behavior
+- [Execution Lifecycle](../workers/execution-lifecycle.md) - Startup/shutdown coordination
+- [Database Readiness](../workers/database-readiness.md) - Dependency coordination
+
 ---
 
-*Version 0.1.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 0.1.0 - Foundation Release | Last Updated: 2025-12-21*

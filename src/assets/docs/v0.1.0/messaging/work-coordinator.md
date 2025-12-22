@@ -682,6 +682,11 @@ public class WorkCoordinatorMetrics {
 **Data Access**:
 - [Event Store](../data/event-store.md) - Event storage and replay
 
+**Workers**:
+- [Perspective Worker](../workers/perspective-worker.md) - Uses work coordinator for checkpoint-based processing
+- [Execution Lifecycle](../workers/execution-lifecycle.md) - Startup/shutdown coordination
+- [Database Readiness](../workers/database-readiness.md) - Dependency coordination
+
 ---
 
 *Version 0.1.0 - Foundation Release | Last Updated: 2025-12-21*
