@@ -977,6 +977,14 @@ WHERE status = 'Failed';
 
 ### Problem: Only One Service Processing Work (Multi-Service Setup)
 
+:::new{type="fix" version="v0.1.1"}
+**FIXED IN v0.1.1**: This issue was resolved by ensuring all SQL migrations properly qualify `wh_active_streams` table references with the `__SCHEMA__` placeholder. Each service now has schema-qualified `wh_active_streams` tables (e.g., `inventory.wh_active_streams`, `bff.wh_active_streams`), allowing multiple services to independently process the same streams, matching Azure Service Bus behavior where each service has its own subscription.
+
+**Historical Context**: Earlier versions had unqualified `wh_active_streams` references causing a "last writer wins" race condition where both services would update a shared table, leaving only the last writer with stream ownership.
+
+**Affected Migrations**: 008_1 (table creation), 020 (store_outbox_messages), 021 (store_inbox_messages), 023 (cleanup_completed_streams), 024-026 (claim_orphaned_*), 027 (claim_orphaned_perspective_events).
+:::
+
 **Symptoms**: In a multi-service setup (e.g., InventoryWorker and BFF), only one service processes perspective work while the other remains idle. Perspective tables for the idle service remain empty.
 
 **Causes**:
