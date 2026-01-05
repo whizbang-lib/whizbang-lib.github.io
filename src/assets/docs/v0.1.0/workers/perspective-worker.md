@@ -514,6 +514,230 @@ builder.Services.Configure<PerspectiveWorkerOptions>(options => {
 
 ---
 
+## Completion Strategy Pattern
+
+The PerspectiveWorker uses a **completion strategy pattern** to control when and how perspective checkpoint results are reported to the Work Coordinator. This provides flexibility for different environments (production vs testing) and processing patterns.
+
+### Strategy Interface
+
+**IPerspectiveCompletionStrategy**:
+```csharp
+public interface IPerspectiveCompletionStrategy {
+  /// <summary>
+  /// Reports a perspective checkpoint completion.
+  /// </summary>
+  Task ReportCompletionAsync(
+    PerspectiveCheckpointCompletion completion,
+    IWorkCoordinator coordinator,
+    CancellationToken cancellationToken);
+
+  /// <summary>
+  /// Reports a perspective checkpoint failure.
+  /// </summary>
+  Task ReportFailureAsync(
+    PerspectiveCheckpointFailure failure,
+    IWorkCoordinator coordinator,
+    CancellationToken cancellationToken);
+
+  /// <summary>
+  /// Gets pending completions that have been collected but not yet reported.
+  /// </summary>
+  PerspectiveCheckpointCompletion[] GetPendingCompletions();
+
+  /// <summary>
+  /// Gets pending failures that have been collected but not yet reported.
+  /// </summary>
+  PerspectiveCheckpointFailure[] GetPendingFailures();
+
+  /// <summary>
+  /// Clears all pending completions and failures.
+  /// </summary>
+  void ClearPending();
+}
+```
+
+### Built-In Strategies
+
+#### BatchedCompletionStrategy (Default)
+
+**Purpose**: Collects completions in memory and reports them on the **next poll cycle**.
+
+**How it works**:
+```mermaid
+sequenceDiagram
+    participant PW as PerspectiveWorker
+    participant S as BatchedStrategy
+    participant WC as WorkCoordinator
+
+    Note over PW,WC: Cycle N: Process perspectives
+    PW->>S: ReportCompletionAsync(completion1)
+    Note over S: Store in memory
+    PW->>S: ReportCompletionAsync(completion2)
+    Note over S: Store in memory
+
+    Note over PW,WC: Cycle N+1: Report results
+    PW->>S: GetPendingCompletions()
+    S-->>PW: [completion1, completion2]
+    PW->>WC: ProcessWorkBatchAsync(completions=[1,2])
+    WC-->>WC: Persist to database
+    PW->>S: ClearPending()
+```
+
+**When to use**:
+- ✅ **Production environments** - Minimizes database round-trips
+- ✅ **High throughput** - Batches multiple completions per poll
+- ✅ **Normal latency tolerance** - Completions appear after next poll cycle
+
+**Example**:
+```csharp
+// Program.cs (production)
+builder.Services.AddHostedService<PerspectiveWorker>();  // Uses BatchedCompletionStrategy by default
+```
+
+**Trade-offs**:
+- **PRO**: Fewer database calls (better performance)
+- **CON**: Results delayed until next poll cycle (~1 second with default polling interval)
+
+#### InstantCompletionStrategy
+
+**Purpose**: Reports completions **immediately** via out-of-band coordinator methods.
+
+**How it works**:
+```mermaid
+sequenceDiagram
+    participant PW as PerspectiveWorker
+    participant S as InstantStrategy
+    participant WC as WorkCoordinator
+
+    Note over PW,WC: Process perspective
+    PW->>S: ReportCompletionAsync(completion)
+    S->>WC: ReportPerspectiveCompletionAsync(completion)
+    WC-->>WC: Persist immediately (out-of-band)
+    Note over S: Nothing stored in memory
+
+    Note over PW,WC: Next cycle
+    PW->>S: GetPendingCompletions()
+    S-->>PW: [] (empty - nothing pending)
+```
+
+**When to use**:
+- ✅ **Test environments** - Immediate consistency for assertions
+- ✅ **Low latency requirements** - Results visible immediately
+- ✅ **Interactive scenarios** - User-facing queries need instant data
+
+**Example**:
+```csharp
+// Test fixture or low-latency service
+var strategy = new InstantCompletionStrategy();
+var worker = new PerspectiveWorker(
+  instanceProvider,
+  scopeFactory,
+  Options.Create(new PerspectiveWorkerOptions { PollingIntervalMilliseconds = 100 }),
+  completionStrategy: strategy,  // ← Inject instant strategy
+  databaseReadinessCheck,
+  logger
+);
+```
+
+**Trade-offs**:
+- **PRO**: Zero delay - completions visible immediately
+- **CON**: More database calls (one per completion)
+
+### Out-of-Band Reporting Methods
+
+The `InstantCompletionStrategy` uses lightweight out-of-band methods on `IWorkCoordinator`:
+
+**ReportPerspectiveCompletionAsync**:
+```csharp
+// Lightweight method that ONLY updates perspective checkpoint
+// Does NOT affect heartbeats, work claiming, or other coordination
+await coordinator.ReportPerspectiveCompletionAsync(
+  new PerspectiveCheckpointCompletion {
+    StreamId = streamId,
+    PerspectiveName = "OrderSummaryPerspective",
+    LastEventId = lastEventId,
+    Status = PerspectiveProcessingStatus.Completed
+  },
+  cancellationToken
+);
+
+// Calls SQL function directly:
+// SELECT complete_perspective_checkpoint_work(
+//   stream_id, perspective_name, last_event_id, status, error
+// );
+```
+
+**ReportPerspectiveFailureAsync**:
+```csharp
+await coordinator.ReportPerspectiveFailureAsync(
+  new PerspectiveCheckpointFailure {
+    StreamId = streamId,
+    PerspectiveName = "OrderSummaryPerspective",
+    LastEventId = lastEventId,
+    Status = PerspectiveProcessingStatus.Failed,
+    Error = ex.Message
+  },
+  cancellationToken
+);
+```
+
+**Key Difference from `ProcessWorkBatchAsync`**:
+- **Out-of-band methods**: ONLY update perspective checkpoint (fast, focused)
+- **ProcessWorkBatchAsync**: Updates checkpoints + heartbeats + claims work + renews leases (comprehensive, heavier)
+
+### Choosing a Strategy
+
+| Factor | BatchedCompletionStrategy | InstantCompletionStrategy |
+|--------|---------------------------|---------------------------|
+| **Database Load** | ✅ Low (batched) | ⚠️ Higher (per-completion) |
+| **Latency** | ⚠️ Delayed (~1 poll cycle) | ✅ Immediate |
+| **Best For** | Production | Tests, low-latency |
+| **Throughput** | ✅ High | ⚠️ Lower |
+| **Simplicity** | ✅ Default behavior | Requires injection |
+
+**General Guidance**:
+- **Production**: Use `BatchedCompletionStrategy` (default) for best performance
+- **Tests**: Use `InstantCompletionStrategy` for immediate consistency
+- **Low-Latency Services**: Use `InstantCompletionStrategy` if sub-second visibility is required
+
+### Custom Strategies
+
+You can implement custom strategies for advanced scenarios:
+
+```csharp
+public sealed class UnitOfWorkCompletionStrategy : IPerspectiveCompletionStrategy {
+  private readonly List<PerspectiveCheckpointCompletion> _completions = [];
+  private readonly List<PerspectiveCheckpointFailure> _failures = [];
+  private readonly int _batchSize;
+
+  public UnitOfWorkCompletionStrategy(int batchSize = 10) {
+    _batchSize = batchSize;
+  }
+
+  public async Task ReportCompletionAsync(
+    PerspectiveCheckpointCompletion completion,
+    IWorkCoordinator coordinator,
+    CancellationToken cancellationToken) {
+    _completions.Add(completion);
+
+    // Flush when batch size reached
+    if (_completions.Count >= _batchSize) {
+      await FlushAsync(coordinator, cancellationToken);
+    }
+  }
+
+  // ... implement FlushAsync, GetPendingCompletions, etc.
+}
+```
+
+**Use Cases**:
+- **Time-based batching**: Flush after N seconds
+- **Unit-of-work batching**: Flush after logical group of work
+- **Adaptive batching**: Adjust batch size based on load
+- **Custom persistence**: Write to alternative storage (Redis, etc.)
+
+---
+
 ## Integration with Work Coordinator
 
 The PerspectiveWorker calls `IWorkCoordinator.ProcessWorkBatchAsync()` on every poll:
@@ -750,6 +974,61 @@ UPDATE wh_perspective_checkpoints
 SET status = 'Pending', error = NULL
 WHERE status = 'Failed';
 ```
+
+### Problem: Only One Service Processing Work (Multi-Service Setup)
+
+**Symptoms**: In a multi-service setup (e.g., InventoryWorker and BFF), only one service processes perspective work while the other remains idle. Perspective tables for the idle service remain empty.
+
+**Causes**:
+1. **Shared instance ID** - Multiple services using the same `IServiceInstanceProvider.InstanceId`
+2. Work coordinator treats multiple services as a single instance
+3. Only one service claims and processes work
+
+**Diagnostic Steps**:
+```csharp
+// Enable diagnostic logging to check instance IDs
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
+
+// Check logs for instance ID collision
+// Look for: "Perspective worker starting: Instance {InstanceId} ({ServiceName}@{HostName})"
+// If multiple services show the same InstanceId, you have a collision
+```
+
+**Solution**:
+```csharp
+// WRONG: Shared instance ID (causes collision)
+private readonly Guid _sharedInstanceId = Guid.CreateVersion7();
+builder.Services.AddSingleton<IServiceInstanceProvider>(sp =>
+  new TestServiceInstanceProvider(_sharedInstanceId, "InventoryWorker"));  // Same ID for both!
+
+// CORRECT: Unique instance IDs per service
+private readonly Guid _inventoryInstanceId = Guid.CreateVersion7();
+private readonly Guid _bffInstanceId = Guid.CreateVersion7();
+
+// InventoryWorker host
+inventoryBuilder.Services.AddSingleton<IServiceInstanceProvider>(sp =>
+  new TestServiceInstanceProvider(_inventoryInstanceId, "InventoryWorker"));
+
+// BFF host
+bffBuilder.Services.AddSingleton<IServiceInstanceProvider>(sp =>
+  new TestServiceInstanceProvider(_bffInstanceId, "BFF.API"));
+```
+
+**Verification**:
+```sql
+-- Check that both services are active
+SELECT
+  instance_id,
+  service_name,
+  last_heartbeat
+FROM wh_service_instances
+WHERE service_name IN ('InventoryWorker', 'BFF.API')
+ORDER BY service_name;
+
+-- Should show TWO distinct instance_id values (one per service)
+```
+
+**Related**: This issue commonly occurs in test fixtures where multiple services share a single test host. In production, each service typically runs in its own process with a unique instance ID.
 
 ---
 
