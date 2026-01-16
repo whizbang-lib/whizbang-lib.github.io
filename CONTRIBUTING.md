@@ -508,6 +508,82 @@ npm run build
 npm run search-index
 ```
 
+### MCP Server Setup (Optional for AI-Assisted Development)
+
+The Whizbang Documentation MCP (Model Context Protocol) server provides programmatic access to documentation for AI assistants like Claude Code. This is **optional** but highly recommended for contributors using Claude Code or similar AI development tools.
+
+**What it provides:**
+- Search documentation programmatically
+- Find code examples by topic
+- Validate `<docs>` tags in library code
+- Link code to documentation and tests
+
+#### Build the MCP Server
+
+```bash
+# From the repository root
+cd mcp-docs-server
+
+# Install dependencies
+npm install
+
+# Build the server
+npm run build
+```
+
+#### Configure Claude Code
+
+Add the server to your Claude Code configuration using **absolute paths** (replace `<workspace>` with your actual workspace path):
+
+**Option 1: Using CLI (recommended)**
+
+```bash
+claude mcp add whizbang-docs \
+  -e DOCS_SOURCE=local \
+  -e DOCS_PATH=<workspace>/whizbang-lib.github.io/src/assets/docs \
+  -- node <workspace>/whizbang-lib.github.io/mcp-docs-server/build/index.js
+```
+
+**Option 2: Manual configuration**
+
+Add to your MCP settings in VSCode:
+
+```json
+{
+  "whizbang-docs": {
+    "command": "node",
+    "args": ["<workspace>/whizbang-lib.github.io/mcp-docs-server/build/index.js"],
+    "env": {
+      "DOCS_SOURCE": "local",
+      "DOCS_PATH": "<workspace>/whizbang-lib.github.io/src/assets/docs"
+    }
+  }
+}
+```
+
+**Note**: Replace `<workspace>` with your actual workspace directory path. For example:
+- macOS/Linux: `/Users/yourname/projects/whizbang-lib.github.io`
+- Windows: `C:\Users\yourname\projects\whizbang-lib.github.io`
+
+#### Activate the Server
+
+After configuration:
+
+1. **Reload VSCode**: Open Command Palette (Cmd/Ctrl+Shift+P) → "Developer: Reload Window"
+2. **Verify**: The MCP tools should now be available with `mcp__whizbang-docs__*` prefix
+
+#### Available Tools
+
+Once configured, you'll have access to tools like:
+
+- `mcp__whizbang-docs__search-docs` - Search all documentation
+- `mcp__whizbang-docs__find-examples` - Find C# code examples
+- `mcp__whizbang-docs__get-code-location` - Find code implementing a concept
+- `mcp__whizbang-docs__get-related-docs` - Find docs for a symbol
+- `mcp__whizbang-docs__validate-doc-links` - Validate `<docs>` tags in code
+
+See [mcp-docs-server/README.md](./mcp-docs-server/README.md) for complete tool documentation.
+
 ### Project Structure
 
 ```

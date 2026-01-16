@@ -81,6 +81,8 @@ This project includes a Model Context Protocol (MCP) server for programmatic acc
 
 ## Documentation MCP Server - Usage Modes
 
+**📖 For complete setup instructions**, see [CONTRIBUTING.md - MCP Server Setup](../CONTRIBUTING.md#mcp-server-setup-optional-for-ai-assisted-development) which includes build steps, configuration options, and activation instructions.
+
 The docs MCP server supports multiple configurations:
 
 ### Mode 1: Local Development

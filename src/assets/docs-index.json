@@ -1,11 +1,1150 @@
 [
   {
+    "slug": "backlog/_folder",
+    "title": "Development Backlog",
+    "category": "backlog",
+    "description": "Approved features awaiting scheduling and development",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "declined/_folder",
+    "title": "Declined Proposals",
+    "category": "declined",
+    "description": "Declined proposals archived for reference",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "drafts/_folder",
+    "title": "Draft Documentation",
+    "category": "drafts",
+    "description": "Documentation currently being written and developed",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "drafts/test-error-display",
+    "title": "Test Error Display",
+    "category": "Test",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "future/README",
+    "title": "Future Versions Roadmap",
+    "category": "Roadmap",
+    "order": 10,
+    "description": "Long-term vision and planned features for Whizbang beyond v0.5.0",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/_folder",
+    "title": "Proposed Features",
+    "category": "proposals",
+    "description": "Proposed features and documentation under consideration",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/advanced-features",
+    "title": "Advanced Features",
+    "category": "Architecture & Design",
+    "order": 10,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/concurrency-control",
+    "title": "Concurrency Control",
+    "category": "Architecture & Design",
+    "order": 5,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/deployment-operations",
+    "title": "Deployment & Operations",
+    "category": "Architecture & Design",
+    "order": 15,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/domain-ownership",
+    "title": "Domain Ownership",
+    "category": "Architecture & Design",
+    "order": 6,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/event-store-projections",
+    "title": "Event Store & Projection Architecture",
+    "category": "Architecture & Design",
+    "order": 4,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/flags-tags-system",
+    "title": "Flags & Tags System",
+    "category": "Architecture & Design",
+    "order": 11,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/multi-tenancy",
+    "title": "Multi-Tenancy",
+    "category": "Architecture & Design",
+    "order": 8,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/observability-metrics",
+    "title": "Observability & Metrics",
+    "category": "Architecture & Design",
+    "order": 14,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/open-questions",
+    "title": "Open Design Questions - RESOLVED",
+    "category": "Architecture & Design",
+    "order": 3,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/policy-engine",
+    "title": "Policy Engine",
+    "category": "Architecture & Design",
+    "order": 12,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/projection-management",
+    "title": "Projection Management",
+    "category": "Architecture & Design",
+    "order": 7,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/schema-evolution",
+    "title": "Schema Evolution & Event Versioning",
+    "category": "Architecture & Design",
+    "order": 9,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/source-generation-ide",
+    "title": "Source Generation & IDE Integration",
+    "category": "Architecture & Design",
+    "order": 12,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/testing-development-tools",
+    "title": "Testing & Development Tools",
+    "category": "Architecture & Design",
+    "order": 13,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "roadmap/FEATURE-EVOLUTION",
+    "title": "Feature Evolution Matrix",
+    "category": "Roadmap",
+    "order": 5,
+    "description": "Track how each feature evolves across versions with clear progression indicators",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "roadmap/README",
+    "title": "Whizbang Implementation Roadmap",
+    "category": "Roadmap",
+    "order": 1,
+    "description": "Complete implementation roadmap for building the Whizbang .NET library from foundation to production",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "roadmap/SESSION-CONTEXT",
+    "title": "Session Context for Claude",
+    "category": "Roadmap",
+    "order": 99,
+    "description": "Essential context for starting new Claude sessions on the Whizbang implementation",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "roadmap/architecture",
+    "title": "Architecture Overview",
+    "category": "Roadmap",
+    "order": 3,
+    "description": "High-level architecture and component relationships in Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "roadmap/philosophy",
+    "title": "Implementation Philosophy",
+    "category": "Roadmap",
+    "order": 2,
+    "description": "Core principles and philosophy driving the Whizbang implementation",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "roadmap/success-metrics",
+    "title": "Success Metrics",
+    "category": "Roadmap",
+    "order": 4,
+    "description": "How we measure success for each version and component of Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/README",
+    "title": "Version 0.1.0 - Foundation Release",
+    "category": "Implementation",
+    "order": 1,
+    "description": "The foundation release of Whizbang establishing all core components with comprehensive testing and IDE support",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/_folder",
+    "title": "Version 0.1.0 - Foundation",
+    "category": "v0.1.0",
+    "description": "The foundation release establishing all core components with in-memory implementations",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/advanced-topics/deployment-strategies",
+    "title": "Deployment Strategies",
+    "category": "Advanced Topics",
+    "order": 7,
+    "description": "Deployment patterns - blue-green, canary, rolling updates, feature flags, and rollback strategies",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/advanced-topics/monitoring",
+    "title": "Monitoring & Observability",
+    "category": "Advanced Topics",
+    "order": 6,
+    "description": "Application monitoring - Application Insights, Prometheus, distributed tracing, metrics, and dashboards",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/advanced-topics/multi-tenancy",
+    "title": "Multi-Tenancy Patterns",
+    "category": "Advanced Topics",
+    "order": 4,
+    "description": "Multi-tenancy architecture patterns - database-per-tenant, schema-per-tenant, row-level security",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/advanced-topics/native-aot",
+    "title": "Native AOT",
+    "category": "Advanced Topics",
+    "order": 3,
+    "description": "Deploy with Native AOT - zero reflection, trim-safe code, and AOT-compatible patterns",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/advanced-topics/performance-tuning",
+    "title": "Performance Tuning",
+    "category": "Advanced Topics",
+    "order": 1,
+    "description": "Optimize Whizbang performance - zero-allocation patterns, pooling, batching, and profiling",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/advanced-topics/scaling",
+    "title": "Scaling Patterns",
+    "category": "Advanced Topics",
+    "order": 8,
+    "description": "Horizontal scaling - autoscaling, partitioning, load balancing, and performance under load",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/advanced-topics/security",
+    "title": "Security Best Practices",
+    "category": "Advanced Topics",
+    "order": 5,
+    "description": "Security guidelines - authentication, authorization, encryption, secrets management, OWASP Top 10",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/advanced-topics/testing-receptors",
+    "title": "Testing Receptors & Perspectives",
+    "category": "Advanced Topics",
+    "order": 2,
+    "description": "Unit testing patterns for receptors and perspectives - mocking, fixtures, and test strategies",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/advanced-topics/troubleshooting",
+    "title": "Troubleshooting Guide",
+    "category": "Advanced Topics",
+    "order": 9,
+    "description": "Common issues, debugging techniques, diagnostic tools, and solutions",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/architecture/message-lifecycle",
+    "title": "Message Lifecycle & Architecture",
+    "category": "Architecture",
+    "order": 1,
+    "description": "Complete guide to message flow through Whizbang - Commands, Events, Work Coordinator, and all the hooks between Dispatcher, Receptors, Perspectives, and Outbox/Inbox",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/attributes/streamkey",
+    "title": "StreamKey Attribute",
+    "category": "Attributes",
+    "description": "Marks a property as the stream key for event sourcing and perspective event ordering",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/components/README",
+    "title": "Core Components Overview",
+    "category": "Components",
+    "order": 1,
+    "description": "Overview of all core components in Whizbang v0.1.0",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/components/dispatcher",
+    "title": "Dispatcher Component",
+    "category": "Components",
+    "order": 2,
+    "description": "Core message routing and orchestration with basic handler discovery",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/components/drivers",
+    "title": "Drivers Component",
+    "category": "Components",
+    "order": 8,
+    "description": "Basic in-memory storage driver for development and testing",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/components/ledger",
+    "title": "Ledger Component",
+    "category": "Components",
+    "order": 7,
+    "description": "In-memory event store with basic append and read operations",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/components/lenses",
+    "title": "Lenses Component",
+    "category": "Components",
+    "order": 5,
+    "description": "Read-only interfaces for querying data - the query side of Whizbang's CQRS implementation",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/components/perspectives",
+    "title": "Perspectives Component",
+    "category": "Components",
+    "order": 4,
+    "description": "Event handlers that update various views of your data - the write side of Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/components/policy-engine",
+    "title": "Policy Engine Component",
+    "category": "Components",
+    "order": 6,
+    "description": "Cross-cutting concerns as composable policies - retry, timeout, cache, and circuit breaker",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/components/receptors",
+    "title": "Receptors Component",
+    "category": "Components",
+    "order": 3,
+    "description": "Command receivers that make decisions and emit events - the foundation of Whizbang's event-driven architecture",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/components/transports",
+    "title": "Transports Component",
+    "category": "Components",
+    "order": 9,
+    "description": "Basic in-process message transport for local development",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/dispatcher",
+    "title": "Dispatcher Deep Dive",
+    "category": "Core Concepts",
+    "order": 1,
+    "description": "Master the Whizbang Dispatcher - three dispatch patterns (SendAsync, LocalInvokeAsync, PublishAsync) for commands, queries, and events",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/fuzzy-matching",
+    "title": "MatchStrictness: Fuzzy Type Matching Control",
+    "category": "v0.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/lenses",
+    "title": "Lenses Guide",
+    "category": "Core Concepts",
+    "order": 4,
+    "description": "Master Whizbang Lenses - query-optimized repositories for fast, efficient access to read models maintained by Perspectives",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/lifecycle-receptors",
+    "title": "Lifecycle Receptors",
+    "category": "Core Concepts",
+    "order": 10,
+    "description": "Complete API reference for lifecycle receptors - [FireAt] attribute, ILifecycleContext injection, compile-time vs runtime registration, and AOT-compatible patterns",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/lifecycle-stages",
+    "title": "Lifecycle Stages",
+    "category": "Core Concepts",
+    "order": 9,
+    "description": "Complete reference for all 18 lifecycle stages in Whizbang message processing pipeline - timing, guarantees, and use cases",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/message-context",
+    "title": "Message Context & Tracing",
+    "category": "Core Concepts",
+    "order": 5,
+    "description": "Track message flow across distributed systems with MessageId, CorrelationId, and CausationId - automatic distributed tracing built into Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/observability",
+    "title": "Observability & Message Hops",
+    "category": "Core Concepts",
+    "order": 6,
+    "description": "Understand Whizbang's hop-based observability architecture - MessageEnvelope and MessageHop for distributed tracing and debugging",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/perspectives/association-info",
+    "title": "PerspectiveAssociationInfo: Strongly-Typed Associations with Delegates",
+    "category": "v0.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/perspectives/multi-stream",
+    "title": "Multi-Stream Perspectives",
+    "category": "Core Concepts",
+    "order": 1,
+    "description": "IGlobalPerspectiveFor pattern for aggregating events across multiple streams using partition keys - inspired by Marten's MultiStreamProjection",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/perspectives/typed-associations",
+    "title": "GetPerspectiveAssociations: Strongly-Typed Perspective Queries",
+    "category": "v0.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/perspectives",
+    "title": "Perspectives Guide",
+    "category": "Core Concepts",
+    "order": 3,
+    "description": "Master Whizbang Perspectives - pure function event handlers that maintain eventually consistent read models optimized for queries",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/receptors",
+    "title": "Receptors Guide",
+    "category": "Core Concepts",
+    "order": 2,
+    "description": "Master Whizbang Receptors - stateless message handlers that encapsulate business logic, validation, and decision-making",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/type-formatting",
+    "title": "TypeFormatter: Type Name Formatting Utility",
+    "category": "v0.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/type-matching",
+    "title": "TypeMatcher: Type Name Matching Utilities",
+    "category": "v0.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/type-qualification",
+    "title": "TypeQualification: Type Name Formatting Control",
+    "category": "v0.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/core-concepts/whizbang-ids",
+    "title": "WhizbangIds: Strongly-Typed Identity Values",
+    "category": "v0.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/customization-examples/event-sourcing-cqrs",
+    "title": "Event Sourcing & CQRS",
+    "category": "Customization Examples",
+    "order": 2,
+    "description": "Implement full event sourcing with CQRS - event store, snapshots, temporal queries, and projections",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/customization-examples/microservices-orchestration",
+    "title": "Microservices Orchestration",
+    "category": "Customization Examples",
+    "order": 3,
+    "description": "Implement saga orchestration patterns - distributed workflows, compensation, and process managers",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/customization-examples/multi-tenant-saas",
+    "title": "Multi-Tenant SaaS",
+    "category": "Customization Examples",
+    "order": 1,
+    "description": "Build multi-tenant SaaS applications with tenant isolation, per-tenant databases, and cross-tenant analytics",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/customization-examples/real-time-analytics",
+    "title": "Real-Time Analytics",
+    "category": "Customization Examples",
+    "order": 4,
+    "description": "Build real-time analytics dashboards - streaming metrics, SignalR updates, and live KPIs",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/data/dapper-integration",
+    "title": "Dapper Integration",
+    "category": "Data Access",
+    "order": 1,
+    "description": "Lightweight, high-performance data access with Dapper for Whizbang perspectives and lenses - simple SQL, minimal overhead",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/data/efcore-integration",
+    "title": "EF Core Integration",
+    "category": "Data Access",
+    "order": 2,
+    "description": "Full-featured ORM with EF Core 10 for complex domain models - JSONB support, UUIDv7, migrations, and advanced querying",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/data/event-store",
+    "title": "Event Store",
+    "category": "Data Access",
+    "order": 4,
+    "description": "Event sourcing and stream storage - event streams, replay, checkpoints, snapshots, and temporal queries",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/data/perspectives-storage",
+    "title": "Perspectives Storage",
+    "category": "Data Access",
+    "order": 3,
+    "description": "Read model schema design for perspectives - denormalization strategies, JSONB columns, indexing, and high-volume partitioning",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/data-access/schema-generation-pattern",
+    "title": "Schema Generation Pattern",
+    "category": "Data Access",
+    "order": 6,
+    "description": "Database-agnostic schema definitions with ISchemaBuilder for Postgres, SQLite, and custom database engines",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/diagnostics/whiz030",
+    "title": "WHIZ030: Perspective Event Missing StreamKey",
+    "category": "Diagnostics",
+    "description": "Event type used in perspective must have exactly one property marked with [StreamKey] attribute",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/diagnostics/whiz031",
+    "title": "WHIZ031: Multiple StreamKey Attributes",
+    "category": "Diagnostics",
+    "description": "Event type has multiple properties marked with [StreamKey] - only one is allowed",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/extensibility/custom-dispatchers",
+    "title": "Custom Dispatchers",
+    "category": "Extensibility",
+    "order": 9,
+    "description": "Implement custom dispatcher patterns - mediator, event sourcing, multi-tenant routing",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/extensibility/custom-health-checks",
+    "title": "Custom Health Checks",
+    "category": "Extensibility",
+    "order": 6,
+    "description": "Implement custom health checks for transports, databases, external APIs, and custom services",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/extensibility/custom-id-generators",
+    "title": "Custom ID Generators",
+    "category": "Extensibility",
+    "order": 8,
+    "description": "Implement custom ID generation strategies - Snowflake IDs, ULID, CUID, or custom schemes",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/extensibility/custom-perspectives",
+    "title": "Custom Perspectives",
+    "category": "Extensibility",
+    "order": 3,
+    "description": "Advanced perspective patterns - time-travel, snapshots, caching, batching, and custom storage backends",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/extensibility/custom-policies",
+    "title": "Custom Policies",
+    "category": "Extensibility",
+    "order": 5,
+    "description": "Advanced policy patterns - weighted policies, dynamic registration, async evaluation, caching, and A/B testing",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/extensibility/custom-receptors",
+    "title": "Custom Receptors",
+    "category": "Extensibility",
+    "order": 2,
+    "description": "Advanced receptor customization patterns - streaming, lifecycle hooks, base classes, and performance optimization",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/extensibility/custom-serializers",
+    "title": "Custom Serializers",
+    "category": "Extensibility",
+    "order": 7,
+    "description": "Implement custom serializers for Protobuf, MessagePack, or custom binary formats - AOT-compatible patterns",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/extensibility/custom-storage",
+    "title": "Custom Storage",
+    "category": "Extensibility",
+    "order": 10,
+    "description": "Implement custom storage backends - Redis, MongoDB, Elasticsearch, Cassandra, or custom databases",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/extensibility/custom-transports",
+    "title": "Custom Transports",
+    "category": "Extensibility",
+    "order": 4,
+    "description": "Implement custom transports for HTTP, gRPC, Kafka, RabbitMQ, or any messaging system - AOT-compatible patterns",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/extensibility/custom-work-coordinators",
+    "title": "Custom Work Coordinators",
+    "category": "Extensibility",
+    "order": 11,
+    "description": "Implement custom work coordination strategies - distributed locks, Redis queues, or custom lease management",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/extensibility/database-schema-framework",
+    "title": "Database Schema Framework",
+    "category": "Extensibility",
+    "order": 11,
+    "description": "Implement database drivers using the Whizbang.Data.Schema framework - database-agnostic table and column definitions for PostgreSQL, SQLite, SQL Server, and custom databases",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/extensibility/hooks-and-middleware",
+    "title": "Hooks and Middleware",
+    "category": "Extensibility",
+    "order": 1,
+    "description": "Pipeline behaviors for cross-cutting concerns - logging, validation, retry, caching, and custom pre/post processing",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/extensibility/plugin-architecture",
+    "title": "Plugin Architecture",
+    "category": "Extensibility",
+    "order": 12,
+    "description": "Design plugin systems - dynamic assembly loading, hot-reload, and extension points",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/getting-started/installation",
+    "title": "Installation Guide",
+    "category": "Getting Started",
+    "order": 2,
+    "description": "Install Whizbang and set up your first project with NuGet packages, project templates, and IDE configuration",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/getting-started/introduction",
+    "title": "Introduction to Whizbang",
+    "category": "Getting Started",
+    "order": 1,
+    "description": "Learn about Whizbang - a zero-reflection, AOT-compatible .NET library for building event-driven, CQRS, and event-sourced applications",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/getting-started/project-structure",
+    "title": "Project Structure Guide",
+    "category": "Getting Started",
+    "order": 4,
+    "description": "Organize your Whizbang application with recommended project structures, separation of concerns, and multi-service architectures",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/getting-started/quick-start",
+    "title": "Quick Start Tutorial",
+    "category": "Getting Started",
+    "order": 3,
+    "description": "Build your first Whizbang application in 10 minutes - create messages, receptors, and dispatch commands with complete working examples",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/infrastructure/aspire-integration",
+    "title": ".NET Aspire Integration",
+    "category": "Infrastructure",
+    "order": 1,
+    "description": "Cloud-native orchestration for Whizbang applications with .NET Aspire - automatic infrastructure provisioning and service discovery",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/infrastructure/health-checks",
+    "title": "Health Checks",
+    "category": "Infrastructure",
+    "order": 2,
+    "description": "Application health monitoring with built-in health checks for transports, databases, and custom components",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/infrastructure/policies",
+    "title": "Policy-Based Routing",
+    "category": "Infrastructure",
+    "order": 4,
+    "description": "Dynamic message routing and configuration via predicate-based policies - multi-tenancy, environment-based routing, and execution strategies",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/infrastructure/pooling",
+    "title": "Object Pooling",
+    "category": "Infrastructure",
+    "order": 3,
+    "description": "Zero-allocation object pooling for high-performance message processing - reduce heap pressure and GC overhead",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/messaging/commands-events",
+    "title": "Commands and Events",
+    "category": "v0.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/messaging/failure-handling",
+    "title": "Failure Handling",
+    "category": "v0.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/messaging/idempotency-patterns",
+    "title": "Idempotency Patterns",
+    "category": "v0.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/messaging/inbox-pattern",
+    "title": "Inbox Pattern",
+    "category": "Messaging",
+    "order": 2,
+    "description": "Achieve exactly-once message processing with the Inbox Pattern - automatic deduplication and idempotent message handling",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/messaging/message-envelopes",
+    "title": "Message Envelopes Deep Dive",
+    "category": "Messaging",
+    "order": 4,
+    "description": "Deep dive into Message Envelopes - hop-based distributed tracing across Outbox, Inbox, and message transports",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/messaging/multi-instance-coordination",
+    "title": "Multi-Instance Coordination",
+    "category": "v0.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/messaging/outbox-pattern",
+    "title": "Outbox Pattern",
+    "category": "Messaging",
+    "order": 1,
+    "description": "Implement reliable cross-service event publishing with the Outbox Pattern - guaranteed delivery without distributed transactions",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/messaging/topic-filters",
+    "title": "Topic Filters",
+    "category": "v0.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/messaging/work-coordination",
+    "title": "Work Coordination",
+    "category": "v0.1.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/messaging/work-coordinator",
+    "title": "Work Coordinator",
+    "category": "Messaging",
+    "order": 3,
+    "description": "Master the Work Coordinator - atomic batch processing for Outbox, Inbox, and event store tracking with lease-based coordination",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/source-generators/aggregate-ids",
+    "title": "Aggregate IDs",
+    "category": "Source Generators",
+    "order": 4,
+    "description": "Zero-reflection aggregate ID extraction for PolicyContext - compile-time discovery of [AggregateId] marked properties",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/source-generators/json-contexts",
+    "title": "JSON Contexts",
+    "category": "Source Generators",
+    "order": 5,
+    "description": "AOT-compatible JSON serialization with compile-time JsonSerializerContext generation - zero reflection for Native AOT",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/source-generators/message-registry",
+    "title": "Message Registry",
+    "category": "Source Generators",
+    "order": 3,
+    "description": "VSCode extension integration via compile-time message registry - navigate from messages to handlers with IDE tooling",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/source-generators/perspective-discovery",
+    "title": "Perspective Discovery",
+    "category": "Source Generators",
+    "order": 2,
+    "description": "Compile-time perspective discovery for event-driven read models - zero reflection registration and Event Store integration",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/source-generators/receptor-discovery",
+    "title": "Receptor Discovery",
+    "category": "Source Generators",
+    "order": 1,
+    "description": "Compile-time receptor discovery with Roslyn source generators - zero reflection, AOT-compatible message routing",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/source-generators/topic-filter-discovery",
+    "title": "Topic Filter Discovery",
+    "category": "Source Generators",
+    "order": 6,
+    "description": "Compile-time topic filter discovery with Roslyn source generators - type-safe, zero-reflection message routing configuration",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/testing/lifecycle-synchronization",
+    "title": "Lifecycle Synchronization",
+    "category": "Testing",
+    "order": 3,
+    "description": "Deterministic test synchronization using lifecycle receptors - eliminate race conditions in integration tests with PostPerspectiveInline stage",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/transports/azure-service-bus",
+    "title": "Azure Service Bus Transport",
+    "category": "Transports",
+    "order": 1,
+    "description": "Reliable cross-service messaging with Azure Service Bus topics and subscriptions - AOT-compatible with correlation filters",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/transports/in-memory",
+    "title": "In-Memory Transport",
+    "category": "Transports",
+    "order": 2,
+    "description": "Synchronous in-process message delivery for testing and single-process scenarios - zero external dependencies",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/transports/rabbitmq",
+    "title": "RabbitMQ Transport",
+    "category": "Transports",
+    "order": 2,
+    "description": "Distributed event-driven messaging with RabbitMQ topic exchanges - AOT-compatible with channel pooling and dead-letter queue support",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/tutorial/analytics-service",
+    "title": "Analytics Service",
+    "category": "Tutorial",
+    "order": 8,
+    "description": "Build the Analytics Worker - real-time analytics, time-series perspectives, and reporting dashboards",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/tutorial/customer-service",
+    "title": "Customer Service (BFF)",
+    "category": "Tutorial",
+    "order": 7,
+    "description": "Build the Customer Service BFF - perspectives, read models, CQRS query side, and GraphQL API",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/tutorial/deployment",
+    "title": "Deployment",
+    "category": "Tutorial",
+    "order": 10,
+    "description": "Deploy to production - Azure Kubernetes Service, CI/CD pipelines, monitoring, and scaling",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/tutorial/inventory-service",
+    "title": "Inventory Service",
+    "category": "Tutorial",
+    "order": 3,
+    "description": "Build the Inventory Worker - event subscription, stock reservations, compensation, and perspectives",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/tutorial/notification-service",
+    "title": "Notification Service",
+    "category": "Tutorial",
+    "order": 5,
+    "description": "Build the Notification Worker - email/SMS notifications, template rendering, and delivery tracking",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/tutorial/order-management",
+    "title": "Order Management Service",
+    "category": "Tutorial",
+    "order": 2,
+    "description": "Build the Order Service - HTTP API, command handling, event publishing, and PostgreSQL persistence",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/tutorial/payment-processing",
+    "title": "Payment Processing Service",
+    "category": "Tutorial",
+    "order": 4,
+    "description": "Build the Payment Worker - payment gateway integration, distributed transactions, and compensation",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/tutorial/shipping-service",
+    "title": "Shipping Service",
+    "category": "Tutorial",
+    "order": 6,
+    "description": "Build the Shipping Worker - carrier API integration, shipment creation, tracking, and status updates",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/tutorial/testing-strategy",
+    "title": "Testing Strategy",
+    "category": "Tutorial",
+    "order": 9,
+    "description": "Comprehensive testing strategy - unit tests, integration tests, e2e tests, mocks, and fixtures",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/tutorial/tutorial-overview",
+    "title": "ECommerce Tutorial Overview",
+    "category": "Tutorial",
+    "order": 1,
+    "description": "Build a complete e-commerce system with Whizbang - microservices, event sourcing, CQRS, and distributed messaging",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/workers/database-readiness",
+    "title": "Database Readiness",
+    "category": "Workers",
+    "order": 3,
+    "description": "Database dependency coordination - IDatabaseReadinessCheck pattern, startup coordination, retry logic, and caching strategies",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/workers/execution-lifecycle",
+    "title": "Execution Lifecycle",
+    "category": "Workers",
+    "order": 2,
+    "description": "Application startup and shutdown coordination - IExecutionStrategy lifecycle hooks, graceful shutdown with work draining, and worker coordination",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v0.1.0/workers/perspective-worker",
+    "title": "Perspective Worker",
+    "category": "Workers",
+    "order": 1,
+    "description": "Background worker for processing perspective checkpoints - automatic checkpoint creation, polling workflow, error tracking, and startup coordination",
+    "videos": [],
+    "examples": []
+  },
+  {
     "slug": "v1.0.0/data/efcore-json-configuration",
     "title": "EF Core 10 JSON Configuration",
     "category": "Data",
     "order": 10,
     "description": "Configuring EF Core 10 with custom JSON converters for JSONB columns",
-    "tags": "efcore, json, jsonb, postgresql, npgsql, converters",
-    "version": "v1.0.0"
+    "videos": [],
+    "examples": []
   }
 ]
