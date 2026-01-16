@@ -215,6 +215,329 @@ Subscriber (Fulfillment Service)
 
 ---
 
+## Running the Example Project
+
+The **ECommerce sample** demonstrates cross-service event distribution using **Aspire orchestration** with switchable transport providers. The same application code runs with either **RabbitMQ** or **Azure Service Bus** using compiler directives.
+
+### Architecture Overview
+
+The sample includes:
+- **OrderService.API**: Handles order commands and workflows
+- **InventoryWorker**: Manages inventory and publishes stock events
+- **PaymentWorker**: Processes payment transactions
+- **ShippingWorker**: Handles fulfillment and shipping
+- **NotificationWorker**: Sends customer notifications
+- **BFF.API**: Aggregates cross-service data via perspectives (GraphQL + REST)
+- **ECommerce.UI**: Angular frontend (port 4200)
+
+**Cross-Service Event Flow**:
+```
+OrderService → "orders" topic → [Payment, Shipping, Inventory, Notification, BFF]
+InventoryWorker → "products" topic → [BFF, InventoryWorker]
+PaymentWorker → "payments" topic → [BFF]
+ShippingWorker → "shipping" topic → [BFF]
+```
+
+### Transport Provider Selection
+
+The ECommerce sample uses **compiler directives** to switch between transports at build time:
+
+```xml
+<!-- Directory.Build.props -->
+<DefineConstants Condition="'$(TransportProvider)' == ''">AZURESERVICEBUS</DefineConstants>
+<DefineConstants Condition="'$(TransportProvider)' == 'RabbitMQ'">RABBITMQ</DefineConstants>
+<DefineConstants Condition="'$(TransportProvider)' == 'AzureServiceBus'">AZURESERVICEBUS</DefineConstants>
+```
+
+**Default**: Azure Service Bus
+**Switch to RabbitMQ**: Add `/p:TransportProvider=RabbitMQ` to build/run commands
+
+### Prerequisites
+
+**Required Tools**:
+- **.NET 10 SDK** (or later)
+- **Docker Desktop** (for emulators)
+- **Node.js 20+** (for Angular UI)
+- **.NET Aspire Workload**: `dotnet workload install aspire`
+
+**Verify Installation**:
+```bash
+dotnet --version  # Should be 10.0.1 or later
+docker --version  # Should be 20.10 or later
+node --version    # Should be 20.0 or later
+dotnet workload list | grep aspire  # Should show aspire workload
+```
+
+---
+
+### Running with RabbitMQ
+
+**1. Build with RabbitMQ Transport**:
+```bash
+cd samples/ECommerce
+
+# Build all projects with RabbitMQ transport
+dotnet build /p:TransportProvider=RabbitMQ
+```
+
+**2. Start Aspire AppHost**:
+```bash
+cd ECommerce.AppHost
+
+# Run with RabbitMQ (Aspire dashboard at https://localhost:17036)
+dotnet run /p:TransportProvider=RabbitMQ
+```
+
+**What Aspire Does**:
+- ✅ Starts **RabbitMQ container** (port 5672, management UI at 15672)
+- ✅ Starts **PostgreSQL container** (port 5432, pgAdmin at 5050)
+- ✅ Creates **exchanges** (`orders`, `products`, `payments`, `shipping`, `inbox`)
+- ✅ Creates **queue bindings** with routing patterns
+- ✅ Initializes **7 microservices** with dependency injection
+- ✅ Starts **Angular UI** at http://localhost:4200
+- ✅ Provides **Aspire Dashboard** for observability
+
+**3. Access Services**:
+```bash
+# Aspire Dashboard
+https://localhost:17036
+
+# RabbitMQ Management UI (guest/guest)
+http://localhost:15672
+
+# PostgreSQL pgAdmin (admin@admin.com/admin)
+http://localhost:5050
+
+# Angular UI
+http://localhost:4200
+
+# BFF Swagger UI
+http://localhost:<bff-port>/swagger
+
+# BFF GraphQL Playground
+http://localhost:<bff-port>/graphql
+```
+
+**4. View RabbitMQ Topology**:
+- Navigate to **Exchanges** tab → See `orders`, `products`, `payments`, `shipping`, `inbox`
+- Navigate to **Queues** tab → See all service queues with bindings
+- Navigate to **Connections** tab → See all microservice connections
+
+**5. Stop All Services**:
+```bash
+# Ctrl+C in terminal running AppHost
+# Containers persist by default (ContainerLifetime.Persistent)
+
+# To clean up containers:
+docker stop rabbitmq postgres pgadmin
+docker rm rabbitmq postgres pgadmin
+```
+
+---
+
+### Running with Azure Service Bus Emulator
+
+**1. Build with Azure Service Bus Transport**:
+```bash
+cd samples/ECommerce
+
+# Build with Azure Service Bus (default)
+dotnet build
+
+# Or explicitly:
+dotnet build /p:TransportProvider=AzureServiceBus
+```
+
+**2. Start Aspire AppHost**:
+```bash
+cd ECommerce.AppHost
+
+# Run with Azure Service Bus (Aspire dashboard at https://localhost:17036)
+dotnet run
+```
+
+**What Aspire Does**:
+- ✅ Starts **Azure Service Bus Emulator** (port 5672)
+- ✅ Creates **topics** (`orders`, `products`, `payments`, `shipping`, `inbox`)
+- ✅ Creates **subscriptions** with correlation filters
+- ✅ Starts **PostgreSQL container** (port 5432, pgAdmin at 5050)
+- ✅ Initializes **7 microservices** with dependency injection
+- ✅ Starts **Angular UI** at http://localhost:4200
+- ✅ Provides **Aspire Dashboard** for observability
+
+**3. Access Services** (same as RabbitMQ except no Management UI):
+```bash
+# Aspire Dashboard
+https://localhost:17036
+
+# PostgreSQL pgAdmin (admin@admin.com/admin)
+http://localhost:5050
+
+# Angular UI
+http://localhost:4200
+
+# BFF Swagger UI
+http://localhost:<bff-port>/swagger
+
+# BFF GraphQL Playground
+http://localhost:<bff-port>/graphql
+```
+
+**Note**: Azure Service Bus Emulator has **no management UI**. Use Aspire Dashboard to monitor service health.
+
+---
+
+### Running Integration Tests
+
+The ECommerce sample includes **dedicated integration test projects** for each transport:
+- `ECommerce.Integration.Tests` → Azure Service Bus (48 lifecycle tests)
+- `ECommerce.RabbitMQ.Integration.Tests` → RabbitMQ (48 lifecycle tests)
+
+**Why Separate Test Projects?**:
+- Different fixtures for emulator management (shared vs per-test containers)
+- Different topic/exchange isolation strategies
+- Different cleanup and drain logic
+
+#### RabbitMQ Integration Tests
+
+**1. Start RabbitMQ Container**:
+```bash
+docker run -d \
+  --name rabbitmq \
+  -p 5672:5672 \
+  -p 15672:15672 \
+  rabbitmq:4-management
+```
+
+**2. Run Tests**:
+```bash
+cd samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests
+
+# Run all 48 lifecycle tests (sequential execution)
+dotnet test
+
+# Run specific test
+dotnet run -- --treenode-filter "/*/*/*/RestockInventory_FromZeroStock_IncreasesCorrectlyAsync"
+```
+
+**Test Duration**: ~1.5-2 minutes (48 tests, ~1-2s each)
+
+**What Tests Validate**:
+- Cross-service event publication (InventoryWorker → RabbitMQ → BFF)
+- Topic exchange routing with test-specific exchanges
+- Dead letter queue handling (automatic DLX/DLQ creation)
+- Perspective materialization from cross-service events
+- Channel pool thread-safety under concurrent load
+- Subscription pause/resume lifecycle
+
+#### Azure Service Bus Integration Tests
+
+**1. Start Service Bus Emulator**:
+```bash
+docker run -d \
+  --name servicebus-emulator \
+  -p 5672:5672 \
+  -v $(pwd)/samples/ECommerce/tests/ECommerce.Integration.Tests/Config-Named.json:/ServiceBus_Emulator/ConfigFiles/Config.json \
+  mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+```
+
+**2. Run Tests**:
+```bash
+cd samples/ECommerce/tests/ECommerce.Integration.Tests
+
+# Run all 48 lifecycle tests (sequential execution)
+dotnet test
+
+# Run specific test
+dotnet run -- --treenode-filter "/*/*/*/SeedProducts_CreatesProducts_AndPerspectivesCompleteAsync"
+```
+
+**Test Duration**: ~2-2.5 minutes (emulator startup adds 45-60 seconds on first run)
+
+---
+
+### Key Differences Between Transports
+
+| Aspect | RabbitMQ | Azure Service Bus |
+|--------|----------|-------------------|
+| **AppHost Setup** | `AddRabbitMQ()` with exchanges/queues | `AddAzureServiceBus()` with topics/subscriptions |
+| **Topic Creation** | Dynamic (created on first publish) | Static (pre-defined via Aspire or Config.json) |
+| **Management UI** | ✅ Built-in (port 15672) | ❌ No UI (use Aspire Dashboard) |
+| **Routing** | Wildcard patterns (`product.*`, `#`) | Subscription filters (CorrelationId, MessageId) |
+| **DLQ Handling** | Automatic DLX/DLQ creation | Requires explicit subscription configuration |
+| **Startup Time** | ~10 seconds | ~45-60 seconds (emulator initialization) |
+| **Test Isolation** | Test-specific exchanges (`inventory-{testId}`) | Shared topics (`topic-00`, `topic-01`) |
+
+---
+
+### Troubleshooting
+
+#### AppHost won't start
+
+```bash
+# Ensure Aspire workload is installed
+dotnet workload install aspire
+
+# Check Docker is running
+docker ps
+
+# Rebuild all projects
+cd samples/ECommerce
+dotnet clean
+dotnet build /p:TransportProvider=RabbitMQ  # or AzureServiceBus
+```
+
+#### RabbitMQ container fails to start
+
+```bash
+# Check port conflicts
+lsof -i :5672
+lsof -i :15672
+
+# Remove existing container
+docker stop rabbitmq
+docker rm rabbitmq
+
+# Start fresh
+docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4-management
+```
+
+#### Azure Service Bus Emulator not ready
+
+```bash
+# Check emulator logs
+docker logs servicebus-emulator
+
+# Wait for "Emulator is ready" message (can take 60 seconds)
+```
+
+#### Integration tests timeout
+
+```bash
+# Ensure emulator is running
+docker ps | grep rabbitmq  # or servicebus-emulator
+
+# Check emulator logs
+docker logs rabbitmq
+
+# Restart emulator if needed
+docker restart rabbitmq
+```
+
+#### Wrong transport used at runtime
+
+```bash
+# Verify build used correct transport
+cd samples/ECommerce
+dotnet clean
+dotnet build /p:TransportProvider=RabbitMQ  # or AzureServiceBus
+
+# Check generated symbols in .whizbang-generated folder
+grep -r "RABBITMQ\|AZURESERVICEBUS" ECommerce.InventoryWorker/.whizbang-generated
+```
+
+---
+
 ## Configuration
 
 ### Basic Setup

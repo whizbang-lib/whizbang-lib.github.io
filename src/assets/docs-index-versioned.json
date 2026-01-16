@@ -18,6 +18,111 @@
         "version": "v0.1.0"
       },
       {
+        "slug": "v0.1.0/advanced-topics/deployment-strategies",
+        "title": "Deployment Strategies",
+        "category": "Advanced Topics",
+        "order": 7,
+        "description": "Deployment patterns - blue-green, canary, rolling updates, feature flags, and rollback strategies",
+        "tags": "deployment, blue-green, canary, rolling-update, feature-flags, kubernetes",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/advanced-topics/monitoring",
+        "title": "Monitoring & Observability",
+        "category": "Advanced Topics",
+        "order": 6,
+        "description": "Application monitoring - Application Insights, Prometheus, distributed tracing, metrics, and dashboards",
+        "tags": "monitoring, observability, application-insights, prometheus, tracing, metrics",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/advanced-topics/multi-tenancy",
+        "title": "Multi-Tenancy Patterns",
+        "category": "Advanced Topics",
+        "order": 4,
+        "description": "Multi-tenancy architecture patterns - database-per-tenant, schema-per-tenant, row-level security",
+        "tags": "multi-tenancy, saas, database-per-tenant, row-level-security, isolation",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/advanced-topics/native-aot",
+        "title": "Native AOT",
+        "category": "Advanced Topics",
+        "order": 3,
+        "description": "Deploy with Native AOT - zero reflection, trim-safe code, and AOT-compatible patterns",
+        "tags": "native-aot, aot, reflection, trim-safe, deployment",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/advanced-topics/performance-tuning",
+        "title": "Performance Tuning",
+        "category": "Advanced Topics",
+        "order": 1,
+        "description": "Optimize Whizbang performance - zero-allocation patterns, pooling, batching, and profiling",
+        "tags": "performance, optimization, profiling, zero-allocation, pooling",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/advanced-topics/scaling",
+        "title": "Scaling Patterns",
+        "category": "Advanced Topics",
+        "order": 8,
+        "description": "Horizontal scaling - autoscaling, partitioning, load balancing, and performance under load",
+        "tags": "scaling, horizontal-scaling, partitioning, load-balancing, autoscaling, performance",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/advanced-topics/security",
+        "title": "Security Best Practices",
+        "category": "Advanced Topics",
+        "order": 5,
+        "description": "Security guidelines - authentication, authorization, encryption, secrets management, OWASP Top 10",
+        "tags": "security, authentication, authorization, encryption, owasp, secrets",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/advanced-topics/testing-receptors",
+        "title": "Testing Receptors & Perspectives",
+        "category": "Advanced Topics",
+        "order": 2,
+        "description": "Unit testing patterns for receptors and perspectives - mocking, fixtures, and test strategies",
+        "tags": "testing, unit-tests, mocking, tunit, fixtures",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/advanced-topics/troubleshooting",
+        "title": "Troubleshooting Guide",
+        "category": "Advanced Topics",
+        "order": 9,
+        "description": "Common issues, debugging techniques, diagnostic tools, and solutions",
+        "tags": "troubleshooting, debugging, diagnostics, common-issues, solutions",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/architecture/message-lifecycle",
+        "title": "Message Lifecycle & Architecture",
+        "category": "Architecture",
+        "order": 1,
+        "description": "Complete guide to message flow through Whizbang - Commands, Events, Work Coordinator, and all the hooks between Dispatcher, Receptors, Perspectives, and Outbox/Inbox",
+        "tags": "architecture, message-lifecycle, command-flow, event-flow, work-coordinator, sequence-diagrams",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/attributes/streamkey",
+        "title": "StreamKey Attribute",
+        "category": "Attributes",
+        "order": 999,
+        "description": "Marks a property as the stream key for event sourcing and perspective event ordering",
+        "tags": [
+          "attributes",
+          "streamkey",
+          "perspectives",
+          "event-sourcing",
+          "source-generator"
+        ],
+        "version": "v0.1.0"
+      },
+      {
         "slug": "v0.1.0/components/README",
         "title": "Core Components Overview",
         "category": "Components",
@@ -97,185 +202,760 @@
         "description": "Basic in-process message transport for local development",
         "tags": "transports, messaging, in-process, communication, v0.1.0",
         "version": "v0.1.0"
-      }
-    ]
-  },
-  {
-    "version": "v0.2.0",
-    "metadata": {
-      "title": "Version 0.2.0 - Event-Driven Enhancement",
-      "description": "Enhanced event-driven capabilities with validation, rich events, and policy improvements",
-      "releaseDate": "TBD",
-      "status": "planning"
-    },
-    "docs": [
-      {
-        "slug": "v0.2.0/enhancements/dispatcher",
-        "title": "Pipeline & Middleware Dispatcher",
-        "category": "Enhancements",
-        "order": 5,
-        "description": "Message pipeline with middleware, parallel execution, and handler prioritization",
-        "tags": "dispatcher, pipeline, middleware, parallel, prioritization, v0.2.0",
-        "version": "v0.2.0"
       },
       {
-        "slug": "v0.2.0/enhancements/drivers",
-        "title": "File Storage Drivers",
-        "category": "Enhancements",
-        "order": 3,
-        "description": "Persistent file-based storage with JSON serialization and basic indexing",
-        "tags": "drivers, file-storage, persistence, json, indexing, v0.2.0",
-        "version": "v0.2.0"
-      },
-      {
-        "slug": "v0.2.0/enhancements/ledger",
-        "title": "Ledger Persistence",
-        "category": "Enhancements",
-        "order": 2,
-        "description": "File-based persistence, event streams, versioning, and snapshots",
-        "tags": "ledger, persistence, streams, snapshots, v0.2.0",
-        "version": "v0.2.0"
-      },
-      {
-        "slug": "v0.2.0/enhancements/policies",
-        "title": "Policy Enhancements",
-        "category": "Enhancements",
+        "slug": "v0.1.0/core-concepts/dispatcher",
+        "title": "Dispatcher Deep Dive",
+        "category": "Core Concepts",
         "order": 1,
-        "description": "Policy composition, bulkhead isolation, and rate limiting",
-        "tags": "policies, composition, rate-limiting, bulkhead, v0.2.0",
-        "version": "v0.2.0"
+        "description": "Master the Whizbang Dispatcher - three dispatch patterns (SendAsync, LocalInvokeAsync, PublishAsync) for commands, queries, and events",
+        "tags": "dispatcher, messaging, commands, events, patterns",
+        "version": "v0.1.0"
       },
       {
-        "slug": "v0.2.0/enhancements/transports",
-        "title": "HTTP & WebSocket Transports",
-        "category": "Enhancements",
+        "slug": "v0.1.0/core-concepts/fuzzy-matching",
+        "title": "Fuzzy Matching",
+        "category": "Core Concepts",
+        "order": 999,
+        "description": "# MatchStrictness: Fuzzy Type Matching Control\n\nMatchStrictness is a flag enum that controls how type names are compared during fuzzy matching. It enables flexible type matching by allowing you to ignore case, version, assembly, or namespace components.\n\n## Overview\n\n**MatchStrictness** provides:\n- ✅ Flag-based control over type matching behavior\n- ✅ Combinable flags for precise matching rules\n- ✅ Composite presets for common scenarios\n- ✅ Works with both formatted and raw type strings\n- ✅ Used by message association queries and type matching APIs\n\n## Quick Start\n\n### Basic Fuzzy Matching\n\n```csharp\nusing Whizbang.Core;\n\nvar fullType = \"ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts, Version=1.0.0\";\nvar simpleType = \"ProductCreatedEvent\";\n\n// Exact match (default)\nbool exactMatch = TypeMatcher.Matches(fullType, simpleType, MatchStrictness.Exact);\n// Result: false (types don't match exactly)\n\n// Simple name match (ignore namespace, assembly, version)\nbool simpleMatch = TypeMatcher.Matches(fullType, simpleType, MatchStrictness.SimpleName);\n// Result: true (both have \"ProductCreatedEvent\")\n\n// Case-insensitive match\nbool caseMatch = TypeMatcher.Matches(\n    \"ProductCreatedEvent\",\n    \"productcreatedevent\",\n    MatchStrictness.CaseInsensitive\n);\n// Result: true (case ignored)\n```\n\n### Combining Multiple Flags\n\n```csharp\n// Ignore both case AND version\nvar strictness = MatchStrictness.IgnoreCase | MatchStrictness.IgnoreVersion;\n\nbool match = TypeMatcher.Matches(\n    \"MyApp.Events.OrderCreated, MyApp, Version=1.0.0\",\n    \"myapp.events.ordercreated, myapp, version=2.0.0\",\n    strictness\n);\n// Result: true (version and case ignored)\n\n// Ignore namespace and case\nvar flexibleMatch = MatchStrictness.IgnoreNamespace | MatchStrictness.IgnoreCase;\n\nbool matches = TypeMatcher.Matches(\n    \"ECommerce.Events.ProductCreated\",\n    \"productcreated\",\n    flexibleMatch\n);\n// Result: true (namespace and case ignored)\n```\n\n## Individual Flags\n\n### Flag Definitions\n\nEach flag controls a specific transformation applied to type strings before comparison:\n\n| Flag | Value | Description |\n|",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/core-concepts/lenses",
+        "title": "Lenses Guide",
+        "category": "Core Concepts",
         "order": 4,
-        "description": "REST APIs with HTTP transport and real-time communication via WebSockets",
-        "tags": "transports, http, websocket, rest, real-time, serialization, v0.2.0",
-        "version": "v0.2.0"
-      }
-    ]
-  },
-  {
-    "version": "v0.3.0",
-    "metadata": {
-      "title": "Version 0.3.0 - Event Sourcing",
-      "description": "Add stateful capabilities with event sourcing, aggregates, and projections",
-      "releaseDate": "TBD",
-      "status": "planning"
-    },
-    "docs": [
-      {
-        "slug": "v0.3.0/features/dispatcher",
-        "title": "Saga Orchestration & Workflows",
-        "category": "Features",
-        "order": 6,
-        "description": "Multi-step workflow orchestration with sagas, compensation, and process management",
-        "tags": "dispatcher, saga, orchestration, workflow, compensation, state-machine, v0.3.0",
-        "version": "v0.3.0"
+        "description": "Master Whizbang Lenses - query-optimized repositories for fast, efficient access to read models maintained by Perspectives",
+        "tags": "lenses, queries, read-models, repositories, cqrs",
+        "version": "v0.1.0"
       },
       {
-        "slug": "v0.3.0/features/ledger",
-        "title": "Event Sourcing & Projections",
-        "category": "Features",
-        "order": 4,
-        "description": "Full event sourcing with aggregates, projections, and time-travel queries",
-        "tags": "ledger, event-sourcing, projections, aggregates, time-travel, v0.3.0",
-        "version": "v0.3.0"
+        "slug": "v0.1.0/core-concepts/lifecycle-receptors",
+        "title": "Lifecycle Receptors",
+        "category": "Core Concepts",
+        "order": 10,
+        "description": "Complete API reference for lifecycle receptors - [FireAt] attribute, ILifecycleContext injection, compile-time vs runtime registration, and AOT-compatible patterns",
+        "tags": "lifecycle, receptors, FireAt, attributes, ILifecycleContext, AOT, source-generators",
+        "version": "v0.1.0"
       },
       {
-        "slug": "v0.3.0/features/policies",
-        "title": "Stateful Policy Management",
-        "category": "Features",
-        "order": 3,
-        "description": "Persistent policy state, metrics, and dynamic configuration",
-        "tags": "policies, state-management, metrics, monitoring, v0.3.0",
-        "version": "v0.3.0"
+        "slug": "v0.1.0/core-concepts/lifecycle-stages",
+        "title": "Lifecycle Stages",
+        "category": "Core Concepts",
+        "order": 9,
+        "description": "Complete reference for all 18 lifecycle stages in Whizbang message processing pipeline - timing, guarantees, and use cases",
+        "tags": "lifecycle, stages, hooks, message-processing, timing",
+        "version": "v0.1.0"
       },
       {
-        "slug": "v0.3.0/features/transports",
-        "title": "Message Queue Transports",
-        "category": "Features",
+        "slug": "v0.1.0/core-concepts/message-context",
+        "title": "Message Context & Tracing",
+        "category": "Core Concepts",
         "order": 5,
-        "description": "Enterprise messaging with RabbitMQ, Kafka, and Redis pub/sub",
-        "tags": "transports, messaging, rabbitmq, kafka, redis, pubsub, queues, v0.3.0",
-        "version": "v0.3.0"
-      }
-    ]
-  },
-  {
-    "version": "v0.4.0",
-    "metadata": {
-      "title": "Version 0.4.0 - Real Persistence",
-      "description": "Production-ready database persistence with PostgreSQL, SQL Server, and SQLite drivers",
-      "releaseDate": "TBD",
-      "status": "planning"
-    },
-    "docs": [
+        "description": "Track message flow across distributed systems with MessageId, CorrelationId, and CausationId - automatic distributed tracing built into Whizbang",
+        "tags": "message-context, correlation, causation, distributed-tracing, observability",
+        "version": "v0.1.0"
+      },
       {
-        "slug": "v0.4.0/database/drivers",
-        "title": "Database Drivers",
-        "category": "Database",
+        "slug": "v0.1.0/core-concepts/observability",
+        "title": "Observability & Message Hops",
+        "category": "Core Concepts",
+        "order": 6,
+        "description": "Understand Whizbang's hop-based observability architecture - MessageEnvelope and MessageHop for distributed tracing and debugging",
+        "tags": "observability, message-hops, distributed-tracing, debugging, telemetry",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/core-concepts/perspectives/association-info",
+        "title": "Association Info",
+        "category": "Core Concepts",
+        "order": 999,
+        "description": "# PerspectiveAssociationInfo: Strongly-Typed Associations with Delegates\n\nPerspectiveAssociationInfo is a generic record type that provides strongly-typed perspective associations with AOT-compatible delegates to perspective Apply methods. It enables compile-time type safety and performant perspective invocation without reflection.\n\n## Overview\n\n**PerspectiveAssociationInfo&lt;TModel, TEvent&gt;** provides:\n- ✅ Strongly-typed delegate access to perspective Apply methods\n- ✅ Compile-time type safety (no runtime type checks)\n- ✅ AOT-compatible (zero reflection at runtime)\n- ✅ Generated by source generators for all perspectives\n- ✅ Supports generic perspective invocation\n\n## Quick Start\n\n### Getting Typed Associations\n\n```csharp\nusing Whizbang.Core.Generated;\n\n// Get associations for specific model and event types\nvar associations = PerspectiveRegistrationExtensions\n    .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(\"ECommerce.BFF.API\");\n\nforeach (var assoc in associations) {\n    Console.WriteLine($\"Perspective: {assoc.TargetName}\");\n    Console.WriteLine($\"Event: {assoc.MessageType}\");\n    Console.WriteLine($\"Service: {assoc.ServiceName}\");\n\n    // Invoke delegate directly\n    var currentModel = new ProductModel();\n    var evt = new ProductCreatedEvent { ProductId = \"prod-123\" };\n    var updatedModel = assoc.ApplyDelegate(currentModel, evt);\n}\n```\n\n### Using Delegates\n\n```csharp\n// Example: Generic perspective applier\npublic TModel ApplyEvent<TModel, TEvent>(\n    TModel model,\n    TEvent evt,\n    string serviceName)\n    where TEvent : IEvent {\n\n    var associations = PerspectiveRegistrationExtensions\n        .GetPerspectiveAssociations<TModel, TEvent>(serviceName);\n\n    // Apply all matching perspectives\n    foreach (var assoc in associations) {\n        model = assoc.ApplyDelegate(model, evt);\n    }\n\n    return model;\n}\n\n// Usage\nvar productModel = new ProductModel();\nvar productEvent = new ProductCreatedEvent { ProductId = \"prod-123\" };\nvar updated = ApplyEvent(productModel, productEvent, \"ECommerce.BFF.API\");\n```\n\n## Record Structure\n\n### Type Definition\n\n```csharp\n/// <summary>\n/// Rich association info with strongly-typed delegate for perspective Apply method.\n/// Provides compile-time type safety and AOT-compatible delegate invocation.\n/// </summary>\n/// <typeparam name=\"TModel\">The model type maintained by the perspective</typeparam>\n/// <typeparam name=\"TEvent\">The event type handled by the perspective</typeparam>\n/// <param name=\"MessageType\">Fully qualified event type name</param>\n/// <param name=\"TargetName\">Name of the perspective class</param>\n/// <param name=\"ServiceName\">Service name (assembly name)</param>\n/// <param name=\"ApplyDelegate\">Strongly-typed delegate to perspective's Apply method</param>\npublic sealed record PerspectiveAssociationInfo<TModel, TEvent>(\n    string MessageType,\n    string TargetName,\n    string ServiceName,\n    Func<TModel, TEvent, TModel> ApplyDelegate\n) where TEvent : IEvent;\n```\n\n### Properties\n\n| Property | Type | Description |\n|",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/core-concepts/perspectives/multi-stream",
+        "title": "Multi-Stream Perspectives",
+        "category": "Core Concepts",
+        "order": 1,
+        "description": "IGlobalPerspectiveFor pattern for aggregating events across multiple streams using partition keys - inspired by Marten's MultiStreamProjection",
+        "tags": "perspectives, multi-stream, global-perspectives, partition-key, cross-stream, aggregation, read-models, marten",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/core-concepts/perspectives/typed-associations",
+        "title": "Typed Associations",
+        "category": "Core Concepts",
+        "order": 999,
+        "description": "# GetPerspectiveAssociations: Strongly-Typed Perspective Queries\n\nGetPerspectiveAssociations is a source-generated method that returns strongly-typed perspective associations filtered by model and event type. It provides compile-time type safety and AOT-compatible delegate access to perspective Apply methods.\n\n## Overview\n\n**GetPerspectiveAssociations&lt;TModel, TEvent&gt;** provides:\n- ✅ Type-filtered perspective associations\n- ✅ Compile-time type checking with generic constraints\n- ✅ AOT-compatible delegates (zero reflection)\n- ✅ Empty array for non-matching types\n- ✅ Source-generated for all discovered perspectives\n\n## Quick Start\n\n### Basic Usage\n\n```csharp\nusing Whizbang.Core.Generated;\n\n// Get all perspectives handling ProductCreatedEvent for ProductModel\nvar associations = PerspectiveRegistrationExtensions\n    .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(\"ECommerce.BFF.API\");\n\n// Iterate and invoke\nvar model = new ProductModel();\nvar evt = new ProductCreatedEvent { ProductId = \"prod-123\" };\n\nforeach (var assoc in associations) {\n    Console.WriteLine($\"Applying: {assoc.TargetName}\");\n    model = assoc.ApplyDelegate(model, evt);\n}\n\nConsole.WriteLine($\"Final model: {model}\");\n```\n\n### Type Safety\n\n```csharp\n// Compile-time type safety ensures matching types\nvar associations = PerspectiveRegistrationExtensions\n    .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);\n\n// Compiler enforces correct types\nvar productModel = new ProductModel();\nvar productEvent = new ProductCreatedEvent();\n\nforeach (var assoc in associations) {\n    // ✅ Types match - compiles\n    productModel = assoc.ApplyDelegate(productModel, productEvent);\n}\n\n// ❌ Won't compile - type mismatch\nvar orderEvent = new OrderCreatedEvent();\nproductModel = assoc.ApplyDelegate(productModel, orderEvent); // Compiler error!\n```\n\n## Method Signature\n\n### Declaration\n\n```csharp\nnamespace Whizbang.Core.Generated;\n\npublic static class PerspectiveRegistrationExtensions {\n    /// <summary>\n    /// Gets strongly-typed perspective associations with AOT-compatible delegates.\n    /// Returns associations only for the specified TModel and TEvent types.\n    /// Uses compile-time type checking - no reflection.\n    /// </summary>\n    /// <typeparam name=\"TModel\">The model type to filter by</typeparam>\n    /// <typeparam name=\"TEvent\">The event type to filter by</typeparam>\n    /// <param name=\"serviceName\">The service name (assembly name)</param>\n    /// <returns>Read-only list of typed perspective associations with delegates</returns>\n    public static IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>\n        GetPerspectiveAssociations<TModel, TEvent>(string serviceName)\n        where TEvent : IEvent;\n}\n```\n\n### Parameters\n\n- **serviceName**: Service name / assembly name (e.g., \"ECommerce.BFF.API\")\n\n### Type Parameters\n\n- **TModel**: Model type maintained by perspectives\n  - No constraints (can be any type)\n  - Must match perspective's `IPerspectiveFor<TModel, TEvent>` first type argument\n\n- **TEvent**: Event type handled by perspectives\n  - Must implement `IEvent` interface\n  - Must match perspective's `IPerspectiveFor<TModel, TEvent>` second type argument\n\n### Return Value\n\n- Returns `IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>`\n- Returns empty list if no perspectives match the specified types\n- Never returns null\n- List is immutable (read-only)\n\n## Generated Code Structure\n\n### How It Works\n\nThe source generator produces compile-time type checks for each perspective:\n\n```csharp\n// Generated method (simplified example)\npublic static IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>\n    GetPerspectiveAssociations<TModel, TEvent>(string serviceName)\n    where TEvent : IEvent {\n\n    // ProductPerspective: IPerspectiveFor<ProductModel, ProductCreatedEvent>\n    if (typeof(TModel) == typeof(ProductModel) &&\n        typeof(TEvent) == typeof(ProductCreatedEvent)) {\n\n        return new[] {\n            new PerspectiveAssociationInfo<TModel, TEvent>(\n                \"ECommerce.Contracts.Events.ProductCreatedEvent\",\n                \"ProductPerspective\",\n                \"ECommerce.BFF.API\",\n                (model, evt) => {\n                    var perspective = new ProductPerspective();\n                    var typedModel = (ProductModel)((object)model);\n                    var typedEvent = (ProductCreatedEvent)((object)evt);\n                    var result = perspective.Apply(typedModel, typedEvent);\n                    return (TModel)((object)result);\n                }\n            )\n        };\n    }\n\n    // OrderPerspective: IPerspectiveFor<OrderModel, OrderCreatedEvent>\n    if (typeof(TModel) == typeof(OrderModel) &&\n        typeof(TEvent) == typeof(OrderCreatedEvent)) {\n\n        return new[] {\n            new PerspectiveAssociationInfo<TModel, TEvent>(\n                \"ECommerce.Contracts.Events.OrderCreatedEvent\",\n                \"OrderPerspective\",\n                \"ECommerce.BFF.API\",\n                (model, evt) => {\n                    var perspective = new OrderPerspective();\n                    var typedModel = (OrderModel)((object)model);\n                    var typedEvent = (OrderCreatedEvent)((object)evt);\n                    var result = perspective.Apply(typedModel, typedEvent);\n                    return (TModel)((object)result);\n                }\n            )\n        };\n    }\n\n    // No match - return empty\n    return Array.Empty<PerspectiveAssociationInfo<TModel, TEvent>>();\n}\n```\n\n### AOT Compatibility\n\nKey features ensuring AOT compatibility:\n\n1. **Compile-time type checking**: Uses `typeof()` comparisons\n2. **Direct instantiation**: Uses `new` keyword (no `Activator.CreateInstance`)\n3. **Direct method calls**: No `MethodInfo.Invoke`\n4. **No reflection**: All types known at compile time\n5. **Trim-safe**: No dynamic type loading\n\n## Common Scenarios\n\n### Scenario 1: Generic Event Processor\n\n**When**: Building a generic event processing pipeline\n\n```csharp\npublic class EventProcessor {\n    private readonly string _serviceName;\n\n    public EventProcessor(string serviceName) {\n        _serviceName = serviceName;\n    }\n\n    public TModel ProcessEvent<TModel, TEvent>(TModel model, TEvent evt)\n        where TEvent : IEvent {\n\n        // Get associations for this model/event combination\n        var associations = PerspectiveRegistrationExtensions\n            .GetPerspectiveAssociations<TModel, TEvent>(_serviceName);\n\n        if (!associations.Any()) {\n            throw new InvalidOperationException(\n                $\"No perspectives found for {typeof(TModel).Name} + {typeof(TEvent).Name}\"\n            );\n        }\n\n        // Apply all matching perspectives\n        foreach (var assoc in associations) {\n            model = assoc.ApplyDelegate(model, evt);\n        }\n\n        return model;\n    }\n}\n\n// Usage\nvar processor = new EventProcessor(\"ECommerce.BFF.API\");\nvar updatedProduct = processor.ProcessEvent(productModel, productCreatedEvent);\nvar updatedOrder = processor.ProcessEvent(orderModel, orderCreatedEvent);\n```\n\n### Scenario 2: Event Replay Engine\n\n**When**: Replaying historical events to rebuild state\n\n```csharp\npublic class EventReplayEngine {\n    public async Task<TModel> ReplayAsync<TModel, TEvent>(\n        TModel initialModel,\n        IAsyncEnumerable<TEvent> events,\n        string serviceName)\n        where TEvent : IEvent {\n\n        // Get associations once (before loop)\n        var associations = PerspectiveRegistrationExtensions\n            .GetPerspectiveAssociations<TModel, TEvent>(serviceName);\n\n        if (!associations.Any()) {\n            return initialModel; // No perspectives, return unchanged\n        }\n\n        var model = initialModel;\n\n        // Replay each event\n        await foreach (var evt in events) {\n            foreach (var assoc in associations) {\n                model = assoc.ApplyDelegate(model, evt);\n            }\n        }\n\n        return model;\n    }\n}\n\n// Usage\nvar replayEngine = new EventReplayEngine();\nvar events = LoadHistoricalEvents();\nvar currentState = await replayEngine.ReplayAsync(\n    new ProductModel(),\n    events,\n    \"ECommerce.BFF.API\"\n);\n```\n\n### Scenario 3: Multi-Perspective Testing\n\n**When**: Testing that all perspectives handle an event correctly\n\n```csharp\n[Test]\npublic async Task AllPerspectives_HandleProductCreatedEvent_CorrectlyAsync() {\n    // Arrange\n    var associations = PerspectiveRegistrationExtensions\n        .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(\"ECommerce.BFF.API\");\n\n    var model = new ProductModel { ProductCount = 0 };\n    var evt = new ProductCreatedEvent { ProductId = \"prod-123\" };\n\n    // Act & Assert - test each perspective\n    foreach (var assoc in associations) {\n        Console.WriteLine($\"Testing perspective: {assoc.TargetName}\");\n\n        var result = assoc.ApplyDelegate(model, evt);\n\n        // Verify perspective applied changes\n        await Assert.That(result).IsNotEqualTo(model);\n        await Assert.That(result.ProductCount).IsGreaterThan(model.ProductCount);\n\n        model = result; // Update for next perspective\n    }\n\n    // Final assertion\n    await Assert.That(model.ProductCount).IsGreaterThan(0);\n}\n```\n\n### Scenario 4: Conditional Perspective Application\n\n**When**: Applying perspectives based on runtime conditions\n\n```csharp\npublic class ConditionalPerspectiveApplier {\n    public TModel ApplyWithFilter<TModel, TEvent>(\n        TModel model,\n        TEvent evt,\n        string serviceName,\n        Func<PerspectiveAssociationInfo<TModel, TEvent>, bool> filter)\n        where TEvent : IEvent {\n\n        var associations = PerspectiveRegistrationExtensions\n            .GetPerspectiveAssociations<TModel, TEvent>(serviceName);\n\n        // Apply only perspectives matching filter\n        foreach (var assoc in associations.Where(filter)) {\n            model = assoc.ApplyDelegate(model, evt);\n        }\n\n        return model;\n    }\n}\n\n// Usage: Apply only specific perspectives\nvar applier = new ConditionalPerspectiveApplier();\nvar filtered = applier.ApplyWithFilter(\n    productModel,\n    productEvent,\n    serviceName,\n    assoc => assoc.TargetName.Contains(\"Inventory\") // Only inventory perspectives\n);\n```\n\n### Scenario 5: Performance Monitoring\n\n**When**: Monitoring perspective performance\n\n```csharp\npublic class MonitoredPerspectiveApplier {\n    private readonly ILogger _logger;\n\n    public TModel ApplyWithMonitoring<TModel, TEvent>(\n        TModel model,\n        TEvent evt,\n        string serviceName)\n        where TEvent : IEvent {\n\n        var associations = PerspectiveRegistrationExtensions\n            .GetPerspectiveAssociations<TModel, TEvent>(serviceName);\n\n        foreach (var assoc in associations) {\n            var sw = Stopwatch.StartNew();\n\n            model = assoc.ApplyDelegate(model, evt);\n\n            sw.Stop();\n            _logger.LogDebug(\n                \"Perspective {PerspectiveName} took {ElapsedMs}ms\",\n                assoc.TargetName,\n                sw.ElapsedMilliseconds\n            );\n        }\n\n        return model;\n    }\n}\n```\n\n## Type Filtering Behavior\n\n### Exact Type Matching\n\nGetPerspectiveAssociations uses exact type matching (not assignable types):\n\n```csharp\n// Perspective definition\npublic class ProductPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> {\n    public ProductModel Apply(ProductModel model, ProductCreatedEvent evt) {\n        // ...\n    }\n}\n\n// ✅ Exact match - returns association\nvar associations1 = PerspectiveRegistrationExtensions\n    .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);\n// Returns: [ProductPerspective]\n\n// ❌ Base class - no match\nvar associations2 = PerspectiveRegistrationExtensions\n    .GetPerspectiveAssociations<BaseModel, ProductCreatedEvent>(serviceName);\n// Returns: [] (empty)\n\n// ❌ Interface - no match\nvar associations3 = PerspectiveRegistrationExtensions\n    .GetPerspectiveAssociations<IModel, ProductCreatedEvent>(serviceName);\n// Returns: [] (empty)\n```\n\n### Multiple Perspectives\n\nIf multiple perspectives handle the same model/event combination, all are returned:\n\n```csharp\n// Two perspectives handling ProductModel + ProductCreatedEvent\npublic class InventoryPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> { }\npublic class CatalogPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> { }\n\nvar associations = PerspectiveRegistrationExtensions\n    .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);\n\n// Returns: [InventoryPerspective, CatalogPerspective]\nConsole.WriteLine($\"Found {associations.Count} perspectives\");\n\n// Apply both\nforeach (var assoc in associations) {\n    model = assoc.ApplyDelegate(model, evt);\n}\n```\n\n## Performance Considerations\n\n### Caching Associations\n\n```csharp\n// ❌ WRONG: Calling in loop\nforeach (var evt in events) {\n    var associations = PerspectiveRegistrationExtensions\n        .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);\n    // Unnecessary overhead!\n}\n\n// ✅ CORRECT: Cache outside loop\nvar associations = PerspectiveRegistrationExtensions\n    .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);\n\nforeach (var evt in events) {\n    foreach (var assoc in associations) {\n        model = assoc.ApplyDelegate(model, evt);\n    }\n}\n```\n\n### Compile-Time Optimization\n\nThe method uses compile-time type checks, so the JIT compiler can optimize aggressively:\n\n```csharp\n// JIT can inline typeof() checks\n// Result: Very fast (~1-2ns per call once JIT'd)\nvar associations = PerspectiveRegistrationExtensions\n    .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);\n```\n\n### Delegate Invocation Cost\n\n```csharp\n// Delegate invocation is extremely fast\n// Approximately 1-2ns per invocation (similar to virtual method call)\nvar result = assoc.ApplyDelegate(model, evt);\n\n// Compare to reflection: ~100-1000ns per call\n// Delegates are 50-500x faster!\n```\n\n## Integration with Message Associations\n\n### Complementary APIs\n\n```csharp\n// 1. Discovery with MessageAssociation (string-based)\nvar allAssociations = PerspectiveRegistrationExtensions\n    .GetMessageAssociations(serviceName);\n\nvar productEvents = allAssociations\n    .Where(a => a.TargetName == \"ProductPerspective\")\n    .Select(a => a.MessageType);\n\nConsole.WriteLine($\"ProductPerspective handles: {string.Join(\", \", productEvents)}\");\n\n// 2. Invocation with GetPerspectiveAssociations (typed)\nvar typedAssociations = PerspectiveRegistrationExtensions\n    .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);\n\nforeach (var assoc in typedAssociations) {\n    model = assoc.ApplyDelegate(model, evt);\n}\n```\n\n### Workflow\n\n1. **Discovery**: Use `GetMessageAssociations()` to find available perspectives\n2. **Filtering**: Use fuzzy matching and queries to filter\n3. **Invocation**: Use `GetPerspectiveAssociations<TModel, TEvent>()` to invoke\n\n## API Reference\n\n### Method Details\n\n**Namespace**: `Whizbang.Core.Generated`\n\n**Class**: `PerspectiveRegistrationExtensions`\n\n**Method**: `GetPerspectiveAssociations<TModel, TEvent>`\n\n### Parameters\n\n| Parameter | Type | Description |\n|",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/core-concepts/perspectives",
+        "title": "Perspectives Guide",
+        "category": "Core Concepts",
+        "order": 3,
+        "description": "Master Whizbang Perspectives - pure function event handlers that maintain eventually consistent read models optimized for queries",
+        "tags": "perspectives, read-models, cqrs, eventual-consistency, event-driven, pure-functions, streamkey",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/core-concepts/receptors",
+        "title": "Receptors Guide",
+        "category": "Core Concepts",
         "order": 2,
-        "description": "Production database drivers for SQL and NoSQL with JSONB support",
-        "tags": "drivers, database, sql, nosql, postgresql, mongodb, redis, jsonb, v0.4.0",
-        "version": "v0.4.0"
+        "description": "Master Whizbang Receptors - stateless message handlers that encapsulate business logic, validation, and decision-making",
+        "tags": "receptors, message-handlers, business-logic, validation",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/core-concepts/type-formatting",
+        "title": "Type Formatting",
+        "category": "Core Concepts",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/core-concepts/type-matching",
+        "title": "Type Matching",
+        "category": "Core Concepts",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/core-concepts/type-qualification",
+        "title": "Type Qualification",
+        "category": "Core Concepts",
+        "order": 999,
+        "description": "# TypeQualification: Type Name Formatting Control\n\nTypeQualification is a flag enum that controls how .NET type names are formatted in generated code. It enables fine-grained control over namespace, assembly, version, and other type name components.\n\n## Overview\n\n**TypeQualification** provides:\n- ✅ Flag-based control over type name components\n- ✅ Individual component flags for fine-grained control\n- ✅ Composite presets for common scenarios\n- ✅ Fully AOT-compatible (no reflection)\n- ✅ Used by source generators and message association APIs\n\n## Quick Start\n\n### Using TypeQualification Flags\n\n```csharp\nusing Whizbang.Core;\n\nvar type = typeof(ECommerce.Contracts.Events.ProductCreatedEvent);\n\n// Simple type name only\nvar simple = TypeFormatter.FormatType(type, TypeQualification.Simple);\n// Result: \"ProductCreatedEvent\"\n\n// Namespace + type name\nvar namespaced = TypeFormatter.FormatType(type, TypeQualification.NamespaceQualified);\n// Result: \"ECommerce.Contracts.Events.ProductCreatedEvent\"\n\n// Namespace + type + assembly\nvar fullyQualified = TypeFormatter.FormatType(type, TypeQualification.FullyQualified);\n// Result: \"ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts\"\n\n// With version information\nvar withVersion = TypeFormatter.FormatType(type, TypeQualification.FullyQualifiedWithVersion);\n// Result: \"ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts, Version=1.0.0, Culture=neutral, PublicKeyToken=null\"\n```\n\n### Combining Individual Flags\n\n```csharp\n// Custom combination: Namespace + Type + Assembly (no version)\nvar custom = TypeFormatter.FormatType(\n    type,\n    TypeQualification.Namespace | TypeQualification.TypeName | TypeQualification.Assembly\n);\n// Result: \"ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts\"\n\n// With global prefix\nvar globalQualified = TypeFormatter.FormatType(\n    type,\n    TypeQualification.GlobalPrefix | TypeQualification.Namespace | TypeQualification.TypeName\n);\n// Result: \"global::ECommerce.Contracts.Events.ProductCreatedEvent\"\n```\n\n## Component Flags\n\n### Individual Component Flags\n\nEach flag controls a specific part of the type name:\n\n| Flag | Value | Description |\n|",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/core-concepts/whizbang-ids",
+        "title": "Whizbang Ids",
+        "category": "Core Concepts",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/customization-examples/event-sourcing-cqrs",
+        "title": "Event Sourcing & CQRS",
+        "category": "Customization Examples",
+        "order": 2,
+        "description": "Implement full event sourcing with CQRS - event store, snapshots, temporal queries, and projections",
+        "tags": "event-sourcing, cqrs, event-store, snapshots, temporal-queries",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/customization-examples/microservices-orchestration",
+        "title": "Microservices Orchestration",
+        "category": "Customization Examples",
+        "order": 3,
+        "description": "Implement saga orchestration patterns - distributed workflows, compensation, and process managers",
+        "tags": "sagas, orchestration, process-managers, distributed-workflows, compensation",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/customization-examples/multi-tenant-saas",
+        "title": "Multi-Tenant SaaS",
+        "category": "Customization Examples",
+        "order": 1,
+        "description": "Build multi-tenant SaaS applications with tenant isolation, per-tenant databases, and cross-tenant analytics",
+        "tags": "multi-tenancy, saas, tenant-isolation, database-per-tenant",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/customization-examples/real-time-analytics",
+        "title": "Real-Time Analytics",
+        "category": "Customization Examples",
+        "order": 4,
+        "description": "Build real-time analytics dashboards - streaming metrics, SignalR updates, and live KPIs",
+        "tags": "real-time, analytics, signalr, streaming, dashboards, websockets",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/data/dapper-integration",
+        "title": "Dapper Integration",
+        "category": "Data Access",
+        "order": 1,
+        "description": "Lightweight, high-performance data access with Dapper for Whizbang perspectives and lenses - simple SQL, minimal overhead",
+        "tags": "dapper, data-access, postgresql, sql, micro-orm",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/data/efcore-integration",
+        "title": "EF Core Integration",
+        "category": "Data Access",
+        "order": 2,
+        "description": "Full-featured ORM with EF Core 10 for complex domain models - JSONB support, UUIDv7, migrations, and advanced querying",
+        "tags": "ef-core, entity-framework, postgresql, orm, jsonb, uuidv7",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/data/event-store",
+        "title": "Event Store",
+        "category": "Data Access",
+        "order": 4,
+        "description": "Event sourcing and stream storage - event streams, replay, checkpoints, snapshots, and temporal queries",
+        "tags": "event-sourcing, event-store, streams, replay, checkpoints, snapshots, postgresql",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/data/perspectives-storage",
+        "title": "Perspectives Storage",
+        "category": "Data Access",
+        "order": 3,
+        "description": "Read model schema design for perspectives - denormalization strategies, JSONB columns, indexing, and high-volume partitioning",
+        "tags": "perspectives, read-models, schema-design, denormalization, postgresql, jsonb, partitioning",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/data-access/schema-generation-pattern",
+        "title": "Schema Generation Pattern",
+        "category": "Data Access",
+        "order": 6,
+        "description": "Database-agnostic schema definitions with ISchemaBuilder for Postgres, SQLite, and custom database engines",
+        "tags": "schema-generation, database, postgres, sqlite, ddl, ef-core, dapper, aot",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/diagnostics/whiz030",
+        "title": "WHIZ030: Perspective Event Missing StreamKey",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Event type used in perspective must have exactly one property marked with [StreamKey] attribute",
+        "tags": [
+          "diagnostics",
+          "perspectives",
+          "streamkey",
+          "source-generator"
+        ],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/diagnostics/whiz031",
+        "title": "WHIZ031: Multiple StreamKey Attributes",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Event type has multiple properties marked with [StreamKey] - only one is allowed",
+        "tags": [
+          "diagnostics",
+          "perspectives",
+          "streamkey",
+          "source-generator"
+        ],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/extensibility/custom-dispatchers",
+        "title": "Custom Dispatchers",
+        "category": "Extensibility",
+        "order": 9,
+        "description": "Implement custom dispatcher patterns - mediator, event sourcing, multi-tenant routing",
+        "tags": "dispatcher, mediator, routing, event-sourcing",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/extensibility/custom-health-checks",
+        "title": "Custom Health Checks",
+        "category": "Extensibility",
+        "order": 6,
+        "description": "Implement custom health checks for transports, databases, external APIs, and custom services",
+        "tags": "health-checks, monitoring, kubernetes, readiness, liveness",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/extensibility/custom-id-generators",
+        "title": "Custom ID Generators",
+        "category": "Extensibility",
+        "order": 8,
+        "description": "Implement custom ID generation strategies - Snowflake IDs, ULID, CUID, or custom schemes",
+        "tags": "id-generation, uuidv7, snowflake, ulid, cuid",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/extensibility/custom-perspectives",
+        "title": "Custom Perspectives",
+        "category": "Extensibility",
+        "order": 3,
+        "description": "Advanced perspective patterns - time-travel, snapshots, caching, batching, and custom storage backends",
+        "tags": "perspectives, read-models, custom-storage, time-travel, snapshots, caching",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/extensibility/custom-policies",
+        "title": "Custom Policies",
+        "category": "Extensibility",
+        "order": 5,
+        "description": "Advanced policy patterns - weighted policies, dynamic registration, async evaluation, caching, and A/B testing",
+        "tags": "policies, custom-policy-engine, weighted-policies, async-policies, policy-caching",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/extensibility/custom-receptors",
+        "title": "Custom Receptors",
+        "category": "Extensibility",
+        "order": 2,
+        "description": "Advanced receptor customization patterns - streaming, lifecycle hooks, base classes, and performance optimization",
+        "tags": "receptors, custom-handlers, streaming, lifecycle, base-classes",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/extensibility/custom-serializers",
+        "title": "Custom Serializers",
+        "category": "Extensibility",
+        "order": 7,
+        "description": "Implement custom serializers for Protobuf, MessagePack, or custom binary formats - AOT-compatible patterns",
+        "tags": "serialization, protobuf, messagepack, aot, json",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/extensibility/custom-storage",
+        "title": "Custom Storage",
+        "category": "Extensibility",
+        "order": 10,
+        "description": "Implement custom storage backends - Redis, MongoDB, Elasticsearch, Cassandra, or custom databases",
+        "tags": "storage, iperspectivestore, custom-backends, redis, mongodb",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/extensibility/custom-transports",
+        "title": "Custom Transports",
+        "category": "Extensibility",
+        "order": 4,
+        "description": "Implement custom transports for HTTP, gRPC, Kafka, RabbitMQ, or any messaging system - AOT-compatible patterns",
+        "tags": "transports, itransport, custom-implementations, http, grpc, kafka, rabbitmq, serialization",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/extensibility/custom-work-coordinators",
+        "title": "Custom Work Coordinators",
+        "category": "Extensibility",
+        "order": 11,
+        "description": "Implement custom work coordination strategies - distributed locks, Redis queues, or custom lease management",
+        "tags": "work-coordination, iworkcoordinator, distributed-locks, redis-queues",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/extensibility/database-schema-framework",
+        "title": "Database Schema Framework",
+        "category": "Extensibility",
+        "order": 11,
+        "description": "Implement database drivers using the Whizbang.Data.Schema framework - database-agnostic table and column definitions for PostgreSQL, SQLite, SQL Server, and custom databases",
+        "tags": "schema, database, drivers, postgresql, sqlite, sqlserver, table-definition, column-definition, whizbang-data-type",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/extensibility/hooks-and-middleware",
+        "title": "Hooks and Middleware",
+        "category": "Extensibility",
+        "order": 1,
+        "description": "Pipeline behaviors for cross-cutting concerns - logging, validation, retry, caching, and custom pre/post processing",
+        "tags": "extensibility, pipeline-behavior, middleware, hooks, cross-cutting-concerns, aop",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/extensibility/plugin-architecture",
+        "title": "Plugin Architecture",
+        "category": "Extensibility",
+        "order": 12,
+        "description": "Design plugin systems - dynamic assembly loading, hot-reload, and extension points",
+        "tags": "plugins, dynamic-loading, hot-reload, extensibility",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/getting-started/installation",
+        "title": "Installation Guide",
+        "category": "Getting Started",
+        "order": 2,
+        "description": "Install Whizbang and set up your first project with NuGet packages, project templates, and IDE configuration",
+        "tags": "installation, setup, nuget, project-templates",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/getting-started/introduction",
+        "title": "Introduction to Whizbang",
+        "category": "Getting Started",
+        "order": 1,
+        "description": "Learn about Whizbang - a zero-reflection, AOT-compatible .NET library for building event-driven, CQRS, and event-sourced applications",
+        "tags": "introduction, overview, philosophy, getting-started",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/getting-started/project-structure",
+        "title": "Project Structure Guide",
+        "category": "Getting Started",
+        "order": 4,
+        "description": "Organize your Whizbang application with recommended project structures, separation of concerns, and multi-service architectures",
+        "tags": "project-structure, architecture, organization, best-practices",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/getting-started/quick-start",
+        "title": "Quick Start Tutorial",
+        "category": "Getting Started",
+        "order": 3,
+        "description": "Build your first Whizbang application in 10 minutes - create messages, receptors, and dispatch commands with complete working examples",
+        "tags": "quick-start, tutorial, beginner, hello-world",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/infrastructure/aspire-integration",
+        "title": ".NET Aspire Integration",
+        "category": "Infrastructure",
+        "order": 1,
+        "description": "Cloud-native orchestration for Whizbang applications with .NET Aspire - automatic infrastructure provisioning and service discovery",
+        "tags": "aspire, cloud-native, orchestration, service-bus, emulator, infrastructure, distributed-applications",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/infrastructure/health-checks",
+        "title": "Health Checks",
+        "category": "Infrastructure",
+        "order": 2,
+        "description": "Application health monitoring with built-in health checks for transports, databases, and custom components",
+        "tags": "health-checks, monitoring, readiness, liveness, aspire-dashboard, observability",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/infrastructure/policies",
+        "title": "Policy-Based Routing",
+        "category": "Infrastructure",
+        "order": 4,
+        "description": "Dynamic message routing and configuration via predicate-based policies - multi-tenancy, environment-based routing, and execution strategies",
+        "tags": "policies, routing, multi-tenancy, execution-strategy, policy-engine, decision-trail",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/infrastructure/pooling",
+        "title": "Object Pooling",
+        "category": "Infrastructure",
+        "order": 3,
+        "description": "Zero-allocation object pooling for high-performance message processing - reduce heap pressure and GC overhead",
+        "tags": "pooling, performance, allocations, gc, policy-context, object-reuse",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/messaging/commands-events",
+        "title": "Commands Events",
+        "category": "messaging",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/messaging/failure-handling",
+        "title": "Failure Handling",
+        "category": "messaging",
+        "order": 999,
+        "description": "# Failure Handling\n\n## Overview\n\nWhizbang implements sophisticated failure handling mechanisms including exponential backoff retry scheduling, stream-based failure cascades, and poison message detection. This document details how failures are tracked, scheduled for retry, and how they impact stream processing.\n\n## Core Concepts\n\n### Message Processing Status\n\nMessages track their processing state using bitwise flags in the `status` column:\n\n```csharp\n[Flags]\npublic enum MessageProcessingStatus {\n    Stored = 1,         // Bit 0: Message stored in database\n    EventStored = 2,    // Bit 1: Event persisted to event store\n    Published = 4,      // Bit 2: Message published to transport\n    Failed = 32768      // Bit 15: Processing failed\n}\n```\n\n**Key Properties**:\n- **Bitwise Flags**: Multiple states can coexist (e.g., `Stored | Failed = 32769`)\n- **Status Progression**: `Stored → EventStored → Published` (outbox)\n- **Failure Overlay**: `Failed` flag added via bitwise OR when message fails\n- **Partial Completion**: `CompletedStatus` tracks what was accomplished before failure\n\n### Failure Classification\n\n```csharp\npublic enum MessageFailureReason {\n    Unknown = 99,                    // Default (not classified)\n    TransportUnavailable = 1,        // Network/transport issues\n    HandlerException = 2,            // Handler threw exception\n    ValidationFailure = 3,           // Message validation failed\n    TimeoutExceeded = 4,             // Processing timeout\n    SerializationError = 5,          // Cannot deserialize message\n    DependencyFailure = 6,           // External dependency unavailable\n    PoisonMessage = 7                // Exceeded retry limit\n}\n```\n\n**Purpose**:\n- Enable typed filtering (e.g., \"retry only TransportUnavailable failures\")\n- Support different retry strategies per failure type\n- Metrics and monitoring (failure classification dashboards)\n\n### Retry Scheduling\n\n**Exponential Backoff Formula**:\n```\nscheduled_for = now + (base_interval * 2^attempts)\n\nBase interval: 30 seconds\nAttempts:\n- 0: First attempt (no backoff)\n- 1: 30s * 2^1 = 1 minute\n- 2: 30s * 2^2 = 2 minutes\n- 3: 30s * 2^3 = 4 minutes\n- 4: 30s * 2^4 = 8 minutes\n- 5: 30s * 2^5 = 16 minutes\n- ...\n```\n\n## Failure Processing Flow {#failure-flow}\n\n### Basic Failure and Retry\n\n```mermaid\nsequenceDiagram\n    participant I as Instance\n    participant DB as PostgreSQL\n    participant H as Handler/Transport\n\n    I->>DB: ProcessWorkBatchAsync()\n    DB-->>I: WorkBatch: [M1]\n\n    I->>H: Process M1\n    H-->>I: ❌ Exception: Network timeout\n\n    I->>DB: ProcessWorkBatchAsync(<br/>failures: [M1: error=\"Network timeout\"])\n    DB->>DB: UPDATE wh_outbox<br/>SET status = status | Failed (32768),<br/>error = \"Network timeout\",<br/>attempts = attempts + 1,<br/>scheduled_for = now + (30s * 2^attempts),<br/>instance_id = NULL,<br/>lease_expiry = NULL<br/>WHERE message_id = M1\n    Note over DB: M1: attempts=1<br/>scheduled_for = now + 1 min<br/>Status: Stored | Failed (32769)\n\n    Note over I: Wait 1 minute...\n\n    I->>DB: ProcessWorkBatchAsync()\n    DB->>DB: Find claimable messages:<br/>WHERE scheduled_for <= now\n    DB-->>I: WorkBatch: [M1] (retry)\n\n    I->>H: Process M1 (retry)\n    H-->>I: ✅ Success\n\n    I->>DB: ProcessWorkBatchAsync(<br/>completions: [M1: Published])\n    DB->>DB: UPDATE status = status | Published,<br/>DELETE (outbox done when published)\n    Note over DB: ✅ M1 processed successfully<br/>after retry\n```\n\n### Retry Schedule Timeline\n\n```\nTime →\n0s              60s             120s            180s            240s\n│               │               │               │               │\nM1 ━━━━━━━━━┃ Fail (attempts=0)\n           │\n           ├→ scheduled_for = now + 30s * 2^1 = now + 1 min\n           │\n           ├──── Cannot claim (scheduled_for > now)\n           │\n           │               Retry #1\n           │               ┃ Fail (attempts=1)\n           │               │\n           │               ├→ scheduled_for = now + 30s * 2^2 = now + 2 min\n           │               │\n           │               ├──── Cannot claim\n           │               │\n           │               │                               Retry #2\n           │               │                               ┃ Success\n           │               │                               │\n           │               │                               └→ Published\n```\n\n## Stream-Based Failure Cascades {#failure-cascade}\n\n### Problem: Blocking Entire Stream\n\nWhen message M1 in stream S fails, what happens to messages M2, M3, M4 that come after it?\n\n**Options**:\n1. **Block all**: M2, M3, M4 stuck until M1 succeeds (could wait forever)\n2. **Continue**: Process M2, M3, M4 anyway (violates stream ordering)\n3. **Cascade release**: Allow releasing M2, M3, M4 to unblock stream\n\n**Whizbang's Approach**: Cascade release with explicit control\n\n### Status=0 Release Pattern\n\n**Mechanism**: Completing a message with `Status = 0` clears its lease without changing status flags, allowing it to be reprocessed.\n\n```csharp\n// Release messages M2, M3 (let them be retried)\nawait coordinator.ProcessWorkBatchAsync(\n    // ...\n    outboxCompletions: [\n        new MessageCompletion { MessageId = message2Id, Status = 0 },  // Release\n        new MessageCompletion { MessageId = message3Id, Status = 0 }   // Release\n    ],\n    outboxFailures: [\n        new MessageFailure {\n            MessageId = message1Id,\n            CompletedStatus = MessageProcessingStatus.Stored,\n            Error = \"Processing failed\"\n        }\n    ]\n);\n```\n\n**Effect**:\n- M1: Marked as failed, scheduled for retry\n- M2, M3: Leases cleared (`instance_id = NULL`, `lease_expiry = NULL`)\n- M2, M3: Status unchanged (still `Stored`)\n- M2, M3: Can be reclaimed by any instance\n\n### Cascade Release Sequence Diagram\n\n```mermaid\nsequenceDiagram\n    participant I as Instance\n    participant DB as PostgreSQL\n\n    Note over DB: Stream S has messages M1, M2, M3<br/>(all claimed by Instance)\n\n    I->>I: Process M1 → ❌ Fails\n    I->>I: Cannot process M2, M3<br/>(depend on M1 success)\n\n    I->>DB: ProcessWorkBatchAsync(<br/>failures: [M1],<br/>completions: [M2: Status=0, M3: Status=0])\n\n    DB->>DB: UPDATE wh_outbox<br/>SET status = status | Failed,<br/>scheduled_for = now + 1 min,<br/>instance_id = NULL, lease_expiry = NULL<br/>WHERE message_id = M1\n\n    DB->>DB: UPDATE wh_outbox<br/>SET instance_id = NULL,<br/>lease_expiry = NULL<br/>WHERE message_id IN (M2, M3)<br/>-- Status unchanged (Status | 0 = Status)\n\n    Note over DB: M1: Failed, scheduled for retry<br/>M2, M3: Released, can be reclaimed\n\n    Note over I: Later (next ProcessWorkBatch call)\n\n    I->>DB: ProcessWorkBatchAsync()\n    DB->>DB: Find claimable messages:<br/>M1: scheduled_for > now (blocked)<br/>M2: No earlier messages with active lease ✅<br/>M3: M2 earlier, but no lease ✅\n    DB-->>I: WorkBatch: [M2, M3]\n\n    I->>I: Process M2, M3 successfully\n    I->>DB: ProcessWorkBatchAsync(<br/>completions: [M2: Published, M3: Published])\n    Note over DB: ✅ M2, M3 completed<br/>M1 still scheduled for retry\n```\n\n### Cascade Decision Matrix\n\n| M1 State | M2 Lease Cleared? | M2 Claimable? | Ordering Impact |\n|",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/messaging/idempotency-patterns",
+        "title": "Idempotency Patterns",
+        "category": "messaging",
+        "order": 999,
+        "description": "# Idempotency Patterns\n\n## Overview\n\nIdempotency ensures that processing the same message multiple times produces the same result as processing it once. Whizbang implements different idempotency strategies for inbox and outbox based on their roles in the system architecture.\n\n## Core Concepts\n\n### What is Idempotency?\n\n**Definition**: An operation is idempotent if performing it multiple times has the same effect as performing it once.\n\n**Why It Matters**:\n- Message brokers often provide at-least-once delivery (duplicates possible)\n- Network retries can cause duplicate message sends\n- Distributed systems need to handle duplicate messages gracefully\n\n**Example**:\n- ✅ Idempotent: `SET balance = 100` (same result whether executed 1x or 10x)\n- ❌ Not Idempotent: `SET balance = balance + 10` (different result each execution)\n\n### Inbox vs. Outbox Strategies\n\n| Aspect | Inbox | Outbox |\n|",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/messaging/inbox-pattern",
+        "title": "Inbox Pattern",
+        "category": "Messaging",
+        "order": 2,
+        "description": "Achieve exactly-once message processing with the Inbox Pattern - automatic deduplication and idempotent message handling",
+        "tags": "inbox, exactly-once, deduplication, idempotency, message-processing",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/messaging/message-envelopes",
+        "title": "Message Envelopes Deep Dive",
+        "category": "Messaging",
+        "order": 4,
+        "description": "Deep dive into Message Envelopes - hop-based distributed tracing across Outbox, Inbox, and message transports",
+        "tags": "message-envelopes, distributed-tracing, observability, cross-service, azure-service-bus",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/messaging/multi-instance-coordination",
+        "title": "Multi Instance Coordination",
+        "category": "messaging",
+        "order": 999,
+        "description": "# Multi-Instance Coordination\n\n## Overview\n\nMulti-instance coordination ensures reliable, ordered message processing across multiple service instances. This document details the coordination mechanisms, decision points, and timing guarantees that enable distributed message processing.\n\n## Core Coordination Mechanisms\n\n### 1. Cross-Instance Stream Ordering {#cross-instance-stream-ordering}\n\n**Rule**: When Instance A holds message M1 from stream S, Instance B cannot claim later messages (M2, M3, M4) from the same stream until Instance A completes or releases M1.\n\n**Why This Matters**: Prevents out-of-order processing when messages from the same stream are distributed across multiple instances via partition assignment.\n\n#### Sequence Diagram\n\n```mermaid\nsequenceDiagram\n    participant I1 as Instance 1\n    participant DB as PostgreSQL\n    participant I2 as Instance 2\n\n    Note over DB: Stream S has messages M1, M2, M3, M4<br/>(temporal order by created_at)\n\n    I1->>DB: ProcessWorkBatch()\n    DB->>DB: Calculate partition ownership<br/>(partition % 2)\n    DB->>DB: M1, M2 assigned to partition 0<br/>M3, M4 assigned to partition 5\n    DB->>DB: Instance 1 owns partition 0<br/>Instance 2 owns partition 5\n    DB-->>I1: Returns M1, M2\n    Note over I1: I1 now holds lease on M1, M2<br/>lease_expiry = now + 5 min\n\n    I2->>DB: ProcessWorkBatch()\n    DB->>DB: Check partition ownership\n    DB->>DB: Find M3, M4 in partition 5 (owned by I2)\n    DB->>DB: NOT EXISTS check:<br/>SELECT 1 FROM wh_outbox earlier<br/>WHERE earlier.stream_id = M3.stream_id<br/>AND earlier.created_at < M3.created_at<br/>AND earlier.instance_id IS NOT NULL<br/>AND earlier.lease_expiry > now\n    Note over DB: ❌ M3, M4 BLOCKED<br/>Earlier messages M1, M2 held by I1<br/>(active lease)\n    DB-->>I2: Returns [] (empty)\n\n    Note over I2: I2 cannot process M3, M4<br/>until I1 completes/releases M1, M2\n\n    I1->>DB: ProcessWorkBatch(<br/>completions: [M1: Published, M2: Published])\n    DB->>DB: Mark M1, M2 as Published\n    DB->>DB: Delete M1, M2 (done)\n\n    I2->>DB: ProcessWorkBatch()\n    DB->>DB: NOT EXISTS check passes<br/>(no earlier messages with active leases)\n    DB-->>I2: Returns M3, M4\n    Note over I2: ✅ Stream ordering preserved<br/>M1, M2 completed before M3, M4 claimed\n```\n\n**Decision Matrix**:\n\n| Earlier Message State | Later Messages Claimable? | Reason |\n|",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/messaging/outbox-pattern",
+        "title": "Outbox Pattern",
+        "category": "Messaging",
+        "order": 1,
+        "description": "Implement reliable cross-service event publishing with the Outbox Pattern - guaranteed delivery without distributed transactions",
+        "tags": "outbox, reliable-messaging, transactional-outbox, event-publishing, distributed-systems",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/messaging/topic-filters",
+        "title": "Topic Filters",
+        "category": "messaging",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/messaging/work-coordination",
+        "title": "Work Coordination",
+        "category": "messaging",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/messaging/work-coordinator",
+        "title": "Work Coordinator",
+        "category": "Messaging",
+        "order": 3,
+        "description": "Master the Work Coordinator - atomic batch processing for Outbox, Inbox, and event store tracking with lease-based coordination",
+        "tags": "work-coordinator, atomic-operations, batch-processing, distributed-coordination, lease-management",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/source-generators/aggregate-ids",
+        "title": "Aggregate IDs",
+        "category": "Source Generators",
+        "order": 4,
+        "description": "Zero-reflection aggregate ID extraction for PolicyContext - compile-time discovery of [AggregateId] marked properties",
+        "tags": "source-generators, aggregate-ids, policy-context, zero-reflection, compile-time, uuidv7",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/source-generators/json-contexts",
+        "title": "JSON Contexts",
+        "category": "Source Generators",
+        "order": 5,
+        "description": "AOT-compatible JSON serialization with compile-time JsonSerializerContext generation - zero reflection for Native AOT",
+        "tags": "source-generators, json, serialization, aot, native-aot, system-text-json, zero-reflection",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/source-generators/message-registry",
+        "title": "Message Registry",
+        "category": "Source Generators",
+        "order": 3,
+        "description": "VSCode extension integration via compile-time message registry - navigate from messages to handlers with IDE tooling",
+        "tags": "source-generators, vscode, tooling, message-registry, code-navigation, ide-integration",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/source-generators/perspective-discovery",
+        "title": "Perspective Discovery",
+        "category": "Source Generators",
+        "order": 2,
+        "description": "Compile-time perspective discovery for event-driven read models - zero reflection registration and Event Store integration",
+        "tags": "source-generators, perspectives, read-models, events, roslyn, compile-time, zero-reflection",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/source-generators/receptor-discovery",
+        "title": "Receptor Discovery",
+        "category": "Source Generators",
+        "order": 1,
+        "description": "Compile-time receptor discovery with Roslyn source generators - zero reflection, AOT-compatible message routing",
+        "tags": "source-generators, receptors, roslyn, compile-time, zero-reflection, aot",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/source-generators/topic-filter-discovery",
+        "title": "Topic Filter Discovery",
+        "category": "Source Generators",
+        "order": 6,
+        "description": "Compile-time topic filter discovery with Roslyn source generators - type-safe, zero-reflection message routing configuration",
+        "tags": "source-generators, topic-filters, roslyn, compile-time, zero-reflection, aot, routing",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/testing/lifecycle-synchronization",
+        "title": "Lifecycle Synchronization",
+        "category": "Testing",
+        "order": 3,
+        "description": "Deterministic test synchronization using lifecycle receptors - eliminate race conditions in integration tests with PostPerspectiveInline stage",
+        "tags": "testing, integration-tests, lifecycle, synchronization, race-conditions, PostPerspectiveInline",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/transports/azure-service-bus",
+        "title": "Azure Service Bus Transport",
+        "category": "Transports",
+        "order": 1,
+        "description": "Reliable cross-service messaging with Azure Service Bus topics and subscriptions - AOT-compatible with correlation filters",
+        "tags": "transports, azure-service-bus, messaging, topics, subscriptions, correlation-filters, aspire, aot",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/transports/in-memory",
+        "title": "In-Memory Transport",
+        "category": "Transports",
+        "order": 2,
+        "description": "Synchronous in-process message delivery for testing and single-process scenarios - zero external dependencies",
+        "tags": "transports, in-memory, testing, in-process, synchronous, pub-sub, request-response",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/transports/rabbitmq",
+        "title": "RabbitMQ Transport",
+        "category": "Transports",
+        "order": 2,
+        "description": "Distributed event-driven messaging with RabbitMQ topic exchanges - AOT-compatible with channel pooling and dead-letter queue support",
+        "tags": "transports, rabbitmq, messaging, topic-exchange, dead-letter-queue, channel-pool, aot, testcontainers",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/tutorial/analytics-service",
+        "title": "Analytics Service",
+        "category": "Tutorial",
+        "order": 8,
+        "description": "Build the Analytics Worker - real-time analytics, time-series perspectives, and reporting dashboards",
+        "tags": "tutorial, analytics-service, perspectives, time-series, reporting, dashboards",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/tutorial/customer-service",
+        "title": "Customer Service (BFF)",
+        "category": "Tutorial",
+        "order": 7,
+        "description": "Build the Customer Service BFF - perspectives, read models, CQRS query side, and GraphQL API",
+        "tags": "tutorial, customer-service, bff, perspectives, cqrs, read-models",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/tutorial/deployment",
+        "title": "Deployment",
+        "category": "Tutorial",
+        "order": 10,
+        "description": "Deploy to production - Azure Kubernetes Service, CI/CD pipelines, monitoring, and scaling",
+        "tags": "tutorial, deployment, kubernetes, azure, cicd, monitoring",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/tutorial/inventory-service",
+        "title": "Inventory Service",
+        "category": "Tutorial",
+        "order": 3,
+        "description": "Build the Inventory Worker - event subscription, stock reservations, compensation, and perspectives",
+        "tags": "tutorial, inventory-service, event-driven, perspectives, compensation",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/tutorial/notification-service",
+        "title": "Notification Service",
+        "category": "Tutorial",
+        "order": 5,
+        "description": "Build the Notification Worker - email/SMS notifications, template rendering, and delivery tracking",
+        "tags": "tutorial, notification-service, email, sms, event-driven",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/tutorial/order-management",
+        "title": "Order Management Service",
+        "category": "Tutorial",
+        "order": 2,
+        "description": "Build the Order Service - HTTP API, command handling, event publishing, and PostgreSQL persistence",
+        "tags": "tutorial, order-service, commands, events, http-api",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/tutorial/payment-processing",
+        "title": "Payment Processing Service",
+        "category": "Tutorial",
+        "order": 4,
+        "description": "Build the Payment Worker - payment gateway integration, distributed transactions, and compensation",
+        "tags": "tutorial, payment-service, distributed-transactions, saga-pattern, compensation",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/tutorial/shipping-service",
+        "title": "Shipping Service",
+        "category": "Tutorial",
+        "order": 6,
+        "description": "Build the Shipping Worker - carrier API integration, shipment creation, tracking, and status updates",
+        "tags": "tutorial, shipping-service, carrier-api, tracking, event-driven",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/tutorial/testing-strategy",
+        "title": "Testing Strategy",
+        "category": "Tutorial",
+        "order": 9,
+        "description": "Comprehensive testing strategy - unit tests, integration tests, e2e tests, mocks, and fixtures",
+        "tags": "tutorial, testing, unit-tests, integration-tests, e2e-tests, tunit",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/tutorial/tutorial-overview",
+        "title": "ECommerce Tutorial Overview",
+        "category": "Tutorial",
+        "order": 1,
+        "description": "Build a complete e-commerce system with Whizbang - microservices, event sourcing, CQRS, and distributed messaging",
+        "tags": "tutorial, ecommerce, microservices, event-sourcing, cqrs, distributed-systems",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/workers/database-readiness",
+        "title": "Database Readiness",
+        "category": "Workers",
+        "order": 3,
+        "description": "Database dependency coordination - IDatabaseReadinessCheck pattern, startup coordination, retry logic, and caching strategies",
+        "tags": "database-readiness, dependency-coordination, startup, retry-logic, health-checks",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/workers/execution-lifecycle",
+        "title": "Execution Lifecycle",
+        "category": "Workers",
+        "order": 2,
+        "description": "Application startup and shutdown coordination - IExecutionStrategy lifecycle hooks, graceful shutdown with work draining, and worker coordination",
+        "tags": "execution-lifecycle, startup, shutdown, graceful-shutdown, work-draining, lifecycle-hooks",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/workers/perspective-worker",
+        "title": "Perspective Worker",
+        "category": "Workers",
+        "order": 1,
+        "description": "Background worker for processing perspective checkpoints - automatic checkpoint creation, polling workflow, error tracking, and startup coordination",
+        "tags": "perspective-worker, checkpoints, background-worker, lease-based-coordination, error-tracking",
+        "version": "v0.1.0"
       }
     ]
   },
   {
-    "version": "v0.5.0",
-    "metadata": {
-      "title": "Version 0.5.0 - Distributed Systems",
-      "description": "Enable distributed messaging with Kafka, RabbitMQ, and saga orchestration",
-      "releaseDate": "TBD",
-      "status": "planning"
-    },
+    "version": "v1.0.0",
+    "metadata": {},
     "docs": [
       {
-        "slug": "v0.5.0/production/dispatcher",
-        "title": "Distributed Orchestration",
-        "category": "Production",
-        "order": 7,
-        "description": "Multi-region distributed saga orchestration with consensus and global coordination",
-        "tags": "dispatcher, distributed, orchestration, consensus, raft, global, production, v0.5.0",
-        "version": "v0.5.0"
-      },
-      {
-        "slug": "v0.5.0/production/drivers",
-        "title": "Distributed Multi-Model Drivers",
-        "category": "Production",
-        "order": 5,
-        "description": "Cloud-native distributed drivers with multi-model support and automatic sharding",
-        "tags": "drivers, distributed, multi-model, sharding, cloud-native, dynamodb, cosmosdb, production, v0.5.0",
-        "version": "v0.5.0"
-      },
-      {
-        "slug": "v0.5.0/production/ledger",
-        "title": "Distributed Event Store",
-        "category": "Production",
-        "order": 4,
-        "description": "Multi-region event store with replication, partitioning, and event streaming",
-        "tags": "ledger, distributed, replication, partitioning, event-streaming, production, v0.5.0",
-        "version": "v0.5.0"
-      },
-      {
-        "slug": "v0.5.0/production/policies",
-        "title": "Production Policy System",
-        "category": "Production",
-        "order": 3,
-        "description": "Distributed policy coordination, federation, and ML-based optimization",
-        "tags": "policies, distributed, federation, machine-learning, production, v0.5.0",
-        "version": "v0.5.0"
-      },
-      {
-        "slug": "v0.5.0/production/transports",
-        "title": "Cloud-Native Transports",
-        "category": "Production",
-        "order": 6,
-        "description": "Multi-cloud messaging with AWS SQS/SNS, Azure Service Bus, Google Pub/Sub, and global federation",
-        "tags": "transports, cloud, aws, azure, gcp, federation, multi-cloud, production, v0.5.0",
-        "version": "v0.5.0"
+        "slug": "v1.0.0/data/efcore-json-configuration",
+        "title": "EF Core 10 JSON Configuration",
+        "category": "Data",
+        "order": 10,
+        "description": "Configuring EF Core 10 with custom JSON converters for JSONB columns",
+        "tags": "efcore, json, jsonb, postgresql, npgsql, converters",
+        "version": "v1.0.0"
       }
     ]
   },
