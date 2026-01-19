@@ -158,6 +158,12 @@ function findMarkdownFiles(dir, baseDir = dir) {
   const items = fs.readdirSync(dir);
   
   for (const item of items) {
+    // Skip internal-docs folder - not included in public site search
+    if (item === 'internal-docs') {
+      console.log(`⏭️  Skipping internal-docs folder (not included in search index)`);
+      continue;
+    }
+    
     const fullPath = path.join(dir, item);
     const stat = fs.statSync(fullPath);
     

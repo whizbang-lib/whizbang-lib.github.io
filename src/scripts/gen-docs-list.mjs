@@ -13,6 +13,12 @@ async function findMarkdownFiles(dir, baseDir = dir) {
   const items = await readdir(dir);
   
   for (const item of items) {
+    // Skip internal-docs folder - not included in public site
+    if (item === 'internal-docs') {
+      console.log(`⏭️  Skipping internal-docs folder (not included in public site)`);
+      continue;
+    }
+    
     const fullPath = join(dir, item);
     const statResult = await stat(fullPath);
     

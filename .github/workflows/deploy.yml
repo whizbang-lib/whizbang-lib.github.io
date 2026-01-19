@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -24,18 +24,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: '18'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
-      - name: Inject version info
-        run: |
-          VERSION="${{ github.sha }}"
-          BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          echo "window.WHIZBANG_VERSION = { commit: '$VERSION', buildDate: '$BUILD_DATE' };" > src/assets/version.js
-          
       - name: Build
         run: npm run build
 
@@ -45,7 +39,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "./dist/whizbang-site"
+          path: './dist/whizbang-site'
 
   deploy:
     environment:

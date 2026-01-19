@@ -2,6 +2,8 @@
 // Design Tokens - Centralized design system variables
 // =============================================================================
 
+@use 'sass:map';
+
 // Color System - Theme-Aware Design Tokens
 // =============================================================================
 // Light Theme (Default)
@@ -118,7 +120,7 @@ $wb-spacing: (
 
 // Function to get spacing values
 @function wb-spacing($size) {
-  @return map-get($wb-spacing, $size);
+  @return map.get($wb-spacing, $size);
 }
 
 // Typography Scale
@@ -150,15 +152,15 @@ $wb-line-heights: (
 
 // Functions for typography
 @function wb-font-size($size) {
-  @return map-get($wb-font-sizes, $size);
+  @return map.get($wb-font-sizes, $size);
 }
 
 @function wb-font-weight($weight) {
-  @return map-get($wb-font-weights, $weight);
+  @return map.get($wb-font-weights, $weight);
 }
 
 @function wb-line-height($height) {
-  @return map-get($wb-line-heights, $height);
+  @return map.get($wb-line-heights, $height);
 }
 
 // Border Radius Scale
@@ -175,7 +177,7 @@ $wb-border-radius: (
 );
 
 @function wb-border-radius($size) {
-  @return map-get($wb-border-radius, $size);
+  @return map.get($wb-border-radius, $size);
 }
 
 // Shadow Scale
@@ -190,7 +192,7 @@ $wb-shadows: (
 );
 
 @function wb-shadow($size) {
-  @return map-get($wb-shadows, $size);
+  @return map.get($wb-shadows, $size);
 }
 
 // Z-Index Scale
@@ -206,7 +208,7 @@ $wb-z-index: (
 );
 
 @function wb-z-index($layer) {
-  @return map-get($wb-z-index, $layer);
+  @return map.get($wb-z-index, $layer);
 }
 
 // Breakpoints
@@ -220,7 +222,7 @@ $wb-breakpoints: (
 );
 
 @function wb-breakpoint($size) {
-  @return map-get($wb-breakpoints, $size);
+  @return map.get($wb-breakpoints, $size);
 }
 
 // Animation Durations
@@ -233,7 +235,7 @@ $wb-durations: (
 );
 
 @function wb-duration($speed) {
-  @return map-get($wb-durations, $speed);
+  @return map.get($wb-durations, $speed);
 }
 
 // Transition Easings
@@ -247,5 +249,5 @@ $wb-easings: (
 );
 
 @function wb-easing($type) {
-  @return map-get($wb-easings, $type);
+  @return map.get($wb-easings, $type);
 }

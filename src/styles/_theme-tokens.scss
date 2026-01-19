@@ -2,6 +2,8 @@
 // Theme Tokens - Light and Dark Theme Variables
 // =============================================================================
 
+@use 'sass:map';
+
 // Base color palette - shared between themes
 // -----------------------------------------------------------------------------
 $wb-colors: (
@@ -52,7 +54,7 @@ $wb-colors: (
 );
 
 @function wb-color($name) {
-  @return map-get($wb-colors, $name);
+  @return map.get($wb-colors, $name);
 }
 
 // Light Theme Variables

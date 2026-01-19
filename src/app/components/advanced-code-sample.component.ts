@@ -9,7 +9,7 @@ import { MenuModule } from 'primeng/menu';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 import { ChipModule } from 'primeng/chip';
-import { OverlayPanelModule } from 'primeng/overlaypanel';
+import { PopoverModule } from 'primeng/popover';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { forkJoin, map } from 'rxjs';
@@ -50,7 +50,7 @@ export interface CodeSampleMetadata {
     ProgressSpinnerModule,
     TagModule,
     ChipModule,
-    OverlayPanelModule,
+    PopoverModule,
     ToastModule
   ],
   providers: [MessageService],

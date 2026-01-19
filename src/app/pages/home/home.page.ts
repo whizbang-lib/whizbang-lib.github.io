@@ -53,7 +53,6 @@ dotnet whiz replay InvoiceSummary`;
     this.setupScrollAnimations();
     setTimeout(() => {
       this.setupParallaxEffect();
-      this.fixCapabilityCardTextInDarkMode();
     }, 1000); // Delay to ensure DOM is ready
   }
 
@@ -191,24 +190,5 @@ dotnet whiz replay InvoiceSummary`;
     };
 
     window.addEventListener('scroll', requestTick, { passive: true });
-  }
-
-  private fixCapabilityCardTextInDarkMode(): void {
-    // Watch for theme changes and fix capability card text
-    const applyFix = () => {
-      if (this.themeService.isDarkTheme()) {
-        const cards = document.querySelectorAll('.capabilities-section .surface-card *');
-        cards.forEach(el => {
-          (el as HTMLElement).style.setProperty('color', 'white', 'important');
-          (el as HTMLElement).style.setProperty('-webkit-text-fill-color', 'white', 'important');
-        });
-      }
-    };
-
-    // Apply fix immediately
-    applyFix();
-
-    // Listen for theme changes
-    window.addEventListener('theme-changed', applyFix);
   }
 }

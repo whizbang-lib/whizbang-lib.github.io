@@ -5,21 +5,15 @@
 // Third-party CSS frameworks - @use must come first
 @use 'primeflex/primeflex';
 
-// Design System - @import after @use
-@import 'styles/theme-tokens';
-@import 'styles/design-tokens';
-@import 'styles/mixins';
-@import 'styles/enhanced-code-blocks';
-@import 'styles/copy-link';
+// Design System - Using @use instead of deprecated @import
+@use 'styles/theme-tokens' as *;
+@use 'styles/design-tokens' as *;
+@use 'styles/mixins' as *;
+@use 'styles/enhanced-code-blocks' as *;
 
 // Ensure proper box sizing globally
 *, *::before, *::after {
     box-sizing: border-box;
-}
-
-// Add scroll padding to account for fixed header
-html {
-    scroll-padding-top: 90px; // 70px header + 20px padding
 }
 
 // Prevent horizontal scrolling on body only
@@ -262,7 +256,7 @@ mark.search-highlight {
 }
 
 /* Search overlay styles */
-.search-overlay .p-overlaypanel-content {
+.search-overlay .p-popover-content {
     padding: 0 !important;
 }
 
@@ -284,7 +278,7 @@ mark.search-highlight {
 
 // Base overlay styling with comprehensive fallbacks
 .p-sidebar,
-.p-overlaypanel,
+.p-popover,
 .p-dropdown-panel,
 .p-autocomplete-panel,
 .p-dialog,
@@ -300,8 +294,8 @@ mark.search-highlight {
   background: var(--p-sidebar-background, var(--p-overlay-modal-background, var(--p-content-background, #ffffff))) !important;
 }
 
-.p-overlaypanel {
-  background: var(--p-overlaypanel-background, var(--p-overlay-popover-background, var(--p-content-background, #ffffff))) !important;
+.p-popover {
+  background: var(--p-popover-background, var(--p-overlay-popover-background, var(--p-content-background, #ffffff))) !important;
 }
 
 .p-dropdown-panel,
@@ -316,7 +310,7 @@ mark.search-highlight {
 // Dark theme comprehensive override
 :root[data-theme="dark"] {
   .p-sidebar,
-  .p-overlaypanel,
+  .p-popover,
   .p-dropdown-panel,
   .p-autocomplete-panel,
   .p-dialog,
@@ -332,8 +326,8 @@ mark.search-highlight {
     background: var(--p-sidebar-background, var(--p-overlay-modal-background, var(--p-content-background, #18181b))) !important;
   }
 
-  .p-overlaypanel {
-    background: var(--p-overlaypanel-background, var(--p-overlay-popover-background, var(--p-content-background, #18181b))) !important;
+  .p-popover {
+    background: var(--p-popover-background, var(--p-overlay-popover-background, var(--p-content-background, #18181b))) !important;
   }
 
   .p-dropdown-panel,
@@ -485,5 +479,841 @@ mark.search-highlight {
   section {
     padding: 1.5rem 0 !important;
     margin-bottom: 2rem !important;
+  }
+}
+
+// =============================================================================
+// Mermaid Diagram Styles
+// =============================================================================
+
+.mermaid-diagram {
+  margin: 2rem 0;
+  padding: 1rem;
+  background: var(--wb-surface-card);
+  border-radius: 8px;
+  border: 1px solid var(--wb-surface-border);
+  overflow-x: auto;
+
+  svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+  }
+}
+
+// Dark mode Mermaid adjustments
+:root[data-theme="dark"] .mermaid-diagram {
+  background: #1a1a1a;
+  border-color: #2a2a2a;
+}
+
+// Mobile responsiveness for diagrams
+@media (max-width: 768px) {
+  .mermaid-diagram {
+    padding: 0.5rem;
+    margin: 1rem 0;
+
+    svg {
+      font-size: 12px;
+    }
+  }
+}
+
+// =============================================================================
+// Mermaid Diagram Semantic Class Styling (Theme-Aware)
+// =============================================================================
+
+// Light mode colors - Architectural Layers
+:root:not([data-theme="dark"]) .mermaid-diagram {
+  // === SUBGRAPH CLUSTER STYLING (Entire subgraph boxes) ===
+  // Use lighter/more transparent shades than individual nodes
+
+  // ORM subgraph - lighter red/pink (event/data layer color)
+  #ORM rect {
+    fill: rgba(220, 53, 69, 0.08) !important;
+    stroke: #dc3545 !important;
+    stroke-width: 0.125em !important;
+    rx: 8px !important;
+    ry: 8px !important;
+  }
+
+  // Message Broker Adapters subgraph - lighter yellow (command layer color)
+  #Messaging rect {
+    fill: rgba(255, 193, 7, 0.08) !important;
+    stroke: #ffc107 !important;
+    stroke-width: 0.125em !important;
+    rx: 8px !important;
+    ry: 8px !important;
+  }
+
+  // Developer Tools subgraph - lighter purple (infrastructure layer color)
+  #Dev rect {
+    fill: rgba(139, 92, 246, 0.08) !important;
+    stroke: #8b5cf6 !important;
+    stroke-width: 0.125em !important;
+    rx: 8px !important;
+    ry: 8px !important;
+  }
+
+  // Core Packages subgraph - lighter green (core layer color)
+  #Core rect {
+    fill: rgba(40, 167, 69, 0.08) !important;
+    stroke: #28a745 !important;
+    stroke-width: 0.125em !important;
+    rx: 8px !important;
+    ry: 8px !important;
+  }
+
+  // Observability subgraph - lighter teal (observability layer color)
+  #Observability rect {
+    fill: rgba(20, 184, 166, 0.08) !important;
+    stroke: #14b8a6 !important;
+    stroke-width: 0.125em !important;
+    rx: 8px !important;
+    ry: 8px !important;
+  }
+
+  // Subgraph header (cluster label) color styling
+  // Note: Size and centering configured in MermaidService themeCSS
+  #ORM .cluster-label text,
+  #ORM .cluster-label span {
+    fill: #dc3545 !important;
+    color: #dc3545 !important;
+  }
+
+  #Messaging .cluster-label text,
+  #Messaging .cluster-label span {
+    fill: #ffc107 !important;
+    color: #ffc107 !important;
+  }
+
+  #Dev .cluster-label text,
+  #Dev .cluster-label span {
+    fill: #8b5cf6 !important;
+    color: #8b5cf6 !important;
+  }
+
+  #Core .cluster-label text,
+  #Core .cluster-label span {
+    fill: #28a745 !important;
+    color: #28a745 !important;
+  }
+
+  #Observability .cluster-label text,
+  #Observability .cluster-label span {
+    fill: #14b8a6 !important;
+    color: #14b8a6 !important;
+  }
+
+
+  // === ARCHITECTURAL LAYERS (Semantic Meaning) ===
+
+  // Business logic layer (green)
+  .layer-business,
+  .layer-core {
+    rect, polygon, circle, ellipse {
+      fill: #d4edda !important;
+      stroke: #28a745 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #155724 !important;
+    }
+  }
+
+  // Edge labels for core layer
+  .edgeLabel.layer-business span,
+  .edgeLabel.layer-business p,
+  .edgeLabel.layer-core span,
+  .edgeLabel.layer-core p,
+  span.edgeLabel.layer-core,
+  p.edgeLabel.layer-core,
+  g.edgeLabel.layer-core span.edgeLabel,
+  g.edgeLabel.layer-core p.edgeLabel {
+    color: #28a745 !important;
+  }
+
+  // Read model / Query layer (blue)
+  .layer-read,
+  .layer-query,
+  .layer-projection {
+    rect, polygon, circle, ellipse {
+      fill: #cce5ff !important;
+      stroke: #004085 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #003366 !important;
+    }
+  }
+
+  // Edge labels for read layer
+  .edgeLabel.layer-read span,
+  .edgeLabel.layer-read p,
+  .edgeLabel.layer-query span,
+  .edgeLabel.layer-query p,
+  .edgeLabel.layer-projection span,
+  .edgeLabel.layer-projection p {
+    color: #004085 !important;
+  }
+
+  // Command / Write layer (yellow/orange)
+  .layer-command,
+  .layer-write {
+    rect, polygon, circle, ellipse {
+      fill: #fff3cd !important;
+      stroke: #ffc107 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #856404 !important;
+    }
+  }
+
+  // Edge labels for command layer
+  .edgeLabel.layer-command span,
+  .edgeLabel.layer-command p,
+  .edgeLabel.layer-write span,
+  .edgeLabel.layer-write p,
+  span.edgeLabel.layer-command,
+  p.edgeLabel.layer-command,
+  g.edgeLabel.layer-command span.edgeLabel,
+  g.edgeLabel.layer-command p.edgeLabel {
+    color: #ffc107 !important;
+  }
+
+  // Event / Data layer (red/pink)
+  .layer-event,
+  .layer-data {
+    rect, polygon, circle, ellipse {
+      fill: #f8d7da !important;
+      stroke: #dc3545 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #721c24 !important;
+    }
+  }
+
+  // Edge labels for event layer
+  .edgeLabel.layer-event span,
+  .edgeLabel.layer-event p,
+  .edgeLabel.layer-data span,
+  .edgeLabel.layer-data p,
+  span.edgeLabel.layer-event,
+  p.edgeLabel.layer-event,
+  g.edgeLabel.layer-event span.edgeLabel,
+  g.edgeLabel.layer-event p.edgeLabel {
+    color: #dc3545 !important;
+  }
+
+  // Observability / Telemetry layer (teal/cyan)
+  .layer-observability,
+  .layer-telemetry {
+    rect, polygon, circle, ellipse {
+      fill: #ccfbf1 !important;
+      stroke: #14b8a6 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #115e59 !important;
+    }
+  }
+
+  // Edge labels for observability layer
+  .edgeLabel.layer-observability span,
+  .edgeLabel.layer-observability p,
+  .edgeLabel.layer-telemetry span,
+  .edgeLabel.layer-telemetry p,
+  span.edgeLabel.layer-observability,
+  p.edgeLabel.layer-observability,
+  g.edgeLabel.layer-observability span.edgeLabel,
+  g.edgeLabel.layer-observability p.edgeLabel {
+    color: #14b8a6 !important;
+  }
+
+  // Infrastructure / Tools layer (purple)
+  .layer-infrastructure,
+  .layer-tools {
+    rect, polygon, circle, ellipse {
+      fill: #e7d4f8 !important;
+      stroke: #8b5cf6 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #5b21b6 !important;
+    }
+  }
+
+  // Edge labels for infrastructure layer
+  .edgeLabel.layer-infrastructure span,
+  .edgeLabel.layer-infrastructure p,
+  .edgeLabel.layer-tools span,
+  .edgeLabel.layer-tools p,
+  span.edgeLabel.layer-infrastructure,
+  p.edgeLabel.layer-infrastructure,
+  g.edgeLabel.layer-infrastructure span.edgeLabel,
+  g.edgeLabel.layer-infrastructure p.edgeLabel {
+    color: #8b5cf6 !important;
+  }
+
+  // === COLOR BUCKETS (Visual Grouping) ===
+  // For grouping related items with coordinated colors
+
+  // Bucket A - Vibrant Blue
+  .bucket-a {
+    rect, polygon, circle, ellipse {
+      fill: #bfdbfe !important;
+      stroke: #3b82f6 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #1e40af !important;
+    }
+  }
+
+  // Bucket B - Vibrant Green
+  .bucket-b {
+    rect, polygon, circle, ellipse {
+      fill: #bbf7d0 !important;
+      stroke: #22c55e !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #15803d !important;
+    }
+  }
+
+  // Bucket C - Vibrant Orange
+  .bucket-c {
+    rect, polygon, circle, ellipse {
+      fill: #fed7aa !important;
+      stroke: #f97316 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #9a3412 !important;
+    }
+  }
+
+  // Bucket D - Vibrant Purple
+  .bucket-d {
+    rect, polygon, circle, ellipse {
+      fill: #ddd6fe !important;
+      stroke: #a855f7 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #6b21a8 !important;
+    }
+  }
+
+  // Bucket E - Vibrant Pink
+  .bucket-e {
+    rect, polygon, circle, ellipse {
+      fill: #fbcfe8 !important;
+      stroke: #ec4899 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #9f1239 !important;
+    }
+  }
+
+  // Bucket A - edges and labels (class applied via JavaScript)
+  path.bucket-a {
+    stroke: #3b82f6 !important;
+    stroke-width: 0.125em !important;
+  }
+
+  .edgeLabel.bucket-a span,
+  .edgeLabel.bucket-a p {
+    color: #3b82f6 !important;
+  }
+
+  // Bucket B - edges and labels (class applied via JavaScript)
+  path.bucket-b {
+    stroke: #22c55e !important;
+    stroke-width: 0.125em !important;
+  }
+
+  .edgeLabel.bucket-b span,
+  .edgeLabel.bucket-b p {
+    color: #22c55e !important;
+  }
+
+  // Bucket C - edges and labels (class applied via JavaScript)
+  path.bucket-c {
+    stroke: #f97316 !important;
+    stroke-width: 0.125em !important;
+  }
+
+  .edgeLabel.bucket-c span,
+  .edgeLabel.bucket-c p {
+    color: #f97316 !important;
+  }
+
+  // Bucket D - edges and labels (class applied via JavaScript)
+  path.bucket-d {
+    stroke: #a855f7 !important;
+    stroke-width: 0.125em !important;
+  }
+
+  .edgeLabel.bucket-d span,
+  .edgeLabel.bucket-d p {
+    color: #a855f7 !important;
+  }
+
+  // Bucket E - edges and labels (class applied via JavaScript)
+  path.bucket-e {
+    stroke: #ec4899 !important;
+    stroke-width: 0.125em !important;
+  }
+
+  .edgeLabel.bucket-e span,
+  .edgeLabel.bucket-e p {
+    color: #ec4899 !important;
+  }
+
+  // === GLOBAL MARKER (ARROWHEAD) STYLING ===
+  // Properly sized arrow markers for readability and closer spacing
+  svg defs marker {
+    width: 6px !important;
+    height: 6px !important;
+    
+    path {
+      fill: #64748b !important;
+      stroke: #64748b !important;
+      stroke-width: 1px !important;
+    }
+  }
+
+  // Normal-sized edge link paths
+  svg path.flowchart-link {
+    stroke: #64748b !important;
+    stroke-width: 2px !important;
+  }
+
+  // Normal arrow markers
+  svg path[marker-end] {
+    stroke: #64748b !important;
+    stroke-width: 2px !important;
+    stroke-linecap: butt !important;
+  }
+}
+
+// Dark mode colors - higher contrast with darker backgrounds
+:root[data-theme="dark"] .mermaid-diagram {
+  // === SUBGRAPH CLUSTER STYLING (Entire subgraph boxes) ===
+  // Use lighter/more transparent shades than individual nodes
+
+  // ORM subgraph - lighter red/pink (event/data layer color, dark mode)
+  #ORM rect {
+    fill: rgba(248, 113, 113, 0.08) !important;
+    stroke: #f87171 !important;
+    stroke-width: 0.125em !important;
+  }
+
+  // Message Broker Adapters subgraph - lighter yellow (command layer color, dark mode)
+  #Messaging rect {
+    fill: rgba(251, 191, 36, 0.08) !important;
+    stroke: #fbbf24 !important;
+    stroke-width: 0.125em !important;
+  }
+
+  // Developer Tools subgraph - lighter purple (infrastructure layer color, dark mode)
+  #Dev rect {
+    fill: rgba(167, 139, 250, 0.08) !important;
+    stroke: #a78bfa !important;
+    stroke-width: 0.125em !important;
+  }
+
+  // Core Packages subgraph - lighter green (core layer color, dark mode)
+  #Core rect {
+    fill: rgba(72, 187, 120, 0.08) !important;
+    stroke: #48bb78 !important;
+    stroke-width: 0.125em !important;
+  }
+
+  // Observability subgraph - lighter teal (observability layer color, dark mode)
+  #Observability rect {
+    fill: rgba(94, 234, 212, 0.08) !important;
+    stroke: #5eead4 !important;
+    stroke-width: 0.125em !important;
+  }
+
+  // Subgraph header (cluster label) color styling - dark mode
+  // Note: Size and centering configured in MermaidService themeCSS
+  #ORM .cluster-label text,
+  #ORM .cluster-label span {
+    fill: #f87171 !important;
+    color: #f87171 !important;
+  }
+
+  #Messaging .cluster-label text,
+  #Messaging .cluster-label span {
+    fill: #fbbf24 !important;
+    color: #fbbf24 !important;
+  }
+
+  #Dev .cluster-label text,
+  #Dev .cluster-label span {
+    fill: #a78bfa !important;
+    color: #a78bfa !important;
+  }
+
+  #Core .cluster-label text,
+  #Core .cluster-label span {
+    fill: #48bb78 !important;
+    color: #48bb78 !important;
+  }
+
+  #Observability .cluster-label text,
+  #Observability .cluster-label span {
+    fill: #5eead4 !important;
+    color: #5eead4 !important;
+  }
+
+  // Subgraph edge colors (lines from subgraphs) - dark mode
+  path[id*="ORM"] {
+    stroke: #f87171 !important;
+    stroke-width: 0.125em !important;
+  }
+
+  .edgeLabel[id*="ORM"] span,
+  .edgeLabel[id*="ORM"] p {
+    color: #f87171 !important;
+  }
+
+  path[id*="Messaging"] {
+    stroke: #fbbf24 !important;
+    stroke-width: 0.125em !important;
+  }
+
+  .edgeLabel[id*="Messaging"] span,
+  .edgeLabel[id*="Messaging"] p {
+    color: #fbbf24 !important;
+  }
+
+  path[id*="Dev"] {
+    stroke: #a78bfa !important;
+    stroke-width: 0.125em !important;
+  }
+
+  .edgeLabel[id*="Dev"] span,
+  .edgeLabel[id*="Dev"] p {
+    color: #a78bfa !important;
+  }
+
+  path[id*="Observability"] {
+    stroke: #5eead4 !important;
+    stroke-width: 0.125em !important;
+  }
+
+  .edgeLabel[id*="Observability"] span,
+  .edgeLabel[id*="Observability"] p {
+    color: #5eead4 !important;
+  }
+
+  // === GLOBAL MARKER (ARROWHEAD) STYLING ===
+  // Properly sized arrow markers for readability
+  svg defs marker {
+    width: 12px !important;
+    height: 12px !important;
+    
+    path {
+      fill: #94a3b8 !important;
+      stroke: #94a3b8 !important;
+      stroke-width: 1px !important;
+    }
+  }
+
+  // Normal-sized edge link paths
+  svg path.flowchart-link {
+    stroke: #94a3b8 !important;
+    stroke-width: 2px !important;
+  }
+
+  // Normal arrow markers
+  svg path[marker-end] {
+    stroke: #94a3b8 !important;
+    stroke-width: 2px !important;
+    stroke-linecap: round !important;
+  }
+
+  // === ARCHITECTURAL LAYERS (Semantic Meaning) ===
+
+  // Business logic layer (green) - darker background, lighter border
+  .layer-business,
+  .layer-core {
+    rect, polygon, circle, ellipse {
+      fill: #1e4620 !important;
+      stroke: #48bb78 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #e2e8f0 !important;
+    }
+  }
+
+  // Read model / Query layer (blue) - darker background
+  .layer-read,
+  .layer-query,
+  .layer-projection {
+    rect, polygon, circle, ellipse {
+      fill: #1e3a5f !important;
+      stroke: #60a5fa !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #e2e8f0 !important;
+    }
+  }
+
+  // Command / Write layer (yellow/orange) - darker background
+  .layer-command,
+  .layer-write {
+    rect, polygon, circle, ellipse {
+      fill: #4a3410 !important;
+      stroke: #fbbf24 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #e2e8f0 !important;
+    }
+  }
+
+  // Event / Data layer (red/pink) - darker background
+  .layer-event,
+  .layer-data {
+    rect, polygon, circle, ellipse {
+      fill: #4a1a20 !important;
+      stroke: #f87171 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #e2e8f0 !important;
+    }
+  }
+
+  // Observability / Telemetry layer (teal/cyan) - darker background
+  .layer-observability,
+  .layer-telemetry {
+    rect, polygon, circle, ellipse {
+      fill: #134e4a !important;
+      stroke: #5eead4 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #e2e8f0 !important;
+    }
+  }
+
+  // Infrastructure / Tools layer (purple) - darker background
+  .layer-infrastructure,
+  .layer-tools {
+    rect, polygon, circle, ellipse {
+      fill: #3a2056 !important;
+      stroke: #a78bfa !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #e2e8f0 !important;
+    }
+  }
+
+  // === COLOR BUCKETS (Visual Grouping) ===
+
+  // Bucket A - Vibrant Blue (dark mode)
+  .bucket-a {
+    rect, polygon, circle, ellipse {
+      fill: #1e3a8a !important;
+      stroke: #60a5fa !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #e2e8f0 !important;
+    }
+  }
+
+  // Bucket B - Vibrant Green (dark mode)
+  .bucket-b {
+    rect, polygon, circle, ellipse {
+      fill: #166534 !important;
+      stroke: #4ade80 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #e2e8f0 !important;
+    }
+  }
+
+  // Bucket C - Vibrant Orange (dark mode)
+  .bucket-c {
+    rect, polygon, circle, ellipse {
+      fill: #7c2d12 !important;
+      stroke: #fb923c !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #e2e8f0 !important;
+    }
+  }
+
+  // Bucket D - Vibrant Purple (dark mode)
+  .bucket-d {
+    rect, polygon, circle, ellipse {
+      fill: #581c87 !important;
+      stroke: #c084fc !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #e2e8f0 !important;
+    }
+  }
+
+  // Bucket E - Vibrant Pink (dark mode)
+  .bucket-e {
+    rect, polygon, circle, ellipse {
+      fill: #831843 !important;
+      stroke: #f472b6 !important;
+      stroke-width: 0.125em !important;
+    }
+    .nodeLabel {
+      color: #e2e8f0 !important;
+    }
+  }
+
+  // Apply bucket colors to edges/paths (lines AND markers) - dark mode
+  .bucket-a {
+    path.edge, line.edge {
+      stroke: #60a5fa !important;
+      stroke-width: 0.125em !important;
+    }
+    .edgePath path, .edge-thickness-normal {
+      stroke: #60a5fa !important;
+    }
+    marker path {
+      fill: #60a5fa !important;
+      stroke: #60a5fa !important;
+    }
+  }
+
+  path[id*="WhizEF"],
+  path[id*="WhizKafka"] {
+    stroke: #60a5fa !important;
+    stroke-width: 0.125em !important;
+  }
+
+  .bucket-b {
+    path.edge, line.edge {
+      stroke: #4ade80 !important;
+      stroke-width: 0.125em !important;
+    }
+    .edgePath path, .edge-thickness-normal {
+      stroke: #4ade80 !important;
+    }
+    marker path {
+      fill: #4ade80 !important;
+      stroke: #4ade80 !important;
+    }
+  }
+
+  path[id*="WhizDapper"],
+  path[id*="WhizRabbit"] {
+    stroke: #4ade80 !important;
+    stroke-width: 0.125em !important;
+  }
+
+  .bucket-c {
+    path.edge, line.edge {
+      stroke: #fb923c !important;
+      stroke-width: 0.125em !important;
+    }
+    .edgePath path, .edge-thickness-normal {
+      stroke: #fb923c !important;
+    }
+    marker path {
+      fill: #fb923c !important;
+      stroke: #fb923c !important;
+    }
+  }
+
+  path[id*="WhizNH"],
+  path[id*="WhizASB"] {
+    stroke: #fb923c !important;
+    stroke-width: 0.125em !important;
+  }
+
+  .bucket-d {
+    path.edge, line.edge {
+      stroke: #c084fc !important;
+      stroke-width: 0.125em !important;
+    }
+    .edgePath path, .edge-thickness-normal {
+      stroke: #c084fc !important;
+    }
+    marker path {
+      fill: #c084fc !important;
+      stroke: #c084fc !important;
+    }
+  }
+
+  path[id*="WhizSQS"] {
+    stroke: #c084fc !important;
+    stroke-width: 0.125em !important;
+  }
+
+  .bucket-e {
+    path.edge, line.edge {
+      stroke: #f472b6 !important;
+      stroke-width: 0.125em !important;
+    }
+    .edgePath path, .edge-thickness-normal {
+      stroke: #f472b6 !important;
+    }
+    marker path {
+      fill: #f472b6 !important;
+      stroke: #f472b6 !important;
+    }
+  }
+
+  path[id*="WhizOTel"],
+  path[id*="WhizDash"] {
+    stroke: #f472b6 !important;
+    stroke-width: 0.125em !important;
+  }
+}
+
+// =============================================================================
+// Fix version selector button visibility in light mode
+// =============================================================================
+:root:not([data-theme="dark"]) {
+  // Extremely specific selector to override PrimeNG theme for version selector
+  wb-hamburger-menu .push-sidebar .sidebar-section wb-version-selector .p-button.p-component.p-button-outlined.version-selector-btn {
+    border-color: #6b7280 !important;
+    color: #374151 !important;
+  }
+  
+  // Also target by aria-label for maximum specificity - match icon/label color
+  wb-hamburger-menu .push-sidebar button[aria-label="Select version"] {
+    border-color: #6b7280 !important;
+    color: #374151 !important;
+  }
+  
+  // Fix chevron arrow color to match icon/label
+  wb-hamburger-menu .push-sidebar button[aria-label="Select version"] .version-chevron {
+    color: #6b7280 !important;
+  }
+  
+  // Fix version icon (tag icon) color in light mode
+  wb-hamburger-menu .push-sidebar .nav-icon.pi-tag {
+    color: #6b7280 !important;
+  }
+  
+  // Fix version label text to match the icon color
+  wb-hamburger-menu .push-sidebar .version-selector-label {
+    color: #6b7280 !important;
   }
 }

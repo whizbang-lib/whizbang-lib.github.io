@@ -23,7 +23,20 @@
               "node_modules/primeflex/primeflex.min.css",
               "node_modules/prism-themes/themes/prism-one-light.css"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "debug",
+              "onnxruntime-web",
+              "vscode-jsonrpc/lib/common/cancellation.js",
+              "vscode-jsonrpc/lib/common/events.js",
+              "cytoscape-fcose",
+              "dayjs",
+              "@braintree/sanitize-url",
+              "cytoscape-cose-bilkent",
+              "dayjs/plugin/advancedFormat.js",
+              "dayjs/plugin/customParseFormat.js",
+              "dayjs/plugin/isoWeek.js"
+            ]
           },
           "configurations": {
             "development": {

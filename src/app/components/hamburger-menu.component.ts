@@ -1,13 +1,16 @@
-import { Component, inject, signal, OnInit, computed, OnDestroy } from '@angular/core';
+import { Component, inject, signal, OnInit, computed, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { DividerModule } from 'primeng/divider';
 import { TooltipModule } from 'primeng/tooltip';
 import { EnvironmentAwareDocsService, MenuItem } from '../services/environment-aware-docs.service';
+import { VersionAwareNavigationService, VersionAwareMenuItem } from '../services/version-aware-navigation.service';
 import { CustomNavigationMenuComponent, CustomMenuItem } from './custom-navigation-menu.component';
+import { VersionSelectorComponent } from './version-selector.component';
 import { ThemeService, ThemeMode } from '../services/theme.service';
 import { UserPreferencesService } from '../services/user-preferences.service';
+import { VersionService } from '../services/version.service';
 import { MenuItem as PrimeMenuItem } from 'primeng/api';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
@@ -21,7 +24,8 @@ import { filter } from 'rxjs/operators';
     ButtonModule,
     DividerModule,
     TooltipModule,
-    CustomNavigationMenuComponent
+    CustomNavigationMenuComponent,
+    VersionSelectorComponent
   ],
   template: `
     <button 
@@ -65,6 +69,7 @@ import { filter } from 'rxjs/operators';
             [menuItems]="customMenuItems()"
             [nestingLevel]="0">
           </wb-custom-navigation-menu>
+          
         </div>
 
         <p-divider></p-divider>
@@ -620,6 +625,44 @@ import { filter } from 'rxjs/operators';
       white-space: nowrap;
     }
 
+    .version-selector-wrapper {
+      padding: 0.5rem 1rem;
+    }
+
+    /* Override version selector styles for sidebar */
+    .version-selector-wrapper :host ::ng-deep .version-selector-btn {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    /* Fix version selector button border visibility in light mode */
+    :root:not([data-theme="dark"]) .sidebar-section :host ::ng-deep .version-selector-btn {
+      border-color: #d1d5db !important;
+    }
+    
+    /* Override PrimeNG button styling specifically in sidebar for light mode - very specific selectors */
+    :root:not([data-theme="dark"]) .push-sidebar .sidebar-section :host ::ng-deep .p-button.p-component.p-button-outlined.version-selector-btn {
+      border-color: #d1d5db !important;
+      color: #374151 !important;
+      --p-button-outlined-border-color: #d1d5db !important;
+      --p-button-outlined-color: #374151 !important;
+    }
+    
+    /* Fix chevron arrow color in sidebar for light mode */
+    :root:not([data-theme="dark"]) .push-sidebar .sidebar-section :host ::ng-deep .version-chevron {
+      color: #6b7280 !important;
+    }
+    
+    /* Alternative approach - target the button more directly */
+    :root:not([data-theme="dark"]) .push-sidebar :host ::ng-deep button[aria-label="Select version"] {
+      border-color: #d1d5db !important;
+      color: #374151 !important;
+    }
+    
+    :root:not([data-theme="dark"]) .push-sidebar :host ::ng-deep button[aria-label="Select version"] .version-chevron {
+      color: #6b7280 !important;
+    }
+
     .sidebar-footer {
       margin-top: auto;
       padding: 1rem;
@@ -795,12 +838,117 @@ import { filter } from 'rxjs/operators';
       background-color: #e5e7eb !important;
     }
 
+    /* Version-aware menu item styling */
+    :host ::ng-deep .unified-nav-menu .version-specific {
+      position: relative;
+    }
+
+    :host ::ng-deep .unified-nav-menu .version-specific::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--blue-500);
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* Documentation state indicators */
+    :host ::ng-deep .unified-nav-menu .state-drafts::before {
+      background: var(--orange-500);
+    }
+
+    :host ::ng-deep .unified-nav-menu .state-proposals::before {
+      background: var(--purple-500);
+    }
+
+    :host ::ng-deep .unified-nav-menu .state-backlog::before {
+      background: var(--cyan-500);
+    }
+
+    :host ::ng-deep .unified-nav-menu .state-declined::before {
+      background: var(--red-500);
+    }
+
+    /* Version badge for menu items */
+    :host ::ng-deep .unified-nav-menu .version-specific .p-panelmenu-header-label::after,
+    :host ::ng-deep .unified-nav-menu .version-specific .p-menuitem-text::after {
+      content: attr(data-version);
+      font-size: 0.7rem;
+      padding: 0.125rem 0.375rem;
+      margin-left: 0.5rem;
+      background: var(--blue-100);
+      color: var(--blue-700);
+      border-radius: 0.25rem;
+      font-weight: 500;
+    }
+
+    [data-theme="dark"] :host ::ng-deep .unified-nav-menu .version-specific .p-panelmenu-header-label::after,
+    [data-theme="dark"] :host ::ng-deep .unified-nav-menu .version-specific .p-menuitem-text::after {
+      background: var(--blue-900);
+      color: var(--blue-200);
+    }
+
+    /* Documentation version selector styling */
+    .docs-version-selector {
+      margin: 0.75rem 0;
+      padding: 0.75rem 1rem;
+      background: transparent;
+      border-radius: 0.375rem;
+      border: none;
+    }
+
+    .version-selector-header .sidebar-section-title {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.75rem;
+    }
+
+    .docs-version-selector .version-selector-wrapper {
+      padding: 0;
+    }
+
+    /* Override version selector styles for inline documentation display */
+    .docs-version-selector :host ::ng-deep .version-selector-btn {
+      width: 100%;
+      justify-content: space-between;
+      font-size: 0.875rem;
+    }
+    
+    
+    /* Remove background from Documentation section content area */
+    :host ::ng-deep .unified-nav-menu .p-panelmenu-content {
+      background: transparent !important;
+    }
+    
+    /* Remove background from Documentation panel itself */
+    :host ::ng-deep .unified-nav-menu .p-panelmenu-panel {
+      background: transparent !important;
+    }
+    
+    /* Ensure version selector container has no background */
+    :host ::ng-deep .unified-nav-menu .docs-version-selector {
+      background: transparent !important;
+    }
+    
+    /* Override the Documentation menu item to remove its background completely */
+    :host ::ng-deep .unified-nav-menu .p-panelmenu-panel:nth-child(5) .p-panelmenu-header-link {
+      background: transparent !important;
+    }
+    
+    /* Alternative: Target any panel menu that contains docs-version-selector */
+    :host ::ng-deep .unified-nav-menu .p-panelmenu-panel:has(.docs-version-selector) > .p-panelmenu-header > .p-panelmenu-header-link {
+      background: transparent !important;
+    }
+
   `]
 })
 export class HamburgerMenuComponent implements OnInit, OnDestroy {
   
   private router = inject(Router);
   private docsMenuService = inject(EnvironmentAwareDocsService);
+  private versionAwareNavService = inject(VersionAwareNavigationService);
+  private versionService = inject(VersionService);
   protected themeService = inject(ThemeService);
   private userPreferencesService = inject(UserPreferencesService);
   
@@ -809,7 +957,17 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
   // Use preferences service for menu visibility
   menuVisible = this.userPreferencesService.sidebarOpen;
   docsMenuItems = signal<MenuItem[]>([]);
+  versionAwareMenuItems = signal<VersionAwareMenuItem[]>([]);
   currentUrl = signal<string>('');
+
+  constructor() {
+    // Set up reactive effect to reload navigation when version changes
+    effect(() => {
+      const currentVersion = this.versionService.currentVersion();
+      // Reload navigation menu items when version changes
+      this.loadNavigationMenuItems();
+    });
+  }
 
   // Convert to PrimeNG MenuItem structure - the standard way
   menuItems = computed(() => {
@@ -832,6 +990,12 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
         icon: 'pi pi-video',
         command: () => this.router.navigate(['/videos']),
         styleClass: this.isActiveRoute('/videos') ? 'active-menu-item' : ''
+      },
+      {
+        label: 'Roadmap',
+        icon: 'pi pi-map',
+        command: () => this.router.navigate(['/roadmap']),
+        styleClass: this.isActiveRoute('/roadmap') ? 'active-menu-item' : ''
       }
     ];
 
@@ -851,7 +1015,7 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
     return items;
   });
 
-  // Convert to Custom MenuItem structure for our new component
+  // Convert to Custom MenuItem structure for our new component with version awareness
   customMenuItems = computed(() => {
     const currentUrl = this.currentUrl();
     const items: CustomMenuItem[] = [
@@ -859,34 +1023,119 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
         label: 'Home',
         icon: 'pi pi-home',
         command: () => this.router.navigate(['/']),
-        styleClass: this.isActiveRoute('/') ? 'active-menu-item' : ''
+        styleClass: this.isActiveRoute('/') ? 'active-menu-item' : '',
+        lightMode: this.themeService.isLightTheme(),
       },
       {
         label: 'Examples',
         icon: 'pi pi-code',
         command: () => this.router.navigate(['/examples']),
-        styleClass: this.isActiveRoute('/examples') ? 'active-menu-item' : ''
+        styleClass: this.isActiveRoute('/examples') ? 'active-menu-item' : '',
+        lightMode: this.themeService.isLightTheme(),
       },
       {
         label: 'Videos',
         icon: 'pi pi-video',
         command: () => this.router.navigate(['/videos']),
-        styleClass: this.isActiveRoute('/videos') ? 'active-menu-item' : ''
+        styleClass: this.isActiveRoute('/videos') ? 'active-menu-item' : '',
+        lightMode: this.themeService.isLightTheme(),
+      },
+      {
+        label: 'Concepts & Patterns',
+        icon: 'pi pi-shapes',
+        items: [
+          {
+            label: 'Overview',
+            command: () => this.router.navigate(['/patterns']),
+            styleClass: this.isActiveRoute('/patterns') && !this.currentUrl().includes('/patterns/') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          },
+          {
+            label: 'Receptor Pattern',
+            command: () => this.router.navigate(['/patterns/receptor']),
+            styleClass: this.isActiveRoute('/patterns/receptor') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          },
+          {
+            label: 'Perspective Pattern',
+            command: () => this.router.navigate(['/patterns/perspective']),
+            styleClass: this.isActiveRoute('/patterns/perspective') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          },
+          {
+            label: 'Lens Pattern',
+            command: () => this.router.navigate(['/patterns/lens']),
+            styleClass: this.isActiveRoute('/patterns/lens') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          },
+          {
+            label: 'Dispatcher Pattern',
+            command: () => this.router.navigate(['/patterns/dispatcher']),
+            styleClass: this.isActiveRoute('/patterns/dispatcher') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          },
+          {
+            label: 'Policy Pattern',
+            command: () => this.router.navigate(['/patterns/policy']),
+            styleClass: this.isActiveRoute('/patterns/policy') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          },
+          {
+            label: 'Ledger Pattern',
+            command: () => this.router.navigate(['/patterns/ledger']),
+            styleClass: this.isActiveRoute('/patterns/ledger') ? 'active-menu-item' : '',
+            lightMode: this.themeService.isLightTheme(),
+          }
+        ],
+        expanded: this.shouldExpandPatterns(currentUrl),
+        styleClass: this.isActiveRoute('/patterns') ? 'active-menu-item' : '',
+        lightMode: this.themeService.isLightTheme(),
+      },
+      {
+        label: 'Roadmap',
+        icon: 'pi pi-map',
+        command: () => this.router.navigate(['/roadmap']),
+        styleClass: this.isActiveRoute('/roadmap') ? 'active-menu-item' : '',
+        lightMode: this.themeService.isLightTheme(),
       }
     ];
 
-    // Add documentation with sub-items
-    const docs = this.docsMenuItems();
-    if (docs.length > 0) {
-      const docsItem: CustomMenuItem = {
-        label: 'Documentation',
-        icon: 'pi pi-book',
-        items: this.convertToCustomMenuItems(docs),
-        expanded: this.shouldExpandDocs(currentUrl),
-        styleClass: this.isActiveRoute('/docs') ? 'active-menu-item' : ''
-      };
-      items.push(docsItem);
+    // Add documentation with version selector at the top
+    // ALWAYS show documentation section, even if no content
+    const currentVersionDocs = this.getCurrentVersionFilteredDocs();
+    const docsSubItems: CustomMenuItem[] = [];
+    
+    // Add version selector as the FIRST item in documentation
+    docsSubItems.push({
+      label: 'Version',
+      icon: 'pi pi-tag',
+      isVersionSelector: true,
+      styleClass: 'version-selector-item',
+      lightMode: this.themeService.isLightTheme(),
+    });
+    
+    // Add the filtered documentation items (if any)
+    if (currentVersionDocs.length > 0) {
+      docsSubItems.push(...this.convertToCustomMenuItems(currentVersionDocs));
+    } else {
+      // Add a placeholder when no content is available
+      docsSubItems.push({
+        label: 'No content available for this version',
+        icon: 'pi pi-info-circle',
+        styleClass: 'no-content-placeholder',
+        lightMode: this.themeService.isLightTheme(),
+      });
     }
+    
+    const docsItem: CustomMenuItem = {
+      label: 'Documentation',
+      icon: 'pi pi-book',
+      items: docsSubItems,
+      lightMode: this.themeService.isLightTheme(),
+      expanded: this.shouldExpandDocs(currentUrl),
+      styleClass: this.isActiveRoute('/docs') ? 'active-menu-item' : ''
+    };
+    items.push(docsItem);
 
     return items;
   });
@@ -921,7 +1170,8 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
           const urlParts = ['docs', ...item.slug.split('/').filter(part => part)];
           this.router.navigate(urlParts);
         } : undefined,
-        styleClass: item.slug && this.isActiveDocsRoute(item.slug) ? 'active-menu-item' : ''
+        styleClass: item.slug && this.isActiveDocsRoute(item.slug) ? 'active-menu-item' : '',
+        lightMode: this.themeService.isLightTheme(),
       };
 
       if (item.items && item.items.length > 0) {
@@ -931,6 +1181,71 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
 
       return menuItem;
     });
+  }
+
+  // Helper method to convert version-aware menu items to Custom MenuItem
+  private convertVersionAwareToCustomMenuItems(menuItems: VersionAwareMenuItem[]): CustomMenuItem[] {
+    return menuItems.map(item => {
+      const menuItem: CustomMenuItem = {
+        label: item.label,
+        command: item.slug ? () => {
+          const urlParts = ['docs', ...item.slug.split('/').filter(part => part)];
+          this.router.navigate(urlParts);
+        } : undefined,
+        styleClass: this.getVersionAwareMenuItemClass(item),
+        lightMode: this.themeService.isLightTheme(),
+      };
+
+      if (item.items && item.items.length > 0) {
+        menuItem.items = this.convertVersionAwareToCustomMenuItems(item.items);
+        menuItem.expanded = this.shouldExpandVersionAwareMenuItem(item);
+      }
+
+      return menuItem;
+    });
+  }
+
+  private getVersionAwareMenuItemClass(item: VersionAwareMenuItem): string {
+    let classes = '';
+    
+    if (item.slug && this.isActiveDocsRoute(item.slug)) {
+      classes += 'active-menu-item ';
+    }
+    
+    if (item.isVersionSpecific) {
+      classes += 'version-specific ';
+    }
+    
+    if (item.documentationState) {
+      classes += `state-${item.documentationState} `;
+    }
+    
+    return classes.trim();
+  }
+
+  private shouldExpandVersionAwareMenuItem(item: VersionAwareMenuItem): boolean {
+    if (!item.items || item.items.length === 0) {
+      return false;
+    }
+    
+    // Expand if any child item is active
+    return this.hasActiveVersionAwareChild(item);
+  }
+
+  private hasActiveVersionAwareChild(item: VersionAwareMenuItem): boolean {
+    const currentUrl = this.currentUrl();
+    
+    // Check if this item's slug matches current route
+    if (item.slug && this.isActiveDocsRoute(item.slug)) {
+      return true;
+    }
+    
+    // Check children recursively
+    if (item.items) {
+      return item.items.some(child => this.hasActiveVersionAwareChild(child));
+    }
+    
+    return false;
   }
 
   ngOnInit() {
@@ -944,7 +1259,17 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
       this.currentUrl.set(event.url);
     });
 
-    // Initialize docs menu items
+    // Load navigation menu items initially
+    this.loadNavigationMenuItems();
+
+    // Initialize body class based on saved preference
+    if (this.menuVisible()) {
+      document.body.classList.add('sidebar-open');
+    }
+  }
+
+  private loadNavigationMenuItems(): void {
+    // Initialize docs menu items (fallback)
     this.docsMenuService.generateMenuItems((slug: string) => {
       // Split slug into segments to avoid %2F encoding
       const urlParts = ['docs', ...slug.split('/').filter(part => part)];
@@ -953,11 +1278,100 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
       this.docsMenuItems.set(menuItems);
     });
 
-    // Initialize body class based on saved preference
-    if (this.menuVisible()) {
-      document.body.classList.add('sidebar-open');
+    // Initialize version-aware navigation menu items (with error handling)
+    try {
+      this.versionAwareNavService.generateCurrentVersionMenuItems((slug: string) => {
+        // Split slug into segments to avoid %2F encoding
+        const urlParts = ['docs', ...slug.split('/').filter(part => part)];
+        this.router.navigate(urlParts);
+      }).subscribe({
+        next: (versionAwareMenuItems) => {
+          this.versionAwareMenuItems.set(versionAwareMenuItems);
+        },
+        error: (error) => {
+          console.warn('Failed to load version-aware navigation items:', error);
+          // Fallback to regular docs menu items
+        }
+      });
+    } catch (error) {
+      console.warn('Error initializing version-aware navigation:', error);
+      // The fallback docs menu items will be used instead
     }
   }
+
+  /**
+   * Get current version filtered documentation items using version-aware navigation
+   */
+  private getCurrentVersionFilteredDocs(): MenuItem[] {
+    const currentUrl = this.currentUrl();
+    const currentVersion = this.versionService.currentVersion();
+    
+    // Get version-specific docs from VersionService
+    const versionDocs = this.versionService.getCurrentVersionDocs();
+    
+    // Convert DocMeta to MenuItem format
+    const convertedDocs = this.convertDocMetaToMenuItem(versionDocs);
+    
+    // Add Overview item at the beginning if there are docs
+    if (convertedDocs.length > 0) {
+      const overviewItem: MenuItem = {
+        label: 'Overview',
+        slug: currentVersion
+      };
+      
+      // Insert Overview at the beginning
+      return [overviewItem, ...convertedDocs];
+    }
+    
+    return convertedDocs;
+  }
+
+  /**
+   * Convert DocMeta objects to MenuItem format for navigation
+   */
+  private convertDocMetaToMenuItem(docs: any[]): MenuItem[] {
+    const menuItems: MenuItem[] = [];
+    const categories = new Map<string, MenuItem[]>();
+
+    docs.forEach(doc => {
+      const menuItem: MenuItem = {
+        label: doc.title,
+        slug: doc.slug
+      };
+
+      if (doc.category) {
+        if (!categories.has(doc.category)) {
+          categories.set(doc.category, []);
+        }
+        categories.get(doc.category)!.push(menuItem);
+      } else {
+        menuItems.push(menuItem);
+      }
+    });
+
+    // Sort items within categories by order
+    categories.forEach(items => {
+      items.sort((a, b) => {
+        const docA = docs.find(d => d.slug === a.slug);
+        const docB = docs.find(d => d.slug === b.slug);
+        return (docA?.order || 999) - (docB?.order || 999);
+      });
+    });
+
+    // Add categorized items to menu (sorted by category name)
+    const sortedCategories = Array.from(categories.keys()).sort();
+    sortedCategories.forEach(categoryName => {
+      const categoryItem: MenuItem = {
+        label: categoryName,
+        slug: '',
+        items: categories.get(categoryName)
+      };
+      menuItems.push(categoryItem);
+    });
+
+    return menuItems;
+  }
+
 
   ngOnDestroy() {
     this.routerSubscription?.unsubscribe();
@@ -1000,8 +1414,12 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
     return currentUrl === expectedPath || currentUrl.startsWith(expectedPath + '/');
   }
 
-  private shouldExpandDocs(currentUrl: string): boolean {
+  shouldExpandDocs(currentUrl: string): boolean {
     return currentUrl.startsWith('/docs');
+  }
+
+  shouldExpandPatterns(currentUrl: string): boolean {
+    return currentUrl.startsWith('/patterns');
   }
 
   private shouldExpandMenuItem(item: MenuItem): boolean {
