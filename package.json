@@ -9,7 +9,7 @@
     "search-index": "./build-search-index.sh",
     "build": "ng build --configuration production --output-hashing=all",
     "preview": "ng serve --configuration production",
-    "postinstall": "ng analytics off"
+    "postinstall": "npx ng analytics off || true"
   },
   "private": true,
   "dependencies": {
