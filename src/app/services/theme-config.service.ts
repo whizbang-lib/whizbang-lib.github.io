@@ -49,7 +49,7 @@ export class ThemeConfigService {
       root.style.setProperty('--p-content-background', 'var(--p-surface-900)');
       // Additional fallback for specific components
       root.style.setProperty('--p-sidebar-background', 'var(--p-surface-900)');
-      root.style.setProperty('--p-overlaypanel-background', 'var(--p-surface-900)');
+      root.style.setProperty('--p-popover-background', 'var(--p-surface-900)');
     } else {
       // Light theme overlay backgrounds using correct PrimeNG v19 variable names
       root.style.setProperty('--p-overlay-select-background', 'var(--p-surface-0)');
@@ -58,7 +58,7 @@ export class ThemeConfigService {
       root.style.setProperty('--p-content-background', 'var(--p-surface-0)');
       // Additional fallback for specific components
       root.style.setProperty('--p-sidebar-background', 'var(--p-surface-0)');
-      root.style.setProperty('--p-overlaypanel-background', 'var(--p-surface-0)');
+      root.style.setProperty('--p-popover-background', 'var(--p-surface-0)');
     }
     
     console.log(`Set PrimeNG v19 overlay background variables for ${theme} theme`);

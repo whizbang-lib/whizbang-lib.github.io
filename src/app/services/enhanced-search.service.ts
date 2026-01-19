@@ -1,9 +1,11 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, of, from } from 'rxjs';
 import { map, shareReplay, tap, catchError, switchMap } from 'rxjs/operators';
 import MiniSearch from 'minisearch';
 import { AIEnhancementService, AIEnhancementState } from './ai-enhancement.service';
+import { VersionService } from './version.service';
 
 export interface SearchChunk {
   id: string;
@@ -74,6 +76,9 @@ export class EnhancedSearchService {
   private highlightedTerms$ = new BehaviorSubject<string[]>([]);
   private isIndexReady$ = new BehaviorSubject<boolean>(false);
   private chunkEmbeddings: { [chunkId: string]: number[] } = {};
+
+  private versionService = inject(VersionService);
+  private router = inject(Router);
 
   constructor(
     private http: HttpClient,
@@ -158,6 +163,7 @@ export class EnhancedSearchService {
     prefix?: boolean;
     boost?: Record<string, number>;
     limit?: number;
+    filterByCurrentVersion?: boolean;
   }): Observable<EnhancedSearchResult[]> {
     if (!query.trim()) {
       this.currentQuery$.next('');
@@ -176,9 +182,13 @@ export class EnhancedSearchService {
     const isAIReady = this.aiEnhancementService.isAIReady();
     
     if (isAIReady && Object.keys(this.chunkEmbeddings).length > 0) {
-      return this.performHybridSearch(query, options);
+      return this.performHybridSearch(query, options).pipe(
+        map(results => this.filterResultsByVersion(results, options))
+      );
     } else {
-      return this.performTraditionalSearch(query, options);
+      return this.performTraditionalSearch(query, options).pipe(
+        map(results => this.filterResultsByVersion(results, options))
+      );
     }
   }
 
@@ -488,5 +498,84 @@ export class EnhancedSearchService {
     } catch (error) {
       console.warn('Failed to load cached enhanced search index:', error);
     }
+  }
+
+  /**
+   * Filter search results by current version
+   */
+  private filterResultsByVersion(results: EnhancedSearchResult[], options?: any): EnhancedSearchResult[] {
+    // If filtering is explicitly disabled, return all results
+    if (options?.filterByCurrentVersion === false) {
+      return results;
+    }
+
+    const currentUrl = this.router.url;
+    
+    // If not in docs section, return all results
+    if (!currentUrl.startsWith('/docs')) {
+      return results;
+    }
+    
+    // Extract the doc path after /docs/
+    const docPath = currentUrl.replace('/docs/', '').split('/')[0];
+    
+    let targetDocs: any[] = [];
+    let contextType = '';
+    
+    // If we're at the docs root, use current version
+    if (!docPath) {
+      const currentVersion = this.versionService.currentVersion();
+      targetDocs = this.versionService.getCurrentVersionDocs();
+      contextType = `version: ${currentVersion}`;
+    } else {
+      // Check if this is a state route (proposals, drafts, etc.)
+      const availableStates = this.versionService.availableStates();
+      const matchingState = availableStates.find(s => s.state === docPath);
+      
+      if (matchingState) {
+        // Filter by state
+        targetDocs = this.versionService.getDocsForVersionOrState(docPath);
+        contextType = `state: ${docPath}`;
+      } else {
+        // Check if this is a version route
+        const availableVersions = this.versionService.availableVersions();
+        const matchingVersion = availableVersions.find(v => v.version === docPath);
+        
+        if (matchingVersion) {
+          // Filter by specific version
+          targetDocs = this.versionService.getDocsForVersionOrState(docPath);
+          contextType = `version: ${docPath}`;
+        } else {
+          // This might be a sub-path within a version, use current version
+          const currentVersion = this.versionService.currentVersion();
+          targetDocs = this.versionService.getCurrentVersionDocs();
+          contextType = `version: ${currentVersion} (fallback)`;
+        }
+      }
+    }
+    
+    // Create set of target document slugs
+    const targetSlugs = new Set(targetDocs.map(doc => doc.slug));
+    
+    // Filter results to only include documents from the target context
+    const filteredResults = results.filter(result => {
+      return targetSlugs.has(result.document.slug);
+    });
+
+    console.log(`Version-filtered search: ${results.length} -> ${filteredResults.length} results (${contextType})`);
+    
+    return filteredResults;
+  }
+
+  /**
+   * Search all versions (bypass version filtering)
+   */
+  searchAllVersions(query: string, options?: {
+    fuzzy?: number;
+    prefix?: boolean;
+    boost?: Record<string, number>;
+    limit?: number;
+  }): Observable<EnhancedSearchResult[]> {
+    return this.search(query, { ...options, filterByCurrentVersion: false });
   }
 }

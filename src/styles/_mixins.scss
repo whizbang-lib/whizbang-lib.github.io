@@ -2,7 +2,8 @@
 // SCSS Mixins - Reusable styling patterns
 // =============================================================================
 
-@import 'design-tokens';
+@use 'sass:map';
+@use 'design-tokens' as *;
 
 // Responsive Breakpoint Mixins
 // -----------------------------------------------------------------------------
@@ -66,9 +67,11 @@
 }
 
 @mixin wb-flex-between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  & {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
 
 @mixin wb-container($max-width: wb-breakpoint('wide')) {

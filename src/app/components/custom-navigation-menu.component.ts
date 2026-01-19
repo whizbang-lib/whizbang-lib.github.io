@@ -2,25 +2,39 @@ import { Component, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MenuItem } from '../services/environment-aware-docs.service';
+import { VersionSelectorComponent } from './version-selector.component';
 
 export interface CustomMenuItem {
   label: string;
   icon?: string;
+  lightMode: boolean;
   command?: () => void;
   items?: CustomMenuItem[];
   expanded?: boolean;
   styleClass?: string;
+  isVersionSelector?: boolean;
 }
 
 @Component({
   selector: 'wb-custom-navigation-menu',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, VersionSelectorComponent],
   template: `
     <ul class="custom-nav-menu" [class.deep-level]="nestingLevel >= 2">
       <li *ngFor="let item of menuItems" class="nav-item">
-        <!-- Menu Item -->
-        <div 
+        <!-- Version Selector Item -->
+        <div *ngIf="item.isVersionSelector" class="version-selector-item">
+          <div class="version-selector-header">
+            <i *ngIf="item.icon" [class]="item.icon" class="nav-icon"></i>
+            <span class="version-selector-label">{{ item.label }}</span>
+          </div>
+          <div class="version-selector-wrapper">
+            <wb-version-selector></wb-version-selector>
+          </div>
+        </div>
+        
+        <!-- Regular Menu Item -->
+        <div *ngIf="!item.isVersionSelector"
           class="nav-item-content"
           [class.top-level]="nestingLevel === 0"
           [class.second-level]="nestingLevel === 1"
@@ -200,6 +214,67 @@ export interface CustomMenuItem {
     /* Rotate arrow when expanded */
     .nav-item-content:has(+ .submenu-wrapper.expanded) .nav-arrow.pi-chevron-right {
       transform: rotate(90deg);
+    }
+
+    /* Version Selector Item Styling */
+    .version-selector-item {
+      padding: 0.75rem 1rem;
+      margin: 0.25rem 0;
+      background: transparent;
+      border-radius: 0.375rem;
+      border: none;
+    }
+
+    .version-selector-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .version-selector-header .nav-icon {
+      color: #ffffff;
+      margin-right: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .version-selector-label {
+      font-size: 0.75rem;
+      font-weight: 600 !important;
+      text-transform: uppercase;
+      color: #9ca3af !important;
+      letter-spacing: 0.05em;
+    }
+
+    .version-selector-wrapper {
+      padding: 0;
+    }
+    
+
+    /* Override version selector styles for inline display */
+    .version-selector-wrapper :host ::ng-deep .version-selector-btn {
+      width: 100%;
+      justify-content: space-between;
+      font-size: 0.875rem;
+    }
+
+    /* No content placeholder styling */
+    .nav-item-content.no-content-placeholder {
+      opacity: 0.6;
+      font-style: italic;
+      cursor: default;
+      background: transparent !important;
+    }
+
+    .nav-item-content.no-content-placeholder:hover {
+      background: transparent !important;
+    }
+
+    .nav-item-content.no-content-placeholder .nav-icon {
+      color: var(--wb-text-secondary);
+    }
+
+    .nav-item-content.no-content-placeholder .nav-label {
+      color: var(--wb-text-secondary);
     }
   `]
 })

@@ -1,0 +1,53 @@
+{
+  "name": "@whizbang/docs-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server providing programmatic access to Whizbang library documentation",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "whizbang-docs-mcp": "./build/index.js"
+  },
+  "files": [
+    "build/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node build/index.js",
+    "test": "node test-server.mjs",
+    "inspector": "npx @modelcontextprotocol/inspector node build/index.js",
+    "prepublishOnly": "npm run build",
+    "clean": "rm -rf build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "documentation",
+    "whizbang",
+    "dotnet",
+    "csharp"
+  ],
+  "author": "Whizbang Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/whizbang/whizbang-lib.github.io.git",
+    "directory": "mcp-docs-server"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.8",
+    "gray-matter": "^4.0.3",
+    "minisearch": "^7.1.2",
+    "fuse.js": "^7.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

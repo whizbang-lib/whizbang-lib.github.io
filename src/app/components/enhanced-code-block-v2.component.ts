@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { ChipModule } from 'primeng/chip';
-import { OverlayPanelModule } from 'primeng/overlaypanel';
+import { PopoverModule } from 'primeng/popover';
 import { DialogModule } from 'primeng/dialog';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { ThemeService } from '../services/theme.service';
@@ -37,11 +37,14 @@ interface CodeBlockOptions {
   framework?: string;
   difficulty?: string;
   usingStatements?: string[];
+  // Error handling for missing front-matter
+  missingFrontMatter?: boolean;
+  errorMessage?: string;
 }
 
 @Component({
   standalone: true,
-  imports: [CommonModule, ButtonModule, TooltipModule, ChipModule, OverlayPanelModule, DialogModule],
+  imports: [CommonModule, ButtonModule, TooltipModule, ChipModule, PopoverModule, DialogModule],
   selector: 'wb-enhanced-code-v2',
   changeDetection: ChangeDetectionStrategy.OnPush,
   animations: [
@@ -60,7 +63,23 @@ interface CodeBlockOptions {
   template: `
     <div class="enhanced-code-block" 
          [class.collapsible]="isCollapsible" 
-         [class.collapsed]="collapsed">
+         [class.collapsed]="collapsed"
+         [class.missing-front-matter]="options.missingFrontMatter">
+      
+      <!-- Error Display for Missing Front-Matter -->
+      <div class="front-matter-error" *ngIf="options.missingFrontMatter">
+        <div class="error-content">
+          <i class="pi pi-exclamation-triangle error-icon"></i>
+          <div class="error-message">
+            <strong>Missing Front-Matter</strong>
+            <p>{{ options.errorMessage }}</p>
+            <details class="error-details">
+              <summary>Example Front-Matter</summary>
+              <pre class="example-front-matter">{{ getExampleFrontMatter() }}</pre>
+            </details>
+          </div>
+        </div>
+      </div>
       
       <!-- Header with metadata -->
       <div class="code-header" *ngIf="hasHeader()">
@@ -354,65 +373,65 @@ interface CodeBlockOptions {
       
       
       <!-- Description Panel -->
-      <p-overlayPanel #infoPanel>
+      <p-popover #infoPanel>
         <div class="info-panel">
           <h5 *ngIf="options.description">Description</h5>
           <p *ngIf="options.description">{{ options.description }}</p>
-          
+
           <h5 *ngIf="options.nugetPackage">NuGet Package</h5>
           <div *ngIf="options.nugetPackage" class="nuget-info">
             <code>{{ options.nugetPackage }}</code>
-            <button 
-              pButton 
-              icon="pi pi-copy" 
+            <button
+              pButton
+              icon="pi pi-copy"
               class="p-button-sm p-button-text"
               (click)="copyNugetCommand()"
               pTooltip="Copy install command">
             </button>
           </div>
         </div>
-      </p-overlayPanel>
+      </p-popover>
       
       <!-- NuGet Commands Panel -->
-      <p-overlayPanel #nugetPanel [dismissable]="true">
+      <p-popover #nugetPanel>
         <div class="nuget-commands-panel">
           <h5>Install Dependencies</h5>
-          
+
           <div class="command-section">
             <h6>.NET CLI</h6>
             <div class="command-box">
               <code>{{ getAllDotnetCommands() }}</code>
-              <button 
-                pButton 
-                icon="pi pi-copy" 
+              <button
+                pButton
+                icon="pi pi-copy"
                 class="p-button-sm p-button-text"
                 (click)="copyAllDotnetCommands()"
                 pTooltip="Copy .NET CLI command">
               </button>
             </div>
           </div>
-          
+
           <div class="command-section">
             <h6>Package Manager Console</h6>
             <div class="command-box">
               <code>{{ getAllPowerShellCommands() }}</code>
-              <button 
-                pButton 
-                icon="pi pi-copy" 
+              <button
+                pButton
+                icon="pi pi-copy"
                 class="p-button-sm p-button-text"
                 (click)="copyAllPowerShellCommands()"
                 pTooltip="Copy PowerShell command">
               </button>
             </div>
           </div>
-          
+
           <div class="command-section">
             <h6>PackageReference</h6>
             <div class="command-box">
               <code>{{ getAllPackageReferences() }}</code>
-              <button 
-                pButton 
-                icon="pi pi-copy" 
+              <button
+                pButton
+                icon="pi pi-copy"
                 class="p-button-sm p-button-text"
                 (click)="copyAllXmlReferences()"
                 pTooltip="Copy all PackageReference tags">
@@ -420,7 +439,7 @@ interface CodeBlockOptions {
             </div>
           </div>
         </div>
-      </p-overlayPanel>
+      </p-popover>
     </div>
   `,
   styleUrls: ['./enhanced-code-block-v2.component.scss']
@@ -696,7 +715,8 @@ export class EnhancedCodeBlockV2Component implements OnInit, OnDestroy, OnChange
   // Component interface methods
   hasHeader(): boolean {
     return !!(this.options.title || this.options.filename || this.options.language || 
-             this.options.githubUrl || this.options.showCopyButton !== false || this.isCollapsible);
+             this.options.githubUrl || this.options.showCopyButton !== false || this.isCollapsible ||
+             this.options.missingFrontMatter);
   }
   
   hasMetadata(): boolean {
@@ -984,6 +1004,22 @@ export class EnhancedCodeBlockV2Component implements OnInit, OnDestroy, OnChange
       default:
         return 'txt';
     }
+  }
+
+  getExampleFrontMatter(): string {
+    const language = this.options.language || 'csharp';
+    return `\`\`\`${language}{
+title: "Descriptive Title"
+description: "Clear explanation of what this code demonstrates"
+framework: "NET8"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["Tag1", "Tag2", "Tag3"]
+nugetPackages: ["Package.Name"]
+filename: "ExampleFile.${this.getFileExtension()}"
+usingStatements: ["System", "System.Threading.Tasks"]
+showLineNumbers: true
+}`;
   }
 
 }
