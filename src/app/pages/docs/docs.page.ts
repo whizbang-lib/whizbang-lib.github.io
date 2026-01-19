@@ -16,7 +16,7 @@ import { RouterModule } from '@angular/router';
     .docs-container {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 2rem 1rem;
+      padding: 0.5rem 1rem 2rem 1rem;
     }
 
     .docs-content {
@@ -26,7 +26,7 @@ import { RouterModule } from '@angular/router';
 
     @media (max-width: 768px) {
       .docs-container {
-        padding: 1rem 0.5rem;
+        padding: 0.25rem 0.5rem 1rem 0.5rem;
       }
     }
   `]

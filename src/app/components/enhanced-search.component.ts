@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, OnInit, OnDestroy } from '@angular/core';
+import { Component, ElementRef, ViewChild, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -6,16 +6,18 @@ import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
-import { OverlayPanelModule } from 'primeng/overlaypanel';
+import { PopoverModule } from 'primeng/popover';
 import { AutoCompleteModule } from 'primeng/autocomplete';
-import { OverlayPanel } from 'primeng/overlaypanel';
+import { CheckboxModule } from 'primeng/checkbox';
+import { Popover } from 'primeng/popover';
 import { EnhancedSearchService, EnhancedSearchResult } from '../services/enhanced-search.service';
+import { VersionService } from '../services/version.service';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } from 'rxjs';
 
 @Component({
   selector: 'wb-enhanced-search',
   standalone: true,
-  imports: [CommonModule, FormsModule, InputTextModule, ButtonModule, IconFieldModule, InputIconModule, OverlayPanelModule, AutoCompleteModule],
+  imports: [CommonModule, FormsModule, InputTextModule, ButtonModule, IconFieldModule, InputIconModule, PopoverModule, AutoCompleteModule, CheckboxModule],
   template: `
     <div class="search-container">
       <p-iconField iconPosition="left" class="search-field">
@@ -45,10 +47,8 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
         ></p-inputIcon>
       </p-iconField>
 
-      <p-overlayPanel 
-        #searchOverlay 
-        [dismissable]="true"
-        [showCloseIcon]="false"
+      <p-popover
+        #searchOverlay
         styleClass="search-overlay"
       >
         <!-- Auto-suggestions -->
@@ -70,10 +70,24 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
         <!-- Search results -->
         <div class="search-results-container" *ngIf="searchResults.length > 0">
           <div class="search-results-header">
-            <span class="search-results-count">
-              {{searchResults.length}} result{{searchResults.length !== 1 ? 's' : ''}}
-              <span class="text-400 text-sm ml-2" *ngIf="searchTime">({{searchTime}}ms)</span>
-            </span>
+            <div class="search-results-info">
+              <span class="search-results-count">
+                {{searchResults.length}} result{{searchResults.length !== 1 ? 's' : ''}}
+                <span class="text-400 text-sm ml-2" *ngIf="searchTime">({{searchTime}}ms)</span>
+              </span>
+              <span class="search-version-info" *ngIf="!searchAllVersions">
+                in {{versionService.currentVersion()}}
+              </span>
+            </div>
+            <div class="search-options">
+              <p-checkbox 
+                [(ngModel)]="searchAllVersions" 
+                [binary]="true" 
+                (onChange)="onVersionFilterChange()"
+                inputId="search-all-versions"
+              ></p-checkbox>
+              <label for="search-all-versions" class="search-option-label">All versions</label>
+            </div>
           </div>
           
           <div class="search-results-body">
@@ -132,7 +146,7 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
             <p class="text-600 mt-2">Preparing search index...</p>
           </div>
         </div>
-      </p-overlayPanel>
+      </p-popover>
     </div>
   `,
   styles: [`
@@ -172,7 +186,7 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
       border-radius: 8px;
     }
 
-    :host ::ng-deep .search-overlay .p-overlaypanel-content {
+    :host ::ng-deep .search-overlay .p-popover-content {
       padding: 0;
       max-height: 80vh;
       overflow: hidden;
@@ -191,6 +205,36 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
       border-bottom: 1px solid var(--surface-border);
       background: var(--surface-50);
       flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .search-results-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .search-version-info {
+      font-size: 0.75rem;
+      color: var(--text-color-secondary);
+      font-style: italic;
+    }
+
+    .search-options {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .search-option-label {
+      font-size: 0.875rem;
+      color: var(--text-color);
+      cursor: pointer;
+      user-select: none;
     }
 
     .search-results-body {
@@ -390,7 +434,7 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
   `]
 })
 export class EnhancedSearchComponent implements OnInit, OnDestroy {
-  @ViewChild('searchOverlay') searchOverlay!: OverlayPanel;
+  @ViewChild('searchOverlay') searchOverlay!: Popover;
   @ViewChild('searchInput') searchInput!: ElementRef;
 
   searchQuery = '';
@@ -403,6 +447,9 @@ export class EnhancedSearchComponent implements OnInit, OnDestroy {
   showScores = false; // Set to true for debugging
   searchTime: number | null = null;
   usedFuzzySearch = false;
+  searchAllVersions = false;
+
+  readonly versionService = inject(VersionService);
 
   private destroy$ = new Subject<void>();
   private searchSubject = new Subject<string>();
@@ -532,6 +579,12 @@ export class EnhancedSearchComponent implements OnInit, OnDestroy {
     this.performSearch(this.searchQuery, { fuzzy: 0.4 });
   }
 
+  onVersionFilterChange() {
+    if (this.searchQuery.trim()) {
+      this.performSearch(this.searchQuery);
+    }
+  }
+
   navigateToResult(result: EnhancedSearchResult) {
     console.log('=== Enhanced Search Navigation Debug ===');
     console.log('Original URL:', result.document.url);
@@ -574,7 +627,16 @@ export class EnhancedSearchComponent implements OnInit, OnDestroy {
     this.isSearching = true;
     const startTime = performance.now();
 
-    this.searchService.search(query, options).subscribe({
+    const searchOptions = {
+      ...options,
+      filterByCurrentVersion: !this.searchAllVersions
+    };
+
+    const searchObservable = this.searchAllVersions 
+      ? this.searchService.searchAllVersions(query, options)
+      : this.searchService.search(query, searchOptions);
+
+    searchObservable.subscribe({
       next: (results) => {
         console.log('Enhanced search results:', results);
         this.searchResults = results;

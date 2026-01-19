@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "scripts": {
     "ng": "ng",
-    "prestart": "node src/scripts/gen-docs-list.mjs && ./build-search-index.sh",
+    "prestart": "node src/scripts/gen-docs-list.mjs && node src/scripts/gen-docs-index.mjs && node src/scripts/gen-sitemap.mjs && ./build-search-index.sh",
     "start": "ng serve --hmr --configuration development",
-    "prebuild": "node src/scripts/gen-docs-list.mjs && node src/scripts/gen-docs-index.mjs && ./build-search-index.sh",
+    "prebuild": "node src/scripts/gen-docs-list.mjs && node src/scripts/gen-docs-index.mjs && node src/scripts/gen-sitemap.mjs && ./build-search-index.sh",
     "search-index": "./build-search-index.sh",
     "build": "ng build --configuration production --output-hashing=all",
     "preview": "ng serve --configuration production",
@@ -26,6 +26,7 @@
     "fuse.js": "^7.1.0",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
+    "mermaid": "^11.12.0",
     "minisearch": "^7.1.2",
     "ngx-markdown": "^20.0.0",
     "primeflex": "^4.0.0",
@@ -35,7 +36,7 @@
     "prismjs": "^1.30.0",
     "rxjs": "~7.8.2",
     "shiki": "^3.6.0",
-    "zone.js": "~0.15.0"
+    "zone.js": "~0.14.2"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^20.0.1",
