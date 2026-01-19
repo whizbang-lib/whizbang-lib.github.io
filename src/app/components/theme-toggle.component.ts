@@ -2,13 +2,13 @@ import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
-import { OverlayPanelModule } from 'primeng/overlaypanel';
+import { PopoverModule } from 'primeng/popover';
 import { ThemeService, ThemeMode } from '../services/theme.service';
 
 @Component({
   selector: 'wb-theme-toggle',
   standalone: true,
-  imports: [CommonModule, ButtonModule, TooltipModule, OverlayPanelModule],
+  imports: [CommonModule, ButtonModule, TooltipModule, PopoverModule],
   template: `
     <div class="theme-toggle-container">
       <!-- Quick Toggle Button -->
@@ -36,7 +36,7 @@ import { ThemeService, ThemeMode } from '../services/theme.service';
       </button>
       
       <!-- Theme Options Panel -->
-      <p-overlayPanel #optionsPanel [dismissable]="true" styleClass="theme-options-panel">
+      <p-popover #optionsPanel styleClass="theme-options-panel">
         <div class="theme-options">
           <h6>Theme Preference</h6>
           
@@ -79,7 +79,7 @@ import { ThemeService, ThemeMode } from '../services/theme.service';
             </small>
           </div>
         </div>
-      </p-overlayPanel>
+      </p-popover>
     </div>
   `,
   styles: [`
@@ -103,7 +103,7 @@ import { ThemeService, ThemeMode } from '../services/theme.service';
       height: 1.5rem;
     }
     
-    :host ::ng-deep .theme-options-panel .p-overlaypanel-content {
+    :host ::ng-deep .theme-options-panel .p-popover-content {
       padding: 0;
     }
     

@@ -2,8 +2,8 @@
 // Enhanced Code Blocks - Comprehensive styling for code display components
 // =============================================================================
 
-@import 'design-tokens';
-@import 'mixins';
+@use 'design-tokens' as *;
+@use 'mixins' as *;
 
 // Light theme overrides for code block chrome - lighter for subtle contrast
 :root:not([data-theme="dark"]) {
@@ -222,11 +222,11 @@
     }
 
     .code-toolbar {
-        @include wb-flex-between;
         padding: wb-spacing('sm') wb-spacing('lg');
         background: var(--surface-100);
         border-bottom: 1px solid var(--wb-surface-border);
         font-size: wb-font-size('sm');
+        @include wb-flex-between;
 
         .toolbar-left {
             display: flex;
@@ -388,10 +388,10 @@
         position: relative;
 
         .csharp-code-block {
-            @include wb-code-content;
             margin: 0;
             background: var(--wb-code-bg);
             color: var(--wb-code-text);
+            @include wb-code-content;
 
             .highlighted-line {
                 background: rgba(255, 255, 0, 0.2);
@@ -416,10 +416,10 @@
     border-color: var(--wb-code-border);
 
     .code-block-header {
-        @include wb-flex-between;
         padding: wb-spacing('md') wb-spacing('lg');
         background: linear-gradient(135deg, #252526, #2d2d30);
         border-bottom: 1px solid var(--wb-code-border);
+        @include wb-flex-between;
 
         @include wb-tablet {
             padding: wb-spacing('sm') wb-spacing('md');
@@ -651,11 +651,11 @@
     }
 
     pre {
-        @include wb-code-content;
         margin: 0;
         padding: 0 wb-spacing('lg');
         position: relative;
         line-height: 1.5;
+        @include wb-code-content;
 
 
         code {
