@@ -1,0 +1,73 @@
+// =============================================================================
+// Copy Link Styles - Hover links for headers
+// =============================================================================
+
+@import 'design-tokens';
+
+.copy-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: var(--text-color-secondary);
+  text-decoration: none;
+  padding: 0.25rem;
+  border-radius: wb-border-radius('sm');
+  background: transparent;
+  vertical-align: middle;
+  
+  &:hover {
+    color: var(--primary-color);
+    background: var(--surface-100);
+  }
+  
+  &:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+  }
+}
+
+// Show copy link on heading hover
+h1, h2, h3, h4, h5, h6 {
+  &:hover .copy-link {
+    opacity: 1;
+  }
+}
+
+// Also show within markdown context for backwards compatibility
+markdown {
+  h1, h2, h3, h4, h5, h6 {
+    &:hover .copy-link {
+      opacity: 1;
+    }
+  }
+}
+
+// Responsive adjustments for mobile
+@media (max-width: 768px) {
+  .copy-link {
+    margin-left: 0.25rem;
+    padding: 0.2rem;
+    
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+}
+
+// Always show on touch devices when focused
+@media (hover: none) {
+  .copy-link:focus {
+    opacity: 1;
+  }
+}
