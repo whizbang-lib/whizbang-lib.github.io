@@ -1,4 +1,4 @@
-# Marten/Wolverine to Whizbang Migration Guide
+# Migrate from Marten/Wolverine
 
 This guide provides step-by-step instructions for migrating applications from Marten/Wolverine to Whizbang.
 

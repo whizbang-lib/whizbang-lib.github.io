@@ -1,4 +1,4 @@
-# Event Store Migration
+# Migrate from Marten/Wolverine: Event Store Migration
 
 This guide covers migrating from Marten's `IDocumentStore` to Whizbang's `IEventStore`.
 

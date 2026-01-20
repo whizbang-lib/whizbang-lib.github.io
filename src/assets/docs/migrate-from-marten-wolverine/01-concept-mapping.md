@@ -1,4 +1,4 @@
-# Concept Mapping: Marten/Wolverine to Whizbang
+# Migrate from Marten/Wolverine: Concept Mapping
 
 This document maps core concepts between Marten/Wolverine and Whizbang.
 

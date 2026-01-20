@@ -1,4 +1,4 @@
-# Migration Checklist
+# Migrate from Marten/Wolverine: Checklist
 
 Use this checklist to track your Marten/Wolverine to Whizbang migration progress.
 

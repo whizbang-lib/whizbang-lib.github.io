@@ -1,4 +1,4 @@
-# Project Setup
+# Migrate from Marten/Wolverine: Project Setup
 
 This guide covers NuGet package installation and project configuration for migrating to Whizbang.
 

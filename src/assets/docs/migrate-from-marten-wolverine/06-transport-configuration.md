@@ -1,4 +1,4 @@
-# Transport Configuration
+# Migrate from Marten/Wolverine: Transport Configuration
 
 This guide covers configuring message transports when migrating from Wolverine to Whizbang.
 

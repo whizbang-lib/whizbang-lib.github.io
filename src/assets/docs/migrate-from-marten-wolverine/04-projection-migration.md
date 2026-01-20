@@ -1,4 +1,4 @@
-# Projection Migration
+# Migrate from Marten/Wolverine: Projection Migration
 
 This guide covers migrating Marten projections to Whizbang Perspectives.
 

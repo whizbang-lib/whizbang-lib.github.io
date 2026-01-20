@@ -1,4 +1,4 @@
-# Handler Migration
+# Migrate from Marten/Wolverine: Handler Migration
 
 This guide covers migrating Wolverine handlers to Whizbang Receptors.
 

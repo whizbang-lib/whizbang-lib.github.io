@@ -1,4 +1,4 @@
-# Outbox Migration
+# Migrate from Marten/Wolverine: Outbox Migration
 
 This guide covers migrating from Wolverine's durable outbox to Whizbang's `IWorkCoordinator`.
 
