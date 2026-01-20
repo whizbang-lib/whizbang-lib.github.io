@@ -37,30 +37,26 @@ public class CreateOrderHandler : IHandle<CreateOrderCommand> {
 }
 ```
 
-### After: Whizbang Receptor
+### After: Whizbang Receptor (Preferred: Tuple Return)
 
 ```csharp
-public class CreateOrderReceptor : IReceptor<CreateOrderCommand, OrderCreatedResult> {
-  private readonly IDispatcher _dispatcher;
-
-  public CreateOrderReceptor(IDispatcher dispatcher) {
-    _dispatcher = dispatcher;
-  }
-
-  public async ValueTask<OrderCreatedResult> HandleAsync(
+public class CreateOrderReceptor : IReceptor<CreateOrderCommand, (OrderCreatedResult, OrderCreated)> {
+  public ValueTask<(OrderCreatedResult, OrderCreated)> HandleAsync(
     CreateOrderCommand command,
     CancellationToken ct) {
 
     var orderId = Guid.NewGuid();
     var @event = new OrderCreated(orderId, command.CustomerId, command.Items);
 
-    // PublishAsync handles perspectives + outbox for cross-service delivery
-    await _dispatcher.PublishAsync(@event, ct);
-
-    return new OrderCreatedResult(orderId);
+    // Return tuple - OrderCreated is AUTO-PUBLISHED to perspectives + outbox
+    return ValueTask.FromResult((new OrderCreatedResult(orderId), @event));
   }
 }
 ```
+
+:::tip[Auto-Cascade]
+When a receptor returns a tuple or array containing `IEvent` instances, the framework automatically extracts and publishes them. This is the **preferred pattern** - no `IDispatcher` dependency needed for simple event publishing.
+:::
 
 ## Key Migration Steps
 
@@ -137,31 +133,34 @@ public class OrderHandler : IHandle<CreateOrderCommand> {
 }
 ```
 
-### After: Explicit Dispatch
+### After: Tuple Return with Auto-Cascade (Preferred)
 
 ```csharp
-public class CreateOrderReceptor : IReceptor<CreateOrderCommand, OrderCreatedResult> {
-  private readonly IDispatcher _dispatcher;
-
-  public CreateOrderReceptor(IDispatcher dispatcher) {
-    _dispatcher = dispatcher;
-  }
-
-  public async ValueTask<OrderCreatedResult> HandleAsync(
+public class CreateOrderReceptor : IReceptor<CreateOrderCommand, (OrderCreatedResult, OrderCreated)> {
+  public ValueTask<(OrderCreatedResult, OrderCreated)> HandleAsync(
     CreateOrderCommand command,
     CancellationToken ct) {
 
     var orderId = Guid.NewGuid();
     var @event = new OrderCreated(orderId, command.CustomerId, command.Amount);
 
-    // PublishAsync handles perspectives + outbox for cross-service delivery
-    await _dispatcher.PublishAsync(@event, ct);
+    // Return tuple - OrderCreated is AUTO-PUBLISHED
+    // A separate receptor listening for OrderCreated handles payment processing
+    return ValueTask.FromResult((new OrderCreatedResult(orderId), @event));
+  }
+}
 
-    // Explicit command dispatch
-    await _dispatcher.SendAsync(
-      new ProcessPaymentCommand(orderId, command.Amount), ct);
+// Separate receptor handles payment when OrderCreated is published
+public class PaymentReceptor : IReceptor<OrderCreated, Unit> {
+  private readonly IPaymentService _paymentService;
 
-    return new OrderCreatedResult(orderId);
+  public PaymentReceptor(IPaymentService paymentService) {
+    _paymentService = paymentService;
+  }
+
+  public async ValueTask<Unit> HandleAsync(OrderCreated @event, CancellationToken ct) {
+    await _paymentService.ProcessPaymentAsync(@event.OrderId, @event.Amount, ct);
+    return Unit.Value;
   }
 }
 ```

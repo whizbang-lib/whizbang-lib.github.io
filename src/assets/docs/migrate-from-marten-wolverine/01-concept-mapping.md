@@ -31,26 +31,27 @@ public class OrderHandler {
 }
 ```
 
-### Whizbang Receptor (After)
+### Whizbang Receptor (After - Preferred: Tuple Return)
 ```csharp
-public class CreateOrderReceptor(
-    IDispatcher dispatcher,
-    IWhizbangIdProvider idProvider)
-    : IReceptor<CreateOrderCommand, OrderCreatedResult> {
+public class CreateOrderReceptor(IWhizbangIdProvider idProvider)
+    : IReceptor<CreateOrderCommand, (OrderCreatedResult, OrderCreated)> {
 
-  public async ValueTask<OrderCreatedResult> ReceiveAsync(
+  public ValueTask<(OrderCreatedResult, OrderCreated)> ReceiveAsync(
       CreateOrderCommand command,
       CancellationToken ct) {
     var orderId = idProvider.NewGuid();
     var @event = new OrderCreated(orderId, command.CustomerId, command.Items);
 
-    // PublishAsync handles perspectives + outbox for cross-service delivery
-    await dispatcher.PublishAsync(@event);
-
-    return new OrderCreatedResult(orderId);
+    // Return tuple - OrderCreated is AUTO-PUBLISHED to perspectives + outbox
+    return ValueTask.FromResult((new OrderCreatedResult(orderId), @event));
   }
 }
 ```
+
+The framework automatically extracts and publishes any `IEvent` instances from the return value. This pattern:
+- **Eliminates dispatcher dependency** when only publishing events
+- **Makes side effects explicit** in the return type
+- **Enables easier testing** (assert return values, no mock setup needed)
 
 ## Projection Migration
 

@@ -345,6 +345,74 @@ public class ProcessPaymentReceptor : IReceptor<ProcessPayment, PaymentResult> {
 - Clear error messages
 - Structured logging
 
+### Pattern 4: Tuple Return with Auto-Cascade
+
+**Use Case**: Commands that produce events alongside business results
+
+The **auto-cascade** feature automatically publishes `IEvent` instances extracted from receptor return values. This enables a cleaner pattern where receptors return tuples containing both results and events.
+
+```csharp
+public record CreateOrder(Guid CustomerId, OrderLineItem[] Items);
+
+public record OrderResult(Guid OrderId);
+
+public record OrderCreated(
+    [property: StreamKey] Guid OrderId,
+    Guid CustomerId,
+    decimal Total,
+    DateTimeOffset CreatedAt
+) : IEvent;
+
+// Return tuple: (Result, Event)
+public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)> {
+    private readonly ILogger<CreateOrderReceptor> _logger;
+
+    public CreateOrderReceptor(ILogger<CreateOrderReceptor> logger) {
+        _logger = logger;
+    }
+
+    public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
+        CreateOrder message,
+        CancellationToken ct = default) {
+
+        // Validation
+        if (message.Items.Length == 0) {
+            throw new ValidationException("Order must have at least one item");
+        }
+
+        // Business logic
+        var orderId = Guid.CreateVersion7();
+        var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
+
+        _logger.LogInformation(
+            "Order {OrderId} created for customer {CustomerId}, total {Total:C}",
+            orderId, message.CustomerId, total
+        );
+
+        // Return tuple - OrderCreated is AUTO-PUBLISHED to all perspectives!
+        return ValueTask.FromResult((
+            new OrderResult(orderId),
+            new OrderCreated(orderId, message.CustomerId, total, DateTimeOffset.UtcNow)
+        ));
+    }
+}
+```
+
+**Key Points**:
+- Return type is `(OrderResult, OrderCreated)` tuple
+- `OrderCreated` implements `IEvent` → automatically extracted and published
+- `OrderResult` does not implement `IEvent` → passed through unchanged
+- No explicit `_dispatcher.PublishAsync()` call needed
+- All perspectives subscribing to `OrderCreated` receive the event automatically
+
+**Benefits**:
+- **Fewer dependencies**: No need to inject `IDispatcher` just for publishing
+- **Cleaner code**: Return events declaratively, not imperatively
+- **Safer**: Can't forget to publish events
+- **Type-safe**: Compiler enforces the return contract
+
+See [Dispatcher: Automatic Event Cascade](dispatcher.md#automatic-event-cascade) for full details on supported return types.
+
 ---
 
 ## Dependency Injection
