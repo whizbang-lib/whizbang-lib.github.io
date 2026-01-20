@@ -41,6 +41,12 @@
     "symbol": "RabbitMQReadinessCheck",
     "docs": "components/hosting/rabbitmq"
   },
+  "TopicFilterGenerator": {
+    "file": "src/Whizbang.Generators/TopicFilterGenerator.cs",
+    "line": 26,
+    "symbol": "TopicFilterGenerator",
+    "docs": "source-generators/topic-filter-discovery"
+  },
   "with": {
     "file": "src/Whizbang.Data.Schema/SequenceDefinition.cs",
     "line": 4,
@@ -58,12 +64,6 @@
     "line": 4,
     "symbol": "for",
     "docs": "extensibility/database-schema-framework"
-  },
-  "TopicFilterGenerator": {
-    "file": "src/Whizbang.Generators/TopicFilterGenerator.cs",
-    "line": 26,
-    "symbol": "TopicFilterGenerator",
-    "docs": "source-generators/topic-filter-discovery"
   },
   "WhizbangIdServiceCollectionExtensions": {
     "file": "src/Whizbang.Core/WhizbangIdServiceCollectionExtensions.cs",
@@ -119,6 +119,12 @@
     "symbol": "IWhizbangIdProvider",
     "docs": "core-concepts/whizbang-ids"
   },
+  "ISyncReceptor": {
+    "file": "src/Whizbang.Core/ISyncReceptor.cs",
+    "line": 10,
+    "symbol": "ISyncReceptor",
+    "docs": "core-concepts/receptors#synchronous-receptors"
+  },
   "IReceptor": {
     "file": "src/Whizbang.Core/IReceptor.cs",
     "line": 10,
@@ -161,6 +167,18 @@
     "symbol": "IAggregateIdExtractor",
     "docs": "infrastructure/policies"
   },
+  "VoidSyncReceptorInvoker": {
+    "file": "src/Whizbang.Core/Dispatcher.cs",
+    "line": 49,
+    "symbol": "VoidSyncReceptorInvoker",
+    "docs": "core-concepts/receptors#synchronous-receptors"
+  },
+  "PerspectiveAssociationInfo": {
+    "file": "src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs",
+    "line": 46,
+    "symbol": "PerspectiveAssociationInfo",
+    "docs": "perspectives/association-info"
+  },
   "table": {
     "file": "src/Whizbang.Data.Schema/Schemas/PartitionAssignmentsSchema.cs",
     "line": 6,
@@ -173,11 +191,17 @@
     "symbol": "MessageAssociationsSchema",
     "docs": "core-concepts/message-associations"
   },
-  "PerspectiveAssociationInfo": {
-    "file": "src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs",
-    "line": 46,
-    "symbol": "PerspectiveAssociationInfo",
-    "docs": "perspectives/association-info"
+  "MessageId": {
+    "file": "src/Whizbang.Core/ValueObjects/MessageId.cs",
+    "line": 10,
+    "symbol": "MessageId",
+    "docs": "core-concepts/message-context"
+  },
+  "CorrelationId": {
+    "file": "src/Whizbang.Core/ValueObjects/CorrelationId.cs",
+    "line": 11,
+    "symbol": "CorrelationId",
+    "docs": "core-concepts/message-context"
   },
   "ITransportReadinessCheck": {
     "file": "src/Whizbang.Core/Transports/ITransportReadinessCheck.cs",
@@ -208,18 +232,6 @@
     "line": 29,
     "symbol": "IMessageSerializer",
     "docs": "components/transports"
-  },
-  "MessageId": {
-    "file": "src/Whizbang.Core/ValueObjects/MessageId.cs",
-    "line": 10,
-    "symbol": "MessageId",
-    "docs": "core-concepts/message-context"
-  },
-  "CorrelationId": {
-    "file": "src/Whizbang.Core/ValueObjects/CorrelationId.cs",
-    "line": 11,
-    "symbol": "CorrelationId",
-    "docs": "core-concepts/message-context"
   },
   "TransportConsumerWorker": {
     "file": "src/Whizbang.Core/Workers/TransportConsumerWorker.cs",
@@ -293,6 +305,36 @@
     "symbol": "IGlobalPerspectiveFor",
     "docs": "core-concepts/perspectives/multi-stream"
   },
+  "ScopedLensQuery": {
+    "file": "src/Whizbang.Core/Lenses/ScopedLensQuery.cs",
+    "line": 11,
+    "symbol": "ScopedLensQuery",
+    "docs": "lenses/scoped-queries"
+  },
+  "LensQueryFactory": {
+    "file": "src/Whizbang.Core/Lenses/LensQueryFactory.cs",
+    "line": 10,
+    "symbol": "LensQueryFactory",
+    "docs": "lenses/scoped-queries"
+  },
+  "IScopedLensQuery": {
+    "file": "src/Whizbang.Core/Lenses/IScopedLensQuery.cs",
+    "line": 9,
+    "symbol": "IScopedLensQuery",
+    "docs": "lenses/scoped-queries"
+  },
+  "ILensQueryFactory": {
+    "file": "src/Whizbang.Core/Lenses/ILensQueryFactory.cs",
+    "line": 10,
+    "symbol": "ILensQueryFactory",
+    "docs": "lenses/scoped-queries"
+  },
+  "ILensQuery": {
+    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
+    "line": 17,
+    "symbol": "ILensQuery",
+    "docs": "core-concepts/lenses"
+  },
   "EventExtractor": {
     "file": "src/Whizbang.Core/Internal/EventExtractor.cs",
     "line": 11,
@@ -329,35 +371,17 @@
     "symbol": "IEnvelopeRegistry",
     "docs": "core-concepts/envelope-registry"
   },
-  "ScopedLensQuery": {
-    "file": "src/Whizbang.Core/Lenses/ScopedLensQuery.cs",
-    "line": 11,
-    "symbol": "ScopedLensQuery",
-    "docs": "lenses/scoped-queries"
-  },
-  "LensQueryFactory": {
-    "file": "src/Whizbang.Core/Lenses/LensQueryFactory.cs",
+  "IExecutionStrategy": {
+    "file": "src/Whizbang.Core/Execution/IExecutionStrategy.cs",
     "line": 10,
-    "symbol": "LensQueryFactory",
-    "docs": "lenses/scoped-queries"
+    "symbol": "IExecutionStrategy",
+    "docs": "components/dispatcher"
   },
-  "IScopedLensQuery": {
-    "file": "src/Whizbang.Core/Lenses/IScopedLensQuery.cs",
-    "line": 9,
-    "symbol": "IScopedLensQuery",
-    "docs": "lenses/scoped-queries"
-  },
-  "ILensQueryFactory": {
-    "file": "src/Whizbang.Core/Lenses/ILensQueryFactory.cs",
-    "line": 10,
-    "symbol": "ILensQueryFactory",
-    "docs": "lenses/scoped-queries"
-  },
-  "ILensQuery": {
-    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
-    "line": 17,
-    "symbol": "ILensQuery",
-    "docs": "core-concepts/lenses"
+  "WhizbangSerializableAttribute": {
+    "file": "src/Whizbang.Core/Attributes/WhizbangSerializableAttribute.cs",
+    "line": 30,
+    "symbol": "WhizbangSerializableAttribute",
+    "docs": "source-generators/json-contexts#serializing-additional-types"
   },
   "MessageSource": {
     "file": "src/Whizbang.Core/Messaging/MessageSource.cs",
@@ -460,17 +484,5 @@
     "line": 19,
     "symbol": "DefaultLifecycleReceptorRegistry",
     "docs": "testing/lifecycle-synchronization"
-  },
-  "WhizbangSerializableAttribute": {
-    "file": "src/Whizbang.Core/Attributes/WhizbangSerializableAttribute.cs",
-    "line": 30,
-    "symbol": "WhizbangSerializableAttribute",
-    "docs": "source-generators/json-contexts#serializing-additional-types"
-  },
-  "IExecutionStrategy": {
-    "file": "src/Whizbang.Core/Execution/IExecutionStrategy.cs",
-    "line": 10,
-    "symbol": "IExecutionStrategy",
-    "docs": "components/dispatcher"
   }
 }

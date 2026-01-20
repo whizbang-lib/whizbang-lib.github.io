@@ -309,6 +309,56 @@ var wrong = await _dispatcher.LocalInvokeAsync<CreateOrder, PaymentProcessed>(co
 // Error: No receptor registered for CreateOrder → PaymentProcessed
 ```
 
+### Synchronous Receptor Invocation
+
+:::new
+`LocalInvokeAsync` supports both async (`IReceptor`) and sync (`ISyncReceptor`) receptors transparently:
+:::
+
+```csharp
+// Async receptor - uses HandleAsync, returns ValueTask
+public class AsyncOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
+    public async ValueTask<OrderCreated> HandleAsync(
+        CreateOrder message,
+        CancellationToken ct = default) {
+        // Can use await
+        await Task.Delay(1);
+        return new OrderCreated(message.OrderId);
+    }
+}
+
+// Sync receptor - uses Handle, returns directly
+public class SyncOrderReceptor : ISyncReceptor<CreateOrder, OrderCreated> {
+    public OrderCreated Handle(CreateOrder message) {
+        // Pure computation, no await
+        return new OrderCreated(message.OrderId);
+    }
+}
+
+// Both invoked the same way
+var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
+```
+
+**How it works**:
+1. Dispatcher first checks for async `IReceptor<TMessage, TResponse>`
+2. If not found, checks for sync `ISyncReceptor<TMessage, TResponse>`
+3. Sync receptors are invoked directly, result wrapped in pre-completed `ValueTask`
+4. Auto-cascade works identically for both sync and async receptors
+
+**Performance benefit**: Sync receptors avoid async state machine overhead entirely. The returned `ValueTask` is pre-completed, resulting in zero allocations.
+
+```
+Async Receptor Flow:
+  LocalInvokeAsync → HandleAsync() → ValueTask (may allocate Task)
+
+Sync Receptor Flow:
+  LocalInvokeAsync → Handle() → new ValueTask(result) (pre-completed, zero alloc)
+```
+
+**Precedence**: If both `IReceptor` and `ISyncReceptor` exist for the same message type, the async `IReceptor` takes precedence to avoid breaking existing behavior.
+
+See [Receptors: ISyncReceptor Interface](receptors.md#isyncreceptor-interface) for when to use sync vs async receptors.
+
 ### Performance Optimization
 
 LocalInvokeAsync achieves < 20ns overhead through:
@@ -332,6 +382,20 @@ protected override ReceptorInvoker<TResult>? GetReceptorInvoker<TResult>(
     }
 
     // ... other message types
+
+    return null;
+}
+
+// Sync receptor routing (fallback if no async receptor)
+protected override SyncReceptorInvoker<TResult>? GetSyncReceptorInvoker<TResult>(
+    object message,
+    Type messageType) {
+
+    if (messageType == typeof(CreateOrder)) {
+        var receptor = _serviceProvider.GetService<ISyncReceptor<CreateOrder, OrderCreated>>();
+        if (receptor == null) return null;
+        return msg => (TResult)(object)receptor.Handle((CreateOrder)msg)!;
+    }
 
     return null;
 }

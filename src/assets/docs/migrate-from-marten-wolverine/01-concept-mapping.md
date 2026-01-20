@@ -8,7 +8,8 @@ This document maps core concepts between Marten/Wolverine and Whizbang.
 |------------------|----------|-----------------|
 | `IDocumentStore` | `IEventStore` | Stream-based, simple `AppendAsync(streamId, message, ct)` |
 | `IHandle<TMessage>` | `IReceptor<TMessage, TResult>` | Returns typed result, source-generator discovered |
-| `[WolverineHandler]` | *No attribute needed* | Source generator discovers `IReceptor` implementations |
+| `IHandle<TMessage>` (sync logic) | `ISyncReceptor<TMessage, TResult>` | For pure computation without async operations |
+| `[WolverineHandler]` | *No attribute needed* | Source generator discovers `IReceptor`/`ISyncReceptor` |
 | `SingleStreamProjection<T>` | `IPerspectiveFor<TModel, TEvent...>` | Pure function `Apply()`, multiple event types via variadic interface |
 | `MultiStreamProjection<T>` | `IGlobalPerspectiveFor<TModel>` | Global perspectives for cross-stream aggregation |
 | `UseDurableOutbox()` | Built-in outbox via `IWorkCoordinator` | Database-backed with configurable strategies |
