@@ -516,6 +516,76 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ---
 
+## AppendAsync vs PublishAsync vs SendAsync
+
+:::new{type="important"}
+Understanding when to use `IEventStore.AppendAsync` versus `IDispatcher.PublishAsync` is critical. Using both together is usually **redundant**.
+:::
+
+### Key Differences
+
+| Method | Responsibility | Triggers Perspectives | Uses Outbox | Return |
+|--------|---------------|----------------------|-------------|--------|
+| `IEventStore.AppendAsync` | Persist event to event store | No | No | `void` |
+| `IDispatcher.PublishAsync` | Broadcast event | Yes (local) | Yes (remote) | `void` |
+| `IDispatcher.SendAsync` | Route command | No | Yes | `DeliveryReceipt` |
+
+### Correct Patterns
+
+**For Events (most common case):**
+
+```csharp
+// ✅ CORRECT: Just publish - handles perspectives + outbox
+public async ValueTask<OrderCreated> HandleAsync(
+    CreateOrder command,
+    CancellationToken ct) {
+
+    var @event = new OrderCreated(command.OrderId, command.Items);
+
+    // PublishAsync triggers local perspectives AND queues for remote delivery
+    await _dispatcher.PublishAsync(@event, ct);
+
+    return @event;
+}
+```
+
+**For Commands:**
+
+```csharp
+// ✅ CORRECT: Send command with delivery tracking
+await _dispatcher.SendAsync(new ProcessPayment(orderId, amount), ct);
+```
+
+**For Direct Event Store Access (rare - infrastructure/workers only):**
+
+```csharp
+// ✅ CORRECT: When you need explicit transactional control
+await using var work = await _workCoordinator.BeginAsync(ct);
+await _eventStore.AppendAsync(streamId, @event, ct);
+await work.CommitAsync(ct);
+```
+
+### Anti-Patterns to Avoid
+
+```csharp
+// ❌ WRONG: Redundant - calling both AppendAsync and PublishAsync
+await _eventStore.AppendAsync(orderId, @event, ct);
+await _dispatcher.PublishAsync(@event, ct);
+// PublishAsync already handles persistence + perspectives + outbox!
+```
+
+### When to Use Each
+
+| Scenario | Use |
+|----------|-----|
+| Publishing an event from a receptor | `PublishAsync` |
+| Sending a command to another service | `SendAsync` |
+| In-process query with typed response | `LocalInvokeAsync` |
+| Background worker with explicit transaction control | `AppendAsync` + `IWorkCoordinator` |
+| Event replay/migration scripts | `AppendAsync` |
+
+---
+
 ## Decision Matrix
 
 ### When to Use Each Pattern

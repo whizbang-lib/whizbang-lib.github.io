@@ -41,11 +41,9 @@ public class CreateOrderHandler : IHandle<CreateOrderCommand> {
 
 ```csharp
 public class CreateOrderReceptor : IReceptor<CreateOrderCommand, OrderCreatedResult> {
-  private readonly IEventStore _eventStore;
   private readonly IDispatcher _dispatcher;
 
-  public CreateOrderReceptor(IEventStore eventStore, IDispatcher dispatcher) {
-    _eventStore = eventStore;
+  public CreateOrderReceptor(IDispatcher dispatcher) {
     _dispatcher = dispatcher;
   }
 
@@ -56,7 +54,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrderCommand, OrderCreatedRes
     var orderId = Guid.NewGuid();
     var @event = new OrderCreated(orderId, command.CustomerId, command.Items);
 
-    await _eventStore.AppendAsync(orderId, @event, ct);
+    // PublishAsync handles perspectives + outbox for cross-service delivery
     await _dispatcher.PublishAsync(@event, ct);
 
     return new OrderCreatedResult(orderId);
@@ -143,11 +141,9 @@ public class OrderHandler : IHandle<CreateOrderCommand> {
 
 ```csharp
 public class CreateOrderReceptor : IReceptor<CreateOrderCommand, OrderCreatedResult> {
-  private readonly IEventStore _eventStore;
   private readonly IDispatcher _dispatcher;
 
-  public CreateOrderReceptor(IEventStore eventStore, IDispatcher dispatcher) {
-    _eventStore = eventStore;
+  public CreateOrderReceptor(IDispatcher dispatcher) {
     _dispatcher = dispatcher;
   }
 
@@ -158,7 +154,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrderCommand, OrderCreatedRes
     var orderId = Guid.NewGuid();
     var @event = new OrderCreated(orderId, command.CustomerId, command.Amount);
 
-    await _eventStore.AppendAsync(orderId, @event, ct);
+    // PublishAsync handles perspectives + outbox for cross-service delivery
     await _dispatcher.PublishAsync(@event, ct);
 
     // Explicit command dispatch

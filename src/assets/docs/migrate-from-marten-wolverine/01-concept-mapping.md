@@ -6,7 +6,7 @@ This document maps core concepts between Marten/Wolverine and Whizbang.
 
 | Marten/Wolverine | Whizbang | Key Differences |
 |------------------|----------|-----------------|
-| `IDocumentStore` | `IEventStore` | Stream-based, generic `AppendAsync<TMessage>()` |
+| `IDocumentStore` | `IEventStore` | Stream-based, simple `AppendAsync(streamId, message, ct)` |
 | `IHandle<TMessage>` | `IReceptor<TMessage, TResult>` | Returns typed result, source-generator discovered |
 | `[WolverineHandler]` | *No attribute needed* | Source generator discovers `IReceptor` implementations |
 | `SingleStreamProjection<T>` | `IPerspectiveFor<TModel, TEvent...>` | Pure function `Apply()`, multiple event types via variadic interface |
@@ -15,6 +15,7 @@ This document maps core concepts between Marten/Wolverine and Whizbang.
 | `IMessageBus.PublishAsync()` | `IDispatcher.PublishAsync()` | Fire-and-forget event broadcasting |
 | `IMessageBus.SendAsync()` | `IDispatcher.SendAsync()` | Command dispatch with delivery receipt |
 | `IMessageBus.InvokeAsync<T>()` | `IDispatcher.LocalInvokeAsync<T>()` | In-process RPC with typed result |
+| `Guid.NewGuid()` / `Guid.CreateVersion7()` | `IWhizbangIdProvider.NewGuid()` | Inject interface, UUIDv7 via Medo, testable |
 
 ## Handler Migration
 
@@ -32,30 +33,19 @@ public class OrderHandler {
 
 ### Whizbang Receptor (After)
 ```csharp
-public class CreateOrderReceptor : IReceptor<CreateOrderCommand, OrderCreatedResult> {
-  private readonly IEventStore _eventStore;
-  private readonly IDispatcher _dispatcher;
+public class CreateOrderReceptor(
+    IDispatcher dispatcher,
+    IWhizbangIdProvider idProvider)
+    : IReceptor<CreateOrderCommand, OrderCreatedResult> {
 
-  public CreateOrderReceptor(IEventStore eventStore, IDispatcher dispatcher) {
-    _eventStore = eventStore;
-    _dispatcher = dispatcher;
-  }
-
-  public async ValueTask<OrderCreatedResult> HandleAsync(
-    CreateOrderCommand command,
-    CancellationToken ct) {
-
-    var orderId = Guid.NewGuid();
+  public async ValueTask<OrderCreatedResult> ReceiveAsync(
+      CreateOrderCommand command,
+      CancellationToken ct) {
+    var orderId = idProvider.NewGuid();
     var @event = new OrderCreated(orderId, command.CustomerId, command.Items);
 
-    var envelope = new MessageEnvelope<OrderCreated> {
-      MessageId = MessageId.New(),
-      Payload = @event,
-      Hops = [new MessageHop { /* ... */ }]
-    };
-
-    await _eventStore.AppendAsync(orderId, envelope, ct);
-    await _dispatcher.PublishAsync(@event);
+    // PublishAsync handles perspectives + outbox for cross-service delivery
+    await dispatcher.PublishAsync(@event);
 
     return new OrderCreatedResult(orderId);
   }
@@ -85,6 +75,7 @@ public class OrderProjection : SingleStreamProjection<OrderView> {
 ### Whizbang Perspective (After)
 ```csharp
 public class OrderPerspective : IPerspectiveFor<OrderView, OrderCreated, OrderShipped> {
+  // Creation event - nullable parameter, handles initial creation
   public OrderView Apply(OrderView? current, OrderCreated @event) {
     return new OrderView {
       Id = @event.OrderId,
@@ -93,14 +84,25 @@ public class OrderPerspective : IPerspectiveFor<OrderView, OrderCreated, OrderSh
     };
   }
 
-  public OrderView Apply(OrderView? current, OrderShipped @event) {
-    if (current is null) throw new InvalidOperationException("Order must exist");
+  // Update event - [MustExist] ensures model exists, non-nullable parameter
+  [MustExist]
+  public OrderView Apply(OrderView current, OrderShipped @event) {
     return current with {
       Status = OrderStatus.Shipped,
       ShippedAt = @event.ShippedAt
     };
   }
 }
+```
+
+The `[MustExist]` attribute tells the generator to produce a null check before calling Apply:
+```csharp
+// Generated code
+case OrderShipped typedEvent:
+  if (currentModel == null)
+    throw new InvalidOperationException(
+      "OrderView must exist when applying OrderShipped in OrderPerspective");
+  return perspective.Apply(currentModel, typedEvent);
 ```
 
 ## Key Differences
@@ -123,7 +125,7 @@ public class OrderPerspective : IPerspectiveFor<OrderView, OrderCreated, OrderSh
 
 ### 5. Message Context
 - **Wolverine**: `MessageContext` for accessing message metadata
-- **Whizbang**: `MessageEnvelope<T>` with `Hops` for distributed tracing
+- **Whizbang**: `MessageEnvelope<T>` with `Hops` for distributed tracing (auto-created by Dispatcher)
 
 ## Dispatcher Patterns
 
@@ -163,5 +165,10 @@ whizbang migrate apply --project ./src/MyService --guided
 The tool handles:
 - Handler to Receptor transformation
 - Projection to Perspective transformation
+- `IDocumentStore` to `IEventStore` transformation
+- Session removal (`LightweightSession`, `QuerySession`)
+- `SaveChangesAsync` removal (each `AppendAsync` is atomic)
+- `Guid.NewGuid()` / `Guid.CreateVersion7()` to `IWhizbangIdProvider.NewGuid()` (adds constructor injection)
+- `[MustExist]` suggestions for Apply methods with non-nullable model parameter
 - DI registration updates
 - Using directive changes
