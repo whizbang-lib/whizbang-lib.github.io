@@ -154,6 +154,59 @@ builder.Services.AddWhizbang(options => {
 });
 ```
 
+### Topic Routing Strategies
+
+Whizbang provides flexible topic routing strategies for dynamic message routing.
+
+#### NamespaceRoutingStrategy
+
+Routes messages to topics based on namespace patterns. Useful for projects with either hierarchical or flat namespace structures.
+
+```csharp
+// Default behavior:
+// - MyApp.Orders.Events.OrderCreated → "orders"
+// - MyApp.Contracts.Commands.CreateOrder → "order"
+builder.Services.AddWhizbang(options => {
+    options.TopicRouting.UseNamespaceRouting();
+});
+
+// Custom extraction logic
+builder.Services.AddWhizbang(options => {
+    options.TopicRouting.UseNamespaceRouting(type => {
+        // Use [Topic] attribute if present, else default
+        var attr = type.GetCustomAttribute<TopicAttribute>();
+        return attr?.Name ?? NamespaceRoutingStrategy.DefaultTypeToTopic(type);
+    });
+});
+```
+
+**How it works:**
+
+| Namespace/Type | Extracted Topic |
+|----------------|-----------------|
+| `MyApp.Orders.Events.OrderCreated` | `orders` |
+| `MyApp.Contracts.Commands.CreateOrder` | `order` |
+| `MyApp.Contracts.Events.OrderCreated` | `order` |
+| `MyApp.Contracts.Queries.GetOrderById` | `order` |
+
+The strategy:
+1. Uses the second-to-last namespace segment for hierarchical namespaces
+2. Skips generic segments (`contracts`, `commands`, `events`, `queries`, `messages`)
+3. Falls back to extracting domain from type name (removes prefixes/suffixes)
+
+#### CompositeTopicRoutingStrategy
+
+Chain multiple strategies together:
+
+```csharp
+var composite = new CompositeTopicRoutingStrategy(
+    new NamespaceRoutingStrategy(),
+    new PoolSuffixRoutingStrategy("01")
+);
+
+// orders → orders-01
+```
+
 ### Consumer Groups
 
 ```csharp

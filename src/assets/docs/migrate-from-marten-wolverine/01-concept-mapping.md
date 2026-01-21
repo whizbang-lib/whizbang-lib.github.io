@@ -16,7 +16,7 @@ This document maps core concepts between Marten/Wolverine and Whizbang.
 | `IMessageBus.PublishAsync()` | `IDispatcher.PublishAsync()` | Fire-and-forget event broadcasting |
 | `IMessageBus.SendAsync()` | `IDispatcher.SendAsync()` | Command dispatch with delivery receipt |
 | `IMessageBus.InvokeAsync<T>()` | `IDispatcher.LocalInvokeAsync<T>()` | In-process RPC with typed result |
-| `Guid.NewGuid()` / `Guid.CreateVersion7()` | `IWhizbangIdProvider.NewGuid()` | Inject interface, UUIDv7 via Medo, testable |
+| `Guid.NewGuid()` / `Guid.CreateVersion7()` | `OrderId.New()` / `TrackedGuid.NewMedo()` | Strongly-typed IDs with UUIDv7 via Medo, no DI needed |
 
 ## Handler Migration
 
@@ -34,17 +34,15 @@ public class OrderHandler {
 
 ### Whizbang Receptor (After - Preferred: Tuple Return)
 ```csharp
-public class CreateOrderReceptor(IWhizbangIdProvider idProvider)
-    : IReceptor<CreateOrderCommand, (OrderCreatedResult, OrderCreated)> {
+public class CreateOrderReceptor
+    : ISyncReceptor<CreateOrderCommand, (OrderCreatedResult, OrderCreated)> {
 
-  public ValueTask<(OrderCreatedResult, OrderCreated)> ReceiveAsync(
-      CreateOrderCommand command,
-      CancellationToken ct) {
-    var orderId = idProvider.NewGuid();
+  public (OrderCreatedResult, OrderCreated) Receive(CreateOrderCommand command) {
+    var orderId = OrderId.New();  // UUIDv7 with sub-millisecond precision
     var @event = new OrderCreated(orderId, command.CustomerId, command.Items);
 
     // Return tuple - OrderCreated is AUTO-PUBLISHED to perspectives + outbox
-    return ValueTask.FromResult((new OrderCreatedResult(orderId), @event));
+    return (new OrderCreatedResult(orderId), @event);
   }
 }
 ```
@@ -151,6 +149,278 @@ await _dispatcher.SendAsync(new ProcessPaymentCommand(orderId, amount));
 var result = await _dispatcher.LocalInvokeAsync<ProcessPaymentCommand, PaymentResult>(
     new ProcessPaymentCommand(orderId, amount));
 ```
+
+## Common ID Generation Migration Scenarios
+
+This section documents migration patterns for ID generation. Each scenario has a unique ID for traceability to automated migration tests.
+
+---
+
+### Scenario G01: Guid.NewGuid() to Strongly-Typed ID
+
+**Marten/Wolverine Pattern (Before):**
+
+```csharp
+public class OrderHandler : IHandle<CreateOrderCommand> {
+  private readonly IDocumentSession _session;
+
+  public async Task Handle(CreateOrderCommand command, CancellationToken ct) {
+    var orderId = Guid.NewGuid();
+
+    _session.Events.StartStream<Order>(
+        orderId,
+        new OrderCreated(orderId, command.CustomerId, command.Items)
+    );
+
+    await _session.SaveChangesAsync(ct);
+  }
+}
+```
+
+**Whizbang Pattern (After):**
+
+```csharp
+public class CreateOrderReceptor
+    : ISyncReceptor<CreateOrderCommand, (OrderCreatedResult, OrderCreated)> {
+
+    public (OrderCreatedResult, OrderCreated) Receive(CreateOrderCommand command) {
+        // Strongly-typed ID with UUIDv7 generation
+        var orderId = OrderId.New();
+
+        return (
+            new OrderCreatedResult(orderId),
+            new OrderCreated(orderId, command.CustomerId, command.Items)
+        );
+    }
+}
+
+// Define strongly-typed ID using Vogen
+[ValueObject<Guid>]
+public partial struct OrderId {
+    public static OrderId New() => From(TrackedGuid.NewMedo());
+}
+```
+
+**Key Differences:**
+
+- `Guid.NewGuid()` becomes `OrderId.New()` (strongly-typed)
+- Vogen generates compile-time value object with equality, serialization
+- `TrackedGuid.NewMedo()` provides UUIDv7 with sub-millisecond precision
+- Type system prevents mixing up IDs (e.g., `OrderId` vs `CustomerId`)
+
+**CLI Transformation:**
+
+- [x] Supported by `whizbang migrate apply`
+- Suggests creating strongly-typed ID wrappers
+
+**Test Coverage:**
+
+- `TransformAsync_G01_GuidNewGuid_TransformsToIdProviderNewGuid`
+
+---
+
+### Scenario G02: CombGuid to TrackedGuid.NewMedo()
+
+**Marten/Wolverine Pattern (Before):**
+
+```csharp
+using Marten.Schema.Identity;
+
+public class StreamIdGenerator {
+  public Guid GenerateStreamId() {
+    // CombGuid generates sequential GUIDs for better database index performance
+    return CombGuidIdGeneration.NewGuid();
+  }
+}
+
+public class OrderHandler : IHandle<CreateOrderCommand> {
+  private readonly StreamIdGenerator _idGenerator;
+
+  public async Task Handle(CreateOrderCommand command, CancellationToken ct) {
+    var orderId = _idGenerator.GenerateStreamId();
+    // ...
+  }
+}
+```
+
+**Whizbang Pattern (After):**
+
+```csharp
+public class CreateOrderReceptor
+    : ISyncReceptor<CreateOrderCommand, (OrderCreatedResult, OrderCreated)> {
+
+    public (OrderCreatedResult, OrderCreated) Receive(CreateOrderCommand command) {
+        // TrackedGuid.NewMedo() generates time-ordered UUIDv7
+        // Equivalent to CombGuid but standardized and more precise
+        var orderId = OrderId.New(); // Uses TrackedGuid.NewMedo() internally
+
+        return (
+            new OrderCreatedResult(orderId),
+            new OrderCreated(orderId, command.CustomerId, command.Items)
+        );
+    }
+}
+```
+
+**Key Differences:**
+
+- `CombGuidIdGeneration.NewGuid()` → `TrackedGuid.NewMedo()`
+- MEDO (monotonic, epoch-based, distributed, ordered) algorithm
+- Better precision than CombGuid (sub-millisecond vs millisecond)
+- Standardized UUIDv7 format per RFC 9562
+- No external dependency (built into Whizbang.Core)
+
+**CLI Transformation:**
+
+- [x] Supported by `whizbang migrate apply`
+- Direct replacement: `CombGuidIdGeneration.NewGuid()` → `TrackedGuid.NewMedo()`
+
+**Test Coverage:**
+
+- `TransformAsync_G02_CombGuidIdGeneration_TransformsToTrackedGuid`
+
+---
+
+### Scenario G03: Default StreamId Check Pattern
+
+**Marten/Wolverine Pattern (Before):**
+
+```csharp
+public class OrderHandler : IHandle<CreateOrderCommand> {
+  public async Task Handle(CreateOrderCommand command, CancellationToken ct) {
+    var @event = new OrderCreated(/* ... */);
+
+    // Pattern: Check if StreamId is default (not set), then generate
+    if (@event.StreamId == default) {
+      @event = @event with { StreamId = Guid.NewGuid() };
+    }
+
+        _session.Events.StartStream<Order>(@event.StreamId, @event);
+        await _session.SaveChangesAsync(ct);
+    }
+}
+```
+
+**Whizbang Pattern (After):**
+
+```csharp
+public class CreateOrderReceptor
+    : ISyncReceptor<CreateOrderCommand, (OrderCreatedResult, OrderCreated)> {
+
+    public (OrderCreatedResult, OrderCreated) Receive(CreateOrderCommand command) {
+        // Always generate ID upfront - never rely on default checks
+        var orderId = OrderId.New();
+
+        var @event = new OrderCreated(orderId, command.CustomerId, command.Items);
+
+        return (new OrderCreatedResult(orderId), @event);
+    }
+}
+
+// Event record with required OrderId - compiler prevents default values
+public sealed record OrderCreated(
+    OrderId OrderId,  // Required, non-nullable
+    CustomerId CustomerId,
+    IReadOnlyList<OrderItem> Items
+) : IEvent;
+```
+
+**Key Differences:**
+
+- No `default` checks needed - generate ID at creation time
+- Strongly-typed IDs prevent accidental `default(Guid)` usage
+- Record with required constructor parameters enforces initialization
+- Compiler catches missing ID at compile time, not runtime
+
+**CLI Transformation:**
+
+- [x] Supported by `whizbang migrate apply`
+- Warning: "Remove default StreamId checks - generate IDs at creation"
+
+**Test Coverage:**
+
+- `TransformAsync_G03_DefaultStreamIdCheck_RemovedWithWarning`
+
+---
+
+### Scenario G04: Collision Retry Pattern
+
+**Marten/Wolverine Pattern (Before):**
+
+```csharp
+public class OrderHandler : IHandle<CreateOrderCommand> {
+  private const int MaxRetryAttempts = 5;
+  private readonly IDocumentSession _session;
+
+  public async Task Handle(CreateOrderCommand command, CancellationToken ct) {
+    for (var attempt = 0; attempt < MaxRetryAttempts; attempt++) {
+      try {
+        var orderId = Guid.NewGuid();
+
+        _session.Events.StartStream<Order>(
+            orderId,
+            new OrderCreated(orderId, command.CustomerId, command.Items)
+        );
+        await _session.SaveChangesAsync(ct);
+        return; // Success
+      } catch (Exception ex) when (ex.Message.Contains("duplicate key")) {
+        if (attempt == MaxRetryAttempts - 1) throw;
+        // Retry with new ID on collision
+      }
+    }
+  }
+}
+```
+
+**Whizbang Pattern (After):**
+
+```csharp
+public class CreateOrderReceptor
+    : ISyncReceptor<CreateOrderCommand, (OrderCreatedResult, OrderCreated)> {
+
+    public (OrderCreatedResult, OrderCreated) Receive(CreateOrderCommand command) {
+        // TrackedGuid.NewMedo() is virtually collision-free
+        // - Time-based component ensures temporal ordering
+        // - 62 bits of randomness per millisecond
+        // - Collision probability: ~1 in 4.6 quintillion per millisecond
+        var orderId = OrderId.New();
+
+        return (
+            new OrderCreatedResult(orderId),
+            new OrderCreated(orderId, command.CustomerId, command.Items)
+        );
+    }
+}
+```
+
+**Key Differences:**
+
+- No retry logic needed with `TrackedGuid.NewMedo()`
+- UUIDv7 combines timestamp + random for practical collision immunity
+- Simpler, more maintainable code
+- If retries are still needed (external reasons), use Polly policies at infrastructure level
+
+**CLI Transformation:**
+
+- [x] Supported by `whizbang migrate apply`
+- Warning: "Consider if GUID collision retry is still needed with TrackedGuid"
+
+**Test Coverage:**
+
+- `TransformAsync_G04_CollisionRetry_SimplifiedWithWarning`
+
+---
+
+## Scenario Coverage Matrix: ID Generation
+
+| Scenario | Pattern | CLI Support | Test |
+|----------|---------|-------------|------|
+| G01 | Guid.NewGuid() | ✅ Full | ✅ |
+| G02 | CombGuidIdGeneration | ✅ Full | ✅ |
+| G03 | Default StreamId Check | ⚠️ Warning | ✅ |
+| G04 | Collision Retry | ⚠️ Warning | ✅ |
+
+---
 
 ## Automated Migration
 

@@ -11,6 +11,88 @@ Whizbang uses strongly-typed identity values based on UUIDv7 for all identifiers
 - ✅ Are fully AOT-compatible (zero reflection)
 - ✅ Auto-register with DI via ModuleInitializer
 
+## TrackedGuid: Metadata-Aware GUID Wrapper
+
+For scenarios where you need to work with raw GUIDs while preserving generation metadata, Whizbang provides `TrackedGuid`:
+
+```csharp
+using Whizbang.Core.ValueObjects;
+
+// Create with sub-millisecond precision (recommended)
+var tracked = TrackedGuid.NewMedo();  // Uses Medo.Uuid7 internally
+
+// Check metadata
+bool isTimeOrdered = tracked.IsTimeOrdered;           // true
+bool subMs = tracked.SubMillisecondPrecision;         // true
+DateTimeOffset when = tracked.Timestamp;              // Extracted from UUIDv7
+
+// Implicit conversion to Guid
+Guid guid = tracked;
+
+// Parse from external sources (database, API)
+var parsed = TrackedGuid.Parse("550e8400-e29b-41d4-a716-446655440000");
+var external = TrackedGuid.FromExternal(someGuid);
+```
+
+### Why TrackedGuid?
+
+| Feature | `Guid.NewGuid()` | `Guid.CreateVersion7()` | `TrackedGuid.NewMedo()` |
+|---------|------------------|-------------------------|-------------------------|
+| Time-ordered | ❌ No (v4) | ✅ Yes (v7) | ✅ Yes (v7) |
+| Sub-millisecond precision | ❌ N/A | ❌ No (ms only) | ✅ Yes |
+| Metadata preserved | ❌ No | ❌ No | ✅ Yes |
+| Monotonic counter | ❌ No | ❌ No | ✅ Yes |
+| Database index friendly | ❌ Poor | ✅ Good | ✅ Excellent |
+
+**Recommendation**: Use `[WhizbangId]` types for domain identities, `TrackedGuid` for infrastructure code that needs GUID flexibility with metadata preservation.
+
+## Roslyn Analyzers (WHIZ055-WHIZ056)
+
+Whizbang includes Roslyn analyzers that detect problematic GUID generation patterns:
+
+### WHIZ055: Guid.NewGuid() Usage
+
+```csharp
+// ⚠️ Warning: Use TrackedGuid.NewMedo() or a [WhizbangId] type instead
+var id = Guid.NewGuid();  // WHIZ055
+
+// ✅ Fix: Use TrackedGuid
+var id = TrackedGuid.NewMedo();
+
+// ✅ Or use strongly-typed ID
+var orderId = OrderId.New();
+```
+
+**Why**: `Guid.NewGuid()` creates UUIDv4 (random) which is not time-ordered and fragments database indexes.
+
+### WHIZ056: Guid.CreateVersion7() Usage
+
+```csharp
+// ⚠️ Warning: Use TrackedGuid.NewMedo() for sub-millisecond precision
+var id = Guid.CreateVersion7();  // WHIZ056
+
+// ✅ Fix: Use TrackedGuid for sub-millisecond precision
+var id = TrackedGuid.NewMedo();
+```
+
+**Why**: `Guid.CreateVersion7()` only has millisecond precision. In high-throughput scenarios, multiple IDs within the same millisecond may not sort correctly.
+
+### Suppressing Analyzer Warnings
+
+For legitimate cases where you need raw GUID operations:
+
+```csharp
+// Suppress for specific line
+#pragma warning disable WHIZ055
+var testId = Guid.NewGuid();  // Intentional for test fixture
+#pragma warning restore WHIZ055
+
+// Or suppress in project file (for test projects)
+<PropertyGroup>
+  <NoWarn>$(NoWarn);WHIZ055;WHIZ056</NoWarn>
+</PropertyGroup>
+```
+
 ## Quick Start
 
 ### Defining a WhizbangId
@@ -503,6 +585,27 @@ public void OrderId_CreateProvider_GeneratesValidIds() {
 ```
 
 ## Migration Guide
+
+### Automated Migration with `whizbang-migrate`
+
+Whizbang provides automated code transformation for migrating from raw Guid usage:
+
+```bash
+# Analyze codebase for Guid patterns
+whizbang-migrate analyze ./src
+
+# Transform Guid.NewGuid()/CreateVersion7() to TrackedGuid.NewMedo()
+whizbang-migrate transform --transformer GuidToTrackedGuid ./src
+
+# Or transform to IWhizbangIdProvider pattern (for DI)
+whizbang-migrate transform --transformer GuidToIdProvider ./src
+```
+
+The `GuidToTrackedGuidTransformer` automatically:
+- Converts `Guid.NewGuid()` → `TrackedGuid.NewMedo()`
+- Converts `Guid.CreateVersion7()` → `TrackedGuid.NewMedo()`
+- Adds `using Whizbang.Core.ValueObjects;` directive
+- Emits warnings about return types that may need updating
 
 ### Migrating from Guid to WhizbangId
 
