@@ -133,6 +133,166 @@ builder.Services.AddWhizbang(options => {
 });
 ```
 
+## Domain Ownership
+
+In microservice architectures, services **own** specific domains. Commands to owned domains route to that service's inbox, while events are published to domain-specific topics for any interested subscriber.
+
+### Declaring Domain Ownership
+
+```csharp
+builder.Services.AddWhizbang(options => {
+    // Declare which domains this service owns
+    options.Routing.OwnDomains("orders", "inventory");
+});
+```
+
+Domain ownership affects:
+- **Inbound commands**: Commands targeting owned domains route to this service
+- **Outbound events**: Events are published to domain-specific topics
+
+### Configuration-Based Ownership
+
+```json
+// appsettings.json
+{
+  "Whizbang": {
+    "Routing": {
+      "OwnedDomains": ["orders", "inventory"]
+    }
+  }
+}
+```
+
+```csharp
+builder.Services.AddWhizbang(options => {
+    var domains = builder.Configuration
+        .GetSection("Whizbang:Routing:OwnedDomains")
+        .Get<string[]>() ?? [];
+    options.Routing.OwnDomains(domains);
+});
+```
+
+## Inbox & Outbox Routing Strategies
+
+Whizbang separates **inbox** (receiving commands) and **outbox** (publishing events) routing strategies.
+
+### Inbox Strategies
+
+The inbox strategy determines how this service receives commands.
+
+#### SharedTopicInboxStrategy (Default)
+
+All commands route to a single shared topic with broker-side filtering:
+
+```csharp
+builder.Services.AddWhizbang(options => {
+    options.Routing.OwnDomains("orders", "inventory");
+    options.Routing.Inbox.UseSharedTopic(); // Default: "whizbang.inbox"
+    // Or with custom topic:
+    options.Routing.Inbox.UseSharedTopic("commands.inbox");
+});
+```
+
+**How it works**:
+- All services publish commands to `whizbang.inbox`
+- Commands include a `Destination` property (domain name)
+- Broker filters messages: only commands where `Destination` matches owned domains are delivered
+- **Pros**: Fewer topics, centralized command routing
+- **Cons**: Requires broker-side filtering (ASB CorrelationFilter, RabbitMQ routing keys)
+
+#### DomainTopicInboxStrategy
+
+Each domain has its own inbox topic:
+
+```csharp
+builder.Services.AddWhizbang(options => {
+    options.Routing.OwnDomains("orders", "inventory");
+    options.Routing.Inbox.UseDomainTopics(); // Default suffix: ".inbox"
+    // Or with custom suffix:
+    options.Routing.Inbox.UseDomainTopics(".in");
+});
+```
+
+**How it works**:
+- Commands to `orders` domain → `orders.inbox` topic
+- Commands to `inventory` domain → `inventory.inbox` topic
+- Service subscribes to all owned domain inboxes
+- **Pros**: Simple routing, no broker-side filtering needed
+- **Cons**: More topics to manage
+
+### Outbox Strategies
+
+The outbox strategy determines how this service publishes events.
+
+#### DomainTopicOutboxStrategy (Default)
+
+Each domain publishes to its own topic:
+
+```csharp
+builder.Services.AddWhizbang(options => {
+    options.Routing.OwnDomains("orders");
+    options.Routing.Outbox.UseDomainTopics(); // Default
+});
+```
+
+**How it works**:
+- `OrderCreated` event → published to `orders` topic
+- Domain extracted from namespace or type name
+- **Pros**: Clear domain separation, easy subscription filtering
+- **Cons**: Subscribers must know which domains they need
+
+#### SharedTopicOutboxStrategy
+
+All events publish to a single shared topic:
+
+```csharp
+builder.Services.AddWhizbang(options => {
+    options.Routing.Outbox.UseSharedTopic(); // Default: "whizbang.events"
+    // Or with custom topic:
+    options.Routing.Outbox.UseSharedTopic("all.events");
+});
+```
+
+**How it works**:
+- All events → `whizbang.events` topic
+- Domain included in message metadata
+- **Pros**: Single topic for all events, simpler topology
+- **Cons**: Requires metadata-based filtering for subscribers
+
+### Combined Configuration
+
+```csharp
+builder.Services.AddWhizbang(options => {
+    options.Routing
+        .OwnDomains("orders", "inventory")
+        .ConfigureInbox(inbox => inbox.UseSharedTopic())    // Recommended default
+        .ConfigureOutbox(outbox => outbox.UseDomainTopics()); // Recommended default
+});
+```
+
+### Custom Routing Strategies
+
+Implement custom strategies for specialized routing:
+
+```csharp
+public class TenantAwareInboxStrategy : IInboxRoutingStrategy {
+    public InboxSubscription GetSubscription(
+        IReadOnlySet<string> ownedDomains,
+        string serviceName,
+        MessageKind kind) {
+        // Custom logic: e.g., tenant-specific inbox
+        return new InboxSubscription(
+            Topic: $"{serviceName}.inbox",
+            FilterExpression: string.Join(",", ownedDomains)
+        );
+    }
+}
+
+builder.Services.AddWhizbang(options => {
+    options.Routing.Inbox.UseCustom(new TenantAwareInboxStrategy());
+});
+```
+
 ## Message Routing
 
 ### Queue/Topic Configuration
