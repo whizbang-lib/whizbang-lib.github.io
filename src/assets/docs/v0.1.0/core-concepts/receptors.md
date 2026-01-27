@@ -7,6 +7,7 @@ description: "Master Whizbang Receptors - stateless message handlers that encaps
 tags: receptors, message-handlers, business-logic, validation
 codeReferences:
   - src/Whizbang.Core/IReceptor.cs
+  - src/Whizbang.Core/ISyncReceptor.cs
   - samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
   - samples/ECommerce/ECommerce.InventoryWorker/Receptors/ReserveInventoryReceptor.cs
 ---
@@ -47,6 +48,135 @@ public interface IReceptor<in TMessage, TResponse>
 - **Single Responsibility**: One receptor per message type
 - **Async**: Returns `ValueTask<T>` for optimal performance
 - **Type Safe**: Compile-time enforcement of message → response mapping
+
+---
+
+## ISyncReceptor Interface
+
+:::new
+For receptors that perform pure computation without async operations, use `ISyncReceptor`:
+:::
+
+```csharp
+namespace Whizbang.Core;
+
+public interface ISyncReceptor<in TMessage, out TResponse>
+    where TMessage : notnull {
+
+    TResponse Handle(TMessage message);
+}
+
+// Void variant for side-effect-only operations
+public interface ISyncReceptor<in TMessage>
+    where TMessage : notnull {
+
+    void Handle(TMessage message);
+}
+```
+
+**Key Differences from IReceptor**:
+- **Synchronous**: Returns `TResponse` directly (no `ValueTask`)
+- **No CancellationToken**: Sync operations can't be cancelled mid-execution
+- **Covariant TResponse**: Uses `out TResponse` for flexibility
+- **Zero async overhead**: No state machine generated, pre-completed `ValueTask` returned
+
+### When to Use Sync vs Async
+
+| Use `ISyncReceptor` | Use `IReceptor` (async) |
+|---------------------|-------------------------|
+| Pure computation | Database access |
+| In-memory transformations | External API calls |
+| Validation logic | File I/O |
+| ID generation | Message queue operations |
+| Calculations | HTTP requests |
+| State machine transitions | Any `await` operation |
+
+### Sync Receptor Example
+
+```csharp
+// Before (async ceremony for pure computation)
+public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)> {
+    public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
+        CreateOrder message,
+        CancellationToken ct = default) {
+
+        var orderId = Guid.CreateVersion7();
+        var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
+
+        return ValueTask.FromResult((
+            new OrderResult(orderId),
+            new OrderCreated(orderId, message.CustomerId, total, DateTimeOffset.UtcNow)
+        ));
+    }
+}
+
+// After (clean sync pattern)
+public class CreateOrderReceptor : ISyncReceptor<CreateOrder, (OrderResult, OrderCreated)> {
+    public (OrderResult, OrderCreated) Handle(CreateOrder message) {
+        var orderId = Guid.CreateVersion7();
+        var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
+
+        return (
+            new OrderResult(orderId),
+            new OrderCreated(orderId, message.CustomerId, total, DateTimeOffset.UtcNow)
+        );
+        // OrderCreated is AUTO-PUBLISHED (same as async)
+    }
+}
+```
+
+### Void Sync Receptor Example
+
+```csharp
+// For side-effect-only operations (logging, caching, etc.)
+public class LogUserActionReceptor : ISyncReceptor<LogUserAction> {
+    private readonly ILogger<LogUserActionReceptor> _logger;
+
+    public LogUserActionReceptor(ILogger<LogUserActionReceptor> logger) {
+        _logger = logger;
+    }
+
+    public void Handle(LogUserAction message) {
+        _logger.LogInformation(
+            "User {UserId} performed action {Action} at {Timestamp}",
+            message.UserId, message.Action, message.Timestamp
+        );
+    }
+}
+```
+
+### Auto-Cascade Works Identically
+
+Sync receptors support the same auto-cascade feature as async receptors:
+
+```csharp
+public class ShipOrderReceptor : ISyncReceptor<ShipOrder, (ShipResult, OrderShipped, InventoryUpdated)> {
+    public (ShipResult, OrderShipped, InventoryUpdated) Handle(ShipOrder message) {
+        return (
+            new ShipResult(message.OrderId),
+            new OrderShipped(message.OrderId, DateTimeOffset.UtcNow),
+            new InventoryUpdated(message.ProductId, -message.Quantity)
+        );
+        // Both OrderShipped AND InventoryUpdated auto-published!
+    }
+}
+```
+
+### Invocation via Dispatcher
+
+The Dispatcher API is unchanged - `LocalInvokeAsync` works with both sync and async receptors:
+
+```csharp
+// Invoking a sync receptor
+var result = await _dispatcher.LocalInvokeAsync<CreateOrder, (OrderResult, OrderCreated)>(command);
+// Internally: sync Handle() called, result wrapped in pre-completed ValueTask
+
+// Invoking an async receptor
+var result = await _dispatcher.LocalInvokeAsync<ProcessPayment, PaymentResult>(command);
+// Internally: async HandleAsync() called, ValueTask awaited
+```
+
+**Precedence**: If both `IReceptor` and `ISyncReceptor` exist for the same message type, the async `IReceptor` takes precedence.
 
 ---
 
@@ -344,6 +474,74 @@ public class ProcessPaymentReceptor : IReceptor<ProcessPayment, PaymentResult> {
 - Validate early, fail fast
 - Clear error messages
 - Structured logging
+
+### Pattern 4: Tuple Return with Auto-Cascade
+
+**Use Case**: Commands that produce events alongside business results
+
+The **auto-cascade** feature automatically publishes `IEvent` instances extracted from receptor return values. This enables a cleaner pattern where receptors return tuples containing both results and events.
+
+```csharp
+public record CreateOrder(Guid CustomerId, OrderLineItem[] Items);
+
+public record OrderResult(Guid OrderId);
+
+public record OrderCreated(
+    [property: StreamKey] Guid OrderId,
+    Guid CustomerId,
+    decimal Total,
+    DateTimeOffset CreatedAt
+) : IEvent;
+
+// Return tuple: (Result, Event)
+public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)> {
+    private readonly ILogger<CreateOrderReceptor> _logger;
+
+    public CreateOrderReceptor(ILogger<CreateOrderReceptor> logger) {
+        _logger = logger;
+    }
+
+    public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
+        CreateOrder message,
+        CancellationToken ct = default) {
+
+        // Validation
+        if (message.Items.Length == 0) {
+            throw new ValidationException("Order must have at least one item");
+        }
+
+        // Business logic
+        var orderId = Guid.CreateVersion7();
+        var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
+
+        _logger.LogInformation(
+            "Order {OrderId} created for customer {CustomerId}, total {Total:C}",
+            orderId, message.CustomerId, total
+        );
+
+        // Return tuple - OrderCreated is AUTO-PUBLISHED to all perspectives!
+        return ValueTask.FromResult((
+            new OrderResult(orderId),
+            new OrderCreated(orderId, message.CustomerId, total, DateTimeOffset.UtcNow)
+        ));
+    }
+}
+```
+
+**Key Points**:
+- Return type is `(OrderResult, OrderCreated)` tuple
+- `OrderCreated` implements `IEvent` → automatically extracted and published
+- `OrderResult` does not implement `IEvent` → passed through unchanged
+- No explicit `_dispatcher.PublishAsync()` call needed
+- All perspectives subscribing to `OrderCreated` receive the event automatically
+
+**Benefits**:
+- **Fewer dependencies**: No need to inject `IDispatcher` just for publishing
+- **Cleaner code**: Return events declaratively, not imperatively
+- **Safer**: Can't forget to publish events
+- **Type-safe**: Compiler enforces the return contract
+
+See [Dispatcher: Automatic Event Cascade](dispatcher.md#automatic-event-cascade) for full details on supported return types.
 
 ---
 

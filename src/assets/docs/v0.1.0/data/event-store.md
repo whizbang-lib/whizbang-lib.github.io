@@ -130,7 +130,53 @@ CREATE INDEX idx_perspective_checkpoints_status ON wh_perspective_checkpoints (s
 
 ## Appending Events
 
-### Basic Event Storage
+### Simple Event Storage (Recommended)
+
+The simplest way to append events is to pass just the stream ID and event. Whizbang automatically captures tracing context from the `IEnvelopeRegistry`:
+
+```csharp
+public class OrderReceptor(IEventStore eventStore) : IReceptor<CreateOrder, OrderCreated> {
+    public async ValueTask<OrderCreated> ReceiveAsync(CreateOrder command, CancellationToken ct) {
+        var orderId = Guid.CreateVersion7();
+
+        var @event = new OrderCreated(orderId, command.CustomerId, command.Total);
+
+        // Simple pattern - just pass stream ID and event
+        await eventStore.AppendAsync(orderId, @event, ct);
+
+        return @event;
+    }
+}
+```
+
+**How it works**: When the Dispatcher invokes your receptor, it registers the `MessageEnvelope` in the `IEnvelopeRegistry`. When you call `AppendAsync(streamId, message)`, the event store looks up the envelope to preserve:
+- **MessageId** - Correlation across systems
+- **Hops** - Service-to-service tracing
+- **CorrelationId/CausationId** - Request chain tracking
+
+If no envelope is found (e.g., in tests without Dispatcher), a minimal envelope is created automatically.
+
+### Full Control with Envelope
+
+For advanced scenarios where you need full control over the envelope:
+
+```csharp
+// Create explicit envelope with custom tracing
+var envelope = new MessageEnvelope<OrderCreated> {
+    MessageId = MessageId.New(),
+    Payload = @event,
+    Hops = [new MessageHop {
+        ServiceInstance = serviceInstanceProvider.ToInfo(),
+        Timestamp = DateTimeOffset.UtcNow
+    }]
+};
+
+await eventStore.AppendAsync(orderId, envelope, ct);
+```
+
+### Low-Level Event Storage (Implementation Detail)
+
+For reference, here's the underlying storage implementation:
 
 ```csharp
 public class EventStore : IEventStore {
@@ -876,11 +922,9 @@ public class Order {
 ### Pattern 2: Repository with Event Store
 
 ```csharp
-public class OrderRepository {
-    private readonly IEventStore _eventStore;
-
+public class OrderRepository(IEventStore eventStore) {
     public async Task<Order> GetByIdAsync(Guid orderId, CancellationToken ct = default) {
-        var events = await _eventStore.ReadStreamAsync(orderId, ct);
+        var events = await eventStore.ReadStreamAsync(orderId, ct);
 
         var order = new Order();
 
@@ -895,13 +939,8 @@ public class OrderRepository {
         var uncommittedEvents = order.GetUncommittedEvents();
 
         foreach (var @event in uncommittedEvents) {
-            await _eventStore.AppendAsync(
-                streamId: order.Id,
-                streamType: "Order",
-                eventType: @event.GetType().Name,
-                eventData: @event,
-                ct: ct
-            );
+            // Simple pattern - stream ID and event only
+            await eventStore.AppendAsync(order.Id, @event, ct);
         }
 
         order.ClearUncommittedEvents();
