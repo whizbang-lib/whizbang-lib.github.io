@@ -309,6 +309,56 @@ var wrong = await _dispatcher.LocalInvokeAsync<CreateOrder, PaymentProcessed>(co
 // Error: No receptor registered for CreateOrder → PaymentProcessed
 ```
 
+### Synchronous Receptor Invocation
+
+:::new
+`LocalInvokeAsync` supports both async (`IReceptor`) and sync (`ISyncReceptor`) receptors transparently:
+:::
+
+```csharp
+// Async receptor - uses HandleAsync, returns ValueTask
+public class AsyncOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
+    public async ValueTask<OrderCreated> HandleAsync(
+        CreateOrder message,
+        CancellationToken ct = default) {
+        // Can use await
+        await Task.Delay(1);
+        return new OrderCreated(message.OrderId);
+    }
+}
+
+// Sync receptor - uses Handle, returns directly
+public class SyncOrderReceptor : ISyncReceptor<CreateOrder, OrderCreated> {
+    public OrderCreated Handle(CreateOrder message) {
+        // Pure computation, no await
+        return new OrderCreated(message.OrderId);
+    }
+}
+
+// Both invoked the same way
+var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
+```
+
+**How it works**:
+1. Dispatcher first checks for async `IReceptor<TMessage, TResponse>`
+2. If not found, checks for sync `ISyncReceptor<TMessage, TResponse>`
+3. Sync receptors are invoked directly, result wrapped in pre-completed `ValueTask`
+4. Auto-cascade works identically for both sync and async receptors
+
+**Performance benefit**: Sync receptors avoid async state machine overhead entirely. The returned `ValueTask` is pre-completed, resulting in zero allocations.
+
+```
+Async Receptor Flow:
+  LocalInvokeAsync → HandleAsync() → ValueTask (may allocate Task)
+
+Sync Receptor Flow:
+  LocalInvokeAsync → Handle() → new ValueTask(result) (pre-completed, zero alloc)
+```
+
+**Precedence**: If both `IReceptor` and `ISyncReceptor` exist for the same message type, the async `IReceptor` takes precedence to avoid breaking existing behavior.
+
+See [Receptors: ISyncReceptor Interface](receptors.md#isyncreceptor-interface) for when to use sync vs async receptors.
+
 ### Performance Optimization
 
 LocalInvokeAsync achieves < 20ns overhead through:
@@ -332,6 +382,20 @@ protected override ReceptorInvoker<TResult>? GetReceptorInvoker<TResult>(
     }
 
     // ... other message types
+
+    return null;
+}
+
+// Sync receptor routing (fallback if no async receptor)
+protected override SyncReceptorInvoker<TResult>? GetSyncReceptorInvoker<TResult>(
+    object message,
+    Type messageType) {
+
+    if (messageType == typeof(CreateOrder)) {
+        var receptor = _serviceProvider.GetService<ISyncReceptor<CreateOrder, OrderCreated>>();
+        if (receptor == null) return null;
+        return msg => (TResult)(object)receptor.Handle((CreateOrder)msg)!;
+    }
 
     return null;
 }
@@ -513,6 +577,76 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     }
 }
 ```
+
+---
+
+## AppendAsync vs PublishAsync vs SendAsync
+
+:::new{type="important"}
+Understanding when to use `IEventStore.AppendAsync` versus `IDispatcher.PublishAsync` is critical. Using both together is usually **redundant**.
+:::
+
+### Key Differences
+
+| Method | Responsibility | Triggers Perspectives | Uses Outbox | Return |
+|--------|---------------|----------------------|-------------|--------|
+| `IEventStore.AppendAsync` | Persist event to event store | No | No | `void` |
+| `IDispatcher.PublishAsync` | Broadcast event | Yes (local) | Yes (remote) | `void` |
+| `IDispatcher.SendAsync` | Route command | No | Yes | `DeliveryReceipt` |
+
+### Correct Patterns
+
+**For Events (most common case):**
+
+```csharp
+// ✅ CORRECT: Just publish - handles perspectives + outbox
+public async ValueTask<OrderCreated> HandleAsync(
+    CreateOrder command,
+    CancellationToken ct) {
+
+    var @event = new OrderCreated(command.OrderId, command.Items);
+
+    // PublishAsync triggers local perspectives AND queues for remote delivery
+    await _dispatcher.PublishAsync(@event, ct);
+
+    return @event;
+}
+```
+
+**For Commands:**
+
+```csharp
+// ✅ CORRECT: Send command with delivery tracking
+await _dispatcher.SendAsync(new ProcessPayment(orderId, amount), ct);
+```
+
+**For Direct Event Store Access (rare - infrastructure/workers only):**
+
+```csharp
+// ✅ CORRECT: When you need explicit transactional control
+await using var work = await _workCoordinator.BeginAsync(ct);
+await _eventStore.AppendAsync(streamId, @event, ct);
+await work.CommitAsync(ct);
+```
+
+### Anti-Patterns to Avoid
+
+```csharp
+// ❌ WRONG: Redundant - calling both AppendAsync and PublishAsync
+await _eventStore.AppendAsync(orderId, @event, ct);
+await _dispatcher.PublishAsync(@event, ct);
+// PublishAsync already handles persistence + perspectives + outbox!
+```
+
+### When to Use Each
+
+| Scenario | Use |
+|----------|-----|
+| Publishing an event from a receptor | `PublishAsync` |
+| Sending a command to another service | `SendAsync` |
+| In-process query with typed response | `LocalInvokeAsync` |
+| Background worker with explicit transaction control | `AppendAsync` + `IWorkCoordinator` |
+| Event replay/migration scripts | `AppendAsync` |
 
 ---
 
@@ -732,6 +866,215 @@ public async Task<ActionResult> ProcessOrders(
     return Ok(new { ordersCreated = results.Count, orders = results });
 }
 ```
+
+---
+
+## Automatic Event Cascade
+
+Whizbang automatically extracts and publishes `IEvent` instances from receptor return values. This enables a cleaner pattern where receptors can return tuples or arrays containing events without explicit `PublishAsync` calls.
+
+### The Problem (Without Auto-Cascade)
+
+```csharp
+// ❌ VERBOSE: Explicit PublishAsync required
+public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
+    private readonly IDispatcher _dispatcher;
+
+    public async ValueTask<OrderCreated> HandleAsync(
+        CreateOrder command,
+        CancellationToken ct = default) {
+
+        // Business logic...
+        var @event = new OrderCreated(command.OrderId, command.CustomerId);
+
+        // Manual publishing required
+        await _dispatcher.PublishAsync(@event, ct);
+
+        return @event;
+    }
+}
+```
+
+### The Solution (With Auto-Cascade)
+
+```csharp
+// ✅ CLEAN: Framework auto-publishes events from return value
+public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)> {
+
+    public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
+        CreateOrder command,
+        CancellationToken ct = default) {
+
+        var result = new OrderResult(command.OrderId);
+        var @event = new OrderCreated(command.OrderId, command.CustomerId);
+
+        // Return tuple - framework automatically publishes OrderCreated
+        return ValueTask.FromResult((result, @event));
+    }
+}
+```
+
+**What happens**:
+1. Receptor returns `(OrderResult, OrderCreated)` tuple
+2. Dispatcher extracts `OrderCreated` (implements `IEvent`)
+3. Dispatcher automatically publishes `OrderCreated` to all perspectives
+4. Caller receives the full tuple result
+
+### Supported Return Types
+
+The auto-cascade feature supports several return patterns:
+
+**Tuple with Event**:
+```csharp
+public class OrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)> {
+    public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
+        CreateOrder command, CancellationToken ct = default) {
+
+        return ValueTask.FromResult((
+            new OrderResult(command.OrderId),
+            new OrderCreated(command.OrderId, command.CustomerId)
+        ));
+    }
+}
+// Result: OrderCreated auto-published
+```
+
+**Tuple with Multiple Events**:
+```csharp
+public class ShipOrderReceptor : IReceptor<ShipOrder, (ShipResult, OrderShipped, InventoryUpdated)> {
+    public ValueTask<(ShipResult, OrderShipped, InventoryUpdated)> HandleAsync(
+        ShipOrder command, CancellationToken ct = default) {
+
+        return ValueTask.FromResult((
+            new ShipResult(command.OrderId),
+            new OrderShipped(command.OrderId),
+            new InventoryUpdated(command.ProductId, -command.Quantity)
+        ));
+    }
+}
+// Result: Both OrderShipped and InventoryUpdated auto-published
+```
+
+**Array of Events**:
+```csharp
+public class NotifyReceptor : IReceptor<SendNotifications, IEvent[]> {
+    public ValueTask<IEvent[]> HandleAsync(
+        SendNotifications command, CancellationToken ct = default) {
+
+        var events = new List<IEvent> {
+            new EmailSent(command.CustomerId)
+        };
+
+        if (command.Amount >= 1000m) {
+            events.Add(new HighValueAlert(command.OrderId));
+        }
+
+        return ValueTask.FromResult(events.ToArray());
+    }
+}
+// Result: All events in array auto-published
+```
+
+**Nested Tuples**:
+```csharp
+public class ComplexReceptor : IReceptor<ComplexCommand, (Result, (Event1, Event2))> {
+    public ValueTask<(Result, (Event1, Event2))> HandleAsync(
+        ComplexCommand command, CancellationToken ct = default) {
+
+        return ValueTask.FromResult((
+            new Result(command.Id),
+            (new Event1(command.Id), new Event2(command.Id))
+        ));
+    }
+}
+// Result: Both Event1 and Event2 auto-published (recursive extraction)
+```
+
+### How It Works
+
+The auto-cascade system uses the `ITuple` interface for efficient, AOT-compatible event extraction:
+
+```
+Receptor Returns
+  ├─> Dispatcher receives result
+  ├─> EventExtractor.ExtractEvents(result)
+  │   ├─> Checks if result implements IEvent → yield return
+  │   ├─> Checks if result implements ITuple → extract each item recursively
+  │   └─> Checks if result implements IEnumerable<IEvent> → yield return each
+  └─> For each extracted IEvent:
+      └─> GetUntypedReceptorPublisher(eventType).Invoke(event)
+          └─> All perspectives for that event type invoked
+```
+
+**Key Points**:
+- **Zero reflection**: Uses `ITuple` interface (compile-time type info)
+- **AOT compatible**: Works with Native AOT and trimming
+- **Recursive**: Handles nested tuples and arrays
+- **Selective**: Only extracts types implementing `IEvent`
+- **Non-events ignored**: DTOs and value objects pass through unchanged
+
+### Cascades Through All Dispatch Paths
+
+Auto-cascade works with all dispatch methods:
+
+```csharp
+// Via LocalInvokeAsync
+var result = await _dispatcher.LocalInvokeAsync<CreateOrder, (OrderResult, OrderCreated)>(command);
+// OrderCreated auto-published ✓
+
+// Via SendAsync
+var receipt = await _dispatcher.SendAsync(command);
+// OrderCreated auto-published ✓
+```
+
+### Best Practices
+
+**DO**: Return events alongside business results in tuples
+```csharp
+// ✅ GOOD: Event returned with result
+public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
+    CreateOrder command, CancellationToken ct) {
+    return ValueTask.FromResult((
+        new OrderResult(command.OrderId),
+        new OrderCreated(command.OrderId, command.CustomerId)
+    ));
+}
+```
+
+**DON'T**: Return events AND manually publish them
+```csharp
+// ❌ BAD: Double publishing!
+public async ValueTask<(OrderResult, OrderCreated)> HandleAsync(
+    CreateOrder command, CancellationToken ct) {
+
+    var @event = new OrderCreated(command.OrderId, command.CustomerId);
+
+    // DON'T DO THIS - framework already auto-publishes from return value
+    await _dispatcher.PublishAsync(@event, ct);
+
+    return (new OrderResult(command.OrderId), @event);
+}
+```
+
+**DON'T**: Return empty arrays to avoid cascade
+```csharp
+// ⚠️ UNNECESSARY: Empty arrays are handled gracefully
+public ValueTask<(OrderResult, IEvent[])> HandleAsync(
+    CreateOrder command, CancellationToken ct) {
+
+    return ValueTask.FromResult((
+        new OrderResult(command.OrderId),
+        Array.Empty<IEvent>()  // Fine - no events published
+    ));
+}
+```
+
+### Comparison: Manual vs Auto-Cascade
+
+| Approach | Lines of Code | Injection Dependencies | Error Surface |
+|----------|--------------|----------------------|---------------|
+| Manual `PublishAsync` | More | Requires `IDispatcher` | Higher (can forget) |
+| Auto-cascade (tuple return) | Fewer | None | Lower (automatic) |
 
 ---
 

@@ -240,9 +240,9 @@ services.AddWhizbang()
 ## Get Involved
 
 Help shape the future of Whizbang:
-- Join discussions: https://github.com/whizbang/whizbang/discussions
-- Propose features: https://github.com/whizbang/whizbang/rfcs
-- Contribute code: https://github.com/whizbang/whizbang
+- Join discussions: https://github.com/whizbang-lib/whizbang/discussions
+- Propose features: https://github.com/whizbang-lib/whizbang/rfcs
+- Contribute code: https://github.com/whizbang-lib/whizbang
 - Share feedback: feedback@whizbang.dev
 
 ## Summary

@@ -56,7 +56,7 @@ Add test references to metadata:
 title: "Order Processing Example"
 testFile: "OrderProcessorTests.cs"
 testMethod: "ProcessOrderAsync_ValidOrder_SavesSuccessfully"
-githubUrl: "https://github.com/whizbang/library/blob/main/tests/Documentation/OrderProcessorTests.cs"
+githubUrl: "https://github.com/whizbang-lib/whizbang/blob/main/tests/Documentation/OrderProcessorTests.cs"
 }
 ```
 

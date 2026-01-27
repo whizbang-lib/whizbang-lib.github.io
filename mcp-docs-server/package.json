@@ -33,7 +33,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/whizbang/whizbang-lib.github.io.git",
+    "url": "https://github.com/whizbang-lib/whizbang-lib.github.io.git",
     "directory": "mcp-docs-server"
   },
   "dependencies": {
