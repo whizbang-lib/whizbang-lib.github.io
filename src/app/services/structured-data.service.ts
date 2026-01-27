@@ -23,7 +23,7 @@ export interface CodeExample {
   providedIn: 'root'
 })
 export class StructuredDataService {
-  private readonly baseUrl = 'https://whizba.ng';
+  private readonly baseUrl = 'https://whizbang-lib.github.io';
 
   /**
    * Generate comprehensive structured data for a documentation page
