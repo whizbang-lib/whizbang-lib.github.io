@@ -486,7 +486,7 @@ What actually happened
 
 ```bash
 # Clone repository
-git clone https://github.com/whizbang/whizbang-lib.github.io.git
+git clone https://github.com/whizbang-lib/whizbang-lib.github.io.git
 cd whizbang-lib.github.io
 
 # Install dependencies

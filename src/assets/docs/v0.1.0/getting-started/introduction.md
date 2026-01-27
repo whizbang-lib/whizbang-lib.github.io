@@ -333,9 +333,9 @@ Ready to get started?
 ## Community & Support
 
 - **Documentation**: https://whizbang-lib.github.io
-- **Source Code**: https://github.com/whizbang/whizbang
-- **Issues**: https://github.com/whizbang/whizbang/issues
-- **Samples**: https://github.com/whizbang/whizbang/tree/main/samples
+- **Source Code**: https://github.com/whizbang-lib/whizbang
+- **Issues**: https://github.com/whizbang-lib/whizbang/issues
+- **Samples**: https://github.com/whizbang-lib/whizbang/tree/main/samples
 
 ---
 

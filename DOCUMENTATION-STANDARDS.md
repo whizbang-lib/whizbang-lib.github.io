@@ -225,7 +225,7 @@ difficulty: "INTERMEDIATE"
 tags: ["Orders", "Validation", "Error Handling"]
 testFile: "OrderProcessorTests.cs"
 testMethod: "ProcessOrderAsync_ValidOrder_SavesSuccessfully"
-githubUrl: "https://github.com/whizbang/library/blob/main/tests/OrderProcessorTests.cs"
+githubUrl: "https://github.com/whizbang-lib/whizbang/blob/main/tests/OrderProcessorTests.cs"
 nugetPackages: ["Whizbang.Core", "Whizbang.Orders"]
 filename: "OrderProcessor.cs"
 }

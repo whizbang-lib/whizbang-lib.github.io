@@ -436,7 +436,7 @@ dotnet test
 
 - **Sample Projects**: `/samples/ECommerce` in the Whizbang repository
 - **Package Documentation**: https://nuget.org/packages/Whizbang.Core
-- **GitHub Issues**: https://github.com/whizbang/whizbang/issues
+- **GitHub Issues**: https://github.com/whizbang-lib/whizbang/issues
 
 ---
 
