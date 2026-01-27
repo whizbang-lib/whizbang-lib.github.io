@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Whizbang - AI Documentation Portal</title>
+  <meta name="description" content="Whizbang documentation optimized for AI assistants. Static HTML with no JavaScript required.">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #1a1a1a;
+      --code-bg: #f4f4f4;
+      --border: #e0e0e0;
+      --link: #0066cc;
+      --accent: #7c3aed;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a1a;
+        --text: #e0e0e0;
+        --code-bg: #2d2d2d;
+        --border: #404040;
+        --link: #66b3ff;
+        --accent: #a78bfa;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: var(--bg);
+      color: var(--text);
+    }
+    h1 { color: var(--accent); }
+    a { color: var(--link); }
+    code, pre {
+      background: var(--code-bg);
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+    }
+    code { padding: 2px 6px; font-size: 0.9em; }
+    pre {
+      padding: 16px;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+    }
+    pre code { padding: 0; background: none; }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .card h2 { margin-top: 0; }
+    .highlight {
+      background: var(--code-bg);
+      padding: 20px;
+      border-radius: 8px;
+      border-left: 4px solid var(--accent);
+    }
+    ul { padding-left: 20px; }
+    li { margin: 8px 0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 30px 0; }
+  </style>
+</head>
+<body>
+
+<h1>Whizbang</h1>
+<p><strong>A comprehensive .NET library for building event-driven, CQRS, and event-sourced applications with zero reflection and AOT compatibility.</strong></p>
+
+<div class="highlight">
+  <p><strong>For AI Assistants:</strong> This page provides static, no-JavaScript documentation optimized for programmatic access.</p>
+  <ul>
+    <li><a href="docs.html"><strong>Full Documentation</strong></a> - Complete docs in a single HTML file (152 documents)</li>
+  </ul>
+</div>
+
+<hr>
+
+<h2>What is Whizbang?</h2>
+<p>Whizbang is a unified event-sourced data and messaging runtime for .NET that collapses MartenDB, Wolverine, MassTransit, and MediatR into one cohesive platform with a single mental model.</p>
+
+<h3>Key Features</h3>
+<ul>
+  <li><strong>Zero Reflection</strong> - Everything via source generators for AOT compatibility</li>
+  <li><strong>Poly-Store Adapters</strong> - PostgreSQL, SQL Server, MySQL, Cosmos DB, SQLite support</li>
+  <li><strong>Unified Messaging</strong> - Commands, queries, events, and sagas with single API</li>
+  <li><strong>Perspectives (Projections)</strong> - Real-time read models with typed lenses</li>
+  <li><strong>Built-in Observability</strong> - OpenTelemetry traces and metrics by default</li>
+  <li><strong>Transport Agnostic</strong> - Azure Service Bus, RabbitMQ, or in-memory</li>
+</ul>
+
+<hr>
+
+<h2>Resources</h2>
+
+<div class="card">
+  <h2>Source Code</h2>
+  <ul>
+    <li><strong>Library:</strong> <a href="https://github.com/whizbang-lib/whizbang">github.com/whizbang-lib/whizbang</a></li>
+    <li><strong>VSCode Extension:</strong> <a href="https://github.com/whizbang-lib/whizbang-vscode">github.com/whizbang-lib/whizbang-vscode</a></li>
+    <li><strong>Documentation Site:</strong> <a href="https://github.com/whizbang-lib/whizbang-lib.github.io">github.com/whizbang-lib/whizbang-lib.github.io</a></li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>NuGet Packages</h2>
+  <p>Install via NuGet (SoftwareExtravaganza publisher):</p>
+  <pre><code>dotnet add package SoftwareExtravaganza.Whizbang.Core
+dotnet add package SoftwareExtravaganza.Whizbang.Generators
+dotnet add package SoftwareExtravaganza.Whizbang.Data.Postgres
+dotnet add package SoftwareExtravaganza.Whizbang.Transports.AzureServiceBus
+dotnet add package SoftwareExtravaganza.Whizbang.Transports.RabbitMQ</code></pre>
+  <p><a href="https://www.nuget.org/profiles/SoftwareExtravaganza">View all packages on NuGet</a></p>
+</div>
+
+<div class="card">
+  <h2>Interactive Documentation</h2>
+  <p>The main documentation site with search, syntax highlighting, and interactive features:</p>
+  <ul>
+    <li><a href="https://whizbang-lib.github.io">whizbang-lib.github.io</a></li>
+  </ul>
+</div>
+
+<hr>
+
+<h2>MCP Server (For Claude Desktop)</h2>
+<p>For enhanced documentation access with semantic search, you can run the Whizbang MCP server locally:</p>
+
+<pre><code># Clone and build
+git clone https://github.com/whizbang-lib/whizbang-lib.github.io.git
+cd whizbang-lib.github.io/mcp-docs-server
+npm install && npm run build
+
+# Add to Claude Desktop config
+# Location: ~/.config/claude/claude_desktop_config.json (Linux/Mac)
+#           %APPDATA%\Claude\claude_desktop_config.json (Windows)
+
+{
+  "mcpServers": {
+    "whizbang-docs": {
+      "command": "node",
+      "args": ["/absolute/path/to/mcp-docs-server/build/index.js"]
+    }
+  }
+}</code></pre>
+
+<h3>Available MCP Tools</h3>
+<ul>
+  <li><code>search-docs</code> - Search documentation by query</li>
+  <li><code>find-examples</code> - Find code examples by topic</li>
+  <li><code>get-code-location</code> - Find library code implementing a documentation concept</li>
+  <li><code>get-related-docs</code> - Find documentation for a code symbol</li>
+  <li><code>get-tests-for-code</code> - Find tests for library code</li>
+  <li><code>validate-doc-links</code> - Validate documentation links</li>
+  <li><code>get-coverage-stats</code> - Get test coverage statistics</li>
+</ul>
+
+<hr>
+
+<h2>Quick Start Example</h2>
+
+<pre><code>// Define a message
+public record OrderPlaced(Guid OrderId, string CustomerId, decimal Total);
+
+// Handle with a Receptor
+public class OrderPlacedReceptor : IReceptor&lt;OrderPlaced&gt;
+{
+    public async Task HandleAsync(OrderPlaced message, CancellationToken ct)
+    {
+        // Process the order
+        Console.WriteLine($"Order {message.OrderId} placed for {message.Total:C}");
+    }
+}
+
+// Configure in Program.cs
+builder.Services.AddWhizbang(wb => {
+    wb.UsePostgres(connectionString);
+    wb.UseAzureServiceBus(serviceBusConnection);
+    wb.DiscoverReceptorsFromAssembly(typeof(Program).Assembly);
+});</code></pre>
+
+<hr>
+
+<h2>Core Concepts</h2>
+
+<ul>
+  <li><strong>Receptors</strong> - Message handlers (sync and async)</li>
+  <li><strong>Dispatcher</strong> - Routes messages to appropriate receptors</li>
+  <li><strong>Perspectives</strong> - Projections/read models with typed access via lenses</li>
+  <li><strong>Event Store</strong> - Append-only event storage with stream support</li>
+  <li><strong>Transports</strong> - Azure Service Bus, RabbitMQ, or in-memory messaging</li>
+  <li><strong>Source Generators</strong> - Compile-time code generation for zero reflection</li>
+</ul>
+
+<p>For complete documentation, see <a href="docs.html">the full documentation</a>.</p>
+
+<hr>
+
+<footer style="text-align: center; color: #666;">
+  <p>Whizbang - Event-Driven .NET Made Simple</p>
+  <p><a href="https://github.com/whizbang-lib/whizbang">GitHub</a> | <a href="https://whizbang-lib.github.io">Website</a> | <a href="docs.html">Full Docs</a></p>
+</footer>
+
+</body>
+</html>
