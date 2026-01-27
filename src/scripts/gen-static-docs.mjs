@@ -430,13 +430,16 @@ async function generateStaticDocs() {
 
     <div class="quick-links">
       <h3>For AI Assistants: MCP Server</h3>
-      <p>For enhanced documentation access, you can use the Whizbang MCP (Model Context Protocol) server locally:</p>
+      <p>For enhanced documentation access, run the Whizbang MCP (Model Context Protocol) server locally with your AI assistant:</p>
       <pre><code># Clone and install
 git clone https://github.com/whizbang-lib/whizbang-lib.github.io.git
 cd whizbang-lib.github.io/mcp-docs-server
 npm install && npm run build
 
-# Add to Claude Desktop config (~/.config/claude/claude_desktop_config.json):
+# Add to your AI assistant's MCP configuration
+# Claude Desktop: ~/.config/claude/claude_desktop_config.json
+# Claude Code: claude mcp add whizbang-docs node /path/to/mcp-docs-server/build/index.js
+# Other MCP-compatible AI tools: refer to their documentation
 {
   "mcpServers": {
     "whizbang-docs": {
