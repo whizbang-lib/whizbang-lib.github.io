@@ -128,17 +128,18 @@ dotnet add package SoftwareExtravaganza.Whizbang.Transports.RabbitMQ</code></pre
 
 <hr>
 
-<h2>MCP Server (For Claude Desktop)</h2>
-<p>For enhanced documentation access with semantic search, you can run the Whizbang MCP server locally:</p>
+<h2>MCP Server</h2>
+<p>For enhanced documentation access with semantic search, run the Whizbang MCP server locally with your AI assistant:</p>
 
 <pre><code># Clone and build
 git clone https://github.com/whizbang-lib/whizbang-lib.github.io.git
 cd whizbang-lib.github.io/mcp-docs-server
 npm install && npm run build
 
-# Add to Claude Desktop config
-# Location: ~/.config/claude/claude_desktop_config.json (Linux/Mac)
-#           %APPDATA%\Claude\claude_desktop_config.json (Windows)
+# Add to your AI assistant's MCP configuration
+# Claude Desktop: ~/.config/claude/claude_desktop_config.json
+# Claude Code: claude mcp add whizbang-docs node /path/to/mcp-docs-server/build/index.js
+# Other MCP-compatible AI tools: refer to their documentation
 
 {
   "mcpServers": {
