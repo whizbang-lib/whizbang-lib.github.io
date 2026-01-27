@@ -1,0 +1,14 @@
+# Whizbang Documentation Site
+# https://whizbang-lib.github.io
+
+User-agent: *
+Allow: /
+
+# Static documentation for AI/crawlers
+Allow: /static/
+
+# Sitemap location
+Sitemap: https://whizbang-lib.github.io/assets/sitemap.xml
+
+# Crawl delay (be nice to the server)
+Crawl-delay: 1
