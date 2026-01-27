@@ -430,31 +430,23 @@ async function generateStaticDocs() {
 
     <div class="quick-links">
       <h3>For AI Assistants: MCP Server</h3>
-      <p>For enhanced documentation access, run the Whizbang MCP (Model Context Protocol) server locally with your AI assistant:</p>
+      <p>For enhanced documentation access, run the Whizbang <a href="https://modelcontextprotocol.io">MCP (Model Context Protocol)</a> server locally:</p>
       <pre><code># Clone and install
 git clone https://github.com/whizbang-lib/whizbang-lib.github.io.git
 cd whizbang-lib.github.io/mcp-docs-server
-npm install && npm run build
+npm install && npm run build</code></pre>
+      <p><strong>Compatible AI Tools:</strong></p>
+      <ul>
+        <li><strong>Desktop:</strong> Claude Desktop, Google Antigravity, VS Code + Copilot, Cursor, Windsurf, Zed</li>
+        <li><strong>CLI:</strong> Claude Code, Gemini CLI, GitHub Copilot CLI</li>
+        <li><strong>Extensions:</strong> Continue, Cline, Sourcegraph Cody</li>
+        <li><strong>Chat:</strong> ChatGPT Connectors, LibreChat</li>
+      </ul>
+      <pre><code># Claude Code: claude mcp add whizbang-docs node /path/to/build/index.js
+# JSON config (Claude Desktop, VS Code, etc.):
+{ "mcpServers": { "whizbang-docs": { "command": "node", "args": ["/path/to/build/index.js"] } } }
 
-# Add to your AI assistant's MCP configuration
-# Claude Desktop: ~/.config/claude/claude_desktop_config.json
-# Claude Code: claude mcp add whizbang-docs node /path/to/mcp-docs-server/build/index.js
-# Other MCP-compatible AI tools: refer to their documentation
-{
-  "mcpServers": {
-    "whizbang-docs": {
-      "command": "node",
-      "args": ["/path/to/mcp-docs-server/build/index.js"]
-    }
-  }
-}
-
-# Available MCP tools:
-# - search-docs: Search documentation by query
-# - find-examples: Find code examples by topic
-# - get-code-location: Find library code implementing a concept
-# - get-related-docs: Find docs for a code symbol
-# - get-tests-for-code: Find tests for library code</code></pre>
+# MCP Tools: search-docs, find-examples, get-code-location, get-related-docs, get-tests-for-code</code></pre>
     </div>
 
     <p class="stats">Generated: ${now} | Total documents: ${totalDocs}</p>
