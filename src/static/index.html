@@ -134,14 +134,51 @@ dotnet add package SoftwareExtravaganza.Whizbang.Transports.RabbitMQ</code></pre
 <pre><code># Clone and build
 git clone https://github.com/whizbang-lib/whizbang-lib.github.io.git
 cd whizbang-lib.github.io/mcp-docs-server
-npm install && npm run build
+npm install && npm run build</code></pre>
 
-# Add to your AI assistant's MCP configuration
-# Claude Desktop: ~/.config/claude/claude_desktop_config.json
-# Claude Code: claude mcp add whizbang-docs node /path/to/mcp-docs-server/build/index.js
-# Other MCP-compatible AI tools: refer to their documentation
+<h3>MCP-Compatible AI Tools</h3>
+<p>The <a href="https://modelcontextprotocol.io">Model Context Protocol (MCP)</a> is supported by many AI tools:</p>
 
-{
+<div class="card">
+  <h4>Desktop Applications</h4>
+  <ul>
+    <li><strong>Claude Desktop</strong> (Anthropic) - Config: <code>~/.config/claude/claude_desktop_config.json</code></li>
+    <li><strong>Google Antigravity</strong> - Agentic IDE with Gemini integration</li>
+    <li><strong>VS Code</strong> with GitHub Copilot - Settings &gt; Extensions &gt; Copilot &gt; MCP</li>
+    <li><strong>Cursor IDE</strong> - AI-powered code editor</li>
+    <li><strong>Windsurf IDE</strong> (Codeium) - AI-powered code editor</li>
+    <li><strong>Zed</strong> - High-performance open source editor</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>CLI Tools</h4>
+  <ul>
+    <li><strong>Claude Code</strong>: <code>claude mcp add whizbang-docs node /path/to/build/index.js</code></li>
+    <li><strong>Gemini CLI</strong> (Google) - 1M token context window</li>
+    <li><strong>GitHub Copilot CLI</strong> - Terminal-based Copilot</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>IDE Extensions</h4>
+  <ul>
+    <li><strong>Continue</strong> - VS Code and JetBrains plugin</li>
+    <li><strong>Cline</strong> - VS Code with autonomous CLI capabilities</li>
+    <li><strong>Sourcegraph Cody</strong> - VS Code and JetBrains</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>Chat Applications</h4>
+  <ul>
+    <li><strong>ChatGPT Connectors</strong> (OpenAI) - Desktop app MCP support</li>
+    <li><strong>LibreChat</strong> - Open source chat interface</li>
+  </ul>
+</div>
+
+<h4>Configuration Example (JSON format)</h4>
+<pre><code>{
   "mcpServers": {
     "whizbang-docs": {
       "command": "node",
