@@ -264,7 +264,7 @@ grep -r "IReceptor" --include="*.md"
 
 ## Contact/Questions
 
-- GitHub: https://github.com/whizbang/whizbang
+- GitHub: https://github.com/whizbang-lib/whizbang
 - Discussions: Use GitHub Discussions for design questions
 - Documentation Site: This site (whizbang-lib.github.io)
 

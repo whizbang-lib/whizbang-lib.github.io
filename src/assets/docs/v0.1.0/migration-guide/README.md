@@ -118,8 +118,8 @@ Whizbang's `IDispatcher` provides three distinct patterns:
 ## Getting Help
 
 - **[Troubleshooting](appendix-troubleshooting.md)** - Common migration issues
-- **[GitHub Issues](https://github.com/whizbang/whizbang/issues)** - Report problems
-- **[Discussions](https://github.com/whizbang/whizbang/discussions)** - Ask questions
+- **[GitHub Issues](https://github.com/whizbang-lib/whizbang/issues)** - Report problems
+- **[Discussions](https://github.com/whizbang-lib/whizbang/discussions)** - Ask questions
 
 ---
 
