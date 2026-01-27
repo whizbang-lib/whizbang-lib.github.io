@@ -119,6 +119,12 @@
     "symbol": "IWhizbangIdProvider",
     "docs": "core-concepts/whizbang-ids"
   },
+  "ISyncReceptor": {
+    "file": "src/Whizbang.Core/ISyncReceptor.cs",
+    "line": 10,
+    "symbol": "ISyncReceptor",
+    "docs": "core-concepts/receptors#synchronous-receptors"
+  },
   "IReceptor": {
     "file": "src/Whizbang.Core/IReceptor.cs",
     "line": 10,
@@ -161,6 +167,12 @@
     "symbol": "IAggregateIdExtractor",
     "docs": "infrastructure/policies"
   },
+  "VoidSyncReceptorInvoker": {
+    "file": "src/Whizbang.Core/Dispatcher.cs",
+    "line": 49,
+    "symbol": "VoidSyncReceptorInvoker",
+    "docs": "core-concepts/receptors#synchronous-receptors"
+  },
   "PerspectiveAssociationInfo": {
     "file": "src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs",
     "line": 46,
@@ -178,6 +190,48 @@
     "line": 11,
     "symbol": "MessageAssociationsSchema",
     "docs": "core-concepts/message-associations"
+  },
+  "MessageId": {
+    "file": "src/Whizbang.Core/ValueObjects/MessageId.cs",
+    "line": 10,
+    "symbol": "MessageId",
+    "docs": "core-concepts/message-context"
+  },
+  "CorrelationId": {
+    "file": "src/Whizbang.Core/ValueObjects/CorrelationId.cs",
+    "line": 11,
+    "symbol": "CorrelationId",
+    "docs": "core-concepts/message-context"
+  },
+  "ITransportReadinessCheck": {
+    "file": "src/Whizbang.Core/Transports/ITransportReadinessCheck.cs",
+    "line": 18,
+    "symbol": "ITransportReadinessCheck",
+    "docs": "components/transports"
+  },
+  "ITransportManager": {
+    "file": "src/Whizbang.Core/Transports/ITransportManager.cs",
+    "line": 13,
+    "symbol": "ITransportManager",
+    "docs": "components/transports"
+  },
+  "ITransport": {
+    "file": "src/Whizbang.Core/Transports/ITransport.cs",
+    "line": 13,
+    "symbol": "ITransport",
+    "docs": "components/transports"
+  },
+  "ISubscription": {
+    "file": "src/Whizbang.Core/Transports/ISubscription.cs",
+    "line": 17,
+    "symbol": "ISubscription",
+    "docs": "components/transports"
+  },
+  "IMessageSerializer": {
+    "file": "src/Whizbang.Core/Transports/IMessageSerializer.cs",
+    "line": 29,
+    "symbol": "IMessageSerializer",
+    "docs": "components/transports"
   },
   "TransportConsumerWorker": {
     "file": "src/Whizbang.Core/Workers/TransportConsumerWorker.cs",
@@ -215,36 +269,6 @@
     "symbol": "BatchedCompletionStrategy",
     "docs": "workers/perspective-worker"
   },
-  "ITransportReadinessCheck": {
-    "file": "src/Whizbang.Core/Transports/ITransportReadinessCheck.cs",
-    "line": 18,
-    "symbol": "ITransportReadinessCheck",
-    "docs": "components/transports"
-  },
-  "ITransportManager": {
-    "file": "src/Whizbang.Core/Transports/ITransportManager.cs",
-    "line": 13,
-    "symbol": "ITransportManager",
-    "docs": "components/transports"
-  },
-  "ITransport": {
-    "file": "src/Whizbang.Core/Transports/ITransport.cs",
-    "line": 13,
-    "symbol": "ITransport",
-    "docs": "components/transports"
-  },
-  "ISubscription": {
-    "file": "src/Whizbang.Core/Transports/ISubscription.cs",
-    "line": 17,
-    "symbol": "ISubscription",
-    "docs": "components/transports"
-  },
-  "IMessageSerializer": {
-    "file": "src/Whizbang.Core/Transports/IMessageSerializer.cs",
-    "line": 29,
-    "symbol": "IMessageSerializer",
-    "docs": "components/transports"
-  },
   "IPipelineBehavior": {
     "file": "src/Whizbang.Core/Pipeline/IPipelineBehavior.cs",
     "line": 17,
@@ -281,17 +305,41 @@
     "symbol": "IGlobalPerspectiveFor",
     "docs": "core-concepts/perspectives/multi-stream"
   },
-  "MessageId": {
-    "file": "src/Whizbang.Core/ValueObjects/MessageId.cs",
-    "line": 10,
-    "symbol": "MessageId",
-    "docs": "core-concepts/message-context"
-  },
-  "CorrelationId": {
-    "file": "src/Whizbang.Core/ValueObjects/CorrelationId.cs",
+  "ScopedLensQuery": {
+    "file": "src/Whizbang.Core/Lenses/ScopedLensQuery.cs",
     "line": 11,
-    "symbol": "CorrelationId",
-    "docs": "core-concepts/message-context"
+    "symbol": "ScopedLensQuery",
+    "docs": "lenses/scoped-queries"
+  },
+  "LensQueryFactory": {
+    "file": "src/Whizbang.Core/Lenses/LensQueryFactory.cs",
+    "line": 10,
+    "symbol": "LensQueryFactory",
+    "docs": "lenses/scoped-queries"
+  },
+  "IScopedLensQuery": {
+    "file": "src/Whizbang.Core/Lenses/IScopedLensQuery.cs",
+    "line": 9,
+    "symbol": "IScopedLensQuery",
+    "docs": "lenses/scoped-queries"
+  },
+  "ILensQueryFactory": {
+    "file": "src/Whizbang.Core/Lenses/ILensQueryFactory.cs",
+    "line": 10,
+    "symbol": "ILensQueryFactory",
+    "docs": "lenses/scoped-queries"
+  },
+  "ILensQuery": {
+    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
+    "line": 17,
+    "symbol": "ILensQuery",
+    "docs": "core-concepts/lenses"
+  },
+  "EventExtractor": {
+    "file": "src/Whizbang.Core/Internal/EventExtractor.cs",
+    "line": 11,
+    "symbol": "EventExtractor",
+    "docs": "core-concepts/dispatcher#automatic-event-cascade"
   },
   "MessageHop": {
     "file": "src/Whizbang.Core/Observability/MessageHop.cs",
@@ -316,6 +364,24 @@
     "line": 12,
     "symbol": "IMessageEnvelope",
     "docs": "core-concepts/observability"
+  },
+  "IEnvelopeRegistry": {
+    "file": "src/Whizbang.Core/Observability/IEnvelopeRegistry.cs",
+    "line": 22,
+    "symbol": "IEnvelopeRegistry",
+    "docs": "core-concepts/envelope-registry"
+  },
+  "IExecutionStrategy": {
+    "file": "src/Whizbang.Core/Execution/IExecutionStrategy.cs",
+    "line": 10,
+    "symbol": "IExecutionStrategy",
+    "docs": "components/dispatcher"
+  },
+  "WhizbangSerializableAttribute": {
+    "file": "src/Whizbang.Core/Attributes/WhizbangSerializableAttribute.cs",
+    "line": 30,
+    "symbol": "WhizbangSerializableAttribute",
+    "docs": "source-generators/json-contexts#serializing-additional-types"
   },
   "MessageSource": {
     "file": "src/Whizbang.Core/Messaging/MessageSource.cs",
@@ -343,13 +409,13 @@
   },
   "ReportPerspectiveCompletionAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 152,
+    "line": 259,
     "symbol": "ReportPerspectiveCompletionAsync",
     "docs": "workers/perspective-worker"
   },
   "ReportPerspectiveFailureAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 172,
+    "line": 279,
     "symbol": "ReportPerspectiveFailureAsync",
     "docs": "workers/perspective-worker"
   },
@@ -379,7 +445,7 @@
   },
   "last": {
     "file": "src/Whizbang.Core/Messaging/IEventStore.cs",
-    "line": 135,
+    "line": 163,
     "symbol": "last",
     "docs": "core-concepts/lifecycle-receptors"
   },
@@ -418,47 +484,5 @@
     "line": 19,
     "symbol": "DefaultLifecycleReceptorRegistry",
     "docs": "testing/lifecycle-synchronization"
-  },
-  "IExecutionStrategy": {
-    "file": "src/Whizbang.Core/Execution/IExecutionStrategy.cs",
-    "line": 10,
-    "symbol": "IExecutionStrategy",
-    "docs": "components/dispatcher"
-  },
-  "WhizbangSerializableAttribute": {
-    "file": "src/Whizbang.Core/Attributes/WhizbangSerializableAttribute.cs",
-    "line": 30,
-    "symbol": "WhizbangSerializableAttribute",
-    "docs": "source-generators/json-contexts#serializing-additional-types"
-  },
-  "ScopedLensQuery": {
-    "file": "src/Whizbang.Core/Lenses/ScopedLensQuery.cs",
-    "line": 11,
-    "symbol": "ScopedLensQuery",
-    "docs": "lenses/scoped-queries"
-  },
-  "LensQueryFactory": {
-    "file": "src/Whizbang.Core/Lenses/LensQueryFactory.cs",
-    "line": 10,
-    "symbol": "LensQueryFactory",
-    "docs": "lenses/scoped-queries"
-  },
-  "IScopedLensQuery": {
-    "file": "src/Whizbang.Core/Lenses/IScopedLensQuery.cs",
-    "line": 9,
-    "symbol": "IScopedLensQuery",
-    "docs": "lenses/scoped-queries"
-  },
-  "ILensQueryFactory": {
-    "file": "src/Whizbang.Core/Lenses/ILensQueryFactory.cs",
-    "line": 10,
-    "symbol": "ILensQueryFactory",
-    "docs": "lenses/scoped-queries"
-  },
-  "ILensQuery": {
-    "file": "src/Whizbang.Core/Lenses/ILensQuery.cs",
-    "line": 17,
-    "symbol": "ILensQuery",
-    "docs": "core-concepts/lenses"
   }
 }

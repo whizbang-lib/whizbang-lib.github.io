@@ -266,6 +266,6 @@ These limitations are addressed in subsequent versions while maintaining backwar
 ## Feedback
 
 This is the foundation release - your feedback shapes the future:
-- Report issues: https://github.com/whizbang/whizbang/issues
-- Join discussions: https://github.com/whizbang/whizbang/discussions
+- Report issues: https://github.com/whizbang-lib/whizbang/issues
+- Join discussions: https://github.com/whizbang-lib/whizbang/discussions
 - Contribute: See [Contributing Guide](../contributing.md)
