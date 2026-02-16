@@ -204,6 +204,15 @@
         "version": "v0.1.0"
       },
       {
+        "slug": "v0.1.0/core-concepts/audit-logging",
+        "title": "Audit Logging",
+        "category": "Core Concepts",
+        "order": 7,
+        "description": "Implement compliance-ready audit logging using Whizbang's System Events - capture who changed what, when, and why",
+        "tags": "audit, compliance, logging, system-events, perspectives, security, gdpr, sox",
+        "version": "v0.1.0"
+      },
+      {
         "slug": "v0.1.0/core-concepts/dispatcher",
         "title": "Dispatcher Deep Dive",
         "category": "Core Concepts",
@@ -343,7 +352,7 @@
         "title": "Whizbang Ids",
         "category": "Core Concepts",
         "order": 999,
-        "description": "",
+        "description": "# WhizbangIds: Strongly-Typed Identity Values\n\nWhizbang uses strongly-typed identity values based on UUIDv7 for all identifiers. This provides type safety, prevents ID mixing mistakes, and enables AOT-compatible dependency injection.\n\n## Overview\n\n**WhizbangIds** are source-generated value types that:\n- ✅ Wrap UUIDv7 GUIDs for time-ordered, database-friendly identities\n- ✅ Provide compile-time type safety (can't mix OrderId with CustomerId)\n- ✅ Support both static and DI-based ID generation\n- ✅ Are fully AOT-compatible (zero reflection)\n- ✅ Auto-register with DI via ModuleInitializer\n\n## TrackedGuid: Metadata-Aware GUID Wrapper\n\nFor scenarios where you need to work with raw GUIDs while preserving generation metadata, Whizbang provides `TrackedGuid`:\n\n```csharp\nusing Whizbang.Core.ValueObjects;\n\n// Create with sub-millisecond precision (recommended)\nvar tracked = TrackedGuid.NewMedo();  // Uses Medo.Uuid7 internally\n\n// Check metadata\nbool isTimeOrdered = tracked.IsTimeOrdered;           // true\nbool subMs = tracked.SubMillisecondPrecision;         // true\nDateTimeOffset when = tracked.Timestamp;              // Extracted from UUIDv7\n\n// Implicit conversion to Guid\nGuid guid = tracked;\n\n// Parse from external sources (database, API)\nvar parsed = TrackedGuid.Parse(\"550e8400-e29b-41d4-a716-446655440000\");\nvar external = TrackedGuid.FromExternal(someGuid);\n```\n\n### Why TrackedGuid?\n\n| Feature | `Guid.NewGuid()` | `Guid.CreateVersion7()` | `TrackedGuid.NewMedo()` |\n|",
         "tags": [],
         "version": "v0.1.0"
       },
@@ -610,6 +619,60 @@
         "version": "v0.1.0"
       },
       {
+        "slug": "v0.1.0/graphql/filtering",
+        "title": "Filtering",
+        "category": "graphql",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/graphql/index",
+        "title": "Index",
+        "category": "graphql",
+        "order": 999,
+        "description": "# GraphQL Integration\n\nWhizbang provides seamless HotChocolate GraphQL integration for Lenses, enabling powerful filtering, sorting, paging, and projection capabilities with full AOT compatibility.\n\n## Overview\n\nThe `Whizbang.Transports.HotChocolate` package integrates Whizbang Lenses with [HotChocolate](https://chillicream.com/docs/hotchocolate), providing:\n\n- **Automatic Query Generation** - Source generators create type-safe GraphQL queries from `[GraphQLLens]` attributes\n- **Full Data Operations** - `[UseFiltering]`, `[UseSorting]`, `[UsePaging]`, `[UseProjection]` support\n- **Scope-Aware Queries** - Multi-tenancy and security filtering via middleware\n- **AOT Compatible** - Zero reflection, source-generated at compile time\n\n## Quick Start\n\n### 1. Install the Package\n\n```bash\ndotnet add package Whizbang.Transports.HotChocolate\n```\n\n### 2. Define Your Lens\n\n```csharp\n[GraphQLLens(QueryName = \"orders\")]\npublic interface IOrderLens : ILensQuery<OrderReadModel> { }\n```\n\n### 3. Configure Services\n\n```csharp\n// Program.cs\nbuilder.Services.AddGraphQLServer()\n    .AddWhizbangLenses()\n    .AddQueryType<Query>();\n\n// Add scope middleware for multi-tenancy\nbuilder.Services.AddWhizbangScope();\n\nvar app = builder.Build();\napp.UseWhizbangScope();\napp.MapGraphQL();\n```\n\n### 4. Query Your Data\n\n```graphql\n{\n  orders(\n    where: { data: { status: { eq: \"Completed\" } } }\n    order: { data: { createdAt: DESC } }\n    first: 10\n  ) {\n    nodes {\n      id\n      data {\n        customerName\n        status\n        totalAmount\n      }\n      metadata {\n        eventType\n        timestamp\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n    totalCount\n  }\n}\n```\n\n## Documentation\n\n| Topic | Description |\n|",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/graphql/lens-integration",
+        "title": "Lens Integration",
+        "category": "graphql",
+        "order": 999,
+        "description": "# Lens Integration\n\nThe `[GraphQLLens]` attribute marks lens interfaces for GraphQL exposure, enabling automatic query generation with configurable filtering, sorting, and paging.\n\n## Basic Usage\n\n```csharp\n[GraphQLLens(QueryName = \"orders\")]\npublic interface IOrderLens : ILensQuery<OrderReadModel> { }\n```\n\nThis generates a GraphQL query field named `orders` with full data operations support.\n\n## Attribute Properties\n\n| Property | Type | Default | Description |\n|",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/graphql/scoping",
+        "title": "Scoping",
+        "category": "graphql",
+        "order": 999,
+        "description": "# GraphQL Scoping\n\nWhizbang's scope middleware provides automatic multi-tenancy and security filtering for GraphQL queries, ensuring users only see data they're authorized to access.\n\n## Overview\n\nThe `WhizbangScopeMiddleware` extracts scope information from HTTP requests (JWT claims and headers) and makes it available to lens queries for automatic filtering.\n\n```\nHTTP Request\n    │\n    ├── JWT Claims (tenant_id, sub, groups, ...)\n    ├── Headers (X-Tenant-Id, X-User-Id, ...)\n    │\n    ▼\nWhizbangScopeMiddleware\n    │\n    ├── Extracts scope values\n    ├── Creates IScopeContext\n    │\n    ▼\nIScopeContextAccessor.Current\n    │\n    ▼\nLens Query (automatic filtering)\n```\n\n## Setup\n\n### 1. Register Services\n\n```csharp\nbuilder.Services.AddWhizbangScope();\n```\n\n### 2. Add Middleware\n\n```csharp\napp.UseAuthentication();\napp.UseWhizbangScope();  // After auth\napp.MapGraphQL();\n```\n\n## Configuration\n\n### Default Claim/Header Mappings\n\n| Scope Value | Claim Type | Header Name |\n|",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/graphql/setup",
+        "title": "Setup",
+        "category": "graphql",
+        "order": 999,
+        "description": "# GraphQL Setup\n\nThis guide covers installation and configuration of Whizbang's HotChocolate GraphQL integration.\n\n## Installation\n\n```bash\ndotnet add package Whizbang.Transports.HotChocolate\n```\n\n## Basic Configuration\n\n### Minimal Setup\n\n```csharp\n// Program.cs\nvar builder = WebApplication.CreateBuilder(args);\n\nbuilder.Services\n    .AddGraphQLServer()\n    .AddWhizbangLenses()\n    .AddQueryType<Query>();\n\nvar app = builder.Build();\napp.MapGraphQL();\napp.Run();\n```\n\n### With Scope Middleware\n\nFor multi-tenancy and security filtering:\n\n```csharp\nvar builder = WebApplication.CreateBuilder(args);\n\n// Add services\nbuilder.Services.AddWhizbangScope();\nbuilder.Services\n    .AddGraphQLServer()\n    .AddWhizbangLenses()\n    .AddQueryType<Query>();\n\nvar app = builder.Build();\n\n// Middleware order matters\napp.UseAuthentication();\napp.UseWhizbangScope();  // After auth, before GraphQL\napp.MapGraphQL();\n\napp.Run();\n```\n\n## Configuration Options\n\n### WhizbangGraphQLOptions\n\nConfigure default behavior for all lenses:\n\n```csharp\nbuilder.Services\n    .AddGraphQLServer()\n    .AddWhizbangLenses(options => {\n        options.DefaultScope = GraphQLLensScope.Data | GraphQLLensScope.SystemFields;\n        options.DefaultPageSize = 25;\n        options.MaxPageSize = 200;\n    });\n```\n\n| Option | Default | Description |\n|",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/graphql/sorting",
+        "title": "Sorting",
+        "category": "graphql",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "v0.1.0"
+      },
+      {
         "slug": "v0.1.0/infrastructure/aspire-integration",
         "title": ".NET Aspire Integration",
         "category": "Infrastructure",
@@ -733,6 +796,96 @@
         "order": 3,
         "description": "Master the Work Coordinator - atomic batch processing for Outbox, Inbox, and event store tracking with lease-based coordination",
         "tags": "work-coordinator, atomic-operations, batch-processing, distributed-coordination, lease-management",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/migration-guide/01-concept-mapping",
+        "title": "Concept Mapping",
+        "category": "Migration Guide",
+        "order": 2,
+        "description": "How Marten/Wolverine concepts translate to Whizbang equivalents",
+        "tags": "migration, marten, wolverine, concepts, mapping",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/migration-guide/02-project-setup",
+        "title": "Project Setup",
+        "category": "Migration Guide",
+        "order": 3,
+        "description": "NuGet packages and initial configuration for migrating to Whizbang",
+        "tags": "migration, nuget, packages, configuration, setup",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/migration-guide/03-handler-migration",
+        "title": "Handler Migration",
+        "category": "Migration Guide",
+        "order": 4,
+        "description": "Converting Wolverine handlers to Whizbang Receptors",
+        "tags": "migration, handlers, receptors, wolverine, conversion",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/migration-guide/04-projection-migration",
+        "title": "Projection Migration",
+        "category": "Migration Guide",
+        "order": 5,
+        "description": "Converting Marten projections to Whizbang Perspectives",
+        "tags": "migration, projections, perspectives, marten, read-models",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/migration-guide/05-event-store-migration",
+        "title": "Event Store Migration",
+        "category": "Migration Guide",
+        "order": 6,
+        "description": "Migrating from Marten's event store to Whizbang's IEventStore",
+        "tags": "migration, event-store, marten, events, streams",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/migration-guide/06-transport-configuration",
+        "title": "Transport Configuration",
+        "category": "Migration Guide",
+        "order": 7,
+        "description": "Configuring RabbitMQ and Azure Service Bus transports for Whizbang",
+        "tags": "migration, transport, rabbitmq, azure-service-bus, messaging",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/migration-guide/07-outbox-migration",
+        "title": "Outbox Migration",
+        "category": "Migration Guide",
+        "order": 8,
+        "description": "Migrating from Wolverine's durable outbox to Whizbang's built-in outbox pattern",
+        "tags": "migration, outbox, inbox, durability, messaging",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/migration-guide/08-testing-migration",
+        "title": "Testing Migration",
+        "category": "Migration Guide",
+        "order": 9,
+        "description": "Updating test infrastructure when migrating to Whizbang",
+        "tags": "migration, testing, tunit, mocks, integration-tests",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/migration-guide/README",
+        "title": "Migration Guide Overview",
+        "category": "Migration Guide",
+        "order": 1,
+        "description": "Overview of migrating from Marten/Wolverine and other frameworks to Whizbang",
+        "tags": "migration, marten, wolverine, upgrade, conversion",
+        "version": "v0.1.0"
+      },
+      {
+        "slug": "v0.1.0/migration-guide/appendix-checklist",
+        "title": "Migration Checklist",
+        "category": "Migration Guide",
+        "order": 10,
+        "description": "Complete checklist for migrating from Marten/Wolverine to Whizbang",
+        "tags": "migration, checklist, verification, validation",
         "version": "v0.1.0"
       },
       {
@@ -949,12 +1102,84 @@
     "metadata": {},
     "docs": [
       {
+        "slug": "v1.0.0/core-concepts/routing",
+        "title": "Routing",
+        "category": "Core Concepts",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/scoping",
+        "title": "Scoping",
+        "category": "Core Concepts",
+        "order": 999,
+        "description": "# Scoping System\n\nWhizbang's scoping system provides flexible multi-tenancy and data isolation through composable filters, enabling tenant, user, organization, and principal-based access patterns.\n\n## Overview\n\nScoping in Whizbang separates data isolation concerns from your domain models:\n\n- **PerspectiveScope** - Metadata stored with each row (TenantId, UserId, etc.)\n- **ScopeFilter** - Composable flags for query filtering\n- **ScopeFilterBuilder** - Builds filter info from flags and context\n- **IScopedLensFactory** - Resolves lenses with scope filters applied\n\n## PerspectiveScope\n\n`PerspectiveScope` is stored in the `scope` column of perspective rows, separate from your data model.\n\n```csharp\npublic record PerspectiveScope {\n  // Standard scope properties\n  public string? TenantId { get; init; }\n  public string? UserId { get; init; }\n  public string? OrganizationId { get; init; }\n  public string? CustomerId { get; init; }\n\n  // Security principal access list\n  public IReadOnlyList<SecurityPrincipalId>? AllowedPrincipals { get; init; }\n\n  // Custom extension properties\n  public IReadOnlyDictionary<string, string?>? Extensions { get; init; }\n\n  // Unified indexer access\n  public string? this[string key] => ...;\n}\n```\n\n### Why Separate from Data?\n\nStoring scope separately from your domain data provides:\n\n1. **Clean domain models** - Your `Order` class doesn't need `TenantId`\n2. **Consistent filtering** - All perspectives filter the same way\n3. **Flexible extensions** - Add custom scope properties without schema changes\n4. **Security isolation** - Scope enforcement happens at infrastructure level\n\n### Accessing Scope Values\n\n```csharp\nvar scope = new PerspectiveScope {\n  TenantId = \"tenant-123\",\n  UserId = \"user-456\",\n  Extensions = new Dictionary<string, string?> {\n    [\"department\"] = \"Engineering\",\n    [\"region\"] = \"us-west\"\n  }\n};\n\n// Via properties\nvar tenant = scope.TenantId;  // \"tenant-123\"\n\n// Via indexer (standard + extensions)\nvar tenant = scope[\"TenantId\"];     // \"tenant-123\"\nvar dept = scope[\"department\"];     // \"Engineering\"\nvar unknown = scope[\"unknown\"];     // null\n```\n\n## Scope Filters\n\n`ScopeFilter` is a flags enum for composable filtering.\n\n```csharp\n[Flags]\npublic enum ScopeFilter {\n  None = 0,           // No filtering (global access)\n  Tenant = 1 << 0,    // Filter by TenantId\n  Organization = 1 << 1,\n  Customer = 1 << 2,\n  User = 1 << 3,      // Filter by UserId\n  Principal = 1 << 4  // Filter by security principal overlap\n}\n```\n\n### Filter Composition\n\nCombine filters with bitwise OR:\n\n```csharp\n// Single filter\nvar tenantOnly = ScopeFilter.Tenant;\n\n// Multiple filters (AND'd together)\nvar tenantAndUser = ScopeFilter.Tenant | ScopeFilter.User;\n\n// Complex combination\nvar complex = ScopeFilter.Tenant | ScopeFilter.Organization | ScopeFilter.Principal;\n```\n\n### Filter Application\n\n| Filter | Generated WHERE |\n|",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/security",
+        "title": "Security",
+        "category": "Core Concepts",
+        "order": 999,
+        "description": "# Security System\n\nWhizbang provides a comprehensive security system supporting RBAC (Role-Based Access Control) and ABAC (Attribute-Based Access Control) patterns with composable scope filters, permission checks, and security event auditing.\n\n## Overview\n\nThe security system consists of:\n\n- **Permissions** - Type-safe permission identifiers with wildcard matching\n- **Roles** - Named collections of permissions\n- **Scope Context** - Ambient security context for current operation\n- **Security Principals** - Users, groups, and services with hierarchical membership\n- **Scoped Lens Factory** - Permission-aware lens resolution with composable filters\n- **System Events** - Security audit trail (AccessDenied, AccessGranted, etc.)\n\n## Permissions\n\nPermissions use a `resource:action` pattern and support wildcard matching.\n\n```csharp\n// Factory methods for common patterns\nvar readOrders = Permission.Read(\"orders\");      // \"orders:read\"\nvar writeOrders = Permission.Write(\"orders\");    // \"orders:write\"\nvar deleteOrders = Permission.Delete(\"orders\");  // \"orders:delete\"\nvar adminOrders = Permission.Admin(\"orders\");    // \"orders:admin\"\nvar allOrders = Permission.All(\"orders\");        // \"orders:*\"\n\n// Custom permissions\nvar permission = new Permission(\"orders:export\");\n\n// Wildcard matching\nvar allResources = new Permission(\"*:*\");        // Matches everything\nvar allOrderActions = Permission.All(\"orders\");  // Matches orders:*\n```\n\n### Wildcard Rules\n\n| Permission | Matches |\n|",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/system-events",
+        "title": "System Events",
+        "category": "Core Concepts",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/data/efcore-json-configuration",
         "title": "EF Core 10 JSON Configuration",
         "category": "Data",
         "order": 10,
         "description": "Configuring EF Core 10 with custom JSON converters for JSONB columns",
         "tags": "efcore, json, jsonb, postgresql, npgsql, converters",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/guides/implementing-multi-tenancy",
+        "title": "Implementing Multi Tenancy",
+        "category": "guides",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/lenses/raw-sql",
+        "title": "Raw Sql",
+        "category": "lenses",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/lenses/vector-search",
+        "title": "Vector Search",
+        "category": "lenses",
+        "order": 999,
+        "description": "# Vector Similarity Search\n\nWhizbang supports pgvector similarity queries for semantic search, embeddings, and AI/ML workloads.\n\n## Prerequisites\n\nWhen using `[VectorField]` attributes on your perspective models, you must add the Pgvector.EntityFrameworkCore package:\n\n```xml\n<PackageReference Include=\"Pgvector.EntityFrameworkCore\" Version=\"0.3.0\" />\n```\n\nIf you forget this package, the WHIZ070 diagnostic will guide you:\n\n> WHIZ070: Property 'Embedding' uses [VectorField] but Pgvector.EntityFrameworkCore package is not referenced.\n\n## Defining Vector Fields\n\nAdd `[VectorField]` to properties in your perspective model:\n\n```csharp\npublic class DocumentModel {\n  public Guid Id { get; init; }\n  public string Title { get; init; } = \"\";\n  public string Content { get; init; } = \"\";\n\n  [VectorField(1536)]  // OpenAI ada-002 dimensions\n  public float[]? ContentEmbedding { get; init; }\n\n  [VectorField(1536)]  // For comparison operations\n  public float[]? SummaryEmbedding { get; init; }\n}\n\npublic class UserPreferenceModel {\n  public Guid UserId { get; init; }\n\n  [VectorField(1536)]\n  public float[]? PreferenceEmbedding { get; init; }\n}\n```\n\nThe generator creates pgvector shadow properties with appropriate indexes.\n\n## Usage Patterns\n\nAll methods use **strongly-typed lambda selectors** for compile-time safety.\n\n### Pattern 1: App-Side Vector (Search Query)\n\nUse when the search vector comes from your application (e.g., embedding a user's search query):\n\n```csharp\n// Get embedding from your embedding service (OpenAI, etc.)\nvar searchEmbedding = await embeddingService.EmbedAsync(userSearchQuery);\n\n// Find documents similar to the search query\nvar results = await documentLens.Query\n    .OrderByCosineDistance(m => m.ContentEmbedding, searchEmbedding)\n    .Take(10)\n    .ToListAsync();\n```\n\n**SQL Generated:**\n```sql\nSELECT * FROM documents\nORDER BY content_embedding <=> @p0 ASC\nLIMIT 10\n```\n\n### Pattern 2: Same-Table Column Comparison\n\nUse when comparing two vector columns on the same row (100% SQL, no vector data round-trip):\n\n```csharp\n// Find documents where content differs significantly from summary\n// (potential quality issue - summary doesn't match content)\nvar mismatchedDocs = await documentLens.Query\n    .Where(m => m.ContentEmbedding != null && m.SummaryEmbedding != null)\n    .OrderByCosineDistance(m => m.ContentEmbedding, m => m.SummaryEmbedding)\n    .ThenByDescending(m => m.Data.CreatedAt)  // Most different first, then newest\n    .Take(20)\n    .ToListAsync();\n\n// Find documents where content and summary are similar (well-summarized)\nvar wellSummarized = await documentLens.Query\n    .WithinCosineDistance(m => m.ContentEmbedding, m => m.SummaryEmbedding, threshold: 0.2)\n    .ToListAsync();\n```\n\n**SQL Generated:**\n```sql\n-- No vector data sent to/from C# - all computed in PostgreSQL!\nSELECT * FROM documents\nWHERE content_embedding IS NOT NULL AND summary_embedding IS NOT NULL\nORDER BY content_embedding <=> summary_embedding ASC\nLIMIT 20\n```\n\n### Pattern 3: Cross-Table Comparison (Joins)\n\nUse when comparing vectors from different tables:\n\n```csharp\n// Find documents that match a user's preferences\nvar userId = currentUserId;\n\nvar recommendations = await documentLens.Query\n    .SelectMany(\n        doc => userPreferenceLens.Query.Where(up => up.Data.UserId == userId),\n        (doc, pref) => new { Document = doc, Preference = pref })\n    .OrderByCosineDistance(\n        x => x.Document.Data.ContentEmbedding,    // From documents table\n        x => x.Preference.Data.PreferenceEmbedding)  // From user_preferences table\n    .Select(x => x.Document)\n    .Take(10)\n    .ToListAsync();\n```\n\n**SQL Generated:**\n```sql\nSELECT d.* FROM documents d\nJOIN user_preferences up ON up.user_id = @userId\nORDER BY d.content_embedding <=> up.preference_embedding ASC\nLIMIT 10\n```\n\n### Pattern 4: Filtering by Distance Threshold\n\nUse when you only want results within a certain similarity range:\n\n```csharp\nvar searchEmbedding = await embeddingService.EmbedAsync(userQuery);\n\n// Only return documents with cosine distance < 0.3 (very similar)\nvar closeMatches = await documentLens.Query\n    .WithinCosineDistance(m => m.ContentEmbedding, searchEmbedding, threshold: 0.3)\n    .OrderByCosineDistance(m => m.ContentEmbedding, searchEmbedding)\n    .ToListAsync();\n```\n\n**SQL Generated:**\n```sql\nSELECT * FROM documents\nWHERE content_embedding <=> @p0 < 0.3\nORDER BY content_embedding <=> @p0 ASC\n```\n\n### Pattern 5: Combined Filter + Sort + Project\n\nUse when you need distance/similarity scores in your results:\n\n:::updated\n**Important**: `WithCosineDistance` must be used as the **final projection** before `ToListAsync()`.\nYou cannot chain `.OrderBy(r => r.Distance)` or `.Where(r => r.Distance < x)` after it - use\n`OrderByCosineDistance` and `WithinCosineDistance` for SQL-side operations first.\n:::\n\n```csharp\nvar searchEmbedding = await embeddingService.EmbedAsync(userQuery);\n\n// Filter -> Sort -> Project with scores\nvar results = await documentLens.Query\n    .WithinCosineDistance(m => m.ContentEmbedding, searchEmbedding, threshold: 0.5)\n    .OrderByCosineDistance(m => m.ContentEmbedding, searchEmbedding)\n    .WithCosineDistance(m => m.ContentEmbedding, searchEmbedding)\n    .Take(10)\n    .ToListAsync();\n\nforeach (var result in results) {\n  Console.WriteLine($\"{result.Row.Data.Title}: {result.Similarity:P0} match\");\n  // Output: \"My Document: 95% match\"\n}\n```\n\nReturns `VectorSearchResult<TModel>` with:\n- `Row` - The perspective row\n- `Distance` - Cosine distance (0 = identical, 2 = opposite)\n- `Similarity` - Similarity score (1 = identical, -1 = opposite)\n\n## Query Extension Reference\n\n### Ordering Methods\n\n| Method | PostgreSQL Operator | Use Case |\n|",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/perspectives/temporal",
+        "title": "Temporal",
+        "category": "perspectives",
+        "order": 999,
+        "description": "# Temporal Perspectives\n\nTemporal perspectives create append-only logs where each event creates a NEW row rather than updating existing rows. This pattern is ideal for activity feeds, audit logs, and full history tracking.\n\n## Overview\n\n| Pattern | Interface | Storage | Use Case |\n|",
+        "tags": [],
         "version": "v1.0.0"
       }
     ]
@@ -967,6 +1192,30 @@
       "description": "Documentation currently being written and developed"
     },
     "docs": [
+      {
+        "slug": "drafts/attributes/must-exist",
+        "title": "MustExist Attribute",
+        "category": "Attributes",
+        "order": 999,
+        "description": "Marks a perspective Apply method as requiring the model to already exist",
+        "tags": [
+          "attributes",
+          "mustexist",
+          "perspectives",
+          "validation",
+          "source-generator"
+        ],
+        "version": "drafts"
+      },
+      {
+        "slug": "drafts/core-concepts/model-action",
+        "title": "Model Actions - Perspective Deletion Support",
+        "category": "Core Concepts",
+        "order": 4,
+        "description": "Control perspective model lifecycle with ModelAction - support soft delete, hard delete (purge), and conditional updates in pure Apply methods",
+        "tags": "perspectives, deletion, soft-delete, purge, model-action, apply-result, cqrs, read-models",
+        "version": "drafts"
+      },
       {
         "slug": "drafts/test-error-display",
         "title": "Test Error Display",
