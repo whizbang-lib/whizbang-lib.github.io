@@ -208,6 +208,29 @@ services.Configure<RoutingOptions>(opts => {
 });
 ```
 
+### Strongly-Typed Configuration
+
+Use the generic overloads for compile-time safety and refactor-friendly configuration:
+
+```csharp
+services.Configure<RoutingOptions>(opts => {
+  // Strongly-typed: extracts namespace from the type
+  opts.OwnNamespaceOf<CreateUserCommand>()      // "myapp.users.commands"
+      .OwnNamespaceOf<UpdateInventoryCommand>() // "myapp.inventory.commands"
+      .SubscribeToNamespaceOf<OrderCreatedEvent>()   // "myapp.orders.events"
+      .SubscribeToNamespaceOf<PaymentCompletedEvent>(); // "myapp.payments.events"
+
+  // Can mix with string-based for wildcards
+  opts.OwnDomains("myapp.legacy.*");
+});
+```
+
+**Benefits:**
+- **Compile-time safety** - Invalid types won't compile
+- **Refactor-friendly** - Rename/move types automatically updates references
+- **IDE navigation** - Ctrl+click to go to type definition
+- **No magic strings** - For known namespaces
+
 ### Inbox Strategies
 
 Two inbox routing strategies are available:
@@ -314,7 +337,18 @@ namespace MyAppCommands;
 namespace OrderEvents;
 ```
 
-### 2. Let Auto-Discovery Do the Work
+### 2. Prefer Strongly-Typed Configuration
+
+```csharp
+// ✅ GOOD: Strongly-typed, refactor-safe
+opts.OwnNamespaceOf<CreateUserCommand>()
+    .SubscribeToNamespaceOf<OrderCreatedEvent>();
+
+// ❌ BAD: Magic strings, typo-prone
+opts.OwnDomains("myapp.users.comands");  // Typo won't be caught until runtime
+```
+
+### 3. Let Auto-Discovery Do the Work
 
 ```csharp
 // ✅ GOOD: Events discovered automatically
@@ -330,7 +364,7 @@ opts.SubscribeTo("myapp.users.events");
 // ... 20 more manual subscriptions
 ```
 
-### 3. Use Manual Subscriptions for Cross-Cutting Concerns
+### 4. Use Manual Subscriptions for Cross-Cutting Concerns
 
 ```csharp
 // ✅ GOOD: Manual subscription for audit/logging service
@@ -339,7 +373,7 @@ services.Configure<RoutingOptions>(opts => {
 });
 ```
 
-### 4. Validate Subscriptions at Startup
+### 5. Validate Subscriptions at Startup
 
 ```csharp
 // Ensure all expected namespaces are subscribed
