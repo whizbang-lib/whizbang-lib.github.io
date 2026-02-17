@@ -869,9 +869,9 @@ public async Task<ActionResult> ProcessOrders(
 
 ---
 
-## Automatic Event Cascade
+## Automatic Message Cascade
 
-Whizbang automatically extracts and publishes `IEvent` instances from receptor return values. This enables a cleaner pattern where receptors can return tuples or arrays containing events without explicit `PublishAsync` calls.
+Whizbang automatically extracts and dispatches `IMessage` instances (both `IEvent` and `ICommand`) from receptor return values. This enables a cleaner pattern where receptors can return tuples or arrays containing messages without explicit `PublishAsync` or `SendAsync` calls.
 
 ### The Problem (Without Auto-Cascade)
 
@@ -992,44 +992,71 @@ public class ComplexReceptor : IReceptor<ComplexCommand, (Result, (Event1, Event
 
 ### How It Works
 
-The auto-cascade system uses the `ITuple` interface for efficient, AOT-compatible event extraction:
+The auto-cascade system uses the `ITuple` interface for efficient, AOT-compatible message extraction:
 
 ```
 Receptor Returns
   ├─> Dispatcher receives result
-  ├─> EventExtractor.ExtractEvents(result)
-  │   ├─> Checks if result implements IEvent → yield return
+  ├─> MessageExtractor.ExtractMessages(result)
+  │   ├─> Checks if result implements IMessage (IEvent or ICommand) → yield return
   │   ├─> Checks if result implements ITuple → extract each item recursively
-  │   └─> Checks if result implements IEnumerable<IEvent> → yield return each
-  └─> For each extracted IEvent:
-      └─> GetUntypedReceptorPublisher(eventType).Invoke(event)
-          └─> All perspectives for that event type invoked
+  │   ├─> Checks if result implements IEnumerable<IMessage> → yield return each
+  │   ├─> Checks if result implements IEnumerable<IEvent> → yield return each
+  │   └─> Checks if result implements IEnumerable<ICommand> → yield return each
+  └─> For each extracted IMessage:
+      └─> GetUntypedReceptorPublisher(messageType).Invoke(message)
+          └─> All receptors for that message type invoked
 ```
 
 **Key Points**:
 - **Zero reflection**: Uses `ITuple` interface (compile-time type info)
 - **AOT compatible**: Works with Native AOT and trimming
 - **Recursive**: Handles nested tuples and arrays
-- **Selective**: Only extracts types implementing `IEvent`
-- **Non-events ignored**: DTOs and value objects pass through unchanged
+- **Selective**: Only extracts types implementing `IMessage` (events AND commands)
+- **Non-messages ignored**: DTOs and value objects pass through unchanged
 
 ### Cascades Through All Dispatch Paths
 
-Auto-cascade works with all dispatch methods:
+Auto-cascade works with all dispatch methods and message types:
 
 ```csharp
-// Via LocalInvokeAsync
+// Via LocalInvokeAsync - Events auto-published
 var result = await _dispatcher.LocalInvokeAsync<CreateOrder, (OrderResult, OrderCreated)>(command);
 // OrderCreated auto-published ✓
 
+// Via LocalInvokeAsync - Commands auto-dispatched
+var result = await _dispatcher.LocalInvokeAsync<ProcessPayment, (PaymentResult, SendNotification)>(command);
+// SendNotification command auto-dispatched ✓
+
 // Via SendAsync
 var receipt = await _dispatcher.SendAsync(command);
-// OrderCreated auto-published ✓
+// Any returned IEvent or ICommand auto-cascaded ✓
+```
+
+### Mixed Events and Commands
+
+Receptors can return both events and commands in a single tuple:
+
+```csharp
+public class ProcessOrderReceptor : IReceptor<ProcessOrder, (OrderResult, OrderProcessed, SendInvoice)> {
+    public ValueTask<(OrderResult, OrderProcessed, SendInvoice)> HandleAsync(
+        ProcessOrder command, CancellationToken ct = default) {
+
+        var result = new OrderResult(command.OrderId, ProcessStatus.Completed);
+        var orderEvent = new OrderProcessed(command.OrderId, DateTime.UtcNow);
+        var invoiceCommand = new SendInvoice(command.OrderId, command.CustomerId);
+
+        // Return tuple with both event AND command
+        return ValueTask.FromResult((result, orderEvent, invoiceCommand));
+    }
+}
+// Result: OrderProcessed event published to perspectives
+// Result: SendInvoice command dispatched to invoice receptor
 ```
 
 ### Best Practices
 
-**DO**: Return events alongside business results in tuples
+**DO**: Return messages (events and commands) alongside business results in tuples
 ```csharp
 // ✅ GOOD: Event returned with result
 public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
@@ -1039,9 +1066,18 @@ public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
         new OrderCreated(command.OrderId, command.CustomerId)
     ));
 }
+
+// ✅ GOOD: Command returned triggers follow-up action
+public ValueTask<(PaymentResult, SendReceipt)> HandleAsync(
+    ProcessPayment command, CancellationToken ct) {
+    return ValueTask.FromResult((
+        new PaymentResult(command.OrderId, PaymentStatus.Success),
+        new SendReceipt(command.OrderId, command.CustomerId)  // Command auto-dispatched
+    ));
+}
 ```
 
-**DON'T**: Return events AND manually publish them
+**DON'T**: Return messages AND manually dispatch them
 ```csharp
 // ❌ BAD: Double publishing!
 public async ValueTask<(OrderResult, OrderCreated)> HandleAsync(
@@ -1059,12 +1095,12 @@ public async ValueTask<(OrderResult, OrderCreated)> HandleAsync(
 **DON'T**: Return empty arrays to avoid cascade
 ```csharp
 // ⚠️ UNNECESSARY: Empty arrays are handled gracefully
-public ValueTask<(OrderResult, IEvent[])> HandleAsync(
+public ValueTask<(OrderResult, IMessage[])> HandleAsync(
     CreateOrder command, CancellationToken ct) {
 
     return ValueTask.FromResult((
         new OrderResult(command.OrderId),
-        Array.Empty<IEvent>()  // Fine - no events published
+        Array.Empty<IMessage>()  // Fine - no messages dispatched
     ));
 }
 ```
@@ -1073,8 +1109,12 @@ public ValueTask<(OrderResult, IEvent[])> HandleAsync(
 
 | Approach | Lines of Code | Injection Dependencies | Error Surface |
 |----------|--------------|----------------------|---------------|
-| Manual `PublishAsync` | More | Requires `IDispatcher` | Higher (can forget) |
+| Manual `PublishAsync`/`SendAsync` | More | Requires `IDispatcher` | Higher (can forget) |
 | Auto-cascade (tuple return) | Fewer | None | Lower (automatic) |
+
+:::new
+**New in 0.1.0**: Auto-cascade now supports both `IEvent` and `ICommand` types. Commands returned from receptors are automatically dispatched to their respective receptors.
+:::
 
 ---
 
