@@ -59,6 +59,12 @@
     "symbol": "RetryIndefinitely",
     "docs": "components/transports/rabbitmq#connection-retry"
   },
+  "RabbitMQInfrastructureProvisioner": {
+    "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQInfrastructureProvisioner.cs",
+    "line": 10,
+    "symbol": "RabbitMQInfrastructureProvisioner",
+    "docs": "core-concepts/routing#domain-topic-provisioning"
+  },
   "RabbitMQHealthCheck": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQHealthCheck.cs",
     "line": 11,
@@ -77,6 +83,24 @@
     "symbol": "RabbitMQChannelPool",
     "docs": "components/transports/rabbitmq"
   },
+  "ServiceBusInfrastructureProvisioner": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/ServiceBusInfrastructureProvisioner.cs",
+    "line": 11,
+    "symbol": "ServiceBusInfrastructureProvisioner",
+    "docs": "core-concepts/routing#domain-topic-provisioning"
+  },
+  "ServiceBusAdminClientWrapper": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/ServiceBusAdminClientWrapper.cs",
+    "line": 9,
+    "symbol": "ServiceBusAdminClientWrapper",
+    "docs": "transports/azure-service-bus#admin-client"
+  },
+  "IServiceBusAdminClient": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/IServiceBusAdminClient.cs",
+    "line": 7,
+    "symbol": "IServiceBusAdminClient",
+    "docs": "transports/azure-service-bus#admin-client"
+  },
   "AzureServiceBusOptions": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
     "line": 6,
@@ -88,24 +112,6 @@
     "line": 10,
     "symbol": "AzureServiceBusConnectionRetry",
     "docs": "components/transports/azure-service-bus#connection-retry"
-  },
-  "PostgresReadinessExtensions": {
-    "file": "src/Whizbang.Data.Postgres/PostgresReadinessExtensions.cs",
-    "line": 10,
-    "symbol": "PostgresReadinessExtensions",
-    "docs": "components/data/postgres#readiness"
-  },
-  "PostgresOptions": {
-    "file": "src/Whizbang.Data.Postgres/PostgresOptions.cs",
-    "line": 6,
-    "symbol": "PostgresOptions",
-    "docs": "components/data/postgres"
-  },
-  "PostgresConnectionRetry": {
-    "file": "src/Whizbang.Data.Postgres/PostgresConnectionRetry.cs",
-    "line": 10,
-    "symbol": "PostgresConnectionRetry",
-    "docs": "components/data/postgres#connection-retry"
   },
   "with": {
     "file": "src/Whizbang.Data.Schema/SequenceDefinition.cs",
@@ -124,6 +130,24 @@
     "line": 4,
     "symbol": "for",
     "docs": "extensibility/database-schema-framework"
+  },
+  "PostgresReadinessExtensions": {
+    "file": "src/Whizbang.Data.Postgres/PostgresReadinessExtensions.cs",
+    "line": 10,
+    "symbol": "PostgresReadinessExtensions",
+    "docs": "components/data/postgres#readiness"
+  },
+  "PostgresOptions": {
+    "file": "src/Whizbang.Data.Postgres/PostgresOptions.cs",
+    "line": 6,
+    "symbol": "PostgresOptions",
+    "docs": "components/data/postgres"
+  },
+  "PostgresConnectionRetry": {
+    "file": "src/Whizbang.Data.Postgres/PostgresConnectionRetry.cs",
+    "line": 10,
+    "symbol": "PostgresConnectionRetry",
+    "docs": "components/data/postgres#connection-retry"
   },
   "VectorDependencyAnalyzer": {
     "file": "src/Whizbang.Generators/VectorDependencyAnalyzer.cs",
@@ -287,6 +311,12 @@
     "symbol": "IDispatcher",
     "docs": "core-concepts/dispatcher"
   },
+  "CascadeMessageAsync": {
+    "file": "src/Whizbang.Core/IDispatcher.cs",
+    "line": 313,
+    "symbol": "CascadeMessageAsync",
+    "docs": "core-concepts/dispatcher#cascade-to-outbox"
+  },
   "IDeliveryReceipt": {
     "file": "src/Whizbang.Core/IDeliveryReceipt.cs",
     "line": 13,
@@ -310,6 +340,30 @@
     "line": 52,
     "symbol": "VoidSyncReceptorInvoker",
     "docs": "core-concepts/receptors#synchronous-receptors"
+  },
+  "CascadeToOutboxAsync": {
+    "file": "src/Whizbang.Core/Dispatcher.cs",
+    "line": 1328,
+    "symbol": "CascadeToOutboxAsync",
+    "docs": "core-concepts/dispatcher#auto-cascade-to-outbox"
+  },
+  "LensRequest": {
+    "file": "src/Whizbang.Transports.FastEndpoints/Models/LensRequest.cs",
+    "line": 7,
+    "symbol": "LensRequest",
+    "docs": "v0.1.0/rest/filtering"
+  },
+  "FastEndpointsWhizbangExtensions": {
+    "file": "src/Whizbang.Transports.FastEndpoints/Extensions/FastEndpointsWhizbangExtensions.cs",
+    "line": 8,
+    "symbol": "FastEndpointsWhizbangExtensions",
+    "docs": "v0.1.0/rest/setup"
+  },
+  "endpoint": {
+    "file": "src/Whizbang.Transports.FastEndpoints/Endpoints/RestMutationEndpointBase.cs",
+    "line": 14,
+    "symbol": "endpoint",
+    "docs": "v0.1.0/rest/mutations"
   },
   "OnBeforeExecuteAsync": {
     "file": "src/Whizbang.Transports.Mutations/Base/MutationEndpointBase.cs",
@@ -353,41 +407,11 @@
     "symbol": "data",
     "docs": "v0.1.0/graphql/lens-integration#scope"
   },
-  "LensRequest": {
-    "file": "src/Whizbang.Transports.FastEndpoints/Models/LensRequest.cs",
-    "line": 7,
-    "symbol": "LensRequest",
-    "docs": "v0.1.0/rest/filtering"
-  },
-  "FastEndpointsWhizbangExtensions": {
-    "file": "src/Whizbang.Transports.FastEndpoints/Extensions/FastEndpointsWhizbangExtensions.cs",
-    "line": 8,
-    "symbol": "FastEndpointsWhizbangExtensions",
-    "docs": "v0.1.0/rest/setup"
-  },
-  "endpoint": {
-    "file": "src/Whizbang.Transports.FastEndpoints/Endpoints/RestMutationEndpointBase.cs",
-    "line": 14,
-    "symbol": "endpoint",
-    "docs": "v0.1.0/rest/mutations"
-  },
   "SignalRNotificationHook": {
     "file": "src/Whizbang.SignalR/Hooks/SignalRNotificationHook.cs",
     "line": 37,
     "symbol": "SignalRNotificationHook",
     "docs": "signalr/notification-hooks"
-  },
-  "OpenTelemetrySpanHook": {
-    "file": "src/Whizbang.Observability/Hooks/OpenTelemetrySpanHook.cs",
-    "line": 36,
-    "symbol": "OpenTelemetrySpanHook",
-    "docs": "observability/opentelemetry-integration"
-  },
-  "OpenTelemetryMetricHook": {
-    "file": "src/Whizbang.Observability/Hooks/OpenTelemetryMetricHook.cs",
-    "line": 40,
-    "symbol": "OpenTelemetryMetricHook",
-    "docs": "observability/opentelemetry-integration#metrics"
   },
   "PhysicalFieldInfo": {
     "file": "src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs",
@@ -406,6 +430,18 @@
     "line": 11,
     "symbol": "MessageAssociationsSchema",
     "docs": "core-concepts/message-associations"
+  },
+  "OpenTelemetrySpanHook": {
+    "file": "src/Whizbang.Observability/Hooks/OpenTelemetrySpanHook.cs",
+    "line": 36,
+    "symbol": "OpenTelemetrySpanHook",
+    "docs": "observability/opentelemetry-integration"
+  },
+  "OpenTelemetryMetricHook": {
+    "file": "src/Whizbang.Observability/Hooks/OpenTelemetryMetricHook.cs",
+    "line": 40,
+    "symbol": "OpenTelemetryMetricHook",
+    "docs": "observability/opentelemetry-integration#metrics"
   },
   "ObservabilityTagExtensions": {
     "file": "src/Whizbang.Observability/DependencyInjection/ObservabilityTagExtensions.cs",
@@ -455,30 +491,6 @@
     "symbol": "PerspectiveAssociationInfo",
     "docs": "perspectives/association-info"
   },
-  "UseWhizbangPhysicalFields": {
-    "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs",
-    "line": 33,
-    "symbol": "UseWhizbangPhysicalFields",
-    "docs": "perspectives/physical-fields"
-  },
-  "PhysicalFieldRegistry": {
-    "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs",
-    "line": 27,
-    "symbol": "PhysicalFieldRegistry",
-    "docs": "perspectives/physical-fields"
-  },
-  "PhysicalFieldQueryInterceptor": {
-    "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs",
-    "line": 23,
-    "symbol": "PhysicalFieldQueryInterceptor",
-    "docs": "perspectives/physical-fields"
-  },
-  "PhysicalFieldExpressionVisitor": {
-    "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs",
-    "line": 32,
-    "symbol": "PhysicalFieldExpressionVisitor",
-    "docs": "perspectives/physical-fields"
-  },
   "WhizbangMethodCallTranslatorPlugin": {
     "file": "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangMethodCallTranslatorPlugin.cs",
     "line": 9,
@@ -503,51 +515,39 @@
     "symbol": "JsonArrayContainsAnyTranslator",
     "docs": "core-concepts/security#principal-filtering"
   },
-  "WhizbangId": {
-    "file": "src/Whizbang.Core/ValueObjects/WhizbangId.cs",
-    "line": 8,
-    "symbol": "WhizbangId",
-    "docs": "core-concepts/whizbang-ids#generic-whizbang-id"
+  "UseWhizbangPhysicalFields": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs",
+    "line": 33,
+    "symbol": "UseWhizbangPhysicalFields",
+    "docs": "perspectives/physical-fields"
   },
-  "TrackedGuid": {
-    "file": "src/Whizbang.Core/ValueObjects/TrackedGuid.cs",
-    "line": 9,
-    "symbol": "TrackedGuid",
-    "docs": "core-concepts/whizbang-ids#tracked-guid"
+  "PhysicalFieldRegistry": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs",
+    "line": 27,
+    "symbol": "PhysicalFieldRegistry",
+    "docs": "perspectives/physical-fields"
   },
-  "StreamId": {
-    "file": "src/Whizbang.Core/ValueObjects/StreamId.cs",
-    "line": 10,
-    "symbol": "StreamId",
-    "docs": "core-concepts/event-streams"
+  "PhysicalFieldQueryInterceptor": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs",
+    "line": 23,
+    "symbol": "PhysicalFieldQueryInterceptor",
+    "docs": "perspectives/physical-fields"
   },
-  "MessageId": {
-    "file": "src/Whizbang.Core/ValueObjects/MessageId.cs",
-    "line": 10,
-    "symbol": "MessageId",
-    "docs": "core-concepts/message-context"
+  "PhysicalFieldExpressionVisitor": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs",
+    "line": 32,
+    "symbol": "PhysicalFieldExpressionVisitor",
+    "docs": "perspectives/physical-fields"
   },
-  "GuidMetadata": {
-    "file": "src/Whizbang.Core/ValueObjects/GuidMetadata.cs",
-    "line": 7,
-    "symbol": "GuidMetadata",
-    "docs": "core-concepts/whizbang-ids#guid-metadata"
-  },
-  "EventId": {
-    "file": "src/Whizbang.Core/ValueObjects/EventId.cs",
-    "line": 10,
-    "symbol": "EventId",
-    "docs": "core-concepts/events"
-  },
-  "CorrelationId": {
-    "file": "src/Whizbang.Core/ValueObjects/CorrelationId.cs",
-    "line": 11,
-    "symbol": "CorrelationId",
-    "docs": "core-concepts/message-context"
+  "TransportConsumerWorkerWithResilience": {
+    "file": "src/Whizbang.Core/Workers/TransportConsumerWorkerWithResilience.cs",
+    "line": 35,
+    "symbol": "TransportConsumerWorkerWithResilience",
+    "docs": "core-concepts/transport-consumer#subscription-resilience"
   },
   "TransportConsumerWorker": {
     "file": "src/Whizbang.Core/Workers/TransportConsumerWorker.cs",
-    "line": 18,
+    "line": 20,
     "symbol": "TransportConsumerWorker",
     "docs": "components/workers/transport-consumer"
   },
@@ -559,19 +559,31 @@
   },
   "TransportConsumerConfiguration": {
     "file": "src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs",
-    "line": 21,
+    "line": 23,
     "symbol": "TransportConsumerConfiguration",
     "docs": "core-concepts/transport-consumer#additional-destinations"
   },
+  "EnableResilience": {
+    "file": "src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs",
+    "line": 42,
+    "symbol": "EnableResilience",
+    "docs": "core-concepts/transport-consumer#subscription-resilience"
+  },
+  "ResilienceOptions": {
+    "file": "src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs",
+    "line": 48,
+    "symbol": "ResilienceOptions",
+    "docs": "core-concepts/transport-consumer#subscription-resilience"
+  },
   "TransportConsumerBuilderExtensions": {
     "file": "src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs",
-    "line": 54,
+    "line": 70,
     "symbol": "TransportConsumerBuilderExtensions",
     "docs": "core-concepts/transport-consumer#auto-configuration"
   },
   "AddTransportConsumer": {
     "file": "src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs",
-    "line": 106,
+    "line": 122,
     "symbol": "AddTransportConsumer",
     "docs": "core-concepts/transport-consumer#auto-configuration"
   },
@@ -598,36 +610,6 @@
     "line": 24,
     "symbol": "BatchedCompletionStrategy",
     "docs": "workers/perspective-worker"
-  },
-  "ITransportReadinessCheck": {
-    "file": "src/Whizbang.Core/Transports/ITransportReadinessCheck.cs",
-    "line": 18,
-    "symbol": "ITransportReadinessCheck",
-    "docs": "components/transports"
-  },
-  "ITransportManager": {
-    "file": "src/Whizbang.Core/Transports/ITransportManager.cs",
-    "line": 13,
-    "symbol": "ITransportManager",
-    "docs": "components/transports"
-  },
-  "ITransport": {
-    "file": "src/Whizbang.Core/Transports/ITransport.cs",
-    "line": 13,
-    "symbol": "ITransport",
-    "docs": "components/transports"
-  },
-  "ISubscription": {
-    "file": "src/Whizbang.Core/Transports/ISubscription.cs",
-    "line": 17,
-    "symbol": "ISubscription",
-    "docs": "components/transports"
-  },
-  "IMessageSerializer": {
-    "file": "src/Whizbang.Core/Transports/IMessageSerializer.cs",
-    "line": 29,
-    "symbol": "IMessageSerializer",
-    "docs": "components/transports"
   },
   "TagOptions": {
     "file": "src/Whizbang.Core/Tags/TagOptions.cs",
@@ -682,6 +664,90 @@
     "line": 41,
     "symbol": "IMessageTagHook",
     "docs": "core-concepts/message-tags#hooks"
+  },
+  "WhizbangId": {
+    "file": "src/Whizbang.Core/ValueObjects/WhizbangId.cs",
+    "line": 8,
+    "symbol": "WhizbangId",
+    "docs": "core-concepts/whizbang-ids#generic-whizbang-id"
+  },
+  "TrackedGuid": {
+    "file": "src/Whizbang.Core/ValueObjects/TrackedGuid.cs",
+    "line": 9,
+    "symbol": "TrackedGuid",
+    "docs": "core-concepts/whizbang-ids#tracked-guid"
+  },
+  "StreamId": {
+    "file": "src/Whizbang.Core/ValueObjects/StreamId.cs",
+    "line": 10,
+    "symbol": "StreamId",
+    "docs": "core-concepts/event-streams"
+  },
+  "MessageId": {
+    "file": "src/Whizbang.Core/ValueObjects/MessageId.cs",
+    "line": 10,
+    "symbol": "MessageId",
+    "docs": "core-concepts/message-context"
+  },
+  "GuidMetadata": {
+    "file": "src/Whizbang.Core/ValueObjects/GuidMetadata.cs",
+    "line": 7,
+    "symbol": "GuidMetadata",
+    "docs": "core-concepts/whizbang-ids#guid-metadata"
+  },
+  "EventId": {
+    "file": "src/Whizbang.Core/ValueObjects/EventId.cs",
+    "line": 10,
+    "symbol": "EventId",
+    "docs": "core-concepts/events"
+  },
+  "CorrelationId": {
+    "file": "src/Whizbang.Core/ValueObjects/CorrelationId.cs",
+    "line": 11,
+    "symbol": "CorrelationId",
+    "docs": "core-concepts/message-context"
+  },
+  "ITransportWithRecovery": {
+    "file": "src/Whizbang.Core/Transports/ITransportWithRecovery.cs",
+    "line": 21,
+    "symbol": "ITransportWithRecovery",
+    "docs": "core-concepts/transport-consumer#subscription-resilience"
+  },
+  "ITransportReadinessCheck": {
+    "file": "src/Whizbang.Core/Transports/ITransportReadinessCheck.cs",
+    "line": 18,
+    "symbol": "ITransportReadinessCheck",
+    "docs": "components/transports"
+  },
+  "ITransportManager": {
+    "file": "src/Whizbang.Core/Transports/ITransportManager.cs",
+    "line": 13,
+    "symbol": "ITransportManager",
+    "docs": "components/transports"
+  },
+  "ITransport": {
+    "file": "src/Whizbang.Core/Transports/ITransport.cs",
+    "line": 13,
+    "symbol": "ITransport",
+    "docs": "components/transports"
+  },
+  "ISubscription": {
+    "file": "src/Whizbang.Core/Transports/ISubscription.cs",
+    "line": 17,
+    "symbol": "ISubscription",
+    "docs": "components/transports"
+  },
+  "IMessageSerializer": {
+    "file": "src/Whizbang.Core/Transports/IMessageSerializer.cs",
+    "line": 29,
+    "symbol": "IMessageSerializer",
+    "docs": "components/transports"
+  },
+  "IInfrastructureProvisioner": {
+    "file": "src/Whizbang.Core/Transports/IInfrastructureProvisioner.cs",
+    "line": 17,
+    "symbol": "IInfrastructureProvisioner",
+    "docs": "core-concepts/routing#domain-topic-provisioning"
   },
   "SystemEventTransportFilter": {
     "file": "src/Whizbang.Core/SystemEvents/SystemEventTransportFilter.cs",
@@ -755,6 +821,24 @@
     "symbol": "AuditingEventStoreDecorator",
     "docs": "core-concepts/system-events#event-auditing"
   },
+  "IUserScoped": {
+    "file": "src/Whizbang.Core/Scoping/IScopedInterfaces.cs",
+    "line": 32,
+    "symbol": "IUserScoped",
+    "docs": "core-concepts/scoping#marker-interfaces"
+  },
+  "IOrganizationScoped": {
+    "file": "src/Whizbang.Core/Scoping/IScopedInterfaces.cs",
+    "line": 44,
+    "symbol": "IOrganizationScoped",
+    "docs": "core-concepts/scoping#marker-interfaces"
+  },
+  "ICustomerScoped": {
+    "file": "src/Whizbang.Core/Scoping/IScopedInterfaces.cs",
+    "line": 56,
+    "symbol": "ICustomerScoped",
+    "docs": "core-concepts/scoping#marker-interfaces"
+  },
   "SecurityPrincipalIdJsonConverter": {
     "file": "src/Whizbang.Core/Security/SecurityPrincipalIdJsonConverter.cs",
     "line": 17,
@@ -791,35 +875,41 @@
     "symbol": "IPermissionExtractor",
     "docs": "core-concepts/security#extractors"
   },
-  "IUserScoped": {
-    "file": "src/Whizbang.Core/Scoping/IScopedInterfaces.cs",
-    "line": 32,
-    "symbol": "IUserScoped",
-    "docs": "core-concepts/scoping#marker-interfaces"
+  "SubscriptionStatus": {
+    "file": "src/Whizbang.Core/Resilience/SubscriptionState.cs",
+    "line": 8,
+    "symbol": "SubscriptionStatus",
+    "docs": "core-concepts/transport-consumer#subscription-resilience"
   },
-  "IOrganizationScoped": {
-    "file": "src/Whizbang.Core/Scoping/IScopedInterfaces.cs",
-    "line": 44,
-    "symbol": "IOrganizationScoped",
-    "docs": "core-concepts/scoping#marker-interfaces"
+  "SubscriptionState": {
+    "file": "src/Whizbang.Core/Resilience/SubscriptionState.cs",
+    "line": 41,
+    "symbol": "SubscriptionState",
+    "docs": "core-concepts/transport-consumer#subscription-resilience"
   },
-  "ICustomerScoped": {
-    "file": "src/Whizbang.Core/Scoping/IScopedInterfaces.cs",
-    "line": 56,
-    "symbol": "ICustomerScoped",
-    "docs": "core-concepts/scoping#marker-interfaces"
+  "SubscriptionRetryHelper": {
+    "file": "src/Whizbang.Core/Resilience/SubscriptionRetryHelper.cs",
+    "line": 18,
+    "symbol": "SubscriptionRetryHelper",
+    "docs": "core-concepts/transport-consumer#subscription-resilience"
   },
-  "PolicyDecisionTrail": {
-    "file": "src/Whizbang.Core/Policies/PolicyDecisionTrail.cs",
-    "line": 15,
-    "symbol": "PolicyDecisionTrail",
-    "docs": "infrastructure/policies"
+  "SubscriptionResilienceOptions": {
+    "file": "src/Whizbang.Core/Resilience/SubscriptionResilienceOptions.cs",
+    "line": 19,
+    "symbol": "SubscriptionResilienceOptions",
+    "docs": "core-concepts/transport-consumer#subscription-resilience"
   },
-  "PolicyContext": {
-    "file": "src/Whizbang.Core/Policies/PolicyContext.cs",
-    "line": 16,
-    "symbol": "PolicyContext",
-    "docs": "infrastructure/policies"
+  "HealthCheckInterval": {
+    "file": "src/Whizbang.Core/Resilience/SubscriptionResilienceOptions.cs",
+    "line": 70,
+    "symbol": "HealthCheckInterval",
+    "docs": "core-concepts/transport-consumer#subscription-resilience"
+  },
+  "AllowPartialSubscriptions": {
+    "file": "src/Whizbang.Core/Resilience/SubscriptionResilienceOptions.cs",
+    "line": 80,
+    "symbol": "AllowPartialSubscriptions",
+    "docs": "core-concepts/transport-consumer#subscription-resilience"
   },
   "TransportSubscriptionBuilder": {
     "file": "src/Whizbang.Core/Routing/TransportSubscriptionBuilder.cs",
@@ -929,11 +1019,59 @@
     "symbol": "DomainTopicInboxStrategy",
     "docs": "core-concepts/routing#domain-topic-inbox"
   },
+  "PolicyDecisionTrail": {
+    "file": "src/Whizbang.Core/Policies/PolicyDecisionTrail.cs",
+    "line": 15,
+    "symbol": "PolicyDecisionTrail",
+    "docs": "infrastructure/policies"
+  },
+  "PolicyContext": {
+    "file": "src/Whizbang.Core/Policies/PolicyContext.cs",
+    "line": 16,
+    "symbol": "PolicyContext",
+    "docs": "infrastructure/policies"
+  },
   "IPipelineBehavior": {
     "file": "src/Whizbang.Core/Pipeline/IPipelineBehavior.cs",
     "line": 17,
     "symbol": "IPipelineBehavior",
     "docs": "extensibility/hooks-and-middleware"
+  },
+  "PersistenceMode": {
+    "file": "src/Whizbang.Core/Persistence/PersistenceMode.cs",
+    "line": 16,
+    "symbol": "PersistenceMode",
+    "docs": "core-concepts/persistence#modes"
+  },
+  "MessageHop": {
+    "file": "src/Whizbang.Core/Observability/MessageHop.cs",
+    "line": 39,
+    "symbol": "MessageHop",
+    "docs": "core-concepts/observability"
+  },
+  "MessageEnvelope": {
+    "file": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
+    "line": 13,
+    "symbol": "MessageEnvelope",
+    "docs": "core-concepts/observability"
+  },
+  "ITraceStore": {
+    "file": "src/Whizbang.Core/Observability/ITraceStore.cs",
+    "line": 9,
+    "symbol": "ITraceStore",
+    "docs": "core-concepts/observability"
+  },
+  "IMessageEnvelope": {
+    "file": "src/Whizbang.Core/Observability/IMessageEnvelope.cs",
+    "line": 12,
+    "symbol": "IMessageEnvelope",
+    "docs": "core-concepts/observability"
+  },
+  "IEnvelopeRegistry": {
+    "file": "src/Whizbang.Core/Observability/IEnvelopeRegistry.cs",
+    "line": 22,
+    "symbol": "IEnvelopeRegistry",
+    "docs": "core-concepts/envelope-registry"
   },
   "VectorIndexType": {
     "file": "src/Whizbang.Core/Perspectives/VectorIndexType.cs",
@@ -976,180 +1114,6 @@
     "line": 6,
     "symbol": "FieldStorageMode",
     "docs": "perspectives/physical-fields"
-  },
-  "PersistenceMode": {
-    "file": "src/Whizbang.Core/Persistence/PersistenceMode.cs",
-    "line": 16,
-    "symbol": "PersistenceMode",
-    "docs": "core-concepts/persistence#modes"
-  },
-  "MessageExtractor": {
-    "file": "src/Whizbang.Core/Internal/MessageExtractor.cs",
-    "line": 12,
-    "symbol": "MessageExtractor",
-    "docs": "core-concepts/dispatcher#automatic-message-cascade"
-  },
-  "ReceptorInvoker": {
-    "file": "src/Whizbang.Core/Messaging/ReceptorInvoker.cs",
-    "line": 36,
-    "symbol": "ReceptorInvoker",
-    "docs": "core-concepts/lifecycle-receptors"
-  },
-  "ReceptorInfo": {
-    "file": "src/Whizbang.Core/Messaging/ReceptorInfo.cs",
-    "line": 23,
-    "symbol": "ReceptorInfo",
-    "docs": "core-concepts/lifecycle-receptors"
-  },
-  "MessageSource": {
-    "file": "src/Whizbang.Core/Messaging/MessageSource.cs",
-    "line": 38,
-    "symbol": "MessageSource",
-    "docs": "core-concepts/lifecycle-receptors"
-  },
-  "MessageAssociationRecord": {
-    "file": "src/Whizbang.Core/Messaging/MessageAssociationRecord.cs",
-    "line": 8,
-    "symbol": "MessageAssociationRecord",
-    "docs": "core-concepts/message-associations"
-  },
-  "LifecycleExecutionContext": {
-    "file": "src/Whizbang.Core/Messaging/LifecycleExecutionContext.cs",
-    "line": 12,
-    "symbol": "LifecycleExecutionContext",
-    "docs": "core-concepts/lifecycle-receptors"
-  },
-  "JsonLifecycleMessageDeserializer": {
-    "file": "src/Whizbang.Core/Messaging/JsonLifecycleMessageDeserializer.cs",
-    "line": 12,
-    "symbol": "JsonLifecycleMessageDeserializer",
-    "docs": "core-concepts/lifecycle-stages"
-  },
-  "ReportPerspectiveCompletionAsync": {
-    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 259,
-    "symbol": "ReportPerspectiveCompletionAsync",
-    "docs": "workers/perspective-worker"
-  },
-  "ReportPerspectiveFailureAsync": {
-    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 279,
-    "symbol": "ReportPerspectiveFailureAsync",
-    "docs": "workers/perspective-worker"
-  },
-  "IReceptorRegistry": {
-    "file": "src/Whizbang.Core/Messaging/IReceptorRegistry.cs",
-    "line": 26,
-    "symbol": "IReceptorRegistry",
-    "docs": "core-concepts/lifecycle-receptors"
-  },
-  "IReceptorInvoker": {
-    "file": "src/Whizbang.Core/Messaging/IReceptorInvoker.cs",
-    "line": 36,
-    "symbol": "IReceptorInvoker",
-    "docs": "core-concepts/lifecycle-receptors"
-  },
-  "ILifecycleReceptorRegistry": {
-    "file": "src/Whizbang.Core/Messaging/ILifecycleReceptorRegistry.cs",
-    "line": 42,
-    "symbol": "ILifecycleReceptorRegistry",
-    "docs": "testing/lifecycle-synchronization"
-  },
-  "ILifecycleMessageDeserializer": {
-    "file": "src/Whizbang.Core/Messaging/ILifecycleMessageDeserializer.cs",
-    "line": 29,
-    "symbol": "ILifecycleMessageDeserializer",
-    "docs": "core-concepts/lifecycle-stages"
-  },
-  "ILifecycleInvoker": {
-    "file": "src/Whizbang.Core/Messaging/ILifecycleInvoker.cs",
-    "line": 26,
-    "symbol": "ILifecycleInvoker",
-    "docs": "core-concepts/lifecycle-stages"
-  },
-  "ILifecycleContext": {
-    "file": "src/Whizbang.Core/Messaging/ILifecycleContext.cs",
-    "line": 41,
-    "symbol": "ILifecycleContext",
-    "docs": "core-concepts/lifecycle-receptors"
-  },
-  "last": {
-    "file": "src/Whizbang.Core/Messaging/IEventStore.cs",
-    "line": 163,
-    "symbol": "last",
-    "docs": "core-concepts/lifecycle-receptors"
-  },
-  "IEventCascader": {
-    "file": "src/Whizbang.Core/Messaging/IEventCascader.cs",
-    "line": 11,
-    "symbol": "IEventCascader",
-    "docs": "core-concepts/lifecycle-receptors#event-cascading"
-  },
-  "IAcceptsLifecycleContext": {
-    "file": "src/Whizbang.Core/Messaging/IAcceptsLifecycleContext.cs",
-    "line": 13,
-    "symbol": "IAcceptsLifecycleContext",
-    "docs": "testing/lifecycle-synchronization"
-  },
-  "FireAtAttribute": {
-    "file": "src/Whizbang.Core/Messaging/FireAtAttribute.cs",
-    "line": 48,
-    "symbol": "FireAtAttribute",
-    "docs": "core-concepts/lifecycle-receptors"
-  },
-  "EnvelopeSerializer": {
-    "file": "src/Whizbang.Core/Messaging/EnvelopeSerializer.cs",
-    "line": 12,
-    "symbol": "EnvelopeSerializer",
-    "docs": "core-concepts/envelope-serialization"
-  },
-  "IEnvelopeSerializer": {
-    "file": "src/Whizbang.Core/Messaging/EnvelopeSerializer.cs",
-    "line": 108,
-    "symbol": "IEnvelopeSerializer",
-    "docs": "core-concepts/envelope-serialization"
-  },
-  "SerializedEnvelope": {
-    "file": "src/Whizbang.Core/Messaging/EnvelopeSerializer.cs",
-    "line": 134,
-    "symbol": "SerializedEnvelope",
-    "docs": "core-concepts/envelope-serialization"
-  },
-  "DefaultLifecycleReceptorRegistry": {
-    "file": "src/Whizbang.Core/Messaging/DefaultLifecycleReceptorRegistry.cs",
-    "line": 19,
-    "symbol": "DefaultLifecycleReceptorRegistry",
-    "docs": "testing/lifecycle-synchronization"
-  },
-  "MessageHop": {
-    "file": "src/Whizbang.Core/Observability/MessageHop.cs",
-    "line": 39,
-    "symbol": "MessageHop",
-    "docs": "core-concepts/observability"
-  },
-  "MessageEnvelope": {
-    "file": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-    "line": 13,
-    "symbol": "MessageEnvelope",
-    "docs": "core-concepts/observability"
-  },
-  "ITraceStore": {
-    "file": "src/Whizbang.Core/Observability/ITraceStore.cs",
-    "line": 9,
-    "symbol": "ITraceStore",
-    "docs": "core-concepts/observability"
-  },
-  "IMessageEnvelope": {
-    "file": "src/Whizbang.Core/Observability/IMessageEnvelope.cs",
-    "line": 12,
-    "symbol": "IMessageEnvelope",
-    "docs": "core-concepts/observability"
-  },
-  "IEnvelopeRegistry": {
-    "file": "src/Whizbang.Core/Observability/IEnvelopeRegistry.cs",
-    "line": 22,
-    "symbol": "IEnvelopeRegistry",
-    "docs": "core-concepts/envelope-registry"
   },
   "stream": {
     "file": "src/Whizbang.Core/Lenses/TemporalPerspectiveRow.cs",
@@ -1247,11 +1211,179 @@
     "symbol": "FilterMode",
     "docs": "core-concepts/scoped-lenses#filter-modes"
   },
+  "ReceptorInvoker": {
+    "file": "src/Whizbang.Core/Messaging/ReceptorInvoker.cs",
+    "line": 36,
+    "symbol": "ReceptorInvoker",
+    "docs": "core-concepts/lifecycle-receptors"
+  },
+  "ReceptorInfo": {
+    "file": "src/Whizbang.Core/Messaging/ReceptorInfo.cs",
+    "line": 23,
+    "symbol": "ReceptorInfo",
+    "docs": "core-concepts/lifecycle-receptors"
+  },
+  "MessageSource": {
+    "file": "src/Whizbang.Core/Messaging/MessageSource.cs",
+    "line": 38,
+    "symbol": "MessageSource",
+    "docs": "core-concepts/lifecycle-receptors"
+  },
+  "MessageAssociationRecord": {
+    "file": "src/Whizbang.Core/Messaging/MessageAssociationRecord.cs",
+    "line": 8,
+    "symbol": "MessageAssociationRecord",
+    "docs": "core-concepts/message-associations"
+  },
+  "LifecycleExecutionContext": {
+    "file": "src/Whizbang.Core/Messaging/LifecycleExecutionContext.cs",
+    "line": 12,
+    "symbol": "LifecycleExecutionContext",
+    "docs": "core-concepts/lifecycle-receptors"
+  },
+  "JsonLifecycleMessageDeserializer": {
+    "file": "src/Whizbang.Core/Messaging/JsonLifecycleMessageDeserializer.cs",
+    "line": 12,
+    "symbol": "JsonLifecycleMessageDeserializer",
+    "docs": "core-concepts/lifecycle-stages"
+  },
+  "ReportPerspectiveCompletionAsync": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 259,
+    "symbol": "ReportPerspectiveCompletionAsync",
+    "docs": "workers/perspective-worker"
+  },
+  "ReportPerspectiveFailureAsync": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 279,
+    "symbol": "ReportPerspectiveFailureAsync",
+    "docs": "workers/perspective-worker"
+  },
+  "IReceptorRegistry": {
+    "file": "src/Whizbang.Core/Messaging/IReceptorRegistry.cs",
+    "line": 26,
+    "symbol": "IReceptorRegistry",
+    "docs": "core-concepts/lifecycle-receptors"
+  },
+  "IReceptorInvoker": {
+    "file": "src/Whizbang.Core/Messaging/IReceptorInvoker.cs",
+    "line": 36,
+    "symbol": "IReceptorInvoker",
+    "docs": "core-concepts/lifecycle-receptors"
+  },
+  "ILifecycleReceptorRegistry": {
+    "file": "src/Whizbang.Core/Messaging/ILifecycleReceptorRegistry.cs",
+    "line": 42,
+    "symbol": "ILifecycleReceptorRegistry",
+    "docs": "testing/lifecycle-synchronization"
+  },
+  "ILifecycleMessageDeserializer": {
+    "file": "src/Whizbang.Core/Messaging/ILifecycleMessageDeserializer.cs",
+    "line": 29,
+    "symbol": "ILifecycleMessageDeserializer",
+    "docs": "core-concepts/lifecycle-stages"
+  },
+  "ILifecycleInvoker": {
+    "file": "src/Whizbang.Core/Messaging/ILifecycleInvoker.cs",
+    "line": 26,
+    "symbol": "ILifecycleInvoker",
+    "docs": "core-concepts/lifecycle-stages"
+  },
+  "ILifecycleContext": {
+    "file": "src/Whizbang.Core/Messaging/ILifecycleContext.cs",
+    "line": 41,
+    "symbol": "ILifecycleContext",
+    "docs": "core-concepts/lifecycle-receptors"
+  },
+  "last": {
+    "file": "src/Whizbang.Core/Messaging/IEventStore.cs",
+    "line": 163,
+    "symbol": "last",
+    "docs": "core-concepts/lifecycle-receptors"
+  },
+  "IEventCascader": {
+    "file": "src/Whizbang.Core/Messaging/IEventCascader.cs",
+    "line": 13,
+    "symbol": "IEventCascader",
+    "docs": "core-concepts/lifecycle-receptors#event-cascading"
+  },
+  "IAcceptsLifecycleContext": {
+    "file": "src/Whizbang.Core/Messaging/IAcceptsLifecycleContext.cs",
+    "line": 13,
+    "symbol": "IAcceptsLifecycleContext",
+    "docs": "testing/lifecycle-synchronization"
+  },
+  "FireAtAttribute": {
+    "file": "src/Whizbang.Core/Messaging/FireAtAttribute.cs",
+    "line": 48,
+    "symbol": "FireAtAttribute",
+    "docs": "core-concepts/lifecycle-receptors"
+  },
+  "EnvelopeSerializer": {
+    "file": "src/Whizbang.Core/Messaging/EnvelopeSerializer.cs",
+    "line": 12,
+    "symbol": "EnvelopeSerializer",
+    "docs": "core-concepts/envelope-serialization"
+  },
+  "IEnvelopeSerializer": {
+    "file": "src/Whizbang.Core/Messaging/EnvelopeSerializer.cs",
+    "line": 108,
+    "symbol": "IEnvelopeSerializer",
+    "docs": "core-concepts/envelope-serialization"
+  },
+  "SerializedEnvelope": {
+    "file": "src/Whizbang.Core/Messaging/EnvelopeSerializer.cs",
+    "line": 134,
+    "symbol": "SerializedEnvelope",
+    "docs": "core-concepts/envelope-serialization"
+  },
+  "DispatcherEventCascader": {
+    "file": "src/Whizbang.Core/Messaging/DispatcherEventCascader.cs",
+    "line": 30,
+    "symbol": "DispatcherEventCascader",
+    "docs": "core-concepts/lifecycle-receptors#event-cascading"
+  },
+  "DefaultLifecycleReceptorRegistry": {
+    "file": "src/Whizbang.Core/Messaging/DefaultLifecycleReceptorRegistry.cs",
+    "line": 19,
+    "symbol": "DefaultLifecycleReceptorRegistry",
+    "docs": "testing/lifecycle-synchronization"
+  },
+  "MessageExtractor": {
+    "file": "src/Whizbang.Core/Internal/MessageExtractor.cs",
+    "line": 14,
+    "symbol": "MessageExtractor",
+    "docs": "core-concepts/dispatcher#automatic-message-cascade"
+  },
   "IExecutionStrategy": {
     "file": "src/Whizbang.Core/Execution/IExecutionStrategy.cs",
     "line": 10,
     "symbol": "IExecutionStrategy",
     "docs": "components/dispatcher"
+  },
+  "SubscriptionHealthCheck": {
+    "file": "src/Whizbang.Core/HealthChecks/SubscriptionHealthCheck.cs",
+    "line": 17,
+    "symbol": "SubscriptionHealthCheck",
+    "docs": "core-concepts/transport-consumer#subscription-resilience"
+  },
+  "IRouted": {
+    "file": "src/Whizbang.Core/Dispatch/Routed.cs",
+    "line": 27,
+    "symbol": "IRouted",
+    "docs": "core-concepts/dispatcher#routed-message-cascading"
+  },
+  "Routed": {
+    "file": "src/Whizbang.Core/Dispatch/Routed.cs",
+    "line": 70,
+    "symbol": "Routed",
+    "docs": "core-concepts/dispatcher#routed-message-cascading"
+  },
+  "Route": {
+    "file": "src/Whizbang.Core/Dispatch/Route.cs",
+    "line": 37,
+    "symbol": "Route",
+    "docs": "core-concepts/dispatcher#routed-message-cascading"
   },
   "DispatchOptions": {
     "file": "src/Whizbang.Core/Dispatch/DispatchOptions.cs",
@@ -1259,17 +1391,17 @@
     "symbol": "DispatchOptions",
     "docs": "core-concepts/dispatcher#dispatch-options"
   },
-  "AuditLogEntry": {
-    "file": "src/Whizbang.Core/Audit/AuditLogEntry.cs",
-    "line": 37,
-    "symbol": "AuditLogEntry",
-    "docs": "core-concepts/audit-logging"
+  "DispatchMode": {
+    "file": "src/Whizbang.Core/Dispatch/DispatchMode.cs",
+    "line": 29,
+    "symbol": "DispatchMode",
+    "docs": "core-concepts/dispatcher#routed-message-cascading"
   },
-  "AuditLevel": {
-    "file": "src/Whizbang.Core/Audit/AuditLevel.cs",
-    "line": 6,
-    "symbol": "AuditLevel",
-    "docs": "core-concepts/audit-logging#levels"
+  "DefaultRoutingAttribute": {
+    "file": "src/Whizbang.Core/Dispatch/DefaultRoutingAttribute.cs",
+    "line": 48,
+    "symbol": "DefaultRoutingAttribute",
+    "docs": "core-concepts/dispatcher#routed-message-cascading"
   },
   "WhizbangSerializableAttribute": {
     "file": "src/Whizbang.Core/Attributes/WhizbangSerializableAttribute.cs",
@@ -1318,6 +1450,18 @@
     "line": 33,
     "symbol": "AuditEventAttribute",
     "docs": "core-concepts/audit-logging#selective-auditing"
+  },
+  "AuditLogEntry": {
+    "file": "src/Whizbang.Core/Audit/AuditLogEntry.cs",
+    "line": 37,
+    "symbol": "AuditLogEntry",
+    "docs": "core-concepts/audit-logging"
+  },
+  "AuditLevel": {
+    "file": "src/Whizbang.Core/Audit/AuditLevel.cs",
+    "line": 6,
+    "symbol": "AuditLevel",
+    "docs": "core-concepts/audit-logging#levels"
   },
   "ScopeContextEstablished": {
     "file": "src/Whizbang.Core/SystemEvents/Security/ScopeContextEstablished.cs",
