@@ -1167,7 +1167,7 @@ protected override Task CascadeToOutboxAsync(IMessage message, Type messageType)
 - **Zero reflection**: Source generators create compile-time type-switch dispatch
 - **AOT compatible**: Works with Native AOT and trimming
 - **Automatic**: No manual `PublishAsync` or `SendAsync` calls needed
-- **Configurable**: Per-event routing via `Route.Local()`, `Route.Outbox()`, `Route.Both()`
+- **Configurable**: Per-event routing via `Route.Local()`, `Route.Outbox()`, `Route.Both()`, `Route.None()`
 
 :::new
 **New in 0.1.0**: Auto-cascade to outbox enables automatic cross-service event publishing from receptor return values without explicit outbox writes.
