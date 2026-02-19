@@ -10,9 +10,11 @@ codeReferences:
   - src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMQChannelPool.cs
+  - src/Whizbang.Transports.RabbitMQ/RabbitMQConnectionRetry.cs
 testReferences:
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQTransportTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQChannelPoolTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQConnectionRetryTests.cs
   - samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/
 ---
 
@@ -578,6 +580,112 @@ app.Run();
 | `DefaultQueueName` | `null` | Fallback queue name if not specified |
 | `PrefetchCount` | 10 | QoS prefetch count per consumer |
 | `AutoDeclareDeadLetterExchange` | `true` | Auto-create DLX and DLQ |
+
+### Domain Topic Auto-Provisioning {#auto-provisioning}
+
+:::new
+When you declare domain ownership via `OwnDomains()`, Whizbang automatically provisions topic exchanges at worker startup.
+:::
+
+The `RabbitMQInfrastructureProvisioner` is automatically registered and creates topic exchanges for owned domains:
+
+```csharp
+services.AddWhizbang()
+    .WithRouting(routing => {
+        routing.OwnDomains("myapp.users", "myapp.orders");
+    })
+    .AddTransportConsumer();
+
+// At startup, these exchanges are auto-created:
+// - myapp.users (type: topic, durable: true)
+// - myapp.orders (type: topic, durable: true)
+```
+
+**Key behaviors:**
+- Exchange names are lowercased for consistency
+- Exchange declaration is idempotent (safe if already exists)
+- Provisioning happens before subscriptions are created
+- Multiple service instances can provision concurrently (race-safe)
+
+📖 See [Domain Topic Provisioning](/core-concepts/routing#domain-topic-provisioning) for full details.
+
+### Connection Retry Options {#connection-retry}
+
+The transport includes built-in connection retry with exponential backoff for handling transient connection failures:
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `InitialRetryAttempts` | 5 | Initial retry attempts with warning logs |
+| `InitialRetryDelay` | 1 second | Delay before first retry |
+| `MaxRetryDelay` | 120 seconds | Maximum delay (caps exponential backoff) |
+| `BackoffMultiplier` | 2.0 | Multiplier for exponential backoff |
+| `RetryIndefinitely` | `true` | Continue retrying after initial attempts |
+
+**Example Configuration**:
+```csharp
+builder.Services.AddRabbitMQTransport(
+    connectionString: "amqp://guest:guest@localhost:5672/",
+    configureOptions: options => {
+        // Connection retry settings
+        options.InitialRetryAttempts = 10;              // More warnings for slow containers
+        options.InitialRetryDelay = TimeSpan.FromSeconds(2);
+        options.MaxRetryDelay = TimeSpan.FromMinutes(2);
+        options.BackoffMultiplier = 1.5;
+        options.RetryIndefinitely = true;               // Keep trying until success
+    }
+);
+```
+
+**Retry Behavior** (with defaults):
+1. Initial attempt → fails
+2. Wait 1s → retry 1 (logged as warning)
+3. Wait 2s → retry 2 (logged as warning)
+4. Wait 4s → retry 3 (logged as warning)
+5. Wait 8s → retry 4 (logged as warning)
+6. Wait 16s → retry 5 (logged as warning)
+7. Continue retrying indefinitely at intervals up to 120s (logged every 10 attempts)
+
+**Key Behaviors**:
+- **Initial Phase**: First 5 attempts log warnings for each failure
+- **Indefinite Phase**: After initial attempts, continues retrying (logged less frequently)
+- **Capped Backoff**: Delay never exceeds `MaxRetryDelay` (default 120s)
+- **Graceful Shutdown**: Responds to cancellation token for clean shutdown
+
+**Use Cases**:
+- **Container Startup**: RabbitMQ container may take 10-30 seconds to become ready
+- **Network Glitches**: Temporary network issues during service startup
+- **Cluster Failover**: RabbitMQ cluster switching to different node
+- **Infrastructure Outage**: Service survives extended outages and reconnects automatically
+
+**Fail Fast** (disable indefinite retry):
+```csharp
+options.RetryIndefinitely = false;  // Throws after InitialRetryAttempts
+```
+
+### Runtime Reconnection {#runtime-reconnection}
+
+RabbitMQ transport uses the RabbitMQ client's built-in **Automatic Recovery** feature for runtime reconnection. When a connection is lost during operation:
+
+1. **Automatic Detection**: Connection shutdown is detected immediately
+2. **Automatic Recovery**: Client attempts to reconnect automatically
+3. **Channel Recovery**: All channels and consumers are automatically re-established
+4. **Topology Recovery**: Exchanges, queues, and bindings are automatically re-declared
+
+**Connection State Monitoring**:
+The transport logs connection state changes for observability:
+- `ConnectionShutdown` → Warning with reason code and message
+- `RecoverySucceeded` → Information that connection recovered
+- `ConnectionRecoveryError` → Error with exception details
+- `ConnectionBlocked` → Warning when broker blocks the connection (resource alarm)
+- `ConnectionUnblocked` → Information when normal operation resumes
+
+**Configuration**:
+```csharp
+// NetworkRecoveryInterval is set to match InitialRetryDelay
+options.InitialRetryDelay = TimeSpan.FromSeconds(5);  // Recovery interval = 5s
+```
+
+**No Manual Reconnection Needed**: The RabbitMQ client handles all reconnection automatically. Your application code continues to work transparently after recovery
 
 ### Connection String Format
 

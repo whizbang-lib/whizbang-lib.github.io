@@ -9,7 +9,9 @@ codeReferences:
   - src/Whizbang.Core/Messaging/FireAtAttribute.cs
   - src/Whizbang.Core/Messaging/ILifecycleContext.cs
   - src/Whizbang.Core/Messaging/ILifecycleReceptorRegistry.cs
-  - src/Whizbang.Core/Messaging/ILifecycleInvoker.cs
+  - src/Whizbang.Core/Messaging/IReceptorInvoker.cs
+  - src/Whizbang.Core/Messaging/IReceptorRegistry.cs
+  - src/Whizbang.Core/Messaging/ReceptorInvoker.cs
 ---
 
 # Lifecycle Receptors
@@ -21,19 +23,23 @@ Lifecycle receptors are **regular receptors** that execute at specific stages in
 **Lifecycle receptors reuse the existing `IReceptor<TMessage>` interface** - no new interfaces to learn. The `[FireAt]` attribute controls timing:
 
 ```csharp
-// Regular receptor - fires at ImmediateAsync (default)
-public class ProductMetricsReceptor : IReceptor<ProductCreatedEvent> {
-  public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
-    // Track metrics
-    return ValueTask.CompletedTask;
+// Regular receptor - fires at default stages (see below)
+public class CreateTenantHandler : IReceptor<CreateTenantCommand, TenantCreatedEvent> {
+  public ValueTask<TenantCreatedEvent> HandleAsync(CreateTenantCommand cmd, CancellationToken ct) {
+    // Business logic fires at:
+    // - LocalImmediateInline (local path)
+    // - PreOutboxInline (distributed sender)
+    // - PostInboxInline (distributed receiver)
+    return ValueTask.FromResult(new TenantCreatedEvent(Guid.NewGuid()));
   }
 }
 
-// Lifecycle receptor - fires at PostPerspectiveAsync
+// Lifecycle receptor - fires ONLY at PostPerspectiveAsync
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class ProductMetricsReceptor : IReceptor<ProductCreatedEvent> {
   public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
     // Track metrics AFTER perspective completes
+    // Does NOT fire at default stages!
     return ValueTask.CompletedTask;
   }
 }
@@ -42,7 +48,8 @@ public class ProductMetricsReceptor : IReceptor<ProductCreatedEvent> {
 **Key Design**:
 - Reuse existing `IReceptor<TMessage>` interface
 - `[FireAt]` attribute controls when receptor executes
-- Receptors without `[FireAt]` default to `ImmediateAsync`
+- Receptors without `[FireAt]` fire at **default stages** (LocalImmediateInline, PreOutboxInline, PostInboxInline)
+- Adding `[FireAt]` **replaces** defaults - receptor fires ONLY at specified stages
 - Can apply multiple `[FireAt]` attributes to fire at multiple stages
 - Optional `ILifecycleContext` injection for metadata access
 
@@ -121,16 +128,29 @@ public class OutboxMonitoringReceptor : IReceptor<IEvent> {
 
 ### Default Behavior (No Attribute)
 
-Receptors **without `[FireAt]` default to `ImmediateAsync`** (original behavior):
+:::updated
+Default behavior changed in v0.1.0 to support the unified receptor invocation model.
+:::
+
+Receptors **without `[FireAt]` fire at default stages** based on the dispatch path:
+
+| Path | Default Stage | When |
+|------|--------------|------|
+| **Local** | `LocalImmediateInline` | `DispatchAsync(msg, local: true)` |
+| **Distributed (Sender)** | `PreOutboxInline` | Before publishing to transport |
+| **Distributed (Receiver)** | `PostInboxInline` | After receiving from transport |
 
 ```csharp
-// No [FireAt] attribute = fires at ImmediateAsync
+// No [FireAt] attribute = fires at default stages
 public class CreateProductReceptor : IReceptor<CreateProductCommand, ProductCreatedEvent> {
   public async ValueTask<ProductCreatedEvent> HandleAsync(
       CreateProductCommand cmd,
       CancellationToken ct) {
 
-    // This executes immediately after dispatch
+    // This executes at:
+    // - LocalImmediateInline (when local: true)
+    // - PreOutboxInline (distributed sender)
+    // - PostInboxInline (distributed receiver)
     var product = new Product(cmd.Name, cmd.Price);
     await _dbContext.Products.AddAsync(product, ct);
 
@@ -139,10 +159,25 @@ public class CreateProductReceptor : IReceptor<CreateProductCommand, ProductCrea
 }
 ```
 
-**Why this default?**
-- Backwards compatible with existing receptors
-- Most business logic executes immediately (command handling)
-- Lifecycle receptors are opt-in for special cases
+**Why these defaults?**
+- **Paths are mutually exclusive** - a message goes local OR distributed, not both
+- **Default receptors "just work"** regardless of how message is dispatched
+- **Adding `[FireAt]` opts OUT of defaults** - you control exactly when receptor fires:
+
+```csharp
+// ONLY fires locally, never on distributed path
+[FireAt(LifecycleStage.LocalImmediateInline)]
+public class LocalOnlyHandler : IReceptor<SomeCommand> { }
+
+// ONLY fires on receiver, never on sender or local
+[FireAt(LifecycleStage.PostInboxInline)]
+public class ReceiverOnlyHandler : IReceptor<SomeEvent> { }
+
+// Fires on BOTH sender AND receiver (but not local)
+[FireAt(LifecycleStage.PreOutboxInline)]
+[FireAt(LifecycleStage.PostInboxInline)]
+public class DistributedOnlyHandler : IReceptor<SomeEvent> { }
+```
 
 ---
 
@@ -747,10 +782,12 @@ See [Lifecycle Synchronization](../testing/lifecycle-synchronization.md) for com
 - **Reuse `IReceptor<TMessage>` interface** - No new interfaces to learn
 - **`[FireAt]` controls timing** - Declarative lifecycle stage selection
 - **Multiple attributes supported** - Fire at multiple stages
-- **Default is ImmediateAsync** - Backwards compatible with existing receptors
+- **Default stages**: `LocalImmediateInline`, `PreOutboxInline`, `PostInboxInline`
+- **Adding `[FireAt]` replaces defaults** - Receptor fires ONLY at specified stages
+- **Two mutually exclusive paths**: Local (mediator) vs Distributed (outbox/inbox)
 - **Optional `ILifecycleContext` injection** - Access metadata when needed
-- **Compile-time registration** - Source generators wire automatically
+- **Compile-time registration** - Source generators wire automatically via `IReceptorRegistry`
 - **Runtime registration** - `ILifecycleReceptorRegistry` for tests
-- **Zero reflection** - Fully AOT-compatible (pattern matching + delegates)
+- **Zero reflection** - Fully AOT-compatible via `IReceptorInvoker` (pattern matching + delegates)
 - **Keep receptors fast** - < 5ms, avoid database queries in hot path
 - **Use Inline stages carefully** - They block next step (for critical operations only)

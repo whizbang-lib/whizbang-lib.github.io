@@ -3,22 +3,39 @@ title: "Lifecycle Stages"
 version: 0.1.0
 category: Core Concepts
 order: 9
-description: "Complete reference for all 18 lifecycle stages in Whizbang message processing pipeline - timing, guarantees, and use cases"
+description: "Complete reference for all 20 lifecycle stages in Whizbang message processing pipeline - timing, guarantees, and use cases"
 tags: lifecycle, stages, hooks, message-processing, timing
 codeReferences:
   - src/Whizbang.Core/Messaging/LifecycleStage.cs
-  - src/Whizbang.Core/Messaging/ILifecycleInvoker.cs
+  - src/Whizbang.Core/Messaging/IReceptorInvoker.cs
+  - src/Whizbang.Core/Messaging/IReceptorRegistry.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
 ---
 
 # Lifecycle Stages
 
-Whizbang provides **18 lifecycle stages** where custom logic can execute during message processing. Lifecycle stages enable observability, metrics collection, test synchronization, and custom side effects without modifying core framework code.
+Whizbang provides **20 lifecycle stages** where custom logic can execute during message processing. Lifecycle stages enable observability, metrics collection, test synchronization, and custom side effects without modifying core framework code.
 
 ## Core Concept
 
-Messages flow through a multi-stage pipeline:
+Messages flow through **two mutually exclusive paths**:
+
+### Local Path (Mediator Pattern)
+
+```mermaid
+graph LR
+    A[Dispatch<br>local: true] --> B[LocalImmediate]
+    B --> C[Done]
+
+    style A fill:#e1f5ff
+    style B fill:#d4edda
+    style C fill:#f0f0f0
+```
+
+**Local dispatch** acts as an in-memory mediator - no persistence, no transport. Messages are processed immediately.
+
+### Distributed Path (Outbox/Inbox)
 
 ```mermaid
 graph LR
@@ -36,6 +53,26 @@ graph LR
     style F fill:#f5e1ff
 ```
 
+**Distributed dispatch** persists to outbox, publishes via transport (RabbitMQ, Service Bus), and processes in inbox on receiver side.
+
+---
+
+## Two Mutually Exclusive Paths
+
+:::new
+Understanding the two dispatch paths is critical for using lifecycle stages correctly.
+:::
+
+| Path | Description | Default Stages | Persistence |
+|------|-------------|---------------|-------------|
+| **Local** | `DispatchAsync(msg, local: true)` | `LocalImmediateInline` | ❌ None (mediator) |
+| **Distributed** | `DispatchAsync(msg)` or via transport | `PreOutboxInline` (sender) + `PostInboxInline` (receiver) | ✅ Outbox/Inbox |
+
+**Key Points**:
+- A message goes through ONE path, not both
+- Default receptors (no `[FireAt]`) fire ONCE per path
+- `[FireAt]` attributes opt into specific stages and OUT of default behavior
+
 At each stage, **lifecycle receptors** can execute to:
 - Track metrics and telemetry
 - Log diagnostic information
@@ -45,7 +82,7 @@ At each stage, **lifecycle receptors** can execute to:
 
 ---
 
-## All 18 Lifecycle Stages
+## All 20 Lifecycle Stages
 
 ### Immediate Stage
 
@@ -71,6 +108,72 @@ public class CommandMetricsReceptor : IReceptor<ICommand> {
 
     public ValueTask HandleAsync(ICommand cmd, CancellationToken ct) {
         _metrics.RecordCommand(cmd.GetType().Name);
+        return ValueTask.CompletedTask;
+    }
+}
+```
+
+---
+
+### LocalImmediate Stages (2 stages) ⭐ NEW
+
+:::new
+LocalImmediate stages are new in v0.1.0 and enable in-memory mediator-style message handling.
+:::
+
+#### `LocalImmediateInline` ⭐ **Default Stage for Local Path**
+
+**Timing**: After `DispatchAsync(message, local: true)` completes, blocking.
+
+**Use Cases**:
+- **Business logic receptors** (this is where your command handlers fire!)
+- Request-response patterns in same process
+- In-memory mediator workflows
+- Synchronous local dispatch
+
+**Guarantees**:
+- **Blocking** - dispatch waits for completion
+- **NO persistence** - message never hits outbox/inbox
+- **Default stage** for receptors WITHOUT `[FireAt]` on local path
+- Errors propagate to caller
+
+**Example**:
+```csharp
+// Receptor WITHOUT [FireAt] fires here when dispatched locally!
+public class CreateTenantCommandHandler : IReceptor<CreateTenantCommand, TenantCreatedEvent> {
+    public async ValueTask<TenantCreatedEvent> HandleAsync(CreateTenantCommand cmd, CancellationToken ct) {
+        // Business logic executes at LocalImmediateInline stage
+        var tenant = new Tenant(cmd.Name);
+        await _dbContext.Tenants.AddAsync(tenant, ct);
+        return new TenantCreatedEvent(tenant.Id);
+    }
+}
+
+// Use local dispatch for in-process handling
+await dispatcher.DispatchAsync(new CreateTenantCommand("Acme"), local: true);
+```
+
+#### `LocalImmediateAsync`
+
+**Timing**: After `DispatchAsync(message, local: true)` completes, non-blocking.
+
+**Use Cases**:
+- Non-critical logging after local dispatch
+- Fire-and-forget metrics
+- Background notifications
+
+**Guarantees**:
+- **Non-blocking** - dispatch returns immediately
+- **NO persistence** - message never hits outbox/inbox
+- Runs via `Task.Run`
+- Errors logged but don't affect caller
+
+**Example**:
+```csharp
+[FireAt(LifecycleStage.LocalImmediateAsync)]
+public class LocalDispatchLogger : IReceptor<ICommand> {
+    public ValueTask HandleAsync(ICommand cmd, CancellationToken ct) {
+        Console.WriteLine($"Local dispatch completed for {cmd.GetType().Name}");
         return ValueTask.CompletedTask;
     }
 }
@@ -150,18 +253,20 @@ public class CommandMetricsReceptor : IReceptor<ICommand> {
 
 ### Outbox Stages (4 stages)
 
-#### `PreOutboxInline`
+#### `PreOutboxInline` ⭐ **Default Stage for Distributed Sender**
 
 **Timing**: Before publishing message to transport (Service Bus, RabbitMQ, etc.).
 
 **Use Cases**:
+- **Business logic receptors** (this is where your command handlers fire on sender side!)
 - Pre-publish validation
 - Message enrichment
 - Transport-specific preparation
 
 **Guarantees**:
-- Blocking - publish waits for completion
+- **Blocking** - publish waits for completion
 - Message not yet sent to transport
+- **Default stage** for receptors WITHOUT `[FireAt]` on distributed path (sender side)
 
 #### `PreOutboxAsync`
 
@@ -240,17 +345,19 @@ public class CommandMetricsReceptor : IReceptor<ICommand> {
 - Non-blocking
 - Receptor has completed successfully
 
-#### `PostInboxInline`
+#### `PostInboxInline` ⭐ **Default Stage for Distributed Receiver**
 
-**Timing**: After receptor completes (blocking).
+**Timing**: After message received from transport and stored in inbox (blocking).
 
 **Use Cases**:
+- **Business logic receptors** (this is where your command handlers fire on receiver side!)
 - Test synchronization for message reception
 - Critical post-processing
 
 **Guarantees**:
-- Blocking
-- Receptor has completed successfully
+- **Blocking** - completion waits for all handlers
+- Message stored in inbox and deduplicated
+- **Default stage** for receptors WITHOUT `[FireAt]` on distributed path (receiver side)
 
 ---
 
@@ -501,11 +608,15 @@ See [Lifecycle Receptors](lifecycle-receptors.md) for API details.
 
 ## Summary
 
-- **18 lifecycle stages** across 5 phases (Immediate, Distribute, Outbox, Inbox, Perspective)
+- **20 lifecycle stages** across 6 phases (Immediate, LocalImmediate, Distribute, Outbox, Inbox, Perspective)
+- **Two mutually exclusive paths**: Local (mediator) and Distributed (outbox/inbox)
+- **Default stages** for receptors without `[FireAt]`:
+  - **Local path**: `LocalImmediateInline`
+  - **Distributed path**: `PreOutboxInline` (sender) + `PostInboxInline` (receiver)
 - **Inline stages** block next step - use for critical operations
 - **Async stages** run in parallel - use for metrics and logging
 - **`PostPerspectiveInline`** is critical for test synchronization
 - **Compile-time registration** via `[FireAt]` attribute
 - **Runtime registration** via `ILifecycleReceptorRegistry` for tests
-- **Zero reflection** - fully AOT-compatible
+- **Zero reflection** - fully AOT-compatible via `IReceptorInvoker` and `IReceptorRegistry`
 - **Performance** - keep lifecycle receptors fast and lightweight
