@@ -187,24 +187,64 @@ await dispatcher.SendAsync(new PauseProcessingCommand(
 
 ## Configuration
 
+### Fluent Configuration with WithRouting {#with-routing}
+
+The recommended approach uses the fluent `WithRouting()` extension method:
+
+```csharp
+services.AddWhizbang()
+    .WithRouting(routing => {
+        routing
+            .OwnDomains("myapp.users.commands")
+            .SubscribeTo("myapp.notifications.events")
+            .Inbox.UseSharedTopic("inbox");
+    })
+    .WithEFCore<MyDbContext>()
+    .WithDriver.Postgres
+    .AddTransportConsumer();  // Auto-generates subscriptions!
+```
+
+This approach:
+- **Chains with other Whizbang configuration** - Integrates with EF Core, drivers, and transport setup
+- **Auto-generates subscriptions** - When paired with `AddTransportConsumer()`, subscriptions are created automatically
+- **Type-safe** - All configuration is compile-time verified
+
 ### Complete Example
 
 ```csharp
 // User Service - handles user commands, subscribes to order events
-services.Configure<RoutingOptions>(opts => {
-  // Commands this service handles
-  opts.OwnDomains("myapp.users.commands");
+services.AddWhizbang()
+    .WithRouting(routing => {
+        // Commands this service handles
+        routing.OwnDomains("myapp.users.commands");
 
-  // Events are auto-discovered from perspectives/receptors
-  // Manual override (adds to auto-discovered):
-  opts.SubscribeTo("myapp.notifications.events");
-});
+        // Events are auto-discovered from perspectives/receptors
+        // Manual override (adds to auto-discovered):
+        routing.SubscribeTo("myapp.notifications.events");
+
+        // Inbox strategy
+        routing.Inbox.UseSharedTopic("inbox");
+    })
+    .AddTransportConsumer();
 
 // BFF Service - sends commands, receives events
-services.Configure<RoutingOptions>(opts => {
-  // No OwnDomains (BFF doesn't handle commands directly)
+services.AddWhizbang()
+    .WithRouting(routing => {
+        // No OwnDomains (BFF doesn't handle commands directly)
+        // Events auto-discovered from its receptors/perspectives
+        routing.Inbox.UseSharedTopic("inbox");
+    })
+    .AddTransportConsumer();
+```
 
-  // Events auto-discovered from its receptors/perspectives
+### Legacy Configuration
+
+For backwards compatibility, you can still configure routing options directly:
+
+```csharp
+services.Configure<RoutingOptions>(opts => {
+  opts.OwnDomains("myapp.users.commands");
+  opts.SubscribeTo("myapp.notifications.events");
 });
 ```
 
@@ -254,6 +294,97 @@ services.Configure<RoutingOptions>(opts => {
   opts.Inbox.UseDomainTopics(".in");
   // Creates topics: "myapp.users.in", "myapp.orders.in", etc.
 });
+```
+
+## Domain Topic Provisioning {#domain-topic-provisioning}
+
+:::new
+When a service declares domain ownership via `OwnDomains()`, Whizbang automatically provisions the corresponding topics/exchanges on the message broker at worker startup. This ensures the domain owner (publisher) creates infrastructure that subscribers will use.
+:::
+
+### How It Works
+
+At `TransportConsumerWorker` startup, before creating subscriptions:
+
+1. The worker checks for a registered `IInfrastructureProvisioner`
+2. If present, it calls `ProvisionOwnedDomainsAsync()` with the service's owned domains
+3. The provisioner creates topics/exchanges for each owned domain
+4. Then subscriptions are created as normal
+
+```csharp
+// When you configure:
+services.AddWhizbang()
+    .WithRouting(routing => {
+        routing.OwnDomains("myapp.users", "myapp.orders");
+    })
+    .AddTransportConsumer();
+
+// At startup, these topics are automatically provisioned:
+// - myapp.users (topic/exchange)
+// - myapp.orders (topic/exchange)
+```
+
+### Transport-Specific Behavior
+
+| Transport | Provisioned Resource | Idempotent |
+|-----------|---------------------|------------|
+| RabbitMQ | Topic exchange (durable) | Yes |
+| Azure Service Bus | Topic | Yes |
+
+### RabbitMQ
+
+For RabbitMQ, `RabbitMQInfrastructureProvisioner` declares topic exchanges:
+
+```csharp
+// Provisioning is automatic when using AddRabbitMQTransport
+services.AddRabbitMQTransport(connectionString);
+
+// Results in ExchangeDeclareAsync for each owned domain:
+// - Exchange: "myapp.users", Type: "topic", Durable: true
+// - Exchange: "myapp.orders", Type: "topic", Durable: true
+```
+
+Exchange creation is idempotent - calling `ExchangeDeclareAsync` multiple times is safe.
+
+### Azure Service Bus
+
+For Azure Service Bus, `ServiceBusInfrastructureProvisioner` creates topics via the Administration API:
+
+```csharp
+// Add transport and provisioner separately
+// (provisioning requires Manage permissions)
+services.AddAzureServiceBusTransport(connectionString);
+services.AddAzureServiceBusProvisioner(adminConnectionString);
+
+// Results in CreateTopicIfNotExistsAsync for each owned domain:
+// - Topic: "myapp.users"
+// - Topic: "myapp.orders"
+```
+
+**Note**: Topic provisioning requires a connection string with **Manage** permissions. In production, topics are often pre-provisioned via infrastructure-as-code, so `AddAzureServiceBusProvisioner` is optional.
+
+### Custom Provisioners
+
+Implement `IInfrastructureProvisioner` for custom transport providers:
+
+```csharp
+public interface IInfrastructureProvisioner {
+    Task ProvisionOwnedDomainsAsync(
+        IReadOnlySet<string> ownedDomains,
+        CancellationToken cancellationToken = default);
+}
+
+// Example custom implementation
+public class MyCustomProvisioner : IInfrastructureProvisioner {
+    public async Task ProvisionOwnedDomainsAsync(
+        IReadOnlySet<string> ownedDomains,
+        CancellationToken cancellationToken = default) {
+        foreach (var domain in ownedDomains) {
+            var topicName = domain.ToLowerInvariant();
+            await CreateTopicAsync(topicName, cancellationToken);
+        }
+    }
+}
 ```
 
 ## Transport Subscription Builder
@@ -389,6 +520,7 @@ logger.LogInformation(
 
 ## Related Documentation
 
+- [Transport Consumer](./transport-consumer.md) - Auto-generated transport subscriptions
 - [System Events](./system-events.md) - System-level event auditing
 - [Security](./security.md) - Permissions and access control
 - [Scoping](./scoping.md) - Multi-tenancy and data isolation
