@@ -46,6 +46,87 @@ var external = TrackedGuid.FromExternal(someGuid);
 
 **Recommendation**: Use `[WhizbangId]` types for domain identities, `TrackedGuid` for infrastructure code that needs GUID flexibility with metadata preservation.
 
+## TrackedGuid Interception (Opt-In)
+
+Whizbang includes an optional compile-time interceptor that automatically wraps GUID creation calls with `TrackedGuid`, preserving metadata about the GUID source and version.
+
+### Enabling Interception
+
+Add to your project file to enable automatic interception:
+
+```xml
+<PropertyGroup>
+  <WhizbangGuidInterceptionEnabled>true</WhizbangGuidInterceptionEnabled>
+</PropertyGroup>
+```
+
+When enabled, the following calls are intercepted:
+- `Guid.NewGuid()` → `TrackedGuid` with `Version4 | SourceMicrosoft`
+- `Guid.CreateVersion7()` → `TrackedGuid` with `Version7 | SourceMicrosoft`
+- Third-party libraries (Marten, UUIDNext, Medo.Uuid7)
+
+### How It Works
+
+The `GuidInterceptorGenerator` uses C# 12 `[InterceptsLocation]` to replace GUID creation calls at compile-time:
+
+```csharp
+// Your code (with interception enabled)
+var id = Guid.NewGuid();
+
+// After interception (generated code)
+var id = TrackedGuid.FromIntercepted(
+    Guid.NewGuid(),
+    GuidMetadata.Version4 | GuidMetadata.SourceMicrosoft);
+```
+
+### Suppressing Interception
+
+Use `[SuppressGuidInterception]` to opt-out of interception:
+
+```csharp
+using Whizbang.Core;
+
+public class LegacyService {
+  [SuppressGuidInterception]
+  public Guid CreateLegacyId() {
+    return Guid.NewGuid();  // Not intercepted
+  }
+}
+
+// Or suppress entire class
+[SuppressGuidInterception]
+public class TestFixtures {
+  // All Guid calls in this class are not intercepted
+}
+```
+
+### Runtime Validation
+
+Use `GuidOrderingValidator` to validate TrackedGuids at runtime:
+
+```csharp
+using Whizbang.Core.Configuration;
+using Whizbang.Core.Validation;
+
+var options = new WhizbangOptions {
+  GuidOrderingViolationSeverity = GuidOrderingSeverity.Warning
+};
+var validator = new GuidOrderingValidator(options, logger);
+
+// Validates that the GUID is time-ordered (v7)
+validator.ValidateForTimeOrdering(trackedGuid, "EventId");
+// Logs warning if v4 GUID is used where v7 is expected
+```
+
+Configuration options:
+- `DisableGuidTracking` - Bypass all validation (default: `false`)
+- `GuidOrderingViolationSeverity` - `None`, `Info`, `Warning` (default), `Error`
+
+### Diagnostics
+
+- **[WHIZ058](../diagnostics/whiz058.md)** - Info: GUID call intercepted
+- **[WHIZ059](../diagnostics/whiz059.md)** - Info: Interception suppressed
+
 ## Roslyn Analyzers (WHIZ055-WHIZ056)
 
 Whizbang includes Roslyn analyzers that detect problematic GUID generation patterns:
