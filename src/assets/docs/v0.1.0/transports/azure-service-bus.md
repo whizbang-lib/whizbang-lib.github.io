@@ -8,7 +8,11 @@ tags: transports, azure-service-bus, messaging, topics, subscriptions, correlati
 codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
   - src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs
+  - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs
+  - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusConnectionRetry.cs
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs
+testReferences:
+  - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusConnectionRetryTests.cs
 ---
 
 # Azure Service Bus Transport
@@ -199,6 +203,130 @@ builder.Services.AddAzureServiceBusTransport(connectionString);
 
 var app = builder.Build();
 app.Run();
+```
+
+### Configuration Options
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `MaxConcurrentCalls` | 10 | Maximum concurrent message processing calls |
+| `MaxAutoLockRenewalDuration` | 5 minutes | Maximum duration for automatic lock renewal |
+| `MaxDeliveryAttempts` | 10 | Retry limit before dead-lettering |
+| `DefaultSubscriptionName` | "default" | Fallback subscription name if not specified |
+
+### Connection Retry Options {#connection-retry}
+
+The transport includes built-in connection retry with exponential backoff for handling transient connection failures:
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `InitialRetryAttempts` | 5 | Initial retry attempts with warning logs |
+| `InitialRetryDelay` | 1 second | Delay before first retry |
+| `MaxRetryDelay` | 120 seconds | Maximum delay (caps exponential backoff) |
+| `BackoffMultiplier` | 2.0 | Multiplier for exponential backoff |
+| `RetryIndefinitely` | `true` | Continue retrying after initial attempts |
+
+**Example Configuration**:
+```csharp
+builder.Services.AddAzureServiceBusTransport(
+    connectionString: "Endpoint=sb://...",
+    configureOptions: options => {
+        // Connection retry settings
+        options.InitialRetryAttempts = 10;              // More warnings for slow emulators
+        options.InitialRetryDelay = TimeSpan.FromSeconds(2);
+        options.MaxRetryDelay = TimeSpan.FromMinutes(2);
+        options.BackoffMultiplier = 1.5;
+        options.RetryIndefinitely = true;               // Keep trying until success
+    }
+);
+```
+
+**Retry Behavior** (with defaults):
+1. Initial attempt → fails
+2. Wait 1s → retry 1 (logged as warning)
+3. Wait 2s → retry 2 (logged as warning)
+4. Wait 4s → retry 3 (logged as warning)
+5. Wait 8s → retry 4 (logged as warning)
+6. Wait 16s → retry 5 (logged as warning)
+7. Continue retrying indefinitely at intervals up to 120s (logged every 10 attempts)
+
+**Key Behaviors**:
+- **Initial Phase**: First 5 attempts log warnings for each failure
+- **Indefinite Phase**: After initial attempts, continues retrying (logged less frequently)
+- **Capped Backoff**: Delay never exceeds `MaxRetryDelay` (default 120s)
+- **Graceful Shutdown**: Responds to cancellation token for clean shutdown
+
+**Use Cases**:
+- **Emulator Startup**: Azure Service Bus emulator may take 45-60 seconds to become ready
+- **Network Glitches**: Temporary network issues during service startup
+- **Cold Start**: Azure Service Bus may have cold start delays in serverless scenarios
+- **Infrastructure Outage**: Service survives extended outages and reconnects automatically
+
+**Fail Fast** (disable indefinite retry):
+```csharp
+options.RetryIndefinitely = false;  // Throws after InitialRetryAttempts
+```
+
+### Runtime Reconnection {#runtime-reconnection}
+
+Azure Service Bus SDK has built-in retry policies that handle transient failures during runtime. The SDK automatically:
+
+1. **Detects Transient Failures**: Network issues, throttling, service unavailability
+2. **Automatic Retries**: Uses exponential backoff with configurable policies
+3. **Connection Recovery**: Re-establishes connections transparently
+
+**SDK Retry Policy** (configured in ServiceBusClientOptions):
+The Azure SDK's built-in retry policy handles most runtime scenarios. Our connection retry is specifically for **initial connection establishment** when the service might not yet be available (e.g., emulator startup).
+
+**No Manual Reconnection Needed**: The Azure Service Bus SDK handles transient failures automatically. Your application code continues to work transparently after recovery
+
+### Domain Topic Auto-Provisioning {#domain-topic-provisioning}
+
+:::new
+When a service declares domain ownership via `OwnDomains()`, Whizbang can automatically provision the corresponding topics at worker startup. This ensures the domain owner (publisher) creates infrastructure that subscribers will use.
+:::
+
+**Important**: Topic provisioning requires a connection string with **Manage** permissions. In production environments, topics are often pre-provisioned via infrastructure-as-code, so this step is optional.
+
+**Enable Auto-Provisioning**:
+```csharp
+// Requires separate call with Manage permissions
+services.AddAzureServiceBusTransport(connectionString);
+services.AddAzureServiceBusProvisioner(adminConnectionString);
+
+services.AddWhizbang()
+    .WithRouting(routing => {
+        routing.OwnDomains("myapp.users", "myapp.orders");
+    })
+    .AddTransportConsumer();
+
+// At startup, these topics are automatically created:
+// - myapp.users
+// - myapp.orders
+```
+
+**Provisioning Behavior**:
+- Uses `ServiceBusAdministrationClient.CreateTopicIfNotExistsAsync()`
+- Idempotent - safe to call from multiple service instances
+- Handles race conditions gracefully (ignores 409 Conflict)
+- Skips provisioning if `AddAzureServiceBusProvisioner` is not called
+
+**Why Separate Registration?**
+
+The provisioner is registered separately from the transport because:
+1. **Different Permissions**: Transport needs Send/Receive, provisioning needs Manage
+2. **Production Patterns**: Topics are typically pre-created via IaC (Terraform, Bicep, ARM)
+3. **Security**: Not all environments should have Manage permissions
+
+**Development vs Production**:
+```csharp
+// Development: Auto-provision for convenience
+if (builder.Environment.IsDevelopment()) {
+    services.AddAzureServiceBusProvisioner(connectionString);
+}
+
+// Production: Topics pre-provisioned via infrastructure-as-code
+// No AddAzureServiceBusProvisioner call needed
 ```
 
 ---
