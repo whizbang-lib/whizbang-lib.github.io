@@ -543,6 +543,8 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCre
 
 See [Dispatcher: Automatic Event Cascade](dispatcher.md#automatic-event-cascade) for full details on supported return types.
 
+For RPC-style calls where the caller extracts a specific response type from the tuple, see [RPC Response Extraction](rpc-extraction.md).
+
 ---
 
 ## Dependency Injection
@@ -1066,6 +1068,7 @@ public class CompleteOrderReceptor : IReceptor<CompleteOrder, OrderCompleted> {
 
 **Core Concepts**:
 - [Dispatcher](dispatcher.md) - How to invoke receptors
+- [RPC Response Extraction](rpc-extraction.md) - Extract specific types from tuple returns
 - [Perspectives](perspectives.md) - Event listeners for read models
 - [Message Context](message-context.md) - Correlation and causation tracking
 
