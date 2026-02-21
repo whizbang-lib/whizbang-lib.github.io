@@ -386,6 +386,102 @@ Service A (HTTP Request)          Service B (Message Consumer)
                               └───────────────────────────┘
 ```
 
+## Explicit Security Context API
+
+For system-triggered operations (timers, schedulers) or impersonation scenarios, use the explicit security context API:
+
+### AsSystem() - System Operations
+
+Use `AsSystem()` when dispatching messages from system contexts where no user identity exists, or when a user-initiated action should run with system privileges:
+
+```csharp
+// Timer/scheduler with no user context
+await dispatcher.AsSystem().SendAsync(new ReseedSystemEvent());
+// Audit: ContextType=System, ActualPrincipal=null, EffectivePrincipal="SYSTEM"
+
+// Admin triggering system operation (preserves who triggered it)
+await dispatcher.AsSystem().SendAsync(new ReseedSystemEvent());
+// Audit: ContextType=System, ActualPrincipal="admin@example.com", EffectivePrincipal="SYSTEM"
+```
+
+Key behaviors:
+- `EffectivePrincipal` is always set to `"SYSTEM"`
+- `ActualPrincipal` captures the current user if one exists (for audit trail)
+- `ContextType` is set to `SecurityContextType.System`
+- Previous security context is restored after dispatch completes
+
+### RunAs() - Impersonation
+
+Use `RunAs()` when a user needs to perform actions as another identity, with full audit trail:
+
+```csharp
+// Support staff impersonating a user (full audit trail)
+await dispatcher.RunAs("target-user@example.com").SendAsync(command);
+// Audit: ContextType=Impersonated, ActualPrincipal="support@example.com", EffectivePrincipal="target-user@example.com"
+```
+
+Key behaviors:
+- `EffectivePrincipal` is set to the specified identity
+- `ActualPrincipal` captures who initiated the impersonation
+- `ContextType` is set to `SecurityContextType.Impersonated`
+- Both identities are captured for security auditing
+
+### Supported Methods
+
+The security builder supports all dispatch methods:
+
+```csharp
+// Send commands
+await dispatcher.AsSystem().SendAsync(command);
+await dispatcher.AsSystem().SendAsync(command, options);
+await dispatcher.AsSystem().SendAsync(command, messageContext);
+
+// Local invoke (in-process)
+await dispatcher.AsSystem().LocalInvokeAsync<TMessage, TResult>(message);
+await dispatcher.AsSystem().LocalInvokeAsync(message);
+
+// Publish events
+await dispatcher.AsSystem().PublishAsync(eventData);
+```
+
+### Audit Trail
+
+The explicit security API provides complete audit trail information:
+
+| Scenario | ContextType | ActualPrincipal | EffectivePrincipal |
+|----------|-------------|-----------------|-------------------|
+| Timer job (no user) | System | null | SYSTEM |
+| Admin runs as system | System | admin@example.com | SYSTEM |
+| Support impersonates | Impersonated | support@example.com | target-user |
+| Normal user | User | user@example.com | user@example.com |
+
+### SecurityContextType Enum
+
+```csharp
+public enum SecurityContextType {
+  User,           // Normal user context from HTTP/message
+  System,         // System-initiated (no user involved)
+  Impersonated,   // User running as different identity
+  ServiceAccount  // Service-to-service with service identity
+}
+```
+
+### Context Propagation
+
+The explicit security context is propagated to outgoing message hops when `ImmutableScopeContext.ShouldPropagate` is `true` (the default for explicit contexts). This ensures downstream services receive the security context:
+
+```csharp
+// This message will carry SYSTEM context to downstream services
+await dispatcher.AsSystem().SendAsync(new MaintenanceCommand());
+```
+
+### Design Principles
+
+1. **No implicit fallback to elevated** - Code must explicitly request system or elevated context
+2. **Full audit trail** - Both actual and effective identities are always captured
+3. **Context restoration** - Previous context is restored after dispatch completes (try/finally)
+4. **Authorization not bypassed** - This only sets context, not permissions
+
 ## Integration with Existing Security
 
 This message security system complements existing security tools:
