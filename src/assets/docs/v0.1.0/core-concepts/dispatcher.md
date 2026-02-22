@@ -1109,20 +1109,67 @@ public ValueTask<(OrderResult, IMessage[])> HandleAsync(
 
 By default, cascaded events are dispatched to local receptors only. To cascade events to the outbox for cross-service delivery, use the `Route` wrapper:
 
-**Route Wrappers**:
+**Route Wrappers**: {#routed-message-cascading}
 ```csharp
-// Cascade to local receptors only (default)
+// Cascade to local receptors AND persist to event store (default)
 return (result, new OrderCreated(orderId));
+
+// Explicit local + event store (same as default)
+return (result, Route.Local(new OrderCreated(orderId)));
+
+// Cascade to local receptors only - NO persistence (ephemeral)
+return (result, Route.LocalNoPersist(new OrderCreated(orderId)));
+
+// Persist to event store only - NO local receptors (audit events)
+return (result, Route.EventStoreOnly(new AuditEvent(userId, action)));
 
 // Cascade to outbox only (cross-service)
 return (result, Route.Outbox(new OrderCreated(orderId)));
 
 // Cascade to both local and outbox
 return (result, Route.Both(new OrderCreated(orderId)));
-
-// Explicit local-only (same as default)
-return (result, Route.Local(new OrderCreated(orderId)));
 ```
+
+:::new
+**New**: `Route.Local()` now includes automatic event store persistence. Events are stored to `wh_event_store` and perspective events are created. Use `Route.LocalNoPersist()` for the previous behavior (local receptors only, no persistence).
+:::
+
+### Event Store Only Mode {#event-store-only}
+
+`Route.EventStoreOnly()` persists events to the event store without invoking local receptors or sending via transport. This is useful for:
+
+- **Audit events**: Record actions without triggering business logic
+- **Historical events**: Import or replay events into the store
+- **Deferred processing**: Store events for later perspective rebuilds
+
+```csharp
+public class AuditReceptor : IReceptor<ProcessOrder, (OrderResult, Routed<AuditEvent>)> {
+    public ValueTask<(OrderResult, Routed<AuditEvent>)> HandleAsync(
+        ProcessOrder command, CancellationToken ct = default) {
+
+        var result = new OrderResult(command.OrderId);
+
+        // Audit event stored to event store only - no local receptors invoked
+        var auditEvent = new AuditEvent(
+            UserId: command.UserId,
+            Action: "OrderProcessed",
+            ResourceId: command.OrderId
+        );
+
+        return ValueTask.FromResult((result, Route.EventStoreOnly(auditEvent)));
+    }
+}
+// Result: AuditEvent persisted to wh_event_store
+// Result: Perspective events created for downstream projections
+// Result: NO local receptors invoked
+// Result: NO transport publishing (destination=null)
+```
+
+**How It Works**:
+1. Event is written to `wh_outbox` with `destination=null`
+2. `process_work_batch` stores event in `wh_event_store` and creates perspective events
+3. `TransportPublishStrategy` skips transport (null destination = bypass)
+4. Event is marked as published (completed)
 
 **Example: Cross-Service Event Publishing**:
 ```csharp
@@ -1167,10 +1214,14 @@ protected override Task CascadeToOutboxAsync(IMessage message, Type messageType)
 - **Zero reflection**: Source generators create compile-time type-switch dispatch
 - **AOT compatible**: Works with Native AOT and trimming
 - **Automatic**: No manual `PublishAsync` or `SendAsync` calls needed
-- **Configurable**: Per-event routing via `Route.Local()`, `Route.Outbox()`, `Route.Both()`, `Route.None()`
+- **Configurable**: Per-event routing via `Route.Local()`, `Route.LocalNoPersist()`, `Route.EventStoreOnly()`, `Route.Outbox()`, `Route.Both()`, `Route.None()`
 
 :::new
 **New in 0.1.0**: Auto-cascade to outbox enables automatic cross-service event publishing from receptor return values without explicit outbox writes.
+:::
+
+:::new
+**New**: `Route.LocalNoPersist()` and `Route.EventStoreOnly()` provide fine-grained control over event persistence and local dispatch.
 :::
 
 ### Comparison: Manual vs Auto-Cascade
