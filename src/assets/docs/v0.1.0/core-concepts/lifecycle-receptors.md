@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IReceptorInvoker.cs
   - src/Whizbang.Core/Messaging/IReceptorRegistry.cs
   - src/Whizbang.Core/Messaging/ReceptorInvoker.cs
+  - src/Whizbang.Core/Workers/PerspectiveWorker.cs
 ---
 
 # Lifecycle Receptors
@@ -52,6 +53,64 @@ public class ProductMetricsReceptor : IReceptor<ProductCreatedEvent> {
 - Adding `[FireAt]` **replaces** defaults - receptor fires ONLY at specified stages
 - Can apply multiple `[FireAt]` attributes to fire at multiple stages
 - Optional `ILifecycleContext` injection for metadata access
+- **Scoped dependency support** - receptors can inject scoped services like `DbContext`, `IOrchestratorAgent`
+
+---
+
+## Scoped Dependency Support
+
+:::new
+Scoped dependency support added in v0.1.0
+:::
+
+Lifecycle receptors can inject **scoped dependencies** just like regular receptors. The generated code creates a new `IServiceScope` for each lifecycle invocation, ensuring proper dependency resolution and lifecycle management.
+
+### Example with Scoped Dependencies
+
+```csharp
+[FireAt(LifecycleStage.PostDistributeInline)]
+public class StartupHandler : IReceptor<StartedEvent> {
+  private readonly AppDbContext _dbContext;        // Scoped!
+  private readonly IOrchestratorAgent _agent;      // Scoped!
+  private readonly ILogger<StartupHandler> _logger; // Transient
+
+  public StartupHandler(
+      AppDbContext dbContext,
+      IOrchestratorAgent agent,
+      ILogger<StartupHandler> logger) {
+    _dbContext = dbContext;
+    _agent = agent;
+    _logger = logger;
+  }
+
+  public async ValueTask HandleAsync(StartedEvent evt, CancellationToken ct) {
+    // All scoped dependencies work correctly!
+    var config = await _dbContext.Configurations.FirstAsync(ct);
+    await _agent.StartOrchestratorAsync(config, ct);
+    _logger.LogInformation("Orchestrator started");
+  }
+}
+```
+
+### How It Works
+
+The generated `LifecycleInvoker` uses `IServiceScopeFactory` to create a scope per invocation:
+
+```csharp
+// Generated code pattern
+if (messageType == typeof(StartedEvent) && stage == LifecycleStage.PostDistributeInline) {
+  using var scope = _scopeFactory.CreateScope();
+  var receptor = scope.ServiceProvider.GetRequiredService<IReceptor<StartedEvent>>();
+  await receptor.HandleAsync((StartedEvent)message, cancellationToken);
+}
+// Scope disposed after invocation - resources cleaned up
+```
+
+**Benefits**:
+- ✅ Same scoped dependency support as regular receptors
+- ✅ Proper scope lifecycle (created before, disposed after each invocation)
+- ✅ Compatible with `DbContext`, `IOrchestratorAgent`, and other scoped services
+- ✅ No special configuration required
 
 ---
 
@@ -269,6 +328,95 @@ public class SpecificPerspectiveReceptor : IReceptor<ProductCreatedEvent> {
 
 ---
 
+## Security Context in Lifecycle Receptors
+
+:::new
+Security context is now established before lifecycle receptor invocation in PerspectiveWorker (v0.1.0).
+:::
+
+Lifecycle receptors have full access to security context from the message envelope via `IMessageContext`:
+
+### Accessing Security Context
+
+```csharp
+[FireAt(LifecycleStage.PrePerspectiveAsync)]
+public class AuditReceptor : IReceptor<IEvent> {
+  private readonly IMessageContext _messageContext;
+  private readonly ILogger<AuditReceptor> _logger;
+
+  public AuditReceptor(IMessageContext messageContext, ILogger<AuditReceptor> logger) {
+    _messageContext = messageContext;
+    _logger = logger;
+  }
+
+  public ValueTask HandleAsync(IEvent evt, CancellationToken ct) {
+    // UserId is available from the message envelope's security context
+    var userId = _messageContext.UserId;
+
+    _logger.LogInformation(
+      "User {UserId} triggered perspective update for event {EventId}",
+      userId,
+      _messageContext.MessageId);
+
+    return ValueTask.CompletedTask;
+  }
+}
+```
+
+### Available Security Properties
+
+The `IMessageContext` provides access to:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `UserId` | `string?` | User identifier from the message's security context |
+| `MessageId` | `MessageId` | The message identifier |
+| `CorrelationId` | `CorrelationId` | Correlation ID for distributed tracing |
+| `CausationId` | `MessageId` | ID of the message that caused this one |
+| `Timestamp` | `DateTimeOffset` | When the message was created |
+| `Metadata` | `IReadOnlyDictionary<string, object>` | Custom metadata |
+
+### Lifecycle Stages with Security Context
+
+Security context is established **before** each lifecycle receptor invocation for the following stages:
+
+- `PrePerspectiveAsync` - Before perspective processing
+- `PrePerspectiveInline` - Before perspective processing (blocking)
+- `PostPerspectiveInline` - After perspective checkpoint saved (blocking)
+
+### Example: User-Aware Audit Trail
+
+```csharp
+[FireAt(LifecycleStage.PostPerspectiveInline)]
+public class UserAuditReceptor : IReceptor<OrderPlacedEvent> {
+  private readonly IMessageContext _messageContext;
+  private readonly IAuditService _audit;
+
+  public UserAuditReceptor(IMessageContext messageContext, IAuditService audit) {
+    _messageContext = messageContext;
+    _audit = audit;
+  }
+
+  public async ValueTask HandleAsync(OrderPlacedEvent evt, CancellationToken ct) {
+    await _audit.RecordAsync(new AuditEntry {
+      UserId = _messageContext.UserId,
+      EventType = nameof(OrderPlacedEvent),
+      EventId = _messageContext.MessageId.Value,
+      CorrelationId = _messageContext.CorrelationId.Value,
+      Timestamp = _messageContext.Timestamp,
+      Details = $"Order {evt.OrderId} placed"
+    });
+  }
+}
+```
+
+**Key Points**:
+- Security context is established from the message envelope's hops
+- `UserId` will be `null` if no security context was attached to the message
+- Each envelope in a batch gets its own security context established before invocation
+
+---
+
 ## Compile-Time Registration (Production)
 
 ### How It Works
@@ -301,7 +449,7 @@ public class ProductMetricsReceptor : IReceptor<ProductCreatedEvent> {
 
 **Generated Invocation** (simplified):
 ```csharp
-// ReceptorInvoker.g.cs
+// LifecycleInvoker.g.cs
 public async ValueTask InvokeAtStageAsync(
     object message,
     LifecycleStage stage,
@@ -314,7 +462,9 @@ public async ValueTask InvokeAtStageAsync(
   if (messageType == typeof(ProductCreatedEvent)
       && stage == LifecycleStage.PostPerspectiveAsync) {
 
-    var receptor = _serviceProvider.GetRequiredService<ProductMetricsReceptor>();
+    // Scope created per invocation - supports scoped dependencies
+    using var scope = _scopeFactory.CreateScope();
+    var receptor = scope.ServiceProvider.GetRequiredService<ProductMetricsReceptor>();
     await receptor.HandleAsync((ProductCreatedEvent)message, cancellationToken);
   }
 
@@ -327,6 +477,7 @@ public async ValueTask InvokeAtStageAsync(
 - ✅ Compile-time validation
 - ✅ Fast dispatch (no dictionary lookups)
 - ✅ Incremental compilation (sealed records, syntactic filtering)
+- ✅ **Scoped dependency support** - receptors can inject `DbContext`, `IOrchestratorAgent`, etc.
 
 ---
 
@@ -786,6 +937,7 @@ See [Lifecycle Synchronization](../testing/lifecycle-synchronization.md) for com
 - **Adding `[FireAt]` replaces defaults** - Receptor fires ONLY at specified stages
 - **Two mutually exclusive paths**: Local (mediator) vs Distributed (outbox/inbox)
 - **Optional `ILifecycleContext` injection** - Access metadata when needed
+- **Scoped dependency support** - Receptors can inject `DbContext`, `IOrchestratorAgent`, etc.
 - **Compile-time registration** - Source generators wire automatically via `IReceptorRegistry`
 - **Runtime registration** - `ILifecycleReceptorRegistry` for tests
 - **Zero reflection** - Fully AOT-compatible via `IReceptorInvoker` (pattern matching + delegates)
