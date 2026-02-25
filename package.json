@@ -10,7 +10,8 @@
     "search-index": "./build-search-index.sh",
     "build": "ng build --configuration production --output-hashing=all",
     "preview": "ng serve --configuration production",
-    "postinstall": "npx ng analytics off || true"
+    "postinstall": "npx ng analytics off || true",
+    "migrate-docs": "node src/scripts/migrate-docs-version.mjs"
   },
   "private": true,
   "dependencies": {
