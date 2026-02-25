@@ -2,17 +2,64 @@
 
 Whizbang supports pgvector similarity queries for semantic search, embeddings, and AI/ML workloads.
 
-## Prerequisites
+## Turnkey Setup {#turnkey-setup}
 
-When using `[VectorField]` attributes on your perspective models, you must add the Pgvector.EntityFrameworkCore package:
+Whizbang provides a **turnkey experience** for pgvector. When your perspective models use `[VectorField]` attributes, the source generator automatically creates an `Add{YourDbContext}()` extension method that handles all pgvector configuration:
 
-```xml
-<PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
+```csharp
+// Single call configures everything:
+// - NpgsqlDataSource with UseVector()
+// - DbContext with UseVector()
+// - HasPostgresExtension("vector") in OnModelCreating
+builder.Services.AddMyAppDbContext(connectionString);
 ```
 
-If you forget this package, the WHIZ070 diagnostic will guide you:
+### What Gets Configured Automatically
 
-> WHIZ070: Property 'Embedding' uses [VectorField] but Pgvector.EntityFrameworkCore package is not referenced.
+When Whizbang detects `[VectorField]` attributes in your perspective models, the generated code:
+
+1. **Creates the pgvector extension** - Generates `modelBuilder.HasPostgresExtension("vector")` in `ConfigureWhizbang()`
+2. **Configures NpgsqlDataSource** - Calls `dataSourceBuilder.UseVector()` for Npgsql type mapping
+3. **Configures EF Core** - Calls `npgsqlOptions.UseVector()` for EF Core query translation
+4. **Maps vector columns** - Generates proper `HasColumnType("vector({dimensions})")` configuration
+
+### Customization
+
+If you need to configure the data source (e.g., for JSON options), pass a callback:
+
+```csharp
+builder.Services.AddMyAppDbContext(connectionString, dataSourceBuilder => {
+  dataSourceBuilder.ConfigureJsonOptions(jsonOptions);
+  dataSourceBuilder.EnableDynamicJson();
+});
+```
+
+Or configure DbContext options:
+
+```csharp
+builder.Services.AddMyAppDbContext(connectionString, configureDbContext: options => {
+  options.EnableSensitiveDataLogging();
+});
+```
+
+## Prerequisites
+
+When using `[VectorField]` attributes on your perspective models, you must add both pgvector packages:
+
+```xml
+<ItemGroup>
+  <!-- Base package for NpgsqlDataSourceBuilder.UseVector() -->
+  <PackageReference Include="Pgvector" Version="0.3.0" />
+
+  <!-- EF Core integration for type mapping and queries -->
+  <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
+</ItemGroup>
+```
+
+If you forget these packages, compiler diagnostics will guide you:
+
+- **[WHIZ070](/docs/v0.1.0/diagnostics/whiz070)** - Missing `Pgvector.EntityFrameworkCore` package
+- **[WHIZ071](/docs/v0.1.0/diagnostics/whiz071)** - Missing `Pgvector` package
 
 ## Defining Vector Fields
 
@@ -240,7 +287,36 @@ public class SearchService {
 }
 ```
 
+## Manual Configuration {#manual-configuration}
+
+If you prefer manual configuration over the turnkey approach, you can set up pgvector yourself:
+
+```csharp
+// 1. Create data source with UseVector()
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+dataSourceBuilder.UseVector();
+var dataSource = dataSourceBuilder.Build();
+builder.Services.AddSingleton(dataSource);
+
+// 2. Add DbContext with UseVector()
+builder.Services.AddDbContext<MyAppDbContext>(options => {
+  options.UseNpgsql(dataSource, npgsqlOptions => {
+    npgsqlOptions.UseVector();
+  });
+});
+
+// 3. Configure Whizbang normally
+builder.Services
+  .AddWhizbang()
+  .WithEFCore<MyAppDbContext>()
+  .WithDriver.Postgres;
+```
+
+Note: The generated `ConfigureWhizbang()` method automatically includes `HasPostgresExtension("vector")` when `[VectorField]` attributes are detected, so you don't need to add that manually.
+
 ## See Also
 
 - [Perspective Models](/docs/perspectives/overview)
 - [VectorFieldAttribute Reference](/api/VectorFieldAttribute)
+- [WHIZ070: Missing Pgvector.EntityFrameworkCore](/docs/v0.1.0/diagnostics/whiz070)
+- [WHIZ071: Missing Pgvector Package](/docs/v0.1.0/diagnostics/whiz071)
