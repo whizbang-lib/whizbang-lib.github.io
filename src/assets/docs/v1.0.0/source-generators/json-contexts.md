@@ -1,10 +1,14 @@
 ---
-title: "JSON Contexts"
+title: JSON Contexts
 version: 1.0.0
 category: Source Generators
 order: 5
-description: "AOT-compatible JSON serialization with compile-time JsonSerializerContext generation - zero reflection for Native AOT"
-tags: source-generators, json, serialization, aot, native-aot, system-text-json, zero-reflection
+description: >-
+  AOT-compatible JSON serialization with compile-time JsonSerializerContext
+  generation - zero reflection for Native AOT
+tags: >-
+  source-generators, json, serialization, aot, native-aot, system-text-json,
+  zero-reflection
 codeReferences:
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
   - src/Whizbang.Core/Serialization/WhizbangJsonContext.cs
@@ -52,19 +56,17 @@ var deserialized = JsonSerializer.Deserialize<CreateOrder>(json, options);
 
 ## How It Works
 
-### Compile-Time Discovery
+### 1. Compile-Time Discovery
 
 ```
 ┌──────────────────────────────────────────────────┐
 │  MessageJsonContextGenerator (Roslyn)            │
 │                                                  │
 │  Discovers:                                      │
-│  1. Messages (ICommand, IEvent)                  │
-│  2. Nested types in collections (List<T>)        │
-│  3. Direct property types (non-collection)       │
-│  4. Struct types (record struct, readonly)       │
-│  5. WhizbangId types (MessageId, ProductId)      │
-│  6. Enum types                                   │
+│  1. Messages (ICommand, IEvent)                 │
+│  2. Nested types (OrderItem in List<OrderItem>) │
+│  3. Collection types (List<T>)                  │
+│  4. WhizbangId types (MessageId, ProductId)     │
 └─────────────────┬────────────────────────────────┘
                   │
                   ▼
@@ -72,11 +74,124 @@ var deserialized = JsonSerializer.Deserialize<CreateOrder>(json, options);
 │  Generated Files                                 │
 │                                                  │
 │  1. MessageJsonContext.g.cs                      │
-│     └─ JsonTypeInfo for all discovered types     │
+│     └─ JsonTypeInfo for all discovered types    │
 │                                                  │
 │  2. WhizbangJsonContext.g.cs (facade)            │
-│     └─ Public API for JsonSerializerOptions      │
+│     └─ Public API for JsonSerializerOptions     │
 └──────────────────────────────────────────────────┘
+```
+
+---
+
+### 2. Generated Code
+
+**WhizbangJsonContext.g.cs** (facade):
+```csharp
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace MyApp.Generated;
+
+/// <summary>
+/// Generated JSON context for WhizBang message serialization (AOT-compatible).
+/// Discovered 5 message types, 3 nested types, 2 collection types.
+/// </summary>
+[JsonSerializable(typeof(CreateOrder))]
+[JsonSerializable(typeof(OrderCreated))]
+[JsonSerializable(typeof(ShipOrder))]
+[JsonSerializable(typeof(OrderShipped))]
+[JsonSerializable(typeof(CancelOrder))]
+public partial class WhizbangJsonContext : JsonSerializerContext {
+    /// <summary>
+    /// Creates JsonSerializerOptions with WhizbangJsonContext.
+    /// </summary>
+    public static JsonSerializerOptions CreateOptions() {
+        var options = new JsonSerializerOptions {
+            TypeInfoResolver = new WhizbangJsonContext(),
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+
+        // Register WhizbangId converters (AOT-compatible)
+        options.Converters.Add(new ProductIdJsonConverter());
+        options.Converters.Add(new OrderIdJsonConverter());
+
+        return options;
+    }
+}
+```
+
+**MessageJsonContext.g.cs** (implementation):
+```csharp
+using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
+
+namespace MyApp.Generated;
+
+internal partial class MessageJsonContext : JsonSerializerContext {
+    // Generated JsonTypeInfo for CreateOrder
+    private JsonTypeInfo<CreateOrder> Create_CreateOrder(JsonSerializerOptions options) {
+        var properties = new JsonPropertyInfo[3];
+
+        properties[0] = JsonMetadataServices.CreatePropertyInfo<Guid>(
+            options,
+            propertyName: "OrderId",
+            getter: static obj => ((CreateOrder)obj).OrderId,
+            setter: null  // Init-only property
+        );
+
+        properties[1] = JsonMetadataServices.CreatePropertyInfo<Guid>(
+            options,
+            propertyName: "CustomerId",
+            getter: static obj => ((CreateOrder)obj).CustomerId,
+            setter: null
+        );
+
+        properties[2] = JsonMetadataServices.CreatePropertyInfo<List<OrderItem>>(
+            options,
+            propertyName: "Items",
+            getter: static obj => ((CreateOrder)obj).Items,
+            setter: null
+        );
+
+        // Constructor parameters for record with primary constructor
+        var ctorParams = new JsonParameterInfoValues[3];
+        ctorParams[0] = new JsonParameterInfoValues { Name = "OrderId", ParameterType = typeof(Guid) };
+        ctorParams[1] = new JsonParameterInfoValues { Name = "CustomerId", ParameterType = typeof(Guid) };
+        ctorParams[2] = new JsonParameterInfoValues { Name = "Items", ParameterType = typeof(List<OrderItem>) };
+
+        var objectInfo = new JsonObjectInfoValues<CreateOrder> {
+            ObjectWithParameterizedConstructorCreator = static args => new CreateOrder(
+                (Guid)args[0],
+                (Guid)args[1],
+                (List<OrderItem>)args[2]
+            ),
+            PropertyMetadataInitializer = _ => properties,
+            ConstructorParameterMetadataInitializer = () => ctorParams
+        };
+
+        var jsonTypeInfo = JsonMetadataServices.CreateObjectInfo(options, objectInfo);
+        jsonTypeInfo.OriginatingResolver = this;
+        return jsonTypeInfo;
+    }
+
+    // Type resolver - matches type to JsonTypeInfo
+    public override JsonTypeInfo? GetTypeInfo(Type type) {
+        if (type == typeof(CreateOrder)) {
+            return Create_CreateOrder(Options);
+        }
+
+        if (type == typeof(OrderCreated)) {
+            return Create_OrderCreated(Options);
+        }
+
+        // ... more types
+
+        return null;  // Not handled by this context
+    }
+}
 ```
 
 ---
@@ -95,6 +210,7 @@ public record CreateOrder(
 
 public record OrderCreated(
     Guid OrderId,
+    Guid CustomerId,
     decimal Total,
     DateTimeOffset CreatedAt
 ) : IEvent;  // ← Discovered
@@ -104,12 +220,13 @@ public record OrderCreated(
 
 ---
 
-### Pattern 2: Nested Type Discovery (Collections)
+### Pattern 2: Nested Type Discovery
 
 ```csharp
-// Command uses OrderItem in a collection
+// Command uses OrderItem (nested type)
 public record CreateOrder(
     Guid OrderId,
+    Guid CustomerId,
     List<OrderItem> Items  // ← OrderItem discovered automatically
 ) : ICommand;
 
@@ -121,119 +238,39 @@ public record OrderItem(
 );
 ```
 
-**Result**: `JsonTypeInfo<OrderItem>` also generated.
+**Result**: `JsonTypeInfo<OrderItem>` also generated (needed for `List<OrderItem>`).
 
 ---
 
-### Pattern 3: Direct Property Discovery
-
-:::new
-Direct (non-collection) property types are now discovered automatically.
-:::
+### Pattern 3: Collection Type Discovery
 
 ```csharp
-// Direct property type - NOT in a collection
-public record ChatMessage(
-    string Id,
-    MessageContent Content  // ← Direct property, discovered!
+// List<T> types discovered from properties
+public record CreateOrder(
+    Guid OrderId,
+    List<OrderItem> Items  // ← List<OrderItem> discovered
 ) : ICommand;
-
-public record MessageContent(
-    string Text,
-    AgentInfo Agent  // ← Deeply nested, also discovered!
-);
-
-public record AgentInfo(
-    string Name,
-    string Role
-);
 ```
 
-**Result**: `JsonTypeInfo` generated for `ChatMessage`, `MessageContent`, AND `AgentInfo`.
-
-Previously, only collection element types were discovered. Now **any custom type** used as a property (direct or nested) is discovered recursively.
+**Result**: `JsonTypeInfo<List<OrderItem>>` generated for AOT compatibility.
 
 ---
 
-### Pattern 4: Struct Type Discovery
-
-:::new
-Struct types (including `record struct` and `readonly record struct`) are now fully supported.
-:::
-
-```csharp
-public record OrderWithPermission(
-    string Id,
-    Permission RequiredPermission  // ← readonly record struct discovered!
-) : ICommand;
-
-// Readonly record struct with get-only property
-public readonly record struct Permission(string Value);
-```
-
-**Result**: Both `OrderWithPermission` and `Permission` have `JsonTypeInfo` generated.
-
-**How it works**:
-- **Get-only properties** (`{ get; }`) use constructor initialization
-- **Init-only properties** (`{ get; init; }`) use constructor initialization
-- **Regular properties** (`{ get; set; }`) use property setters
-
-```csharp
-// Generated factory method for Permission
-private JsonTypeInfo<Permission> Create_Permission(JsonSerializerOptions options) {
-    var properties = new JsonPropertyInfo[1];
-
-    properties[0] = CreateProperty<string>(
-        options,
-        "Value",
-        getter: obj => ((Permission)obj).Value,
-        setter: null  // ← Get-only property, uses constructor instead
-    );
-
-    var ctorParams = new JsonParameterInfoValues[1];
-    ctorParams[0] = new JsonParameterInfoValues { Name = "Value", ParameterType = typeof(string) };
-
-    var objectInfo = new JsonObjectInfoValues<Permission> {
-        ObjectWithParameterizedConstructorCreator = static args => new Permission((string)args[0]),
-        // ...
-    };
-
-    return JsonMetadataServices.CreateObjectInfo(options, objectInfo);
-}
-```
-
----
-
-### Pattern 5: WhizbangId Converter Discovery
+### Pattern 4: WhizbangId Converter Discovery
 
 ```csharp
 // Generator infers converters for *Id types
 public record CreateOrder(
-    ProductId ProductId,    // ← Infers ProductIdJsonConverter
-    CustomerId CustomerId   // ← Infers CustomerIdJsonConverter
+    ProductId ProductId,  // ← Infers ProductIdJsonConverter
+    CustomerId CustomerId  // ← Infers CustomerIdJsonConverter
 ) : ICommand;
 ```
 
-**Result**: Converters automatically registered:
+**Result**: Converters automatically registered in `CreateOptions()`:
 ```csharp
 options.Converters.Add(new ProductIdJsonConverter());
 options.Converters.Add(new CustomerIdJsonConverter());
 ```
-
----
-
-### Pattern 6: Enum Discovery
-
-```csharp
-public record OrderCreated(
-    Guid OrderId,
-    OrderStatus Status  // ← Enum discovered
-) : IEvent;
-
-public enum OrderStatus { Pending, Confirmed, Shipped, Delivered }
-```
-
-**Result**: `JsonTypeInfo<OrderStatus>` generated.
 
 ---
 
@@ -255,37 +292,133 @@ var json = JsonSerializer.Serialize(command, options);
 var deserialized = JsonSerializer.Deserialize<CreateOrder>(json, options);
 ```
 
+---
+
 ### Dependency Injection
 
 ```csharp
 // Program.cs
+using MyApp.Generated;
+
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<JsonSerializerOptions>(sp =>
-    WhizbangJsonContext.CreateOptions());
+// Register JsonSerializerOptions with generated context
+builder.Services.AddSingleton(WhizbangJsonContext.CreateOptions());
+
+// Or configure JsonOptions for ASP.NET Core
+builder.Services.Configure<JsonOptions>(options => {
+    options.JsonSerializerOptions.TypeInfoResolver = new WhizbangJsonContext();
+    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+});
 ```
 
-### With Message Envelope
+---
+
+### Outbox/Inbox Serialization
 
 ```csharp
-// Outbox pattern - envelope serialization
-var envelope = MessageEnvelope.Create(new CreateOrder(...));
-var json = JsonSerializer.Serialize(envelope, options);
+public class OutboxPublisher {
+    private readonly JsonSerializerOptions _jsonOptions;
 
-// Inbox pattern - envelope deserialization
-var received = JsonSerializer.Deserialize<MessageEnvelope<CreateOrder>>(json, options);
+    public OutboxPublisher() {
+        _jsonOptions = WhizbangJsonContext.CreateOptions();
+    }
+
+    public async Task PublishAsync(object message, CancellationToken ct = default) {
+        // Serialize with AOT-compatible context
+        var json = JsonSerializer.Serialize(message, _jsonOptions);
+
+        await _db.ExecuteAsync(
+            "INSERT INTO wh_outbox (message_id, payload, ...) VALUES (@MessageId, @Payload::jsonb, ...)",
+            new { MessageId = Guid.NewGuid(), Payload = json },
+            cancellationToken: ct
+        );
+    }
+}
 ```
 
 ---
 
 ## Performance
 
-| Scenario | Reflection-Based | Source-Generated |
-|----------|-----------------|------------------|
-| First serialization | ~100ms | ~0.1ms |
-| Subsequent | ~0.1ms | ~0.1ms |
-| Binary size impact | +2-5MB | +50-100KB |
-| AOT compatible | ❌ No | ✅ Yes |
+### Benchmark: First Serialization
+
+| Method | Overhead | Notes |
+|--------|----------|-------|
+| **Generated Context** | ~5ms | Compile-time metadata |
+| **Reflection** | ~100ms | Runtime type analysis |
+
+**20x faster** on first call!
+
+### Subsequent Calls
+
+| Method | Overhead | Notes |
+|--------|----------|-------|
+| **Generated Context** | ~100ns | Direct property access |
+| **Reflection** | ~150ns | Cached reflection metadata |
+
+**1.5x faster** on subsequent calls (minimal difference after warm-up).
+
+---
+
+## Native AOT Compatibility
+
+### Publish Native AOT
+
+```xml
+<!-- MyApp.csproj -->
+<PropertyGroup>
+  <PublishAot>true</PublishAot>
+</PropertyGroup>
+```
+
+**Build**:
+```bash
+dotnet publish -c Release
+
+# Output:
+Generating native code...
+  MyApp.dll -> MyApp.exe (Native AOT)
+  Binary size: 12.5 MB (includes JSON context)
+  Startup time: < 10ms
+```
+
+**Verification**:
+```bash
+# Check binary doesn't use reflection
+nm MyApp.exe | grep -i "reflection"
+# No results = success!
+```
+
+---
+
+## Diagnostics
+
+### WHIZ099: Generator Running
+
+**Severity**: Info
+
+**Message**: `MessageJsonContextGenerator invoked for assembly '{0}' with {1} message type(s)`
+
+**Example**:
+```
+info WHIZ099: MessageJsonContextGenerator invoked for assembly 'MyApp' with 5 message type(s)
+```
+
+---
+
+### WHIZ007: JSON Serializable Type Discovered
+
+**Severity**: Info
+
+**Message**: `Found JSON-serializable type '{0}' ({1})`
+
+**Example**:
+```
+info WHIZ007: Found JSON-serializable type 'CreateOrder' (command)
+info WHIZ007: Found JSON-serializable type 'OrderItem' (nested type)
+info WHIZ007: Found JSON-serializable type 'List<OrderItem>' (collection type)
+```
 
 ---
 
@@ -293,80 +426,90 @@ var received = JsonSerializer.Deserialize<MessageEnvelope<CreateOrder>>(json, op
 
 ### DO ✅
 
-```csharp
-// ✅ Use records with primary constructors
-public record CreateOrder(Guid OrderId, string Name) : ICommand;
-
-// ✅ Use readonly record struct for value types
-public readonly record struct Permission(string Value);
-
-// ✅ Use init-only properties when needed
-public record OrderItem {
-    public required Guid ProductId { get; init; }
-    public required int Quantity { get; init; }
-}
-```
+- ✅ **Use WhizbangJsonContext.CreateOptions()** for all JSON serialization
+- ✅ **Mark all messages as public** (generator only processes public types)
+- ✅ **Use records with primary constructors** for best JSON support
+- ✅ **Test Native AOT** deployment early (catches issues sooner)
+- ✅ **Include nested types** in same assembly as messages
 
 ### DON'T ❌
 
-```csharp
-// ❌ Don't use types without public constructors
-internal record InternalModel(string Value);  // Won't be discovered
-
-// ❌ Don't use complex generic types
-public record BadCommand(
-    Dictionary<string, List<Tuple<int, string>>> Complex  // Avoid
-) : ICommand;
-
-// ❌ Don't reference types from unanalyzed assemblies
-public record BadCommand(
-    ThirdPartyLibrary.SomeType External  // May not be discovered
-) : ICommand;
-```
-
----
-
-## Diagnostics
-
-| ID | Severity | Description |
-|----|----------|-------------|
-| WHIZ007 | Info | MessageJsonContext generator started |
-| WHIZ099 | Info | Type discovered for JSON serialization |
+- ❌ Use reflection-based JsonSerializer (defeats AOT)
+- ❌ Mark messages as internal (won't be discovered)
+- ❌ Use complex custom converters (may not be AOT-compatible)
+- ❌ Serialize types from other assemblies without their context
+- ❌ Skip testing with `PublishAot=true`
 
 ---
 
 ## Troubleshooting
 
-### "JsonTypeInfo metadata not provided"
+### Problem: Type Not Serializable in Native AOT
 
-**Error**: `JsonTypeInfo metadata for type 'X' was not provided by TypeInfoResolver`
+**Symptoms**: Serialization throws `NotSupportedException` in AOT build.
 
-**Causes**:
-1. Type is `internal` (not public)
-2. Type is from an external assembly
-3. Type is not reachable from any `ICommand`/`IEvent`
+**Cause**: Type not included in generated context.
 
-**Solutions**:
-1. Make the type `public`
-2. Ensure it's used as a property in a discovered message
-3. Check that the assembly references `Whizbang.Generators`
+**Solution**:
+1. Verify type is public
+2. Verify type implements `ICommand` or `IEvent`
+3. Rebuild project to regenerate context
 
-### Struct not being discovered
+```csharp
+// ❌ Internal type (not discovered)
+internal record CreateOrder(...) : ICommand;
 
-**Problem**: `readonly record struct` types were previously skipped.
+// ✅ Public type (discovered)
+public record CreateOrder(...) : ICommand;
+```
 
-**Solution**: Update to v1.0.0 - struct types are now fully supported.
+### Problem: Nested Type Not Found
 
-### Get-only property causing errors
+**Symptoms**: `List<OrderItem>` fails to serialize.
 
-**Problem**: Properties with `{ get; }` (no setter) may have caused compilation errors.
+**Cause**: `OrderItem` not public or in different assembly.
 
-**Solution**: Update to v1.0.0 - get-only properties now correctly use constructor initialization.
+**Solution**: Make nested types public in same assembly:
+```csharp
+// ✅ Public nested type
+public record OrderItem(Guid ProductId, int Quantity);
+```
+
+### Problem: WhizbangId Converter Not Registered
+
+**Symptoms**: `ProductId` serializes as `{}` instead of GUID value.
+
+**Cause**: Converter not auto-discovered (name doesn't match convention).
+
+**Solution**: Ensure converter follows naming convention:
+```csharp
+// Type: ProductId
+// Converter: ProductIdJsonConverter (must match!)
+public class ProductIdJsonConverter : JsonConverter<ProductId> {
+    // Implementation...
+}
+```
 
 ---
 
-## See Also
+## Further Reading
 
-- [WhizbangId Generators](/v1.0.0/source-generators/whizbang-ids) - ID type generation
-- [Native AOT Guide](/v1.0.0/guides/native-aot) - AOT deployment
-- [Message Patterns](/v1.0.0/core-concepts/messages) - ICommand, IEvent patterns
+**Source Generators**:
+- [Receptor Discovery](receptor-discovery.md) - Compile-time receptor discovery
+- [Perspective Discovery](perspective-discovery.md) - Compile-time perspective discovery
+- [Message Registry](message-registry.md) - VSCode extension integration
+- [Aggregate IDs](aggregate-ids.md) - UUIDv7 generation for identity value objects
+
+**Core Concepts**:
+- [Message Context](../core-concepts/message-context.md) - MessageId, CorrelationId, CausationId
+
+**Messaging**:
+- [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable event publishing
+- [Inbox Pattern](../messaging/inbox-pattern.md) - Exactly-once processing
+
+**Advanced**:
+- [Native AOT Deployment](../advanced/native-aot.md) - Full AOT deployment guide
+
+---
+
+*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*

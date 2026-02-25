@@ -1,0 +1,616 @@
+---
+title: Message Context & Tracing
+version: 1.0.0
+category: Core Concepts
+order: 5
+description: >-
+  Track message flow across distributed systems with MessageId, CorrelationId,
+  and CausationId - automatic distributed tracing built into Whizbang
+tags: 'message-context, correlation, causation, distributed-tracing, observability'
+codeReferences:
+  - src/Whizbang.Core/ValueObjects/MessageId.cs
+  - src/Whizbang.Core/ValueObjects/CorrelationId.cs
+  - src/Whizbang.Core/ValueObjects/CausationId.cs
+  - src/Whizbang.Core/Observability/MessageEnvelope.cs
+---
+
+# Message Context & Tracing
+
+Whizbang provides automatic **distributed tracing** through three key identifiers: **MessageId**, **CorrelationId**, and **CausationId**. These track message relationships across services, enabling powerful observability and debugging.
+
+## Core Identifiers
+
+| Identifier | Purpose | Analogy |
+|------------|---------|---------|
+| `MessageId` | Unique ID for this message | Social Security Number (unique per person) |
+| `CorrelationId` | Groups related messages in a workflow | Family ID (groups related people) |
+| `CausationId` | Parent message that caused this message | Parent ID (who caused this person to exist) |
+
+### Visual Example
+
+```
+User clicks "Create Order" button
+         ↓
+┌────────────────────────────────────────────────────────────┐
+│ CreateOrder Command                                         │
+│ MessageId:     msg-001                                      │
+│ CorrelationId: corr-abc (generated for this workflow)     │
+│ CausationId:   null (no parent)                            │
+└─────────────┬──────────────────────────────────────────────┘
+              │
+              │ OrderReceptor processes command
+              ↓
+┌────────────────────────────────────────────────────────────┐
+│ OrderCreated Event                                          │
+│ MessageId:     msg-002                                      │
+│ CorrelationId: corr-abc (same as command)                 │
+│ CausationId:   msg-001 (caused by CreateOrder)            │
+└─────────────┬──────────────────────────────────────────────┘
+              │
+              │ Publishes to Azure Service Bus
+              ↓
+    ┌─────────────────┬─────────────────┬──────────────────┐
+    │                 │                 │                  │
+    ↓                 ↓                 ↓                  ↓
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐
+│ Inventory   │  │ Payment     │  │ Shipping    │  │ Notification │
+│ Worker      │  │ Worker      │  │ Worker      │  │ Worker       │
+└─────────────┘  └─────────────┘  └─────────────┘  └──────────────┘
+      │                │                │                │
+      ↓                ↓                ↓                ↓
+┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐
+│ Inventory  │  │ Payment    │  │ Shipment   │  │ Email      │
+│ Reserved   │  │ Processed  │  │ Created    │  │ Sent       │
+│            │  │            │  │            │  │            │
+│ corr-abc   │  │ corr-abc   │  │ corr-abc   │  │ corr-abc   │
+│ msg-002    │  │ msg-002    │  │ msg-002    │  │ msg-002    │
+└────────────┘  └────────────┘  └────────────┘  └────────────┘
+```
+
+**All events share `corr-abc` - enabling you to query all messages in this workflow!**
+
+---
+
+## MessageId
+
+**Purpose**: Unique identifier for each message (never reused).
+
+**Type**: Strongly-typed value object using UUIDv7.
+
+```csharp
+public record struct MessageId(Guid Value) {
+    public static MessageId New() => new(Guid.CreateVersion7());
+
+    public override string ToString() => Value.ToString();
+}
+```
+
+**Key Characteristics**:
+- **Globally unique**: No two messages ever have the same ID
+- **Time-ordered**: UUIDv7 includes timestamp, sortable by creation time
+- **Database-friendly**: Primary keys using MessageId don't fragment indexes
+- **Immutable**: Once created, never changes
+
+### Usage
+
+```csharp
+// Whizbang creates MessageId automatically
+var receipt = await _dispatcher.SendAsync(command);
+
+Console.WriteLine($"Message ID: {receipt.MessageId}");
+// Output: Message ID: 018d8f8e-1234-7890-abcd-ef1234567890
+```
+
+**You rarely create MessageId manually - Whizbang handles this.**
+
+---
+
+## CorrelationId
+
+**Purpose**: Groups all messages related to the same workflow/transaction.
+
+**Type**: Strongly-typed value object using UUIDv7.
+
+```csharp
+public record struct CorrelationId(Guid Value) {
+    public static CorrelationId New() => new(Guid.CreateVersion7());
+
+    public override string ToString() => Value.ToString();
+}
+```
+
+**Key Characteristics**:
+- **Workflow identifier**: All messages in same workflow share same CorrelationId
+- **Cross-service**: Spans multiple services, receptors, perspectives
+- **Queryable**: Find all messages for a specific customer action
+- **Persistent**: Stored in database, logs, telemetry
+
+### How CorrelationId Flows
+
+```
+1. User Request → HTTP Request
+   CorrelationId: NEW (generated by API)
+
+2. CreateOrder Command
+   CorrelationId: INHERITED from HTTP request
+
+3. OrderCreated Event
+   CorrelationId: INHERITED from CreateOrder
+
+4. InventoryReserved Event (in different service)
+   CorrelationId: INHERITED from OrderCreated
+
+5. PaymentProcessed Event (in different service)
+   CorrelationId: INHERITED from InventoryReserved
+
+... and so on
+```
+
+**All messages inherit the same CorrelationId!**
+
+### Usage
+
+```csharp
+// Create new correlation for HTTP request
+var correlationId = CorrelationId.New();
+
+// Store in HTTP context
+HttpContext.Items["CorrelationId"] = correlationId;
+
+// Whizbang dispatcher automatically propagates it
+var command = new CreateOrder(customerId, items);
+var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
+
+// Result has same CorrelationId!
+Console.WriteLine($"Correlation ID: {result.CorrelationId}");
+```
+
+### Querying by CorrelationId
+
+```csharp
+// Find all messages in a workflow
+public async Task<Message[]> GetWorkflowMessagesAsync(
+    CorrelationId correlationId,
+    CancellationToken ct = default) {
+
+    await using var conn = _db.CreateConnection();
+
+    // Assuming messages are stored in event store
+    var messages = await conn.QueryAsync<Message>(
+        """
+        SELECT * FROM wh_event_store
+        WHERE correlation_id = @CorrelationId
+        ORDER BY created_at
+        """,
+        new { CorrelationId = correlationId.Value },
+        cancellationToken: ct
+    );
+
+    return messages.ToArray();
+}
+```
+
+**Result**: Complete trace of every message in the workflow!
+
+---
+
+## CausationId
+
+**Purpose**: Identifies the **parent message** that caused this message to exist.
+
+**Type**: Strongly-typed value object using Guid (refers to a MessageId).
+
+```csharp
+public record struct CausationId(Guid Value) {
+    public static CausationId From(MessageId messageId) => new(messageId.Value);
+
+    public override string ToString() => Value.ToString();
+}
+```
+
+**Key Characteristics**:
+- **Parent-child relationship**: Links message to its creator
+- **Causality chain**: Track how one message led to another
+- **Debugging**: "What caused this message to be created?"
+- **Nullable**: Root messages (HTTP requests) have no parent
+
+### Causation Chain Example
+
+```
+CreateOrder Command
+├─ MessageId:     msg-001
+├─ CorrelationId: corr-abc
+└─ CausationId:   null (no parent)
+
+      ↓ Creates ↓
+
+OrderCreated Event
+├─ MessageId:     msg-002
+├─ CorrelationId: corr-abc
+└─ CausationId:   msg-001 (caused by CreateOrder)
+
+      ↓ Creates ↓
+
+InventoryReserved Event
+├─ MessageId:     msg-003
+├─ CorrelationId: corr-abc
+└─ CausationId:   msg-002 (caused by OrderCreated)
+
+      ↓ Creates ↓
+
+PaymentProcessed Event
+├─ MessageId:     msg-004
+├─ CorrelationId: corr-abc
+└─ CausationId:   msg-003 (caused by InventoryReserved)
+```
+
+**Causation chain**: msg-001 → msg-002 → msg-003 → msg-004
+
+### Usage
+
+```csharp
+// Receptor creates event with causation
+public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
+    public async ValueTask<OrderCreated> HandleAsync(
+        CreateOrder message,
+        CancellationToken ct = default) {
+
+        // Business logic...
+
+        return new OrderCreated(
+            MessageId: MessageId.New(),              // New unique ID
+            CorrelationId: message.CorrelationId,    // Inherit correlation
+            CausationId: CausationId.From(message.MessageId),  // Parent is CreateOrder
+            OrderId: Guid.CreateVersion7(),
+            CustomerId: message.CustomerId,
+            Items: message.Items,
+            Total: CalculateTotal(message.Items),
+            CreatedAt: DateTimeOffset.UtcNow
+        );
+    }
+}
+```
+
+**Whizbang handles this automatically via MessageEnvelope!**
+
+---
+
+## MessageEnvelope
+
+Whizbang wraps all messages in a **MessageEnvelope** containing context:
+
+```csharp
+public class MessageEnvelope {
+    public MessageId MessageId { get; init; }
+    public CorrelationId CorrelationId { get; init; }
+    public CausationId? CausationId { get; init; }
+    public object Payload { get; init; }  // Your actual message
+    public List<MessageHop> Hops { get; init; }  // Trace hops
+    public DateTimeOffset CreatedAt { get; init; }
+}
+```
+
+**You rarely interact with MessageEnvelope directly** - Whizbang manages it transparently.
+
+### Automatic Context Propagation
+
+```csharp
+// 1. HTTP Request arrives
+[HttpPost("orders")]
+public async Task<ActionResult> CreateOrder(
+    [FromBody] CreateOrderRequest request,
+    CancellationToken ct) {
+
+    // 2. Create command (Whizbang generates MessageId, CorrelationId)
+    var command = new CreateOrder(request.CustomerId, request.Items);
+
+    // 3. Dispatch command
+    var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command, ct);
+
+    // 4. Result event has:
+    //    - New MessageId (unique)
+    //    - Same CorrelationId (inherited)
+    //    - CausationId = command.MessageId (parent reference)
+
+    return CreatedAtAction(nameof(GetOrder), new { orderId = result.OrderId }, result);
+}
+```
+
+**Whizbang automatically**:
+1. Generates MessageId for command
+2. Generates CorrelationId (or inherits from HTTP context)
+3. Sets CausationId to command's MessageId when creating event
+
+---
+
+## Distributed Tracing
+
+### Querying Workflow History
+
+```csharp
+public class WorkflowTracer {
+    private readonly IDbConnectionFactory _db;
+
+    public async Task<WorkflowTrace> TraceWorkflowAsync(
+        CorrelationId correlationId,
+        CancellationToken ct = default) {
+
+        await using var conn = _db.CreateConnection();
+
+        // Get all messages in workflow
+        var messages = await conn.QueryAsync<TraceMessage>(
+            """
+            SELECT
+                message_id,
+                causation_id,
+                message_type,
+                created_at,
+                payload
+            FROM wh_event_store
+            WHERE correlation_id = @CorrelationId
+            ORDER BY created_at
+            """,
+            new { CorrelationId = correlationId.Value },
+            cancellationToken: ct
+        );
+
+        return new WorkflowTrace(
+            CorrelationId: correlationId,
+            Messages: messages.ToArray()
+        );
+    }
+}
+
+public record WorkflowTrace(
+    CorrelationId CorrelationId,
+    TraceMessage[] Messages
+) {
+    public void PrintTrace() {
+        Console.WriteLine($"Workflow: {CorrelationId}");
+        foreach (var msg in Messages) {
+            Console.WriteLine($"  {msg.CreatedAt:yyyy-MM-dd HH:mm:ss.fff} | {msg.MessageType}");
+            if (msg.CausationId is not null) {
+                Console.WriteLine($"    Caused by: {msg.CausationId}");
+            }
+        }
+    }
+}
+```
+
+**Output**:
+```
+Workflow: corr-abc
+  2024-12-12 10:00:00.123 | CreateOrder
+  2024-12-12 10:00:00.456 | OrderCreated
+    Caused by: msg-001
+  2024-12-12 10:00:01.234 | InventoryReserved
+    Caused by: msg-002
+  2024-12-12 10:00:02.567 | PaymentProcessed
+    Caused by: msg-003
+  2024-12-12 10:00:03.890 | ShipmentCreated
+    Caused by: msg-004
+```
+
+### Visualizing Causation Chains
+
+```csharp
+public class CausationVisualizer {
+    public void VisualizeCausationChain(TraceMessage[] messages) {
+        var messageMap = messages.ToDictionary(m => m.MessageId);
+
+        foreach (var msg in messages) {
+            PrintMessageWithIndent(msg, messageMap, indent: 0);
+        }
+    }
+
+    private void PrintMessageWithIndent(
+        TraceMessage msg,
+        Dictionary<Guid, TraceMessage> map,
+        int indent) {
+
+        var prefix = new string(' ', indent * 2);
+        Console.WriteLine($"{prefix}├─ {msg.MessageType} ({msg.MessageId})");
+
+        // Find children (messages caused by this message)
+        var children = map.Values
+            .Where(m => m.CausationId == msg.MessageId)
+            .ToArray();
+
+        foreach (var child in children) {
+            PrintMessageWithIndent(child, map, indent + 1);
+        }
+    }
+}
+```
+
+**Output**:
+```
+├─ CreateOrder (msg-001)
+  ├─ OrderCreated (msg-002)
+    ├─ InventoryReserved (msg-003)
+      ├─ PaymentProcessed (msg-004)
+        ├─ ShipmentCreated (msg-005)
+          ├─ NotificationSent (msg-006)
+```
+
+---
+
+## Integration with Logging
+
+### Structured Logging
+
+```csharp
+public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
+    private readonly ILogger<CreateOrderReceptor> _logger;
+
+    public async ValueTask<OrderCreated> HandleAsync(
+        CreateOrder message,
+        CancellationToken ct = default) {
+
+        // Log with correlation and causation context
+        using (_logger.BeginScope(new Dictionary<string, object> {
+            ["CorrelationId"] = message.CorrelationId,
+            ["CausationId"] = message.CausationId?.ToString() ?? "null",
+            ["MessageId"] = message.MessageId
+        })) {
+            _logger.LogInformation(
+                "Processing CreateOrder for customer {CustomerId}",
+                message.CustomerId
+            );
+
+            // Business logic...
+
+            _logger.LogInformation(
+                "Order {OrderId} created successfully",
+                orderId
+            );
+
+            return new OrderCreated(/* ... */);
+        }
+    }
+}
+```
+
+**Log Output** (JSON format):
+```json
+{
+  "Timestamp": "2024-12-12T10:00:00.123Z",
+  "Level": "Information",
+  "Message": "Processing CreateOrder for customer 550e8400-e29b-41d4-a716-446655440000",
+  "CorrelationId": "corr-abc",
+  "CausationId": "null",
+  "MessageId": "msg-001"
+}
+```
+
+**Benefit**: Query logs by CorrelationId to see all log entries for a workflow!
+
+### Application Insights Integration
+
+```csharp
+public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
+    private readonly TelemetryClient _telemetry;
+
+    public async ValueTask<OrderCreated> HandleAsync(
+        CreateOrder message,
+        CancellationToken ct = default) {
+
+        using var operation = _telemetry.StartOperation<RequestTelemetry>("CreateOrder");
+        operation.Telemetry.Properties["CorrelationId"] = message.CorrelationId.ToString();
+        operation.Telemetry.Properties["CausationId"] = message.CausationId?.ToString() ?? "null";
+        operation.Telemetry.Properties["MessageId"] = message.MessageId.ToString();
+
+        try {
+            // Business logic...
+
+            operation.Telemetry.Success = true;
+            return new OrderCreated(/* ... */);
+
+        } catch (Exception ex) {
+            operation.Telemetry.Success = false;
+            _telemetry.TrackException(ex);
+            throw;
+        }
+    }
+}
+```
+
+---
+
+## Best Practices
+
+### DO ✅
+
+- ✅ Let Whizbang **generate MessageId automatically**
+- ✅ **Inherit CorrelationId** from parent message
+- ✅ **Set CausationId** to parent's MessageId
+- ✅ **Log CorrelationId** in structured logging
+- ✅ **Store CorrelationId** in database for querying
+- ✅ **Use CorrelationId** for end-to-end workflow tracing
+- ✅ **Use CausationId** for debugging (what caused this?)
+- ✅ **Propagate CorrelationId** across HTTP boundaries
+
+### DON'T ❌
+
+- ❌ Reuse MessageId (must be unique per message)
+- ❌ Change CorrelationId mid-workflow (breaks tracing)
+- ❌ Forget to propagate CorrelationId across services
+- ❌ Use CorrelationId as business identifier (use OrderId, etc.)
+- ❌ Store MessageId in business entities (use domain IDs like OrderId)
+- ❌ Skip logging CorrelationId (critical for debugging)
+
+---
+
+## HTTP Context Integration
+
+### ASP.NET Core Middleware
+
+```csharp
+public class CorrelationIdMiddleware {
+    private readonly RequestDelegate _next;
+
+    public CorrelationIdMiddleware(RequestDelegate next) {
+        _next = next;
+    }
+
+    public async Task InvokeAsync(HttpContext context) {
+        // Extract or generate CorrelationId
+        var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault()
+            ?? CorrelationId.New().ToString();
+
+        // Store in HttpContext
+        context.Items["CorrelationId"] = CorrelationId.Parse(correlationId);
+
+        // Add to response headers
+        context.Response.Headers["X-Correlation-ID"] = correlationId;
+
+        await _next(context);
+    }
+}
+
+// Register middleware
+app.UseMiddleware<CorrelationIdMiddleware>();
+```
+
+### Propagating to Downstream Services
+
+```csharp
+public class HttpClientWithCorrelation {
+    private readonly HttpClient _httpClient;
+    private readonly IHttpContextAccessor _httpContext;
+
+    public async Task<HttpResponseMessage> PostAsync(string url, HttpContent content) {
+        // Get CorrelationId from current request
+        var correlationId = _httpContext.HttpContext?.Items["CorrelationId"] as CorrelationId?
+            ?? CorrelationId.New();
+
+        // Add to outgoing request
+        var request = new HttpRequestMessage(HttpMethod.Post, url) {
+            Content = content
+        };
+        request.Headers.Add("X-Correlation-ID", correlationId.ToString());
+
+        return await _httpClient.SendAsync(request);
+    }
+}
+```
+
+---
+
+## Further Reading
+
+**Core Concepts**:
+- [Observability](observability.md) - MessageEnvelope and hops for distributed tracing
+- [Dispatcher](dispatcher.md) - How messages are routed
+- [Receptors](receptors.md) - Message handlers
+
+**Messaging Patterns**:
+- [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable messaging with context
+- [Message Envelopes](../messaging/message-envelopes.md) - Hop-based observability
+
+**Infrastructure**:
+- [Logging & Telemetry](../infrastructure/observability-setup.md) - Application Insights integration
+
+---
+
+*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*

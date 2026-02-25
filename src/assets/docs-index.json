@@ -1,48 +1,901 @@
 [
   {
-    "slug": "v1.0.0/core-concepts/routing",
-    "title": "Routing",
+    "slug": "Advanced/configuration",
+    "title": "Advanced Configuration",
+    "category": "Advanced",
+    "order": 1,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "Tutorials/getting-started-tutorial",
+    "title": "Getting Started Tutorial",
+    "category": "Tutorials",
+    "order": 1,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "aggregates",
+    "title": "Aggregates",
+    "category": "Core concepts",
+    "order": 1,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "api",
+    "title": "API Reference",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "backlog/_folder",
+    "title": "Development Backlog",
+    "category": "backlog",
+    "description": "Approved features awaiting scheduling and development",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "declined/_folder",
+    "title": "Declined Proposals",
+    "category": "declined",
+    "description": "Declined proposals archived for reference",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "drafts/_folder",
+    "title": "Draft Documentation",
+    "category": "drafts",
+    "description": "Documentation currently being written and developed",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "drafts/attributes/must-exist",
+    "title": "MustExist Attribute",
+    "category": "Attributes",
+    "description": "Marks a perspective Apply method as requiring the model to already exist",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "drafts/core-concepts/model-action",
+    "title": "Model Actions - Perspective Deletion Support",
     "category": "Core Concepts",
-    "order": 999,
-    "description": "# Namespace-Based Routing\n\nWhizbang uses namespace-based routing to determine where messages flow. Commands and events follow distinct routing patterns optimized for their specific use cases.\n\n## Overview\n\nRouting in Whizbang is built on two key principles:\n\n1. **Commands → Shared Inbox**: All commands route to a single shared \"inbox\" topic. Services filter by owned namespaces using routing key patterns.\n2. **Events → Namespace Topics**: Events publish to namespace-specific topics. Services subscribe directly to namespaces they care about.\n\nThis separation provides:\n- **Point-to-point delivery** for commands (exactly one handler)\n- **Pub/sub distribution** for events (multiple subscribers)\n- **Automatic subscription discovery** via source generation\n\n## Command Flow\n\nCommands follow a point-to-point pattern with namespace-based filtering:\n\n```\nBFF sends CreateTenantCommand (namespace: MyApp.Users.Commands)\n    ↓\nBFF Outbox → Broker \"inbox\" topic\n    ↓\n    RoutingKey: \"myapp.users.commands.createtenantcommand\"\n    ↓\nALL services subscribed to \"inbox\" (single shared topic)\n    ↓\nEach service filters by owned namespaces:\n    - User Service owns \"myapp.users.commands\" → RECEIVES\n    - Workflow Service owns \"myapp.workflow.commands\" → FILTERED OUT\n    ↓\nUser Service processes command\n```\n\n### How Command Filtering Works\n\nWhen a service starts, it declares which command namespaces it owns:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  opts.OwnDomains(\"myapp.users.commands\");\n  opts.OwnDomains(\"myapp.inventory.commands\");\n});\n```\n\nThe `SharedTopicInboxStrategy` builds routing patterns from these namespaces:\n\n```csharp\n// Generated routing patterns:\n// - \"whizbang.core.commands.system.#\"  (always included)\n// - \"myapp.users.commands.#\"\n// - \"myapp.inventory.commands.#\"\n```\n\n**Note**: All services automatically subscribe to system commands (`whizbang.core.commands.system.#`) for framework-level operations.\n\n### Wildcard Namespaces\n\nSupport pattern matching for flexible ownership:\n\n```csharp\n// Own all commands under myapp.orders\nopts.OwnDomains(\"myapp.orders.*\");\n// Converts to pattern: \"myapp.orders.#\"\n```\n\n## Event Flow\n\nEvents follow a pub/sub pattern with namespace-based topics:\n\n```\nUser Service publishes TenantCreatedEvent (namespace: MyApp.Users.Events)\n    ↓\nUser Service Outbox → Broker topic \"myapp.users.events\"\n    ↓\n    RoutingKey: \"tenantcreatedevent\"\n    ↓\nServices subscribed to \"myapp.users.events\":\n    - BFF → RECEIVES\n    - Workflow Service → RECEIVES\n    - Notifications Service → RECEIVES\n```\n\n### Automatic Event Subscription Discovery\n\nEvent subscriptions are **automatically discovered** from your code via source generation:\n\n1. **Perspectives**: Events your service projects\n2. **Receptors**: Events your service handles\n\n```csharp\n// This perspective automatically subscribes to \"myapp.orders.events\"\n[Perspective<OrderSummary>]\npublic class OrderSummaryPerspective : IPerspective<OrderCreatedEvent> {\n  // OrderCreatedEvent is in namespace MyApp.Orders.Events\n}\n\n// This receptor automatically subscribes to \"myapp.payments.events\"\npublic class PaymentReceptor : IReceptor<PaymentCompletedEvent> {\n  // PaymentCompletedEvent is in namespace MyApp.Payments.Events\n}\n```\n\nThe `EventNamespaceRegistryGenerator` source generator extracts these namespaces at compile time:\n\n```csharp\n// Generated code (example)\npublic sealed class GeneratedEventNamespaceRegistry : IEventNamespaceRegistry {\n  public IReadOnlySet<string> GetPerspectiveEventNamespaces() =>\n    new HashSet<string>(StringComparer.OrdinalIgnoreCase) {\n      \"myapp.orders.events\"\n    };\n\n  public IReadOnlySet<string> GetReceptorEventNamespaces() =>\n    new HashSet<string>(StringComparer.OrdinalIgnoreCase) {\n      \"myapp.payments.events\"\n    };\n}\n```\n\n### Manual Event Subscriptions\n\nOverride or supplement auto-discovery with manual subscriptions:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  // Explicitly subscribe to additional event namespaces\n  opts.SubscribeTo(\"myapp.notifications.events\");\n  opts.SubscribeTo(\"myapp.audit.events\");\n});\n```\n\n## System Commands\n\nAll services automatically subscribe to system commands for framework-level operations:\n\n```csharp\nnamespace Whizbang.Core.Commands.System;\n\n// Rebuild a perspective across all services\npublic record RebuildPerspectiveCommand(\n    string PerspectiveName,\n    long? FromEventId = null\n) : ICommand;\n\n// Clear cached data\npublic record ClearCacheCommand(\n    string? CacheKey = null,\n    string? CacheRegion = null\n) : ICommand;\n\n// Collect diagnostics from all services\npublic record DiagnosticsCommand(\n    DiagnosticType Type,\n    Guid? CorrelationId = null\n) : ICommand;\n\n// Pause message processing (coordinated maintenance)\npublic record PauseProcessingCommand(\n    int? DurationSeconds = null,\n    string? Reason = null\n) : ICommand;\n\n// Resume message processing\npublic record ResumeProcessingCommand(\n    string? Reason = null\n) : ICommand;\n```\n\n### Sending System Commands\n\n```csharp\n// Rebuild a perspective across all services\nawait dispatcher.SendAsync(new RebuildPerspectiveCommand(\"OrderSummary\"));\n\n// Clear all caches\nawait dispatcher.SendAsync(new ClearCacheCommand());\n\n// Pause processing for 5 minutes\nawait dispatcher.SendAsync(new PauseProcessingCommand(\n    DurationSeconds: 300,\n    Reason: \"Scheduled maintenance\"\n));\n```\n\n## Configuration\n\n### Fluent Configuration with WithRouting {#with-routing}\n\nThe recommended approach uses the fluent `WithRouting()` extension method:\n\n```csharp\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        routing\n            .OwnDomains(\"myapp.users.commands\")\n            .SubscribeTo(\"myapp.notifications.events\")\n            .Inbox.UseSharedTopic(\"inbox\");\n    })\n    .WithEFCore<MyDbContext>()\n    .WithDriver.Postgres\n    .AddTransportConsumer();  // Auto-generates subscriptions!\n```\n\nThis approach:\n- **Chains with other Whizbang configuration** - Integrates with EF Core, drivers, and transport setup\n- **Auto-generates subscriptions** - When paired with `AddTransportConsumer()`, subscriptions are created automatically\n- **Type-safe** - All configuration is compile-time verified\n\n### Complete Example\n\n```csharp\n// User Service - handles user commands, subscribes to order events\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        // Commands this service handles\n        routing.OwnDomains(\"myapp.users.commands\");\n\n        // Events are auto-discovered from perspectives/receptors\n        // Manual override (adds to auto-discovered):\n        routing.SubscribeTo(\"myapp.notifications.events\");\n\n        // Inbox strategy\n        routing.Inbox.UseSharedTopic(\"inbox\");\n    })\n    .AddTransportConsumer();\n\n// BFF Service - sends commands, receives events\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        // No OwnDomains (BFF doesn't handle commands directly)\n        // Events auto-discovered from its receptors/perspectives\n        routing.Inbox.UseSharedTopic(\"inbox\");\n    })\n    .AddTransportConsumer();\n```\n\n### Legacy Configuration\n\nFor backwards compatibility, you can still configure routing options directly:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  opts.OwnDomains(\"myapp.users.commands\");\n  opts.SubscribeTo(\"myapp.notifications.events\");\n});\n```\n\n### Strongly-Typed Configuration\n\nUse the generic overloads for compile-time safety and refactor-friendly configuration:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  // Strongly-typed: extracts namespace from the type\n  opts.OwnNamespaceOf<CreateUserCommand>()      // \"myapp.users.commands\"\n      .OwnNamespaceOf<UpdateInventoryCommand>() // \"myapp.inventory.commands\"\n      .SubscribeToNamespaceOf<OrderCreatedEvent>()   // \"myapp.orders.events\"\n      .SubscribeToNamespaceOf<PaymentCompletedEvent>(); // \"myapp.payments.events\"\n\n  // Can mix with string-based for wildcards\n  opts.OwnDomains(\"myapp.legacy.*\");\n});\n```\n\n**Benefits:**\n- **Compile-time safety** - Invalid types won't compile\n- **Refactor-friendly** - Rename/move types automatically updates references\n- **IDE navigation** - Ctrl+click to go to type definition\n- **No magic strings** - For known namespaces\n\n### Inbox Strategies\n\nTwo inbox routing strategies are available:\n\n#### SharedTopicInboxStrategy (Default)\n\nAll commands go to a single \"inbox\" topic with namespace-based filtering:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  opts.Inbox.UseSharedTopic(\"inbox\");  // Default\n});\n```\n\n#### DomainTopicInboxStrategy\n\nEach domain gets its own inbox topic:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  opts.Inbox.UseDomainTopics(\".in\");\n  // Creates topics: \"myapp.users.in\", \"myapp.orders.in\", etc.\n});\n```\n\n## Domain Topic Provisioning {#domain-topic-provisioning}\n\n:::new\nWhen a service declares domain ownership via `OwnDomains()`, Whizbang automatically provisions the corresponding topics/exchanges on the message broker at worker startup. This ensures the domain owner (publisher) creates infrastructure that subscribers will use.\n:::\n\n### How It Works\n\nAt `TransportConsumerWorker` startup, before creating subscriptions:\n\n1. The worker checks for a registered `IInfrastructureProvisioner`\n2. If present, it calls `ProvisionOwnedDomainsAsync()` with the service's owned domains\n3. The provisioner creates topics/exchanges for each owned domain\n4. Then subscriptions are created as normal\n\n```csharp\n// When you configure:\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        routing.OwnDomains(\"myapp.users\", \"myapp.orders\");\n    })\n    .AddTransportConsumer();\n\n// At startup, these topics are automatically provisioned:\n// - myapp.users (topic/exchange)\n// - myapp.orders (topic/exchange)\n```\n\n### Transport-Specific Behavior\n\n| Transport | Provisioned Resource | Idempotent |\n|",
-    "tags": [],
-    "version": "v1.0.0"
+    "order": 4,
+    "description": "Control perspective model lifecycle with ModelAction - support soft delete, hard delete (purge), and conditional updates in pure Apply methods",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "drafts/test-error-display",
+    "title": "Test Error Display",
+    "category": "Test",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "enhanced-csharp-examples",
+    "title": "Enhanced C# Code Examples",
+    "category": "Core concepts",
+    "order": 3,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "enhanced-search-demo",
+    "title": "enhanced-search-demo",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "future/README",
+    "title": "Future Versions Roadmap",
+    "category": "Roadmap",
+    "order": 10,
+    "description": "Long-term vision and planned features for Whizbang beyond v0.5.0",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "getting-started",
+    "title": "Getting started",
+    "category": "Introduction",
+    "order": 1,
+    "description": "",
+    "videos": [
+      "dQw4w9WgXcQ"
+    ],
+    "examples": [
+      {
+        "id": "hello-world",
+        "title": "Hello World API call",
+        "stackblitz": "https://stackblitz.com/edit/whizbang-hello"
+      }
+    ]
+  },
+  {
+    "slug": "migrate-from-marten-wolverine/01-concept-mapping",
+    "title": "Migrate from Marten/Wolverine: Concept Mapping",
+    "category": "migrate-from-marten-wolverine",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "migrate-from-marten-wolverine/02-project-setup",
+    "title": "Migrate from Marten/Wolverine: Project Setup",
+    "category": "migrate-from-marten-wolverine",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "migrate-from-marten-wolverine/03-handler-migration",
+    "title": "Migrate from Marten/Wolverine: Handler Migration",
+    "category": "migrate-from-marten-wolverine",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "migrate-from-marten-wolverine/04-projection-migration",
+    "title": "Migrate from Marten/Wolverine: Projection Migration",
+    "category": "migrate-from-marten-wolverine",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "migrate-from-marten-wolverine/05-event-store-migration",
+    "title": "Migrate from Marten/Wolverine: Event Store Migration",
+    "category": "migrate-from-marten-wolverine",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "migrate-from-marten-wolverine/06-transport-configuration",
+    "title": "Migrate from Marten/Wolverine: Transport Configuration",
+    "category": "migrate-from-marten-wolverine",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "migrate-from-marten-wolverine/07-outbox-migration",
+    "title": "Migrate from Marten/Wolverine: Outbox Migration",
+    "category": "migrate-from-marten-wolverine",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "migrate-from-marten-wolverine/08-testing-migration",
+    "title": "Migrate from Marten/Wolverine: Testing Migration",
+    "category": "migrate-from-marten-wolverine",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "migrate-from-marten-wolverine/09-cli-wizard",
+    "title": "CLI Migration Wizard",
+    "category": "migrate-from-marten-wolverine",
+    "description": "Interactive wizard for migrating from Marten/Wolverine to Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "migrate-from-marten-wolverine/README",
+    "title": "Migrate from Marten/Wolverine",
+    "category": "migrate-from-marten-wolverine",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "migrate-from-marten-wolverine/appendix-checklist",
+    "title": "Migrate from Marten/Wolverine: Checklist",
+    "category": "migrate-from-marten-wolverine",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "philosophy",
+    "title": "Philosophy",
+    "category": "Introduction",
+    "order": 2,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "projections",
+    "title": "Projections",
+    "category": "Core concepts",
+    "order": 2,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/_folder",
+    "title": "Proposed Features",
+    "category": "proposals",
+    "description": "Proposed features and documentation under consideration",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/advanced-features",
+    "title": "Advanced Features",
+    "category": "Architecture & Design",
+    "order": 10,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/concurrency-control",
+    "title": "Concurrency Control",
+    "category": "Architecture & Design",
+    "order": 5,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/deployment-operations",
+    "title": "Deployment & Operations",
+    "category": "Architecture & Design",
+    "order": 15,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/domain-ownership",
+    "title": "Domain Ownership",
+    "category": "Architecture & Design",
+    "order": 6,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/event-store-projections",
+    "title": "Event Store & Projection Architecture",
+    "category": "Architecture & Design",
+    "order": 4,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/flags-tags-system",
+    "title": "Flags & Tags System",
+    "category": "Architecture & Design",
+    "order": 11,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/multi-tenancy",
+    "title": "Multi-Tenancy",
+    "category": "Architecture & Design",
+    "order": 8,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/observability-metrics",
+    "title": "Observability & Metrics",
+    "category": "Architecture & Design",
+    "order": 14,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/open-questions",
+    "title": "Open Design Questions - RESOLVED",
+    "category": "Architecture & Design",
+    "order": 3,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/policy-engine",
+    "title": "Policy Engine",
+    "category": "Architecture & Design",
+    "order": 12,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/projection-management",
+    "title": "Projection Management",
+    "category": "Architecture & Design",
+    "order": 7,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/schema-evolution",
+    "title": "Schema Evolution & Event Versioning",
+    "category": "Architecture & Design",
+    "order": 9,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/source-generation-ide",
+    "title": "Source Generation & IDE Integration",
+    "category": "Architecture & Design",
+    "order": 12,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "proposals/testing-development-tools",
+    "title": "Testing & Development Tools",
+    "category": "Architecture & Design",
+    "order": 13,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "roadmap/FEATURE-EVOLUTION",
+    "title": "Feature Evolution Matrix",
+    "category": "Roadmap",
+    "order": 5,
+    "description": "Track how each feature evolves across versions with clear progression indicators",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "roadmap/README",
+    "title": "Whizbang Implementation Roadmap",
+    "category": "Roadmap",
+    "order": 1,
+    "description": "Complete implementation roadmap for building the Whizbang .NET library from foundation to production",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "roadmap/SESSION-CONTEXT",
+    "title": "Session Context for Claude",
+    "category": "Roadmap",
+    "order": 99,
+    "description": "Essential context for starting new Claude sessions on the Whizbang implementation",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "roadmap/architecture",
+    "title": "Architecture Overview",
+    "category": "Roadmap",
+    "order": 3,
+    "description": "High-level architecture and component relationships in Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "roadmap/philosophy",
+    "title": "Implementation Philosophy",
+    "category": "Roadmap",
+    "order": 2,
+    "description": "Core principles and philosophy driving the Whizbang implementation",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "roadmap/success-metrics",
+    "title": "Success Metrics",
+    "category": "Roadmap",
+    "order": 4,
+    "description": "How we measure success for each version and component of Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "simple-csharp-examples",
+    "title": "Simple C# Code Examples",
+    "category": "Core concepts",
+    "order": 4,
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/README",
+    "title": "Version 0.1.0 - Foundation Release",
+    "category": "Implementation",
+    "order": 1,
+    "description": "The foundation release of Whizbang establishing all core components with comprehensive testing and IDE support",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/_folder",
+    "title": "Version 0.1.0 - Foundation",
+    "category": "v1.0.0",
+    "description": "The foundation release establishing all core components with in-memory implementations",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/advanced-topics/deployment-strategies",
+    "title": "Deployment Strategies",
+    "category": "Advanced Topics",
+    "order": 7,
+    "description": "Deployment patterns - blue-green, canary, rolling updates, feature flags, and rollback strategies",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/advanced-topics/monitoring",
+    "title": "Monitoring & Observability",
+    "category": "Advanced Topics",
+    "order": 6,
+    "description": "Application monitoring - Application Insights, Prometheus, distributed tracing, metrics, and dashboards",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/advanced-topics/multi-tenancy",
+    "title": "Multi-Tenancy Patterns",
+    "category": "Advanced Topics",
+    "order": 4,
+    "description": "Multi-tenancy architecture patterns - database-per-tenant, schema-per-tenant, row-level security",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/advanced-topics/native-aot",
+    "title": "Native AOT",
+    "category": "Advanced Topics",
+    "order": 3,
+    "description": "Deploy with Native AOT - zero reflection, trim-safe code, and AOT-compatible patterns",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/advanced-topics/performance-tuning",
+    "title": "Performance Tuning",
+    "category": "Advanced Topics",
+    "order": 1,
+    "description": "Optimize Whizbang performance - zero-allocation patterns, pooling, batching, and profiling",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/advanced-topics/scaling",
+    "title": "Scaling Patterns",
+    "category": "Advanced Topics",
+    "order": 8,
+    "description": "Horizontal scaling - autoscaling, partitioning, load balancing, and performance under load",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/advanced-topics/security",
+    "title": "Security Best Practices",
+    "category": "Advanced Topics",
+    "order": 5,
+    "description": "Security guidelines - authentication, authorization, encryption, secrets management, OWASP Top 10",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/advanced-topics/testing-receptors",
+    "title": "Testing Receptors & Perspectives",
+    "category": "Advanced Topics",
+    "order": 2,
+    "description": "Unit testing patterns for receptors and perspectives - mocking, fixtures, and test strategies",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/advanced-topics/troubleshooting",
+    "title": "Troubleshooting Guide",
+    "category": "Advanced Topics",
+    "order": 9,
+    "description": "Common issues, debugging techniques, diagnostic tools, and solutions",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/architecture/message-lifecycle",
+    "title": "Message Lifecycle & Architecture",
+    "category": "Architecture",
+    "order": 1,
+    "description": "Complete guide to message flow through Whizbang - Commands, Events, Work Coordinator, and all the hooks between Dispatcher, Receptors, Perspectives, and Outbox/Inbox",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/attributes/streamkey",
+    "title": "StreamKey Attribute",
+    "category": "Attributes",
+    "description": "Marks a property as the stream key for event sourcing and perspective event ordering",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/components/README",
+    "title": "Core Components Overview",
+    "category": "Components",
+    "order": 1,
+    "description": "Overview of all core components in Whizbang v0.1.0",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/components/dispatcher",
+    "title": "Dispatcher Component",
+    "category": "Components",
+    "order": 2,
+    "description": "Core message routing and orchestration with basic handler discovery",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/components/drivers",
+    "title": "Drivers Component",
+    "category": "Components",
+    "order": 8,
+    "description": "Basic in-memory storage driver for development and testing",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/components/ledger",
+    "title": "Ledger Component",
+    "category": "Components",
+    "order": 7,
+    "description": "In-memory event store with basic append and read operations",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/components/lenses",
+    "title": "Lenses Component",
+    "category": "Components",
+    "order": 5,
+    "description": "Read-only interfaces for querying data - the query side of Whizbang's CQRS implementation",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/components/perspectives",
+    "title": "Perspectives Component",
+    "category": "Components",
+    "order": 4,
+    "description": "Event handlers that update various views of your data - the write side of Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/components/policy-engine",
+    "title": "Policy Engine Component",
+    "category": "Components",
+    "order": 6,
+    "description": "Cross-cutting concerns as composable policies - retry, timeout, cache, and circuit breaker",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/components/receptors",
+    "title": "Receptors Component",
+    "category": "Components",
+    "order": 3,
+    "description": "Command receivers that make decisions and emit events - the foundation of Whizbang's event-driven architecture",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/components/transports",
+    "title": "Transports Component",
+    "category": "Components",
+    "order": 9,
+    "description": "Basic in-process message transport for local development",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/audit-logging",
+    "title": "Audit Logging",
+    "category": "Core Concepts",
+    "order": 7,
+    "description": "Implement compliance-ready audit logging using Whizbang's System Events - capture who changed what, when, and why",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/dispatcher",
+    "title": "Dispatcher Deep Dive",
+    "category": "Core Concepts",
+    "order": 1,
+    "description": "Master the Whizbang Dispatcher - three dispatch patterns (SendAsync, LocalInvokeAsync, PublishAsync) for commands, queries, and events",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/event-store-query",
+    "title": "Event Store Query",
+    "category": "Core Concepts",
+    "order": 10,
+    "description": "Query raw events in the event store with full LINQ support and automatic scope filtering",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/fuzzy-matching",
+    "title": "MatchStrictness: Fuzzy Type Matching Control",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/lenses",
+    "title": "Lenses Guide",
+    "category": "Core Concepts",
+    "order": 4,
+    "description": "Master Whizbang Lenses - query-optimized repositories for fast, efficient access to read models maintained by Perspectives",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/lifecycle-receptors",
+    "title": "Lifecycle Receptors",
+    "category": "Core Concepts",
+    "order": 10,
+    "description": "Complete API reference for lifecycle receptors - [FireAt] attribute, ILifecycleContext injection, compile-time vs runtime registration, and AOT-compatible patterns",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/lifecycle-stages",
+    "title": "Lifecycle Stages",
+    "category": "Core Concepts",
+    "order": 9,
+    "description": "Complete reference for all 20 lifecycle stages in Whizbang message processing pipeline - timing, guarantees, and use cases",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/message-context",
+    "title": "Message Context & Tracing",
+    "category": "Core Concepts",
+    "order": 5,
+    "description": "Track message flow across distributed systems with MessageId, CorrelationId, and CausationId - automatic distributed tracing built into Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/message-security",
+    "title": "Message Security Context Propagation",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/observability",
+    "title": "Observability & Message Hops",
+    "category": "Core Concepts",
+    "order": 6,
+    "description": "Understand Whizbang's hop-based observability architecture - MessageEnvelope and MessageHop for distributed tracing and debugging",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/perspectives/association-info",
+    "title": "PerspectiveAssociationInfo: Strongly-Typed Associations with Delegates",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/perspectives/multi-stream",
+    "title": "Multi-Stream Perspectives",
+    "category": "Core Concepts",
+    "order": 1,
+    "description": "IGlobalPerspectiveFor pattern for aggregating events across multiple streams using partition keys - inspired by Marten's MultiStreamProjection",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/perspectives/perspective-sync",
+    "title": "Perspective Synchronization",
+    "category": "Core Concepts",
+    "order": 4,
+    "description": "Read-your-writes consistency for perspectives - wait for perspective updates before querying to ensure handlers see their own changes",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/perspectives/typed-associations",
+    "title": "GetPerspectiveAssociations: Strongly-Typed Perspective Queries",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/perspectives",
+    "title": "Perspectives Guide",
+    "category": "Core Concepts",
+    "order": 3,
+    "description": "Master Whizbang Perspectives - pure function event handlers that maintain eventually consistent read models optimized for queries",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/receptors",
+    "title": "Receptors Guide",
+    "category": "Core Concepts",
+    "order": 2,
+    "description": "Master Whizbang Receptors - stateless message handlers that encapsulate business logic, validation, and decision-making",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/routing",
+    "title": "Namespace-Based Routing",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/rpc-extraction",
+    "title": "RPC Response Extraction",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
   },
   {
     "slug": "v1.0.0/core-concepts/scoping",
-    "title": "Scoping",
-    "category": "Core Concepts",
-    "order": 999,
-    "description": "# Scoping System\n\nWhizbang's scoping system provides flexible multi-tenancy and data isolation through composable filters, enabling tenant, user, organization, and principal-based access patterns.\n\n## Overview\n\nScoping in Whizbang separates data isolation concerns from your domain models:\n\n- **PerspectiveScope** - Metadata stored with each row (TenantId, UserId, etc.)\n- **ScopeFilter** - Composable flags for query filtering\n- **ScopeFilterBuilder** - Builds filter info from flags and context\n- **IScopedLensFactory** - Resolves lenses with scope filters applied\n\n## PerspectiveScope\n\n`PerspectiveScope` is stored in the `scope` column of perspective rows, separate from your data model.\n\n```csharp\npublic record PerspectiveScope {\n  // Standard scope properties\n  public string? TenantId { get; init; }\n  public string? UserId { get; init; }\n  public string? OrganizationId { get; init; }\n  public string? CustomerId { get; init; }\n\n  // Security principal access list\n  public IReadOnlyList<SecurityPrincipalId>? AllowedPrincipals { get; init; }\n\n  // Custom extension properties\n  public IReadOnlyDictionary<string, string?>? Extensions { get; init; }\n\n  // Unified indexer access\n  public string? this[string key] => ...;\n}\n```\n\n### Why Separate from Data?\n\nStoring scope separately from your domain data provides:\n\n1. **Clean domain models** - Your `Order` class doesn't need `TenantId`\n2. **Consistent filtering** - All perspectives filter the same way\n3. **Flexible extensions** - Add custom scope properties without schema changes\n4. **Security isolation** - Scope enforcement happens at infrastructure level\n\n### Accessing Scope Values\n\n```csharp\nvar scope = new PerspectiveScope {\n  TenantId = \"tenant-123\",\n  UserId = \"user-456\",\n  Extensions = new Dictionary<string, string?> {\n    [\"department\"] = \"Engineering\",\n    [\"region\"] = \"us-west\"\n  }\n};\n\n// Via properties\nvar tenant = scope.TenantId;  // \"tenant-123\"\n\n// Via indexer (standard + extensions)\nvar tenant = scope[\"TenantId\"];     // \"tenant-123\"\nvar dept = scope[\"department\"];     // \"Engineering\"\nvar unknown = scope[\"unknown\"];     // null\n```\n\n## Scope Filters\n\n`ScopeFilter` is a flags enum for composable filtering.\n\n```csharp\n[Flags]\npublic enum ScopeFilter {\n  None = 0,           // No filtering (global access)\n  Tenant = 1 << 0,    // Filter by TenantId\n  Organization = 1 << 1,\n  Customer = 1 << 2,\n  User = 1 << 3,      // Filter by UserId\n  Principal = 1 << 4  // Filter by security principal overlap\n}\n```\n\n### Filter Composition\n\nCombine filters with bitwise OR:\n\n```csharp\n// Single filter\nvar tenantOnly = ScopeFilter.Tenant;\n\n// Multiple filters (AND'd together)\nvar tenantAndUser = ScopeFilter.Tenant | ScopeFilter.User;\n\n// Complex combination\nvar complex = ScopeFilter.Tenant | ScopeFilter.Organization | ScopeFilter.Principal;\n```\n\n### Filter Application\n\n| Filter | Generated WHERE |\n|",
-    "tags": [],
-    "version": "v1.0.0"
+    "title": "Scoping System",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
   },
   {
     "slug": "v1.0.0/core-concepts/security",
-    "title": "Security",
-    "category": "Core Concepts",
-    "order": 999,
-    "description": "# Security System\n\nWhizbang provides a comprehensive security system supporting RBAC (Role-Based Access Control) and ABAC (Attribute-Based Access Control) patterns with composable scope filters, permission checks, and security event auditing.\n\n## Overview\n\nThe security system consists of:\n\n- **Permissions** - Type-safe permission identifiers with wildcard matching\n- **Roles** - Named collections of permissions\n- **Scope Context** - Ambient security context for current operation\n- **Security Principals** - Users, groups, and services with hierarchical membership\n- **Scoped Lens Factory** - Permission-aware lens resolution with composable filters\n- **System Events** - Security audit trail (AccessDenied, AccessGranted, etc.)\n\n## Permissions\n\nPermissions use a `resource:action` pattern and support wildcard matching.\n\n```csharp\n// Factory methods for common patterns\nvar readOrders = Permission.Read(\"orders\");      // \"orders:read\"\nvar writeOrders = Permission.Write(\"orders\");    // \"orders:write\"\nvar deleteOrders = Permission.Delete(\"orders\");  // \"orders:delete\"\nvar adminOrders = Permission.Admin(\"orders\");    // \"orders:admin\"\nvar allOrders = Permission.All(\"orders\");        // \"orders:*\"\n\n// Custom permissions\nvar permission = new Permission(\"orders:export\");\n\n// Wildcard matching\nvar allResources = new Permission(\"*:*\");        // Matches everything\nvar allOrderActions = Permission.All(\"orders\");  // Matches orders:*\n```\n\n### Wildcard Rules\n\n| Permission | Matches |\n|",
-    "tags": [],
-    "version": "v1.0.0"
+    "title": "Security System",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
   },
   {
     "slug": "v1.0.0/core-concepts/system-events",
     "title": "System Events",
-    "category": "Core Concepts",
-    "order": 999,
+    "category": "v1.0.0",
     "description": "",
-    "tags": [],
-    "version": "v1.0.0"
+    "videos": [],
+    "examples": []
   },
   {
     "slug": "v1.0.0/core-concepts/transport-consumer",
     "title": "Transport Consumer",
-    "category": "Core Concepts",
-    "order": 999,
-    "description": "# Transport Consumer\n\nThe transport consumer automatically subscribes to message broker destinations and processes incoming messages. When combined with `WithRouting()`, subscriptions are auto-generated from your routing configuration.\n\n## Overview\n\nThe `AddTransportConsumer()` extension method:\n\n1. **Auto-generates subscriptions** from `RoutingOptions` configured via `WithRouting()`\n2. **Registers `TransportConsumerOptions`** with populated destinations\n3. **Starts `TransportConsumerWorker`** as a hosted service\n\n## Auto-Configuration {#auto-configuration}\n\nThe recommended approach chains `WithRouting()` and `AddTransportConsumer()`:\n\n```csharp\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        routing\n            .OwnDomains(\"myapp.orders.commands\")\n            .SubscribeTo(\"myapp.payments.events\")\n            .Inbox.UseSharedTopic(\"inbox\");\n    })\n    .WithEFCore<OrderDbContext>()\n    .WithDriver.Postgres\n    .AddTransportConsumer();\n```\n\nThis auto-generates subscriptions:\n- **Inbox subscription** from `OwnDomains()` - Filters commands by namespace pattern\n- **Event subscriptions** from `SubscribeTo()` - Subscribes to each namespace topic\n- **Auto-discovered events** from perspectives and receptors\n\n### What Gets Generated\n\nFor the configuration above, `AddTransportConsumer()` generates:\n\n| Destination | Address | Routing Key |\n|",
-    "tags": [],
-    "version": "v1.0.0"
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/type-formatting",
+    "title": "TypeFormatter: Type Name Formatting Utility",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/type-matching",
+    "title": "TypeMatcher: Type Name Matching Utilities",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/type-qualification",
+    "title": "TypeQualification: Type Name Formatting Control",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/core-concepts/whizbang-ids",
+    "title": "WhizbangIds: Strongly-Typed Identity Values",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/customization-examples/event-sourcing-cqrs",
+    "title": "Event Sourcing & CQRS",
+    "category": "Customization Examples",
+    "order": 2,
+    "description": "Implement full event sourcing with CQRS - event store, snapshots, temporal queries, and projections",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/customization-examples/microservices-orchestration",
+    "title": "Microservices Orchestration",
+    "category": "Customization Examples",
+    "order": 3,
+    "description": "Implement saga orchestration patterns - distributed workflows, compensation, and process managers",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/customization-examples/multi-tenant-saas",
+    "title": "Multi-Tenant SaaS",
+    "category": "Customization Examples",
+    "order": 1,
+    "description": "Build multi-tenant SaaS applications with tenant isolation, per-tenant databases, and cross-tenant analytics",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/customization-examples/real-time-analytics",
+    "title": "Real-Time Analytics",
+    "category": "Customization Examples",
+    "order": 4,
+    "description": "Build real-time analytics dashboards - streaming metrics, SignalR updates, and live KPIs",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/data/dapper-integration",
+    "title": "Dapper Integration",
+    "category": "Data Access",
+    "order": 1,
+    "description": "Lightweight, high-performance data access with Dapper for Whizbang perspectives and lenses - simple SQL, minimal overhead",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/data/efcore-integration",
+    "title": "EF Core Integration",
+    "category": "Data Access",
+    "order": 2,
+    "description": "Full-featured ORM with EF Core 10 for complex domain models - JSONB support, UUIDv7, migrations, and advanced querying",
+    "videos": [],
+    "examples": []
   },
   {
     "slug": "v1.0.0/data/efcore-json-configuration",
@@ -50,70 +903,773 @@
     "category": "Data",
     "order": 10,
     "description": "Configuring EF Core 10 with custom JSON converters for JSONB columns",
-    "tags": "efcore, json, jsonb, postgresql, npgsql, converters",
-    "version": "v1.0.0"
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/data/event-store",
+    "title": "Event Store",
+    "category": "Data Access",
+    "order": 4,
+    "description": "Event sourcing and stream storage - event streams, replay, checkpoints, snapshots, and temporal queries",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/data/perspectives-storage",
+    "title": "Perspectives Storage",
+    "category": "Data Access",
+    "order": 3,
+    "description": "Read model schema design for perspectives - denormalization strategies, JSONB columns, indexing, and high-volume partitioning",
+    "videos": [],
+    "examples": []
   },
   {
     "slug": "v1.0.0/data/schema-migration",
     "title": "Schema Migration",
-    "category": "data",
-    "order": 999,
-    "description": "# Schema Migration\n\nWhizbang provides automatic schema management for perspective tables, with built-in drift detection and safe rename operations. This page covers how Whizbang handles schema changes across deployments.\n\n## Automatic Schema Creation\n\nWhen your application starts, Whizbang automatically creates all required infrastructure tables and perspective tables:\n\n```csharp\n// In your startup code\nawait dbContext.EnsureWhizbangDatabaseInitializedAsync();\n```\n\nThis single call:\n1. Creates infrastructure tables (`wh_inbox`, `wh_outbox`, `wh_event_store`, etc.)\n2. Creates perspective tables for all discovered perspectives\n3. Registers perspectives in the [perspective registry](/docs/v1.0.0/perspectives/registry)\n4. Detects and logs any schema drift\n\n## Schema Drift Detection\n\nSchema drift occurs when your C# perspective definition doesn't match the database table. Whizbang detects this by comparing SHA-256 hashes of the schema definition.\n\n### Detection Flow\n\n```\n┌─────────────────────┐\n│  Compile Time       │\n├─────────────────────┤\n│ Generate schema     │\n│ JSON from C# class  │\n│ Compute SHA-256     │\n│ hash of schema      │\n└─────────┬───────────┘\n          │\n          ▼\n┌─────────────────────┐\n│  Runtime            │\n├─────────────────────┤\n│ Compare hash with   │\n│ stored hash in      │\n│ perspective_registry│\n└─────────┬───────────┘\n          │\n          ▼\n┌─────────────────────┐\n│  If Different       │\n├─────────────────────┤\n│ Log drift warning   │\n│ Update registry     │\n└─────────────────────┘\n```\n\n### What Causes Drift\n\n| Change Type | Example | Drift Detected? |\n|",
-    "tags": [],
-    "version": "v1.0.0"
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/data/turnkey-initialization",
+    "title": "Turnkey Database Initialization",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/data-access/schema-generation-pattern",
+    "title": "Schema Generation Pattern",
+    "category": "Data Access",
+    "order": 6,
+    "description": "Database-agnostic schema definitions with ISchemaBuilder for Postgres, SQLite, and custom database engines",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/diagnostics/whiz030",
+    "title": "WHIZ030: Perspective Event Missing StreamKey",
+    "category": "Diagnostics",
+    "description": "Event type used in perspective must have exactly one property marked with [StreamKey] attribute",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/diagnostics/whiz031",
+    "title": "WHIZ031: Multiple StreamKey Attributes",
+    "category": "Diagnostics",
+    "description": "Event type has multiple properties marked with [StreamKey] - only one is allowed",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/diagnostics/whiz058",
+    "title": "WHIZ058: GUID Call Intercepted",
+    "category": "Diagnostics",
+    "description": "Informational diagnostic indicating a GUID creation call has been intercepted and wrapped with TrackedGuid",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/diagnostics/whiz059",
+    "title": "WHIZ059: GUID Interception Suppressed",
+    "category": "Diagnostics",
+    "description": "Informational diagnostic indicating a GUID creation call was not intercepted due to suppression",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/diagnostics/whiz070",
+    "title": "WHIZ070: Missing Pgvector.EntityFrameworkCore Package",
+    "category": "Diagnostics",
+    "description": "Error diagnostic when a perspective model uses [VectorField] but the required Pgvector.EntityFrameworkCore package is not referenced",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/diagnostics/whiz071",
+    "title": "WHIZ071: Missing Pgvector Package",
+    "category": "Diagnostics",
+    "description": "Error diagnostic when a perspective model uses [VectorField] but the required base Pgvector package is not referenced",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/extensibility/custom-dispatchers",
+    "title": "Custom Dispatchers",
+    "category": "Extensibility",
+    "order": 9,
+    "description": "Implement custom dispatcher patterns - mediator, event sourcing, multi-tenant routing",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/extensibility/custom-health-checks",
+    "title": "Custom Health Checks",
+    "category": "Extensibility",
+    "order": 6,
+    "description": "Implement custom health checks for transports, databases, external APIs, and custom services",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/extensibility/custom-id-generators",
+    "title": "Custom ID Generators",
+    "category": "Extensibility",
+    "order": 8,
+    "description": "Implement custom ID generation strategies - Snowflake IDs, ULID, CUID, or custom schemes",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/extensibility/custom-perspectives",
+    "title": "Custom Perspectives",
+    "category": "Extensibility",
+    "order": 3,
+    "description": "Advanced perspective patterns - time-travel, snapshots, caching, batching, and custom storage backends",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/extensibility/custom-policies",
+    "title": "Custom Policies",
+    "category": "Extensibility",
+    "order": 5,
+    "description": "Advanced policy patterns - weighted policies, dynamic registration, async evaluation, caching, and A/B testing",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/extensibility/custom-receptors",
+    "title": "Custom Receptors",
+    "category": "Extensibility",
+    "order": 2,
+    "description": "Advanced receptor customization patterns - streaming, lifecycle hooks, base classes, and performance optimization",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/extensibility/custom-serializers",
+    "title": "Custom Serializers",
+    "category": "Extensibility",
+    "order": 7,
+    "description": "Implement custom serializers for Protobuf, MessagePack, or custom binary formats - AOT-compatible patterns",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/extensibility/custom-storage",
+    "title": "Custom Storage",
+    "category": "Extensibility",
+    "order": 10,
+    "description": "Implement custom storage backends - Redis, MongoDB, Elasticsearch, Cassandra, or custom databases",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/extensibility/custom-transports",
+    "title": "Custom Transports",
+    "category": "Extensibility",
+    "order": 4,
+    "description": "Implement custom transports for HTTP, gRPC, Kafka, RabbitMQ, or any messaging system - AOT-compatible patterns",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/extensibility/custom-work-coordinators",
+    "title": "Custom Work Coordinators",
+    "category": "Extensibility",
+    "order": 11,
+    "description": "Implement custom work coordination strategies - distributed locks, Redis queues, or custom lease management",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/extensibility/database-schema-framework",
+    "title": "Database Schema Framework",
+    "category": "Extensibility",
+    "order": 11,
+    "description": "Implement database drivers using the Whizbang.Data.Schema framework - database-agnostic table and column definitions for PostgreSQL, SQLite, SQL Server, and custom databases",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/extensibility/hooks-and-middleware",
+    "title": "Hooks and Middleware",
+    "category": "Extensibility",
+    "order": 1,
+    "description": "Pipeline behaviors for cross-cutting concerns - logging, validation, retry, caching, and custom pre/post processing",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/extensibility/plugin-architecture",
+    "title": "Plugin Architecture",
+    "category": "Extensibility",
+    "order": 12,
+    "description": "Design plugin systems - dynamic assembly loading, hot-reload, and extension points",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/getting-started/installation",
+    "title": "Installation Guide",
+    "category": "Getting Started",
+    "order": 2,
+    "description": "Install Whizbang and set up your first project with NuGet packages, project templates, and IDE configuration",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/getting-started/introduction",
+    "title": "Introduction to Whizbang",
+    "category": "Getting Started",
+    "order": 1,
+    "description": "Learn about Whizbang - a zero-reflection, AOT-compatible .NET library for building event-driven, CQRS, and event-sourced applications",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/getting-started/project-structure",
+    "title": "Project Structure Guide",
+    "category": "Getting Started",
+    "order": 4,
+    "description": "Organize your Whizbang application with recommended project structures, separation of concerns, and multi-service architectures",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/getting-started/quick-start",
+    "title": "Quick Start Tutorial",
+    "category": "Getting Started",
+    "order": 3,
+    "description": "Build your first Whizbang application in 10 minutes - create messages, receptors, and dispatch commands with complete working examples",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/graphql/filtering",
+    "title": "GraphQL Filtering",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/graphql/index",
+    "title": "GraphQL Integration",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/graphql/lens-integration",
+    "title": "Lens Integration",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/graphql/scoping",
+    "title": "GraphQL Scoping",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/graphql/setup",
+    "title": "GraphQL Setup",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/graphql/sorting",
+    "title": "GraphQL Sorting",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
   },
   {
     "slug": "v1.0.0/guides/implementing-multi-tenancy",
-    "title": "Implementing Multi Tenancy",
-    "category": "guides",
-    "order": 999,
+    "title": "Implementing Multi-Tenancy",
+    "category": "v1.0.0",
     "description": "",
-    "tags": [],
-    "version": "v1.0.0"
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/infrastructure/aspire-integration",
+    "title": ".NET Aspire Integration",
+    "category": "Infrastructure",
+    "order": 1,
+    "description": "Cloud-native orchestration for Whizbang applications with .NET Aspire - automatic infrastructure provisioning and service discovery",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/infrastructure/health-checks",
+    "title": "Health Checks",
+    "category": "Infrastructure",
+    "order": 2,
+    "description": "Application health monitoring with built-in health checks for transports, databases, and custom components",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/infrastructure/policies",
+    "title": "Policy-Based Routing",
+    "category": "Infrastructure",
+    "order": 4,
+    "description": "Dynamic message routing and configuration via predicate-based policies - multi-tenancy, environment-based routing, and execution strategies",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/infrastructure/pooling",
+    "title": "Object Pooling",
+    "category": "Infrastructure",
+    "order": 3,
+    "description": "Zero-allocation object pooling for high-performance message processing - reduce heap pressure and GC overhead",
+    "videos": [],
+    "examples": []
   },
   {
     "slug": "v1.0.0/lenses/raw-sql",
-    "title": "Raw Sql",
-    "category": "lenses",
-    "order": 999,
+    "title": "Raw SQL and Connection Access",
+    "category": "v1.0.0",
     "description": "",
-    "tags": [],
-    "version": "v1.0.0"
+    "videos": [],
+    "examples": []
   },
   {
     "slug": "v1.0.0/lenses/vector-search",
-    "title": "Vector Search",
-    "category": "lenses",
-    "order": 999,
-    "description": "# Vector Similarity Search\n\nWhizbang supports pgvector similarity queries for semantic search, embeddings, and AI/ML workloads.\n\n## Prerequisites\n\nWhen using `[VectorField]` attributes on your perspective models, you must add the Pgvector.EntityFrameworkCore package:\n\n```xml\n<PackageReference Include=\"Pgvector.EntityFrameworkCore\" Version=\"0.3.0\" />\n```\n\nIf you forget this package, the WHIZ070 diagnostic will guide you:\n\n> WHIZ070: Property 'Embedding' uses [VectorField] but Pgvector.EntityFrameworkCore package is not referenced.\n\n## Defining Vector Fields\n\nAdd `[VectorField]` to properties in your perspective model:\n\n```csharp\npublic class DocumentModel {\n  public Guid Id { get; init; }\n  public string Title { get; init; } = \"\";\n  public string Content { get; init; } = \"\";\n\n  [VectorField(1536)]  // OpenAI ada-002 dimensions\n  public float[]? ContentEmbedding { get; init; }\n\n  [VectorField(1536)]  // For comparison operations\n  public float[]? SummaryEmbedding { get; init; }\n}\n\npublic class UserPreferenceModel {\n  public Guid UserId { get; init; }\n\n  [VectorField(1536)]\n  public float[]? PreferenceEmbedding { get; init; }\n}\n```\n\nThe generator creates pgvector shadow properties with appropriate indexes.\n\n## Usage Patterns\n\nAll methods use **strongly-typed lambda selectors** for compile-time safety.\n\n### Pattern 1: App-Side Vector (Search Query)\n\nUse when the search vector comes from your application (e.g., embedding a user's search query):\n\n```csharp\n// Get embedding from your embedding service (OpenAI, etc.)\nvar searchEmbedding = await embeddingService.EmbedAsync(userSearchQuery);\n\n// Find documents similar to the search query\nvar results = await documentLens.Query\n    .OrderByCosineDistance(m => m.ContentEmbedding, searchEmbedding)\n    .Take(10)\n    .ToListAsync();\n```\n\n**SQL Generated:**\n```sql\nSELECT * FROM documents\nORDER BY content_embedding <=> @p0 ASC\nLIMIT 10\n```\n\n### Pattern 2: Same-Table Column Comparison\n\nUse when comparing two vector columns on the same row (100% SQL, no vector data round-trip):\n\n```csharp\n// Find documents where content differs significantly from summary\n// (potential quality issue - summary doesn't match content)\nvar mismatchedDocs = await documentLens.Query\n    .Where(m => m.ContentEmbedding != null && m.SummaryEmbedding != null)\n    .OrderByCosineDistance(m => m.ContentEmbedding, m => m.SummaryEmbedding)\n    .ThenByDescending(m => m.Data.CreatedAt)  // Most different first, then newest\n    .Take(20)\n    .ToListAsync();\n\n// Find documents where content and summary are similar (well-summarized)\nvar wellSummarized = await documentLens.Query\n    .WithinCosineDistance(m => m.ContentEmbedding, m => m.SummaryEmbedding, threshold: 0.2)\n    .ToListAsync();\n```\n\n**SQL Generated:**\n```sql\n-- No vector data sent to/from C# - all computed in PostgreSQL!\nSELECT * FROM documents\nWHERE content_embedding IS NOT NULL AND summary_embedding IS NOT NULL\nORDER BY content_embedding <=> summary_embedding ASC\nLIMIT 20\n```\n\n### Pattern 3: Cross-Table Comparison (Joins)\n\nUse when comparing vectors from different tables:\n\n```csharp\n// Find documents that match a user's preferences\nvar userId = currentUserId;\n\nvar recommendations = await documentLens.Query\n    .SelectMany(\n        doc => userPreferenceLens.Query.Where(up => up.Data.UserId == userId),\n        (doc, pref) => new { Document = doc, Preference = pref })\n    .OrderByCosineDistance(\n        x => x.Document.Data.ContentEmbedding,    // From documents table\n        x => x.Preference.Data.PreferenceEmbedding)  // From user_preferences table\n    .Select(x => x.Document)\n    .Take(10)\n    .ToListAsync();\n```\n\n**SQL Generated:**\n```sql\nSELECT d.* FROM documents d\nJOIN user_preferences up ON up.user_id = @userId\nORDER BY d.content_embedding <=> up.preference_embedding ASC\nLIMIT 10\n```\n\n### Pattern 4: Filtering by Distance Threshold\n\nUse when you only want results within a certain similarity range:\n\n```csharp\nvar searchEmbedding = await embeddingService.EmbedAsync(userQuery);\n\n// Only return documents with cosine distance < 0.3 (very similar)\nvar closeMatches = await documentLens.Query\n    .WithinCosineDistance(m => m.ContentEmbedding, searchEmbedding, threshold: 0.3)\n    .OrderByCosineDistance(m => m.ContentEmbedding, searchEmbedding)\n    .ToListAsync();\n```\n\n**SQL Generated:**\n```sql\nSELECT * FROM documents\nWHERE content_embedding <=> @p0 < 0.3\nORDER BY content_embedding <=> @p0 ASC\n```\n\n### Pattern 5: Combined Filter + Sort + Project\n\nUse when you need distance/similarity scores in your results:\n\n:::updated\n**Important**: `WithCosineDistance` must be used as the **final projection** before `ToListAsync()`.\nYou cannot chain `.OrderBy(r => r.Distance)` or `.Where(r => r.Distance < x)` after it - use\n`OrderByCosineDistance` and `WithinCosineDistance` for SQL-side operations first.\n:::\n\n```csharp\nvar searchEmbedding = await embeddingService.EmbedAsync(userQuery);\n\n// Filter -> Sort -> Project with scores\nvar results = await documentLens.Query\n    .WithinCosineDistance(m => m.ContentEmbedding, searchEmbedding, threshold: 0.5)\n    .OrderByCosineDistance(m => m.ContentEmbedding, searchEmbedding)\n    .WithCosineDistance(m => m.ContentEmbedding, searchEmbedding)\n    .Take(10)\n    .ToListAsync();\n\nforeach (var result in results) {\n  Console.WriteLine($\"{result.Row.Data.Title}: {result.Similarity:P0} match\");\n  // Output: \"My Document: 95% match\"\n}\n```\n\nReturns `VectorSearchResult<TModel>` with:\n- `Row` - The perspective row\n- `Distance` - Cosine distance (0 = identical, 2 = opposite)\n- `Similarity` - Similarity score (1 = identical, -1 = opposite)\n\n## Query Extension Reference\n\n### Ordering Methods\n\n| Method | PostgreSQL Operator | Use Case |\n|",
-    "tags": [],
-    "version": "v1.0.0"
+    "title": "Vector Similarity Search",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/messaging/commands-events",
+    "title": "Commands and Events",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/messaging/failure-handling",
+    "title": "Failure Handling",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/messaging/idempotency-patterns",
+    "title": "Idempotency Patterns",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/messaging/inbox-pattern",
+    "title": "Inbox Pattern",
+    "category": "Messaging",
+    "order": 2,
+    "description": "Achieve exactly-once message processing with the Inbox Pattern - automatic deduplication and idempotent message handling",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/messaging/message-envelopes",
+    "title": "Message Envelopes Deep Dive",
+    "category": "Messaging",
+    "order": 4,
+    "description": "Deep dive into Message Envelopes - hop-based distributed tracing across Outbox, Inbox, and message transports",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/messaging/multi-instance-coordination",
+    "title": "Multi-Instance Coordination",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/messaging/outbox-pattern",
+    "title": "Outbox Pattern",
+    "category": "Messaging",
+    "order": 1,
+    "description": "Implement reliable cross-service event publishing with the Outbox Pattern - guaranteed delivery without distributed transactions",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/messaging/topic-filters",
+    "title": "Topic Filters",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/messaging/work-coordination",
+    "title": "Work Coordination",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/messaging/work-coordinator",
+    "title": "Work Coordinator",
+    "category": "Messaging",
+    "order": 3,
+    "description": "Master the Work Coordinator - atomic batch processing for Outbox, Inbox, and event store tracking with lease-based coordination",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/migration-guide/01-concept-mapping",
+    "title": "Concept Mapping",
+    "category": "Migration Guide",
+    "order": 2,
+    "description": "How Marten/Wolverine concepts translate to Whizbang equivalents",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/migration-guide/02-project-setup",
+    "title": "Project Setup",
+    "category": "Migration Guide",
+    "order": 3,
+    "description": "NuGet packages and initial configuration for migrating to Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/migration-guide/03-handler-migration",
+    "title": "Handler Migration",
+    "category": "Migration Guide",
+    "order": 4,
+    "description": "Converting Wolverine handlers to Whizbang Receptors",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/migration-guide/04-projection-migration",
+    "title": "Projection Migration",
+    "category": "Migration Guide",
+    "order": 5,
+    "description": "Converting Marten projections to Whizbang Perspectives",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/migration-guide/05-event-store-migration",
+    "title": "Event Store Migration",
+    "category": "Migration Guide",
+    "order": 6,
+    "description": "Migrating from Marten's event store to Whizbang's IEventStore",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/migration-guide/06-transport-configuration",
+    "title": "Transport Configuration",
+    "category": "Migration Guide",
+    "order": 7,
+    "description": "Configuring RabbitMQ and Azure Service Bus transports for Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/migration-guide/07-outbox-migration",
+    "title": "Outbox Migration",
+    "category": "Migration Guide",
+    "order": 8,
+    "description": "Migrating from Wolverine's durable outbox to Whizbang's built-in outbox pattern",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/migration-guide/08-testing-migration",
+    "title": "Testing Migration",
+    "category": "Migration Guide",
+    "order": 9,
+    "description": "Updating test infrastructure when migrating to Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/migration-guide/README",
+    "title": "Migration Guide Overview",
+    "category": "Migration Guide",
+    "order": 1,
+    "description": "Overview of migrating from Marten/Wolverine and other frameworks to Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/migration-guide/_folder",
+    "title": "Migration Guide",
+    "category": "v1.0.0",
+    "order": 15,
+    "description": "Guides for migrating from other frameworks to Whizbang",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/migration-guide/appendix-checklist",
+    "title": "Migration Checklist",
+    "category": "Migration Guide",
+    "order": 10,
+    "description": "Complete checklist for migrating from Marten/Wolverine to Whizbang",
+    "videos": [],
+    "examples": []
   },
   {
     "slug": "v1.0.0/perspectives/registry",
-    "title": "Registry",
-    "category": "perspectives",
-    "order": 999,
-    "description": "# Perspective Registry\n\nThe perspective registry is a system table that tracks the mapping between your C# perspective types and their corresponding database tables. It enables automatic schema management, drift detection, and safe table renaming across deployments.\n\n## Overview\n\nWhen Whizbang creates perspective tables, it registers metadata about each perspective in the `wh_perspective_registry` table. This enables:\n\n| Feature | Description |\n|",
-    "tags": [],
-    "version": "v1.0.0"
+    "title": "Perspective Registry",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
   },
   {
     "slug": "v1.0.0/perspectives/table-naming",
-    "title": "Table Naming",
-    "category": "perspectives",
-    "order": 999,
-    "description": "# Perspective Table Naming\n\nWhizbang automatically generates database table names for your perspectives using configurable naming conventions. By default, common suffixes like `Projection`, `Model`, and `Dto` are stripped to create cleaner, shorter table names.\n\n## Default Behavior\n\nWhen you define a perspective, Whizbang converts the class name to snake_case and adds the `wh_per_` prefix:\n\n| C# Class Name | Default Table Name |\n|",
-    "tags": [],
-    "version": "v1.0.0"
+    "title": "Perspective Table Naming",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
   },
   {
     "slug": "v1.0.0/perspectives/temporal",
-    "title": "Temporal",
-    "category": "perspectives",
-    "order": 999,
-    "description": "# Temporal Perspectives\n\nTemporal perspectives create append-only logs where each event creates a NEW row rather than updating existing rows. This pattern is ideal for activity feeds, audit logs, and full history tracking.\n\n## Overview\n\n| Pattern | Interface | Storage | Use Case |\n|",
-    "tags": [],
-    "version": "v1.0.0"
+    "title": "Temporal Perspectives",
+    "category": "v1.0.0",
+    "description": "",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/source-generators/aggregate-ids",
+    "title": "Aggregate IDs",
+    "category": "Source Generators",
+    "order": 4,
+    "description": "Zero-reflection aggregate ID extraction for PolicyContext - compile-time discovery of [AggregateId] marked properties",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/source-generators/json-contexts",
+    "title": "JSON Contexts",
+    "category": "Source Generators",
+    "order": 5,
+    "description": "AOT-compatible JSON serialization with compile-time JsonSerializerContext generation - zero reflection for Native AOT",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/source-generators/message-registry",
+    "title": "Message Registry",
+    "category": "Source Generators",
+    "order": 3,
+    "description": "VSCode extension integration via compile-time message registry - navigate from messages to handlers with IDE tooling",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/source-generators/perspective-discovery",
+    "title": "Perspective Discovery",
+    "category": "Source Generators",
+    "order": 2,
+    "description": "Compile-time perspective discovery for event-driven read models - zero reflection registration and Event Store integration",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/source-generators/receptor-discovery",
+    "title": "Receptor Discovery",
+    "category": "Source Generators",
+    "order": 1,
+    "description": "Compile-time receptor discovery with Roslyn source generators - zero reflection, AOT-compatible message routing",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/source-generators/topic-filter-discovery",
+    "title": "Topic Filter Discovery",
+    "category": "Source Generators",
+    "order": 6,
+    "description": "Compile-time topic filter discovery with Roslyn source generators - type-safe, zero-reflection message routing configuration",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/testing/lifecycle-synchronization",
+    "title": "Lifecycle Synchronization",
+    "category": "Testing",
+    "order": 3,
+    "description": "Deterministic test synchronization using lifecycle receptors - eliminate race conditions in integration tests with PostPerspectiveInline stage",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/transports/azure-service-bus",
+    "title": "Azure Service Bus Transport",
+    "category": "Transports",
+    "order": 1,
+    "description": "Reliable cross-service messaging with Azure Service Bus topics and subscriptions - AOT-compatible with correlation filters",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/transports/in-memory",
+    "title": "In-Memory Transport",
+    "category": "Transports",
+    "order": 2,
+    "description": "Synchronous in-process message delivery for testing and single-process scenarios - zero external dependencies",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/transports/rabbitmq",
+    "title": "RabbitMQ Transport",
+    "category": "Transports",
+    "order": 2,
+    "description": "Distributed event-driven messaging with RabbitMQ topic exchanges - AOT-compatible with channel pooling and dead-letter queue support",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/tutorial/analytics-service",
+    "title": "Analytics Service",
+    "category": "Tutorial",
+    "order": 8,
+    "description": "Build the Analytics Worker - real-time analytics, time-series perspectives, and reporting dashboards",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/tutorial/customer-service",
+    "title": "Customer Service (BFF)",
+    "category": "Tutorial",
+    "order": 7,
+    "description": "Build the Customer Service BFF - perspectives, read models, CQRS query side, and GraphQL API",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/tutorial/deployment",
+    "title": "Deployment",
+    "category": "Tutorial",
+    "order": 10,
+    "description": "Deploy to production - Azure Kubernetes Service, CI/CD pipelines, monitoring, and scaling",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/tutorial/inventory-service",
+    "title": "Inventory Service",
+    "category": "Tutorial",
+    "order": 3,
+    "description": "Build the Inventory Worker - event subscription, stock reservations, compensation, and perspectives",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/tutorial/notification-service",
+    "title": "Notification Service",
+    "category": "Tutorial",
+    "order": 5,
+    "description": "Build the Notification Worker - email/SMS notifications, template rendering, and delivery tracking",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/tutorial/order-management",
+    "title": "Order Management Service",
+    "category": "Tutorial",
+    "order": 2,
+    "description": "Build the Order Service - HTTP API, command handling, event publishing, and PostgreSQL persistence",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/tutorial/payment-processing",
+    "title": "Payment Processing Service",
+    "category": "Tutorial",
+    "order": 4,
+    "description": "Build the Payment Worker - payment gateway integration, distributed transactions, and compensation",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/tutorial/shipping-service",
+    "title": "Shipping Service",
+    "category": "Tutorial",
+    "order": 6,
+    "description": "Build the Shipping Worker - carrier API integration, shipment creation, tracking, and status updates",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/tutorial/testing-strategy",
+    "title": "Testing Strategy",
+    "category": "Tutorial",
+    "order": 9,
+    "description": "Comprehensive testing strategy - unit tests, integration tests, e2e tests, mocks, and fixtures",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/tutorial/tutorial-overview",
+    "title": "ECommerce Tutorial Overview",
+    "category": "Tutorial",
+    "order": 1,
+    "description": "Build a complete e-commerce system with Whizbang - microservices, event sourcing, CQRS, and distributed messaging",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/workers/database-readiness",
+    "title": "Database Readiness",
+    "category": "Workers",
+    "order": 3,
+    "description": "Database dependency coordination - IDatabaseReadinessCheck pattern, startup coordination, retry logic, and caching strategies",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/workers/execution-lifecycle",
+    "title": "Execution Lifecycle",
+    "category": "Workers",
+    "order": 2,
+    "description": "Application startup and shutdown coordination - IExecutionStrategy lifecycle hooks, graceful shutdown with work draining, and worker coordination",
+    "videos": [],
+    "examples": []
+  },
+  {
+    "slug": "v1.0.0/workers/perspective-worker",
+    "title": "Perspective Worker",
+    "category": "Workers",
+    "order": 1,
+    "description": "Background worker for processing perspective checkpoints - automatic checkpoint creation, polling workflow, error tracking, and startup coordination",
+    "videos": [],
+    "examples": []
   }
 ]
