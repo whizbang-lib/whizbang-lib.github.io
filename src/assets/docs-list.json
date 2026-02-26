@@ -172,6 +172,7 @@
   "v1.0.0/source-generators/json-contexts",
   "v1.0.0/source-generators/message-registry",
   "v1.0.0/source-generators/perspective-discovery",
+  "v1.0.0/source-generators/polymorphic-serialization",
   "v1.0.0/source-generators/receptor-discovery",
   "v1.0.0/source-generators/topic-filter-discovery",
   "v1.0.0/testing/lifecycle-synchronization",

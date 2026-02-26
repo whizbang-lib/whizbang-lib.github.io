@@ -339,72 +339,226 @@ public class SpecificPerspectiveReceptor : IReceptor<ProductCreatedEvent> {
 Security context is now established before lifecycle receptor invocation in PerspectiveWorker (v1.0.0).
 :::
 
-Lifecycle receptors have full access to security context from the message envelope via `IMessageContext`:
+Lifecycle receptors have full access to security context from the message envelope. This section explains **how security context is propagated** and **three methods to access it** (from simplest to most powerful).
 
-### Accessing Security Context
+### The Problem: HTTP Context Unavailable
+
+When a lifecycle receptor fires at **deferred stages** like `PostPerspectiveAsync`, the original HTTP request has already completed. This means:
+
+- `HttpContext` is `null` - the request is long gone
+- Middleware-injected services (e.g., custom `UserContextManager`) that read from HTTP context will fail
+- Any service that depends on `IHttpContextAccessor` will return `null`
+
+**Example of what DOESN'T work**:
+```csharp
+// ❌ WRONG - This fails at PostPerspectiveAsync!
+[FireAt(LifecycleStage.PostPerspectiveAsync)]
+public class MyHandler(IHttpContextAccessor httpContextAccessor) : IReceptor<MyEvent> {
+  public ValueTask HandleAsync(MyEvent evt, CancellationToken ct) {
+    // httpContextAccessor.HttpContext is NULL - request is gone!
+    var tenantId = httpContextAccessor.HttpContext?.GetTenantId();
+    return ValueTask.CompletedTask;
+  }
+}
+```
+
+### Solution: Security Context Flows Through Message Hops
+
+Whizbang captures security context (user ID, tenant ID, roles, permissions) when a message is dispatched and stores it in the **message envelope hops**. This context flows through:
+
+```
+HTTP Request → Command Dispatch → Outbox → Worker → Event → Perspective → Lifecycle Receptor
+      ↓                ↓                      ↓                              ↓
+SecurityContext → Stored in Hop → Extracted → Established before receptor → Available!
+```
+
+**Key insight**: Security context is **re-established** from the envelope before each lifecycle receptor invocation, making it available even when HTTP context is gone.
+
+### Three Access Methods
+
+Choose the method that fits your needs (simplest to most powerful):
+
+#### Method 1: IMessageContext (Simplest)
+
+For simple user/tenant access, inject `IMessageContext`:
 
 ```csharp
-[FireAt(LifecycleStage.PrePerspectiveAsync)]
-public class AuditReceptor : IReceptor<IEvent> {
+[FireAt(LifecycleStage.PostPerspectiveAsync)]
+public class TenantAwareHandler : IReceptor<ProductCreatedEvent> {
   private readonly IMessageContext _messageContext;
-  private readonly ILogger<AuditReceptor> _logger;
+  private readonly ILogger<TenantAwareHandler> _logger;
 
-  public AuditReceptor(IMessageContext messageContext, ILogger<AuditReceptor> logger) {
+  public TenantAwareHandler(IMessageContext messageContext, ILogger<TenantAwareHandler> logger) {
     _messageContext = messageContext;
     _logger = logger;
   }
 
-  public ValueTask HandleAsync(IEvent evt, CancellationToken ct) {
-    // UserId is available from the message envelope's security context
+  public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
+    // ✅ Both UserId and TenantId are available!
     var userId = _messageContext.UserId;
+    var tenantId = _messageContext.TenantId;
 
     _logger.LogInformation(
-      "User {UserId} triggered perspective update for event {EventId}",
+      "User {UserId} in tenant {TenantId} created product {ProductId}",
       userId,
-      _messageContext.MessageId);
+      tenantId,
+      evt.ProductId);
 
     return ValueTask.CompletedTask;
   }
 }
 ```
 
-### Available Security Properties
-
-The `IMessageContext` provides access to:
+**Available Properties**:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `UserId` | `string?` | User identifier from the message's security context |
+| `UserId` | `string?` | User identifier from security context |
+| `TenantId` | `string?` | Tenant identifier from security context |
 | `MessageId` | `MessageId` | The message identifier |
 | `CorrelationId` | `CorrelationId` | Correlation ID for distributed tracing |
 | `CausationId` | `MessageId` | ID of the message that caused this one |
 | `Timestamp` | `DateTimeOffset` | When the message was created |
 | `Metadata` | `IReadOnlyDictionary<string, object>` | Custom metadata |
 
+#### Method 2: IScopeContextAccessor (Full Scope Access)
+
+For access to the complete security scope including roles, permissions, and custom properties:
+
+```csharp
+[FireAt(LifecycleStage.PostPerspectiveAsync)]
+public class PermissionAwareHandler : IReceptor<SensitiveOperationEvent> {
+  private readonly IScopeContextAccessor _scopeContextAccessor;
+  private readonly ILogger<PermissionAwareHandler> _logger;
+
+  public PermissionAwareHandler(
+      IScopeContextAccessor scopeContextAccessor,
+      ILogger<PermissionAwareHandler> logger) {
+    _scopeContextAccessor = scopeContextAccessor;
+    _logger = logger;
+  }
+
+  public ValueTask HandleAsync(SensitiveOperationEvent evt, CancellationToken ct) {
+    var scope = _scopeContextAccessor.Current?.Scope;
+
+    if (scope == null) {
+      _logger.LogWarning("No scope context available");
+      return ValueTask.CompletedTask;
+    }
+
+    // Full access to security context
+    var tenantId = scope.TenantId;
+    var userId = scope.UserId;
+    var roles = scope.Roles;
+    var permissions = scope.Permissions;
+
+    // Check permissions
+    if (!permissions.Contains(Permission.From("audit:read"))) {
+      _logger.LogWarning("User {UserId} lacks audit:read permission", userId);
+      return ValueTask.CompletedTask;
+    }
+
+    // Proceed with operation...
+    return ValueTask.CompletedTask;
+  }
+}
+```
+
+**Available via `IScopeContext.Scope`**:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `TenantId` | `string?` | Tenant identifier |
+| `UserId` | `string?` | User identifier |
+| `Roles` | `IReadOnlySet<string>` | User's roles |
+| `Permissions` | `IReadOnlySet<Permission>` | User's permissions |
+| `SecurityPrincipals` | `IReadOnlySet<SecurityPrincipalId>` | Security principals |
+| `Claims` | `IReadOnlyDictionary<string, string>` | Custom claims |
+
+#### Method 3: ISecurityContextCallback (Setup-Time Hook)
+
+For complex scenarios where you need to **initialize custom services** when security context is established (before receptors run):
+
+```csharp
+/// <summary>
+/// Callback that fires when Whizbang establishes security context.
+/// Use this to populate custom services with tenant/user information.
+/// </summary>
+public class CustomServiceSecurityCallback : ISecurityContextCallback {
+  private readonly IMyCustomService _customService;
+
+  public CustomServiceSecurityCallback(IMyCustomService customService) {
+    _customService = customService;
+  }
+
+  public ValueTask OnContextEstablishedAsync(
+      IScopeContext context,
+      IMessageEnvelope envelope,
+      IServiceProvider scopedProvider,
+      CancellationToken cancellationToken = default) {
+
+    // Called BEFORE lifecycle receptors run
+    if (context?.Scope != null) {
+      // Initialize your custom service with security context
+      _customService.SetTenantContext(context.Scope.TenantId);
+      _customService.SetUserContext(context.Scope.UserId);
+
+      // Optionally load additional tenant configuration
+      // _customService.LoadTenantConfiguration();
+    }
+
+    return ValueTask.CompletedTask;
+  }
+}
+
+// Register in DI
+services.AddScoped<ISecurityContextCallback, CustomServiceSecurityCallback>();
+```
+
+**Callback execution points** (in order):
+1. `ServiceBusConsumerWorker` - When receiving messages from transport
+2. `PerspectiveWorker` - Before lifecycle receptors at each stage
+3. `ReceptorInvoker` - Before each receptor invocation
+
+### Decision Guide: Which Method to Use
+
+| Scenario | Recommended Method |
+|----------|-------------------|
+| Just need `UserId` or `TenantId` | **IMessageContext** |
+| Need roles or permissions | **IScopeContextAccessor** |
+| Need to initialize custom services | **ISecurityContextCallback** |
+| Stateless handler (no custom services) | **IMessageContext** or **IScopeContextAccessor** |
+| Custom `UserContextManager`-style service | **ISecurityContextCallback** |
+| Simple audit logging | **IMessageContext** |
+| Complex authorization checks | **IScopeContextAccessor** |
+
 ### Lifecycle Stages with Security Context
 
-Security context is established **before** each lifecycle receptor invocation for the following stages:
+Security context is established **before** each lifecycle receptor invocation for ALL stages, including:
 
-- `PrePerspectiveAsync` - Before perspective processing
-- `PrePerspectiveInline` - Before perspective processing (blocking)
-- `PostPerspectiveInline` - After perspective checkpoint saved (blocking)
+- `PrePerspectiveAsync` / `PrePerspectiveInline` - Before perspective processing
+- `PostPerspectiveInline` / `PostPerspectiveAsync` - After perspective checkpoint saved
+- `PreOutboxInline` / `PostOutboxAsync` - Outbox stages
+- `PreInboxInline` / `PostInboxAsync` - Inbox stages
+- `PostDistributeInline` / `PostDistributeAsync` - After distribution
 
-### Example: User-Aware Audit Trail
+### Example: Tenant-Aware Audit Trail
 
 ```csharp
 [FireAt(LifecycleStage.PostPerspectiveInline)]
-public class UserAuditReceptor : IReceptor<OrderPlacedEvent> {
+public class TenantAuditReceptor : IReceptor<OrderPlacedEvent> {
   private readonly IMessageContext _messageContext;
   private readonly IAuditService _audit;
 
-  public UserAuditReceptor(IMessageContext messageContext, IAuditService audit) {
+  public TenantAuditReceptor(IMessageContext messageContext, IAuditService audit) {
     _messageContext = messageContext;
     _audit = audit;
   }
 
   public async ValueTask HandleAsync(OrderPlacedEvent evt, CancellationToken ct) {
     await _audit.RecordAsync(new AuditEntry {
-      UserId = _messageContext.UserId,
+      TenantId = _messageContext.TenantId,  // ✅ Available!
+      UserId = _messageContext.UserId,       // ✅ Available!
       EventType = nameof(OrderPlacedEvent),
       EventId = _messageContext.MessageId.Value,
       CorrelationId = _messageContext.CorrelationId.Value,
@@ -417,8 +571,9 @@ public class UserAuditReceptor : IReceptor<OrderPlacedEvent> {
 
 **Key Points**:
 - Security context is established from the message envelope's hops
-- `UserId` will be `null` if no security context was attached to the message
+- `UserId` and `TenantId` will be `null` if no security context was attached to the message
 - Each envelope in a batch gets its own security context established before invocation
+- `ISecurityContextCallback` runs **before** receptors, so your services are ready when receptors execute
 
 ---
 
@@ -616,6 +771,142 @@ foreach (var handler in handlers) {
 - ✅ Native AOT compatible
 - ✅ Fast invocation (delegates are inlined by JIT/AOT)
 - ✅ Type-safe at registration time
+
+---
+
+## Stage Isolation Guarantees {#stage-isolation}
+
+:::new
+Stage isolation guarantees added in v1.0.0
+:::
+
+**Receptors fire ONLY at their registered stage** - never at any other stage, even if it has a similar name. This is enforced at both compile-time (generated code) and runtime (registry lookup).
+
+### Critical Isolation Rules
+
+1. **Async vs Inline stages are isolated**: `PostPerspectiveAsync` and `PostPerspectiveInline` are **different stages**
+2. **Pre vs Post stages are isolated**: `PrePerspectiveAsync` and `PostPerspectiveAsync` are **different stages**
+3. **Pipeline stages are isolated**: `PostPerspectiveAsync` and `PostDistributeAsync` are **different stages**
+
+### Why This Matters
+
+A common mistake is expecting a `PostPerspectiveAsync` receptor to fire at `PrePerspectiveAsync`. This would cause the receptor to execute **before** the perspective processes the event - exactly the opposite of what you want.
+
+```csharp
+// ❌ WRONG EXPECTATION
+// This receptor fires ONLY at PostPerspectiveAsync
+[FireAt(LifecycleStage.PostPerspectiveAsync)]
+public class AfterPerspectiveHandler : IReceptor<ProductCreatedEvent> {
+  private readonly IProductLens _lens;
+
+  public async ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
+    // If this fired at PrePerspectiveAsync, GetByIdAsync would return stale/null data!
+    // But because of stage isolation, it fires ONLY at PostPerspectiveAsync,
+    // AFTER the perspective has processed and flushed to the database
+    var product = await _lens.GetByIdAsync(evt.ProductId, ct);
+    await _notificationService.SendAsync($"Product {product.Name} created!");
+  }
+}
+```
+
+### Temporal Ordering Guarantee
+
+The perspective pipeline executes stages in strict order:
+
+```
+PrePerspectiveAsync → PrePerspectiveInline → ApplyAsync() → FlushAsync()
+    → PostPerspectiveInline → CheckpointAsync() → PostPerspectiveAsync
+```
+
+**Stage isolation ensures**:
+- `PrePerspectiveAsync` fires BEFORE `ApplyAsync()`
+- `PostPerspectiveAsync` fires AFTER `FlushAsync()` and `CheckpointAsync()`
+- Each receptor type fires at exactly one point in this sequence
+
+### Generated Code Verification
+
+The source generator produces explicit stage checks:
+
+```csharp
+// Generated in LifecycleInvoker.g.cs
+if (messageType == typeof(ProductCreatedEvent)
+    && stage == LifecycleStage.PostPerspectiveAsync) {  // ← EXPLICIT stage check
+  using var scope = _scopeFactory.CreateScope();
+  var receptor = scope.ServiceProvider.GetRequiredService<AfterPerspectiveHandler>();
+  await receptor.HandleAsync((ProductCreatedEvent)message, cancellationToken);
+}
+```
+
+**Both conditions must match**:
+1. Message type (`typeof(ProductCreatedEvent)`)
+2. Lifecycle stage (`LifecycleStage.PostPerspectiveAsync`)
+
+If either doesn't match, the receptor is skipped.
+
+### Runtime Registry Isolation
+
+The runtime registry also enforces stage isolation:
+
+```csharp
+// Registration
+registry.Register<ProductCreatedEvent>(receptor, LifecycleStage.PostPerspectiveAsync);
+
+// Lookup only returns receptors registered at EXACT stage
+var handlers = registry.GetHandlers(
+  typeof(ProductCreatedEvent),
+  LifecycleStage.PostPerspectiveAsync);  // Only PostPerspectiveAsync receptors
+
+// PrePerspectiveAsync lookup returns DIFFERENT set
+var preHandlers = registry.GetHandlers(
+  typeof(ProductCreatedEvent),
+  LifecycleStage.PrePerspectiveAsync);  // Empty if no receptors registered at this stage
+```
+
+### Testing Stage Isolation
+
+Use the test patterns below to verify your receptors fire at the correct stage:
+
+```csharp
+[Test]
+public async Task PostPerspectiveAsync_OnlyFiresAfterPerspective_VerifyDataFreshAsync() {
+  // Arrange
+  var completionSource = new TaskCompletionSource<ProductModel?>();
+  var verifyingReceptor = new DataVerifyingReceptor(_productLens, completionSource);
+
+  var registry = _host.Services.GetRequiredService<ILifecycleReceptorRegistry>();
+  registry.Register<ProductCreatedEvent>(verifyingReceptor, LifecycleStage.PostPerspectiveAsync);
+
+  try {
+    // Act
+    var command = new CreateProductCommand("Widget", 9.99m);
+    await _dispatcher.SendAsync(command);
+
+    // Assert - Data is queryable because PostPerspectiveAsync fires AFTER flush
+    var result = await completionSource.Task.WaitAsync(TimeSpan.FromSeconds(15));
+    await Assert.That(result).IsNotNull();
+    await Assert.That(result!.Name).IsEqualTo("Widget");
+  } finally {
+    registry.Unregister<ProductCreatedEvent>(verifyingReceptor, LifecycleStage.PostPerspectiveAsync);
+  }
+}
+
+// Receptor that verifies data is available
+internal sealed class DataVerifyingReceptor : IReceptor<ProductCreatedEvent> {
+  private readonly IProductLens _lens;
+  private readonly TaskCompletionSource<ProductModel?> _result;
+
+  public DataVerifyingReceptor(IProductLens lens, TaskCompletionSource<ProductModel?> result) {
+    _lens = lens;
+    _result = result;
+  }
+
+  public async ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
+    // This query works because we fire AFTER perspective flush!
+    var product = await _lens.GetByIdAsync(evt.ProductId, ct);
+    _result.TrySetResult(product);
+  }
+}
+```
 
 ---
 

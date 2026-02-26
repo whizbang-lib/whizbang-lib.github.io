@@ -169,9 +169,72 @@ public class JwtPayloadExtractor : ISecurityContextExtractor {
 }
 ```
 
-## Callbacks
+## Security Context Callbacks
 
-Callbacks run after security context is established, enabling custom service initialization:
+Callbacks run **after** security context is established but **before** business logic (receptors) execute. This enables custom service initialization at exactly the right time.
+
+### ISecurityContextCallback Interface
+
+```csharp
+public interface ISecurityContextCallback {
+  ValueTask OnContextEstablishedAsync(
+    IScopeContext context,
+    IMessageEnvelope envelope,
+    IServiceProvider scopedProvider,
+    CancellationToken cancellationToken = default);
+}
+```
+
+### Callback Execution Points
+
+:::new
+Callbacks are now invoked at ALL security establishment points (v1.0.0)
+:::
+
+Callbacks are invoked at **three key points** in the message processing pipeline:
+
+| Execution Point | Component | When |
+|----------------|-----------|------|
+| **Message Arrival** | `ServiceBusConsumerWorker` | When message arrives from transport |
+| **Lifecycle Processing** | `PerspectiveWorker` | Before each lifecycle stage receptor |
+| **Receptor Execution** | `ReceptorInvoker` | Before each receptor invocation |
+
+This ensures your custom services have security context available regardless of **where** the receptor executes.
+
+### Execution Sequence Diagram
+
+```
+HTTP Request or Message Arrival
+         │
+         ▼
+┌────────────────────────────────────────┐
+│ Security Context Establishment         │
+│ (Extractors run in priority order)     │
+└────────────────────┬───────────────────┘
+                     │
+                     ▼
+┌────────────────────────────────────────┐
+│ ISecurityContextCallback.              │
+│ OnContextEstablishedAsync()            │◀── YOUR CALLBACK RUNS HERE
+│                                        │
+│ • UserContextManager initialized       │
+│ • Tenant config loaded                 │
+│ • Custom services populated            │
+└────────────────────┬───────────────────┘
+                     │
+                     ▼
+┌────────────────────────────────────────┐
+│ Receptor / Handler Executes            │◀── BUSINESS LOGIC RUNS HERE
+│                                        │
+│ • IMessageContext.TenantId available   │
+│ • IScopeContextAccessor.Current ready  │
+│ • UserContextManager ready (if used)   │
+└────────────────────────────────────────┘
+```
+
+**Key insight**: Callbacks complete **before** any receptor code runs, so your services are fully initialized when business logic needs them.
+
+### Example: UserContextManager Integration
 
 ```csharp
 public class UserContextManagerCallback : ISecurityContextCallback {
@@ -187,12 +250,52 @@ public class UserContextManagerCallback : ISecurityContextCallback {
     IServiceProvider scopedProvider,
     CancellationToken cancellationToken = default) {
 
-    // Populate legacy UserContextManager from IScopeContext
-    _userContextManager.SetFromScopeContext(context);
+    // Populate UserContextManager from Whizbang security context
+    if (context?.Scope != null) {
+      _userContextManager.SetFromScopeContext(
+        tenantId: context.Scope.TenantId,
+        userId: context.Scope.UserId
+      );
+    }
 
     return ValueTask.CompletedTask;
   }
 }
+
+// Register in DI
+services.AddScoped<ISecurityContextCallback, UserContextManagerCallback>();
+```
+
+### When to Use Callbacks vs Direct Injection
+
+| Scenario | Approach | Why |
+|----------|----------|-----|
+| Simple TenantId/UserId access | **IMessageContext** | Direct, no setup needed |
+| Check roles or permissions | **IScopeContextAccessor** | Full scope access |
+| Initialize custom service state | **ISecurityContextCallback** | Runs before receptors |
+| Load tenant configuration | **ISecurityContextCallback** | Centralized initialization |
+| Legacy service integration | **ISecurityContextCallback** | Bridge to existing patterns |
+| Stateless receptor | **IMessageContext** | Simplest approach |
+
+### Multiple Callbacks
+
+You can register multiple callbacks. They execute in registration order:
+
+```csharp
+// Multiple callbacks for different concerns
+services.AddScoped<ISecurityContextCallback, UserContextManagerCallback>();
+services.AddScoped<ISecurityContextCallback, TenantConfigurationCallback>();
+services.AddScoped<ISecurityContextCallback, AuditLogCallback>();
+```
+
+### Callback Registration
+
+```csharp
+// Option 1: Extension method (recommended)
+services.AddSecurityContextCallback<UserContextManagerCallback>();
+
+// Option 2: Direct registration
+services.AddScoped<ISecurityContextCallback, UserContextManagerCallback>();
 ```
 
 ## Transport Metadata
