@@ -321,6 +321,234 @@ await _store.UpsertAsync(id, data, new PerspectiveScope {
 var department = row.Scope["department"];
 ```
 
+## Multi-Tenancy in Background Processing
+
+:::new
+Background processing tenant support added in v1.0.0
+:::
+
+When using lifecycle receptors (`PostPerspectiveAsync`, etc.) or background workers, HTTP context is unavailable. This section explains how tenant context flows through the system and how to access it.
+
+### Security Context Propagation Flow
+
+Whizbang captures tenant context when a message is dispatched and propagates it through the entire processing pipeline:
+
+```
+HTTP Request (TenantId from JWT)
+         │
+         ▼
+┌────────────────────────────────┐
+│ ScopeContextMiddleware         │
+│ IScopeContextAccessor.Current  │
+│ = { TenantId: "tenant-123" }   │
+└────────────────┬───────────────┘
+                 │
+                 ▼
+┌────────────────────────────────┐
+│ Command Dispatch               │
+│ dispatcher.SendAsync(cmd)      │
+└────────────────┬───────────────┘
+                 │
+                 ▼ TenantId stored in MessageHop
+┌────────────────────────────────┐
+│ Outbox (wh_outbox)             │
+│ hop.SecurityContext.TenantId   │
+│ = "tenant-123"                 │
+└────────────────┬───────────────┘
+                 │
+                 ▼ Worker picks up message
+┌────────────────────────────────┐
+│ ServiceBusConsumerWorker       │
+│ Extracts TenantId from hop     │
+│ Establishes IScopeContext      │
+└────────────────┬───────────────┘
+                 │
+                 ▼ Event cascaded
+┌────────────────────────────────┐
+│ Perspective Processing         │
+│ TenantId flows to event        │
+└────────────────┬───────────────┘
+                 │
+                 ▼ Lifecycle receptor fires
+┌────────────────────────────────┐
+│ PostPerspectiveAsync Receptor  │
+│ IMessageContext.TenantId       │
+│ = "tenant-123" ✓               │
+└────────────────────────────────┘
+```
+
+**Key insight**: TenantId is preserved through the entire flow without any manual propagation.
+
+### Accessing Tenant Context in Background Receptors
+
+Choose the access method that fits your needs:
+
+#### Option 1: IMessageContext (Simplest)
+
+For simple tenant access, inject `IMessageContext`:
+
+```csharp
+[FireAt(LifecycleStage.PostPerspectiveAsync)]
+public class TenantAwareBackgroundHandler : IReceptor<OrderCreatedEvent> {
+  private readonly IMessageContext _messageContext;
+  private readonly ITenantDbFactory _dbFactory;
+
+  public TenantAwareBackgroundHandler(
+      IMessageContext messageContext,
+      ITenantDbFactory dbFactory) {
+    _messageContext = messageContext;
+    _dbFactory = dbFactory;
+  }
+
+  public async ValueTask HandleAsync(OrderCreatedEvent evt, CancellationToken ct) {
+    // TenantId is available even though HTTP context is gone!
+    var tenantId = _messageContext.TenantId;
+
+    if (string.IsNullOrEmpty(tenantId)) {
+      // Handle system messages without tenant context
+      return;
+    }
+
+    // Use tenant-specific database
+    using var db = _dbFactory.CreateForTenant(tenantId);
+    await db.NotifyTenantAsync(evt.OrderId, ct);
+  }
+}
+```
+
+#### Option 2: IScopeContextAccessor (Full Scope)
+
+For access to roles, permissions, and custom properties:
+
+```csharp
+[FireAt(LifecycleStage.PostPerspectiveAsync)]
+public class AuthorizedBackgroundHandler : IReceptor<SensitiveEvent> {
+  private readonly IScopeContextAccessor _scopeContextAccessor;
+
+  public AuthorizedBackgroundHandler(IScopeContextAccessor scopeContextAccessor) {
+    _scopeContextAccessor = scopeContextAccessor;
+  }
+
+  public async ValueTask HandleAsync(SensitiveEvent evt, CancellationToken ct) {
+    var scope = _scopeContextAccessor.Current?.Scope;
+
+    var tenantId = scope?.TenantId;
+    var userId = scope?.UserId;
+    var roles = _scopeContextAccessor.Current?.Roles;
+
+    // Full security context available for authorization checks
+    if (roles?.Contains("Admin") != true) {
+      return; // Skip non-admin processing
+    }
+
+    // Process with full context...
+  }
+}
+```
+
+#### Option 3: ISecurityContextCallback (Custom Service Integration)
+
+For integrating with custom services like `UserContextManager`:
+
+```csharp
+public class UserContextManagerCallback : ISecurityContextCallback {
+  private readonly UserContextManager _userContextManager;
+
+  public UserContextManagerCallback(UserContextManager userContextManager) {
+    _userContextManager = userContextManager;
+  }
+
+  public ValueTask OnContextEstablishedAsync(
+    IScopeContext context,
+    IMessageEnvelope envelope,
+    IServiceProvider scopedProvider,
+    CancellationToken cancellationToken = default) {
+
+    // Populate UserContextManager BEFORE receptors run
+    if (context?.Scope != null) {
+      _userContextManager.SetTenantContext(
+        new TenantContext { TenantId = context.Scope.TenantId });
+      _userContextManager.SetUserContext(
+        new UserContext { UserId = context.Scope.UserId });
+    }
+
+    return ValueTask.CompletedTask;
+  }
+}
+
+// Register
+services.AddScoped<ISecurityContextCallback, UserContextManagerCallback>();
+```
+
+### Pattern Decision Guide
+
+| Scenario | Recommended Approach |
+|----------|---------------------|
+| Simple TenantId access | **IMessageContext** |
+| Need roles or permissions | **IScopeContextAccessor** |
+| Custom `UserContextManager` service | **ISecurityContextCallback** |
+| Stateless receptor | **IMessageContext** |
+| Legacy service integration | **ISecurityContextCallback** |
+| Tenant-specific database connection | **IMessageContext** or **IScopeContextAccessor** |
+
+### Fallback Pattern for Custom Services
+
+If you have a custom service like `UserContextManager` that reads from HTTP context, implement a fallback pattern:
+
+```csharp
+public class UserContextManager {
+  private readonly IHttpContextAccessor _httpContextAccessor;
+  private readonly IScopeContextAccessor _scopeContextAccessor;
+
+  public UserContextManager(
+      IHttpContextAccessor httpContextAccessor,
+      IScopeContextAccessor scopeContextAccessor) {
+    _httpContextAccessor = httpContextAccessor;
+    _scopeContextAccessor = scopeContextAccessor;
+  }
+
+  public string? TenantId {
+    get {
+      // Priority 1: HTTP context (API requests)
+      var httpTenantId = GetTenantFromHttpContext();
+      if (!string.IsNullOrEmpty(httpTenantId)) {
+        return httpTenantId;
+      }
+
+      // Priority 2: Whizbang scope context (background processing)
+      return _scopeContextAccessor.Current?.Scope.TenantId;
+    }
+  }
+
+  private string? GetTenantFromHttpContext() {
+    return _httpContextAccessor.HttpContext?
+      .User.FindFirstValue("tenant");
+  }
+}
+```
+
+This pattern allows the same service to work in both HTTP and background contexts.
+
+### Explicit Tenant Override with WithTenant()
+
+For system operations that need to target a specific tenant:
+
+```csharp
+// System job processing for a specific tenant
+await dispatcher
+  .AsSystem()
+  .WithTenant("target-tenant-123")
+  .SendAsync(new TenantMaintenanceCommand());
+
+// Admin operation on behalf of a tenant
+await dispatcher
+  .RunAs("admin@example.com")
+  .WithTenant("customer-tenant-id")
+  .SendAsync(new DebugCommand());
+```
+
+See [Message Security](../core-concepts/message-security.md#explicit-security-context-api) for more details.
+
 ## Testing
 
 Test multi-tenancy with explicit context setup:
