@@ -206,6 +206,70 @@ If no `order` is specified:
 
 **Best Practice**: Always specify an explicit sort order for predictable results.
 
+## Sort Precedence with Pre-Existing OrderBy
+
+When application code applies a default `OrderBy` before HotChocolate's sorting middleware runs, use `[UseOrderByStripping]` to ensure GraphQL sorting takes precedence:
+
+```csharp
+[UsePaging]
+[UseFiltering]
+[UseSorting]
+[UseOrderByStripping]  // Must be after UseSorting
+public IQueryable<PerspectiveRow<Order>> GetOrders([Service] IOrderLens lens) {
+  return lens.Query;  // May have pre-existing OrderBy from application code
+}
+```
+
+### How It Works
+
+The `[UseOrderByStripping]` attribute:
+
+1. **Strips pre-existing ordering** when a GraphQL `order` argument is provided
+2. **Preserves original ordering** when no GraphQL sorting is requested
+3. **Ensures GraphQL sort is primary** - prevents HotChocolate from using `ThenBy` instead of `OrderBy`
+
+### When to Use
+
+Use `[UseOrderByStripping]` when:
+
+- Your lens query applies a default `OrderBy` (e.g., `query.OrderBy(x => x.CreatedAt)`)
+- You want GraphQL sorting to completely replace application-level ordering
+- You're seeing `ThenByDescending` errors when sorting
+
+### Example Scenario
+
+Without `[UseOrderByStripping]`:
+```csharp
+// Application code
+return _orders.Query.OrderBy(x => x.Id);  // Default order by ID
+
+// GraphQL: order: { data: { name: DESC } }
+// Result: OrderBy(Id).ThenByDescending(Name) ❌ Name is secondary
+```
+
+With `[UseOrderByStripping]`:
+```csharp
+// Application code with middleware
+[UseOrderByStripping]
+return _orders.Query.OrderBy(x => x.Id);
+
+// GraphQL: order: { data: { name: DESC } }
+// Result: OrderByDescending(Name) ✅ Name is primary
+```
+
+### Middleware Order
+
+The `[UseOrderByStripping]` attribute must be placed AFTER `[UseSorting]` in the attribute stack:
+
+```csharp
+[UsePaging]       // Outermost
+[UseProjection]
+[UseFiltering]
+[UseSorting]
+[UseOrderByStripping]  // Innermost (closest to resolver) ✅
+public IQueryable<T> GetData()
+```
+
 ## Performance Considerations
 
 1. **Index sort columns** - Ensure indexes exist for frequently sorted fields
