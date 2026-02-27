@@ -69,9 +69,9 @@ var options = SyncFilter.CurrentScope().Build();
 // Wait for specific event types
 var options = SyncFilter.ForEventTypes<OrderCreatedEvent>().Build();
 
-// Wait for events on a specific stream
+// Wait for events on a specific stream (supports up to 10 event types)
 var options = SyncFilter.ForStream(orderId)
-    .AndEventTypes<OrderCreatedEvent, OrderUpdatedEvent>()
+    .AndEventTypes<OrderCreatedEvent, OrderUpdatedEvent, OrderShippedEvent>()
     .Build();
 
 // OR logic - wait for either event type
@@ -317,9 +317,9 @@ public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
 Wait for multiple conditions:
 
 ```csharp
-// Stream AND specific event types
+// Stream AND specific event types (supports up to 10 types)
 var options = SyncFilter.ForStream(orderId)
-    .AndEventTypes<OrderCreatedEvent, PaymentProcessedEvent>()
+    .AndEventTypes<OrderCreatedEvent, PaymentProcessedEvent, ShippingStartedEvent>()
     .Build();
 
 // Current scope AND event types
