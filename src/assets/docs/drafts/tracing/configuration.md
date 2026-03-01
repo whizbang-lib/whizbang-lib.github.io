@@ -57,19 +57,37 @@ public sealed class TracingOptions {
   /// Handlers to trace with specific verbosity.
   /// Supports wildcards and namespaces.
   /// </summary>
-  public Dictionary<string, TraceVerbosity> TracedHandlers { get; set; } = new();
+  public Dictionary<string, TraceVerbosity> TracedHandlers { get; } = [];
 
   /// <summary>
   /// Messages to trace with specific verbosity.
   /// Supports wildcards and namespaces.
   /// </summary>
-  public Dictionary<string, TraceVerbosity> TracedMessages { get; set; } = new();
+  public Dictionary<string, TraceVerbosity> TracedMessages { get; } = [];
+
+  /// <summary>
+  /// Checks if tracing is enabled for a given component.
+  /// </summary>
+  public bool IsEnabled(TraceComponents component) {
+    return Verbosity != TraceVerbosity.Off && Components.HasFlag(component);
+  }
+
+  /// <summary>
+  /// Checks if a trace at the specified verbosity level should be emitted.
+  /// </summary>
+  public bool ShouldTrace(TraceVerbosity requiredVerbosity) {
+    return Verbosity != TraceVerbosity.Off && Verbosity >= requiredVerbosity;
+  }
 }
 ```
 
 ---
 
 ## Configuration via appsettings.json
+
+:::new
+Configuration binding is **AOT-compatible**. Whizbang uses manual property binding instead of reflection-based `ConfigurationBinder.Bind()`.
+:::
 
 ### Basic Configuration
 
@@ -78,13 +96,15 @@ public sealed class TracingOptions {
   "Whizbang": {
     "Tracing": {
       "Verbosity": "Normal",
-      "Components": ["Http", "Handlers", "EventStore"],
+      "Components": "Handlers, EventStore",
       "EnableOpenTelemetry": true,
       "EnableStructuredLogging": true
     }
   }
 }
 ```
+
+The `Components` value is a comma-separated string parsed as a flags enum. Use `"All"` to enable all components.
 
 ### Targeting Specific Handlers
 
@@ -197,7 +217,7 @@ public class MyService {
   "Whizbang": {
     "Tracing": {
       "Verbosity": "Verbose",
-      "Components": ["All"],
+      "Components": "All",
       "EnableOpenTelemetry": true
     }
   }
@@ -211,7 +231,7 @@ public class MyService {
   "Whizbang": {
     "Tracing": {
       "Verbosity": "Minimal",
-      "Components": ["Explicit"],
+      "Components": "Handlers, Errors",
       "EnableOpenTelemetry": true,
       "TracedHandlers": {
         "PaymentHandler": "Normal"
@@ -229,36 +249,20 @@ TracingOptions provides helper methods for checking configuration:
 
 ```csharp
 /// <summary>
-/// Checks if tracing is enabled for a given component at the current verbosity.
+/// Checks if tracing is enabled for a given component.
+/// Returns true only if Verbosity is not Off AND the component flag is set.
 /// </summary>
 public bool IsEnabled(TraceComponents component) {
-  return Verbosity > TraceVerbosity.Off && Components.HasFlag(component);
+  return Verbosity != TraceVerbosity.Off && Components.HasFlag(component);
 }
 
 /// <summary>
-/// Gets the effective verbosity for a handler, considering config overrides.
+/// Checks if a trace at the specified verbosity level should be emitted.
+/// Returns true if the current Verbosity meets or exceeds the required level.
 /// </summary>
-public TraceVerbosity GetHandlerVerbosity(string handlerName, TraceVerbosity? attributeVerbosity) {
-  // Check TracedHandlers config first (highest priority)
-  // Then check attribute
-  // Fall back to global Verbosity
+public bool ShouldTrace(TraceVerbosity requiredVerbosity) {
+  return Verbosity != TraceVerbosity.Off && Verbosity >= requiredVerbosity;
 }
-```
-
----
-
-## Validation
-
-TracingOptions implements validation:
-
-```csharp
-// Invalid configurations throw on startup
-options.Verbosity = (TraceVerbosity)99;  // Throws: Invalid verbosity value
-
-// Warnings logged for questionable configurations
-options.Verbosity = TraceVerbosity.Debug;
-options.Components = TraceComponents.All;
-// Warning: Debug verbosity with All components may impact performance
 ```
 
 ---
@@ -288,4 +292,4 @@ options.Components = TraceComponents.All;
 
 ---
 
-*Version 0.3.0 - Draft | Last Updated: 2026-02-27*
+*Version 0.3.0 - Draft | Last Updated: 2026-03-01*

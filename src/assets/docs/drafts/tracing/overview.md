@@ -190,7 +190,7 @@ services.AddSingleton<ITraceOutput, OpenTelemetryTraceOutput>();
   "Whizbang": {
     "Tracing": {
       "Verbosity": "Verbose",
-      "Components": ["Handlers", "EventStore"],
+      "Components": "Handlers, EventStore",
 
       "TracedHandlers": {
         "OrderReceptor": "Debug",
@@ -219,4 +219,4 @@ See [Configuration](configuration.md) for full options.
 
 ---
 
-*Version 0.3.0 - Draft | Last Updated: 2026-02-28*
+*Version 0.3.0 - Draft | Last Updated: 2026-03-01*
