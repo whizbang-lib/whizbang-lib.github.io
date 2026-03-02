@@ -14,10 +14,20 @@ codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusConnectionRetry.cs
+  - src/Whizbang.Transports.AzureServiceBus/ServiceBusSubscriptionNameHelper.cs
+  - src/Whizbang.Transports.AzureServiceBus/IServiceBusAdminClient.cs
+  - src/Whizbang.Transports.AzureServiceBus/ServiceBusAdminClientWrapper.cs
+  - src/Whizbang.Transports.AzureServiceBus/ServiceBusInfrastructureProvisioner.cs
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs
 testReferences:
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusConnectionRetryTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusSubscriptionNameHelperTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/SubscriptionNameDerivationTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusInfrastructureProvisionerTests.cs
 ---
 
 # Azure Service Bus Transport
@@ -218,6 +228,7 @@ app.Run();
 | `MaxAutoLockRenewalDuration` | 5 minutes | Maximum duration for automatic lock renewal |
 | `MaxDeliveryAttempts` | 10 | Retry limit before dead-lettering |
 | `DefaultSubscriptionName` | "default" | Fallback subscription name if not specified |
+| `AutoProvisionInfrastructure` | `true` | Auto-create topics and subscriptions when subscribing |
 
 ### Connection Retry Options {#connection-retry}
 
@@ -285,7 +296,94 @@ The Azure SDK's built-in retry policy handles most runtime scenarios. Our connec
 
 **No Manual Reconnection Needed**: The Azure Service Bus SDK handles transient failures automatically. Your application code continues to work transparently after recovery
 
-### Domain Topic Auto-Provisioning {#domain-topic-provisioning}
+### Subscription Name Derivation {#subscription-naming}
+
+:::new
+Subscription names are automatically derived from the **SubscriberName** metadata, not from the routing key. This ensures valid subscription names even when using wildcard routing patterns like `#` or `*`.
+:::
+
+**How Subscription Names Are Generated**:
+
+```csharp
+// Format: {subscriberName}-{topicName}
+// Example: "bff-service" + "jdx.contracts.chat" → "bff-service-jdx.contracts.chat"
+
+var destination = new TransportDestination(
+  Address: "jdx.contracts.chat",
+  RoutingKey: "#",  // Wildcard pattern - NOT used as subscription name
+  Metadata: new Dictionary<string, JsonElement> {
+    ["SubscriberName"] = JsonSerializer.SerializeToElement("bff-service")
+  }
+);
+
+// Subscription created: "bff-service-jdx.contracts.chat"
+```
+
+**Name Sanitization**:
+- Invalid characters (`#`, `*`, `/`, `\`, `,`) are removed
+- Maximum length: 50 characters (truncated if exceeded)
+- Fallback to `DefaultSubscriptionName` option if no valid name can be derived
+
+**Why Not Use RoutingKey?**
+
+Routing keys often contain wildcard patterns that are invalid for Azure Service Bus subscription names:
+
+| Pattern | Purpose | Valid Subscription Name? |
+|---------|---------|-------------------------|
+| `#` | Match all messages | ❌ Invalid character |
+| `ns.*` | Single-level wildcard | ❌ Invalid character |
+| `ns1.#,ns2.#` | Multiple patterns | ❌ Invalid characters |
+| `bff-service` | Explicit subscription | ✅ Valid |
+
+The transport automatically detects wildcard patterns and uses `SubscriberName` metadata instead.
+
+### Auto-Provisioning Infrastructure {#auto-provisioning}
+
+:::new
+When `AutoProvisionInfrastructure` is enabled (default: `true`), the transport automatically creates topics AND subscriptions when subscribing. This simplifies development and testing workflows.
+:::
+
+**Enable Auto-Provisioning** (default behavior):
+```csharp
+// Auto-provisioning is ON by default
+services.AddAzureServiceBusTransport(
+  connectionString,
+  options => {
+    options.AutoProvisionInfrastructure = true;  // Default
+  }
+);
+
+// Admin client is auto-registered when AutoProvisionInfrastructure = true
+// Topics and subscriptions are created automatically during SubscribeAsync
+```
+
+**Disable Auto-Provisioning** (production):
+```csharp
+services.AddAzureServiceBusTransport(
+  connectionString,
+  options => {
+    options.AutoProvisionInfrastructure = false;  // Skip auto-creation
+  }
+);
+
+// Expects topics and subscriptions to exist (pre-provisioned via IaC)
+```
+
+**Provisioning Behavior**:
+- **Topics**: Created if they don't exist
+- **Subscriptions**: Created using derived name from `SubscriberName` metadata
+- **Idempotent**: Safe to call from multiple service instances
+- **Race Condition Handling**: Ignores 409 Conflict errors
+- **Graceful Fallback**: If admin client unavailable, provisioning is skipped
+
+**Configuration Options**:
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `AutoProvisionInfrastructure` | `true` | Auto-create topics and subscriptions |
+| `DefaultSubscriptionName` | `"default"` | Fallback when SubscriberName not provided |
+
+### Domain Topic Provisioning {#domain-topic-provisioning}
 
 :::new
 When a service declares domain ownership via `OwnDomains()`, Whizbang can automatically provision the corresponding topics at worker startup. This ensures the domain owner (publisher) creates infrastructure that subscribers will use.
@@ -293,9 +391,9 @@ When a service declares domain ownership via `OwnDomains()`, Whizbang can automa
 
 **Important**: Topic provisioning requires a connection string with **Manage** permissions. In production environments, topics are often pre-provisioned via infrastructure-as-code, so this step is optional.
 
-**Enable Auto-Provisioning**:
+**Enable Domain Topic Provisioning**:
 ```csharp
-// Requires separate call with Manage permissions
+// Requires separate call with Manage permissions (or use AutoProvisionInfrastructure)
 services.AddAzureServiceBusTransport(connectionString);
 services.AddAzureServiceBusProvisioner(adminConnectionString);
 
@@ -333,6 +431,46 @@ if (builder.Environment.IsDevelopment()) {
 // Production: Topics pre-provisioned via infrastructure-as-code
 // No AddAzureServiceBusProvisioner call needed
 ```
+
+### Routing Pattern Filters {#routing-filters}
+
+:::new
+When using wildcard routing patterns (e.g., `ns.#` or `ns1.#,ns2.#`), the transport automatically creates **SqlFilter** rules to route messages based on the `Subject` property.
+:::
+
+**How Routing Patterns Are Translated**:
+
+| RabbitMQ Pattern | SqlFilter Expression |
+|------------------|---------------------|
+| `#` | `1=1` (match all) |
+| `ns.#` | `[Subject] LIKE 'ns.%'` |
+| `ns.*` | `[Subject] LIKE 'ns.%'` |
+| `ns1.#,ns2.#` | `[Subject] LIKE 'ns1.%' OR [Subject] LIKE 'ns2.%'` |
+
+**Example with Multiple Patterns**:
+
+```csharp
+// Subscribe to messages from multiple namespaces
+var destination = new TransportDestination(
+  Address: "shared.inbox",
+  RoutingKey: "inventory.#,orders.#,shipping.#",
+  Metadata: new Dictionary<string, JsonElement> {
+    ["SubscriberName"] = JsonSerializer.SerializeToElement("fulfillment-service"),
+    ["RoutingPatterns"] = JsonSerializer.SerializeToElement(
+      new[] { "inventory.#", "orders.#", "shipping.#" }
+    )
+  }
+);
+
+// Creates SqlFilter:
+// [Subject] LIKE 'inventory.%' OR [Subject] LIKE 'orders.%' OR [Subject] LIKE 'shipping.%'
+```
+
+**Filter Provisioning Behavior**:
+- Removes the `$Default` rule (which matches all messages)
+- Creates a `RoutingPatternFilter` rule with the SqlFilter expression
+- Only applied when `RoutingPatterns` metadata is present
+- Requires `AutoProvisionInfrastructure = true` (default)
 
 ---
 
@@ -875,4 +1013,4 @@ await foreach (var message in dlqReceiver.ReceiveMessagesAsync()) {
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-03-02*
