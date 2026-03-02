@@ -209,6 +209,117 @@ See [Configuration](configuration.md) for full options.
 
 ---
 
+## Parent Context Extraction {#parent-context}
+
+When messages flow through Whizbang (via outbox, inbox, or event store), they carry trace context in their hops. Background workers extract this context to ensure spans are properly parented to the original request.
+
+### How It Works
+
+1. **Message hops store TraceParent**: When a message is created, the current trace context is captured in the hop's `TraceParent` field
+2. **Workers extract parent context**: `ReceptorInvoker` and `RuntimeLifecycleInvoker` extract the last non-null `TraceParent` from message hops
+3. **Spans are parented correctly**: Child spans are linked to the original request trace, even across process boundaries
+
+### Code Implementation
+
+```csharp
+// Extract parent context from envelope hops for trace correlation
+private static ActivityContext _extractParentContext(IReadOnlyList<MessageHop> hops) {
+  var traceParent = hops
+    .Select(h => h.TraceParent)
+    .LastOrDefault(tp => tp is not null);
+
+  if (traceParent is not null && ActivityContext.TryParse(traceParent, null, out var parentContext)) {
+    return parentContext;
+  }
+  return default;
+}
+```
+
+This ensures that even on background threads (where `Activity.Current` is null), spans are correctly linked to their originating trace.
+
+---
+
+## Perspective Event Tracing {#perspective-events}
+
+When processing perspectives, you can enable per-event spans to see exactly which events are being applied.
+
+### Configuration
+
+```csharp
+services.AddWhizbang(options => {
+  options.Tracing.Components = TraceComponents.Core | TraceComponents.Perspectives;
+  options.Tracing.EnablePerspectiveEventSpans = true; // Per-event spans
+});
+```
+
+### Span Structure
+
+When `EnablePerspectiveEventSpans` is true:
+
+```
+Perspective OrderProjection (50ms)
+├── Apply OrderCreated (2ms)
+│   └── event_type: ECommerce.Events.OrderCreated
+│   └── event_id: 018e3a1b-...
+│   └── action: None
+├── Apply OrderUpdated (1ms)
+│   └── event_type: ECommerce.Events.OrderUpdated
+│   └── action: None
+└── Apply OrderCompleted (1ms)
+    └── action: Delete
+```
+
+### Summary Tags (Always Added)
+
+Even without `EnablePerspectiveEventSpans`, these summary tags are added to the `Perspective RunAsync` span:
+
+| Tag | Description |
+|-----|-------------|
+| `whizbang.perspective.events_applied` | Total number of events processed |
+| `whizbang.perspective.event_types` | Event types with counts (e.g., "OrderCreated:3, OrderUpdated:2") |
+
+This gives you visibility into event processing without the overhead of per-event spans.
+
+---
+
+## Perspective Sync Spans {#perspective-sync}
+
+When using `IPerspectiveSyncAwaiter` to wait for perspectives to process events, Whizbang creates spans showing the blocking time.
+
+### Span Names
+
+| Method | Span Name |
+|--------|-----------|
+| `WaitAsync` | `PerspectiveSync {PerspectiveName}` |
+| `WaitForStreamAsync` | `PerspectiveSync {PerspectiveName} Stream` |
+
+### Span Tags
+
+| Tag | Description |
+|-----|-------------|
+| `whizbang.sync.perspective` | Full type name of the perspective |
+| `whizbang.sync.timeout_ms` | Configured timeout in milliseconds |
+| `whizbang.sync.outcome` | `Synced`, `TimedOut`, or `NoPendingEvents` |
+| `whizbang.sync.elapsed_ms` | Actual elapsed time in milliseconds |
+| `whizbang.sync.event_count` | Number of events being waited for |
+| `whizbang.sync.stream_count` | Number of streams being synced |
+| `whizbang.sync.stream_id` | Stream ID (for `WaitForStreamAsync`) |
+| `whizbang.sync.event_id` | Specific event ID being awaited (optional) |
+
+### Example Trace
+
+```
+POST /api/orders (12ms)
+├── Command CreateOrderCommand (3ms)
+├── PerspectiveSync OrderProjection (8ms)  ← Shows sync wait time
+│   └── outcome: Synced, elapsed_ms: 8.2
+└── Response 200 OK
+```
+
+This makes it easy to identify when perspective sync is contributing to latency.
+
+---
+
 ## Further Reading
 
 - [Verbosity Levels](verbosity-levels.md) - Detail levels explained
