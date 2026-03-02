@@ -21,6 +21,8 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/Sync/SyncEventTracker.cs
   - src/Whizbang.Core/Perspectives/Sync/ITrackedEventTypeRegistry.cs
   - src/Whizbang.Core/Perspectives/Sync/TrackedEventTypeRegistry.cs
+  - src/Whizbang.Core/Perspectives/Sync/IEventCompletionAwaiter.cs
+  - src/Whizbang.Core/Perspectives/Sync/EventCompletionAwaiter.cs
   - src/Whizbang.Core/Lenses/ISyncAwareLensQuery.cs
 ---
 
@@ -173,6 +175,44 @@ public sealed class PerspectiveSyncOptions {
     public bool DebuggerAwareTimeout { get; init; } = true;
 }
 ```
+
+---
+
+## Perspective-Based vs Event-Based Waiting
+
+Whizbang provides two distinct waiting semantics for different use cases:
+
+| Approach | Service | Waits For | Use Case |
+|----------|---------|-----------|----------|
+| **Perspective-Based** | `IPerspectiveSyncAwaiter` | One specific perspective | Query consistency - ensure a handler sees its own changes |
+| **Event-Based** | `IEventCompletionAwaiter` | All perspectives | RPC completion - ensure all processing complete before response |
+
+### When to Use Each
+
+**Perspective-Based (`IPerspectiveSyncAwaiter`):**
+- You need to query a specific perspective after emitting events
+- You want read-your-writes consistency for one perspective only
+- Using `[AwaitPerspectiveSync]` attribute on receptors
+
+```csharp
+// Wait for OrderPerspective to catch up, then query
+await _syncAwaiter.WaitAsync(typeof(OrderPerspective),
+    SyncFilter.CurrentScope().Build(), ct);
+var order = await _orderLens.GetByIdAsync(orderId, ct);
+```
+
+**Event-Based (`IEventCompletionAwaiter`):**
+- Making RPC calls via `LocalInvokeAsync`
+- Need guarantee ALL perspectives have processed before responding
+- Caller needs complete side-effect confirmation
+
+```csharp
+// Wait for ALL perspectives before returning RPC response
+var options = new DispatchOptions().WithPerspectiveWait();
+await _dispatcher.LocalInvokeAsync(command, options, ct);
+```
+
+For details on event-based waiting, see [Event Completion Awaiter](event-completion.md).
 
 ---
 
@@ -438,6 +478,7 @@ The key insight is tracking "what did I emit" vs "what has been processed" and b
 
 ## Related
 
+- **[Event Completion Awaiter](event-completion.md)** - Wait for ALL perspectives (RPC completion)
 - **Source Code**: [SyncFilter.cs](../../../code/Whizbang.Core/Perspectives/Sync/SyncFilter.cs)
 - **Tests**: [SyncFilterBuilderTests.cs](../../../tests/Whizbang.Core.Tests/Perspectives/Sync/)
 - **Concepts**: [Perspectives](../perspectives.md) | [Lenses](../lenses.md)
