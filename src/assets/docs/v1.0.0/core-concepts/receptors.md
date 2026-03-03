@@ -55,7 +55,7 @@ public interface IReceptor<in TMessage, TResponse>
 
 ---
 
-## ISyncReceptor Interface
+## ISyncReceptor Interface {#synchronous-receptors}
 
 :::new
 For receptors that perform pure computation without async operations, use `ISyncReceptor`:
@@ -83,6 +83,10 @@ public interface ISyncReceptor<in TMessage>
 - **No CancellationToken**: Sync operations can't be cancelled mid-execution
 - **Covariant TResponse**: Uses `out TResponse` for flexibility
 - **Zero async overhead**: No state machine generated, pre-completed `ValueTask` returned
+
+**Internal Invocation**:
+
+The dispatcher uses `VoidSyncReceptorInvoker` (for void receptors) and regular invokers (for value-returning receptors) to adapt synchronous receptors to the asynchronous pipeline. These invokers wrap the synchronous `Handle()` result in a pre-completed `ValueTask`, ensuring zero allocation overhead.
 
 ### When to Use Sync vs Async
 

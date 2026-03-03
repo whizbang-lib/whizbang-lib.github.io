@@ -1,3 +1,20 @@
+---
+title: Transport Consumer
+version: 1.0.0
+category: Core Concepts
+description: >-
+  Configure transport message consumption with auto-generated subscriptions,
+  subscription resilience, and connection recovery support
+tags: 'transport, consumer, subscriptions, resilience, messaging'
+codeReferences:
+  - src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs
+  - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
+  - src/Whizbang.Core/Resilience/SubscriptionResilienceOptions.cs
+  - src/Whizbang.Core/Resilience/SubscriptionState.cs
+  - src/Whizbang.Core/Resilience/SubscriptionRetryHelper.cs
+  - src/Whizbang.Core/Transports/ITransportWithRecovery.cs
+---
+
 # Transport Consumer
 
 The transport consumer automatically subscribes to message broker destinations and processes incoming messages. When combined with `WithRouting()`, subscriptions are auto-generated from your routing configuration.
@@ -127,6 +144,24 @@ Added in v1.0.0
 
 By default, the transport consumer includes built-in resilience for subscription failures. Subscriptions retry **forever** until success or cancellation - critical for production systems where transient broker issues should not cause permanent failures.
 
+### Core Types
+
+**SubscriptionResilienceOptions**:
+Configuration options for subscription retry behavior. Controls exponential backoff, retry limits, and partial subscription handling.
+
+**SubscriptionStatus**:
+Enumeration tracking subscription states:
+- `Pending` - Waiting to subscribe
+- `Active` - Successfully subscribed
+- `Recovering` - Retrying after failure
+- `Failed` - Failed (when `RetryIndefinitely = false`)
+
+**SubscriptionState**:
+Tracks the current state of each subscription, including destination, status, error messages, and retry count.
+
+**SubscriptionRetryHelper**:
+Internal helper class that implements exponential backoff logic and retry coordination.
+
 ### Retry Behavior
 
 The retry system uses **exponential backoff**:
@@ -138,6 +173,22 @@ The retry system uses **exponential backoff**:
 | `BackoffMultiplier` | 2.0 | Delay multiplier per attempt |
 | `InitialRetryAttempts` | 5 | Attempts before reducing log verbosity |
 | `RetryIndefinitely` | true | Never give up (recommended) |
+| `HealthCheckInterval` | 1 minute | Interval for health check sweeps |
+| `AllowPartialSubscriptions` | true | Start with partial subscriptions |
+
+**How Exponential Backoff Works**:
+
+```
+Attempt 1: 1 second delay
+Attempt 2: 2 seconds delay (1 * 2.0)
+Attempt 3: 4 seconds delay (2 * 2.0)
+Attempt 4: 8 seconds delay (4 * 2.0)
+Attempt 5: 16 seconds delay (8 * 2.0)
+Attempt 6: 32 seconds delay (16 * 2.0)
+Attempt 7: 64 seconds delay (32 * 2.0)
+Attempt 8: 120 seconds delay (64 * 2.0, capped at MaxRetryDelay)
+Attempt 9+: 120 seconds delay (continues at max)
+```
 
 ### Configuration
 
@@ -156,20 +207,9 @@ services.AddWhizbang()
 
         // Allow partial failures (some subscriptions can fail)
         config.ResilienceOptions.AllowPartialSubscriptions = true;
-    });
-```
 
-### Disabling Resilience
-
-For testing or simple scenarios, resilience can be disabled:
-
-```csharp
-services.AddWhizbang()
-    .WithRouting(routing => {
-        routing.OwnDomains("myapp.orders.commands");
-    })
-    .AddTransportConsumer(config => {
-        config.EnableResilience = false;  // Uses non-resilient worker
+        // Custom health check interval
+        config.ResilienceOptions.HealthCheckInterval = TimeSpan.FromSeconds(30);
     });
 ```
 
@@ -189,6 +229,7 @@ Health check results:
 The health check includes diagnostic data:
 - `failed_destinations`: List of failed subscription addresses
 - `recovering_destinations`: List of subscriptions currently retrying
+- `pending_destinations`: List of subscriptions waiting for first attempt
 
 ### Connection Recovery
 
@@ -200,6 +241,23 @@ For transports that support connection recovery (RabbitMQ, Azure Service Bus), s
 4. Retry loop re-establishes each subscription
 
 This ensures subscriptions survive both initial failures and runtime connection issues.
+
+### Observability
+
+Monitor subscription state through:
+
+**Logging**:
+- Initial retries (attempts 1-5): Warning level with full details
+- Indefinite retries (attempts 6+): Info level with reduced verbosity
+
+**Metrics** (if using health checks):
+- Total subscriptions count
+- Active subscriptions count
+- Failed subscriptions count
+- Recovering subscriptions count
+
+**Diagnostic Data**:
+Access subscription state programmatically through the health check data dictionary.
 
 ## Service Name Resolution
 
