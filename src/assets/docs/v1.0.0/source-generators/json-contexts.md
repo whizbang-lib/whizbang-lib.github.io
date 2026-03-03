@@ -196,6 +196,108 @@ internal partial class MessageJsonContext : JsonSerializerContext {
 
 ---
 
+## Serializing Additional Types {#serializing-additional-types}
+
+By default, the `MessageJsonContextGenerator` automatically discovers types that implement `ICommand` or `IEvent`. However, many applications have additional types that need JSON serialization but don't fall into these categories.
+
+### WhizbangSerializableAttribute
+
+Use the `[WhizbangSerializable]` attribute to mark any type for automatic inclusion in the generated JSON context:
+
+```csharp
+namespace Whizbang;
+
+/// <summary>
+/// Marks a type for automatic inclusion in the generated JSON serialization context.
+/// </summary>
+/// <remarks>
+/// Use this attribute on types that need JSON serialization but don't implement
+/// ICommand or IEvent (e.g., DTOs, value objects, JSONB column types).
+/// The MessageJsonContextGenerator will discover these types and include them
+/// in the generated JsonSerializerContext for AOT-compatible serialization.
+/// </remarks>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = false)]
+public sealed class WhizbangSerializableAttribute : Attribute { }
+```
+
+**Usage Example**:
+
+```csharp
+using Whizbang;
+
+// Perspective lens DTOs (read models)
+[WhizbangSerializable]
+public record ProductDto {
+  public required Guid ProductId { get; init; }
+  public required string Name { get; init; }
+  public required decimal Price { get; init; }
+}
+
+// API response models
+[WhizbangSerializable]
+public record OrderSummary {
+  public required Guid OrderId { get; init; }
+  public required string Status { get; init; }
+  public required decimal Total { get; init; }
+}
+
+// JSONB column types
+[WhizbangSerializable]
+public record AddressDetails {
+  public required string Street { get; init; }
+  public required string City { get; init; }
+  public required string PostalCode { get; init; }
+}
+
+// Value objects
+[WhizbangSerializable]
+public record MoneyValue {
+  public required decimal Amount { get; init; }
+  public required string Currency { get; init; }
+}
+```
+
+### Common Use Cases
+
+| Type | Description | Example |
+|------|-------------|---------|
+| **Perspective DTOs** | Read models returned by lens queries | `ProductDto`, `OrderSummary` |
+| **API Responses** | Custom response types for REST/GraphQL | `PagedResult<T>`, `ApiError` |
+| **JSONB Columns** | Complex types stored as JSON in PostgreSQL | `AddressDetails`, `Metadata` |
+| **Value Objects** | Domain value types | `MoneyValue`, `GeoLocation` |
+| **Nested Types** | Types used within commands/events | `OrderItem`, `LineItem` |
+
+### How It Works
+
+1. **Discovery**: Generator scans for `[WhizbangSerializable]` attribute at compile-time
+2. **Registration**: Marked types are added to the generated `JsonSerializerContext`
+3. **AOT Compatible**: Full Native AOT support with zero reflection
+
+**Generated Code**:
+```csharp
+// Types marked with [WhizbangSerializable] are included
+[JsonSerializable(typeof(CreateOrder))]         // ICommand
+[JsonSerializable(typeof(OrderCreated))]        // IEvent
+[JsonSerializable(typeof(ProductDto))]          // [WhizbangSerializable]
+[JsonSerializable(typeof(OrderSummary))]        // [WhizbangSerializable]
+[JsonSerializable(typeof(AddressDetails))]      // [WhizbangSerializable]
+public partial class WhizbangJsonContext : JsonSerializerContext { }
+```
+
+### Best Practices
+
+**DO**:
+- Mark all DTOs returned from lens queries
+- Mark complex types stored in JSONB columns
+- Mark value objects used across API boundaries
+
+**DON'T**:
+- Mark types that implement `ICommand` or `IEvent` (already discovered)
+- Mark internal implementation types (not needed)
+- Mark types from external assemblies (use their own context)
+
+---
+
 ## Discovery Patterns
 
 ### Pattern 1: Command/Event Discovery

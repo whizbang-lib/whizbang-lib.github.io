@@ -1214,6 +1214,73 @@ See [Lifecycle Synchronization](../testing/lifecycle-synchronization.md) for com
 
 ---
 
+## Event Cascading {#event-cascading}
+
+When receptors return messages (events or commands), Whizbang automatically cascades them to other receptors and/or the outbox. The `IEventCascader` interface handles this extraction and dispatch.
+
+### How It Works
+
+The `DispatcherEventCascader` implementation:
+
+1. **Extracts messages** from receptor return values (tuples, arrays, Route wrappers)
+2. **Applies routing** based on wrapper type and `[DefaultRouting]` attributes
+3. **Dispatches** each message according to its routing configuration
+
+```csharp
+// Receptor returns tuple with event - event is auto-cascaded
+public class CreateOrderHandler : IReceptor<CreateOrderCommand, (OrderResult, OrderCreatedEvent)> {
+  public ValueTask<(OrderResult, OrderCreatedEvent)> HandleAsync(
+      CreateOrderCommand cmd,
+      CancellationToken ct) {
+
+    var result = new OrderResult(cmd.OrderId);
+    var @event = new OrderCreatedEvent(cmd.OrderId);
+
+    // Event is automatically cascaded to local receptors and/or outbox
+    return ValueTask.FromResult((result, @event));
+  }
+}
+```
+
+### Routing Priority
+
+Messages are routed based on priority (highest to lowest):
+
+1. Message's `[DefaultRouting]` attribute
+2. `Route.Local()` / `Route.Outbox()` / `Route.Both()` wrapper
+3. Receptor's `[DefaultRouting]` attribute
+4. System default: Outbox
+
+### Security Context Inheritance
+
+Cascaded messages inherit security context from the source envelope:
+
+- Each cascaded message gets a new envelope
+- The `SecurityContext` in the new envelope's initial hop is inherited from the source
+- This ensures tenant/user context flows through message chains
+
+### Route Wrappers
+
+Control cascade routing explicitly:
+
+```csharp
+// Cascade to local receptors only
+return (result, Route.Local(@event));
+
+// Cascade to outbox only (cross-service)
+return (result, Route.Outbox(@event));
+
+// Cascade to both local and outbox
+return (result, Route.Both(@event));
+
+// Suppress cascading entirely
+return (result, Route.None(@event));
+```
+
+See [Automatic Message Cascade](dispatcher.md#automatic-message-cascade) for complete routing patterns.
+
+---
+
 ## Related Topics
 
 - [Lifecycle Stages](lifecycle-stages.md) - All 18 stages with timing diagrams
