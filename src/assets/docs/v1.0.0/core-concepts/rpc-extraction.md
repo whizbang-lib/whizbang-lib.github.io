@@ -1,3 +1,17 @@
+---
+title: RPC Response Extraction
+version: 1.0.0
+category: Core Concepts
+order: 18
+description: >-
+  RPC response extraction, discriminated unions, and RoutedNone in Whizbang receptors.
+tags: 'rpc, extraction, discriminated-unions, routed-none'
+codeReferences:
+  - src/Whizbang.Core/Dispatch/Route.cs
+  - src/Whizbang.Core/Dispatch/Routed.cs
+  - src/Whizbang.Core/Internal/ResponseExtractor.cs
+---
+
 # RPC Response Extraction
 
 RPC (Remote Procedure Call) style invocations allow you to call a receptor and receive a specific response type back, while other returned values cascade through normal routing.
@@ -117,9 +131,9 @@ var evt = await dispatcher.LocalInvokeAsync<IEvent>(command);
 // Returns first IEvent found in tuple
 ```
 
-## Discriminated Unions
+## Discriminated Unions {#discriminated-unions}
 
-Receptors can return discriminated union-style tuples where only one value is populated and others are explicitly empty using `Route.None()` or `null`.
+Discriminated unions enable receptors to return multiple possible outcomes in a type-safe tuple, where only one value is populated and others are explicitly empty using `Route.None()` or `null`. This pattern is useful for modeling success/failure paths, validation results, or conditional responses.
 
 ### Using Route.None()
 
@@ -170,6 +184,25 @@ return (success: Route.None(), failure: new PaymentFailed(...));
 - **Never extracted** as RPC responses
 - **Never cascaded** as events
 - **AOT-compatible** (simple struct with `DispatchMode.None`)
+
+### RoutedNone Type {#routed-none}
+
+`Route.None()` returns a `RoutedNone` struct:
+
+```csharp
+/// <summary>
+/// Represents an explicitly empty value in a discriminated union tuple.
+/// </summary>
+public readonly struct RoutedNone : IRouted {
+  public object? Value => null;
+  public DispatchMode Mode => DispatchMode.None;
+}
+```
+
+`RoutedNone` is useful when:
+- Returning discriminated union tuples with conditional paths
+- Explicitly marking "no value" (clearer than `null`)
+- Maintaining type safety in tuple return types
 
 ### Three-Way Unions
 

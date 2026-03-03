@@ -10,11 +10,14 @@ tags: 'audit, compliance, logging, system-events, perspectives, security, gdpr, 
 codeReferences:
   - src/Whizbang.Core/SystemEvents/ISystemEvent.cs
   - src/Whizbang.Core/SystemEvents/EventAudited.cs
+  - src/Whizbang.Core/SystemEvents/CommandAudited.cs
   - src/Whizbang.Core/SystemEvents/SystemEventStreams.cs
   - src/Whizbang.Core/Audit/AuditLogEntry.cs
+  - src/Whizbang.Core/Audit/CommandAuditEntry.cs
   - src/Whizbang.Core/Audit/AuditLevel.cs
   - src/Whizbang.Core/Attributes/AuditEventAttribute.cs
   - tests/Whizbang.Core.Tests/SystemEvents/EventAuditedTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditedTests.cs
 ---
 
 # Audit Logging
@@ -216,6 +219,113 @@ public record PaymentProcessedEvent(Guid OrderId, decimal Amount) : IEvent;
 
 ---
 
+<a id="command-auditing"></a>
+
+## Command Auditing
+
+In addition to event auditing, Whizbang supports **command auditing** to capture the intent behind changes. While events record what happened, command auditing records what was requested.
+
+### CommandAudited System Event
+
+When command auditing is enabled, Whizbang emits a `CommandAudited` system event for each command processed:
+
+```csharp
+public sealed record CommandAudited : ISystemEvent {
+  // Identity
+  public required Guid Id { get; init; }
+
+  // Command info
+  public required string CommandType { get; init; }
+  public required JsonElement CommandBody { get; init; }
+  public required DateTimeOffset Timestamp { get; init; }
+
+  // Result
+  public required bool Succeeded { get; init; }
+  public string? FailureReason { get; init; }
+
+  // Scope (who)
+  public string? TenantId { get; init; }
+  public string? UserId { get; init; }
+  public string? UserName { get; init; }
+  public string? CorrelationId { get; init; }
+
+  // Audit metadata
+  public string? AuditReason { get; init; }
+  public AuditLevel AuditLevel { get; init; } = AuditLevel.Info;
+}
+```
+
+### Enabling Command Auditing
+
+```csharp
+services.AddWhizbang(options => {
+  options.SystemEvents.EnableAudit();         // Events only
+  options.SystemEvents.EnableCommandAudit();  // Commands only
+  options.SystemEvents.EnableFullAudit();     // Both events and commands
+});
+```
+
+### Command Audit Perspective
+
+```csharp
+public sealed class CommandAuditPerspective
+    : IPerspectiveFor<CommandAuditEntry, CommandAudited> {
+  public CommandAuditEntry Apply(CommandAuditEntry current, CommandAudited @event) {
+    return new CommandAuditEntry {
+      Id = @event.Id,
+      CommandType = @event.CommandType,
+      CommandBody = @event.CommandBody,
+      Timestamp = @event.Timestamp,
+      Succeeded = @event.Succeeded,
+      FailureReason = @event.FailureReason,
+      TenantId = @event.TenantId,
+      UserId = @event.UserId,
+      UserName = @event.UserName,
+      CorrelationId = @event.CorrelationId,
+      AuditReason = @event.AuditReason,
+      AuditLevel = @event.AuditLevel
+    };
+  }
+}
+```
+
+### Querying Command Audit
+
+```csharp
+public interface ICommandAuditLens : ILensQuery<CommandAuditEntry> { }
+
+public class SecurityService {
+  private readonly ICommandAuditLens _commandAuditLens;
+
+  // Find failed commands (potential attack vectors)
+  public async Task<IReadOnlyList<CommandAuditEntry>> GetFailedCommandsAsync(
+      DateTimeOffset since, CancellationToken ct) {
+    return await _commandAuditLens.QueryAsync(q => q
+        .Where(c => c.Timestamp >= since)
+        .Where(c => !c.Succeeded)
+        .OrderByDescending(c => c.Timestamp), ct);
+  }
+
+  // Correlate command to resulting events
+  public async Task<CommandEventCorrelation> GetCommandWithEventsAsync(
+      string correlationId, CancellationToken ct) {
+    var command = await _commandAuditLens.QueryAsync(q => q
+        .Where(c => c.CorrelationId == correlationId)
+        .SingleOrDefault(), ct);
+
+    var events = await _auditLens.QueryAsync(q => q
+        .Where(e => e.CorrelationId == correlationId)
+        .OrderBy(e => e.Timestamp), ct);
+
+    return new CommandEventCorrelation(command, events);
+  }
+}
+```
+
+---
+
+<a id="selective-auditing"></a>
+
 ## AuditEventAttribute
 
 ```csharp
@@ -240,6 +350,8 @@ public sealed class AuditEventAttribute : MessageTagAttribute {
 ```
 
 ---
+
+<a id="levels"></a>
 
 ## AuditLevel Enum
 
