@@ -1,3 +1,15 @@
+---
+title: Security
+version: 1.0.0
+category: Core Concepts
+order: 6
+description: >-
+  Comprehensive security system for Whizbang applications - permissions, roles,
+  scope context, security principals, row-level and column-level security,
+  data masking, and EF Core integration for principal-based filtering.
+tags: 'security, permissions, roles, rbac, abac, scope-context, principals, row-level-security, column-level-security, masking'
+---
+
 # Security System
 
 Whizbang provides a comprehensive security system supporting RBAC (Role-Based Access Control) and ABAC (Attribute-Based Access Control) patterns with composable scope filters, permission checks, and security event auditing.
@@ -42,7 +54,7 @@ var allOrderActions = Permission.All("orders");  // Matches orders:*
 | `*:read` | Read on any resource (`orders:read`, `customers:read`, etc.) |
 | `*:*` | Everything (super-admin) |
 
-## Roles
+## Roles {#roles}
 
 Roles are named collections of permissions, defined via fluent configuration.
 
@@ -65,7 +77,45 @@ managerRole.HasPermission(Permission.Read("reports"));   // true
 managerRole.HasPermission(Permission.Delete("reports")); // false
 ```
 
-## Security Principals
+### Role Definition {#role-definition}
+
+The `RoleBuilder` provides a fluent API for defining roles with permissions:
+
+```csharp
+public class RoleBuilder {
+  public RoleBuilder HasPermission(Permission permission);
+  public RoleBuilder HasPermission(string resource, string action);
+  public RoleBuilder HasReadPermission(string resource);
+  public RoleBuilder HasWritePermission(string resource);
+  public RoleBuilder HasDeletePermission(string resource);
+  public RoleBuilder HasAdminPermission(string resource);
+  public RoleBuilder HasAllPermissions(string resource);  // resource:*
+  public Role Build();
+}
+
+// Example usage
+var role = new RoleBuilder("OrderManager")
+  .HasReadPermission("orders")
+  .HasWritePermission("orders")
+  .HasReadPermission("customers")
+  .HasPermission("orders", "export")
+  .Build();
+```
+
+The `Role` type represents a named collection of permissions:
+
+```csharp
+public sealed record Role {
+  public required string Name { get; init; }
+  public required IReadOnlySet<Permission> Permissions { get; init; }
+
+  public bool HasPermission(Permission permission) {
+    return Permissions.Any(p => p.Matches(permission));
+  }
+}
+```
+
+## Security Principals {#security-principals}
 
 Security principals identify users, groups, and services with type prefixes for clarity.
 
@@ -80,6 +130,20 @@ var app = SecurityPrincipalId.Application("mobile-app"); // "app:mobile-app"
 user.IsUser;     // true
 group.IsGroup;   // true
 service.IsService; // true
+```
+
+### JSON Serialization
+
+The `SecurityPrincipalIdJsonConverter` handles JSON serialization of security principal IDs:
+
+```csharp
+// Serializes to simple string format
+var json = JsonSerializer.Serialize(SecurityPrincipalId.User("alice"));
+// Result: "user:alice"
+
+// Deserializes from string
+var principal = JsonSerializer.Deserialize<SecurityPrincipalId>("\"group:sales-team\"");
+// Result: SecurityPrincipalId { Type = Group, Value = "sales-team" }
 ```
 
 ### Nested Group Support
@@ -98,7 +162,17 @@ var context = new ScopeContext {
 };
 ```
 
-## Scope Context
+## Principal Filtering {#principal-filtering}
+
+Whizbang provides three levels of principal-based filtering:
+
+1. **Basic principal checks** - Check if a user belongs to a security principal
+2. **EF Core JSONB filtering** - Database-level filtering using PostgreSQL's `?|` operator
+3. **Scoped lens integration** - Automatic filtering via `IScopedLensFactory`
+
+See the [Principal Filtering with EF Core](#principal-filtering) section below for implementation details.
+
+## Scope Context {#scope-context}
 
 `IScopeContext` is the ambient security context for the current operation, populated from JWT claims, message headers, or explicit injection.
 
@@ -145,7 +219,7 @@ var context = new ScopeContext {
 };
 ```
 
-### Scope Context Accessor
+### Scope Context Accessor {#scope-context-accessor}
 
 Access the current scope context via `IScopeContextAccessor`, which uses `AsyncLocal` for request-scoped propagation.
 
@@ -157,14 +231,117 @@ public interface IScopeContextAccessor {
 // Usage in a service
 public class OrderService {
   private readonly IScopeContextAccessor _accessor;
+  private readonly IOrderRepository _repository;
 
-  public void Process() {
-    var context = _accessor.Current;
-    if (context?.HasPermission(Permission.Write("orders")) != true) {
-      throw new AccessDeniedException(...);
+  public OrderService(IScopeContextAccessor accessor, IOrderRepository repository) {
+    _accessor = accessor;
+    _repository = repository;
+  }
+
+  public async Task<Order> GetOrderAsync(string orderId) {
+    var context = _accessor.Current
+      ?? throw new InvalidOperationException("No scope context available");
+
+    if (!context.HasPermission(Permission.Read("orders"))) {
+      throw new AccessDeniedException(
+        resourceType: "Order",
+        resourceId: orderId,
+        requiredPermission: Permission.Read("orders"),
+        reason: AccessDenialReason.InsufficientPermissions
+      );
     }
+
+    return await _repository.GetByIdAsync(orderId);
+  }
+
+  public async Task UpdateOrderAsync(string orderId, UpdateOrderRequest request) {
+    var context = _accessor.Current
+      ?? throw new InvalidOperationException("No scope context available");
+
+    if (!context.HasPermission(Permission.Write("orders"))) {
+      throw new AccessDeniedException(
+        resourceType: "Order",
+        resourceId: orderId,
+        requiredPermission: Permission.Write("orders"),
+        reason: AccessDenialReason.InsufficientPermissions
+      );
+    }
+
+    await _repository.UpdateAsync(orderId, request);
   }
 }
+```
+
+## Permission Extractors {#extractors}
+
+The `IPermissionExtractor` interface allows custom extraction of permissions from claims, tokens, or other sources.
+
+```csharp
+public interface IPermissionExtractor {
+  IReadOnlySet<Permission> Extract(IReadOnlyDictionary<string, string> claims);
+}
+
+// Built-in claim-based extractor
+public class ClaimPermissionExtractor : IPermissionExtractor {
+  private readonly string _claimType;
+  private readonly char _separator;
+
+  public ClaimPermissionExtractor(string claimType, char separator = ',') {
+    _claimType = claimType;
+    _separator = separator;
+  }
+
+  public IReadOnlySet<Permission> Extract(IReadOnlyDictionary<string, string> claims) {
+    if (!claims.TryGetValue(_claimType, out var value)) {
+      return new HashSet<Permission>();
+    }
+
+    return value
+      .Split(_separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+      .Select(p => new Permission(p))
+      .ToHashSet();
+  }
+}
+
+// Custom extractor for role-to-permission mapping
+public class RolePermissionExtractor : IPermissionExtractor {
+  private readonly SecurityOptions _options;
+
+  public RolePermissionExtractor(SecurityOptions options) {
+    _options = options;
+  }
+
+  public IReadOnlySet<Permission> Extract(IReadOnlyDictionary<string, string> claims) {
+    if (!claims.TryGetValue("roles", out var rolesValue)) {
+      return new HashSet<Permission>();
+    }
+
+    var roleNames = rolesValue.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    var permissions = new HashSet<Permission>();
+
+    foreach (var roleName in roleNames) {
+      if (_options.Roles.TryGetValue(roleName, out var role)) {
+        foreach (var permission in role.Permissions) {
+          permissions.Add(permission);
+        }
+      }
+    }
+
+    return permissions;
+  }
+}
+```
+
+### Registering Extractors
+
+```csharp
+services.AddSingleton<IPermissionExtractor>(sp => {
+  var options = sp.GetRequiredService<SecurityOptions>();
+  return new CompositePermissionExtractor(
+    new ClaimPermissionExtractor("permissions"),
+    new RolePermissionExtractor(options)
+  );
+});
 ```
 
 ## Scoped Lens Factory
@@ -248,6 +425,308 @@ var lens = factory.GetLens<IOrderLens>(
 
 If permissions are not satisfied, `AccessDeniedException` is thrown and an `AccessDenied` system event is emitted.
 
+## Principal Filtering with EF Core {#principal-filtering}
+
+Whizbang provides EF Core integration for principal-based filtering using PostgreSQL's JSONB array overlap operator (`?|`).
+
+### DbContext Configuration
+
+Use `WhizbangDbContextOptionsExtensions` to enable principal filtering:
+
+```csharp
+public class OrderDbContext : DbContext {
+  protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
+    optionsBuilder
+      .UseNpgsql(connectionString)
+      .UseWhizbangJsonFunctions();  // Enable Whizbang JSON functions
+  }
+}
+```
+
+### WhizbangJsonDbFunctions
+
+The `WhizbangJsonDbFunctions` static class provides EF Core-translatable methods for JSONB operations:
+
+```csharp
+public static class WhizbangJsonDbFunctions {
+  /// <summary>
+  /// Checks if a JSONB array contains any of the specified values.
+  /// Translates to PostgreSQL: jsonb_column ?| array['value1', 'value2']
+  /// </summary>
+  public static bool JsonArrayContainsAny(string[] column, string[] values);
+}
+```
+
+### Query Translation
+
+The `WhizbangMethodCallTranslatorPlugin` and `JsonArrayContainsAnyTranslator` handle translation of LINQ queries to PostgreSQL:
+
+```csharp
+// LINQ query
+var orders = await dbContext.Orders
+  .Where(o => WhizbangJsonDbFunctions.JsonArrayContainsAny(
+    o.AllowedPrincipals,
+    currentUserPrincipals
+  ))
+  .ToListAsync();
+
+// Translates to SQL:
+// SELECT * FROM orders WHERE allowed_principals ?| ARRAY['user:alice', 'group:sales-team']
+```
+
+### Principal Filter Example
+
+```csharp
+public class OrderRepository {
+  private readonly OrderDbContext _dbContext;
+  private readonly IScopeContextAccessor _scopeAccessor;
+
+  public async Task<List<Order>> GetAccessibleOrdersAsync() {
+    var context = _scopeAccessor.Current!;
+    var principalIds = context.SecurityPrincipals
+      .Select(p => p.ToString())
+      .ToArray();
+
+    return await _dbContext.Orders
+      .Where(o => o.TenantId == context.Scope.TenantId)
+      .Where(o => WhizbangJsonDbFunctions.JsonArrayContainsAny(
+        o.AllowedPrincipals,
+        principalIds
+      ))
+      .ToListAsync();
+  }
+}
+```
+
+## Row-Level Security {#row-level-security}
+
+Row-level security restricts which rows a user can access based on their identity, roles, or group memberships.
+
+### Row-Level Security via AllowedPrincipals
+
+Records can specify which security principals have access:
+
+```csharp
+var row = new PerspectiveRow<Order> {
+  Data = order,
+  Scope = new PerspectiveScope {
+    TenantId = "tenant-123",
+    AllowedPrincipals = new List<SecurityPrincipalId> {
+      SecurityPrincipalId.User("creator-456"),
+      SecurityPrincipalId.Group("sales-team"),
+      SecurityPrincipalId.Group("managers")
+    }
+  }
+};
+```
+
+When querying with `ScopeFilter.Principal`, records are returned where the caller's security principals overlap with `AllowedPrincipals`.
+
+### Order Example
+
+A complete example showing row-level security for orders:
+
+```csharp
+public class Order {
+  public required string OrderId { get; init; }
+  public required string TenantId { get; init; }
+  public required string CustomerId { get; init; }
+  public required string CreatedByUserId { get; init; }
+  public required decimal TotalAmount { get; init; }
+  public required OrderStatus Status { get; init; }
+
+  // Row-level security: which principals can access this order
+  public required string[] AllowedPrincipals { get; init; }
+}
+
+public class OrderService {
+  private readonly IScopedLensFactory _lensFactory;
+
+  public async Task<Order?> GetOrderAsync(string orderId) {
+    // Returns null if user doesn't have access
+    var lens = _lensFactory.GetPrincipalLens<IOrderLens>(
+      Permission.Read("orders")
+    );
+
+    return await lens.Query()
+      .Where(o => o.OrderId == orderId)
+      .FirstOrDefaultAsync();
+  }
+
+  public async Task<Order> CreateOrderAsync(CreateOrderRequest request) {
+    var context = _lensFactory.ScopeContext;
+    var lens = _lensFactory.GetTenantLens<IOrderLens>(
+      Permission.Write("orders")
+    );
+
+    var order = new Order {
+      OrderId = Guid.NewGuid().ToString(),
+      TenantId = context.Scope.TenantId!,
+      CustomerId = request.CustomerId,
+      CreatedByUserId = context.Scope.UserId!,
+      TotalAmount = request.TotalAmount,
+      Status = OrderStatus.Pending,
+      // Grant access to creator and their team
+      AllowedPrincipals = new[] {
+        $"user:{context.Scope.UserId}",
+        "group:order-processors",
+        "group:managers"
+      }
+    };
+
+    await lens.InsertAsync(order);
+    return order;
+  }
+}
+```
+
+## Column-Level Security {#column-level-security}
+
+Column-level security restricts which fields a user can view based on their permissions.
+
+### Customer Example
+
+A complete example showing column-level security for customer data:
+
+```csharp
+public class Customer {
+  public required string CustomerId { get; init; }
+  public required string TenantId { get; init; }
+  public required string Name { get; init; }
+  public required string Email { get; init; }
+
+  // Sensitive fields - require specific permissions to view
+  public string? PhoneNumber { get; init; }
+  public string? SocialSecurityNumber { get; init; }
+  public string? CreditCardLast4 { get; init; }
+  public decimal? CreditLimit { get; init; }
+}
+
+public class CustomerDto {
+  public required string CustomerId { get; init; }
+  public required string Name { get; init; }
+  public required string Email { get; init; }
+
+  // Only populated if user has customers:read-pii permission
+  public string? PhoneNumber { get; init; }
+  public string? SocialSecurityNumber { get; init; }
+  public string? CreditCardLast4 { get; init; }
+
+  // Only populated if user has customers:read-financial permission
+  public decimal? CreditLimit { get; init; }
+}
+
+public class CustomerService {
+  private readonly IScopedLensFactory _lensFactory;
+
+  public async Task<CustomerDto?> GetCustomerAsync(string customerId) {
+    var lens = _lensFactory.GetTenantLens<ICustomerLens>(
+      Permission.Read("customers")
+    );
+
+    var customer = await lens.Query()
+      .Where(c => c.CustomerId == customerId)
+      .FirstOrDefaultAsync();
+
+    if (customer is null) {
+      return null;
+    }
+
+    var context = _lensFactory.ScopeContext;
+    var canReadPii = context.HasPermission(new Permission("customers:read-pii"));
+    var canReadFinancial = context.HasPermission(new Permission("customers:read-financial"));
+
+    return new CustomerDto {
+      CustomerId = customer.CustomerId,
+      Name = customer.Name,
+      Email = customer.Email,
+      // Column-level security: only include sensitive fields if permitted
+      PhoneNumber = canReadPii ? customer.PhoneNumber : null,
+      SocialSecurityNumber = canReadPii ? customer.SocialSecurityNumber : null,
+      CreditCardLast4 = canReadPii ? customer.CreditCardLast4 : null,
+      CreditLimit = canReadFinancial ? customer.CreditLimit : null
+    };
+  }
+}
+```
+
+## Data Masking {#masking-strategies}
+
+The `MaskingStrategy` enum defines strategies for masking sensitive data in responses.
+
+```csharp
+public enum MaskingStrategy {
+  /// <summary>No masking - return full value (requires permission)</summary>
+  None,
+
+  /// <summary>Completely hide the value (return null)</summary>
+  Hide,
+
+  /// <summary>Show only last 4 characters (e.g., "****1234")</summary>
+  Last4,
+
+  /// <summary>Show only first character (e.g., "J***")</summary>
+  FirstChar,
+
+  /// <summary>Show redacted placeholder (e.g., "[REDACTED]")</summary>
+  Redacted,
+
+  /// <summary>Custom masking function</summary>
+  Custom
+}
+
+public static class DataMasker {
+  public static string? Mask(string? value, MaskingStrategy strategy) {
+    if (value is null) {
+      return null;
+    }
+
+    return strategy switch {
+      MaskingStrategy.None => value,
+      MaskingStrategy.Hide => null,
+      MaskingStrategy.Last4 => value.Length > 4
+        ? new string('*', value.Length - 4) + value[^4..]
+        : new string('*', value.Length),
+      MaskingStrategy.FirstChar => value.Length > 0
+        ? value[0] + new string('*', value.Length - 1)
+        : value,
+      MaskingStrategy.Redacted => "[REDACTED]",
+      _ => throw new ArgumentOutOfRangeException(nameof(strategy))
+    };
+  }
+}
+```
+
+### Using Masking with Column Security
+
+```csharp
+public class CustomerDto {
+  public required string CustomerId { get; init; }
+  public required string Name { get; init; }
+  public required string Email { get; init; }
+  public string? PhoneNumber { get; init; }
+  public string? SocialSecurityNumberMasked { get; init; }
+  public string? CreditCardMasked { get; init; }
+}
+
+public CustomerDto ToDto(Customer customer, IScopeContext context) {
+  var canReadPii = context.HasPermission(new Permission("customers:read-pii"));
+
+  return new CustomerDto {
+    CustomerId = customer.CustomerId,
+    Name = customer.Name,
+    Email = customer.Email,
+    PhoneNumber = canReadPii
+      ? customer.PhoneNumber
+      : DataMasker.Mask(customer.PhoneNumber, MaskingStrategy.Last4),
+    SocialSecurityNumberMasked = canReadPii
+      ? customer.SocialSecurityNumber
+      : DataMasker.Mask(customer.SocialSecurityNumber, MaskingStrategy.Last4),
+    CreditCardMasked = DataMasker.Mask(customer.CreditCardLast4, MaskingStrategy.Last4)
+  };
+}
+```
+
 ## Perspective Scope
 
 `PerspectiveScope` stores scope metadata on perspective rows, separate from the data model.
@@ -273,26 +752,6 @@ public record PerspectiveScope {
   };
 }
 ```
-
-### Row-Level Security via AllowedPrincipals
-
-Records can specify which security principals have access:
-
-```csharp
-var row = new PerspectiveRow<Order> {
-  Data = order,
-  Scope = new PerspectiveScope {
-    TenantId = "tenant-123",
-    AllowedPrincipals = new List<SecurityPrincipalId> {
-      SecurityPrincipalId.User("creator-456"),
-      SecurityPrincipalId.Group("sales-team"),
-      SecurityPrincipalId.Group("managers")
-    }
-  }
-};
-```
-
-When querying with `ScopeFilter.Principal`, records are returned where the caller's security principals overlap with `AllowedPrincipals`.
 
 ## Security System Events
 
@@ -327,6 +786,62 @@ public sealed record AccessGranted : ISystemEvent {
   public required ScopeFilter AccessFilter { get; init; }
   public required PerspectiveScope Scope { get; init; }
   public required DateTimeOffset Timestamp { get; init; }
+}
+```
+
+## Exceptions {#exceptions}
+
+### AccessDeniedException
+
+Thrown when a security check fails due to insufficient permissions.
+
+```csharp
+public class AccessDeniedException : Exception {
+  public required string ResourceType { get; init; }
+  public string? ResourceId { get; init; }
+  public required Permission RequiredPermission { get; init; }
+  public required AccessDenialReason Reason { get; init; }
+
+  public AccessDeniedException(
+    string resourceType,
+    string? resourceId,
+    Permission requiredPermission,
+    AccessDenialReason reason
+  ) : base($"Access denied to {resourceType}" +
+           (resourceId is not null ? $" ({resourceId})" : "") +
+           $": requires {requiredPermission}") {
+    ResourceType = resourceType;
+    ResourceId = resourceId;
+    RequiredPermission = requiredPermission;
+    Reason = reason;
+  }
+}
+
+public enum AccessDenialReason {
+  InsufficientPermissions,
+  InsufficientRoles,
+  NotInPrincipalGroup,
+  ScopeViolation,
+  ResourceNotFound
+}
+```
+
+### Exception Handling
+
+```csharp
+try {
+  var lens = factory.GetLens<IOrderLens>(
+    ScopeFilter.Tenant,
+    Permission.Delete("orders"));
+} catch (AccessDeniedException ex) {
+  // ex.RequiredPermission - What was needed
+  // ex.ResourceType - What was being accessed
+  // ex.ResourceId - Optional specific resource
+  // ex.Reason - Why access was denied
+  logger.LogWarning(
+    "Access denied: {Resource} requires {Permission}",
+    ex.ResourceType,
+    ex.RequiredPermission);
 }
 ```
 
@@ -380,27 +895,9 @@ public interface ICustomerScoped : ITenantScoped {
 }
 ```
 
-## Exception Handling
-
-```csharp
-try {
-  var lens = factory.GetLens<IOrderLens>(
-    ScopeFilter.Tenant,
-    Permission.Delete("orders"));
-} catch (AccessDeniedException ex) {
-  // ex.RequiredPermission - What was needed
-  // ex.ResourceType - What was being accessed
-  // ex.ResourceId - Optional specific resource
-  // ex.Reason - Why access was denied
-  logger.LogWarning(
-    "Access denied: {Resource} requires {Permission}",
-    ex.ResourceType,
-    ex.RequiredPermission);
-}
-```
-
 ## Related Documentation
 
 - [Scoping](./scoping.md) - Scope system overview
 - [System Events](./system-events.md) - Audit and monitoring events
 - [Implementing Multi-Tenancy](../guides/implementing-multi-tenancy.md) - End-to-end guide
+- [Security Best Practices](../advanced-topics/security.md) - Authentication, authorization, encryption

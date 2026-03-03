@@ -432,6 +432,82 @@ if (builder.Environment.IsDevelopment()) {
 // No AddAzureServiceBusProvisioner call needed
 ```
 
+### Admin Client {#admin-client}
+
+The **Admin Client** (`ServiceBusAdministrationClient`) is used for infrastructure provisioning and management operations on Azure Service Bus namespaces.
+
+**When the Admin Client is Used**:
+- Creating topics when `AutoProvisionInfrastructure = true`
+- Creating subscriptions during `SubscribeAsync`
+- Setting up routing filters (SqlFilter rules)
+- Domain topic provisioning (via `AddAzureServiceBusProvisioner`)
+
+**Registration**:
+
+The admin client is automatically registered when auto-provisioning is enabled:
+
+```csharp
+// Auto-provisioning mode (default)
+services.AddAzureServiceBusTransport(
+  connectionString,
+  options => {
+    options.AutoProvisionInfrastructure = true;  // Admin client auto-registered
+  }
+);
+```
+
+For domain topic provisioning with separate admin permissions:
+
+```csharp
+// Separate admin client with Manage permissions
+services.AddAzureServiceBusTransport(connectionString);  // Send/Receive permissions
+services.AddAzureServiceBusProvisioner(adminConnectionString);  // Manage permissions
+```
+
+**Required Permissions**:
+
+The connection string used for the admin client must have **Manage** permissions:
+
+| Operation | Permission Level |
+|-----------|-----------------|
+| Send/Receive messages | Send, Listen |
+| Create topics | Manage |
+| Create subscriptions | Manage |
+| Create filters | Manage |
+
+**Production Considerations**:
+
+```csharp
+// Development: Auto-provision with Manage permissions
+if (builder.Environment.IsDevelopment()) {
+    services.AddAzureServiceBusTransport(
+        connectionString,  // Connection string with Manage permissions
+        options => {
+            options.AutoProvisionInfrastructure = true;
+        }
+    );
+}
+
+// Production: Pre-provisioned infrastructure via IaC
+else {
+    services.AddAzureServiceBusTransport(
+        connectionString,  // Connection string with only Send/Listen permissions
+        options => {
+            options.AutoProvisionInfrastructure = false;  // No admin client needed
+        }
+    );
+}
+```
+
+**Graceful Fallback**:
+
+If the admin client is unavailable or lacks permissions:
+- Provisioning operations are skipped silently
+- The transport continues to function using existing infrastructure
+- Errors are logged for troubleshooting
+
+This design allows services to run in restricted environments where infrastructure is pre-provisioned via infrastructure-as-code tools like Terraform or Bicep.
+
 ### Routing Pattern Filters {#routing-filters}
 
 :::new

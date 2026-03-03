@@ -269,7 +269,7 @@ internal sealed class ProductCatalogPerspectiveRunner : IPerspectiveRunner {
 
 ---
 
-## Pure Function Pattern
+## Pure Function Pattern {#pure-services}
 
 Perspectives use **pure functions** for event application:
 
@@ -695,7 +695,68 @@ public class PerspectiveWorker : BackgroundService {
 - **Time-travel queries**: Rebuild model up to specific point in time
 - **Model schema changes**: Replay events into new schema
 
-**Manual rebuild example**:
+### Manual Rebuild {#rebuild}
+
+Use `RebuildPerspectiveCommand` or manual event replay to reconstruct read models from event history.
+
+#### RebuildPerspectiveCommand
+
+The `RebuildPerspectiveCommand` provides a command-based way to trigger perspective rebuilds:
+
+```csharp
+namespace Whizbang.Core.Commands;
+
+/// <summary>
+/// Command to rebuild a perspective's read models from event history.
+/// </summary>
+/// <remarks>
+/// This command triggers a full replay of events through the perspective's
+/// Apply methods, reconstructing the read model from scratch. Useful for:
+/// - Recovering from corrupted read models
+/// - Adding new perspectives to existing event streams
+/// - Migrating perspective schemas
+/// </remarks>
+public record RebuildPerspectiveCommand : ICommand {
+  /// <summary>
+  /// The perspective name to rebuild (e.g., "ProductCatalogPerspective").
+  /// </summary>
+  public required string PerspectiveName { get; init; }
+
+  /// <summary>
+  /// Optional stream ID to rebuild only a specific stream.
+  /// If null, rebuilds all streams for this perspective.
+  /// </summary>
+  public Guid? StreamId { get; init; }
+
+  /// <summary>
+  /// Whether to truncate existing data before rebuilding.
+  /// Default: true (start fresh).
+  /// </summary>
+  public bool TruncateExisting { get; init; } = true;
+}
+```
+
+**Usage**:
+
+```csharp
+// Rebuild all streams for a perspective
+await dispatcher.PublishAsync(new RebuildPerspectiveCommand {
+  PerspectiveName = "ProductCatalogPerspective",
+  TruncateExisting = true
+});
+
+// Rebuild specific stream only
+await dispatcher.PublishAsync(new RebuildPerspectiveCommand {
+  PerspectiveName = "OrderSummaryPerspective",
+  StreamId = orderId,
+  TruncateExisting = false  // Keep existing data for other streams
+});
+```
+
+#### Manual Event Replay
+
+For custom rebuild logic, use manual event replay:
+
 ```csharp
 public async Task RebuildProductCatalogAsync(CancellationToken ct) {
     var perspective = new ProductCatalogPerspective();

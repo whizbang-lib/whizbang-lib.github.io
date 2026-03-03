@@ -48,7 +48,7 @@ services.AddWhizbang(options => {
 });
 ```
 
-### TagProcessingMode
+### TagProcessingMode {#tag-processing-mode}
 
 | Property | Type | Default |
 |----------|------|---------|

@@ -1,4 +1,10 @@
-# PerspectiveAssociationInfo: Strongly-Typed Associations with Delegates
+---
+title: PerspectiveAssociationInfo
+version: 1.0.0
+category: Perspectives
+---
+
+# PerspectiveAssociationInfo: Strongly-Typed Associations with Delegates {#PerspectiveAssociationInfo}
 
 PerspectiveAssociationInfo is a generic record type that provides strongly-typed perspective associations with AOT-compatible delegates to perspective Apply methods. It enables compile-time type safety and performant perspective invocation without reflection.
 

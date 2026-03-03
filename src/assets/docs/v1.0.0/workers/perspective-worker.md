@@ -399,6 +399,140 @@ order-abc-123                       | OrderSummaryPerspective    | Failed | Null
 
 ---
 
+## Security Context {#security-context}
+
+The PerspectiveWorker establishes security context before invoking lifecycle receptors, ensuring that `IMessageContext.UserId` and `IScopeContext` are available during perspective processing. This follows the same pattern as `ReceptorInvoker` for consistency across the system.
+
+### How Security Context is Established
+
+Before each perspective event is processed, the `_establishSecurityContextAsync` method performs two steps:
+
+**PerspectiveWorker.cs:775-808**:
+```csharp
+private static async ValueTask _establishSecurityContextAsync(
+    MessageEnvelope<IEvent> envelope,
+    IServiceProvider scopedProvider,
+    CancellationToken cancellationToken) {
+
+  // Step 1: Establish security context from envelope
+  var securityProvider = scopedProvider.GetService<IMessageSecurityContextProvider>();
+  if (securityProvider is not null) {
+    var securityContext = await securityProvider
+      .EstablishContextAsync(envelope, scopedProvider, cancellationToken)
+      .ConfigureAwait(false);
+
+    if (securityContext is not null) {
+      var accessor = scopedProvider.GetService<IScopeContextAccessor>();
+      if (accessor is not null) {
+        accessor.Current = securityContext;
+      }
+    }
+  }
+
+  // Step 2: Set message context with UserId and TenantId
+  var messageContextAccessor = scopedProvider.GetService<IMessageContextAccessor>();
+  if (messageContextAccessor is not null) {
+    var securityContext = envelope.GetCurrentSecurityContext();
+    messageContextAccessor.Current = new MessageContext {
+      MessageId = envelope.MessageId,
+      CorrelationId = envelope.GetCorrelationId() ?? CorrelationId.New(),
+      CausationId = envelope.GetCausationId() ?? MessageId.New(),
+      Timestamp = envelope.GetMessageTimestamp(),
+      UserId = securityContext?.UserId,
+      TenantId = securityContext?.TenantId
+    };
+  }
+}
+```
+
+### When Security Context is Established
+
+Security context is established at three points during perspective processing:
+
+1. **Before PrePerspectiveAsync lifecycle** - When starting to process a perspective checkpoint
+2. **Before RunBatchAsync** - When processing a batch of events for a perspective
+3. **Before PostPerspectiveInline lifecycle** - After perspective processing completes
+
+This ensures lifecycle receptors always have access to the security context from the event being processed.
+
+### Accessing Security Context
+
+**In Lifecycle Receptors**:
+```csharp
+public class AuditLifecycleReceptor : ILifecycleReceptor<PrePerspectiveAsync> {
+  private readonly IMessageContextAccessor _messageContext;
+
+  public AuditLifecycleReceptor(IMessageContextAccessor messageContext) {
+    _messageContext = messageContext;
+  }
+
+  public ValueTask HandleAsync(
+      IMessageEnvelope envelope,
+      ILifecycleContext context,
+      CancellationToken cancellationToken) {
+
+    var userId = _messageContext.Current?.UserId;  // Available from security context
+    var tenantId = _messageContext.Current?.TenantId;
+
+    // Log audit information with user context
+    return ValueTask.CompletedTask;
+  }
+}
+```
+
+**In Perspectives**:
+```csharp
+public class OrderSummaryPerspective : IPerspective<OrderSummaryModel> {
+  private readonly IScopeContextAccessor _scopeContext;
+
+  public OrderSummaryPerspective(IScopeContextAccessor scopeContext) {
+    _scopeContext = scopeContext;
+  }
+
+  public void Apply(OrderCreated @event) {
+    var userId = _scopeContext.Current?.UserId;
+    // Use security context during projection
+  }
+}
+```
+
+### Graceful Handling
+
+The security context establishment is designed to be fault-tolerant:
+
+- **No security provider registered**: Processing continues without security context
+- **Security provider returns null**: `IScopeContextAccessor` is not set, processing continues
+- **No message context accessor**: Processing continues without message context
+
+This ensures perspectives work in environments without security infrastructure (e.g., simple tests, migration scripts).
+
+### Per-Envelope Context
+
+When processing multiple events in a batch, security context is established **for each envelope individually**:
+
+```mermaid
+sequenceDiagram
+    participant PW as PerspectiveWorker
+    participant SC as SecurityContext
+    participant LC as LifecycleInvoker
+
+    Note over PW: Process envelope 1 (user-a)
+    PW->>SC: _establishSecurityContextAsync(envelope1)
+    SC-->>SC: Set UserId = "user-a"
+    PW->>LC: PrePerspectiveAsync(envelope1)
+    Note over LC: UserId = "user-a"
+
+    Note over PW: Process envelope 2 (user-b)
+    PW->>SC: _establishSecurityContextAsync(envelope2)
+    SC-->>SC: Set UserId = "user-b"
+    PW->>LC: PrePerspectiveAsync(envelope2)
+    Note over LC: UserId = "user-b"
+```
+
+This ensures each event carries the correct user context, even in multi-tenant or multi-user scenarios.
+
+---
+
 ## Lease-Based Coordination
 
 The PerspectiveWorker uses **lease-based coordination** to distribute work across multiple instances:
