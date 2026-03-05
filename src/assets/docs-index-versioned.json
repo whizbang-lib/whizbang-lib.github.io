@@ -108,6 +108,15 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/attributes/streamid",
+        "title": "StreamId Attribute",
+        "category": "Attributes",
+        "order": 2,
+        "description": "Marks a property or parameter as the stream identifier for event sourcing, enabling zero-reflection stream ID extraction at compile time",
+        "tags": "attributes, streamid, event-sourcing, source-generator, aggregates",
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/attributes/streamkey",
         "title": "StreamKey Attribute",
         "category": "Attributes",
@@ -129,6 +138,24 @@
         "order": 1,
         "description": "Overview of all core components in Whizbang v0.1.0",
         "tags": "components, architecture, overview",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/components/caching",
+        "title": "Caching",
+        "category": "Components",
+        "order": 8,
+        "description": "Distributed caching with cache invalidation commands and automatic coordination",
+        "tags": "caching, distributed-cache, cache-invalidation, redis",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/components/data/postgres",
+        "title": "PostgreSQL Data Provider",
+        "category": "Components",
+        "order": 1,
+        "description": "PostgreSQL data provider for Whizbang applications",
+        "tags": "data, postgres, postgresql, database",
         "version": "v1.0.0"
       },
       {
@@ -195,12 +222,57 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/components/transports/azure-service-bus",
+        "title": "Azure Service Bus Transport",
+        "category": "Components",
+        "order": 1,
+        "description": "Azure Service Bus transport component for enterprise messaging",
+        "tags": "transports, azure-service-bus, messaging",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/components/transports/rabbitmq",
+        "title": "RabbitMQ Transport",
+        "category": "Components",
+        "order": 2,
+        "description": "RabbitMQ transport component for distributed messaging",
+        "tags": "transports, rabbitmq, messaging",
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/components/transports",
         "title": "Transports Component",
         "category": "Components",
         "order": 9,
         "description": "Basic in-process message transport for local development",
         "tags": "transports, messaging, in-process, communication, v0.1.0",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/components/workers/transport-consumer",
+        "title": "Transport Consumer Worker",
+        "category": "Workers",
+        "order": 2,
+        "description": "Background service for consuming messages from transport destinations with built-in resilience, connection recovery, and health monitoring",
+        "tags": "transport-consumer, background-worker, resilience, subscriptions, message-processing",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/configuration/whizbang-options",
+        "title": "WhizbangCoreOptions",
+        "category": "Configuration",
+        "order": 1,
+        "description": "Complete reference for WhizbangCoreOptions - configure tag processing, hooks, and core Whizbang behavior",
+        "tags": "configuration, options, tags, hooks, addwhizbang",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/assembly-registry",
+        "title": "Assembly Registry",
+        "category": "Core Concepts",
+        "order": 25,
+        "description": "AssemblyRegistry for multi-assembly contribution registration in Whizbang.",
+        "tags": "assembly-registry, multi-assembly, module-initializer, aot",
         "version": "v1.0.0"
       },
       {
@@ -213,6 +285,15 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/core-concepts/delivery-receipts",
+        "title": "Delivery Receipts",
+        "category": "Core Concepts",
+        "order": 20,
+        "description": "Delivery receipts, stream ID extraction, and message tracking in Whizbang.",
+        "tags": "delivery-receipts, stream-id, extraction, tracking, aot",
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/core-concepts/dispatcher",
         "title": "Dispatcher Deep Dive",
         "category": "Core Concepts",
@@ -222,12 +303,57 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/core-concepts/envelope-registry",
+        "title": "Envelope Registry",
+        "category": "Core Concepts",
+        "order": 22,
+        "description": "IEnvelopeRegistry for tracking message envelopes by payload reference in Whizbang.",
+        "tags": "envelope, registry, message-tracking, observability",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/envelope-serialization",
+        "title": "Envelope Serialization",
+        "category": "Core Concepts",
+        "order": 23,
+        "description": "EnvelopeSerializer and SerializedEnvelope for AOT-compatible envelope serialization in Whizbang.",
+        "tags": "envelope, serialization, aot, json",
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/core-concepts/event-store-query",
         "title": "Event Store Query",
         "category": "Core Concepts",
         "order": 10,
         "description": "Query raw events in the event store with full LINQ support and automatic scope filtering",
         "tags": "events, query, linq, ef-core, multi-tenancy",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/event-store",
+        "title": "Event Store",
+        "category": "Core Concepts",
+        "order": 999,
+        "description": "# Event Store\n\nThe `IEventStore` interface provides append-only event storage for event sourcing patterns. It supports stream-based storage with automatic sequence numbering, polymorphic reads, and synchronous verification via `AppendAndWaitAsync`.\n\n## Overview\n\nWhizbang's event store is designed for:\n\n- **Append-only storage** - Events are immutable once written\n- **Stream-based organization** - Events grouped by aggregate ID\n- **Polymorphic reads** - Read multiple event types from a stream\n- **AOT compatibility** - Generic methods avoid reflection\n- **Sync verification** - Wait for perspectives to process events\n\n## Basic Usage\n\n### Appending Events\n\n```csharp\npublic class OrderHandler {\n  private readonly IEventStore _eventStore;\n\n  public async Task CreateOrder(CreateOrderCommand cmd) {\n    var orderId = Guid.NewGuid();\n    var evt = new OrderCreatedEvent(orderId, cmd.CustomerId, cmd.Items);\n\n    // Append to stream identified by orderId\n    await _eventStore.AppendAsync(orderId, evt);\n  }\n}\n```\n\n### Reading Events\n\n```csharp\n// Read all events of a specific type\nawait foreach (var envelope in _eventStore.ReadAsync<OrderCreatedEvent>(orderId, fromSequence: 0)) {\n  var evt = envelope.Payload;\n  // Process event\n}\n\n// Read from a specific event ID\nawait foreach (var envelope in _eventStore.ReadAsync<OrderEvent>(orderId, fromEventId: lastProcessedId)) {\n  // Process events after the checkpoint\n}\n```\n\n## AppendAndWaitAsync {#append-and-wait}\n\nThe `AppendAndWaitAsync` method appends an event and waits for a perspective to process it. This enables synchronous-feeling APIs over event sourcing.\n\n### AppendAndWaitEventStoreDecorator\n\nThe `AppendAndWaitAsync` functionality is provided by the `AppendAndWaitEventStoreDecorator`, which wraps the base event store implementation. This decorator:\n\n- **Tracks sync requests** using `ISyncCoordinator`\n- **Waits for perspective processing** via polling or event notification\n- **Times out gracefully** if perspective processing takes too long\n- **Returns sync results** with timing and event count details\n\nThe decorator is automatically applied when using `DecorateEventStoreWithSyncTracking()`, which is called by data providers during registration.\n\n### Usage\n\n```csharp\nvar syncResult = await _eventStore.AppendAndWaitAsync<OrderCreatedEvent, OrderProjection>(\n    streamId: orderId,\n    message: new OrderCreatedEvent(orderId, customerId, items),\n    timeout: TimeSpan.FromSeconds(10));\n\n// Event has been appended AND OrderProjection has processed it\n```\n\n### Parameters\n\n| Parameter | Type | Description |\n|",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/event-streams",
+        "title": "Event Streams",
+        "category": "Core Concepts",
+        "order": 13,
+        "description": "Event streams and StreamId value object for organizing events by aggregate in Whizbang.",
+        "tags": "event-streams, stream-id, event-sourcing, aggregates",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/events",
+        "title": "Events",
+        "category": "Core Concepts",
+        "order": 11,
+        "description": "Event definition, EventId value object, and event design patterns in Whizbang.",
+        "tags": "events, event-sourcing, eventid, immutability",
         "version": "v1.0.0"
       },
       {
@@ -267,6 +393,24 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/core-concepts/lifecycle",
+        "title": "Lifecycle Management",
+        "category": "Core Concepts",
+        "order": 25,
+        "description": "System lifecycle management commands - pause/resume processing for coordinated maintenance operations",
+        "tags": "lifecycle, system-commands, maintenance, pause, resume",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/message-associations",
+        "title": "Message Associations",
+        "category": "Core Concepts",
+        "order": 24,
+        "description": "MessageAssociationRecord and MessageAssociationsSchema for tracking message-to-consumer mappings in Whizbang.",
+        "tags": "message-associations, perspectives, receptors, discovery",
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/core-concepts/message-context",
         "title": "Message Context & Tracing",
         "category": "Core Concepts",
@@ -280,8 +424,26 @@
         "title": "Message Security",
         "category": "Core Concepts",
         "order": 999,
-        "description": "# Message Security Context Propagation\n\nWhizbang provides automatic security context establishment for incoming messages, ensuring that security identity flows across service boundaries in distributed systems.\n\n## Overview\n\nWhen messages arrive from external transports (Azure Service Bus, RabbitMQ, etc.), security context must be established **before** any business logic executes. The message security system:\n\n- Extracts security information from message hops, payloads, or transport metadata\n- Populates `IScopeContextAccessor.Current` for scoped services\n- Invokes callbacks for custom service initialization\n- Emits audit events for security compliance\n\n## Architecture\n\n```\nMessage Arrives\n      │\n      ▼\n┌─────────────────────────────────────┐\n│  IMessageSecurityContextProvider    │\n│  (DefaultMessageSecurityContextProvider) │\n└─────────────────────────────────────┘\n      │\n      ▼ Calls extractors in priority order\n┌─────────────────────────────────────┐\n│  ISecurityContextExtractor[]        │\n│  • MessageHopSecurityExtractor (100)│\n│  • JwtPayloadExtractor (200)        │\n│  • TransportMetadataExtractor (300) │\n└─────────────────────────────────────┘\n      │\n      ▼ First successful extraction wins\n┌─────────────────────────────────────┐\n│  ImmutableScopeContext              │\n│  (wraps SecurityExtraction)         │\n└─────────────────────────────────────┘\n      │\n      ├─▶ Populates IScopeContextAccessor.Current\n      │\n      ▼ Invokes callbacks\n┌─────────────────────────────────────┐\n│  ISecurityContextCallback[]         │\n│  • UserContextManagerCallback       │\n│  • AuditLogCallback                 │\n└─────────────────────────────────────┘\n```\n\n## Quick Start\n\n### Registration\n\n```csharp\nservices.AddWhizbangMessageSecurity(options => {\n  // AllowAnonymous defaults to FALSE (least privilege)\n  // Must explicitly opt-in to allow anonymous messages\n  options.AllowAnonymous = false;\n\n  // Exempt specific message types\n  options.ExemptMessageTypes.Add(typeof(HealthCheckMessage));\n  options.ExemptMessageTypes.Add(typeof(SystemDiagnosticMessage));\n\n  // Adjust timeout for slow token validation\n  options.Timeout = TimeSpan.FromSeconds(10);\n});\n\n// Register custom extractors\nservices.AddSecurityExtractor<JdxMessageTokenExtractor>();\n\n// Register callbacks\nservices.AddSecurityContextCallback<UserContextManagerCallback>();\n```\n\n### How It Works\n\nWhen `ServiceBusConsumerWorker` receives a message:\n\n1. Creates DI scope\n2. Calls `IMessageSecurityContextProvider.EstablishContextAsync()`\n3. Provider iterates through extractors in priority order (lower = earlier)\n4. First successful extraction populates `IScopeContextAccessor.Current`\n5. All callbacks are invoked with the established context\n6. Business logic runs with security context available\n\n## Configuration Options\n\n```csharp\npublic sealed class MessageSecurityOptions {\n  // When true, allows messages without security context.\n  // DEFAULT: FALSE (least privilege - must explicitly enable)\n  public bool AllowAnonymous { get; set; }\n\n  // When true, logs security context establishment for audit.\n  // DEFAULT: TRUE\n  public bool EnableAuditLogging { get; set; } = true;\n\n  // When true, extractors should validate tokens/credentials.\n  // DEFAULT: TRUE\n  public bool ValidateCredentials { get; set; } = true;\n\n  // Maximum time to wait for security context establishment.\n  // DEFAULT: 5 seconds\n  public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(5);\n\n  // Message types exempt from security requirements.\n  public HashSet<Type> ExemptMessageTypes { get; } = new();\n\n  // When true, propagates security context to cascaded events.\n  // DEFAULT: TRUE\n  public bool PropagateToOutgoingMessages { get; set; } = true;\n}\n```\n\n## Built-in Extractors\n\n### MessageHopSecurityExtractor (Priority: 100)\n\nExtracts security context from the message envelope's hop chain. This is the default extractor for distributed message security propagation.\n\n```csharp\n// Message hops carry SecurityContext through the system\nvar hop = new MessageHop {\n  ServiceInstance = serviceInstance,\n  SecurityContext = new SecurityContext {\n    TenantId = \"tenant-123\",\n    UserId = \"user-456\"\n  }\n};\n\n// MessageHopSecurityExtractor reads this automatically\n```\n\n**When to use**: Messages flowing between Whizbang services that already have security context attached to their hop chain.\n\n## Custom Extractors\n\nCreate custom extractors for different security sources:\n\n```csharp\npublic class JwtPayloadExtractor : ISecurityContextExtractor {\n  public int Priority => 50;  // Runs before MessageHopSecurityExtractor\n\n  public ValueTask<SecurityExtraction?> ExtractAsync(\n    IMessageEnvelope envelope,\n    MessageSecurityOptions options,\n    CancellationToken cancellationToken = default) {\n\n    // Check if payload contains JWT token\n    if (envelope.Payload is not IJdxMessage jdxMessage ||\n        string.IsNullOrEmpty(jdxMessage.Token)) {\n      return ValueTask.FromResult<SecurityExtraction?>(null);\n    }\n\n    // Decode and validate JWT\n    var claims = DecodeJwt(jdxMessage.Token, options.ValidateCredentials);\n\n    return ValueTask.FromResult<SecurityExtraction?>(new SecurityExtraction {\n      Scope = new PerspectiveScope {\n        TenantId = claims[\"tenant_id\"],\n        UserId = claims[\"sub\"]\n      },\n      Roles = claims[\"roles\"]?.Split(',').ToHashSet() ?? new HashSet<string>(),\n      Permissions = new HashSet<Permission>(),\n      SecurityPrincipals = new HashSet<SecurityPrincipalId>(),\n      Claims = claims,\n      Source = \"JwtPayload\"\n    });\n  }\n}\n```\n\n## Security Context Callbacks\n\nCallbacks run **after** security context is established but **before** business logic (receptors) execute. This enables custom service initialization at exactly the right time.\n\n### ISecurityContextCallback Interface\n\n```csharp\npublic interface ISecurityContextCallback {\n  ValueTask OnContextEstablishedAsync(\n    IScopeContext context,\n    IMessageEnvelope envelope,\n    IServiceProvider scopedProvider,\n    CancellationToken cancellationToken = default);\n}\n```\n\n### Callback Execution Points\n\n:::new\nCallbacks are now invoked at ALL security establishment points (v1.0.0)\n:::\n\nCallbacks are invoked at **three key points** in the message processing pipeline:\n\n| Execution Point | Component | When |\n|",
+        "description": "# Message Security Context Propagation\n\nWhizbang provides automatic security context establishment for incoming messages, ensuring that security identity flows across service boundaries in distributed systems.\n\n## Overview {#overview}\n\nWhen messages arrive from external transports (Azure Service Bus, RabbitMQ, etc.), security context must be established **before** any business logic executes. The message security system:\n\n- Extracts security information from message hops, payloads, or transport metadata\n- Populates `IScopeContextAccessor.Current` for scoped services\n- Invokes callbacks for custom service initialization\n- Emits audit events for security compliance\n\n## Architecture {#architecture}\n\n```\nMessage Arrives\n      │\n      ▼\n┌─────────────────────────────────────┐\n│  IMessageSecurityContextProvider    │\n│  (DefaultMessageSecurityContextProvider) │\n└─────────────────────────────────────┘\n      │\n      ▼ Calls extractors in priority order\n┌─────────────────────────────────────┐\n│  ISecurityContextExtractor[]        │\n│  • MessageHopSecurityExtractor (100)│\n│  • JwtPayloadExtractor (200)        │\n│  • TransportMetadataExtractor (300) │\n└─────────────────────────────────────┘\n      │\n      ▼ First successful extraction wins\n┌─────────────────────────────────────┐\n│  ImmutableScopeContext              │\n│  (wraps SecurityExtraction)         │\n└─────────────────────────────────────┘\n      │\n      ├─▶ Populates IScopeContextAccessor.Current\n      │\n      ▼ Invokes callbacks\n┌─────────────────────────────────────┐\n│  ISecurityContextCallback[]         │\n│  • UserContextManagerCallback       │\n│  • AuditLogCallback                 │\n└─────────────────────────────────────┘\n```\n\n## Quick Start {#quick-start}\n\n### Extraction {#extraction}\n\nThe message security system uses a provider/extractor pattern to establish security context from incoming messages. The `IMessageSecurityContextProvider` orchestrates multiple `ISecurityContextExtractor` implementations in priority order until one successfully extracts security information.\n\n**Key Concepts**:\n- **Provider**: Coordinates extractors and establishes the security context\n- **Extractors**: Each attempts to extract security from a specific source (hops, JWT, transport metadata)\n- **Priority**: Lower numbers run first (100, 200, 300, etc.)\n- **First Wins**: The first successful extraction establishes the context\n\n### Registration {#registration}\n\n```csharp\nservices.AddWhizbangMessageSecurity(options => {\n  // AllowAnonymous defaults to FALSE (least privilege)\n  // Must explicitly opt-in to allow anonymous messages\n  options.AllowAnonymous = false;\n\n  // Exempt specific message types\n  options.ExemptMessageTypes.Add(typeof(HealthCheckMessage));\n  options.ExemptMessageTypes.Add(typeof(SystemDiagnosticMessage));\n\n  // Adjust timeout for slow token validation\n  options.Timeout = TimeSpan.FromSeconds(10);\n});\n\n// Register custom extractors\nservices.AddSecurityExtractor<JdxMessageTokenExtractor>();\n\n// Register callbacks\nservices.AddSecurityContextCallback<UserContextManagerCallback>();\n```\n\n### How It Works\n\n### Explicit Security Context API {#explicit-security-context-api}\n\nFor system-triggered operations or impersonation scenarios, use the explicit security context API. This is documented in detail in the [Explicit Security Context API](#explicit-context) section below.\n\n### Security Context Helper {#security-context-helper}\n\nThe `IMessageSecurityContextProvider` provides helper methods for establishing security context from different sources. The provider coordinates extractors and manages the context lifecycle.\n\n### Scoped Message Context {#scoped-message-context}\n\nWhen `ServiceBusConsumerWorker` receives a message:\n\n1. Creates DI scope\n2. Calls `IMessageSecurityContextProvider.EstablishContextAsync()`\n3. Provider iterates through extractors in priority order (lower = earlier)\n4. First successful extraction populates `IScopeContextAccessor.Current`\n5. All callbacks are invoked with the established context\n6. Business logic runs with security context available\n\n## Configuration Options {#configuration}\n\n```csharp\npublic sealed class MessageSecurityOptions {\n  // When true, allows messages without security context.\n  // DEFAULT: FALSE (least privilege - must explicitly enable)\n  public bool AllowAnonymous { get; set; }\n\n  // When true, logs security context establishment for audit.\n  // DEFAULT: TRUE\n  public bool EnableAuditLogging { get; set; } = true;\n\n  // When true, extractors should validate tokens/credentials.\n  // DEFAULT: TRUE\n  public bool ValidateCredentials { get; set; } = true;\n\n  // Maximum time to wait for security context establishment.\n  // DEFAULT: 5 seconds\n  public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(5);\n\n  // Message types exempt from security requirements.\n  public HashSet<Type> ExemptMessageTypes { get; } = new();\n\n  // When true, propagates security context to cascaded events.\n  // DEFAULT: TRUE\n  public bool PropagateToOutgoingMessages { get; set; } = true;\n}\n```\n\n## Immutable Context {#immutable-context}\n\nThe established security context is wrapped in `ImmutableScopeContext`, which provides:\n\n- **Immutability**: Cannot be modified after establishment\n- **Source tracking**: Which extractor created it\n- **Timestamp**: When it was established\n- **Propagation flag**: Whether to include in outgoing messages\n\n```csharp\nvar context = await provider.EstablishContextAsync(envelope, scopedProvider, ct);\n\nif (context is ImmutableScopeContext immutable) {\n  Console.WriteLine($\"Source: {immutable.Source}\");\n  Console.WriteLine($\"Established: {immutable.EstablishedAt}\");\n  Console.WriteLine($\"Propagate: {immutable.ShouldPropagate}\");\n}\n```\n\nSee the [ImmutableScopeContext](#immutable-scope-context) section below for full details.\n\n## Built-in Extractors {#extractors}\n\n### MessageHopSecurityExtractor (Priority: 100)\n\nExtracts security context from the message envelope's hop chain. This is the default extractor for distributed message security propagation.\n\n```csharp\n// Message hops carry SecurityContext through the system\nvar hop = new MessageHop {\n  ServiceInstance = serviceInstance,\n  SecurityContext = new SecurityContext {\n    TenantId = \"tenant-123\",\n    UserId = \"user-456\"\n  }\n};\n\n// MessageHopSecurityExtractor reads this automatically\n```\n\n**When to use**: Messages flowing between Whizbang services that already have security context attached to their hop chain.\n\n### Message Hop Extractor {#message-hop-extractor}\n\nThe `MessageHopSecurityExtractor` is the default built-in extractor that reads security context from message hop chains. It runs with priority 100 (early in the extraction pipeline).\n\n**How it works**:\n\n1. Examines the message envelope's hop chain\n2. Looks for the most recent hop with a `SecurityContext` populated\n3. Extracts `TenantId`, `UserId`, and other scope information\n4. Creates a `SecurityExtraction` with the found values\n\n**Example**:\n\n```csharp\n// Message hops carry SecurityContext through the system\nvar hop = new MessageHop {\n  ServiceInstance = serviceInstance,\n  SecurityContext = new SecurityContext {\n    TenantId = \"tenant-123\",\n    UserId = \"user-456\"\n  }\n};\n\n// MessageHopSecurityExtractor reads this automatically\n```\n\n## Custom Extractors {#custom-extractors}\n\nCreate custom extractors for different security sources:\n\n```csharp\npublic class JwtPayloadExtractor : ISecurityContextExtractor {\n  public int Priority => 50;  // Runs before MessageHopSecurityExtractor\n\n  public ValueTask<SecurityExtraction?> ExtractAsync(\n    IMessageEnvelope envelope,\n    MessageSecurityOptions options,\n    CancellationToken cancellationToken = default) {\n\n    // Check if payload contains JWT token\n    if (envelope.Payload is not IJdxMessage jdxMessage ||\n        string.IsNullOrEmpty(jdxMessage.Token)) {\n      return ValueTask.FromResult<SecurityExtraction?>(null);\n    }\n\n    // Decode and validate JWT\n    var claims = DecodeJwt(jdxMessage.Token, options.ValidateCredentials);\n\n    return ValueTask.FromResult<SecurityExtraction?>(new SecurityExtraction {\n      Scope = new PerspectiveScope {\n        TenantId = claims[\"tenant_id\"],\n        UserId = claims[\"sub\"]\n      },\n      Roles = claims[\"roles\"]?.Split(',').ToHashSet() ?? new HashSet<string>(),\n      Permissions = new HashSet<Permission>(),\n      SecurityPrincipals = new HashSet<SecurityPrincipalId>(),\n      Claims = claims,\n      Source = \"JwtPayload\"\n    });\n  }\n}\n```\n\n## Security Context Callbacks {#callbacks}\n\nCallbacks run **after** security context is established but **before** business logic (receptors) execute. This enables custom service initialization at exactly the right time.\n\n### ISecurityContextCallback Interface\n\n```csharp\npublic interface ISecurityContextCallback {\n  ValueTask OnContextEstablishedAsync(\n    IScopeContext context,\n    IMessageEnvelope envelope,\n    IServiceProvider scopedProvider,\n    CancellationToken cancellationToken = default);\n}\n```\n\n### Callback Execution Points\n\n:::new\nCallbacks are now invoked at ALL security establishment points (v1.0.0)\n:::\n\nCallbacks are invoked at **three key points** in the message processing pipeline:\n\n| Execution Point | Component | When |\n|",
         "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/message-tags",
+        "title": "Message Tags",
+        "category": "Core Concepts",
+        "order": 10,
+        "description": "Declarative cross-cutting concerns via message tag attributes and hooks - notifications, telemetry, metrics, and audit logging without polluting business logic",
+        "tags": "tags, attributes, hooks, notifications, telemetry, metrics, cross-cutting",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/messages",
+        "title": "Messages",
+        "category": "Core Concepts",
+        "order": 5,
+        "description": "IMessage interface - the base marker interface for all message types in Whizbang.",
+        "tags": "messages, commands, events, queries, marker-interface",
         "version": "v1.0.0"
       },
       {
@@ -294,12 +456,30 @@
         "version": "v1.0.0"
       },
       {
-        "slug": "v1.0.0/core-concepts/perspectives/association-info",
-        "title": "Association Info",
+        "slug": "v1.0.0/core-concepts/persistence",
+        "title": "Persistence",
         "category": "Core Concepts",
+        "order": 12,
+        "description": "Configure how events are persisted by receptors using persistence modes and per-receptor strategies for optimal throughput, consistency, and reliability.",
+        "tags": "persistence, event-sourcing, batching, outbox, configuration",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/perspectives/association-info",
+        "title": "PerspectiveAssociationInfo",
+        "category": "Perspectives",
         "order": 999,
-        "description": "# PerspectiveAssociationInfo: Strongly-Typed Associations with Delegates\n\nPerspectiveAssociationInfo is a generic record type that provides strongly-typed perspective associations with AOT-compatible delegates to perspective Apply methods. It enables compile-time type safety and performant perspective invocation without reflection.\n\n## Overview\n\n**PerspectiveAssociationInfo&lt;TModel, TEvent&gt;** provides:\n- ✅ Strongly-typed delegate access to perspective Apply methods\n- ✅ Compile-time type safety (no runtime type checks)\n- ✅ AOT-compatible (zero reflection at runtime)\n- ✅ Generated by source generators for all perspectives\n- ✅ Supports generic perspective invocation\n\n## Quick Start\n\n### Getting Typed Associations\n\n```csharp\nusing Whizbang.Core.Generated;\n\n// Get associations for specific model and event types\nvar associations = PerspectiveRegistrationExtensions\n    .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(\"ECommerce.BFF.API\");\n\nforeach (var assoc in associations) {\n    Console.WriteLine($\"Perspective: {assoc.TargetName}\");\n    Console.WriteLine($\"Event: {assoc.MessageType}\");\n    Console.WriteLine($\"Service: {assoc.ServiceName}\");\n\n    // Invoke delegate directly\n    var currentModel = new ProductModel();\n    var evt = new ProductCreatedEvent { ProductId = \"prod-123\" };\n    var updatedModel = assoc.ApplyDelegate(currentModel, evt);\n}\n```\n\n### Using Delegates\n\n```csharp\n// Example: Generic perspective applier\npublic TModel ApplyEvent<TModel, TEvent>(\n    TModel model,\n    TEvent evt,\n    string serviceName)\n    where TEvent : IEvent {\n\n    var associations = PerspectiveRegistrationExtensions\n        .GetPerspectiveAssociations<TModel, TEvent>(serviceName);\n\n    // Apply all matching perspectives\n    foreach (var assoc in associations) {\n        model = assoc.ApplyDelegate(model, evt);\n    }\n\n    return model;\n}\n\n// Usage\nvar productModel = new ProductModel();\nvar productEvent = new ProductCreatedEvent { ProductId = \"prod-123\" };\nvar updated = ApplyEvent(productModel, productEvent, \"ECommerce.BFF.API\");\n```\n\n## Record Structure\n\n### Type Definition\n\n```csharp\n/// <summary>\n/// Rich association info with strongly-typed delegate for perspective Apply method.\n/// Provides compile-time type safety and AOT-compatible delegate invocation.\n/// </summary>\n/// <typeparam name=\"TModel\">The model type maintained by the perspective</typeparam>\n/// <typeparam name=\"TEvent\">The event type handled by the perspective</typeparam>\n/// <param name=\"MessageType\">Fully qualified event type name</param>\n/// <param name=\"TargetName\">Name of the perspective class</param>\n/// <param name=\"ServiceName\">Service name (assembly name)</param>\n/// <param name=\"ApplyDelegate\">Strongly-typed delegate to perspective's Apply method</param>\npublic sealed record PerspectiveAssociationInfo<TModel, TEvent>(\n    string MessageType,\n    string TargetName,\n    string ServiceName,\n    Func<TModel, TEvent, TModel> ApplyDelegate\n) where TEvent : IEvent;\n```\n\n### Properties\n\n| Property | Type | Description |\n|",
+        "description": "\n# PerspectiveAssociationInfo: Strongly-Typed Associations with Delegates {#PerspectiveAssociationInfo}\n\nPerspectiveAssociationInfo is a generic record type that provides strongly-typed perspective associations with AOT-compatible delegates to perspective Apply methods. It enables compile-time type safety and performant perspective invocation without reflection.\n\n## Overview\n\n**PerspectiveAssociationInfo&lt;TModel, TEvent&gt;** provides:\n- ✅ Strongly-typed delegate access to perspective Apply methods\n- ✅ Compile-time type safety (no runtime type checks)\n- ✅ AOT-compatible (zero reflection at runtime)\n- ✅ Generated by source generators for all perspectives\n- ✅ Supports generic perspective invocation\n\n## Quick Start\n\n### Getting Typed Associations\n\n```csharp\nusing Whizbang.Core.Generated;\n\n// Get associations for specific model and event types\nvar associations = PerspectiveRegistrationExtensions\n    .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(\"ECommerce.BFF.API\");\n\nforeach (var assoc in associations) {\n    Console.WriteLine($\"Perspective: {assoc.TargetName}\");\n    Console.WriteLine($\"Event: {assoc.MessageType}\");\n    Console.WriteLine($\"Service: {assoc.ServiceName}\");\n\n    // Invoke delegate directly\n    var currentModel = new ProductModel();\n    var evt = new ProductCreatedEvent { ProductId = \"prod-123\" };\n    var updatedModel = assoc.ApplyDelegate(currentModel, evt);\n}\n```\n\n### Using Delegates\n\n```csharp\n// Example: Generic perspective applier\npublic TModel ApplyEvent<TModel, TEvent>(\n    TModel model,\n    TEvent evt,\n    string serviceName)\n    where TEvent : IEvent {\n\n    var associations = PerspectiveRegistrationExtensions\n        .GetPerspectiveAssociations<TModel, TEvent>(serviceName);\n\n    // Apply all matching perspectives\n    foreach (var assoc in associations) {\n        model = assoc.ApplyDelegate(model, evt);\n    }\n\n    return model;\n}\n\n// Usage\nvar productModel = new ProductModel();\nvar productEvent = new ProductCreatedEvent { ProductId = \"prod-123\" };\nvar updated = ApplyEvent(productModel, productEvent, \"ECommerce.BFF.API\");\n```\n\n## Record Structure\n\n### Type Definition\n\n```csharp\n/// <summary>\n/// Rich association info with strongly-typed delegate for perspective Apply method.\n/// Provides compile-time type safety and AOT-compatible delegate invocation.\n/// </summary>\n/// <typeparam name=\"TModel\">The model type maintained by the perspective</typeparam>\n/// <typeparam name=\"TEvent\">The event type handled by the perspective</typeparam>\n/// <param name=\"MessageType\">Fully qualified event type name</param>\n/// <param name=\"TargetName\">Name of the perspective class</param>\n/// <param name=\"ServiceName\">Service name (assembly name)</param>\n/// <param name=\"ApplyDelegate\">Strongly-typed delegate to perspective's Apply method</param>\npublic sealed record PerspectiveAssociationInfo<TModel, TEvent>(\n    string MessageType,\n    string TargetName,\n    string ServiceName,\n    Func<TModel, TEvent, TModel> ApplyDelegate\n) where TEvent : IEvent;\n```\n\n### Properties\n\n| Property | Type | Description |\n|",
         "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/perspectives/event-completion",
+        "title": "Event Completion Awaiter",
+        "category": "Core Concepts",
+        "order": 5,
+        "description": "Wait for events to be fully processed by ALL perspectives before returning from RPC calls - ensures complete processing before response",
+        "tags": "perspectives, synchronization, event-completion, rpc, waiting, local-invoke, dispatch-options, all-perspectives",
         "version": "v1.0.0"
       },
       {
@@ -352,17 +532,26 @@
         "title": "Routing",
         "category": "Core Concepts",
         "order": 999,
-        "description": "# Namespace-Based Routing\n\nWhizbang uses namespace-based routing to determine where messages flow. Commands and events follow distinct routing patterns optimized for their specific use cases.\n\n## Overview\n\nRouting in Whizbang is built on two key principles:\n\n1. **Commands → Shared Inbox**: All commands route to a single shared \"inbox\" topic. Services filter by owned namespaces using routing key patterns.\n2. **Events → Namespace Topics**: Events publish to namespace-specific topics. Services subscribe directly to namespaces they care about.\n\nThis separation provides:\n- **Point-to-point delivery** for commands (exactly one handler)\n- **Pub/sub distribution** for events (multiple subscribers)\n- **Automatic subscription discovery** via source generation\n\n## Command Flow\n\nCommands follow a point-to-point pattern with namespace-based filtering:\n\n```\nBFF sends CreateTenantCommand (namespace: MyApp.Users.Commands)\n    ↓\nBFF Outbox → Broker \"inbox\" topic\n    ↓\n    RoutingKey: \"myapp.users.commands.createtenantcommand\"\n    ↓\nALL services subscribed to \"inbox\" (single shared topic)\n    ↓\nEach service filters by owned namespaces:\n    - User Service owns \"myapp.users.commands\" → RECEIVES\n    - Workflow Service owns \"myapp.workflow.commands\" → FILTERED OUT\n    ↓\nUser Service processes command\n```\n\n### How Command Filtering Works\n\nWhen a service starts, it declares which command namespaces it owns:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  opts.OwnDomains(\"myapp.users.commands\");\n  opts.OwnDomains(\"myapp.inventory.commands\");\n});\n```\n\nThe `SharedTopicInboxStrategy` builds routing patterns from these namespaces:\n\n```csharp\n// Generated routing patterns:\n// - \"whizbang.core.commands.system.#\"  (always included)\n// - \"myapp.users.commands.#\"\n// - \"myapp.inventory.commands.#\"\n```\n\n**Note**: All services automatically subscribe to system commands (`whizbang.core.commands.system.#`) for framework-level operations.\n\n### Wildcard Namespaces\n\nSupport pattern matching for flexible ownership:\n\n```csharp\n// Own all commands under myapp.orders\nopts.OwnDomains(\"myapp.orders.*\");\n// Converts to pattern: \"myapp.orders.#\"\n```\n\n## Event Flow\n\nEvents follow a pub/sub pattern with namespace-based topics:\n\n```\nUser Service publishes TenantCreatedEvent (namespace: MyApp.Users.Events)\n    ↓\nUser Service Outbox → Broker topic \"myapp.users.events\"\n    ↓\n    RoutingKey: \"tenantcreatedevent\"\n    ↓\nServices subscribed to \"myapp.users.events\":\n    - BFF → RECEIVES\n    - Workflow Service → RECEIVES\n    - Notifications Service → RECEIVES\n```\n\n### Automatic Event Subscription Discovery\n\nEvent subscriptions are **automatically discovered** from your code via source generation:\n\n1. **Perspectives**: Events your service projects\n2. **Receptors**: Events your service handles\n\n```csharp\n// This perspective automatically subscribes to \"myapp.orders.events\"\n[Perspective<OrderSummary>]\npublic class OrderSummaryPerspective : IPerspective<OrderCreatedEvent> {\n  // OrderCreatedEvent is in namespace MyApp.Orders.Events\n}\n\n// This receptor automatically subscribes to \"myapp.payments.events\"\npublic class PaymentReceptor : IReceptor<PaymentCompletedEvent> {\n  // PaymentCompletedEvent is in namespace MyApp.Payments.Events\n}\n```\n\nThe `EventNamespaceRegistryGenerator` source generator extracts these namespaces at compile time:\n\n```csharp\n// Generated code (example)\npublic sealed class GeneratedEventNamespaceRegistry : IEventNamespaceRegistry {\n  public IReadOnlySet<string> GetPerspectiveEventNamespaces() =>\n    new HashSet<string>(StringComparer.OrdinalIgnoreCase) {\n      \"myapp.orders.events\"\n    };\n\n  public IReadOnlySet<string> GetReceptorEventNamespaces() =>\n    new HashSet<string>(StringComparer.OrdinalIgnoreCase) {\n      \"myapp.payments.events\"\n    };\n}\n```\n\n### Manual Event Subscriptions\n\nOverride or supplement auto-discovery with manual subscriptions:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  // Explicitly subscribe to additional event namespaces\n  opts.SubscribeTo(\"myapp.notifications.events\");\n  opts.SubscribeTo(\"myapp.audit.events\");\n});\n```\n\n## System Commands\n\nAll services automatically subscribe to system commands for framework-level operations:\n\n```csharp\nnamespace Whizbang.Core.Commands.System;\n\n// Rebuild a perspective across all services\npublic record RebuildPerspectiveCommand(\n    string PerspectiveName,\n    long? FromEventId = null\n) : ICommand;\n\n// Clear cached data\npublic record ClearCacheCommand(\n    string? CacheKey = null,\n    string? CacheRegion = null\n) : ICommand;\n\n// Collect diagnostics from all services\npublic record DiagnosticsCommand(\n    DiagnosticType Type,\n    Guid? CorrelationId = null\n) : ICommand;\n\n// Pause message processing (coordinated maintenance)\npublic record PauseProcessingCommand(\n    int? DurationSeconds = null,\n    string? Reason = null\n) : ICommand;\n\n// Resume message processing\npublic record ResumeProcessingCommand(\n    string? Reason = null\n) : ICommand;\n```\n\n### Sending System Commands\n\n```csharp\n// Rebuild a perspective across all services\nawait dispatcher.SendAsync(new RebuildPerspectiveCommand(\"OrderSummary\"));\n\n// Clear all caches\nawait dispatcher.SendAsync(new ClearCacheCommand());\n\n// Pause processing for 5 minutes\nawait dispatcher.SendAsync(new PauseProcessingCommand(\n    DurationSeconds: 300,\n    Reason: \"Scheduled maintenance\"\n));\n```\n\n## Configuration\n\n### Fluent Configuration with WithRouting {#with-routing}\n\nThe recommended approach uses the fluent `WithRouting()` extension method:\n\n```csharp\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        routing\n            .OwnDomains(\"myapp.users.commands\")\n            .SubscribeTo(\"myapp.notifications.events\")\n            .Inbox.UseSharedTopic(\"inbox\");\n    })\n    .WithEFCore<MyDbContext>()\n    .WithDriver.Postgres\n    .AddTransportConsumer();  // Auto-generates subscriptions!\n```\n\nThis approach:\n- **Chains with other Whizbang configuration** - Integrates with EF Core, drivers, and transport setup\n- **Auto-generates subscriptions** - When paired with `AddTransportConsumer()`, subscriptions are created automatically\n- **Type-safe** - All configuration is compile-time verified\n\n### Complete Example\n\n```csharp\n// User Service - handles user commands, subscribes to order events\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        // Commands this service handles\n        routing.OwnDomains(\"myapp.users.commands\");\n\n        // Events are auto-discovered from perspectives/receptors\n        // Manual override (adds to auto-discovered):\n        routing.SubscribeTo(\"myapp.notifications.events\");\n\n        // Inbox strategy\n        routing.Inbox.UseSharedTopic(\"inbox\");\n    })\n    .AddTransportConsumer();\n\n// BFF Service - sends commands, receives events\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        // No OwnDomains (BFF doesn't handle commands directly)\n        // Events auto-discovered from its receptors/perspectives\n        routing.Inbox.UseSharedTopic(\"inbox\");\n    })\n    .AddTransportConsumer();\n```\n\n### Legacy Configuration\n\nFor backwards compatibility, you can still configure routing options directly:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  opts.OwnDomains(\"myapp.users.commands\");\n  opts.SubscribeTo(\"myapp.notifications.events\");\n});\n```\n\n### Strongly-Typed Configuration\n\nUse the generic overloads for compile-time safety and refactor-friendly configuration:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  // Strongly-typed: extracts namespace from the type\n  opts.OwnNamespaceOf<CreateUserCommand>()      // \"myapp.users.commands\"\n      .OwnNamespaceOf<UpdateInventoryCommand>() // \"myapp.inventory.commands\"\n      .SubscribeToNamespaceOf<OrderCreatedEvent>()   // \"myapp.orders.events\"\n      .SubscribeToNamespaceOf<PaymentCompletedEvent>(); // \"myapp.payments.events\"\n\n  // Can mix with string-based for wildcards\n  opts.OwnDomains(\"myapp.legacy.*\");\n});\n```\n\n**Benefits:**\n- **Compile-time safety** - Invalid types won't compile\n- **Refactor-friendly** - Rename/move types automatically updates references\n- **IDE navigation** - Ctrl+click to go to type definition\n- **No magic strings** - For known namespaces\n\n### Inbox Strategies\n\nTwo inbox routing strategies are available:\n\n#### SharedTopicInboxStrategy (Default)\n\nAll commands go to a single \"inbox\" topic with namespace-based filtering:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  opts.Inbox.UseSharedTopic(\"inbox\");  // Default\n});\n```\n\n#### DomainTopicInboxStrategy\n\nEach domain gets its own inbox topic:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  opts.Inbox.UseDomainTopics(\".in\");\n  // Creates topics: \"myapp.users.in\", \"myapp.orders.in\", etc.\n});\n```\n\n## Domain Topic Provisioning {#domain-topic-provisioning}\n\n:::new\nWhen a service declares domain ownership via `OwnDomains()`, Whizbang automatically provisions the corresponding topics/exchanges on the message broker at worker startup. This ensures the domain owner (publisher) creates infrastructure that subscribers will use.\n:::\n\n### How It Works\n\nAt `TransportConsumerWorker` startup, before creating subscriptions:\n\n1. The worker checks for a registered `IInfrastructureProvisioner`\n2. If present, it calls `ProvisionOwnedDomainsAsync()` with the service's owned domains\n3. The provisioner creates topics/exchanges for each owned domain\n4. Then subscriptions are created as normal\n\n```csharp\n// When you configure:\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        routing.OwnDomains(\"myapp.users\", \"myapp.orders\");\n    })\n    .AddTransportConsumer();\n\n// At startup, these topics are automatically provisioned:\n// - myapp.users (topic/exchange)\n// - myapp.orders (topic/exchange)\n```\n\n### Transport-Specific Behavior\n\n| Transport | Provisioned Resource | Idempotent |\n|",
+        "description": "# Namespace-Based Routing\n\nWhizbang uses namespace-based routing to determine where messages flow. Commands and events follow distinct routing patterns optimized for their specific use cases.\n\n## Overview {#routing-options}\n\nRouting in Whizbang is built on two key principles:\n\n1. **Commands → Shared Inbox**: All commands route to a single shared \"inbox\" topic. Services filter by owned namespaces using routing key patterns.\n2. **Events → Namespace Topics**: Events publish to namespace-specific topics. Services subscribe directly to namespaces they care about.\n\nThis separation provides:\n- **Point-to-point delivery** for commands (exactly one handler)\n- **Pub/sub distribution** for events (multiple subscribers)\n- **Automatic subscription discovery** via source generation\n\n## Command Flow {#inbox-routing}\n\nCommands follow a point-to-point pattern with namespace-based filtering:\n\n```\nBFF sends CreateTenantCommand (namespace: MyApp.Users.Commands)\n    ↓\nBFF Outbox → Broker \"inbox\" topic\n    ↓\n    RoutingKey: \"myapp.users.commands.createtenantcommand\"\n    ↓\nALL services subscribed to \"inbox\" (single shared topic)\n    ↓\nEach service filters by owned namespaces:\n    - User Service owns \"myapp.users.commands\" → RECEIVES\n    - Workflow Service owns \"myapp.workflow.commands\" → FILTERED OUT\n    ↓\nUser Service processes command\n```\n\n### How Command Filtering Works {#own-namespace-of}\n\nWhen a service starts, it declares which command namespaces it owns:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  opts.OwnDomains(\"myapp.users.commands\");\n  opts.OwnDomains(\"myapp.inventory.commands\");\n});\n```\n\nThe `SharedTopicInboxStrategy` builds routing patterns from these namespaces:\n\n```csharp\n// Generated routing patterns:\n// - \"whizbang.core.commands.system.#\"  (always included)\n// - \"myapp.users.commands.#\"\n// - \"myapp.inventory.commands.#\"\n```\n\n**Note**: All services automatically subscribe to system commands (`whizbang.core.commands.system.#`) for framework-level operations.\n\n### Wildcard Namespaces\n\nSupport pattern matching for flexible ownership:\n\n```csharp\n// Own all commands under myapp.orders\nopts.OwnDomains(\"myapp.orders.*\");\n// Converts to pattern: \"myapp.orders.#\"\n```\n\n## Event Flow {#outbox-routing}\n\nEvents follow a pub/sub pattern with namespace-based topics:\n\n```\nUser Service publishes TenantCreatedEvent (namespace: MyApp.Users.Events)\n    ↓\nUser Service Outbox → Broker topic \"myapp.users.events\"\n    ↓\n    RoutingKey: \"tenantcreatedevent\"\n    ↓\nServices subscribed to \"myapp.users.events\":\n    - BFF → RECEIVES\n    - Workflow Service → RECEIVES\n    - Notifications Service → RECEIVES\n```\n\n### Automatic Event Subscription Discovery {#event-subscription-discovery}\n\nEvent subscriptions are **automatically discovered** from your code via source generation:\n\n1. **Perspectives**: Events your service projects\n2. **Receptors**: Events your service handles\n\n```csharp\n// This perspective automatically subscribes to \"myapp.orders.events\"\n[Perspective<OrderSummary>]\npublic class OrderSummaryPerspective : IPerspective<OrderCreatedEvent> {\n  // OrderCreatedEvent is in namespace MyApp.Orders.Events\n}\n\n// This receptor automatically subscribes to \"myapp.payments.events\"\npublic class PaymentReceptor : IReceptor<PaymentCompletedEvent> {\n  // PaymentCompletedEvent is in namespace MyApp.Payments.Events\n}\n```\n\nThe `EventNamespaceRegistryGenerator` source generator extracts these namespaces at compile time. The generated `IEventNamespaceRegistry` {#event-namespace-registry} provides access to discovered namespaces:\n\n```csharp\n// Generated code (example)\npublic sealed class GeneratedEventNamespaceRegistry : IEventNamespaceRegistry {\n  public IReadOnlySet<string> GetPerspectiveEventNamespaces() =>\n    new HashSet<string>(StringComparer.OrdinalIgnoreCase) {\n      \"myapp.orders.events\"\n    };\n\n  public IReadOnlySet<string> GetReceptorEventNamespaces() =>\n    new HashSet<string>(StringComparer.OrdinalIgnoreCase) {\n      \"myapp.payments.events\"\n    };\n}\n```\n\n### Manual Event Subscriptions {#subscribe-to-namespace-of}\n\nOverride or supplement auto-discovery with manual subscriptions:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  // Explicitly subscribe to additional event namespaces\n  opts.SubscribeTo(\"myapp.notifications.events\");\n  opts.SubscribeTo(\"myapp.audit.events\");\n});\n```\n\n## System Commands\n\nAll services automatically subscribe to system commands for framework-level operations:\n\n```csharp\nnamespace Whizbang.Core.Commands.System;\n\n// Rebuild a perspective across all services\npublic record RebuildPerspectiveCommand(\n    string PerspectiveName,\n    long? FromEventId = null\n) : ICommand;\n\n// Clear cached data\npublic record ClearCacheCommand(\n    string? CacheKey = null,\n    string? CacheRegion = null\n) : ICommand;\n\n// Collect diagnostics from all services\npublic record DiagnosticsCommand(\n    DiagnosticType Type,\n    Guid? CorrelationId = null\n) : ICommand;\n\n// Pause message processing (coordinated maintenance)\npublic record PauseProcessingCommand(\n    int? DurationSeconds = null,\n    string? Reason = null\n) : ICommand;\n\n// Resume message processing\npublic record ResumeProcessingCommand(\n    string? Reason = null\n) : ICommand;\n```\n\n### Sending System Commands\n\n```csharp\n// Rebuild a perspective across all services\nawait dispatcher.SendAsync(new RebuildPerspectiveCommand(\"OrderSummary\"));\n\n// Clear all caches\nawait dispatcher.SendAsync(new ClearCacheCommand());\n\n// Pause processing for 5 minutes\nawait dispatcher.SendAsync(new PauseProcessingCommand(\n    DurationSeconds: 300,\n    Reason: \"Scheduled maintenance\"\n));\n```\n\n## Configuration\n\n### Fluent Configuration with WithRouting {#with-routing}\n\nThe recommended approach uses the fluent `WithRouting()` extension method:\n\n```csharp\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        routing\n            .OwnDomains(\"myapp.users.commands\")\n            .SubscribeTo(\"myapp.notifications.events\")\n            .Inbox.UseSharedTopic(\"inbox\");\n    })\n    .WithEFCore<MyDbContext>()\n    .WithDriver.Postgres\n    .AddTransportConsumer();  // Auto-generates subscriptions!\n```\n\nThis approach:\n- **Chains with other Whizbang configuration** - Integrates with EF Core, drivers, and transport setup\n- **Auto-generates subscriptions** - When paired with `AddTransportConsumer()`, subscriptions are created automatically\n- **Type-safe** - All configuration is compile-time verified\n\n### Complete Example\n\n```csharp\n// User Service - handles user commands, subscribes to order events\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        // Commands this service handles\n        routing.OwnDomains(\"myapp.users.commands\");\n\n        // Events are auto-discovered from perspectives/receptors\n        // Manual override (adds to auto-discovered):\n        routing.SubscribeTo(\"myapp.notifications.events\");\n\n        // Inbox strategy\n        routing.Inbox.UseSharedTopic(\"inbox\");\n    })\n    .AddTransportConsumer();\n\n// BFF Service - sends commands, receives events\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        // No OwnDomains (BFF doesn't handle commands directly)\n        // Events auto-discovered from its receptors/perspectives\n        routing.Inbox.UseSharedTopic(\"inbox\");\n    })\n    .AddTransportConsumer();\n```\n\n### Legacy Configuration\n\nFor backwards compatibility, you can still configure routing options directly:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  opts.OwnDomains(\"myapp.users.commands\");\n  opts.SubscribeTo(\"myapp.notifications.events\");\n});\n```\n\n### Strongly-Typed Configuration\n\nUse the generic overloads for compile-time safety and refactor-friendly configuration:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  // Strongly-typed: extracts namespace from the type\n  opts.OwnNamespaceOf<CreateUserCommand>()      // \"myapp.users.commands\"\n      .OwnNamespaceOf<UpdateInventoryCommand>() // \"myapp.inventory.commands\"\n      .SubscribeToNamespaceOf<OrderCreatedEvent>()   // \"myapp.orders.events\"\n      .SubscribeToNamespaceOf<PaymentCompletedEvent>(); // \"myapp.payments.events\"\n\n  // Can mix with string-based for wildcards\n  opts.OwnDomains(\"myapp.legacy.*\");\n});\n```\n\n**Benefits:**\n- **Compile-time safety** - Invalid types won't compile\n- **Refactor-friendly** - Rename/move types automatically updates references\n- **IDE navigation** - Ctrl+click to go to type definition\n- **No magic strings** - For known namespaces\n\n### Inbox Strategies {#inbox-subscription}\n\nTwo inbox routing strategies are available:\n\n#### SharedTopicInboxStrategy (Default) {#shared-topic-inbox}\n\nAll commands go to a single \"inbox\" topic with namespace-based filtering:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  opts.Inbox.UseSharedTopic(\"inbox\");  // Default\n});\n```\n\n#### DomainTopicInboxStrategy {#domain-topic-inbox}\n\nEach domain gets its own inbox topic:\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n  opts.Inbox.UseDomainTopics(\".in\");\n  // Creates topics: \"myapp.users.in\", \"myapp.orders.in\", etc.\n});\n```\n\n## Event Namespace Registry {#event-namespace-registry}\n\nThe `IEventNamespaceRegistry` is a zero-reflection, AOT-compatible interface that provides access to event namespaces discovered from perspectives and receptors at compile time.\n\n### How It Works\n\nThe source generator (`EventNamespaceRegistryGenerator`) scans your assembly for:\n- **Perspectives**: Types implementing `IPerspective<TEvent>` or `IPerspectiveFor<TModel, TEvent1, ...>`\n- **Receptors**: Types implementing `IReceptor<TEvent>` where `TEvent : IEvent`\n\nIt extracts the namespaces of all event types and generates an implementation of `IEventNamespaceRegistry`:\n\n```csharp\n// Generated code (example)\npublic sealed class GeneratedEventNamespaceRegistry : IEventNamespaceRegistry {\n    public IReadOnlySet<string> GetPerspectiveEventNamespaces() =>\n        new HashSet<string>(StringComparer.OrdinalIgnoreCase) {\n            \"myapp.orders.events\"\n        };\n\n    public IReadOnlySet<string> GetReceptorEventNamespaces() =>\n        new HashSet<string>(StringComparer.OrdinalIgnoreCase) {\n            \"myapp.payments.events\"\n        };\n\n    public IReadOnlySet<string> GetAllEventNamespaces() {\n        var all = new HashSet<string>(StringComparer.OrdinalIgnoreCase);\n        all.UnionWith(GetPerspectiveEventNamespaces());\n        all.UnionWith(GetReceptorEventNamespaces());\n        return all;\n    }\n}\n```\n\n### Usage\n\nThe registry is used internally by `EventSubscriptionDiscovery` to determine which event namespaces your service should subscribe to:\n\n```csharp\n// Inject the registry (typically not needed directly)\npublic class MyService {\n    private readonly IEventNamespaceRegistry _registry;\n\n    public MyService(IEventNamespaceRegistry registry) {\n        _registry = registry;\n    }\n\n    public void LogSubscriptions() {\n        var namespaces = _registry.GetAllEventNamespaces();\n        foreach (var ns in namespaces) {\n            Console.WriteLine($\"Subscribing to: {ns}\");\n        }\n    }\n}\n```\n\n**Benefits:**\n- **Zero reflection** - All namespace discovery happens at compile time\n- **AOT compatible** - Works with Native AOT compilation\n- **Type safe** - Compiler catches missing or renamed event types\n- **Fast startup** - No runtime reflection or assembly scanning\n\n## Transport Subscription Builder {#transport-subscription-builder}\n\nThe `TransportSubscriptionBuilder` combines inbox (command) and event subscriptions into transport destinations for broker configuration.\n\n### Overview\n\nThis builder integrates three key components:\n1. **InboxRoutingStrategy**: Determines command subscription (topic + filter)\n2. **EventSubscriptionDiscovery**: Discovers event namespaces from perspectives/receptors\n3. **RoutingOptions**: Contains manual subscriptions and owned domains\n\n### Creating the Builder\n\n```csharp\nvar builder = new TransportSubscriptionBuilder(\n    routingOptions: serviceProvider.GetRequiredService<IOptions<RoutingOptions>>(),\n    discovery: serviceProvider.GetRequiredService<EventSubscriptionDiscovery>(),\n    serviceName: \"OrderService\"\n);\n```\n\n### Building Destinations\n\n```csharp\n// Build all destinations (inbox + events)\nvar destinations = builder.BuildDestinations();\n\n// Or build separately\nvar inboxDestination = builder.BuildInboxDestination();\nvar eventDestinations = builder.BuildEventDestinations();\n```\n\n### Destination Structure\n\nEach destination contains:\n\n```csharp\npublic record TransportDestination(\n    string Address,        // Topic/queue name (e.g., \"inbox\", \"myapp.orders.events\")\n    string? RoutingKey,    // Routing key pattern (e.g., \"#\", \"myapp.users.commands.#\")\n    IReadOnlyDictionary<string, JsonElement>? Metadata\n);\n```\n\n**Metadata fields:**\n- `SubscriberName`: Service name for deterministic queue naming\n- `RoutingPatterns`: (RabbitMQ) Array of routing key patterns for filtering\n\n### Example Destinations\n\nFor a User Service that handles user commands and subscribes to order events:\n\n```csharp\n// Inbox destination (commands)\nnew TransportDestination(\n    Address: \"inbox\",\n    RoutingKey: \"#\",  // Subscribe to all messages in topic\n    Metadata: new Dictionary<string, JsonElement> {\n        [\"SubscriberName\"] = JsonElement(\"UserService\"),\n        [\"RoutingPatterns\"] = JsonElement([\"myapp.users.commands.#\"])\n    }\n);\n\n// Event destination (orders)\nnew TransportDestination(\n    Address: \"myapp.orders.events\",\n    RoutingKey: \"#\",  // Subscribe to all messages in namespace\n    Metadata: new Dictionary<string, JsonElement> {\n        [\"SubscriberName\"] = JsonElement(\"UserService\")\n    }\n);\n```\n\n### Automatic Configuration\n\nWhen using `AddTransportConsumer()`, the builder is used automatically:\n\n```csharp\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        routing.OwnDomains(\"myapp.users.commands\");\n    })\n    .AddTransportConsumer();  // Uses TransportSubscriptionBuilder internally\n```\n\n## Shared Topic Inbox {#shared-topic-inbox}\n\nThe `SharedTopicInboxStrategy` routes all commands to a single shared \"inbox\" topic, with each service filtering by owned namespaces.\n\n### How It Works\n\n1. **All services subscribe to the same inbox topic** (e.g., \"inbox\")\n2. **Commands are published with namespace-based routing keys** (e.g., \"myapp.users.commands.createtenantcommand\")\n3. **Each service filters messages by owned namespaces** using broker-side routing patterns\n\n### Configuration\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n    opts.OwnDomains(\"myapp.users.commands\");\n    opts.Inbox.UseSharedTopic(\"inbox\");  // Default\n});\n```\n\n### Routing Patterns\n\nThe strategy generates routing patterns from owned namespaces:\n\n```csharp\n// Owned namespaces:\nopts.OwnDomains(\"myapp.users.commands\", \"myapp.inventory.commands\");\n\n// Generated routing patterns:\n// - \"whizbang.core.commands.system.#\"  (always included for system commands)\n// - \"myapp.users.commands.#\"\n// - \"myapp.inventory.commands.#\"\n```\n\n### Benefits\n\n- **Simple topology** - Only one inbox topic/exchange for all commands\n- **Broker-side filtering** - No application-level filtering needed\n- **Automatic system commands** - All services receive framework commands\n\n### Broker Implementation\n\n**RabbitMQ:**\n```\nExchange: inbox (topic)\n  Binding: myapp.users.commands.# → queue: user-service-inbox\n  Binding: myapp.inventory.commands.# → queue: inventory-service-inbox\n  Binding: whizbang.core.commands.system.# → all service queues\n```\n\n**Azure Service Bus:**\n```\nTopic: inbox\n  Subscription: user-service (filter: RoutingKey LIKE 'myapp.users.commands.%')\n  Subscription: inventory-service (filter: RoutingKey LIKE 'myapp.inventory.commands.%')\n```\n\n## Shared Topic Outbox {#shared-topic-outbox}\n\nThe `SharedTopicOutboxStrategy` publishes events to namespace-specific topics, allowing multiple services to subscribe.\n\n### How It Works\n\n1. **Events are published to their namespace topic** (e.g., \"myapp.orders.events\")\n2. **Routing key is the event type name** (e.g., \"ordercreatedevent\")\n3. **Services subscribe directly to namespace topics** they care about\n\n### Configuration\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n    opts.Outbox.UseSharedTopic();  // Or UseNamespaceTopics()\n});\n```\n\n### Publishing Flow\n\n```csharp\n// Event: OrderCreatedEvent (namespace: MyApp.Orders.Events)\nawait dispatcher.PublishAsync(new OrderCreatedEvent(...));\n\n// Published to:\n// - Topic: \"myapp.orders.events\"\n// - RoutingKey: \"ordercreatedevent\"\n```\n\n### Subscription Flow\n\nServices subscribe to event namespaces automatically based on their perspectives and receptors:\n\n```csharp\n// This perspective automatically subscribes to \"myapp.orders.events\"\n[Perspective<OrderSummary>]\npublic class OrderSummaryPerspective : IPerspective<OrderCreatedEvent> {\n    // ...\n}\n```\n\n### Benefits\n\n- **Pub/sub pattern** - Multiple services can subscribe to the same events\n- **Namespace isolation** - Each bounded context has its own event topic\n- **Automatic discovery** - No manual subscription configuration needed\n\n## Domain Topic Inbox {#domain-topic-inbox}\n\nThe `DomainTopicInboxStrategy` creates a separate inbox topic for each owned domain namespace.\n\n### How It Works\n\nInstead of a single shared inbox, each domain gets its own topic:\n\n```csharp\n// Owned domains\nopts.OwnDomains(\"myapp.users\", \"myapp.inventory\");\n\n// Created topics with suffix \".in\":\n// - myapp.users.in\n// - myapp.inventory.in\n```\n\n### Configuration\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n    opts.OwnDomains(\"myapp.users.commands\");\n    opts.Inbox.UseDomainTopics(\".in\");  // Suffix is customizable\n});\n```\n\n### Benefits\n\n- **Domain isolation** - Each domain has dedicated infrastructure\n- **Independent scaling** - Scale domains independently\n- **Clear ownership** - Topic name indicates owning service\n\n### Trade-offs\n\n- **More topics** - Requires more broker resources\n- **Less flexibility** - Can't easily route to multiple domains\n\n## Domain Topic Outbox {#domain-topic-outbox}\n\nThe `DomainTopicOutboxStrategy` publishes events to domain-specific outbox topics rather than namespace topics.\n\n### How It Works\n\nEvents are published to domain topics with a configurable suffix:\n\n```csharp\n// Domain: myapp.orders\n// Event: OrderCreatedEvent (namespace: MyApp.Orders.Events)\n\n// Published to:\n// - Topic: \"myapp.orders.out\"  (domain + suffix)\n// - RoutingKey: \"ordercreatedevent\"\n```\n\n### Configuration\n\n```csharp\nservices.Configure<RoutingOptions>(opts => {\n    opts.Outbox.UseDomainTopics(\".out\");  // Suffix is customizable\n});\n```\n\n### When to Use\n\n- **Legacy integration** - Matching existing topic naming conventions\n- **Domain-based routing** - When domains should own their entire message flow\n- **Infrastructure isolation** - Separate broker resources per domain\n\n## Domain Topic Provisioning {#domain-topic-provisioning}\n\n:::new\nWhen a service declares domain ownership via `OwnDomains()`, Whizbang automatically provisions the corresponding topics/exchanges on the message broker at worker startup. This ensures the domain owner (publisher) creates infrastructure that subscribers will use.\n:::\n\n### How It Works\n\nAt `TransportConsumerWorker` startup, before creating subscriptions:\n\n1. The worker checks for a registered `IInfrastructureProvisioner`\n2. If present, it calls `ProvisionOwnedDomainsAsync()` with the service's owned domains\n3. The provisioner creates topics/exchanges for each owned domain\n4. Then subscriptions are created as normal\n\n```csharp\n// When you configure:\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        routing.OwnDomains(\"myapp.users\", \"myapp.orders\");\n    })\n    .AddTransportConsumer();\n\n// At startup, these topics are automatically provisioned:\n// - myapp.users (topic/exchange)\n// - myapp.orders (topic/exchange)\n```\n\n### Transport-Specific Behavior\n\n| Transport | Provisioned Resource | Idempotent |\n|",
         "tags": [],
         "version": "v1.0.0"
       },
       {
         "slug": "v1.0.0/core-concepts/rpc-extraction",
-        "title": "Rpc Extraction",
+        "title": "RPC Response Extraction",
         "category": "Core Concepts",
-        "order": 999,
-        "description": "# RPC Response Extraction\n\nRPC (Remote Procedure Call) style invocations allow you to call a receptor and receive a specific response type back, while other returned values cascade through normal routing.\n\n## Overview\n\nWhen using `LocalInvokeAsync<TResponse>(command)`, the dispatcher:\n\n1. **Extracts** the requested `TResponse` type from the receptor's return value\n2. **Returns** that value directly to the caller\n3. **Cascades** all other returned values through normal routing (outbox by default)\n\nThis enables receptors to return multiple values (via tuples) while callers receive only what they need.\n\n## Example\n\n```csharp\n// Command\npublic record CreateOrder(Guid OrderId, decimal Amount);\n\n// Response types\npublic record OrderConfirmation {\n  public required Guid OrderId { get; init; }\n  public required string ConfirmationCode { get; init; }\n}\n\n[DefaultRouting(DispatchMode.Outbox)]\npublic record InventoryReserved([property: StreamKey] Guid OrderId) : IEvent;\n\n// Receptor returns tuple: (response to caller, event to cascade)\npublic class CreateOrderReceptor\n    : IReceptor<CreateOrder, (OrderConfirmation, InventoryReserved)> {\n\n  public ValueTask<(OrderConfirmation, InventoryReserved)> HandleAsync(\n      CreateOrder command,\n      CancellationToken ct = default) {\n\n    var confirmation = new OrderConfirmation {\n      OrderId = command.OrderId,\n      ConfirmationCode = $\"CONF-{command.OrderId:N}\"\n    };\n\n    var inventory = new InventoryReserved(command.OrderId);\n\n    return ValueTask.FromResult((confirmation, inventory));\n  }\n}\n```\n\n### Caller Side\n\n```csharp\n// RPC call - OrderConfirmation returned to caller\nvar confirmation = await dispatcher.LocalInvokeAsync<OrderConfirmation>(\n    new CreateOrder(Guid.NewGuid(), 99.99m));\n\n// InventoryReserved automatically cascades to outbox (per [DefaultRouting])\n// confirmation.ConfirmationCode is available to caller\n```\n\n## How It Works\n\n### Response Extraction\n\nThe `ResponseExtractor` utility extracts the requested type from complex return values:\n\n| Return Type | Extraction Behavior |\n|",
-        "tags": [],
+        "order": 18,
+        "description": "RPC response extraction, discriminated unions, and RoutedNone in Whizbang receptors.",
+        "tags": "rpc, extraction, discriminated-unions, routed-none",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/scoped-lenses",
+        "title": "Scoped Lenses",
+        "category": "Core Concepts",
+        "order": 5,
+        "description": "Scoped lens queries and factories for tenant-isolated, user-scoped, and permission-based data access with automatic WHERE clause generation",
+        "tags": "lenses, scoping, multi-tenancy, security, queries, cqrs",
         "version": "v1.0.0"
       },
       {
@@ -370,26 +559,53 @@
         "title": "Scoping",
         "category": "Core Concepts",
         "order": 999,
-        "description": "# Scoping System\n\nWhizbang's scoping system provides flexible multi-tenancy and data isolation through composable filters, enabling tenant, user, organization, and principal-based access patterns.\n\n## Overview\n\nScoping in Whizbang separates data isolation concerns from your domain models:\n\n- **PerspectiveScope** - Metadata stored with each row (TenantId, UserId, etc.)\n- **ScopeFilter** - Composable flags for query filtering\n- **ScopeFilterBuilder** - Builds filter info from flags and context\n- **IScopedLensFactory** - Resolves lenses with scope filters applied\n\n## PerspectiveScope\n\n`PerspectiveScope` is stored in the `scope` column of perspective rows, separate from your data model.\n\n```csharp\npublic record PerspectiveScope {\n  // Standard scope properties\n  public string? TenantId { get; init; }\n  public string? UserId { get; init; }\n  public string? OrganizationId { get; init; }\n  public string? CustomerId { get; init; }\n\n  // Security principal access list\n  public IReadOnlyList<SecurityPrincipalId>? AllowedPrincipals { get; init; }\n\n  // Custom extension properties\n  public IReadOnlyDictionary<string, string?>? Extensions { get; init; }\n\n  // Unified indexer access\n  public string? this[string key] => ...;\n}\n```\n\n### Why Separate from Data?\n\nStoring scope separately from your domain data provides:\n\n1. **Clean domain models** - Your `Order` class doesn't need `TenantId`\n2. **Consistent filtering** - All perspectives filter the same way\n3. **Flexible extensions** - Add custom scope properties without schema changes\n4. **Security isolation** - Scope enforcement happens at infrastructure level\n\n### Accessing Scope Values\n\n```csharp\nvar scope = new PerspectiveScope {\n  TenantId = \"tenant-123\",\n  UserId = \"user-456\",\n  Extensions = new Dictionary<string, string?> {\n    [\"department\"] = \"Engineering\",\n    [\"region\"] = \"us-west\"\n  }\n};\n\n// Via properties\nvar tenant = scope.TenantId;  // \"tenant-123\"\n\n// Via indexer (standard + extensions)\nvar tenant = scope[\"TenantId\"];     // \"tenant-123\"\nvar dept = scope[\"department\"];     // \"Engineering\"\nvar unknown = scope[\"unknown\"];     // null\n```\n\n## Scope Filters\n\n`ScopeFilter` is a flags enum for composable filtering.\n\n```csharp\n[Flags]\npublic enum ScopeFilter {\n  None = 0,           // No filtering (global access)\n  Tenant = 1 << 0,    // Filter by TenantId\n  Organization = 1 << 1,\n  Customer = 1 << 2,\n  User = 1 << 3,      // Filter by UserId\n  Principal = 1 << 4  // Filter by security principal overlap\n}\n```\n\n### Filter Composition\n\nCombine filters with bitwise OR:\n\n```csharp\n// Single filter\nvar tenantOnly = ScopeFilter.Tenant;\n\n// Multiple filters (AND'd together)\nvar tenantAndUser = ScopeFilter.Tenant | ScopeFilter.User;\n\n// Complex combination\nvar complex = ScopeFilter.Tenant | ScopeFilter.Organization | ScopeFilter.Principal;\n```\n\n### Filter Application\n\n| Filter | Generated WHERE |\n|",
+        "description": "Multi-tenancy and data isolation through composable scope filters, enabling tenant, user, organization, and principal-based access patterns.",
         "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/security-context-propagation",
+        "title": "Security Context Propagation",
+        "category": "Core Concepts",
+        "order": 7,
+        "description": "End-to-end security context flow across service boundaries, from HTTP requests through message processing, with automatic propagation and audit trails.",
+        "tags": "security, message-security, scoping, distributed-systems, audit, context-propagation",
         "version": "v1.0.0"
       },
       {
         "slug": "v1.0.0/core-concepts/security",
         "title": "Security",
         "category": "Core Concepts",
-        "order": 999,
-        "description": "# Security System\n\nWhizbang provides a comprehensive security system supporting RBAC (Role-Based Access Control) and ABAC (Attribute-Based Access Control) patterns with composable scope filters, permission checks, and security event auditing.\n\n## Overview\n\nThe security system consists of:\n\n- **Permissions** - Type-safe permission identifiers with wildcard matching\n- **Roles** - Named collections of permissions\n- **Scope Context** - Ambient security context for current operation\n- **Security Principals** - Users, groups, and services with hierarchical membership\n- **Scoped Lens Factory** - Permission-aware lens resolution with composable filters\n- **System Events** - Security audit trail (AccessDenied, AccessGranted, etc.)\n\n## Permissions\n\nPermissions use a `resource:action` pattern and support wildcard matching.\n\n```csharp\n// Factory methods for common patterns\nvar readOrders = Permission.Read(\"orders\");      // \"orders:read\"\nvar writeOrders = Permission.Write(\"orders\");    // \"orders:write\"\nvar deleteOrders = Permission.Delete(\"orders\");  // \"orders:delete\"\nvar adminOrders = Permission.Admin(\"orders\");    // \"orders:admin\"\nvar allOrders = Permission.All(\"orders\");        // \"orders:*\"\n\n// Custom permissions\nvar permission = new Permission(\"orders:export\");\n\n// Wildcard matching\nvar allResources = new Permission(\"*:*\");        // Matches everything\nvar allOrderActions = Permission.All(\"orders\");  // Matches orders:*\n```\n\n### Wildcard Rules\n\n| Permission | Matches |\n|",
-        "tags": [],
+        "order": 6,
+        "description": "Comprehensive security system for Whizbang applications - permissions, roles, scope context, security principals, row-level and column-level security, data masking, and EF Core integration for principal-based filtering.",
+        "tags": "security, permissions, roles, rbac, abac, scope-context, principals, row-level-security, column-level-security, masking",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/stream-id",
+        "title": "Stream ID",
+        "category": "Core Concepts",
+        "order": 12,
+        "description": "IHasStreamId interface and automatic stream ID generation for event streams in Whizbang.",
+        "tags": "stream-id, events, event-sourcing, auto-generation",
         "version": "v1.0.0"
       },
       {
         "slug": "v1.0.0/core-concepts/system-events",
         "title": "System Events",
         "category": "Core Concepts",
-        "order": 999,
-        "description": "",
-        "tags": [],
+        "order": 8,
+        "description": "Internal events emitted by Whizbang for observability, auditing, and diagnostics - isolated from domain events in dedicated system stream",
+        "tags": "system-events, audit, monitoring, observability, diagnostics, security, compliance",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/core-concepts/time-provider",
+        "title": "Time Provider",
+        "category": "Core Concepts",
+        "order": 30,
+        "description": "ITimeProvider and SystemTimeProvider for testable time operations in Whizbang applications.",
+        "tags": "time, testing, dependency-injection, aot",
         "version": "v1.0.0"
       },
       {
@@ -397,8 +613,8 @@
         "title": "Transport Consumer",
         "category": "Core Concepts",
         "order": 999,
-        "description": "# Transport Consumer\n\nThe transport consumer automatically subscribes to message broker destinations and processes incoming messages. When combined with `WithRouting()`, subscriptions are auto-generated from your routing configuration.\n\n## Overview\n\nThe `AddTransportConsumer()` extension method:\n\n1. **Auto-generates subscriptions** from `RoutingOptions` configured via `WithRouting()`\n2. **Registers `TransportConsumerOptions`** with populated destinations\n3. **Starts `TransportConsumerWorker`** as a hosted service\n\n## Auto-Configuration {#auto-configuration}\n\nThe recommended approach chains `WithRouting()` and `AddTransportConsumer()`:\n\n```csharp\nservices.AddWhizbang()\n    .WithRouting(routing => {\n        routing\n            .OwnDomains(\"myapp.orders.commands\")\n            .SubscribeTo(\"myapp.payments.events\")\n            .Inbox.UseSharedTopic(\"inbox\");\n    })\n    .WithEFCore<OrderDbContext>()\n    .WithDriver.Postgres\n    .AddTransportConsumer();\n```\n\nThis auto-generates subscriptions:\n- **Inbox subscription** from `OwnDomains()` - Filters commands by namespace pattern\n- **Event subscriptions** from `SubscribeTo()` - Subscribes to each namespace topic\n- **Auto-discovered events** from perspectives and receptors\n\n### What Gets Generated\n\nFor the configuration above, `AddTransportConsumer()` generates:\n\n| Destination | Address | Routing Key |\n|",
-        "tags": [],
+        "description": "Configure transport message consumption with auto-generated subscriptions, subscription resilience, and connection recovery support",
+        "tags": "transport, consumer, subscriptions, resilience, messaging",
         "version": "v1.0.0"
       },
       {
@@ -433,7 +649,7 @@
         "title": "Whizbang Ids",
         "category": "Core Concepts",
         "order": 999,
-        "description": "# WhizbangIds: Strongly-Typed Identity Values\n\nWhizbang uses strongly-typed identity values based on UUIDv7 for all identifiers. This provides type safety, prevents ID mixing mistakes, and enables AOT-compatible dependency injection.\n\n## Overview\n\n**WhizbangIds** are source-generated value types that:\n- ✅ Wrap UUIDv7 GUIDs for time-ordered, database-friendly identities\n- ✅ Provide compile-time type safety (can't mix OrderId with CustomerId)\n- ✅ Support both static and DI-based ID generation\n- ✅ Are fully AOT-compatible (zero reflection)\n- ✅ Auto-register with DI via ModuleInitializer\n\n## TrackedGuid: Metadata-Aware GUID Wrapper\n\nFor scenarios where you need to work with raw GUIDs while preserving generation metadata, Whizbang provides `TrackedGuid`:\n\n```csharp\nusing Whizbang.Core.ValueObjects;\n\n// Create with sub-millisecond precision (recommended)\nvar tracked = TrackedGuid.NewMedo();  // Uses Medo.Uuid7 internally\n\n// Check metadata\nbool isTimeOrdered = tracked.IsTimeOrdered;           // true\nbool subMs = tracked.SubMillisecondPrecision;         // true\nDateTimeOffset when = tracked.Timestamp;              // Extracted from UUIDv7\n\n// Implicit conversion to Guid\nGuid guid = tracked;\n\n// Parse from external sources (database, API)\nvar parsed = TrackedGuid.Parse(\"550e8400-e29b-41d4-a716-446655440000\");\nvar external = TrackedGuid.FromExternal(someGuid);\n```\n\n### Why TrackedGuid?\n\n| Feature | `Guid.NewGuid()` | `Guid.CreateVersion7()` | `TrackedGuid.NewMedo()` |\n|",
+        "description": "# WhizbangIds: Strongly-Typed Identity Values\n\nWhizbang uses strongly-typed identity values based on UUIDv7 for all identifiers. This provides type safety, prevents ID mixing mistakes, and enables AOT-compatible dependency injection.\n\n## Overview\n\n**WhizbangIds** are source-generated value types that:\n- ✅ Wrap UUIDv7 GUIDs for time-ordered, database-friendly identities\n- ✅ Provide compile-time type safety (can't mix OrderId with CustomerId)\n- ✅ Support both static and DI-based ID generation\n- ✅ Are fully AOT-compatible (zero reflection)\n- ✅ Auto-register with DI via ModuleInitializer\n\n## TrackedGuid: Metadata-Aware GUID Wrapper {#tracked-guid}\n\nFor scenarios where you need to work with raw GUIDs while preserving generation metadata, Whizbang provides `TrackedGuid`:\n\n```csharp\nusing Whizbang.Core.ValueObjects;\n\n// Create with sub-millisecond precision (recommended)\nvar tracked = TrackedGuid.NewMedo();  // Uses Medo.Uuid7 internally\n\n// Check metadata\nbool isTimeOrdered = tracked.IsTimeOrdered;           // true\nbool subMs = tracked.SubMillisecondPrecision;         // true\nDateTimeOffset when = tracked.Timestamp;              // Extracted from UUIDv7\nGuidMetadata metadata = tracked.Metadata;             // Version7 | SourceMedo\n\n// Implicit conversion to Guid\nGuid guid = tracked;\n\n// Parse from external sources (database, API)\nvar parsed = TrackedGuid.Parse(\"550e8400-e29b-41d4-a716-446655440000\");\nvar external = TrackedGuid.FromExternal(someGuid);\n```\n\n### Why TrackedGuid?\n\n| Feature | `Guid.NewGuid()` | `Guid.CreateVersion7()` | `TrackedGuid.NewMedo()` |\n|",
         "tags": [],
         "version": "v1.0.0"
       },
@@ -546,6 +762,66 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/di/all-services",
+        "title": "AddAllWhizbangServices",
+        "category": "DI",
+        "order": 5,
+        "description": "Register all discovered Perspective and Lens implementations with a single method call",
+        "tags": "di, dependency-injection, service-registration, convenience",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/di/lens-services",
+        "title": "AddLensServices",
+        "category": "DI",
+        "order": 4,
+        "description": "Register all discovered Lens implementations with the DI container",
+        "tags": "di, dependency-injection, lenses, service-registration, queries",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/di/perspective-services",
+        "title": "AddPerspectiveServices",
+        "category": "DI",
+        "order": 3,
+        "description": "Register all discovered Perspective implementations with the DI container",
+        "tags": "di, dependency-injection, perspectives, service-registration",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/di/service-registration-options",
+        "title": "ServiceRegistrationOptions",
+        "category": "DI",
+        "order": 1,
+        "description": "Configuration options for Whizbang service registration behavior, including self-registration settings",
+        "tags": "di, dependency-injection, service-registration, options, configuration",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/di/service-registration",
+        "title": "ServiceRegistrationExtensions",
+        "category": "DI",
+        "order": 2,
+        "description": "Source-generated extension methods for registering Whizbang Perspectives and Lenses with the DI container",
+        "tags": "di, dependency-injection, service-registration, extension-methods, source-generator",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/diagnostics/serializable-property-analyzer",
+        "title": "Serializable Property Analyzer",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Roslyn analyzer that detects non-serializable properties on ICommand/IEvent types for AOT compatibility",
+        "tags": [
+          "diagnostics",
+          "analyzer",
+          "serialization",
+          "aot",
+          "source-generator"
+        ],
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/diagnostics/whiz030",
         "title": "WHIZ030: Perspective Event Missing StreamKey",
         "category": "Diagnostics",
@@ -604,6 +880,21 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/diagnostics/whiz062",
+        "title": "WHIZ062: Property Uses Non-Serializable Interface Type",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Error diagnostic when a message property uses a non-generic interface type that cannot be serialized for AOT",
+        "tags": [
+          "diagnostics",
+          "serialization",
+          "interface",
+          "aot",
+          "source-generator"
+        ],
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/diagnostics/whiz070",
         "title": "WHIZ070: Missing Pgvector.EntityFrameworkCore Package",
         "category": "Diagnostics",
@@ -630,6 +921,81 @@
           "pgvector",
           "npgsql",
           "package-reference"
+        ],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/diagnostics/whiz080",
+        "title": "WHIZ080: Multiple Handlers for RPC Message",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Warning diagnostic when multiple handlers are registered for a message type that returns a response (RPC pattern)",
+        "tags": [
+          "diagnostics",
+          "rpc",
+          "receptor",
+          "handler",
+          "source-generator"
+        ],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/diagnostics/whiz090",
+        "title": "WHIZ090: MessageTag Parameter Naming",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Error diagnostic when a constructor parameter in a MessageTagAttribute subclass does not match any property name (case-insensitive)",
+        "tags": [
+          "diagnostics",
+          "message-tags",
+          "attributes",
+          "source-generator",
+          "naming-convention"
+        ],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/diagnostics/whiz400",
+        "title": "WHIZ400: Invalid Type Argument for ILensQuery",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Error diagnostic when Query<T>() or GetByIdAsync<T>() is called with an invalid type argument on multi-generic ILensQuery",
+        "tags": [
+          "diagnostics",
+          "lenses",
+          "multi-model",
+          "type-safety",
+          "analyzer"
+        ],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/diagnostics/whiz802",
+        "title": "WHIZ802: VectorField Invalid Dimensions",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Error diagnostic when a [VectorField] attribute has invalid dimensions value",
+        "tags": [
+          "diagnostics",
+          "vector",
+          "physical-field",
+          "perspectives",
+          "source-generator"
+        ],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/diagnostics/whiz807",
+        "title": "WHIZ807: Physical Fields Discovered",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Informational diagnostic when physical fields are discovered on a perspective model",
+        "tags": [
+          "diagnostics",
+          "physical-field",
+          "vector-field",
+          "perspectives",
+          "source-generator"
         ],
         "version": "v1.0.0"
       },
@@ -751,6 +1117,24 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/features/debugger-aware-clock",
+        "title": "Debugger-Aware Clock",
+        "category": "Features",
+        "order": 1,
+        "description": "Timeout handling that respects debugging sessions and breakpoints",
+        "tags": "debugger, clock, timeout, stopwatch, diagnostics",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/features/vector-search",
+        "title": "Vector Search",
+        "category": "Features",
+        "order": 2,
+        "description": "pgvector similarity search with automatic configuration",
+        "tags": "vector, pgvector, embeddings, similarity, AI, ML",
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/getting-started/installation",
         "title": "Installation Guide",
         "category": "Getting Started",
@@ -811,6 +1195,15 @@
         "order": 999,
         "description": "# Lens Integration\n\nThe `[GraphQLLens]` attribute marks lens interfaces for GraphQL exposure, enabling automatic query generation with configurable filtering, sorting, and paging.\n\n## Basic Usage\n\n```csharp\n[GraphQLLens(QueryName = \"orders\")]\npublic interface IOrderLens : ILensQuery<OrderReadModel> { }\n```\n\nThis generates a GraphQL query field named `orders` with full data operations support.\n\n## Attribute Properties\n\n| Property | Type | Default | Description |\n|",
         "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/graphql/polymorphic-types",
+        "title": "Polymorphic Types",
+        "category": "GraphQL",
+        "order": 6,
+        "description": "Register polymorphic type hierarchies with HotChocolate GraphQL - automatic discovery from JsonDerivedType attributes",
+        "tags": "graphql, polymorphic, interfaces, json, hotchocolate, inheritance",
         "version": "v1.0.0"
       },
       {
@@ -886,12 +1279,66 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/integrations/signalr",
+        "title": "SignalR Integration",
+        "category": "Integrations",
+        "order": 1,
+        "description": "Real-time push notifications with ASP.NET Core SignalR - AOT-compatible polymorphic JSON serialization for Whizbang message types",
+        "tags": "signalr, real-time, notifications, websockets, aot, json-serialization",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/internals/json-serialization-customizations",
+        "title": "JSON Serialization Customizations",
+        "category": "Internals",
+        "order": 1,
+        "description": "Custom JSON converters and type handling for AOT-compatible serialization, including database-specific edge cases and array type discovery",
+        "tags": "json, serialization, aot, converters, postgresql, datetime",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/lenses/lens-query-factory",
+        "title": "Lens Query Factory",
+        "category": "Lenses",
+        "order": 2,
+        "description": "Thread-safe DbContext management for parallel GraphQL resolvers and cross-model joins",
+        "tags": "lenses, factory, dbcontext, thread-safety, graphql, hotchocolate",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/lenses/multi-model-queries",
+        "title": "Multi-Model Queries",
+        "category": "Lenses",
+        "order": 4,
+        "description": "LINQ joins across multiple perspective types using ILensQuery<T1, T2, ...> with shared DbContext",
+        "tags": "lenses, multi-model, joins, linq, graphql, hotchocolate",
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/lenses/raw-sql",
         "title": "Raw Sql",
         "category": "lenses",
         "order": 999,
         "description": "",
         "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/lenses/scoped-queries",
+        "title": "Scoped Lens Queries",
+        "category": "Lenses",
+        "order": 3,
+        "description": "Auto-scoping lens queries for singleton services, background workers, and batch operations",
+        "tags": "lenses, scoped, singleton, background-worker, batch",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/lenses/temporal-query",
+        "title": "Temporal Lens Queries",
+        "category": "Lenses",
+        "order": 4,
+        "description": "Time-travel queries, history tracking, and activity feeds for temporal (append-only) perspectives",
+        "tags": "lenses, temporal, history, time-travel, activity-feed, audit",
         "version": "v1.0.0"
       },
       {
@@ -1084,11 +1531,101 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/mutations/custom-request-dto",
+        "title": "Custom Request DTOs",
+        "category": "Mutations",
+        "order": 2,
+        "description": "Map custom request DTOs to commands for transport-specific input handling",
+        "tags": "mutations, dto, mapping, requests, commands",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/mutations/hooks",
+        "title": "Mutation Hooks",
+        "category": "Mutations",
+        "order": 1,
+        "description": "Pre/post execution hooks for mutation endpoints - validation, logging, notifications, and error handling",
+        "tags": "mutations, hooks, lifecycle, validation, error-handling",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/observability/diagnostics",
+        "title": "Diagnostics",
+        "category": "Observability",
+        "order": 3,
+        "description": "System diagnostics and health monitoring for Whizbang applications using the DiagnosticsCommand for collecting health, resource, and pipeline status",
+        "tags": "diagnostics, health-check, monitoring, system-commands, observability",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/observability/opentelemetry-integration",
+        "title": "OpenTelemetry Integration",
+        "category": "Observability",
+        "order": 2,
+        "description": "Integrate Whizbang with OpenTelemetry for distributed tracing and metrics via message tag hooks - automatic span and metric emission for tagged messages",
+        "tags": "opentelemetry, tracing, metrics, observability, telemetry, tags",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/observability/tracing",
+        "title": "Tracing",
+        "category": "Observability",
+        "order": 1,
+        "description": "Configure Whizbang's distributed tracing for handler invocations, message processing, and performance monitoring via OpenTelemetry and structured logging",
+        "tags": "tracing, opentelemetry, observability, diagnostics, performance, telemetry",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/perspectives/association-info",
+        "title": "Perspective Association Info",
+        "category": "Perspectives",
+        "order": 4,
+        "description": "Type metadata linking perspectives to their models and tracked types for source generator discovery",
+        "tags": "perspectives, association, metadata, source-generators, registration",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/perspectives/physical-fields",
+        "title": "Physical Fields",
+        "category": "Perspectives",
+        "order": 999,
+        "description": "\n# Physical Fields\n\nPhysical fields allow you to store specific properties as dedicated database columns alongside or instead of JSONB storage. This enables native database indexing, type constraints, and optimized query performance for frequently accessed or filtered data.\n\n## Overview\n\nBy default, Whizbang stores perspective model data in a single JSONB column. While flexible, JSONB queries can be slower for frequently filtered fields. Physical fields solve this by extracting selected properties to dedicated database columns that support native indexing.\n\n| Feature | JSONB Only | Physical Fields |\n|",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/perspectives/polymorphic-discriminator",
+        "title": "Polymorphic Discriminator",
+        "category": "Perspectives",
+        "order": 999,
+        "description": "\n# Polymorphic Discriminator\n\nThe `[PolymorphicDiscriminator]` attribute marks a property as a type discriminator for polymorphic JSON data. The source generator creates an indexed physical column, enabling efficient SQL queries without parsing JSON at query time.\n\n## Overview\n\nWhen your perspective models contain polymorphic types (abstract classes or `[JsonPolymorphic]` types), querying by derived type requires parsing JSON for every row. Discriminator columns solve this by storing the type information in an indexed column.\n\n| Query Type | Without Discriminator | With Discriminator |\n|",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/perspectives/polymorphic-types",
+        "title": "Polymorphic Types in Perspectives",
+        "category": "Perspectives",
+        "order": 999,
+        "description": "\n# Polymorphic Types in Perspectives\n\nWhen your perspective models contain polymorphic types (abstract classes or types with `[JsonPolymorphic]`), Whizbang provides tools to enable efficient database queries without parsing JSON at query time.\n\n## Overview\n\nPolymorphic types in JSONB can be challenging to query efficiently. Whizbang's analyzer detects these patterns and suggests using discriminator columns for optimized queries.\n\n| Approach | Query Performance | Type Safety | Maintenance |\n|",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/perspectives/registry",
         "title": "Registry",
         "category": "perspectives",
         "order": 999,
         "description": "# Perspective Registry\n\nThe perspective registry is a system table that tracks the mapping between your C# perspective types and their corresponding database tables. It enables automatic schema management, drift detection, and safe table renaming across deployments.\n\n## Overview\n\nWhen Whizbang creates perspective tables, it registers metadata about each perspective in the `wh_perspective_registry` table. This enables:\n\n| Feature | Description |\n|",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/perspectives/sync",
+        "title": "Perspective Sync",
+        "category": "Perspectives",
+        "order": 999,
+        "description": "\n# Perspective Sync\n\nPerspective sync enables you to wait for perspectives to catch up with specific events before reading data. This is essential for read-your-writes consistency in event-sourced systems where perspectives are updated asynchronously.\n\n## Overview\n\nWhen you dispatch a command that publishes events, the perspective may not be immediately updated. Sync inquiries let you check whether specific events have been processed and wait for the perspective to catch up.\n\n| Pattern | Use Case |\n|",
         "tags": [],
         "version": "v1.0.0"
       },
@@ -1111,12 +1648,75 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/perspectives/vector-fields",
+        "title": "Vector Fields",
+        "category": "Perspectives",
+        "order": 999,
+        "description": "\n# Vector Fields\n\nVector fields enable similarity search in your perspectives using PostgreSQL's pgvector extension. Store embeddings from machine learning models and perform efficient nearest-neighbor queries directly in your database.\n\n## Overview\n\nVector fields are a specialized type of physical field designed for storing and querying high-dimensional vectors (embeddings). They support various distance metrics and index types optimized for similarity search.\n\n| Feature | Description |\n|",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/rest/filtering",
+        "title": "REST Filtering",
+        "category": "REST",
+        "order": 2,
+        "description": "Query parameter filtering, sorting, and paging for REST lens endpoints - standard URL patterns for data retrieval",
+        "tags": "rest, filtering, sorting, paging, query-parameters, lensrequest",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/rest/mutations",
+        "title": "REST Mutations",
+        "category": "REST",
+        "order": 3,
+        "description": "Command endpoints for REST APIs - generated FastEndpoints with customizable hooks for validation, logging, and error handling",
+        "tags": "rest, mutations, commands, fastendpoints, validation, hooks",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/rest/setup",
+        "title": "REST API Setup",
+        "category": "REST",
+        "order": 1,
+        "description": "Configure Whizbang REST endpoints with FastEndpoints - automatic endpoint generation for lenses and mutations",
+        "tags": "rest, fastendpoints, api, setup, lens, mutations",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/signalr/notification-hooks",
+        "title": "SignalR Notification Hooks",
+        "category": "SignalR",
+        "order": 1,
+        "description": "Push real-time notifications via SignalR using Whizbang's message tag system - automatic group routing with placeholder support",
+        "tags": "signalr, notifications, tags, hooks, real-time, groups",
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/source-generators/aggregate-ids",
         "title": "Aggregate IDs",
         "category": "Source Generators",
         "order": 4,
         "description": "Zero-reflection aggregate ID extraction for PolicyContext - compile-time discovery of [AggregateId] marked properties",
         "tags": "source-generators, aggregate-ids, policy-context, zero-reflection, compile-time, uuidv7",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/source-generators/attribute-utilities",
+        "title": "Attribute Utilities",
+        "category": "Source Generators",
+        "order": 10,
+        "description": "Shared utilities for extracting attribute values in Roslyn source generators - supports named arguments, constructor arguments, and mixed syntax",
+        "tags": "source-generators, attributes, roslyn, aot, compile-time, utilities",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/source-generators/configuration",
+        "title": "Configuration",
+        "category": "Source Generators",
+        "order": 8,
+        "description": "MSBuild property configuration for source generators - table naming, suffix stripping, and other compile-time options",
+        "tags": "source-generators, configuration, msbuild, table-naming, suffix-stripping, compile-time",
         "version": "v1.0.0"
       },
       {
@@ -1180,6 +1780,15 @@
         "order": 3,
         "description": "Deterministic test synchronization using lifecycle receptors - eliminate race conditions in integration tests with PostPerspectiveInline stage",
         "tags": "testing, integration-tests, lifecycle, synchronization, race-conditions, PostPerspectiveInline",
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/tracing/verbosity-levels",
+        "title": "Trace Verbosity Levels",
+        "category": "Tracing",
+        "order": 1,
+        "description": "Hierarchical verbosity levels for controlling trace output detail, from minimal error-only tracing to full debug output with payloads and timing",
+        "tags": "tracing, verbosity, observability, diagnostics, configuration",
         "version": "v1.0.0"
       },
       {
@@ -1361,12 +1970,102 @@
         "version": "drafts"
       },
       {
+        "slug": "drafts/metrics/components",
+        "title": "Metric Components",
+        "category": "Observability",
+        "order": 2,
+        "description": "Filter which system components emit metrics using a flags-based picklist",
+        "tags": "metrics, observability, components, filtering, flags, opentelemetry",
+        "version": "drafts"
+      },
+      {
+        "slug": "drafts/metrics/configuration",
+        "title": "Metrics Configuration",
+        "category": "Observability",
+        "order": 3,
+        "description": "Runtime configuration for Whizbang metrics including component filtering and tag control",
+        "tags": "metrics, configuration, observability, options, runtime",
+        "version": "drafts"
+      },
+      {
+        "slug": "drafts/metrics/handlers",
+        "title": "Handler Metrics",
+        "category": "Observability",
+        "order": 4,
+        "description": "Instrumentation for tracking handler invocations, duration, and outcomes",
+        "tags": "metrics, handlers, observability, instrumentation, performance",
+        "version": "drafts"
+      },
+      {
+        "slug": "drafts/metrics/overview",
+        "title": "Metrics Overview",
+        "category": "Observability",
+        "order": 1,
+        "description": "OpenTelemetry-compatible metrics for monitoring Whizbang applications with 44 built-in instruments",
+        "tags": "metrics, observability, opentelemetry, monitoring, counters, histograms",
+        "version": "drafts"
+      },
+      {
         "slug": "drafts/test-error-display",
         "title": "Test Error Display",
         "category": "Test",
         "order": 999,
         "description": "",
         "tags": [],
+        "version": "drafts"
+      },
+      {
+        "slug": "drafts/tracing/attributes",
+        "title": "Trace Attributes",
+        "category": "Observability",
+        "order": 3,
+        "description": "Apply [WhizbangTrace] attribute to elevate tracing for specific receptors, messages, or perspectives",
+        "tags": "tracing, observability, debugging, attributes, handlers, messages, explicit",
+        "version": "drafts"
+      },
+      {
+        "slug": "drafts/tracing/components",
+        "title": "Trace Components",
+        "category": "Observability",
+        "order": 2,
+        "description": "Filter which system components generate trace output using a flags-based picklist",
+        "tags": "tracing, observability, debugging, logging, components, filtering, flags",
+        "version": "drafts"
+      },
+      {
+        "slug": "drafts/tracing/configuration",
+        "title": "Tracing Configuration",
+        "category": "Observability",
+        "order": 4,
+        "description": "Configure tracing via appsettings.json with runtime updates via IOptionsMonitor",
+        "tags": "tracing, observability, configuration, appsettings, options, runtime",
+        "version": "drafts"
+      },
+      {
+        "slug": "drafts/tracing/custom-outputs",
+        "title": "Custom Trace Outputs",
+        "category": "Observability",
+        "order": 5,
+        "description": "Implement ITraceOutput to create custom trace destinations beyond ILogger and OpenTelemetry",
+        "tags": "tracing, observability, custom, extensibility, output, opentelemetry, logging",
+        "version": "drafts"
+      },
+      {
+        "slug": "drafts/tracing/overview",
+        "title": "Tracing Overview",
+        "category": "Observability",
+        "order": 1,
+        "description": "End-to-end distributed tracing for Whizbang message handling with OpenTelemetry integration",
+        "tags": "tracing, observability, debugging, opentelemetry, distributed-tracing, monitoring",
+        "version": "drafts"
+      },
+      {
+        "slug": "drafts/tracing/verbosity-levels",
+        "title": "Trace Verbosity Levels",
+        "category": "Observability",
+        "order": 1,
+        "description": "Configure tracing detail levels from minimal production logging to full debug output with payload inspection",
+        "tags": "tracing, observability, debugging, logging, verbosity, opentelemetry, diagnostics",
         "version": "drafts"
       }
     ]
