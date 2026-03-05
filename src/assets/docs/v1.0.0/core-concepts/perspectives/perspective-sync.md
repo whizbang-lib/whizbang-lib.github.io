@@ -831,6 +831,10 @@ public class Handler : IReceptor<GetOrderQuery, Order?> {
 
 The `Dispatcher` integrates with perspective sync through the `_awaitPerspectiveSyncIfNeededAsync` method, which is called before invoking receptors locally.
 
+:::info Events Only
+**Important**: Perspective sync only applies to `IEvent` messages. If a receptor has `[AwaitPerspectiveSync]` but handles a command (`ICommand`) or plain `IMessage`, the sync is **skipped** because perspectives only process events. This prevents timeouts when dispatching commands that happen to have sync attributes on their receptors.
+:::
+
 #### Integration Points
 
 The method is called from all local invocation paths:
