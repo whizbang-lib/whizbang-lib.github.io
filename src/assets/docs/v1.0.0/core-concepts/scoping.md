@@ -1,3 +1,10 @@
+---
+title: Scoping
+version: 1.0.0
+category: Core Concepts
+description: Multi-tenancy and data isolation through composable scope filters, enabling tenant, user, organization, and principal-based access patterns.
+---
+
 # Scoping System
 
 Whizbang's scoping system provides flexible multi-tenancy and data isolation through composable filters, enabling tenant, user, organization, and principal-based access patterns.
@@ -11,26 +18,26 @@ Scoping in Whizbang separates data isolation concerns from your domain models:
 - **ScopeFilterBuilder** - Builds filter info from flags and context
 - **IScopedLensFactory** - Resolves lenses with scope filters applied
 
-## PerspectiveScope
+## PerspectiveScope {#perspective-scope}
 
 `PerspectiveScope` is stored in the `scope` column of perspective rows, separate from your data model.
 
 ```csharp
-public record PerspectiveScope {
+public class PerspectiveScope {
   // Standard scope properties
-  public string? TenantId { get; init; }
-  public string? UserId { get; init; }
-  public string? OrganizationId { get; init; }
-  public string? CustomerId { get; init; }
+  public string? TenantId { get; set; }
+  public string? UserId { get; set; }
+  public string? OrganizationId { get; set; }
+  public string? CustomerId { get; set; }
 
   // Security principal access list
-  public IReadOnlyList<SecurityPrincipalId>? AllowedPrincipals { get; init; }
+  public List<string> AllowedPrincipals { get; set; } = [];
 
   // Custom extension properties
-  public IReadOnlyDictionary<string, string?>? Extensions { get; init; }
+  public List<ScopeExtension> Extensions { get; set; } = [];
 
-  // Unified indexer access
-  public string? this[string key] => ...;
+  // Value access method
+  public string? GetValue(string key) => ...;
 }
 ```
 
@@ -48,21 +55,118 @@ Storing scope separately from your domain data provides:
 ```csharp
 var scope = new PerspectiveScope {
   TenantId = "tenant-123",
-  UserId = "user-456",
-  Extensions = new Dictionary<string, string?> {
-    ["department"] = "Engineering",
-    ["region"] = "us-west"
-  }
+  UserId = "user-456"
 };
+
+// Set extensions
+scope.SetExtension("department", "Engineering");
+scope.SetExtension("region", "us-west");
 
 // Via properties
 var tenant = scope.TenantId;  // "tenant-123"
 
-// Via indexer (standard + extensions)
-var tenant = scope["TenantId"];     // "tenant-123"
-var dept = scope["department"];     // "Engineering"
-var unknown = scope["unknown"];     // null
+// Via GetValue method (standard + extensions)
+var tenant = scope.GetValue("TenantId");     // "tenant-123"
+var dept = scope.GetValue("department");     // "Engineering"
+var unknown = scope.GetValue("unknown");     // null
 ```
+
+### EF Core ComplexProperty Support
+
+`PerspectiveScope` is designed for full LINQ query support via EF Core's `ComplexProperty().ToJson()`:
+
+- Extensions use `List<ScopeExtension>` (not Dictionary) for ToJson() compatibility
+- All properties support direct LINQ queries: `.Where(r => r.Scope.TenantId == "x")`
+- Extension queries: `.Where(r => r.Scope.Extensions.Any(e => e.Key == "region"))`
+
+## Marker Interfaces {#marker-interfaces}
+
+Whizbang provides marker interfaces for models that include scope identifiers in the data model itself. These are **optional** - use them when the scope ID is part of your business data, not just infrastructure.
+
+### ITenantScoped
+
+```csharp
+public interface ITenantScoped {
+  string TenantId { get; }
+}
+```
+
+Use when tenant ID is part of the domain model:
+
+```csharp
+public class Order : ITenantScoped {
+  public string TenantId { get; init; }
+  public string OrderNumber { get; init; }
+  public decimal Total { get; init; }
+}
+```
+
+### IUserScoped
+
+```csharp
+public interface IUserScoped : ITenantScoped {
+  string UserId { get; }
+}
+```
+
+For models scoped to both tenant and user:
+
+```csharp
+public class SavedSearch : IUserScoped {
+  public string TenantId { get; init; }
+  public string UserId { get; init; }
+  public string Name { get; init; }
+  public string Query { get; init; }
+}
+```
+
+### IOrganizationScoped
+
+```csharp
+public interface IOrganizationScoped : ITenantScoped {
+  string OrganizationId { get; }
+}
+```
+
+For models scoped to organization within a tenant:
+
+```csharp
+public class Department : IOrganizationScoped {
+  public string TenantId { get; init; }
+  public string OrganizationId { get; init; }
+  public string Name { get; init; }
+}
+```
+
+### ICustomerScoped
+
+```csharp
+public interface ICustomerScoped : ITenantScoped {
+  string CustomerId { get; }
+}
+```
+
+For models scoped to customer within a tenant:
+
+```csharp
+public class Invoice : ICustomerScoped {
+  public string TenantId { get; init; }
+  public string CustomerId { get; init; }
+  public string InvoiceNumber { get; init; }
+  public decimal Amount { get; init; }
+}
+```
+
+### Marker Interfaces vs PerspectiveScope
+
+| Aspect | Marker Interfaces | PerspectiveScope |
+|--------|-------------------|------------------|
+| **Location** | In your data model | In `scope` column |
+| **Purpose** | Business data | Infrastructure filtering |
+| **When to use** | Scope ID needed in domain | Just need filtering |
+| **Example** | `Order.TenantId` for reporting | Filter queries by tenant |
+
+You can use both together - the marker interface for domain logic and PerspectiveScope for automatic filtering.
 
 ## Scope Filters
 
@@ -80,7 +184,7 @@ public enum ScopeFilter {
 }
 ```
 
-### Filter Composition
+### Filter Composition {#filter-composition}
 
 Combine filters with bitwise OR:
 
@@ -117,6 +221,41 @@ var lens = factory.GetMyOrSharedLens<IOrderLens>();
 // Generated: WHERE TenantId = ? AND (UserId = ? OR AllowedPrincipals ?| [...])
 ```
 
+## Filter Patterns {#filter-patterns}
+
+`ScopeFilterExtensions` provides common filter pattern combinations as static properties:
+
+```csharp
+public static class ScopeFilterExtensions {
+  // Tenant + User isolation
+  // WHERE TenantId = ? AND UserId = ?
+  public static ScopeFilter TenantUser =>
+    ScopeFilter.Tenant | ScopeFilter.User;
+
+  // Tenant + Principal-based access
+  // WHERE TenantId = ? AND AllowedPrincipals ?| [...]
+  public static ScopeFilter TenantPrincipal =>
+    ScopeFilter.Tenant | ScopeFilter.Principal;
+
+  // Tenant + User's own OR shared with them (special OR logic)
+  // WHERE TenantId = ? AND (UserId = ? OR AllowedPrincipals ?| [...])
+  public static ScopeFilter TenantUserOrPrincipal =>
+    ScopeFilter.Tenant | ScopeFilter.User | ScopeFilter.Principal;
+}
+```
+
+### Usage
+
+```csharp
+// Use predefined patterns
+var myRecords = ScopeFilterExtensions.TenantUser;
+var sharedWithMe = ScopeFilterExtensions.TenantPrincipal;
+var myOrShared = ScopeFilterExtensions.TenantUserOrPrincipal;
+
+// Or compose your own
+var custom = ScopeFilter.Tenant | ScopeFilter.Organization;
+```
+
 ## Scope Filter Builder
 
 `ScopeFilterBuilder` builds filter information from flags and the current scope context.
@@ -147,6 +286,20 @@ public readonly record struct ScopeFilterInfo {
   public bool UseOrLogicForUserAndPrincipal { get; init; }
   public bool IsEmpty { get; }
 }
+```
+
+### Validation
+
+`ScopeFilterBuilder.Build` validates that required scope values are present:
+
+```csharp
+// Throws InvalidOperationException if TenantId is null
+ScopeFilterBuilder.Build(ScopeFilter.Tenant, contextWithoutTenant);
+// "Tenant filter requested but TenantId is not set in scope context."
+
+// Throws if SecurityPrincipals is empty
+ScopeFilterBuilder.Build(ScopeFilter.Principal, contextWithoutPrincipals);
+// "Principal filter requested but SecurityPrincipals is empty in scope context."
 ```
 
 ## IScopedLensFactory
@@ -225,11 +378,11 @@ Records shared with security groups:
 // Store with allowed principals
 await perspective.UpsertAsync(streamId, report, new PerspectiveScope {
   TenantId = currentTenant,
-  AllowedPrincipals = new[] {
+  AllowedPrincipals = [
     SecurityPrincipalId.User("creator-123"),
     SecurityPrincipalId.Group("finance-team"),
     SecurityPrincipalId.Group("executives")
-  }
+  ]
 });
 
 // Query records shared with caller's groups
@@ -257,20 +410,40 @@ Add custom scope properties without schema changes:
 
 ```csharp
 // Store with extensions
-await perspective.UpsertAsync(streamId, order, new PerspectiveScope {
-  TenantId = currentTenant,
-  Extensions = new Dictionary<string, string?> {
-    ["region"] = "us-west",
-    ["department"] = "sales",
-    ["costCenter"] = "CC-123"
-  }
-});
+var scope = new PerspectiveScope {
+  TenantId = currentTenant
+};
+scope.SetExtension("region", "us-west");
+scope.SetExtension("department", "sales");
+scope.SetExtension("costCenter", "CC-123");
 
-// Access via indexer
-var region = scope["region"];  // "us-west"
+await perspective.UpsertAsync(streamId, order, scope);
+
+// Access via GetValue method
+var region = scope.GetValue("region");  // "us-west"
+
+// Query with LINQ (EF Core)
+var westOrders = await query
+  .Where(r => r.Scope.Extensions.Any(e => e.Key == "region" && e.Value == "us-west"))
+  .ToListAsync();
 ```
+
+## Perspective Scope {#perspective-scope}
+
+`PerspectiveScope` is the metadata structure stored in the `scope` column of perspective rows. It provides flexible, queryable scope information separate from your domain data.
+
+**Key Properties**:
+- **TenantId**: Multi-tenant isolation
+- **UserId**: User ownership
+- **OrganizationId**: Organizational hierarchy
+- **CustomerId**: Customer-specific data
+- **AllowedPrincipals**: Security principal access control list
+- **Extensions**: Custom scope properties
+
+See the [PerspectiveScope](#perspective-scope) section at the top of this document for complete details and examples.
 
 ## Related Documentation
 
 - [Security](./security.md) - Permissions, roles, and access control
+- [Scoped Lenses](./scoped-lenses.md) - Automatic scope-based filtering
 - [System Events](./system-events.md) - Audit and monitoring events
