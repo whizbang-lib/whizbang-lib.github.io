@@ -292,7 +292,42 @@ The `TagContext<TAttribute>` provides hooks with all necessary data for processi
 | `Message` | `object` | The original message object |
 | `MessageType` | `Type` | The message's runtime type |
 | `Payload` | `JsonElement` | JSON payload with extracted properties, event data, and extra JSON |
-| `Scope` | `IReadOnlyDictionary<string, object?>?` | Scope data (tenant, user, correlation ID) from event's scope field |
+| `Scope` | `IScopeContext?` | Security scope context (tenant, user, roles, permissions) from the message envelope |
+| `Stage` | `LifecycleStage` | The lifecycle stage at which this hook is being invoked |
+
+### Lifecycle Stage {#lifecycle-stage}
+
+The `Stage` property tells hooks **when** in the message lifecycle they are being called. Hooks fire at every stage — use `Stage` to decide whether to act.
+
+This is especially useful when the same hook is invoked from multiple callers (Dispatcher, ReceptorInvoker, PerspectiveWorker). Instead of server-side filtering, hooks inspect the stage and decide locally:
+
+```csharp{title="Filtering by Lifecycle Stage" description="Hook that only sends notifications after perspective checkpoint commits" category="Implementation" difficulty="INTERMEDIATE" tags=["Tags", "LifecycleStage", "Hooks"]}
+public class SignalRNotificationHook : IMessageTagHook<NotificationTagAttribute> {
+  private readonly IHubContext<NotificationHub> _hubContext;
+
+  public SignalRNotificationHook(IHubContext<NotificationHub> hubContext) {
+    _hubContext = hubContext;
+  }
+
+  public async ValueTask<JsonElement?> OnTaggedMessageAsync(
+      TagContext<NotificationTagAttribute> context, CancellationToken ct) {
+    // Only send notifications after perspective checkpoint is committed
+    if (context.Stage != LifecycleStage.PostPerspectiveInline)
+      return null;
+
+    await _hubContext.Clients.All.SendAsync(
+        "Notification",
+        new { Tag = context.Attribute.Tag, Data = context.Payload },
+        ct);
+
+    return null;
+  }
+}
+```
+
+:::tip
+The `LifecycleStage` enum has 20 values. The special value `AfterReceptorCompletion` (-1) fires synchronously after the receptor completes, before any lifecycle stages are invoked.
+:::
 
 ### Payload Structure
 
