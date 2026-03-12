@@ -432,6 +432,25 @@ if (builder.Environment.IsDevelopment()) {
 // No AddAzureServiceBusProvisioner call needed
 ```
 
+### Publish-Path Auto-Provisioning {#publish-auto-provisioning}
+
+:::new
+When `AutoProvisionInfrastructure` is enabled and an admin client is available, the transport automatically creates topics **on first publish** to a new destination. This ensures topics exist before sending, matching RabbitMQ's idempotent exchange declaration behavior.
+:::
+
+**How It Works**:
+- On first publish to a topic, the transport checks if the topic exists via the Admin API
+- If missing, the topic is created automatically (idempotent, handles 409 race conditions)
+- Subsequent publishes to the same topic skip the check entirely (cached by sender instance)
+- Zero performance overhead after first message per topic
+
+**When This Helps**:
+- Event destinations resolved dynamically from type namespaces (e.g., `jdx.contracts.embedding`)
+- Topics not covered by `OwnDomains()` startup provisioning
+- Development environments where topics may not be pre-created
+
+**Production**: Set `AutoProvisionInfrastructure = false` and pre-provision topics via infrastructure-as-code (Terraform, Bicep, ARM templates).
+
 ### Admin Client {#admin-client}
 
 The **Admin Client** (`ServiceBusAdministrationClient`) is used for infrastructure provisioning and management operations on Azure Service Bus namespaces.
@@ -960,6 +979,30 @@ await sender.SendMessagesAsync(batch);  // Send multiple at once
 ---
 
 ## Troubleshooting
+
+### Problem: "MessagingEntityNotFound" on Publish
+
+**Symptoms**: Publishing fails with `MessagingEntityNotFound` for a topic (e.g., `jdx.contracts.embedding`).
+
+**Cause**: The destination topic doesn't exist and auto-provisioning is disabled or no admin client is available.
+
+**Solution**:
+1. Enable auto-provisioning: `options.AutoProvisionInfrastructure = true` (default) — topics are created on first publish
+2. Or declare the domain via `OwnDomains()` for startup provisioning
+3. Or pre-create the topic via infrastructure-as-code (Terraform, Bicep)
+
+```csharp
+// Option 1: Auto-provisioning (default, creates topics on first publish)
+services.AddAzureServiceBusTransport(connectionString, options => {
+    options.AutoProvisionInfrastructure = true;  // Default
+});
+
+// Option 2: Startup provisioning via OwnDomains
+services.AddWhizbang()
+    .WithRouting(routing => {
+        routing.OwnDomains("jdx.contracts.embedding", "jdx.contracts.search");
+    });
+```
 
 ### Problem: Messages Not Reaching Subscriber
 
