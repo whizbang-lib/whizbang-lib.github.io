@@ -588,20 +588,36 @@ public interface ISyncEventTracker {
   // Mark events as processed by specific perspective
   void MarkProcessedByPerspective(IEnumerable<Guid> eventIds, string perspectiveName);
 
-  // Wait for specific perspective
+  // Wait for specific perspective (with optional per-awaiter tracking)
   Task<bool> WaitForPerspectiveEventsAsync(
       IReadOnlyList<Guid> eventIds,
       string perspectiveName,
       TimeSpan timeout,
+      Guid? awaiterId = null,
       CancellationToken ct = default);
 
-  // Wait for ALL perspectives
+  // Wait for ALL perspectives (with optional per-awaiter tracking)
   Task<bool> WaitForAllPerspectivesAsync(
       IReadOnlyList<Guid> eventIds,
       TimeSpan timeout,
+      Guid? awaiterId = null,
       CancellationToken ct = default);
+
+  // Wait for events to be marked as processed
+  Task<bool> WaitForEventsAsync(
+      IReadOnlyList<Guid> eventIds,
+      TimeSpan timeout,
+      Guid? awaiterId = null,
+      CancellationToken ct = default);
+
+  // Unregister a specific awaiter, cancelling its pending waits
+  void UnregisterAwaiter(Guid awaiterId);
 }
 ```
+
+:::updated
+The `awaiterId` parameter and `UnregisterAwaiter` method enable per-awaiter cleanup on cancellation. See [Awaiter Identity](#awaiter-identity).
+:::
 
 **Usage**: Cross-request synchronization and event completion:
 
@@ -619,6 +635,47 @@ await _syncTracker.WaitForPerspectiveEventsAsync(
     "OrderPerspective",
     TimeSpan.FromSeconds(5));
 ```
+
+#### Per-Awaiter Cleanup {#per-awaiter-cleanup}
+
+When multiple awaiters wait on the same events and some cancel, the `awaiterId` parameter enables precise cleanup without affecting other awaiters:
+
+```csharp
+var awaiterId = Guid.NewGuid();
+
+// Start waiting with a tracked awaiter ID
+var task = _syncTracker.WaitForPerspectiveEventsAsync(
+    [eventId], "OrderPerspective", TimeSpan.FromSeconds(30), awaiterId);
+
+// If the awaiter is cancelled (e.g., request aborted), clean up just this awaiter
+_syncTracker.UnregisterAwaiter(awaiterId);
+// Returns false (cancelled) without affecting other awaiters on the same events
+```
+
+Internally, waiter registrations are keyed by `awaiterId` using `ConcurrentDictionary<Guid, TaskCompletionSource<bool>>`, enabling O(1) removal on cancellation.
+
+### Awaiter Identity {#awaiter-identity}
+
+:::new
+All awaiter classes implement `IAwaiterIdentity`, providing a unique `AwaiterId` for per-awaiter tracking and cleanup.
+:::
+
+```csharp
+public interface IAwaiterIdentity {
+  Guid AwaiterId { get; }
+}
+```
+
+Both `IPerspectiveSyncAwaiter` and `IEventCompletionAwaiter` extend this interface:
+
+```csharp
+public interface IPerspectiveSyncAwaiter : IAwaiterIdentity { ... }
+public interface IEventCompletionAwaiter : IAwaiterIdentity { ... }
+```
+
+The `AwaiterId` is automatically generated at construction and passed to `ISyncEventTracker` wait methods. When an awaiter is cancelled or disposed, `UnregisterAwaiter(AwaiterId)` removes only that awaiter's waiter registrations — other awaiters waiting on the same events are unaffected.
+
+This pattern applies to all awaiter classes in the library, including testing utilities like `MessageAwaiter`, `LifecycleStageAwaiter`, and `MultiHostPerspectiveAwaiter`.
 
 ### Explicit Event ID Tracking {#explicit-event-tracking}
 
