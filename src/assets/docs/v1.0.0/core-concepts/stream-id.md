@@ -45,43 +45,59 @@ public interface IHasStreamId {
 
 ## Automatic Stream ID Generation {#auto-generation}
 
-When a message implements `IHasStreamId` and its `StreamId` property is `Guid.Empty`, Whizbang automatically generates a new stream ID using UUIDv7 (time-ordered GUIDs via `TrackedGuid.NewMedo()`).
+Stream ID auto-generation is controlled per-event-type using the `[GenerateStreamId]` attribute. This replaces the previous global `AutoGenerateStreamIds` option with fine-grained control.
 
-### AutoGenerateStreamIds Configuration
+### `[GenerateStreamId]` Attribute
 
-By default, automatic stream ID generation is **enabled globally**. You can control this behavior through `WhizbangCoreOptions`:
+Apply `[GenerateStreamId]` alongside `[StreamId]` to opt-in to auto-generation:
 
 ```csharp
-services.AddWhizbang(options => {
-  // Disable automatic generation (manual IDs only)
-  options.AutoGenerateStreamIds = false;
-});
+// Stream-initiating event: ALWAYS gets a new StreamId
+public record OrderCreated : IEvent {
+  [StreamId] [GenerateStreamId]
+  public Guid OrderId { get; set; }
+}
+
+// Flexible event: generates only if not already set (e.g., from cascade)
+public record InventoryReserved : IEvent {
+  [StreamId] [GenerateStreamId(OnlyIfEmpty = true)]
+  public Guid ReservationId { get; set; }
+}
+
+// Appending event: MUST have StreamId provided (guard throws if empty)
+public record OrderItemAdded : IEvent {
+  [StreamId]
+  public Guid OrderId { get; set; }
+}
 ```
 
-When disabled, messages with `IHasStreamId` and empty `StreamId` will throw an exception, requiring you to set the ID explicitly before dispatching.
+Events without `[GenerateStreamId]` are validated at pipeline boundaries by `StreamIdGuard`. If the StreamId is `Guid.Empty`, an `InvalidStreamIdException` is thrown, catching bugs where a required StreamId was not provided.
 
 ### Usage Example
 
 ```csharp
-// Event with IHasStreamId
-public record OrderCreated : IEvent, IHasStreamId {
-  public Guid StreamId { get; set; }  // Auto-generated if empty
+// Stream-initiating event with auto-generation
+public record OrderCreated : IEvent {
+  [StreamId] [GenerateStreamId]
+  public Guid OrderId { get; set; }
   public required Guid CustomerId { get; init; }
   public required OrderItem[] Items { get; init; }
   public required decimal Total { get; init; }
 }
 
-// Usage - StreamId will be auto-generated
+// Usage - OrderId will be auto-generated at dispatch
 var evt = new OrderCreated {
   CustomerId = customerId,
   Items = items,
   Total = total
-  // StreamId not set - will be generated automatically
+  // OrderId not set - will be generated automatically
 };
 
 await dispatcher.PublishAsync(evt);
-// evt.StreamId now contains a UUIDv7 value
+// evt.OrderId now contains a UUIDv7 value
 ```
+
+For full details, see the [`[GenerateStreamId]` attribute reference](../attributes/generatestreamid).
 
 ### How Auto-Generation Works
 
