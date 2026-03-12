@@ -309,6 +309,7 @@ Benefits:
 
 ## See Also
 
+- [GenerateStreamId Attribute](./generatestreamid) - Auto-generate StreamIds at dispatch time
 - [StreamKey Attribute](./streamkey) - Event ordering for perspectives
 - [Event Sourcing](../core-concepts/event-sourcing) - Understanding aggregates and streams
 - [Source Generators](../source-generators/overview) - How generators create extraction methods

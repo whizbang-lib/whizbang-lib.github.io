@@ -344,7 +344,13 @@ public class OrderOrchestrator {
 ### API Reference
 
 ```csharp
-public interface IEventCompletionAwaiter {
+public interface IEventCompletionAwaiter : IAwaiterIdentity {
+    /// <summary>
+    /// Unique identity for per-awaiter tracking and cleanup.
+    /// Inherited from IAwaiterIdentity.
+    /// </summary>
+    Guid AwaiterId { get; }
+
     /// <summary>
     /// Waits for events to be processed by ALL perspectives.
     /// Returns when no perspectives are still tracking any of the specified events.
@@ -360,6 +366,10 @@ public interface IEventCompletionAwaiter {
     bool AreEventsFullyProcessed(IReadOnlyList<Guid> eventIds);
 }
 ```
+
+:::updated
+`IEventCompletionAwaiter` now extends `IAwaiterIdentity`. The `AwaiterId` is passed to `ISyncEventTracker.WaitForAllPerspectivesAsync()` for per-awaiter cleanup on cancellation. See [Awaiter Identity](perspective-sync#awaiter-identity).
+:::
 
 ---
 
