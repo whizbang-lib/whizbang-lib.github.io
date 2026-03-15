@@ -432,6 +432,101 @@ if (builder.Environment.IsDevelopment()) {
 // No AddAzureServiceBusProvisioner call needed
 ```
 
+### Publish-Path Auto-Provisioning {#publish-auto-provisioning}
+
+:::new
+When `AutoProvisionInfrastructure` is enabled and an admin client is available, the transport automatically creates topics **on first publish** to a new destination. This ensures topics exist before sending, matching RabbitMQ's idempotent exchange declaration behavior.
+:::
+
+**How It Works**:
+- On first publish to a topic, the transport checks if the topic exists via the Admin API
+- If missing, the topic is created automatically (idempotent, handles 409 race conditions)
+- Subsequent publishes to the same topic skip the check entirely (cached by sender instance)
+- Zero performance overhead after first message per topic
+
+**When This Helps**:
+- Event destinations resolved dynamically from type namespaces (e.g., `jdx.contracts.embedding`)
+- Topics not covered by `OwnDomains()` startup provisioning
+- Development environments where topics may not be pre-created
+
+**Production**: Set `AutoProvisionInfrastructure = false` and pre-provision topics via infrastructure-as-code (Terraform, Bicep, ARM templates).
+
+### Admin Client {#admin-client}
+
+The **Admin Client** (`ServiceBusAdministrationClient`) is used for infrastructure provisioning and management operations on Azure Service Bus namespaces.
+
+**When the Admin Client is Used**:
+- Creating topics when `AutoProvisionInfrastructure = true`
+- Creating subscriptions during `SubscribeAsync`
+- Setting up routing filters (SqlFilter rules)
+- Domain topic provisioning (via `AddAzureServiceBusProvisioner`)
+
+**Registration**:
+
+The admin client is automatically registered when auto-provisioning is enabled:
+
+```csharp
+// Auto-provisioning mode (default)
+services.AddAzureServiceBusTransport(
+  connectionString,
+  options => {
+    options.AutoProvisionInfrastructure = true;  // Admin client auto-registered
+  }
+);
+```
+
+For domain topic provisioning with separate admin permissions:
+
+```csharp
+// Separate admin client with Manage permissions
+services.AddAzureServiceBusTransport(connectionString);  // Send/Receive permissions
+services.AddAzureServiceBusProvisioner(adminConnectionString);  // Manage permissions
+```
+
+**Required Permissions**:
+
+The connection string used for the admin client must have **Manage** permissions:
+
+| Operation | Permission Level |
+|-----------|-----------------|
+| Send/Receive messages | Send, Listen |
+| Create topics | Manage |
+| Create subscriptions | Manage |
+| Create filters | Manage |
+
+**Production Considerations**:
+
+```csharp
+// Development: Auto-provision with Manage permissions
+if (builder.Environment.IsDevelopment()) {
+    services.AddAzureServiceBusTransport(
+        connectionString,  // Connection string with Manage permissions
+        options => {
+            options.AutoProvisionInfrastructure = true;
+        }
+    );
+}
+
+// Production: Pre-provisioned infrastructure via IaC
+else {
+    services.AddAzureServiceBusTransport(
+        connectionString,  // Connection string with only Send/Listen permissions
+        options => {
+            options.AutoProvisionInfrastructure = false;  // No admin client needed
+        }
+    );
+}
+```
+
+**Graceful Fallback**:
+
+If the admin client is unavailable or lacks permissions:
+- Provisioning operations are skipped silently
+- The transport continues to function using existing infrastructure
+- Errors are logged for troubleshooting
+
+This design allows services to run in restricted environments where infrastructure is pre-provisioned via infrastructure-as-code tools like Terraform or Bicep.
+
 ### Routing Pattern Filters {#routing-filters}
 
 :::new
@@ -884,6 +979,30 @@ await sender.SendMessagesAsync(batch);  // Send multiple at once
 ---
 
 ## Troubleshooting
+
+### Problem: "MessagingEntityNotFound" on Publish
+
+**Symptoms**: Publishing fails with `MessagingEntityNotFound` for a topic (e.g., `jdx.contracts.embedding`).
+
+**Cause**: The destination topic doesn't exist and auto-provisioning is disabled or no admin client is available.
+
+**Solution**:
+1. Enable auto-provisioning: `options.AutoProvisionInfrastructure = true` (default) — topics are created on first publish
+2. Or declare the domain via `OwnDomains()` for startup provisioning
+3. Or pre-create the topic via infrastructure-as-code (Terraform, Bicep)
+
+```csharp
+// Option 1: Auto-provisioning (default, creates topics on first publish)
+services.AddAzureServiceBusTransport(connectionString, options => {
+    options.AutoProvisionInfrastructure = true;  // Default
+});
+
+// Option 2: Startup provisioning via OwnDomains
+services.AddWhizbang()
+    .WithRouting(routing => {
+        routing.OwnDomains("jdx.contracts.embedding", "jdx.contracts.search");
+    });
+```
 
 ### Problem: Messages Not Reaching Subscriber
 

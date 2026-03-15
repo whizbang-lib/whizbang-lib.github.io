@@ -24,7 +24,22 @@ This generates a GraphQL query field named `orders` with full data operations su
 | `DefaultPageSize` | `int` | `10` | Default items per page |
 | `MaxPageSize` | `int` | `100` | Maximum items per page |
 
-## GraphQLLensScope
+## GraphQLLensScope {#scope}
+
+Control which parts of `PerspectiveRow<T>` are exposed through the GraphQL schema. The scope determines which nested fields are available for querying.
+
+### The `data` Parameter
+
+When you query a lens-backed GraphQL field, the results are wrapped in `PerspectiveRow<TModel>`, which contains:
+
+- **`data`** - The business model (your perspective's projection)
+- **`metadata`** - Event sourcing metadata (eventType, correlationId, timestamp)
+- **`scope`** - Security/tenancy context (tenantId, userId, organizationId)
+- **`systemFields`** - Infrastructure fields (id, version, createdAt, updatedAt)
+
+The `data` field contains your actual business model that the perspective projects. For example, if your perspective projects to `ProductReadModel`, the `data` field will expose `ProductReadModel`'s properties.
+
+### Scope Control
 
 Control which parts of `PerspectiveRow<T>` are exposed:
 

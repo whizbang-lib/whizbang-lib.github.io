@@ -123,7 +123,47 @@ Grouping Phase
     └── Derived: [SeedCreatedEvent, SeedProcessedEvent, SeedDeletedEvent]
 ```
 
-### 2. Generated Code
+### 2. Internal Data Structures
+
+The generator uses two internal record types to track inheritance relationships:
+
+#### InheritanceInfo
+
+A minimal value type that tracks individual inheritance relationships discovered during scanning:
+
+```csharp
+internal sealed record InheritanceInfo(
+    string DerivedTypeName,  // e.g., "global::MyApp.Events.SeedCreatedEvent"
+    string BaseTypeName,     // e.g., "global::MyApp.BaseJdxEvent"
+    bool IsInterface         // true if BaseTypeName is an interface
+);
+```
+
+- **DerivedTypeName**: Fully qualified derived type name with `global::` prefix
+- **BaseTypeName**: Fully qualified base type name with `global::` prefix
+- **IsInterface**: Distinguishes class inheritance from interface implementation
+
+#### PolymorphicTypeInfo
+
+An aggregated view created by grouping `InheritanceInfo` records:
+
+```csharp
+internal sealed record PolymorphicTypeInfo(
+    string BaseTypeName,                    // "global::MyApp.BaseJdxEvent"
+    string BaseSimpleName,                  // "BaseJdxEvent"
+    ImmutableArray<string> DerivedTypes,    // All concrete derived types
+    bool IsInterface                        // true if base is an interface
+);
+```
+
+- **BaseTypeName**: Fully qualified name used in generated code
+- **BaseSimpleName**: Short name used for generated method naming
+- **DerivedTypes**: All concrete (non-abstract) derived types that should be serializable
+- **UniqueIdentifier**: Computed property for C# identifiers (e.g., `MyApp_Events_BaseEvent`)
+
+Both records use value equality (critical for incremental generator caching) and are computed transiently during code generation.
+
+### 3. Generated Code
 
 For each polymorphic base type, the generator creates a factory method:
 

@@ -23,6 +23,7 @@ The **Dispatcher** is Whizbang's central message router. It provides three disti
 |---------|----------|-------------|-------------|--------------|
 | `SendAsync` | Commands with delivery tracking | `DeliveryReceipt` | ~100μs | Local or Remote |
 | `LocalInvokeAsync` | In-process queries/commands | `TResponse` | < 20ns | Local only |
+| `LocalInvokeAndSyncAsync` | Commands with perspective sync | `TResponse` / `SyncResult` | Varies | Local only |
 | `PublishAsync` | Event broadcasting | `void` | ~50μs | Local or Remote |
 
 ## IDispatcher Interface
@@ -40,6 +41,13 @@ public interface IDispatcher {
     // Pattern 2: In-process RPC with typed response
     Task<TResponse> LocalInvokeAsync<TMessage, TResponse>(
         TMessage message,
+        CancellationToken cancellationToken = default
+    ) where TMessage : notnull;
+
+    // In-process RPC with perspective sync (wait for all perspectives)
+    Task<TResult> LocalInvokeAndSyncAsync<TMessage, TResult>(
+        TMessage message,
+        TimeSpan? timeout = null,
         CancellationToken cancellationToken = default
     ) where TMessage : notnull;
 
@@ -402,6 +410,107 @@ protected override SyncReceptorInvoker<TResult>? GetSyncReceptorInvoker<TResult>
     return null;
 }
 ```
+
+---
+
+## LocalInvokeAndSyncAsync - Invoke with Perspective Sync
+
+**Use Case**: Invoke a handler and wait for ALL perspectives to process any events emitted during the invocation. This enables synchronous-feeling APIs over event-sourced systems.
+
+**Signatures**:
+```csharp
+// With typed result
+Task<TResult> LocalInvokeAndSyncAsync<TMessage, TResult>(
+    TMessage message,
+    TimeSpan? timeout = null,
+    CancellationToken cancellationToken = default
+) where TMessage : notnull;
+
+// Void (returns SyncResult)
+Task<SyncResult> LocalInvokeAndSyncAsync<TMessage>(
+    TMessage message,
+    TimeSpan? timeout = null,
+    CancellationToken cancellationToken = default
+) where TMessage : notnull;
+```
+
+**Returns**: The business result from the handler, after all perspectives have processed the events.
+
+### When to Use
+
+Use `LocalInvokeAndSyncAsync` when:
+
+- You need to query read models immediately after a command
+- Building APIs that need immediate consistency
+- You want to return data that includes perspective-computed values
+
+### Basic Usage
+
+```csharp
+public class OrderMutation {
+    private readonly IDispatcher _dispatcher;
+
+    public OrderMutation(IDispatcher dispatcher) {
+        _dispatcher = dispatcher;
+    }
+
+    public async Task<OrderResult> CreateOrder(CreateOrderInput input) {
+        var command = new CreateOrder(input.CustomerId, input.Items);
+
+        // Invoke and wait for ALL perspectives to process events
+        var result = await _dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderResult>(
+            command,
+            timeout: TimeSpan.FromSeconds(10));
+
+        // Safe to query read models now - they're fully updated
+        return result;
+    }
+}
+```
+
+### SyncResult Outcomes
+
+When using the void overload, you get a `SyncResult`:
+
+```csharp
+var syncResult = await _dispatcher.LocalInvokeAndSyncAsync(command);
+
+switch (syncResult.Outcome) {
+    case SyncOutcome.Synced:
+        // All perspectives processed successfully
+        break;
+    case SyncOutcome.TimedOut:
+        // Handler completed but perspectives didn't finish in time
+        break;
+    case SyncOutcome.NoPendingEvents:
+        // No events were emitted during the invocation
+        break;
+}
+```
+
+### Timeout Handling
+
+For the typed result overload, a `TimeoutException` is thrown if perspectives don't complete in time:
+
+```csharp
+try {
+    var result = await _dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderResult>(
+        command,
+        timeout: TimeSpan.FromSeconds(5));
+} catch (TimeoutException ex) {
+    // Handler completed successfully, but perspectives timed out
+    // Events were still emitted and will be processed eventually
+}
+```
+
+The default timeout is 30 seconds if not specified.
+
+### How It Works
+
+1. Invokes the handler via `LocalInvokeAsync`
+2. Retrieves tracked events from `IScopedEventTracker`
+3. Waits for `IEventCompletionAwaiter.WaitForEventsAsync()` to complete
+4. Returns the result (or throws `TimeoutException` for the typed overload)
 
 ---
 
@@ -871,7 +980,7 @@ public async Task<ActionResult> ProcessOrders(
 
 ---
 
-## Automatic Message Cascade
+## Automatic Message Cascade {#automatic-message-cascade}
 
 Whizbang automatically extracts and dispatches `IMessage` instances (both `IEvent` and `ICommand`) from receptor return values. This enables a cleaner pattern where receptors can return tuples or arrays containing messages without explicit `PublishAsync` or `SendAsync` calls.
 
@@ -1197,7 +1306,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, Routed<O
 4. For `DispatchMode.Outbox` or `DispatchMode.Both`: Calls `CascadeToOutboxAsync`
 5. Generated dispatcher uses type-switch dispatch (zero reflection, AOT compatible)
 
-**Generated Code Pattern**:
+**Generated Code Pattern**: {#cascade-to-outbox}
 ```csharp
 // Generated by Whizbang.Generators
 protected override Task CascadeToOutboxAsync(IMessage message, Type messageType) {
@@ -1236,6 +1345,209 @@ protected override Task CascadeToOutboxAsync(IMessage message, Type messageType)
 :::new
 **New in 0.1.0**: Auto-cascade now supports both `IEvent` and `ICommand` types. Commands returned from receptors are automatically dispatched to their respective receptors.
 :::
+
+### Security Context in Cascade {#cascade-security-context}
+
+When events are cascaded to receptors (via auto-cascade or `CascadeMessageAsync`), **security context automatically propagates** from the source envelope to the new DI scope created for receptor execution.
+
+This ensures cascaded receptors have access to:
+- `IMessageContext.UserId` - Original user who initiated the request
+- `IMessageContext.TenantId` - Tenant context from the source message
+- `IScopeContextAccessor.Current` - Full security scope
+- `UserContextManager.TenantContext` - Tenant-scoped context
+
+**Example Flow**:
+```csharp
+// 1. HTTP request with UserId = "user@test.com", TenantId = "tenant-123"
+public class OrderCommandHandler : IReceptor<CreateOrder, OrderCreated> {
+    private readonly IMessageContext _context;
+
+    public OrderCommandHandler(IMessageContext context) {
+        _context = context;
+    }
+
+    public ValueTask<OrderCreated> HandleAsync(CreateOrder cmd) {
+        // ✅ Security context available: _context.UserId = "user@test.com"
+        return ValueTask.FromResult(new OrderCreated(cmd.OrderId));
+    }
+}
+
+// 2. Event auto-cascades to OrderCreatedReceptor
+public class OrderCreatedReceptor : IReceptor<OrderCreated> {
+    private readonly IMessageContext _context;
+    private readonly UserContextManager _userContext;
+
+    public OrderCreatedReceptor(
+        IMessageContext context,
+        UserContextManager userContext) {
+        _context = context;
+        _userContext = userContext;
+    }
+
+    public ValueTask HandleAsync(OrderCreated evt) {
+        // ✅ Security context propagated from command handler!
+        //    _context.UserId = "user@test.com"
+        //    _context.TenantId = "tenant-123"
+        //    _userContext.TenantContext is set correctly
+
+        return ValueTask.CompletedTask;
+    }
+}
+```
+
+**How It Works**:
+
+The generated `GetUntypedReceptorPublisher` method creates a new DI scope for each cascade and establishes security context before invoking receptors:
+
+```csharp
+// Generated by Whizbang.Generators
+protected override Func<object, IMessageEnvelope?, CancellationToken, Task>?
+    GetUntypedReceptorPublisher(Type eventType) {
+
+    if (eventType == typeof(OrderCreated)) {
+        async Task PublishToReceptorsUntyped(
+            object evt,
+            IMessageEnvelope? sourceEnvelope,
+            CancellationToken cancellationToken) {
+
+            var scope = _scopeFactory.CreateScope();
+            try {
+                // ✅ Establish security context from source envelope
+                if (sourceEnvelope is not null) {
+                    await SecurityContextHelper.EstablishFullContextAsync(
+                        sourceEnvelope,
+                        scope.ServiceProvider,
+                        cancellationToken);
+                }
+
+                // Now receptors can access UserId, TenantId via IMessageContext
+                var receptors = scope.ServiceProvider
+                    .GetServices<IReceptor<OrderCreated>>();
+
+                foreach (var receptor in receptors) {
+                    await receptor.HandleAsync((OrderCreated)evt, cancellationToken);
+                }
+            } finally {
+                await scope.DisposeAsync();
+            }
+        }
+
+        return PublishToReceptorsUntyped;
+    }
+    // ... other event types
+}
+```
+
+**Null Envelope Scenarios**:
+
+Some cascade paths don't have a source envelope:
+- **RPC Local Invoke** (`CascadeExcludingResponse`) - No envelope available, receptors run without security context
+- **System-initiated events** - Timer/scheduler triggers have no user context
+
+In these cases, receptors run without security context, which is expected behavior. If you need security context in these scenarios, establish it explicitly before dispatch using `AsSystem()` or `RunAs()`.
+
+**Key Points**:
+- **Automatic propagation**: No manual context passing required
+- **New scope per cascade**: Each cascade creates an isolated DI scope
+- **AOT compatible**: Zero reflection, compile-time type-switch dispatch
+- **Transitive propagation**: Nested dispatches from cascaded receptors inherit security context
+
+:::new
+**New**: Security context now automatically propagates through all cascade paths, enabling cascaded receptors to access user and tenant context from the original request.
+:::
+
+---
+
+## Dispatcher Configuration Options {#dispatch-options}
+
+`DispatchOptions` provides fine-grained control over dispatch behavior, including cancellation, timeouts, and perspective synchronization.
+
+### Basic Options
+
+```csharp
+// Cancellation token
+using var cts = new CancellationTokenSource();
+var options = new DispatchOptions().WithCancellationToken(cts.Token);
+await dispatcher.SendAsync(command, options);
+
+// Timeout
+var options = new DispatchOptions().WithTimeout(TimeSpan.FromSeconds(30));
+await dispatcher.SendAsync(command, options);
+
+// Chained fluent API
+var options = new DispatchOptions()
+    .WithCancellationToken(cts.Token)
+    .WithTimeout(TimeSpan.FromMinutes(5));
+```
+
+### Perspective Synchronization
+
+Wait for all perspectives to finish processing cascaded events before returning:
+
+```csharp
+// Wait with default timeout (30 seconds)
+var options = new DispatchOptions().WithPerspectiveWait();
+var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(
+    command,
+    options
+);
+
+// Wait with custom timeout
+var options = new DispatchOptions().WithPerspectiveWait(TimeSpan.FromMinutes(2));
+```
+
+**Use cases**:
+- RPC-style calls requiring immediate consistency
+- APIs that query read models after commands
+- GraphQL mutations returning freshly updated data
+
+**How it works**:
+1. Invokes the receptor via `LocalInvokeAsync`
+2. Tracks all cascaded events via `IScopedEventTracker`
+3. Waits for `IEventCompletionAwaiter.WaitForEventsAsync()` to complete
+4. Returns the result (or throws `TimeoutException` if perspectives don't finish in time)
+
+**Alternative API**: Use `LocalInvokeAndSyncAsync` for built-in perspective synchronization without explicit options:
+
+```csharp
+// Equivalent to LocalInvokeAsync with DispatchOptions.WithPerspectiveWait()
+var result = await dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderCreated>(
+    command,
+    timeout: TimeSpan.FromSeconds(10)
+);
+```
+
+See [LocalInvokeAndSyncAsync](#localinvokeandsyncasync---invoke-with-perspective-sync) for details.
+
+### DispatchOptions Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `CancellationToken` | `CancellationToken` | `None` | Cancels the dispatch operation |
+| `Timeout` | `TimeSpan?` | `null` | Maximum time for dispatch completion |
+| `WaitForPerspectives` | `bool` | `false` | Wait for all perspectives to finish |
+| `PerspectiveWaitTimeout` | `TimeSpan` | 30 seconds | Timeout for perspective processing |
+
+### Example: Timeout Handling
+
+```csharp
+try {
+    var options = new DispatchOptions()
+        .WithTimeout(TimeSpan.FromSeconds(5))
+        .WithPerspectiveWait();
+
+    var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(
+        command,
+        options
+    );
+} catch (OperationCanceledException ex) {
+    // Timeout exceeded
+    _logger.LogWarning(ex, "Command timed out after 5 seconds");
+} catch (TimeoutException ex) {
+    // Perspectives didn't finish in time (but command succeeded)
+    _logger.LogWarning(ex, "Perspectives timed out (command succeeded)");
+}
+```
 
 ---
 
