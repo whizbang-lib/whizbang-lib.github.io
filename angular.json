@@ -63,7 +63,8 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "buildTarget": "whizbang-site:build:development"
+            "buildTarget": "whizbang-site:build:development",
+            "port": 4201
           },
           "configurations": {
             "production": {

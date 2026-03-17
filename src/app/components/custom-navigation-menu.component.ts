@@ -193,16 +193,20 @@ export interface CustomMenuItem {
       margin-left: 0;
     }
 
-    /* Submenu animation wrapper */
+    /* Submenu animation wrapper - uses CSS Grid for proper height animation */
     .submenu-wrapper {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease-in-out, opacity 0.2s ease-in-out;
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.3s ease-in-out, opacity 0.2s ease-in-out;
       opacity: 0;
     }
 
+    .submenu-wrapper > * {
+      overflow: hidden;
+    }
+
     .submenu-wrapper.expanded {
-      max-height: 1000px; /* Large enough for any submenu */
+      grid-template-rows: 1fr;
       opacity: 1;
     }
 
