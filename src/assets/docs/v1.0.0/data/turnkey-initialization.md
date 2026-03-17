@@ -95,6 +95,33 @@ info: Whizbang.Initialization[0]
 
 All initialization operations are idempotent. It's safe to call `EnsureWhizbangInitializedAsync()` multiple times - existing tables and functions are not recreated.
 
+## Multi-Instance Initialization
+
+When deploying multiple instances (pods) of the same service, Whizbang coordinates database initialization using PostgreSQL advisory locks to prevent concurrent schema modifications.
+
+### How It Works
+
+1. **Advisory lock acquisition** — Each pod attempts to acquire a non-blocking advisory lock (`pg_try_advisory_lock`) based on the schema name. Only one pod can hold the lock at a time.
+2. **Randomized exponential backoff** — If the lock is held by another pod, the waiting pod retries with exponential backoff (100ms → 200ms → 400ms → ... capped at 20 seconds) plus random jitter. This prevents a thundering herd when many pods start simultaneously.
+3. **Schema initialization** — The pod that holds the lock runs all 7 initialization phases (tables, migrations, perspectives, constraints, associations, registry, maintenance).
+4. **Lock release** — After initialization completes (or fails), the lock is released so the next pod can proceed.
+5. **Retry indefinitely** — Pods retry forever until the lock is acquired. Only `CancellationToken` cancellation stops the retry loop.
+
+### Idempotency Guarantees
+
+All DDL operations are idempotent by design:
+
+- Table creation uses `CREATE TABLE IF NOT EXISTS`
+- Function creation uses `CREATE OR REPLACE FUNCTION`
+- Migrations are hash-tracked — unchanged migrations are skipped automatically
+- Constraints check for existing constraints before adding
+
+This means even if two pods manage to overlap (e.g., the first pod crashes mid-initialization), the second pod will safely complete all remaining work without duplicating what was already done.
+
+### Cancellation Safety
+
+The advisory lock unlock always uses `CancellationToken.None` to ensure the lock is released even if the original cancellation token has been cancelled. This prevents a cancelled pod from leaving a dangling lock that would block all other pods indefinitely.
+
 ## See Also
 
 - [EF Core JSON Configuration](./efcore-json-configuration.md)
