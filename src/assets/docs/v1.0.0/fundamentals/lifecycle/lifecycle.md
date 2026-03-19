@@ -385,7 +385,7 @@ await dispatcher.SendAsync(new ClearCacheCommand(
 ));
 ```
 
-See [Components: Caching](../components/caching.md#clear-cache) for details.
+See [Components: Caching](../../data/caching.md#clear-cache) for details.
 
 ### DiagnosticsCommand
 Collect diagnostics from all services:
@@ -396,12 +396,12 @@ await dispatcher.SendAsync(new DiagnosticsCommand(
 ));
 ```
 
-See [Observability: Diagnostics](../observability/diagnostics.md#system-diagnostics) for details.
+See [Observability: Diagnostics](../../operations/observability/diagnostics.md#system-diagnostics) for details.
 
 ## See Also
 
 - [System Commands](routing.md#system-commands) - System command routing
-- [Workers](../components/workers.md) - Worker lifecycle management
+- [Workers](../../operations/workers/workers.md) - Worker lifecycle management
 - [Perspectives](perspectives.md) - Perspective processing
 - [Inbox/Outbox](../patterns/inbox-outbox.md) - Message queuing behavior
 

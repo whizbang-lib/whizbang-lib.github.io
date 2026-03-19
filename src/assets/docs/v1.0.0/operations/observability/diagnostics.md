@@ -485,5 +485,5 @@ if (responses.Count() < _knownServiceCount) {
 
 - [Tracing](./tracing) - Handler-level distributed tracing
 - [OpenTelemetry Integration](./opentelemetry-integration) - Metrics and telemetry
-- [System Commands](../core-concepts/routing#system-commands) - System command routing
-- [Perspectives](../core-concepts/perspectives) - State aggregation patterns
+- [System Commands](../../fundamentals/dispatcher/routing#system-commands) - System command routing
+- [Perspectives](../../fundamentals/perspectives/perspectives) - State aggregation patterns

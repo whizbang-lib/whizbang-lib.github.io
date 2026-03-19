@@ -603,7 +603,7 @@ public class ProductIdJsonConverter : JsonConverter<ProductId> {
 - [Aggregate IDs](aggregate-ids.md) - UUIDv7 generation for identity value objects
 
 **Core Concepts**:
-- [Message Context](../core-concepts/message-context.md) - MessageId, CorrelationId, CausationId
+- [Message Context](../../fundamentals/messages/message-context.md) - MessageId, CorrelationId, CausationId
 
 **Messaging**:
 - [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable event publishing

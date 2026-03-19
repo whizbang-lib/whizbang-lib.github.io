@@ -674,8 +674,8 @@ public async Task WorkCoordinatorPublisher_PublishesFromOutboxAsync() {
 ## Further Reading
 
 **Core Concepts**:
-- [Dispatcher](../core-concepts/dispatcher.md) - How to publish events
-- [Receptors](../core-concepts/receptors.md) - Message handlers
+- [Dispatcher](../fundamentals/dispatcher/dispatcher.md) - How to publish events
+- [Receptors](../fundamentals/receptors/receptors.md) - Message handlers
 
 **Messaging Patterns**:
 - [Inbox Pattern](inbox-pattern.md) - Exactly-once message processing

@@ -150,6 +150,6 @@ public Guid CreateId() => Guid.NewGuid();
 
 ## See Also
 
-- [WhizbangIds](../core-concepts/whizbang-ids.md) - TrackedGuid and strongly-typed IDs
-- [TrackedGuid Interception](../core-concepts/whizbang-ids.md#trackedguid-interception-opt-in) - Full interception documentation
-- [SuppressGuidInterceptionAttribute](../attributes/suppressguidinterception.md) - Attribute documentation
+- [WhizbangIds](../../fundamentals/identity/whizbang-ids.md) - TrackedGuid and strongly-typed IDs
+- [TrackedGuid Interception](../../fundamentals/identity/whizbang-ids.md#trackedguid-interception-opt-in) - Full interception documentation
+- [SuppressGuidInterceptionAttribute](../../extending/attributes/suppressguidinterception.md) - Attribute documentation

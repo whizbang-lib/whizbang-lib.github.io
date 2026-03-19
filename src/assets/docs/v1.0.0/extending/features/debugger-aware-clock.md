@@ -310,6 +310,6 @@ public async Task WorkCoordinator_Timeout_UsesActiveTimeAsync() {
 
 ## See Also
 
-- [Observability](/docs/v1.0.0/core-concepts/observability) - OpenTelemetry integration
+- [Observability](/docs/v1.0.0/fundamentals/persistence/observability) - OpenTelemetry integration
 - [Work Coordination](/docs/v1.0.0/messaging/work-coordination) - Batch processing
-- [Health Checks](/docs/v1.0.0/infrastructure/health-checks) - System health monitoring
+- [Health Checks](/docs/v1.0.0/operations/infrastructure/health-checks) - System health monitoring

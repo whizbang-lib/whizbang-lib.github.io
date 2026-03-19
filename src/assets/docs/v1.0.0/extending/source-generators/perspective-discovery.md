@@ -731,8 +731,8 @@ public abstract class BasePerspective : IPerspectiveOf<OrderCreated> {
 - [JSON Contexts](json-contexts.md) - AOT-compatible JSON serialization
 
 **Core Concepts**:
-- [Perspectives](../core-concepts/perspectives.md) - Event-driven read models
-- [Lenses](../core-concepts/lenses.md) - Query-optimized repositories
+- [Perspectives](../../fundamentals/perspectives/perspectives.md) - Event-driven read models
+- [Lenses](../../fundamentals/lenses/lenses.md) - Query-optimized repositories
 
 **Data Access**:
 - [Perspectives Storage](../data/perspectives-storage.md) - Read model schema design
@@ -742,9 +742,9 @@ public abstract class BasePerspective : IPerspectiveOf<OrderCreated> {
 - [Work Coordinator](../messaging/work-coordinator.md) - Atomic batch processing
 
 **Workers**:
-- [Perspective Worker](../workers/perspective-worker.md) - Checkpoint processing lifecycle and runtime behavior
-- [Execution Lifecycle](../workers/execution-lifecycle.md) - Startup/shutdown coordination
-- [Database Readiness](../workers/database-readiness.md) - Dependency coordination
+- [Perspective Worker](../../operations/workers/perspective-worker.md) - Checkpoint processing lifecycle and runtime behavior
+- [Execution Lifecycle](../../operations/workers/execution-lifecycle.md) - Startup/shutdown coordination
+- [Database Readiness](../../operations/workers/database-readiness.md) - Dependency coordination
 
 ---
 

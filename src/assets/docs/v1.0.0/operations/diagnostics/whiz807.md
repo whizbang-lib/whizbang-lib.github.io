@@ -128,6 +128,6 @@ Or per-file:
 
 ## See Also
 
-- [Physical Fields](../perspectives/physical-fields.md) - Physical field documentation
-- [Vector Search](../features/vector-search.md) - Vector field usage
-- [Perspective Storage](../perspectives/storage.md) - Storage mode options
+- [Physical Fields](../../fundamentals/perspectives/physical-fields.md) - Physical field documentation
+- [Vector Search](../../extending/features/vector-search.md) - Vector field usage
+- [Perspective Storage](../../fundamentals/perspectives/storage.md) - Storage mode options

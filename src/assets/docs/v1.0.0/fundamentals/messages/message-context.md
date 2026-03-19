@@ -609,7 +609,7 @@ public class HttpClientWithCorrelation {
 - [Message Envelopes](../messaging/message-envelopes.md) - Hop-based observability
 
 **Infrastructure**:
-- [Logging & Telemetry](../infrastructure/observability-setup.md) - Application Insights integration
+- [Logging & Telemetry](../../operations/observability/observability-setup.md) - Application Insights integration
 
 ---
 

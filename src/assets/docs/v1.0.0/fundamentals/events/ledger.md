@@ -406,7 +406,7 @@ public interface IEventStore : ILedger {
 - [Receptors](receptors.md) - Where events come from
 - [Dispatcher](dispatcher.md) - How events reach the ledger
 - [Perspectives](perspectives.md) - How events update views
-- [Testing](../testing/foundation.md) - Testing with the ledger
+- [Testing](../../operations/testing/foundation.md) - Testing with the ledger
 - [Feature Evolution](../../roadmap/FEATURE-EVOLUTION.md) - How the ledger evolves
 
 ## Next Steps

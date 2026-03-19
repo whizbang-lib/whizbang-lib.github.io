@@ -1189,8 +1189,8 @@ ORDER BY service_name;
 - [Database Readiness](database-readiness.md) - Database dependency checks
 
 **Core Concepts**:
-- [Perspectives](../components/perspectives.md) - What perspectives are
-- [Perspective Discovery](../source-generators/perspective-discovery.md) - Compile-time discovery
+- [Perspectives](../../fundamentals/perspectives/perspectives.md) - What perspectives are
+- [Perspective Discovery](../../extending/source-generators/perspective-discovery.md) - Compile-time discovery
 
 **Messaging**:
 - [Work Coordinator](../messaging/work-coordinator.md) - Atomic batch processing
@@ -1201,7 +1201,7 @@ ORDER BY service_name;
 - [Perspectives Storage](../data/perspectives-storage.md) - Read model schema design
 
 **Extensibility**:
-- [Custom Perspectives](../extensibility/custom-perspectives.md) - Advanced perspective patterns
+- [Custom Perspectives](../../extending/extensibility/custom-perspectives.md) - Advanced perspective patterns
 
 ---
 

@@ -881,7 +881,7 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 - [Database Readiness](database-readiness.md) - Startup dependency coordination
 
 **Core Concepts**:
-- [Dispatcher](../components/dispatcher.md) - Message routing and execution
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Message routing and execution
 
 **Messaging**:
 - [Work Coordinator](../messaging/work-coordinator.md) - Atomic batch processing

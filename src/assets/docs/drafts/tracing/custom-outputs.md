@@ -283,7 +283,7 @@ All registered outputs receive trace events simultaneously.
 ## Further Reading
 
 - [Tracing Configuration](configuration.md) - Enable/disable outputs
-- [Trace Verbosity](verbosity-levels.md) - Control detail level
+- [Trace Verbosity](../operations/observability/verbosity-levels.md) - Control detail level
 - [Aspire Integration](aspire-integration.md) - View traces in Aspire dashboard
 
 ---

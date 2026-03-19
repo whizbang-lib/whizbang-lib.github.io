@@ -304,13 +304,13 @@ See [ECommerce Tutorial](../examples/ecommerce/overview.md) for complete walkthr
 1. [Installation](installation.md) - Set up your first project
 2. [Quick Start](quick-start.md) - Hello World with Receptors + Dispatcher
 3. [Project Structure](project-structure.md) - Organize your application
-4. [Core Concepts: Receptors](../core-concepts/receptors.md) - Understand message handling
-5. [Core Concepts: Dispatcher](../core-concepts/dispatcher.md) - Master message routing
+4. [Core Concepts: Receptors](../fundamentals/receptors/receptors.md) - Understand message handling
+5. [Core Concepts: Dispatcher](../fundamentals/dispatcher/dispatcher.md) - Master message routing
 
 ### Intermediate
 
-6. [Perspectives](../core-concepts/perspectives.md) - Build read models
-7. [Lenses](../core-concepts/lenses.md) - Query optimization
+6. [Perspectives](../fundamentals/perspectives/perspectives.md) - Build read models
+7. [Lenses](../fundamentals/lenses/lenses.md) - Query optimization
 8. [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable messaging
 9. [Inbox Pattern](../messaging/inbox-pattern.md) - Exactly-once processing
 10. [ECommerce Sample](../examples/ecommerce/overview.md) - Production patterns
@@ -318,7 +318,7 @@ See [ECommerce Tutorial](../examples/ecommerce/overview.md) for complete walkthr
 ### Advanced
 
 11. [Source Generators](../generators/receptor-discovery.md) - Understand code generation
-12. [Extensibility](../extensibility/overview.md) - Custom implementations
+12. [Extensibility](../extending/extensibility/overview.md) - Custom implementations
 13. [Performance Tuning](../performance/pooling-strategies.md) - Optimize for scale
 14. [Deployment](../deployment/aspire-production.md) - Production deployment
 

@@ -311,6 +311,6 @@ Benefits:
 
 - [GenerateStreamId Attribute](./generatestreamid) - Auto-generate StreamIds at dispatch time
 - [StreamKey Attribute](./streamkey) - Event ordering for perspectives
-- [Event Sourcing](../core-concepts/event-sourcing) - Understanding aggregates and streams
+- [Event Sourcing](../../fundamentals/events/event-sourcing) - Understanding aggregates and streams
 - [Source Generators](../source-generators/overview) - How generators create extraction methods
-- [AOT Compatibility](../advanced-topics/aot-compatibility) - Native AOT requirements
+- [AOT Compatibility](../../operations/deployment/aot-compatibility) - Native AOT requirements

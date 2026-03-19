@@ -109,5 +109,5 @@ TrackedGuid interception provides:
 
 ## See Also
 
-- [WhizbangIds](../core-concepts/whizbang-ids.md) - TrackedGuid and strongly-typed IDs
-- [TrackedGuid Interception](../core-concepts/whizbang-ids.md#trackedguid-interception-opt-in) - Full interception documentation
+- [WhizbangIds](../../fundamentals/identity/whizbang-ids.md) - TrackedGuid and strongly-typed IDs
+- [TrackedGuid Interception](../../fundamentals/identity/whizbang-ids.md#trackedguid-interception-opt-in) - Full interception documentation

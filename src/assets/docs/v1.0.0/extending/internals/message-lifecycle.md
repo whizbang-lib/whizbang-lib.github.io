@@ -696,9 +696,9 @@ $$ LANGUAGE plpgsql;
 ## Further Reading
 
 **Core Concepts**:
-- [Dispatcher Deep Dive](../core-concepts/dispatcher.md) - Three dispatch patterns
-- [Receptors Guide](../core-concepts/receptors.md) - Message handlers and business logic
-- [Perspectives Guide](../core-concepts/perspectives.md) - Event listeners for read models
+- [Dispatcher Deep Dive](../../fundamentals/dispatcher/dispatcher.md) - Three dispatch patterns
+- [Receptors Guide](../../fundamentals/receptors/receptors.md) - Message handlers and business logic
+- [Perspectives Guide](../../fundamentals/perspectives/perspectives.md) - Event listeners for read models
 
 **Messaging Patterns**:
 - [Work Coordinator](../messaging/work-coordinator.md) - Atomic batch processing
@@ -706,7 +706,7 @@ $$ LANGUAGE plpgsql;
 - [Inbox Pattern](../messaging/inbox-pattern.md) - Exactly-once processing
 
 **Components**:
-- [Ordered Stream Processor](../components/ordered-stream-processor.md) - Stream-based ordering guarantees
+- [Ordered Stream Processor](../../operations/workers/ordered-stream-processor.md) - Stream-based ordering guarantees
 
 **Examples**:
 - [ECommerce: Order Service](../examples/ecommerce/order-service.md) - Real-world implementation

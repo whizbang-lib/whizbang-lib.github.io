@@ -667,7 +667,7 @@ public class CachedPostgresHealthCheck : PostgresHealthCheck {
 - [Policies](policies.md) - Policy-based routing and decisions
 
 **Transports**:
-- [Azure Service Bus Transport](../transports/azure-service-bus.md) - Transport health checks
+- [Azure Service Bus Transport](../../messaging/transports/azure-service-bus.md) - Transport health checks
 
 **Data Access**:
 - [Dapper + PostgreSQL](../data/dapper-postgres.md) - Database health checks

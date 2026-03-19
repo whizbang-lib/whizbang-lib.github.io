@@ -456,14 +456,14 @@ var streamKey = AggregateIdExtractors.ExtractAggregateId(@event, @event.GetType(
 - [JSON Contexts](json-contexts.md) - AOT-compatible JSON serialization
 
 **Core Concepts**:
-- [Message Context](../core-concepts/message-context.md) - MessageId, CorrelationId, CausationId
-- [Observability](../core-concepts/observability.md) - Distributed tracing with hops
+- [Message Context](../../fundamentals/messages/message-context.md) - MessageId, CorrelationId, CausationId
+- [Observability](../../fundamentals/persistence/observability.md) - Distributed tracing with hops
 
 **Data Access**:
 - [Event Store](../data/event-store.md) - Event sourcing and stream storage
 
 **Infrastructure**:
-- [Policies](../infrastructure/policies.md) - Policy-based routing and decisions
+- [Policies](../../operations/infrastructure/policies.md) - Policy-based routing and decisions
 
 ---
 

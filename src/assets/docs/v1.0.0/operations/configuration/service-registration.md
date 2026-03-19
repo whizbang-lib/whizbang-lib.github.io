@@ -116,5 +116,5 @@ public static class ServiceRegistrationExtensions {
 - [AddPerspectiveServices](perspective-services) - Register Perspective services
 - [AddLensServices](lens-services) - Register Lens services
 - [AddAllWhizbangServices](all-services) - Register all Whizbang services
-- [Perspectives](../components/perspectives) - What Perspectives are
-- [Lenses](../core-concepts/lenses) - What Lenses are
+- [Perspectives](../../fundamentals/perspectives/perspectives) - What Perspectives are
+- [Lenses](../../fundamentals/lenses/lenses) - What Lenses are

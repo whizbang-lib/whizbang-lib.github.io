@@ -299,7 +299,7 @@ Changes take effect immediately without restart.
 ## Further Reading
 
 - [Trace Components](components.md) - Filter which components generate traces
-- [Trace Attributes](attributes.md) - `[TraceHandler]` and `[TraceMessage]` usage
+- [Trace Attributes](../operations/observability/tracing-attributes.md) - `[TraceHandler]` and `[TraceMessage]` usage
 - [Tracing Configuration](configuration.md) - Full configuration options
 - [Custom Trace Outputs](custom-outputs.md) - Implement `ITraceOutput` for custom destinations
 

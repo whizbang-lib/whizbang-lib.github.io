@@ -18,7 +18,7 @@ codeReferences:
 **Custom receptors** extend the basic `IReceptor<TMessage, TResponse>` pattern with advanced capabilities like streaming, lifecycle management, custom base classes, and specialized execution patterns.
 
 :::note
-For basic receptor usage, see [Receptors Guide](../core-concepts/receptors.md). This guide focuses on **advanced customization patterns** for specialized scenarios.
+For basic receptor usage, see [Receptors Guide](../../fundamentals/receptors/receptors.md). This guide focuses on **advanced customization patterns** for specialized scenarios.
 :::
 
 ---
@@ -981,8 +981,8 @@ public class StreamingReceptorTests {
 ## Further Reading
 
 **Core Concepts**:
-- [Receptors Guide](../core-concepts/receptors.md) - Basic receptor usage
-- [Dispatcher](../core-concepts/dispatcher.md) - Invoking receptors
+- [Receptors Guide](../../fundamentals/receptors/receptors.md) - Basic receptor usage
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Invoking receptors
 - [Pipeline Behaviors](hooks-and-middleware.md) - Cross-cutting concerns
 
 **Extensibility**:

@@ -375,10 +375,10 @@ public class GetProductReceptor : IReceptor<GetProduct, ProductDto> {
 
 ## See Also
 
-- [Commands](../core-concepts/commands.md) - Command fundamentals
-- [Dispatcher](../core-concepts/dispatcher.md) - Message routing
-- [Receptors](../core-concepts/receptors.md) - Command handlers
-- [Auto-Cascade](../core-concepts/dispatcher.md#automatic-event-cascade) - Tuple return pattern
+- [Commands](../fundamentals/messages/commands.md) - Command fundamentals
+- [Dispatcher](../fundamentals/dispatcher/dispatcher.md) - Message routing
+- [Receptors](../fundamentals/receptors/receptors.md) - Command handlers
+- [Auto-Cascade](../fundamentals/dispatcher/dispatcher.md#automatic-event-cascade) - Tuple return pattern
 
 ---
 

@@ -134,5 +134,5 @@ Or in your `.csproj`:
 
 ## See Also
 
-- [AOT Compatibility](../core-concepts/aot-compatibility.md) - AOT design principles
-- [Messages](../core-concepts/messages.md) - ICommand and IEvent documentation
+- [AOT Compatibility](../deployment/aot-compatibility.md) - AOT design principles
+- [Messages](../../fundamentals/messages/messages.md) - ICommand and IEvent documentation

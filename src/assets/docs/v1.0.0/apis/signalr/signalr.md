@@ -157,6 +157,6 @@ await connection.InvokeAsync("JoinGroup", $"customer-{customerId}");
 
 ## Related Documentation
 
-- [Notification Hooks](../signalr/notification-hooks.md) - Tag-based SignalR notifications
-- [JSON Serialization](../core-concepts/json-serialization.md) - AOT-compatible serialization
-- [Message Tags](../core-concepts/message-tags.md) - Tag-based processing hooks
+- [Notification Hooks](./notification-hooks.md) - Tag-based SignalR notifications
+- [JSON Serialization](../../fundamentals/messages/json-serialization.md) - AOT-compatible serialization
+- [Message Tags](../../fundamentals/messages/message-tags.md) - Tag-based processing hooks
