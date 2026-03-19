@@ -8,16 +8,27 @@ const out = [];
 // Map kebab-case folder names to display names
 const FOLDER_DISPLAY_NAMES = {
   'advanced': 'Advanced',
+  'apis': 'APIs & Integrations',
   'architecture-design': 'Architecture & Design',
   'commands': 'Commands',
   'contributors': 'Contributors',
   'core-concepts': 'Core Concepts',
+  'data': 'Data',
+  'deployment': 'Deployment & Scaling',
   'design': 'Design',
   'examples': 'Examples',
+  'extending': 'Extending Whizbang',
+  'extensibility': 'Extensibility',
+  'fundamentals': 'Fundamentals',
   'getting-started': 'Getting Started',
+  'identity': 'Identity & Types',
+  'learn': 'Learn',
+  'messaging': 'Messaging',
   'observability': 'Observability',
+  'operations': 'Operations & Configuration',
   'projections': 'Projections',
-  'roadmap': 'Roadmap'
+  'roadmap': 'Roadmap',
+  'source-generators': 'Source Generators'
 };
 
 async function processDirectory(dir, relativeDir = '') {
