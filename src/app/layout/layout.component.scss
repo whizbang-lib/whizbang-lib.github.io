@@ -3,7 +3,7 @@
     top: 0;
     left: 0;
     right: 0;
-    z-index: 1000;
+    z-index: 10000;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     
     // Force solid background in light mode
@@ -17,6 +17,11 @@
     color: #fff;
     border: none !important;
     border-radius: 0 !important;
+}
+
+.brand-accent-line {
+    height: 2px;
+    background: linear-gradient(90deg, #ff7c00, #ff0066, #7b3ff8);
 }
 
 // Ensure toolbar has solid background in light mode

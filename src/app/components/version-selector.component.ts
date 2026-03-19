@@ -30,7 +30,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
       </button>
       
       <!-- Version Selection Panel -->
-      <p-popover #versionPanel styleClass="version-selector-panel">
+      <p-popover #versionPanel styleClass="version-selector-panel" [baseZIndex]="10001">
         <div class="version-options">
           <h6>Documentation Version</h6>
           

@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit, computed, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { DividerModule } from 'primeng/divider';
 import { TooltipModule } from 'primeng/tooltip';
@@ -14,6 +15,15 @@ import { VersionService } from '../services/version.service';
 import { MenuItem as PrimeMenuItem } from 'primeng/api';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
+
+interface NavTreeNode {
+  name: string;
+  title: string;
+  order: number;
+  icon?: string;
+  pages: { slug: string; title: string; order: number }[];
+  children: NavTreeNode[];
+}
 
 @Component({
   selector: 'wb-hamburger-menu',
@@ -145,11 +155,11 @@ import { filter } from 'rxjs/operators';
       width: 280px;
       height: 100vh;
       background: var(--wb-surface-ground);
-      border-right: 1px solid var(--wb-surface-border);
-      box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+      border-right: none;
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
       transform: translateX(-100%);
       transition: transform 0.3s ease;
-      z-index: 1000;
+      z-index: 10000;
       display: flex;
       flex-direction: column;
       color: var(--wb-text-primary);
@@ -795,20 +805,20 @@ import { filter } from 'rxjs/operators';
     :host ::ng-deep .unified-nav-menu .active-menu-item .p-panelmenu-header-link,
     :host ::ng-deep .unified-nav-menu .active-menu-item .p-menuitem-link,
     :host ::ng-deep .unified-nav-menu .active-menu-item .p-panelmenu-item-link {
-      color: #10b981 !important;
+      color: var(--brand-orange, #ff7c00) !important;
       font-weight: 600 !important;
     }
 
     :host ::ng-deep .unified-nav-menu .active-menu-item .p-panelmenu-header-link .p-panelmenu-header-label,
     :host ::ng-deep .unified-nav-menu .active-menu-item .p-menuitem-link .p-menuitem-text,
     :host ::ng-deep .unified-nav-menu .active-menu-item .p-panelmenu-item-link {
-      color: #10b981 !important;
+      color: var(--brand-orange, #ff7c00) !important;
       font-weight: 600 !important;
     }
 
     /* Active item icons should be green and more prominent */
     :host ::ng-deep .unified-nav-menu .active-menu-item .p-menuitem-icon {
-      color: #10b981 !important;
+      color: var(--brand-orange, #ff7c00) !important;
       font-weight: bold !important;
     }
 
@@ -816,7 +826,7 @@ import { filter } from 'rxjs/operators';
     :host ::ng-deep .unified-nav-menu .active-menu-item .p-panelmenu-header-link:hover,
     :host ::ng-deep .unified-nav-menu .active-menu-item .p-menuitem-link:hover,
     :host ::ng-deep .unified-nav-menu .active-menu-item .p-panelmenu-item-link:hover {
-      color: #059669 !important;
+      color: var(--brand-pink, #ff0066) !important;
     }
 
     /* LIGHT MODE HOVER - DARKER COLOR FOR VISIBILITY */
@@ -946,18 +956,20 @@ import { filter } from 'rxjs/operators';
 export class HamburgerMenuComponent implements OnInit, OnDestroy {
   
   private router = inject(Router);
+  private http = inject(HttpClient);
   private docsMenuService = inject(EnvironmentAwareDocsService);
   private versionAwareNavService = inject(VersionAwareNavigationService);
   private versionService = inject(VersionService);
   protected themeService = inject(ThemeService);
   private userPreferencesService = inject(UserPreferencesService);
-  
+
   private routerSubscription?: Subscription;
-  
+
   // Use preferences service for menu visibility
   menuVisible = this.userPreferencesService.sidebarOpen;
   docsMenuItems = signal<MenuItem[]>([]);
   versionAwareMenuItems = signal<VersionAwareMenuItem[]>([]);
+  navTree = signal<Record<string, NavTreeNode[]>>({});
   currentUrl = signal<string>('');
 
   constructor() {
@@ -1102,9 +1114,9 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
 
     // Add documentation with version selector at the top
     // ALWAYS show documentation section, even if no content
-    const currentVersionDocs = this.getCurrentVersionFilteredDocs();
+    const treeDocsItems = this.getCurrentVersionFilteredDocs();
     const docsSubItems: CustomMenuItem[] = [];
-    
+
     // Add version selector as the FIRST item in documentation
     docsSubItems.push({
       label: 'Version',
@@ -1113,10 +1125,10 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
       styleClass: 'version-selector-item',
       lightMode: this.themeService.isLightTheme(),
     });
-    
-    // Add the filtered documentation items (if any)
-    if (currentVersionDocs.length > 0) {
-      docsSubItems.push(...this.convertToCustomMenuItems(currentVersionDocs));
+
+    // Add the tree-based documentation items (if any)
+    if (treeDocsItems.length > 0) {
+      docsSubItems.push(...treeDocsItems);
     } else {
       // Add a placeholder when no content is available
       docsSubItems.push({
@@ -1126,7 +1138,7 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
         lightMode: this.themeService.isLightTheme(),
       });
     }
-    
+
     const docsItem: CustomMenuItem = {
       label: 'Documentation',
       icon: 'pi pi-book',
@@ -1278,6 +1290,12 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
       this.docsMenuItems.set(menuItems);
     });
 
+    // Load nav tree
+    this.http.get<Record<string, NavTreeNode[]>>('assets/docs-nav-tree.json').subscribe({
+      next: (tree) => this.navTree.set(tree),
+      error: (err) => console.warn('Failed to load docs-nav-tree.json:', err)
+    });
+
     // Initialize version-aware navigation menu items (with error handling)
     try {
       this.versionAwareNavService.generateCurrentVersionMenuItems((slug: string) => {
@@ -1300,76 +1318,93 @@ export class HamburgerMenuComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get current version filtered documentation items using version-aware navigation
+   * Get current version documentation items from the nav tree
    */
-  private getCurrentVersionFilteredDocs(): MenuItem[] {
-    const currentUrl = this.currentUrl();
+  private getCurrentVersionFilteredDocs(): CustomMenuItem[] {
     const currentVersion = this.versionService.currentVersion();
-    
-    // Get version-specific docs from VersionService
-    const versionDocs = this.versionService.getCurrentVersionDocs();
-    
-    // Convert DocMeta to MenuItem format
-    const convertedDocs = this.convertDocMetaToMenuItem(versionDocs);
-    
-    // Add Overview item at the beginning if there are docs
-    if (convertedDocs.length > 0) {
-      const overviewItem: MenuItem = {
-        label: 'Overview',
-        slug: currentVersion
-      };
-      
-      // Insert Overview at the beginning
-      return [overviewItem, ...convertedDocs];
+    const tree = this.navTree();
+    const nodes = tree[currentVersion];
+
+    if (!nodes || nodes.length === 0) {
+      return [];
     }
-    
-    return convertedDocs;
+
+    return this.convertTreeToMenuItems(nodes);
   }
 
   /**
-   * Convert DocMeta objects to MenuItem format for navigation
+   * Convert nav tree nodes to CustomMenuItem format for navigation
    */
-  private convertDocMetaToMenuItem(docs: any[]): MenuItem[] {
-    const menuItems: MenuItem[] = [];
-    const categories = new Map<string, MenuItem[]>();
+  private convertTreeToMenuItems(nodes: NavTreeNode[]): CustomMenuItem[] {
+    const items: CustomMenuItem[] = [];
 
-    docs.forEach(doc => {
-      const menuItem: MenuItem = {
-        label: doc.title,
-        slug: doc.slug
-      };
-
-      if (doc.category) {
-        if (!categories.has(doc.category)) {
-          categories.set(doc.category, []);
+    for (const node of nodes) {
+      // Special _root node: add its pages directly as top-level items
+      if (node.name === '_root') {
+        for (const page of node.pages) {
+          items.push({
+            label: page.title,
+            command: () => {
+              const urlParts = ['docs', ...page.slug.split('/').filter((p: string) => p)];
+              this.router.navigate(urlParts);
+            },
+            styleClass: this.isActiveDocsRoute(page.slug) ? 'active' : '',
+            lightMode: this.themeService.isLightTheme(),
+          });
         }
-        categories.get(doc.category)!.push(menuItem);
-      } else {
-        menuItems.push(menuItem);
+        continue;
       }
-    });
 
-    // Sort items within categories by order
-    categories.forEach(items => {
-      items.sort((a, b) => {
-        const docA = docs.find(d => d.slug === a.slug);
-        const docB = docs.find(d => d.slug === b.slug);
-        return (docA?.order || 999) - (docB?.order || 999);
-      });
-    });
+      // Folder node: create expandable item
+      const childItems: CustomMenuItem[] = [];
 
-    // Add categorized items to menu (sorted by category name)
-    const sortedCategories = Array.from(categories.keys()).sort();
-    sortedCategories.forEach(categoryName => {
-      const categoryItem: MenuItem = {
-        label: categoryName,
-        slug: '',
-        items: categories.get(categoryName)
+      // Add pages as leaf items
+      for (const page of node.pages) {
+        childItems.push({
+          label: page.title,
+          command: () => {
+            const urlParts = ['docs', ...page.slug.split('/').filter((p: string) => p)];
+            this.router.navigate(urlParts);
+          },
+          styleClass: this.isActiveDocsRoute(page.slug) ? 'active' : '',
+          lightMode: this.themeService.isLightTheme(),
+        });
+      }
+
+      // Add child folders recursively
+      if (node.children.length > 0) {
+        childItems.push(...this.convertTreeToMenuItems(node.children));
+      }
+
+      const folderItem: CustomMenuItem = {
+        label: node.title,
+        icon: node.icon ? `pi ${node.icon}` : undefined,
+        items: childItems,
+        expanded: this.hasActiveChildInTree(node),
+        lightMode: this.themeService.isLightTheme(),
       };
-      menuItems.push(categoryItem);
-    });
 
-    return menuItems;
+      items.push(folderItem);
+    }
+
+    return items;
+  }
+
+  /**
+   * Check if any page in a tree node or its descendants is active
+   */
+  private hasActiveChildInTree(node: NavTreeNode): boolean {
+    for (const page of node.pages) {
+      if (this.isActiveDocsRoute(page.slug)) {
+        return true;
+      }
+    }
+    for (const child of node.children) {
+      if (this.hasActiveChildInTree(child)) {
+        return true;
+      }
+    }
+    return false;
   }
 
 

@@ -1317,3 +1317,8 @@ mark.search-highlight {
     color: #6b7280 !important;
   }
 }
+
+// Ensure PrimeNG tooltips render above the sidebar (z-index: 10000)
+.p-tooltip {
+  z-index: 10002 !important;
+}

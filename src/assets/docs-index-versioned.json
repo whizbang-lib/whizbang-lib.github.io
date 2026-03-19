@@ -108,6 +108,15 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/attributes/generatestreamid",
+        "title": "GenerateStreamId Attribute",
+        "category": "Attributes",
+        "order": 3,
+        "description": "Marks an event type or property for automatic StreamId generation at dispatch time, replacing the blunt AutoGenerateStreamIds option with per-event-type control",
+        "tags": "attributes, streamid, event-sourcing, source-generator, auto-generation",
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/attributes/streamid",
         "title": "StreamId Attribute",
         "category": "Attributes",
@@ -546,6 +555,15 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/core-concepts/scope-propagation",
+        "title": "Scope Propagation",
+        "category": "Core Concepts",
+        "order": 8,
+        "description": "Delta-based scope propagation across message hops with explicit tenant strategy enforcement for system and impersonation operations.",
+        "tags": "security, scope, tenant, multi-tenancy, system-operations, impersonation, delta, wire-format",
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/core-concepts/scoped-lenses",
         "title": "Scoped Lenses",
         "category": "Core Concepts",
@@ -749,6 +767,15 @@
         "category": "data",
         "order": 999,
         "description": "",
+        "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/data/work-coordinator-strategies",
+        "title": "Work Coordinator Strategies",
+        "category": "data",
+        "order": 999,
+        "description": "# Work Coordinator Strategies\n\nThe work coordinator uses a **strategy pattern** to control when and how messages are flushed from in-memory queues to the database via `process_work_batch`. Each strategy makes different trade-offs between latency, throughput, and database load.\n\n## Strategy Overview\n\n| Strategy | Flush Trigger | Lifetime | Best For |\n|",
         "tags": [],
         "version": "v1.0.0"
       },
@@ -1261,6 +1288,15 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/infrastructure/migrations",
+        "title": "Migration Tracking",
+        "category": "Infrastructure",
+        "order": 5,
+        "description": "Hash-based migration tracking with per-perspective change detection, blue-green table swaps, preview/rollback, and version auditing",
+        "tags": "migrations, schema, hash-tracking, blue-green, rollback, preview, database, ddl, perspective-tracking",
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/infrastructure/policies",
         "title": "Policy-Based Routing",
         "category": "Infrastructure",
@@ -1558,6 +1594,15 @@
         "version": "v1.0.0"
       },
       {
+        "slug": "v1.0.0/observability/logging-categories",
+        "title": "Logging Categories",
+        "category": "Observability",
+        "order": 4,
+        "description": "Configure log levels for Whizbang's internal logging categories to control console output verbosity in development and production environments",
+        "tags": "logging, log levels, categories, appsettings, observability, configuration, ILogger",
+        "version": "v1.0.0"
+      },
+      {
         "slug": "v1.0.0/observability/opentelemetry-integration",
         "title": "OpenTelemetry Integration",
         "category": "Observability",
@@ -1609,6 +1654,15 @@
         "order": 999,
         "description": "\n# Polymorphic Types in Perspectives\n\nWhen your perspective models contain polymorphic types (abstract classes or types with `[JsonPolymorphic]`), Whizbang provides tools to enable efficient database queries without parsing JSON at query time.\n\n## Overview\n\nPolymorphic types in JSONB can be challenging to query efficiently. Whizbang's analyzer detects these patterns and suggests using discriminator columns for optimized queries.\n\n| Approach | Query Performance | Type Safety | Maintenance |\n|",
         "tags": [],
+        "version": "v1.0.0"
+      },
+      {
+        "slug": "v1.0.0/perspectives/rebuild",
+        "title": "Perspective Rebuild",
+        "category": "Perspectives",
+        "order": 10,
+        "description": "Rebuild perspective read models using blue-green, in-place, or stream-level replay modes with progress tracking and cancellation",
+        "tags": "perspectives, rebuild, blue-green, event-replay, migration, read-models, operational",
         "version": "v1.0.0"
       },
       {
@@ -1946,6 +2000,15 @@
     },
     "docs": [
       {
+        "slug": "drafts/attributes/auto-populate",
+        "title": "Auto-Populate Attributes",
+        "category": "Attributes",
+        "order": 10,
+        "description": "Marker attributes that automatically populate message properties from envelope context including timestamps, security, service info, and identifiers",
+        "tags": "attributes, auto-populate, timestamps, security, context, source-generator, aot",
+        "version": "drafts"
+      },
+      {
         "slug": "drafts/attributes/must-exist",
         "title": "MustExist Attribute",
         "category": "Attributes",
@@ -1958,6 +2021,15 @@
           "validation",
           "source-generator"
         ],
+        "version": "drafts"
+      },
+      {
+        "slug": "drafts/core-concepts/cascade-context",
+        "title": "Cascade Context",
+        "category": "Core Concepts",
+        "order": 6,
+        "description": "Unified context propagation for CorrelationId, CausationId, and SecurityContext across message flows - ensuring consistent tracing and security in cascade scenarios",
+        "tags": "cascade-context, security-context, correlation, causation, context-propagation, initiating-context",
         "version": "drafts"
       },
       {

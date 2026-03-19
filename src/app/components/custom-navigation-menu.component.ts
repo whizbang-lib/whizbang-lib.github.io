@@ -20,7 +20,7 @@ export interface CustomMenuItem {
   standalone: true,
   imports: [CommonModule, VersionSelectorComponent],
   template: `
-    <ul class="custom-nav-menu" [class.deep-level]="nestingLevel >= 2">
+    <ul class="custom-nav-menu" [class.nested-level]="nestingLevel >= 2" [attr.data-level]="nestingLevel">
       <li *ngFor="let item of menuItems" class="nav-item">
         <!-- Version Selector Item -->
         <div *ngIf="item.isVersionSelector" class="version-selector-item">
@@ -32,16 +32,17 @@ export interface CustomMenuItem {
             <wb-version-selector></wb-version-selector>
           </div>
         </div>
-        
+
         <!-- Regular Menu Item -->
         <div *ngIf="!item.isVersionSelector"
           class="nav-item-content"
           [class.top-level]="nestingLevel === 0"
           [class.second-level]="nestingLevel === 1"
-          [class.deep-level]="nestingLevel >= 2"
+          [class.third-level]="nestingLevel === 2"
+          [class.deep-level]="nestingLevel >= 3"
           [class.has-children]="item.items && item.items.length > 0"
           [class.active]="item.styleClass?.includes('active')"
-          [class.has-active-child]="nestingLevel === 1 && hasActiveChild(item)"
+          [class.has-active-child]="hasActiveChild(item)"
           (click)="handleItemClick(item)">
           
           <!-- Left: Icon -->
@@ -85,115 +86,276 @@ export interface CustomMenuItem {
       justify-content: space-between;
       padding: 0.75rem 1rem;
       cursor: pointer;
-      transition: all 0.2s;
-      border-radius: 0;
-      margin: 0.25rem 0;
+      transition: all 0.2s ease;
+      border-radius: 0.375rem;
+      margin: 0.125rem 0.5rem;
     }
 
-    /* Top-level items - bold and background */
+    /* ── Top-level items ── */
     .nav-item-content.top-level {
-      font-weight: 700;
-      background: var(--wb-surface-section);
+      font-weight: 600;
+      font-size: 0.9rem;
+      background: transparent;
+      padding: 0.625rem 0.75rem;
+      margin: 0.125rem 0.5rem;
+      border-left: 2px solid transparent;
     }
 
     .nav-item-content.top-level:hover {
-      background: rgba(0, 0, 0, 0.1);
-      border-radius: 0.375rem;
+      background: rgba(255, 124, 0, 0.06);
+      border-left-color: rgba(255, 124, 0, 0.3);
     }
 
+    .nav-item-content.top-level.has-children {
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: var(--wb-text-secondary);
+      padding: 0.75rem 0.75rem 0.5rem;
+      margin-top: 0.75rem;
+      border-left: none;
+      border-radius: 0;
+    }
 
+    .nav-item-content.top-level.has-children:first-child {
+      margin-top: 0.25rem;
+    }
 
-    /* Second-level items - normal weight, transparent button */
+    .nav-item-content.top-level.has-children:hover {
+      background: transparent;
+      border-left: none;
+    }
+
+    .nav-item-content.top-level.has-children .nav-label {
+      color: var(--wb-text-secondary);
+    }
+
+    .nav-item-content.top-level.has-children .nav-arrow {
+      font-size: 0.7rem;
+    }
+
+    /* ── Second-level items (folder contents) ── */
     .nav-item-content.second-level {
       font-weight: 400;
+      font-size: 0.875rem;
       background: transparent;
-      padding: 0.5rem 1rem;
-      margin: 0.125rem 0;
+      padding: 0.5rem 0.75rem 0.5rem 1rem;
+      margin: 0.0625rem 0.5rem;
+      border-left: 2px solid transparent;
+      border-radius: 0.25rem;
     }
 
     .nav-item-content.second-level:hover {
-      background: rgba(0, 0, 0, 0.1);
+      background: rgba(255, 124, 0, 0.06);
+      border-left-color: rgba(255, 124, 0, 0.3);
     }
 
-    /* Full-width background for second-level items - different color */
-    .nav-item:has(.nav-item-content.second-level) {
-      background: var(--wb-surface-border);
-      margin: 0.125rem 0;
-      border-radius: 0.25rem;
+    /* Second-level folder headers (subfolders like Transports, Workers) */
+    .nav-item-content.second-level.has-children {
+      font-weight: 700;
+      font-size: 0.75rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.5rem;
+      border-left: 2px solid var(--brand-purple, #7b3ff8);
+      background: rgba(123, 63, 248, 0.05);
+      border-radius: 0 0.25rem 0.25rem 0;
     }
 
+    .nav-item-content.second-level.has-children .nav-label {
+      color: var(--wb-text-secondary);
+    }
 
+    .nav-item-content.second-level.has-children:hover {
+      border-left-color: var(--brand-orange, #ff7c00);
+      background: rgba(255, 124, 0, 0.06);
+    }
 
-    /* Highlight second-level items that have an active child - text only */
-    .nav-item-content.second-level.has-active-child .nav-label {
-      color: #10b981;
+    .nav-item-content.second-level.has-children .nav-arrow {
+      font-size: 0.625rem;
+    }
+
+    /* Submenu container for expanded second-level */
+    .nav-item:has(.nav-item-content.second-level) > .submenu-wrapper.expanded {
+      margin: 0 0 0.25rem 0;
+    }
+
+    /* ── Highlight items that have an active child ── */
+    .nav-item-content.has-active-child .nav-label {
+      color: var(--brand-orange, #ff7c00);
       font-weight: 600;
     }
 
-    /* Deep-level items (third level and beyond) - plain text in container */
-    .nav-item-content.deep-level {
+    .nav-item-content.has-active-child .nav-icon {
+      color: var(--brand-orange, #ff7c00);
+    }
+
+    .nav-item-content.top-level.has-children.has-active-child {
+      border-bottom: 1px solid rgba(255, 124, 0, 0.2);
+      padding-bottom: calc(0.5rem - 1px);
+    }
+
+    /* ── Third-level items (children of subfolders) ── */
+    .nav-item-content.third-level {
       font-weight: 400;
+      font-size: 0.8125rem;
       background: transparent;
       border: none;
-      padding: 0.5rem 0.25rem;
-      margin: 0.125rem 0;
+      padding: 0.4375rem 0.5rem 0.4375rem 0.75rem;
+      margin: 0.0625rem 0;
       border-radius: 0.25rem;
+      border-left: 2px solid transparent;
+    }
+
+    .nav-item-content.third-level:hover {
+      background: rgba(255, 124, 0, 0.06);
+      border-left-color: rgba(255, 124, 0, 0.3);
+    }
+
+    .nav-item-content.third-level.has-children {
+      font-weight: 700;
+      font-size: 0.6875rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      border-left: 2px solid rgba(255, 0, 102, 0.3);
+      background: rgba(255, 0, 102, 0.04);
+      border-radius: 0 0.25rem 0.25rem 0;
+      padding: 0.5rem 0.75rem;
+      margin-top: 0.375rem;
+    }
+
+    .nav-item-content.third-level.has-children .nav-label {
+      color: var(--wb-text-secondary);
+    }
+
+    .nav-item-content.third-level.has-children:hover {
+      border-left-color: var(--brand-pink, #ff0066);
+      background: rgba(255, 0, 102, 0.06);
+    }
+
+    /* ── Deep-level items (4th level+) ── */
+    .nav-item-content.deep-level {
+      font-weight: 400;
+      font-size: 0.8rem;
+      background: transparent;
+      border: none;
+      padding: 0.375rem 0.5rem 0.375rem 0.75rem;
+      margin: 0.0625rem 0;
+      border-radius: 0.25rem;
+      border-left: 2px solid transparent;
     }
 
     .nav-item-content.deep-level:hover {
-      background: rgba(0, 0, 0, 0.1);
+      background: rgba(255, 124, 0, 0.06);
+      border-left-color: rgba(255, 124, 0, 0.3);
     }
 
-    /* Container styling for deep-level menus */
-    .custom-nav-menu.deep-level {
-      background: var(--wb-surface-ground);
-      border: 1px solid var(--wb-surface-border);
-      border-radius: 0.375rem;
-      padding: 0.5rem;
-      margin: 0.25rem 0.5rem;
+    /* ── Nested containers — progressive indentation ── */
+    .custom-nav-menu.nested-level {
+      border-left: 2px solid rgba(123, 63, 248, 0.2);
+      border-radius: 0 0.375rem 0.375rem 0;
+      padding: 0.25rem 0.125rem;
+      margin: 0.125rem 0.25rem 0.375rem 1rem;
     }
 
+    /* Level 2 container (children of folders) */
+    .custom-nav-menu[data-level="2"] {
+      background: rgba(123, 63, 248, 0.04);
+      border-left-color: rgba(123, 63, 248, 0.2);
+    }
 
+    /* Level 3 container (grandchildren) */
+    .custom-nav-menu[data-level="3"] {
+      background: rgba(255, 0, 102, 0.03);
+      border-left-color: rgba(255, 0, 102, 0.2);
+    }
 
-    /* Icon on left */
+    /* Level 4+ container */
+    .custom-nav-menu[data-level="4"],
+    .custom-nav-menu[data-level="5"] {
+      background: rgba(255, 124, 0, 0.03);
+      border-left-color: rgba(255, 124, 0, 0.2);
+    }
+
+    :root:not([data-theme="dark"]) .custom-nav-menu.nested-level {
+      border-left-color: rgba(123, 63, 248, 0.12);
+    }
+
+    :root:not([data-theme="dark"]) .custom-nav-menu[data-level="2"] {
+      background: rgba(123, 63, 248, 0.03);
+    }
+
+    :root:not([data-theme="dark"]) .custom-nav-menu[data-level="3"] {
+      background: rgba(255, 0, 102, 0.025);
+    }
+
+    /* ── Icon on left ── */
     .nav-icon {
       color: var(--wb-text-secondary);
-      margin-right: 0.75rem;
-      font-size: 1rem;
+      margin-right: 0.625rem;
+      font-size: 0.9375rem;
       flex-shrink: 0;
     }
 
-    /* Text in middle, left-aligned */
+    /* ── Text in middle ── */
     .nav-label {
       flex: 1;
       text-align: left;
       color: var(--wb-text-primary);
+      line-height: 1.35;
     }
 
-    /* Arrow on right */
+    /* ── Arrow on right ── */
     .nav-arrow {
-      color: var(--wb-text-secondary);
-      font-size: 0.875rem;
+      color: var(--wb-text-primary);
+      font-size: 0.75rem;
       flex-shrink: 0;
-      margin-left: 0.75rem;
+      margin-left: 0.5rem;
+      opacity: 0.8;
+      transition: all 0.2s ease-in-out;
     }
 
-    /* Active item styling */
-    .nav-item-content.active .nav-label,
-    .nav-item-content.active .nav-icon,
-    .nav-item-content.active .nav-arrow {
-      color: #10b981 !important;
+    .nav-item-content:hover .nav-arrow {
+      opacity: 1;
+      color: var(--brand-orange, #ff7c00);
+    }
+
+    .nav-item-content.has-active-child .nav-arrow {
+      color: var(--brand-orange, #ff7c00);
+      opacity: 1;
+    }
+
+    /* ── Active item ── */
+    .nav-item-content.active {
+      background: rgba(255, 124, 0, 0.08);
+      border-left: 3px solid;
+      border-image: linear-gradient(180deg, #ff7c00, #ff0066, #7b3ff8) 1;
+    }
+
+    :root:not([data-theme="dark"]) .nav-item-content.active {
+      background: rgba(255, 124, 0, 0.06);
+    }
+
+    .nav-item-content.active .nav-label {
+      color: var(--brand-orange, #ff7c00) !important;
       font-weight: 600 !important;
     }
 
-    /* No indenting for sub-menus */
+    .nav-item-content.active .nav-icon,
+    .nav-item-content.active .nav-arrow {
+      color: var(--brand-orange, #ff7c00) !important;
+    }
+
+    /* ── No indenting for sub-menus ── */
     wb-custom-navigation-menu {
       display: block;
       padding-left: 0;
       margin-left: 0;
     }
 
-    /* Submenu animation wrapper - uses CSS Grid for proper height animation */
+    /* ── Submenu animation ── */
     .submenu-wrapper {
       display: grid;
       grid-template-rows: 0fr;
@@ -212,18 +374,17 @@ export interface CustomMenuItem {
 
     /* Arrow rotation animation */
     .nav-arrow {
-      transition: transform 0.2s ease-in-out;
+      transition: transform 0.2s ease-in-out, opacity 0.2s ease, color 0.2s ease;
     }
 
-    /* Rotate arrow when expanded */
     .nav-item-content:has(+ .submenu-wrapper.expanded) .nav-arrow.pi-chevron-right {
       transform: rotate(90deg);
     }
 
-    /* Version Selector Item Styling */
+    /* ── Version Selector ── */
     .version-selector-item {
-      padding: 0.75rem 1rem;
-      margin: 0.25rem 0;
+      padding: 0.5rem 0.75rem;
+      margin: 0.25rem 0.5rem;
       background: transparent;
       border-radius: 0.375rem;
       border: none;
@@ -242,26 +403,24 @@ export interface CustomMenuItem {
     }
 
     .version-selector-label {
-      font-size: 0.75rem;
-      font-weight: 600 !important;
+      font-size: 0.6875rem;
+      font-weight: 700 !important;
       text-transform: uppercase;
-      color: #9ca3af !important;
-      letter-spacing: 0.05em;
+      color: var(--wb-text-secondary) !important;
+      letter-spacing: 0.06em;
     }
 
     .version-selector-wrapper {
       padding: 0;
     }
-    
 
-    /* Override version selector styles for inline display */
     .version-selector-wrapper :host ::ng-deep .version-selector-btn {
       width: 100%;
       justify-content: space-between;
       font-size: 0.875rem;
     }
 
-    /* No content placeholder styling */
+    /* ── No content placeholder ── */
     .nav-item-content.no-content-placeholder {
       opacity: 0.6;
       font-style: italic;
