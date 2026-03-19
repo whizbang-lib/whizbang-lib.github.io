@@ -29,6 +29,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('slideWrapper') slideWrapper!: ElementRef<HTMLElement>;
   @ViewChild('crossfadeWrapper') crossfadeWrapper!: ElementRef<HTMLElement>;
   @ViewChild('starfield') starfield!: ElementRef<HTMLElement>;
+  @ViewChild('scrollIndicator') scrollIndicator!: ElementRef<HTMLElement>;
 
   private scrollHandler: (() => void) | null = null;
   private observer!: IntersectionObserver;
@@ -103,6 +104,57 @@ dotnet whiz replay OrderSummary`;
     return 1 - Math.pow(1 - t, 3);
   }
 
+  // --- Scroll-to-next ---
+
+  scrollToNextSection() {
+    const stopPoints: number[] = [];
+
+    // Helper: get the scrollY where a pinned section reaches a specific progress
+    const progressStop = (wrapper: ElementRef<HTMLElement> | undefined, progress: number) => {
+      if (!wrapper?.nativeElement) return;
+      const rect = wrapper.nativeElement.getBoundingClientRect();
+      const scrollDist = rect.height - (window.innerHeight - this.STICKY_TOP);
+      if (scrollDist <= 0) return;
+      const sectionTop = rect.top + window.scrollY - this.STICKY_TOP;
+      stopPoints.push(sectionTop + scrollDist * progress);
+    };
+
+    // Differentiators: each item at its peak (0.17, 0.5, 0.83)
+    progressStop(this.diffWrapper, 0.17);
+    progressStop(this.diffWrapper, 0.5);
+    progressStop(this.diffWrapper, 0.83);
+
+    // Code showcase: each code block fully revealed + scrolled into view
+    progressStop(this.codeWrapper, 0.12);  // headline + Commands & Events
+    progressStop(this.codeWrapper, 0.28);  // Receptor (Handler)
+    progressStop(this.codeWrapper, 0.52);  // Perspective (Projection)
+    progressStop(this.codeWrapper, 0.78);  // CLI Tools
+
+    // Capabilities: cards fully in view
+    const capSection = document.querySelector('.capabilities-section');
+    if (capSection) {
+      const capTop = capSection.getBoundingClientRect().top + window.scrollY - this.STICKY_TOP + 150;
+      stopPoints.push(capTop);
+    }
+
+    // Use cases visible, then roadmap visible
+    progressStop(this.slideWrapper, 0);
+    progressStop(this.slideWrapper, 1.0);
+
+    // IDE visible, then CTA visible
+    progressStop(this.crossfadeWrapper, 0.15);
+    progressStop(this.crossfadeWrapper, 0.7);
+
+    // Sort and find next stop
+    stopPoints.sort((a, b) => a - b);
+    const currentScroll = window.scrollY;
+    const nextStop = stopPoints.find((p) => p > currentScroll + 30);
+
+    if (nextStop !== undefined) {
+      window.scrollTo({ top: nextStop, behavior: 'smooth' });
+    }
+  }
+
   private getSectionProgress(wrapper: ElementRef<HTMLElement>): number {
     const rect = wrapper.nativeElement.getBoundingClientRect();
     const sectionHeight = window.innerHeight - this.STICKY_TOP;
@@ -147,11 +199,10 @@ dotnet whiz replay OrderSummary`;
     const sections = document.querySelectorAll('.pinned-section, .capabilities-section');
     const counts = [60, 30, 15];
     const sizes = [1, 1.5, 2.5];
-    const colors = [
-      'rgba(255,255,255,0.45)',
-      'rgba(255,255,255,0.65)',
-      'rgba(255,255,255,0.85)',
-    ];
+    const isDark = this.themeService.isDarkTheme();
+    const colors = isDark
+      ? ['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.65)', 'rgba(255,255,255,0.85)']
+      : ['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.12)', 'rgba(0,0,0,0.18)'];
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -185,13 +236,13 @@ dotnet whiz replay OrderSummary`;
   private setupRockets() {
     if (!this.starfield?.nativeElement) return;
     const container = this.starfield.nativeElement;
+    const isDark = this.themeService.isDarkTheme();
 
-    const trailColors = [
-      'rgba(255,255,255,0.7)',
-      'rgba(255,124,0,0.6)',
-      'rgba(255,0,102,0.5)',
-      'rgba(123,63,248,0.5)',
-    ];
+    const trailColors = isDark
+      ? ['rgba(255,255,255,0.7)', 'rgba(255,124,0,0.6)', 'rgba(255,0,102,0.5)', 'rgba(123,63,248,0.5)']
+      : ['rgba(0,0,0,0.3)', 'rgba(255,124,0,0.4)', 'rgba(255,0,102,0.35)', 'rgba(123,63,248,0.35)'];
+    const meteorDot = isDark ? '#fff' : '#333';
+    const trailFade = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)';
 
     // --- Meteors (6) ---
     for (let i = 0; i < 6; i++) {
@@ -200,7 +251,7 @@ dotnet whiz replay OrderSummary`;
       el.style.width = '4px';
       el.style.height = '4px';
       el.style.borderRadius = '50%';
-      el.style.background = '#fff';
+      el.style.background = meteorDot;
       el.style.willChange = 'transform';
       el.style.opacity = '0';
       const tc = trailColors[i % trailColors.length];
@@ -210,10 +261,10 @@ dotnet whiz replay OrderSummary`;
       trail.style.position = 'absolute';
       trail.style.top = '50%';
       trail.style.right = '100%';
-      trail.style.width = `${50 + Math.random() * 40}px`; // 50-90px streak
+      trail.style.width = `${50 + Math.random() * 40}px`;
       trail.style.height = '2px';
       trail.style.transform = 'translateY(-50%)';
-      trail.style.background = `linear-gradient(to left, ${tc}, rgba(255,255,255,0.15), transparent)`;
+      trail.style.background = `linear-gradient(to left, ${tc}, ${trailFade}, transparent)`;
       trail.style.borderRadius = '1px';
       el.appendChild(trail);
 
@@ -222,10 +273,13 @@ dotnet whiz replay OrderSummary`;
     }
 
     // --- Rocket ships (4) ---
+    const rocketBody = isDark ? 'white' : '#444';
+    const rocketBodyOp = isDark ? '0.9' : '0.7';
+    const rocketFinOp = isDark ? '0.6' : '0.5';
     const rocketSvg = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
-      <path d="M12 2C12 2 8 6 8 12C8 14.5 9 17 10 19L12 22L14 19C15 17 16 14.5 16 12C16 6 12 2 12 2Z" fill="white" opacity="0.9"/>
-      <path d="M8 12C6 13 5 14 5 15L8 14V12Z" fill="white" opacity="0.6"/>
-      <path d="M16 12C18 13 19 14 19 15L16 14V12Z" fill="white" opacity="0.6"/>
+      <path d="M12 2C12 2 8 6 8 12C8 14.5 9 17 10 19L12 22L14 19C15 17 16 14.5 16 12C16 6 12 2 12 2Z" fill="${rocketBody}" opacity="${rocketBodyOp}"/>
+      <path d="M8 12C6 13 5 14 5 15L8 14V12Z" fill="${rocketBody}" opacity="${rocketFinOp}"/>
+      <path d="M16 12C18 13 19 14 19 15L16 14V12Z" fill="${rocketBody}" opacity="${rocketFinOp}"/>
       <circle cx="12" cy="10" r="2" fill="rgba(255,124,0,0.8)"/>
       <path d="M10 19L12 22L14 19C13.5 19.5 12.8 20 12 20C11.2 20 10.5 19.5 10 19Z" fill="rgba(255,124,0,0.9)"/>
     </svg>`;
@@ -333,8 +387,19 @@ dotnet whiz replay OrderSummary`;
     }
     this.lastScrollY = scrollY;
 
-    // Progress bar
+    // Progress bar + scroll indicator visibility + centering
     const overallProgress = this.clamp(scrollY / (docHeight - vh), 0, 1);
+    if (this.scrollIndicator?.nativeElement) {
+      const el = this.scrollIndicator.nativeElement;
+      el.style.opacity = overallProgress > 0.92 ? '0' : '1';
+
+      // Center over the main content area (accounts for sidebars, scrollbars)
+      const main = document.querySelector('.main-content') || document.body;
+      const mainRect = main.getBoundingClientRect();
+      const centerX = mainRect.left + mainRect.width / 2;
+      el.style.left = `${centerX}px`;
+      el.style.transform = 'translateX(-50%)';
+    }
     if (this.progressBar?.nativeElement) {
       this.progressBar.nativeElement.style.transform = `scaleX(${overallProgress})`;
     }

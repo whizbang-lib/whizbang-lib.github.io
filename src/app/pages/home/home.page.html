@@ -1,6 +1,14 @@
 <!-- Scroll Progress Bar -->
 <div class="scroll-progress-bar" #progressBar></div>
 
+<!-- Fixed Scroll Indicator (clickable, advances to next section) -->
+<div class="scroll-indicator-fixed" #scrollIndicator>
+    <button class="scroll-indicator-btn" (click)="scrollToNextSection()" type="button">
+        <span class="scroll-text">Scroll to explore</span>
+        <i class="pi pi-chevron-down scroll-chevron"></i>
+    </button>
+</div>
+
 <!-- Rocket Container (stars are injected into sections via JS) -->
 <div class="starfield-container" #starfield></div>
 
@@ -30,10 +38,6 @@
                 <a pButton pRipple routerLink="/examples" class="p-button-outlined btn-outlined-brand">View Examples</a>
                 <a pButton pRipple href="https://github.com/whizbang-lib/whizbang" target="_blank" class="p-button-text btn-text-brand">GitHub &rarr;</a>
             </div>
-        </div>
-        <div class="scroll-indicator">
-            <span class="scroll-text">Scroll to explore</span>
-            <i class="pi pi-chevron-down scroll-chevron"></i>
         </div>
     </section>
 </div>
