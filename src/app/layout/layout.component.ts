@@ -49,11 +49,18 @@ export class LayoutComponent implements AfterViewInit, OnDestroy {
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const layers = [
-      { count: 120, size: 1, color: 'rgba(255,255,255,0.4)' },
-      { count: 60, size: 1.5, color: 'rgba(255,255,255,0.6)' },
-      { count: 25, size: 2.5, color: 'rgba(255,255,255,0.8)' },
-    ];
+    const isDark = this.themeService.isDarkTheme();
+    const layers = isDark
+      ? [
+          { count: 120, size: 1, color: 'rgba(255,255,255,0.4)' },
+          { count: 60, size: 1.5, color: 'rgba(255,255,255,0.6)' },
+          { count: 25, size: 2.5, color: 'rgba(255,255,255,0.8)' },
+        ]
+      : [
+          { count: 120, size: 1, color: 'rgba(0,0,0,0.06)' },
+          { count: 60, size: 1.5, color: 'rgba(0,0,0,0.1)' },
+          { count: 25, size: 2.5, color: 'rgba(0,0,0,0.15)' },
+        ];
 
     layers.forEach((layer) => {
       const el = document.createElement('div');

@@ -134,29 +134,29 @@
 }
 
 .orb-1 {
-    width: 600px;
-    height: 600px;
+    width: 700px;
+    height: 700px;
     top: -10%;
     left: -5%;
-    background: radial-gradient(circle, rgba(255, 124, 0, 0.06) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(255, 124, 0, 0.14) 0%, rgba(255, 124, 0, 0.04) 50%, transparent 70%);
     animation: orbFloat1 25s ease-in-out infinite;
 }
 
 .orb-2 {
-    width: 500px;
-    height: 500px;
+    width: 600px;
+    height: 600px;
     top: 40%;
     right: -10%;
-    background: radial-gradient(circle, rgba(255, 0, 102, 0.05) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(255, 0, 102, 0.12) 0%, rgba(255, 0, 102, 0.03) 50%, transparent 70%);
     animation: orbFloat2 30s ease-in-out infinite;
 }
 
 .orb-3 {
-    width: 700px;
-    height: 700px;
+    width: 800px;
+    height: 800px;
     bottom: -15%;
     left: 30%;
-    background: radial-gradient(circle, rgba(123, 63, 248, 0.05) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(123, 63, 248, 0.12) 0%, rgba(123, 63, 248, 0.03) 50%, transparent 70%);
     animation: orbFloat3 35s ease-in-out infinite;
 }
 
@@ -333,16 +333,34 @@
     gap: 1rem;
 }
 
-.scroll-indicator {
-    position: absolute;
-    bottom: 2rem;
-    left: 50%;
-    transform: translateX(-50%);
+.scroll-indicator-fixed {
+    position: fixed;
+    bottom: 1.5rem;
+    z-index: 9980;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    // JS sets left + transform for centering relative to content area
+}
+
+.scroll-indicator-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
-    will-change: opacity;
+    background: none;
+    border: none;
+    cursor: pointer;
+    pointer-events: auto;
+    padding: 0.5rem 1rem;
+
+    &:hover {
+        .scroll-chevron {
+            transform: translateY(4px);
+        }
+        .scroll-text {
+            opacity: 1;
+        }
+    }
 }
 
 .scroll-text {
@@ -631,6 +649,13 @@
 .use-cases-panel,
 .roadmap-slide {
     background: rgba(15, 15, 26, 0.85);
+}
+
+:host-context(:root:not([data-theme="dark"])) {
+    .use-cases-panel,
+    .roadmap-slide {
+        background: rgba(241, 243, 249, 0.9);
+    }
 }
 
 .use-cases-panel,
@@ -991,11 +1016,11 @@
 
 :host-context(:root:not([data-theme="dark"])) {
     --text-primary: #1a1a2e;
-    --text-muted: #64748b;
-    --bg-base: #f8f9fc;
-    --bg-section-1: #f1f3f9;
-    --bg-section-2: #edf0f7;
-    --glass-bg: rgba(255, 255, 255, 0.7);
+    --text-muted: #475569;
+    --bg-base: #f0f1fa;
+    --bg-section-1: #e8eaf6;
+    --bg-section-2: #ede7f6;
+    --glass-bg: rgba(255, 255, 255, 0.75);
     --glass-border: rgba(0, 0, 0, 0.08);
 
     .btn-outlined-brand {
@@ -1023,9 +1048,41 @@
         -webkit-backdrop-filter: blur(12px);
     }
 
-    .orb-1 { background: radial-gradient(circle, rgba(255, 124, 0, 0.04) 0%, transparent 70%); }
-    .orb-2 { background: radial-gradient(circle, rgba(255, 0, 102, 0.03) 0%, transparent 70%); }
-    .orb-3 { background: radial-gradient(circle, rgba(123, 63, 248, 0.03) 0%, transparent 70%); }
+    // Ambient orbs — bold in light mode
+    .orb-1 {
+        background: radial-gradient(circle, rgba(255, 124, 0, 0.35) 0%, rgba(255, 124, 0, 0.08) 50%, transparent 70%);
+        width: 700px; height: 700px;
+    }
+    .orb-2 {
+        background: radial-gradient(circle, rgba(255, 0, 102, 0.28) 0%, rgba(255, 0, 102, 0.06) 50%, transparent 70%);
+        width: 600px; height: 600px;
+    }
+    .orb-3 {
+        background: radial-gradient(circle, rgba(123, 63, 248, 0.3) 0%, rgba(123, 63, 248, 0.07) 50%, transparent 70%);
+        width: 800px; height: 800px;
+    }
+
+    // Hero orbs — large warm glows
+    .hero-orb-1 {
+        background: radial-gradient(circle, rgba(255, 124, 0, 0.3) 0%, rgba(255, 124, 0, 0.06) 50%, transparent 70%);
+        width: 600px; height: 600px;
+    }
+    .hero-orb-2 {
+        background: radial-gradient(circle, rgba(255, 0, 102, 0.25) 0%, rgba(255, 0, 102, 0.05) 50%, transparent 70%);
+        width: 500px; height: 500px;
+    }
+    .hero-orb-3 {
+        background: radial-gradient(circle, rgba(123, 63, 248, 0.28) 0%, rgba(123, 63, 248, 0.06) 50%, transparent 70%);
+        width: 700px; height: 700px;
+    }
+
+    // Gradient card borders pop more in light mode
+    .cap-card {
+        background: linear-gradient(135deg, rgba(255, 124, 0, 0.3), rgba(123, 63, 248, 0.3));
+    }
+    .ide-card {
+        background: linear-gradient(135deg, rgba(255, 0, 102, 0.3), rgba(123, 63, 248, 0.3));
+    }
 }
 
 // ============================================================
