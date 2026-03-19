@@ -1,0 +1,1564 @@
+{
+  "v1.0.0": [
+    {
+      "name": "_root",
+      "title": "Overview",
+      "order": 0,
+      "pages": [
+        {
+          "slug": "v1.0.0/README",
+          "title": "Version 0.1.0 - Foundation Release",
+          "order": 1
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "configuration",
+      "title": "Configuration",
+      "order": 3,
+      "pages": [
+        {
+          "slug": "v1.0.0/configuration/whizbang-options",
+          "title": "WhizbangCoreOptions",
+          "order": 1
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "di",
+      "title": "Dependency Injection",
+      "order": 4,
+      "pages": [
+        {
+          "slug": "v1.0.0/di/service-registration-options",
+          "title": "ServiceRegistrationOptions",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/di/service-registration",
+          "title": "ServiceRegistrationExtensions",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/di/perspective-services",
+          "title": "AddPerspectiveServices",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/di/lens-services",
+          "title": "AddLensServices",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/di/all-services",
+          "title": "AddAllWhizbangServices",
+          "order": 5
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "features",
+      "title": "Features",
+      "order": 4,
+      "pages": [
+        {
+          "slug": "v1.0.0/features/debugger-aware-clock",
+          "title": "Debugger-Aware Clock",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/features/vector-search",
+          "title": "Vector Search",
+          "order": 2
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "observability",
+      "title": "Observability",
+      "order": 7,
+      "pages": [
+        {
+          "slug": "v1.0.0/observability/tracing",
+          "title": "Tracing",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/observability/opentelemetry-integration",
+          "title": "OpenTelemetry Integration",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/observability/diagnostics",
+          "title": "Diagnostics",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/observability/logging-categories",
+          "title": "Logging Categories",
+          "order": 4
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "migration-guide",
+      "title": "Migration Guide",
+      "order": 15,
+      "pages": [
+        {
+          "slug": "v1.0.0/migration-guide/README",
+          "title": "Migration Guide Overview",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/migration-guide/01-concept-mapping",
+          "title": "Concept Mapping",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/migration-guide/02-project-setup",
+          "title": "Project Setup",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/migration-guide/03-handler-migration",
+          "title": "Handler Migration",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/migration-guide/04-projection-migration",
+          "title": "Projection Migration",
+          "order": 5
+        },
+        {
+          "slug": "v1.0.0/migration-guide/05-event-store-migration",
+          "title": "Event Store Migration",
+          "order": 6
+        },
+        {
+          "slug": "v1.0.0/migration-guide/06-transport-configuration",
+          "title": "Transport Configuration",
+          "order": 7
+        },
+        {
+          "slug": "v1.0.0/migration-guide/07-outbox-migration",
+          "title": "Outbox Migration",
+          "order": 8
+        },
+        {
+          "slug": "v1.0.0/migration-guide/08-testing-migration",
+          "title": "Testing Migration",
+          "order": 9
+        },
+        {
+          "slug": "v1.0.0/migration-guide/appendix-checklist",
+          "title": "Migration Checklist",
+          "order": 10
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "mutations",
+      "title": "Mutations",
+      "order": 15,
+      "pages": [
+        {
+          "slug": "v1.0.0/mutations/hooks",
+          "title": "Mutation Hooks",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/mutations/custom-request-dto",
+          "title": "Custom Request DTOs",
+          "order": 2
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "advanced-topics",
+      "title": "Advanced Topics",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/advanced-topics/performance-tuning",
+          "title": "Performance Tuning",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/advanced-topics/testing-receptors",
+          "title": "Testing Receptors & Perspectives",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/advanced-topics/native-aot",
+          "title": "Native AOT",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/advanced-topics/multi-tenancy",
+          "title": "Multi-Tenancy Patterns",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/advanced-topics/security",
+          "title": "Security Best Practices",
+          "order": 5
+        },
+        {
+          "slug": "v1.0.0/advanced-topics/monitoring",
+          "title": "Monitoring & Observability",
+          "order": 6
+        },
+        {
+          "slug": "v1.0.0/advanced-topics/deployment-strategies",
+          "title": "Deployment Strategies",
+          "order": 7
+        },
+        {
+          "slug": "v1.0.0/advanced-topics/scaling",
+          "title": "Scaling Patterns",
+          "order": 8
+        },
+        {
+          "slug": "v1.0.0/advanced-topics/troubleshooting",
+          "title": "Troubleshooting Guide",
+          "order": 9
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "architecture",
+      "title": "Architecture",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/architecture/message-lifecycle",
+          "title": "Message Lifecycle & Architecture",
+          "order": 1
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "attributes",
+      "title": "Attributes",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/attributes/streamid",
+          "title": "StreamId Attribute",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/attributes/generatestreamid",
+          "title": "GenerateStreamId Attribute",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/attributes/streamkey",
+          "title": "StreamKey Attribute",
+          "order": 999
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "components",
+      "title": "Components",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/components/README",
+          "title": "Core Components Overview",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/components/dispatcher",
+          "title": "Dispatcher Component",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/components/receptors",
+          "title": "Receptors Component",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/components/perspectives",
+          "title": "Perspectives Component",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/components/lenses",
+          "title": "Lenses Component",
+          "order": 5
+        },
+        {
+          "slug": "v1.0.0/components/policy-engine",
+          "title": "Policy Engine Component",
+          "order": 6
+        },
+        {
+          "slug": "v1.0.0/components/ledger",
+          "title": "Ledger Component",
+          "order": 7
+        },
+        {
+          "slug": "v1.0.0/components/caching",
+          "title": "Caching",
+          "order": 8
+        },
+        {
+          "slug": "v1.0.0/components/drivers",
+          "title": "Drivers Component",
+          "order": 8
+        },
+        {
+          "slug": "v1.0.0/components/transports",
+          "title": "Transports Component",
+          "order": 9
+        }
+      ],
+      "children": [
+        {
+          "name": "transports",
+          "title": "Transports",
+          "order": 1,
+          "pages": [
+            {
+              "slug": "v1.0.0/components/transports/azure-service-bus",
+              "title": "Azure Service Bus Transport",
+              "order": 1
+            },
+            {
+              "slug": "v1.0.0/components/transports/rabbitmq",
+              "title": "RabbitMQ Transport",
+              "order": 2
+            }
+          ],
+          "children": []
+        },
+        {
+          "name": "workers",
+          "title": "Workers",
+          "order": 2,
+          "pages": [
+            {
+              "slug": "v1.0.0/components/workers/transport-consumer",
+              "title": "Transport Consumer Worker",
+              "order": 2
+            }
+          ],
+          "children": []
+        },
+        {
+          "name": "data",
+          "title": "Data Stores",
+          "order": 3,
+          "pages": [
+            {
+              "slug": "v1.0.0/components/data/postgres",
+              "title": "PostgreSQL Data Provider",
+              "order": 1
+            }
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": "core-concepts",
+      "title": "Core Concepts",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/core-concepts/dispatcher",
+          "title": "Dispatcher Deep Dive",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/core-concepts/receptors",
+          "title": "Receptors Guide",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/core-concepts/perspectives",
+          "title": "Perspectives Guide",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/core-concepts/lenses",
+          "title": "Lenses Guide",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/core-concepts/message-context",
+          "title": "Message Context & Tracing",
+          "order": 5
+        },
+        {
+          "slug": "v1.0.0/core-concepts/messages",
+          "title": "Messages",
+          "order": 5
+        },
+        {
+          "slug": "v1.0.0/core-concepts/scoped-lenses",
+          "title": "Scoped Lenses",
+          "order": 5
+        },
+        {
+          "slug": "v1.0.0/core-concepts/observability",
+          "title": "Observability & Message Hops",
+          "order": 6
+        },
+        {
+          "slug": "v1.0.0/core-concepts/security",
+          "title": "Security",
+          "order": 6
+        },
+        {
+          "slug": "v1.0.0/core-concepts/audit-logging",
+          "title": "Audit Logging",
+          "order": 7
+        },
+        {
+          "slug": "v1.0.0/core-concepts/security-context-propagation",
+          "title": "Security Context Propagation",
+          "order": 7
+        },
+        {
+          "slug": "v1.0.0/core-concepts/scope-propagation",
+          "title": "Scope Propagation",
+          "order": 8
+        },
+        {
+          "slug": "v1.0.0/core-concepts/system-events",
+          "title": "System Events",
+          "order": 8
+        },
+        {
+          "slug": "v1.0.0/core-concepts/lifecycle-stages",
+          "title": "Lifecycle Stages",
+          "order": 9
+        },
+        {
+          "slug": "v1.0.0/core-concepts/event-store-query",
+          "title": "Event Store Query",
+          "order": 10
+        },
+        {
+          "slug": "v1.0.0/core-concepts/lifecycle-receptors",
+          "title": "Lifecycle Receptors",
+          "order": 10
+        },
+        {
+          "slug": "v1.0.0/core-concepts/message-tags",
+          "title": "Message Tags",
+          "order": 10
+        },
+        {
+          "slug": "v1.0.0/core-concepts/events",
+          "title": "Events",
+          "order": 11
+        },
+        {
+          "slug": "v1.0.0/core-concepts/persistence",
+          "title": "Persistence",
+          "order": 12
+        },
+        {
+          "slug": "v1.0.0/core-concepts/stream-id",
+          "title": "Stream ID",
+          "order": 12
+        },
+        {
+          "slug": "v1.0.0/core-concepts/event-streams",
+          "title": "Event Streams",
+          "order": 13
+        },
+        {
+          "slug": "v1.0.0/core-concepts/rpc-extraction",
+          "title": "RPC Response Extraction",
+          "order": 18
+        },
+        {
+          "slug": "v1.0.0/core-concepts/delivery-receipts",
+          "title": "Delivery Receipts",
+          "order": 20
+        },
+        {
+          "slug": "v1.0.0/core-concepts/envelope-registry",
+          "title": "Envelope Registry",
+          "order": 22
+        },
+        {
+          "slug": "v1.0.0/core-concepts/envelope-serialization",
+          "title": "Envelope Serialization",
+          "order": 23
+        },
+        {
+          "slug": "v1.0.0/core-concepts/message-associations",
+          "title": "Message Associations",
+          "order": 24
+        },
+        {
+          "slug": "v1.0.0/core-concepts/assembly-registry",
+          "title": "Assembly Registry",
+          "order": 25
+        },
+        {
+          "slug": "v1.0.0/core-concepts/lifecycle",
+          "title": "Lifecycle Management",
+          "order": 25
+        },
+        {
+          "slug": "v1.0.0/core-concepts/time-provider",
+          "title": "Time Provider",
+          "order": 30
+        },
+        {
+          "slug": "v1.0.0/core-concepts/event-store",
+          "title": "Event Store",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/core-concepts/fuzzy-matching",
+          "title": "Fuzzy Matching",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/core-concepts/message-security",
+          "title": "Message Security",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/core-concepts/routing",
+          "title": "Routing",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/core-concepts/scoping",
+          "title": "Scoping",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/core-concepts/transport-consumer",
+          "title": "Transport Consumer",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/core-concepts/type-formatting",
+          "title": "Type Formatting",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/core-concepts/type-matching",
+          "title": "Type Matching",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/core-concepts/type-qualification",
+          "title": "Type Qualification",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/core-concepts/whizbang-ids",
+          "title": "Whizbang Ids",
+          "order": 999
+        }
+      ],
+      "children": [
+        {
+          "name": "perspectives",
+          "title": "Perspectives",
+          "order": 1,
+          "pages": [
+            {
+              "slug": "v1.0.0/core-concepts/perspectives/multi-stream",
+              "title": "Multi-Stream Perspectives",
+              "order": 1
+            },
+            {
+              "slug": "v1.0.0/core-concepts/perspectives/perspective-sync",
+              "title": "Perspective Synchronization",
+              "order": 4
+            },
+            {
+              "slug": "v1.0.0/core-concepts/perspectives/event-completion",
+              "title": "Event Completion Awaiter",
+              "order": 5
+            },
+            {
+              "slug": "v1.0.0/core-concepts/perspectives/association-info",
+              "title": "PerspectiveAssociationInfo",
+              "order": 999
+            },
+            {
+              "slug": "v1.0.0/core-concepts/perspectives/typed-associations",
+              "title": "Typed Associations",
+              "order": 999
+            }
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": "customization-examples",
+      "title": "Customization Examples",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/customization-examples/multi-tenant-saas",
+          "title": "Multi-Tenant SaaS",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/customization-examples/event-sourcing-cqrs",
+          "title": "Event Sourcing & CQRS",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/customization-examples/microservices-orchestration",
+          "title": "Microservices Orchestration",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/customization-examples/real-time-analytics",
+          "title": "Real-Time Analytics",
+          "order": 4
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "data",
+      "title": "Data",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/data/dapper-integration",
+          "title": "Dapper Integration",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/data/efcore-integration",
+          "title": "EF Core Integration",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/data/perspectives-storage",
+          "title": "Perspectives Storage",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/data/event-store",
+          "title": "Event Store",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/data/efcore-json-configuration",
+          "title": "EF Core 10 JSON Configuration",
+          "order": 10
+        },
+        {
+          "slug": "v1.0.0/data/schema-migration",
+          "title": "Schema Migration",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/data/turnkey-initialization",
+          "title": "Turnkey Initialization",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/data/work-coordinator-strategies",
+          "title": "Work Coordinator Strategies",
+          "order": 999
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "data-access",
+      "title": "Data Access",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/data-access/schema-generation-pattern",
+          "title": "Schema Generation Pattern",
+          "order": 6
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "diagnostics",
+      "title": "Diagnostics",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/diagnostics/serializable-property-analyzer",
+          "title": "Serializable Property Analyzer",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/diagnostics/whiz030",
+          "title": "WHIZ030: Perspective Event Missing StreamKey",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/diagnostics/whiz031",
+          "title": "WHIZ031: Multiple StreamKey Attributes",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/diagnostics/whiz058",
+          "title": "WHIZ058: GUID Call Intercepted",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/diagnostics/whiz059",
+          "title": "WHIZ059: GUID Interception Suppressed",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/diagnostics/whiz062",
+          "title": "WHIZ062: Property Uses Non-Serializable Interface Type",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/diagnostics/whiz070",
+          "title": "WHIZ070: Missing Pgvector.EntityFrameworkCore Package",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/diagnostics/whiz071",
+          "title": "WHIZ071: Missing Pgvector Package",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/diagnostics/whiz080",
+          "title": "WHIZ080: Multiple Handlers for RPC Message",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/diagnostics/whiz090",
+          "title": "WHIZ090: MessageTag Parameter Naming",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/diagnostics/whiz400",
+          "title": "WHIZ400: Invalid Type Argument for ILensQuery",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/diagnostics/whiz802",
+          "title": "WHIZ802: VectorField Invalid Dimensions",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/diagnostics/whiz807",
+          "title": "WHIZ807: Physical Fields Discovered",
+          "order": 999
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "extensibility",
+      "title": "Extensibility",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/extensibility/hooks-and-middleware",
+          "title": "Hooks and Middleware",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/extensibility/custom-receptors",
+          "title": "Custom Receptors",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/extensibility/custom-perspectives",
+          "title": "Custom Perspectives",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/extensibility/custom-transports",
+          "title": "Custom Transports",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/extensibility/custom-policies",
+          "title": "Custom Policies",
+          "order": 5
+        },
+        {
+          "slug": "v1.0.0/extensibility/custom-health-checks",
+          "title": "Custom Health Checks",
+          "order": 6
+        },
+        {
+          "slug": "v1.0.0/extensibility/custom-serializers",
+          "title": "Custom Serializers",
+          "order": 7
+        },
+        {
+          "slug": "v1.0.0/extensibility/custom-id-generators",
+          "title": "Custom ID Generators",
+          "order": 8
+        },
+        {
+          "slug": "v1.0.0/extensibility/custom-dispatchers",
+          "title": "Custom Dispatchers",
+          "order": 9
+        },
+        {
+          "slug": "v1.0.0/extensibility/custom-storage",
+          "title": "Custom Storage",
+          "order": 10
+        },
+        {
+          "slug": "v1.0.0/extensibility/custom-work-coordinators",
+          "title": "Custom Work Coordinators",
+          "order": 11
+        },
+        {
+          "slug": "v1.0.0/extensibility/database-schema-framework",
+          "title": "Database Schema Framework",
+          "order": 11
+        },
+        {
+          "slug": "v1.0.0/extensibility/plugin-architecture",
+          "title": "Plugin Architecture",
+          "order": 12
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "getting-started",
+      "title": "Getting Started",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/getting-started/introduction",
+          "title": "Introduction to Whizbang",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/getting-started/installation",
+          "title": "Installation Guide",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/getting-started/quick-start",
+          "title": "Quick Start Tutorial",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/getting-started/project-structure",
+          "title": "Project Structure Guide",
+          "order": 4
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "graphql",
+      "title": "Graphql",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/graphql/polymorphic-types",
+          "title": "Polymorphic Types",
+          "order": 6
+        },
+        {
+          "slug": "v1.0.0/graphql/filtering",
+          "title": "Filtering",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/graphql/index",
+          "title": "Index",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/graphql/lens-integration",
+          "title": "Lens Integration",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/graphql/scoping",
+          "title": "Scoping",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/graphql/setup",
+          "title": "Setup",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/graphql/sorting",
+          "title": "Sorting",
+          "order": 999
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "guides",
+      "title": "Guides",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/guides/implementing-multi-tenancy",
+          "title": "Implementing Multi Tenancy",
+          "order": 999
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "infrastructure",
+      "title": "Infrastructure",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/infrastructure/aspire-integration",
+          "title": ".NET Aspire Integration",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/infrastructure/health-checks",
+          "title": "Health Checks",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/infrastructure/pooling",
+          "title": "Object Pooling",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/infrastructure/policies",
+          "title": "Policy-Based Routing",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/infrastructure/migrations",
+          "title": "Migration Tracking",
+          "order": 5
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "integrations",
+      "title": "Integrations",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/integrations/signalr",
+          "title": "SignalR Integration",
+          "order": 1
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "internals",
+      "title": "Internals",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/internals/json-serialization-customizations",
+          "title": "JSON Serialization Customizations",
+          "order": 1
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "lenses",
+      "title": "Lenses",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/lenses/lens-query-factory",
+          "title": "Lens Query Factory",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/lenses/scoped-queries",
+          "title": "Scoped Lens Queries",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/lenses/multi-model-queries",
+          "title": "Multi-Model Queries",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/lenses/temporal-query",
+          "title": "Temporal Lens Queries",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/lenses/raw-sql",
+          "title": "Raw Sql",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/lenses/vector-search",
+          "title": "Vector Search",
+          "order": 999
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "messaging",
+      "title": "Messaging",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/messaging/outbox-pattern",
+          "title": "Outbox Pattern",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/messaging/inbox-pattern",
+          "title": "Inbox Pattern",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/messaging/work-coordinator",
+          "title": "Work Coordinator",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/messaging/message-envelopes",
+          "title": "Message Envelopes Deep Dive",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/messaging/commands-events",
+          "title": "Commands Events",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/messaging/failure-handling",
+          "title": "Failure Handling",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/messaging/idempotency-patterns",
+          "title": "Idempotency Patterns",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/messaging/multi-instance-coordination",
+          "title": "Multi Instance Coordination",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/messaging/topic-filters",
+          "title": "Topic Filters",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/messaging/work-coordination",
+          "title": "Work Coordination",
+          "order": 999
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "perspectives",
+      "title": "Perspectives",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/perspectives/association-info",
+          "title": "Perspective Association Info",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/perspectives/rebuild",
+          "title": "Perspective Rebuild",
+          "order": 10
+        },
+        {
+          "slug": "v1.0.0/perspectives/physical-fields",
+          "title": "Physical Fields",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/perspectives/polymorphic-discriminator",
+          "title": "Polymorphic Discriminator",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/perspectives/polymorphic-types",
+          "title": "Polymorphic Types in Perspectives",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/perspectives/registry",
+          "title": "Registry",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/perspectives/sync",
+          "title": "Perspective Sync",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/perspectives/table-naming",
+          "title": "Table Naming",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/perspectives/temporal",
+          "title": "Temporal",
+          "order": 999
+        },
+        {
+          "slug": "v1.0.0/perspectives/vector-fields",
+          "title": "Vector Fields",
+          "order": 999
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "rest",
+      "title": "Rest",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/rest/setup",
+          "title": "REST API Setup",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/rest/filtering",
+          "title": "REST Filtering",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/rest/mutations",
+          "title": "REST Mutations",
+          "order": 3
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "signalr",
+      "title": "Signalr",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/signalr/notification-hooks",
+          "title": "SignalR Notification Hooks",
+          "order": 1
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "source-generators",
+      "title": "Source Generators",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/source-generators/receptor-discovery",
+          "title": "Receptor Discovery",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/source-generators/perspective-discovery",
+          "title": "Perspective Discovery",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/source-generators/message-registry",
+          "title": "Message Registry",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/source-generators/aggregate-ids",
+          "title": "Aggregate IDs",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/source-generators/json-contexts",
+          "title": "JSON Contexts",
+          "order": 5
+        },
+        {
+          "slug": "v1.0.0/source-generators/polymorphic-serialization",
+          "title": "Polymorphic Serialization",
+          "order": 6
+        },
+        {
+          "slug": "v1.0.0/source-generators/topic-filter-discovery",
+          "title": "Topic Filter Discovery",
+          "order": 6
+        },
+        {
+          "slug": "v1.0.0/source-generators/configuration",
+          "title": "Configuration",
+          "order": 8
+        },
+        {
+          "slug": "v1.0.0/source-generators/attribute-utilities",
+          "title": "Attribute Utilities",
+          "order": 10
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "testing",
+      "title": "Testing",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/testing/lifecycle-synchronization",
+          "title": "Lifecycle Synchronization",
+          "order": 3
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "tracing",
+      "title": "Tracing",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/tracing/verbosity-levels",
+          "title": "Trace Verbosity Levels",
+          "order": 1
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "transports",
+      "title": "Transports",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/transports/azure-service-bus",
+          "title": "Azure Service Bus Transport",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/transports/in-memory",
+          "title": "In-Memory Transport",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/transports/rabbitmq",
+          "title": "RabbitMQ Transport",
+          "order": 2
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "tutorial",
+      "title": "Tutorial",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/tutorial/tutorial-overview",
+          "title": "ECommerce Tutorial Overview",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/tutorial/order-management",
+          "title": "Order Management Service",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/tutorial/inventory-service",
+          "title": "Inventory Service",
+          "order": 3
+        },
+        {
+          "slug": "v1.0.0/tutorial/payment-processing",
+          "title": "Payment Processing Service",
+          "order": 4
+        },
+        {
+          "slug": "v1.0.0/tutorial/notification-service",
+          "title": "Notification Service",
+          "order": 5
+        },
+        {
+          "slug": "v1.0.0/tutorial/shipping-service",
+          "title": "Shipping Service",
+          "order": 6
+        },
+        {
+          "slug": "v1.0.0/tutorial/customer-service",
+          "title": "Customer Service (BFF)",
+          "order": 7
+        },
+        {
+          "slug": "v1.0.0/tutorial/analytics-service",
+          "title": "Analytics Service",
+          "order": 8
+        },
+        {
+          "slug": "v1.0.0/tutorial/testing-strategy",
+          "title": "Testing Strategy",
+          "order": 9
+        },
+        {
+          "slug": "v1.0.0/tutorial/deployment",
+          "title": "Deployment",
+          "order": 10
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "workers",
+      "title": "Workers",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "v1.0.0/workers/perspective-worker",
+          "title": "Perspective Worker",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/workers/execution-lifecycle",
+          "title": "Execution Lifecycle",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/workers/database-readiness",
+          "title": "Database Readiness",
+          "order": 3
+        }
+      ],
+      "children": []
+    }
+  ],
+  "drafts": [
+    {
+      "name": "_root",
+      "title": "Overview",
+      "order": 0,
+      "pages": [
+        {
+          "slug": "drafts/test-error-display",
+          "title": "Test Error Display",
+          "order": 999
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "attributes",
+      "title": "Attributes",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "drafts/attributes/auto-populate",
+          "title": "Auto-Populate Attributes",
+          "order": 10
+        },
+        {
+          "slug": "drafts/attributes/must-exist",
+          "title": "MustExist Attribute",
+          "order": 999
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "core-concepts",
+      "title": "Core Concepts",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "drafts/core-concepts/model-action",
+          "title": "Model Actions - Perspective Deletion Support",
+          "order": 4
+        },
+        {
+          "slug": "drafts/core-concepts/cascade-context",
+          "title": "Cascade Context",
+          "order": 6
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "metrics",
+      "title": "Metrics",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "drafts/metrics/overview",
+          "title": "Metrics Overview",
+          "order": 1
+        },
+        {
+          "slug": "drafts/metrics/components",
+          "title": "Metric Components",
+          "order": 2
+        },
+        {
+          "slug": "drafts/metrics/configuration",
+          "title": "Metrics Configuration",
+          "order": 3
+        },
+        {
+          "slug": "drafts/metrics/handlers",
+          "title": "Handler Metrics",
+          "order": 4
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "tracing",
+      "title": "Tracing",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "drafts/tracing/overview",
+          "title": "Tracing Overview",
+          "order": 1
+        },
+        {
+          "slug": "drafts/tracing/verbosity-levels",
+          "title": "Trace Verbosity Levels",
+          "order": 1
+        },
+        {
+          "slug": "drafts/tracing/components",
+          "title": "Trace Components",
+          "order": 2
+        },
+        {
+          "slug": "drafts/tracing/attributes",
+          "title": "Trace Attributes",
+          "order": 3
+        },
+        {
+          "slug": "drafts/tracing/configuration",
+          "title": "Tracing Configuration",
+          "order": 4
+        },
+        {
+          "slug": "drafts/tracing/custom-outputs",
+          "title": "Custom Trace Outputs",
+          "order": 5
+        }
+      ],
+      "children": []
+    }
+  ],
+  "proposals": [
+    {
+      "name": "_root",
+      "title": "Overview",
+      "order": 0,
+      "pages": [
+        {
+          "slug": "proposals/open-questions",
+          "title": "Open Design Questions - RESOLVED",
+          "order": 3
+        },
+        {
+          "slug": "proposals/event-store-projections",
+          "title": "Event Store & Projection Architecture",
+          "order": 4
+        },
+        {
+          "slug": "proposals/concurrency-control",
+          "title": "Concurrency Control",
+          "order": 5
+        },
+        {
+          "slug": "proposals/domain-ownership",
+          "title": "Domain Ownership",
+          "order": 6
+        },
+        {
+          "slug": "proposals/projection-management",
+          "title": "Projection Management",
+          "order": 7
+        },
+        {
+          "slug": "proposals/multi-tenancy",
+          "title": "Multi-Tenancy",
+          "order": 8
+        },
+        {
+          "slug": "proposals/schema-evolution",
+          "title": "Schema Evolution & Event Versioning",
+          "order": 9
+        },
+        {
+          "slug": "proposals/advanced-features",
+          "title": "Advanced Features",
+          "order": 10
+        },
+        {
+          "slug": "proposals/flags-tags-system",
+          "title": "Flags & Tags System",
+          "order": 11
+        },
+        {
+          "slug": "proposals/policy-engine",
+          "title": "Policy Engine",
+          "order": 12
+        },
+        {
+          "slug": "proposals/source-generation-ide",
+          "title": "Source Generation & IDE Integration",
+          "order": 12
+        },
+        {
+          "slug": "proposals/testing-development-tools",
+          "title": "Testing & Development Tools",
+          "order": 13
+        },
+        {
+          "slug": "proposals/observability-metrics",
+          "title": "Observability & Metrics",
+          "order": 14
+        },
+        {
+          "slug": "proposals/deployment-operations",
+          "title": "Deployment & Operations",
+          "order": 15
+        }
+      ],
+      "children": []
+    }
+  ],
+  "backlog": [],
+  "declined": []
+}

@@ -147,6 +147,7 @@
   "v1.0.0/data/perspectives-storage",
   "v1.0.0/data/schema-migration",
   "v1.0.0/data/turnkey-initialization",
+  "v1.0.0/data/work-coordinator-strategies",
   "v1.0.0/data-access/schema-generation-pattern",
   "v1.0.0/di/_folder",
   "v1.0.0/di/all-services",

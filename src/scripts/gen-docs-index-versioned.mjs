@@ -126,25 +126,158 @@ async function processDirectory(dir, relativeDir = '', versionOrState = '', out 
   }
 }
 
+// Build a nested navigation tree from folder hierarchy
+async function buildNavTree(baseDir, versionOrState) {
+  const entries = await fs.readdir(baseDir, { withFileTypes: true });
+
+  const pages = [];
+  const children = [];
+
+  for (const entry of entries) {
+    if (entry.name === '_folder.md') continue;
+
+    const fullPath = path.join(baseDir, entry.name);
+
+    if (entry.isDirectory()) {
+      const childTree = await buildNavTreeFolder(fullPath, entry.name, versionOrState, '');
+      if (childTree) {
+        children.push(childTree);
+      }
+    } else if (entry.name.endsWith('.md')) {
+      const content = await fs.readFile(fullPath, 'utf8');
+      const { data } = matter(content);
+      const filename = path.basename(entry.name, '.md');
+      const slug = `${versionOrState}/${filename}`;
+
+      pages.push({
+        slug,
+        title: data.title || filename.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        order: data.order || 999
+      });
+    }
+  }
+
+  pages.sort((a, b) => a.order - b.order);
+  children.sort((a, b) => a.order - b.order);
+
+  return { pages, children };
+}
+
+async function buildNavTreeFolder(dir, folderName, versionOrState, parentRelPath) {
+  const relPath = parentRelPath ? `${parentRelPath}/${folderName}` : folderName;
+
+  // Read _folder.md for metadata
+  let folderMeta = {};
+  try {
+    const folderMdPath = path.join(dir, '_folder.md');
+    const folderContent = await fs.readFile(folderMdPath, 'utf8');
+    const { data } = matter(folderContent);
+    folderMeta = data;
+  } catch {
+    // No _folder.md
+  }
+
+  const title = folderMeta.title || FOLDER_DISPLAY_NAMES[folderName] || folderName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  const order = folderMeta.order || 999;
+  const icon = folderMeta.icon || undefined;
+
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+
+  const pages = [];
+  const children = [];
+
+  for (const entry of entries) {
+    if (entry.name === '_folder.md') continue;
+
+    const fullPath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      const childTree = await buildNavTreeFolder(fullPath, entry.name, versionOrState, relPath);
+      if (childTree) {
+        children.push(childTree);
+      }
+    } else if (entry.name.endsWith('.md')) {
+      const content = await fs.readFile(fullPath, 'utf8');
+      const { data } = matter(content);
+      const filename = path.basename(entry.name, '.md');
+
+      // Build slug - handle index files (filename matches folder name)
+      let slug;
+      if (filename === folderName) {
+        slug = `${versionOrState}/${relPath}`;
+      } else {
+        slug = data.slug
+          ? `${versionOrState}/${data.slug}`
+          : `${versionOrState}/${relPath}/${filename}`;
+      }
+
+      pages.push({
+        slug,
+        title: data.title || filename.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        order: data.order || 999
+      });
+    }
+  }
+
+  // Skip empty folders (no pages and no children with content)
+  if (pages.length === 0 && children.length === 0) {
+    return null;
+  }
+
+  pages.sort((a, b) => a.order - b.order);
+  children.sort((a, b) => a.order - b.order);
+
+  const node = {
+    name: folderName,
+    title,
+    order,
+    pages,
+    children
+  };
+
+  if (icon) {
+    node.icon = icon;
+  }
+
+  return node;
+}
+
 async function generateVersionedDocsIndex() {
   try {
     const allVersions = [];
-    
+    const navTree = {};
+
     // Discover and process version directories
     const versionFolders = await getVersionFolders();
     console.log(`Discovered version folders: ${versionFolders.join(', ')}`);
-    
+
     for (const version of versionFolders) {
       const versionDir = path.join(DOC_DIR, version);
       try {
         await fs.access(versionDir);
         const versionData = await processVersionDirectory(versionDir, version);
         allVersions.push(versionData);
+
+        // Build nav tree for this version
+        const { pages, children } = await buildNavTree(versionDir, version);
+        // Top-level pages go into a virtual root, children are the folders
+        const tree = [...children];
+        // Add top-level pages as a special entry if any exist
+        if (pages.length > 0) {
+          tree.unshift({
+            name: '_root',
+            title: 'Overview',
+            order: 0,
+            pages,
+            children: []
+          });
+        }
+        navTree[version] = tree;
       } catch (error) {
         console.warn(`Version directory ${version} not found or inaccessible`);
       }
     }
-    
+
     // Process state directories
     for (const state of STATE_FOLDERS) {
       const stateDir = path.join(DOC_DIR, state);
@@ -152,33 +285,51 @@ async function generateVersionedDocsIndex() {
         await fs.access(stateDir);
         const stateData = await processStateDirectory(stateDir, state);
         allVersions.push(stateData);
+
+        // Build nav tree for this state
+        const { pages, children } = await buildNavTree(stateDir, state);
+        const tree = [...children];
+        if (pages.length > 0) {
+          tree.unshift({
+            name: '_root',
+            title: 'Overview',
+            order: 0,
+            pages,
+            children: []
+          });
+        }
+        navTree[state] = tree;
       } catch (error) {
         console.warn(`State directory ${state} not found or inaccessible`);
       }
     }
-    
+
     // Generate combined index for current production version (backwards compatibility)
     const productionVersion = allVersions.find(v => v.version === 'v1.0.0');
     if (productionVersion) {
       await fs.writeFile('src/assets/docs-index.json', JSON.stringify(productionVersion.docs, null, 2));
       console.log(`✅ Generated docs-index.json with ${productionVersion.docs.length} documents`);
     }
-    
+
     // Generate versioned index with all versions
     await fs.writeFile('src/assets/docs-index-versioned.json', JSON.stringify(allVersions, null, 2));
     console.log(`✅ Generated docs-index-versioned.json with ${allVersions.length} versions/states`);
-    
+
+    // Generate navigation tree
+    await fs.writeFile('src/assets/docs-nav-tree.json', JSON.stringify(navTree, null, 2));
+    console.log(`✅ Generated docs-nav-tree.json with ${Object.keys(navTree).length} versions/states`);
+
     // Generate summary statistics
     const totalDocs = allVersions.reduce((sum, v) => sum + (v.docs?.length || 0), 0);
     console.log(`📊 Total documents across all versions: ${totalDocs}`);
-    
+
     allVersions.forEach(v => {
       const identifier = v.version || v.state;
       const count = v.docs?.length || 0;
       const status = v.metadata?.status || v.metadata?.state || 'unknown';
       console.log(`   - ${identifier}: ${count} docs (${status})`);
     });
-    
+
   } catch (error) {
     console.error('❌ Error generating versioned docs index:', error);
     process.exit(1);
