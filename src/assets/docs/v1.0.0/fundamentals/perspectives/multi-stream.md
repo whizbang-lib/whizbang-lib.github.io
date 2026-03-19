@@ -660,17 +660,17 @@ public class CustomerStatisticsPerspectiveTests {
 **Core Concepts**:
 - [Perspectives](../perspectives.md) - Single-stream perspectives (IPerspectiveFor)
 - [Lenses](../lenses.md) - Query interfaces for read models
-- [StreamKey Attribute](../../attributes/streamkey.md) - Stream identification
+- [StreamKey Attribute](../../extending/attributes/streamkey.md) - Stream identification
 
 **Source Generators**:
-- [Perspective Discovery](../../source-generators/perspective-discovery.md) - Auto-discovery and runner generation
+- [Perspective Discovery](../../extending/source-generators/perspective-discovery.md) - Auto-discovery and runner generation
 
 **Data Access**:
 - [Perspective Storage](../../data/perspectives-storage.md) - Read model persistence
 - [Event Store](../../data/event-store.md) - Event sourcing foundation
 
 **Workers**:
-- [Perspective Worker](../../workers/perspective-worker.md) - Checkpoint processing and runtime
+- [Perspective Worker](../../operations/workers/perspective-worker.md) - Checkpoint processing and runtime
 
 **External Resources**:
 - [Marten MultiStreamProjection](https://martendb.io/events/projections/multi-stream-projections.html) - Inspiration for this pattern

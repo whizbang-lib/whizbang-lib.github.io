@@ -20,7 +20,7 @@ codeReferences:
 **Custom policies** extend the basic policy system with advanced patterns like weighted evaluation, priority-based matching, async predicates (database lookups), dynamic registration, caching, and A/B testing.
 
 :::note
-For basic policy usage, see [Policy-Based Routing](../infrastructure/policies.md). This guide focuses on **advanced policy extensibility**.
+For basic policy usage, see [Policy-Based Routing](../../operations/infrastructure/policies.md). This guide focuses on **advanced policy extensibility**.
 :::
 
 ---
@@ -779,11 +779,11 @@ public class CachedPolicyEngineTests {
 ## Further Reading
 
 **Infrastructure**:
-- [Policy-Based Routing](../infrastructure/policies.md) - Basic policy usage
-- [Object Pooling](../infrastructure/pooling.md) - PolicyContext pooling
+- [Policy-Based Routing](../../operations/infrastructure/policies.md) - Basic policy usage
+- [Object Pooling](../../operations/infrastructure/pooling.md) - PolicyContext pooling
 
 **Core Concepts**:
-- [Message Context](../core-concepts/message-context.md) - Envelope metadata
+- [Message Context](../../fundamentals/messages/message-context.md) - Envelope metadata
 
 **Advanced**:
 - [Multi-Tenancy](../advanced/multi-tenancy.md) - Tenant isolation patterns

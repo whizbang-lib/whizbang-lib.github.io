@@ -899,5 +899,5 @@ public interface ICustomerScoped : ITenantScoped {
 
 - [Scoping](./scoping.md) - Scope system overview
 - [System Events](./system-events.md) - Audit and monitoring events
-- [Implementing Multi-Tenancy](../guides/implementing-multi-tenancy.md) - End-to-end guide
-- [Security Best Practices](../advanced-topics/security.md) - Authentication, authorization, encryption
+- [Implementing Multi-Tenancy](./implementing-multi-tenancy.md) - End-to-end guide
+- [Security Best Practices](../../operations/deployment/security.md) - Authentication, authorization, encryption

@@ -158,5 +158,5 @@ Whizbang's `MessageTagDiscoveryGenerator` looks for a parameter whose name match
 
 ## See Also
 
-- [Message Tags](../core-concepts/message-tags.md) - Overview of the message tagging system
+- [Message Tags](../../fundamentals/messages/message-tags.md) - Overview of the message tagging system
 - [Custom Message Tag Attributes](../advanced/custom-message-tags.md) - Creating custom tag attributes

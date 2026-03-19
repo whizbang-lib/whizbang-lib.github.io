@@ -97,7 +97,7 @@ await dispatcher.PublishAsync(evt);
 // evt.OrderId now contains a UUIDv7 value
 ```
 
-For full details, see the [`[GenerateStreamId]` attribute reference](../attributes/generatestreamid).
+For full details, see the [`[GenerateStreamId]` attribute reference](../../extending/attributes/generatestreamid).
 
 ### How Auto-Generation Works
 

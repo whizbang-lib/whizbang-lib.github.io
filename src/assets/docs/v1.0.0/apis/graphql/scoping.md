@@ -296,4 +296,4 @@ public async Task Query_FiltersByTenantAsync() {
 
 - [Setup](setup.md) - Initial configuration
 - [Filtering](filtering.md) - Query filtering
-- [Security](/docs/v1.0.0/core-concepts/security) - Security principals and permissions
+- [Security](/docs/v1.0.0/fundamentals/security/security) - Security principals and permissions

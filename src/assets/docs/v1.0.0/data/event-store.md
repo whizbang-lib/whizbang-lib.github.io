@@ -957,12 +957,12 @@ public class OrderRepository(IEventStore eventStore) {
 ## Further Reading
 
 **Workers**:
-- [Perspective Worker](../workers/perspective-worker.md) - Checkpoint processing lifecycle and runtime behavior
-- [Execution Lifecycle](../workers/execution-lifecycle.md) - Startup/shutdown coordination
+- [Perspective Worker](../operations/workers/perspective-worker.md) - Checkpoint processing lifecycle and runtime behavior
+- [Execution Lifecycle](../operations/workers/execution-lifecycle.md) - Startup/shutdown coordination
 
 **Core Concepts**:
-- [Perspectives](../core-concepts/perspectives.md) - Event-driven read models
-- [Observability](../core-concepts/observability.md) - Message hops and tracing
+- [Perspectives](../fundamentals/perspectives/perspectives.md) - Event-driven read models
+- [Observability](../fundamentals/persistence/observability.md) - Message hops and tracing
 
 **Data Access**:
 - [Dapper Integration](dapper-integration.md) - Lightweight data access

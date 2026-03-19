@@ -244,6 +244,6 @@ See [Automated Migration](../migration-guide/automated-migration.md) for details
 
 ## See Also
 
-- [Perspectives](../core-concepts/perspectives.md) - Understanding perspectives and Apply methods
+- [Perspectives](../fundamentals/perspectives/perspectives.md) - Understanding perspectives and Apply methods
 - [StreamKey Attribute](./streamkey.md) - Identifying stream keys for event ordering
 - [Automated Migration](../migration-guide/automated-migration.md) - Migrating from Marten/Wolverine

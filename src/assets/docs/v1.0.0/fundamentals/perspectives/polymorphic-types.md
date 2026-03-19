@@ -142,6 +142,6 @@ dotnet_diagnostic.WHIZ811.severity = none
 
 ## See Also
 
-- [Polymorphic Discriminator](/docs/v1.0.0/perspectives/polymorphic-discriminator) - Using discriminator columns
-- [Physical Fields](/docs/v1.0.0/perspectives/physical-fields) - Physical column storage
+- [Polymorphic Discriminator](/docs/v1.0.0/fundamentals/perspectives/polymorphic-discriminator) - Using discriminator columns
+- [Physical Fields](/docs/v1.0.0/fundamentals/perspectives/physical-fields) - Physical column storage
 - [EF Core JSON Configuration](/docs/v1.0.0/data/efcore-json-configuration) - JSON serialization settings

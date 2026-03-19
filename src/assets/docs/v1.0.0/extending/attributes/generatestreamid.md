@@ -153,4 +153,4 @@ The `[GenerateStreamId]` attribute is fully AOT-compatible:
 ## See Also
 
 - [StreamId Attribute](streamid.md) — Marks the stream ID property
-- [Stream ID Concepts](../core-concepts/stream-id.md) — Stream ID concepts and ordering
+- [Stream ID Concepts](../../fundamentals/events/stream-id.md) — Stream ID concepts and ordering

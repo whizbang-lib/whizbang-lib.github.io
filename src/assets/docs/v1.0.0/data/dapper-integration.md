@@ -650,8 +650,8 @@ public async Task<OrderStatistics> GetOrderStatisticsAsync(
 ## Further Reading
 
 **Core Concepts**:
-- [Perspectives](../core-concepts/perspectives.md) - Event-driven read models
-- [Lenses](../core-concepts/lenses.md) - Query repositories
+- [Perspectives](../fundamentals/perspectives/perspectives.md) - Event-driven read models
+- [Lenses](../fundamentals/lenses/lenses.md) - Query repositories
 
 **Data Access**:
 - [EF Core Integration](efcore-integration.md) - Full-featured ORM

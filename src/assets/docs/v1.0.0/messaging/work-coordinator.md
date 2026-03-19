@@ -671,12 +671,12 @@ public class WorkCoordinatorMetrics {
 ## Further Reading
 
 **Architecture**:
-- [Message Lifecycle & Architecture](../architecture/message-lifecycle.md) - **Complete flow with sequence diagrams** showing Commands, Events, Receptors, Perspectives, and all integration points
+- [Message Lifecycle & Architecture](../extending/internals/message-lifecycle.md) - **Complete flow with sequence diagrams** showing Commands, Events, Receptors, Perspectives, and all integration points
 
 **Core Concepts**:
-- [Dispatcher](../core-concepts/dispatcher.md) - Message routing
-- [Receptors](../core-concepts/receptors.md) - Message handlers and business logic
-- [Perspectives](../core-concepts/perspectives.md) - Event listeners for read models
+- [Dispatcher](../fundamentals/dispatcher/dispatcher.md) - Message routing
+- [Receptors](../fundamentals/receptors/receptors.md) - Message handlers and business logic
+- [Perspectives](../fundamentals/perspectives/perspectives.md) - Event listeners for read models
 
 **Messaging Patterns**:
 - [Outbox Pattern](outbox-pattern.md) - Reliable event publishing
@@ -687,9 +687,9 @@ public class WorkCoordinatorMetrics {
 - [Event Store](../data/event-store.md) - Event storage and replay
 
 **Workers**:
-- [Perspective Worker](../workers/perspective-worker.md) - Uses work coordinator for checkpoint-based processing
-- [Execution Lifecycle](../workers/execution-lifecycle.md) - Startup/shutdown coordination
-- [Database Readiness](../workers/database-readiness.md) - Dependency coordination
+- [Perspective Worker](../operations/workers/perspective-worker.md) - Uses work coordinator for checkpoint-based processing
+- [Execution Lifecycle](../operations/workers/execution-lifecycle.md) - Startup/shutdown coordination
+- [Database Readiness](../operations/workers/database-readiness.md) - Dependency coordination
 
 ---
 

@@ -507,7 +507,7 @@ services.AddWhizbangTransports(options => {
 
 - [Dispatcher](dispatcher.md) - How messages are routed
 - [Receptors](receptors.md) - Message handlers
-- [Testing](../testing/foundation.md) - Testing with transports
+- [Testing](../../operations/testing/foundation.md) - Testing with transports
 - [Feature Evolution](../../roadmap/FEATURE-EVOLUTION.md) - How transports evolve
 
 ## Next Steps

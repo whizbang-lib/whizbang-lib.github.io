@@ -117,6 +117,6 @@ Without a `[StreamKey]`, the perspective runner cannot:
 
 ## See Also
 
-- [StreamKey Attribute](../attributes/streamkey.md) - Detailed attribute documentation
-- [Perspectives](../core-concepts/perspectives.md) - Pure function perspectives with StreamKey
-- [PerspectiveRunner Architecture](../core-concepts/perspectives.md#perspectiverunner-architecture) - How runners use StreamKey
+- [StreamKey Attribute](../../extending/attributes/streamkey.md) - Detailed attribute documentation
+- [Perspectives](../../fundamentals/perspectives/perspectives.md) - Pure function perspectives with StreamKey
+- [PerspectiveRunner Architecture](../../fundamentals/perspectives/perspectives.md#perspectiverunner-architecture) - How runners use StreamKey

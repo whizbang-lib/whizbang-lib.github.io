@@ -261,7 +261,7 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderSummary> {
 }
 ```
 
-See [Perspectives](../core-concepts/perspectives.md) for details.
+See [Perspectives](../fundamentals/perspectives/perspectives.md) for details.
 
 ## Best Practices
 
@@ -368,8 +368,8 @@ public record OrderCreated : IEvent {
 ## Related Topics
 
 - [Message Envelopes](message-envelopes.md) - How commands and events are wrapped for routing
-- [Receptors](../core-concepts/receptors.md) - How commands are handled
-- [Perspectives](../core-concepts/perspectives.md) - How events drive read models
+- [Receptors](../fundamentals/receptors/receptors.md) - How commands are handled
+- [Perspectives](../fundamentals/perspectives/perspectives.md) - How events drive read models
 - [Event Store](../data/event-store.md) - How events are persisted
 - [Inbox Pattern](inbox-pattern.md) - Guaranteed message delivery
 - [Outbox Pattern](outbox-pattern.md) - Transactional message publishing

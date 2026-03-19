@@ -790,8 +790,8 @@ You've completed the **ECommerce Tutorial** and built a production-ready, event-
 - Production deployment on Kubernetes
 
 **Next steps**:
-- Explore [Advanced Topics](../advanced-topics/) for performance tuning and scaling
-- Check out [Customization Examples](../customization-examples/) for real-world patterns
+- Explore [Advanced Topics](../../operations/deployment) for performance tuning and scaling
+- Check out [Customization Examples](../examples) for real-world patterns
 - Join the community and share your Whizbang projects!
 
 ---

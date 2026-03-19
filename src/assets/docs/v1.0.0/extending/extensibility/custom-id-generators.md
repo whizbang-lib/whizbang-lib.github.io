@@ -130,7 +130,7 @@ var id = UlidGenerator.NewId();  // "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 ## Further Reading
 
 **Core Concepts**:
-- [Message Context](../core-concepts/message-context.md) - MessageId, CorrelationId
+- [Message Context](../../fundamentals/messages/message-context.md) - MessageId, CorrelationId
 
 ---
 

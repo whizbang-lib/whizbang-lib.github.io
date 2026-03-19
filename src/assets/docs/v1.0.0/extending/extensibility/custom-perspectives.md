@@ -18,7 +18,7 @@ codeReferences:
 **Custom perspectives** extend the basic `IPerspectiveOf<TEvent>` pattern with advanced capabilities like time-travel (event replay), snapshots, caching layers, batch processing, and custom storage backends.
 
 :::note
-For basic perspective usage, see [Perspectives Guide](../core-concepts/perspectives.md). This guide focuses on **advanced customization patterns** for specialized scenarios.
+For basic perspective usage, see [Perspectives Guide](../../fundamentals/perspectives/perspectives.md). This guide focuses on **advanced customization patterns** for specialized scenarios.
 :::
 
 ---
@@ -54,7 +54,7 @@ For basic perspective usage, see [Perspectives Guide](../core-concepts/perspecti
 ## Checkpoint System Overview
 
 :::note
-For comprehensive coverage of perspective checkpoints including automatic creation, fuzzy type matching, error tracking, and the complete 4-phase checkpoint system, see [Perspective Worker](../workers/perspective-worker.md).
+For comprehensive coverage of perspective checkpoints including automatic creation, fuzzy type matching, error tracking, and the complete 4-phase checkpoint system, see [Perspective Worker](../../operations/workers/perspective-worker.md).
 :::
 
 **Core checkpoint concepts**:
@@ -65,7 +65,7 @@ For comprehensive coverage of perspective checkpoints including automatic creati
 - **Processing**: PerspectiveWorker polls and processes checkpoints (Phase 3)
 - **Error Tracking**: Failed checkpoints persist error messages (Phase 4)
 
-See [Perspective Worker](../workers/perspective-worker.md) for detailed checkpoint lifecycle, sequence diagrams, and runtime behavior.
+See [Perspective Worker](../../operations/workers/perspective-worker.md) for detailed checkpoint lifecycle, sequence diagrams, and runtime behavior.
 
 ---
 
@@ -944,13 +944,13 @@ public class TimeravelPerspectiveTests {
 ## Further Reading
 
 **Workers**:
-- [Perspective Worker](../workers/perspective-worker.md) - **Comprehensive checkpoint lifecycle and 4-phase system**
-- [Execution Lifecycle](../workers/execution-lifecycle.md) - Startup/shutdown coordination
-- [Database Readiness](../workers/database-readiness.md) - Dependency coordination
+- [Perspective Worker](../../operations/workers/perspective-worker.md) - **Comprehensive checkpoint lifecycle and 4-phase system**
+- [Execution Lifecycle](../../operations/workers/execution-lifecycle.md) - Startup/shutdown coordination
+- [Database Readiness](../../operations/workers/database-readiness.md) - Dependency coordination
 
 **Core Concepts**:
-- [Perspectives Guide](../core-concepts/perspectives.md) - Basic perspective usage
-- [Dispatcher](../core-concepts/dispatcher.md) - Publishing events
+- [Perspectives Guide](../../fundamentals/perspectives/perspectives.md) - Basic perspective usage
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Publishing events
 - [Event Store](../data/event-store.md) - Event storage patterns
 
 **Extensibility**:

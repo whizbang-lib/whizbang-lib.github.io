@@ -708,7 +708,7 @@ public async Task CreateProduct_UpdatesPerspective_DeterministicallyAsync() {
 - **Thread-safe** - uses `ConcurrentDictionary` internally
 - **Must unregister** - use try/finally to ensure cleanup
 
-See [Lifecycle Synchronization](../testing/lifecycle-synchronization.md) for complete test patterns.
+See [Lifecycle Synchronization](../../operations/testing/lifecycle-synchronization.md) for complete test patterns.
 
 ---
 
@@ -998,7 +998,7 @@ public class PerspectiveCompletionReceptor<TEvent> : IReceptor<TEvent>
 }
 ```
 
-See [Lifecycle Synchronization](../testing/lifecycle-synchronization.md) for complete test patterns.
+See [Lifecycle Synchronization](../../operations/testing/lifecycle-synchronization.md) for complete test patterns.
 
 ### Pattern 4: Custom Indexing
 
@@ -1210,7 +1210,7 @@ await _host.WaitForPerspectiveCompletionAsync<ProductCreatedEvent>(
 );
 ```
 
-See [Lifecycle Synchronization](../testing/lifecycle-synchronization.md) for complete patterns.
+See [Lifecycle Synchronization](../../operations/testing/lifecycle-synchronization.md) for complete patterns.
 
 ---
 
@@ -1285,7 +1285,7 @@ See [Automatic Message Cascade](dispatcher.md#automatic-message-cascade) for com
 
 - [Lifecycle Stages](lifecycle-stages.md) - All 18 stages with timing diagrams
 - [Receptors Guide](receptors.md) - Core receptor concepts and patterns
-- [Testing: Lifecycle Synchronization](../testing/lifecycle-synchronization.md) - Deterministic test patterns
+- [Testing: Lifecycle Synchronization](../../operations/testing/lifecycle-synchronization.md) - Deterministic test patterns
 - [Source Generators](../advanced/source-generators.md) - How lifecycle receptors are discovered
 - [AOT Compatibility](../deployment/aot-compatibility.md) - Zero-reflection design
 

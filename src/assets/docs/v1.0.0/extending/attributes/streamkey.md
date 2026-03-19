@@ -218,7 +218,7 @@ public record ProductEvent : IEvent {
 }
 ```
 
-See [WHIZ030 Diagnostic](../diagnostics/whiz030.md) for details.
+See [WHIZ030 Diagnostic](../../operations/diagnostics/whiz030.md) for details.
 
 ### WHIZ031: Multiple StreamKeys
 
@@ -243,7 +243,7 @@ public record OrderEvent : IEvent {
 }
 ```
 
-See [WHIZ031 Diagnostic](../diagnostics/whiz031.md) for details.
+See [WHIZ031 Diagnostic](../../operations/diagnostics/whiz031.md) for details.
 
 ## Best Practices
 
@@ -352,8 +352,8 @@ This generated code:
 
 ## See Also
 
-- [Perspectives](../core-concepts/perspectives.md) - Pure function perspectives using StreamKey
-- [PerspectiveRunner Architecture](../core-concepts/perspectives.md#perspectiverunner-architecture) - How runners use StreamKey
-- [WHIZ030 Diagnostic](../diagnostics/whiz030.md) - Missing StreamKey error
-- [WHIZ031 Diagnostic](../diagnostics/whiz031.md) - Multiple StreamKey error
-- [Event Sourcing](../core-concepts/event-sourcing.md) - Understanding aggregates and streams
+- [Perspectives](../../fundamentals/perspectives/perspectives.md) - Pure function perspectives using StreamKey
+- [PerspectiveRunner Architecture](../../fundamentals/perspectives/perspectives.md#perspectiverunner-architecture) - How runners use StreamKey
+- [WHIZ030 Diagnostic](../../operations/diagnostics/whiz030.md) - Missing StreamKey error
+- [WHIZ031 Diagnostic](../../operations/diagnostics/whiz031.md) - Multiple StreamKey error
+- [Event Sourcing](../../fundamentals/events/event-sourcing.md) - Understanding aggregates and streams

@@ -432,7 +432,7 @@ dotnet test
 
 1. **[Quick Start Tutorial](quick-start.md)** - Build your first Whizbang app
 2. **[Project Structure Guide](project-structure.md)** - Organize your application
-3. **[Core Concepts: Receptors](../core-concepts/receptors.md)** - Understand message handling
+3. **[Core Concepts: Receptors](../fundamentals/receptors/receptors.md)** - Understand message handling
 
 ## Additional Resources
 

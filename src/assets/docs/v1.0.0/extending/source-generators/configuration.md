@@ -285,7 +285,7 @@ var suffixes = ConfigurationUtilities.ParseSuffixList("");
 ## Related Topics
 
 - [Perspective Discovery](perspective-discovery) - How perspectives are discovered
-- [Table Naming](../perspectives/table-naming) - Table naming conventions
+- [Table Naming](../../fundamentals/perspectives/table-naming) - Table naming conventions
 - [JSON Contexts](json-contexts) - JSON serialization configuration
 
 ---

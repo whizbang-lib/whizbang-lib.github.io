@@ -667,10 +667,10 @@ GET /api/orders/{id} → OrderLens → Query read model → Return DTO
 ## Further Reading
 
 **Core Concepts**:
-- [Dispatcher Deep Dive](../core-concepts/dispatcher.md) - Three dispatch patterns explained
-- [Receptors Guide](../core-concepts/receptors.md) - Advanced receptor patterns
-- [Perspectives Guide](../core-concepts/perspectives.md) - Building read models
-- [Lenses Guide](../core-concepts/lenses.md) - Query optimization
+- [Dispatcher Deep Dive](../fundamentals/dispatcher/dispatcher.md) - Three dispatch patterns explained
+- [Receptors Guide](../fundamentals/receptors/receptors.md) - Advanced receptor patterns
+- [Perspectives Guide](../fundamentals/perspectives/perspectives.md) - Building read models
+- [Lenses Guide](../fundamentals/lenses/lenses.md) - Query optimization
 
 **Messaging Patterns**:
 - [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable cross-service messaging
@@ -680,7 +680,7 @@ GET /api/orders/{id} → OrderLens → Query read model → Return DTO
 **Advanced Topics**:
 - [Source Generators](../generators/receptor-discovery.md) - Auto-discovery internals
 - [Performance Tuning](../performance/pooling-strategies.md) - Optimize for scale
-- [Testing Strategies](../testing/receptor-testing.md) - Comprehensive testing guide
+- [Testing Strategies](../operations/testing/receptor-testing.md) - Comprehensive testing guide
 
 ---
 

@@ -247,6 +247,6 @@ Whizbang automatically creates this extension during database initialization if 
 
 ## See Also
 
-- [Physical Fields](/docs/v1.0.0/perspectives/physical-fields) - Physical column storage
-- [Vector Search (Lenses)](/docs/v1.0.0/lenses/vector-search) - Vector query API
-- [Perspective Registry](/docs/v1.0.0/perspectives/registry) - Table tracking
+- [Physical Fields](/docs/v1.0.0/fundamentals/perspectives/physical-fields) - Physical column storage
+- [Vector Search (Lenses)](/docs/v1.0.0/fundamentals/lenses/vector-search) - Vector query API
+- [Perspective Registry](/docs/v1.0.0/fundamentals/perspectives/registry) - Table tracking

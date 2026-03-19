@@ -387,5 +387,5 @@ options.Tracing.TracedHandlers["ProblematicReceptor"] = TraceVerbosity.Debug;
 ## See Also
 
 - [OpenTelemetry Integration](./opentelemetry-integration) - Tag-based telemetry and metrics
-- [Observability & Message Hops](../core-concepts/observability) - Hop-based distributed tracing
-- [Message Tags](../core-concepts/message-tags) - Declarative cross-cutting concerns
+- [Observability & Message Hops](../../fundamentals/persistence/observability) - Hop-based distributed tracing
+- [Message Tags](../../fundamentals/messages/message-tags) - Declarative cross-cutting concerns

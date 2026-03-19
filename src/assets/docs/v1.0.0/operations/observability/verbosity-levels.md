@@ -215,6 +215,6 @@ options.Tracing.TracedHandlers["ProblematicHandler"] = TraceVerbosity.Debug;
 
 ## See Also
 
-- [Tracing Configuration](../observability/tracing) - Full tracing configuration reference
-- [TraceComponents](../observability/tracing#components) - Control which components emit traces
-- [WhizbangTrace Attribute](../observability/tracing#explicit-tracing-with-whizbangtrace) - Mark types for explicit tracing
+- [Tracing Configuration](./tracing) - Full tracing configuration reference
+- [TraceComponents](./tracing#components) - Control which components emit traces
+- [WhizbangTrace Attribute](./tracing#explicit-tracing-with-whizbangtrace) - Mark types for explicit tracing

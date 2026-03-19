@@ -714,8 +714,8 @@ internal record CreateOrder(Guid CustomerId, OrderItem[] Items);
 - [JSON Contexts](json-contexts.md) - AOT-compatible JSON serialization
 
 **Core Concepts**:
-- [Receptors](../core-concepts/receptors.md) - Message handler pattern
-- [Dispatcher](../core-concepts/dispatcher.md) - Message routing patterns
+- [Receptors](../../fundamentals/receptors/receptors.md) - Message handler pattern
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Message routing patterns
 
 **Advanced**:
 - [Performance: Local Invoke](../advanced/local-invoke.md) - Sub-20ns dispatch

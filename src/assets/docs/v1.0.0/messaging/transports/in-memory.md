@@ -747,7 +747,7 @@ await transport.PublishAsync(orderCreatedEnvelope, destination);
 - [Testing Receptors](../advanced/testing-receptors.md) - Unit testing message handlers
 
 **Extensibility**:
-- [Custom Transports](../extensibility/custom-transports.md) - Implementing custom transports
+- [Custom Transports](../../extending/extensibility/custom-transports.md) - Implementing custom transports
 
 ---
 

@@ -370,5 +370,5 @@ public static IHostApplicationBuilder AddServiceDefaults(
 ## See Also
 
 - [Tracing](./tracing) - Handler-level distributed tracing
-- [Message Tags](../core-concepts/message-tags) - Tag system overview
-- [Observability & Message Hops](../core-concepts/observability) - Hop-based tracing
+- [Message Tags](../../fundamentals/messages/message-tags) - Tag system overview
+- [Observability & Message Hops](../../fundamentals/persistence/observability) - Hop-based tracing

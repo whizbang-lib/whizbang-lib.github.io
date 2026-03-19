@@ -161,4 +161,4 @@ builder.Services.AddLensServices();
 - [ServiceRegistrationExtensions](service-registration) - Parent class
 - [AddPerspectiveServices](perspective-services) - Register Perspective services
 - [AddAllWhizbangServices](all-services) - Register all services
-- [Lenses Guide](../core-concepts/lenses) - Understanding Lenses
+- [Lenses Guide](../../fundamentals/lenses/lenses) - Understanding Lenses

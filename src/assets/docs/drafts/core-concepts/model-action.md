@@ -440,9 +440,9 @@ public class OrderPerspective :
 
 ## Further Reading
 
-- [Perspectives Guide](perspectives.md) - Core perspective concepts and pure functions
+- [Perspectives Guide](../fundamentals/perspectives/perspectives.md) - Core perspective concepts and pure functions
 - [IPerspectiveStore](../data/perspective-store.md) - Storage abstraction including PurgeAsync
-- [Perspective Discovery](../source-generators/perspective-discovery.md) - Generator details
+- [Perspective Discovery](../extending/source-generators/perspective-discovery.md) - Generator details
 - [Marten Migration Guide](../migration/marten-to-whizbang.md) - ShouldDelete migration patterns
 
 ---

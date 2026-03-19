@@ -752,9 +752,9 @@ public class ExternalEventPerspective : IPerspectiveOf<SharedMessages.CustomerCr
 - [JSON Contexts](json-contexts.md) - AOT-compatible JSON serialization
 
 **Core Concepts**:
-- [Dispatcher](../core-concepts/dispatcher.md) - Message routing patterns
-- [Receptors](../core-concepts/receptors.md) - Message handlers
-- [Perspectives](../core-concepts/perspectives.md) - Event-driven read models
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Message routing patterns
+- [Receptors](../../fundamentals/receptors/receptors.md) - Message handlers
+- [Perspectives](../../fundamentals/perspectives/perspectives.md) - Event-driven read models
 
 **Tools**:
 - [VSCode Extension](../tools/vscode-extension.md) - IDE integration features

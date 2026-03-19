@@ -121,4 +121,4 @@ builder.Services
 - [ServiceRegistrationExtensions](service-registration) - Parent class
 - [AddPerspectiveServices](perspective-services) - Register only Perspectives
 - [AddLensServices](lens-services) - Register only Lenses
-- [WhizbangCoreOptions](../configuration/whizbang-options) - Core configuration
+- [WhizbangCoreOptions](./whizbang-options) - Core configuration

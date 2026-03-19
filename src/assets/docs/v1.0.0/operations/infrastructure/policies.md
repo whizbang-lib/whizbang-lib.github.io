@@ -662,11 +662,11 @@ policyEngine.AddPolicy(
 - [Aspire Integration](aspire-integration.md) - Service configuration injection
 
 **Core Concepts**:
-- [Message Context](../core-concepts/message-context.md) - MessageId, CorrelationId, CausationId
-- [Observability](../core-concepts/observability.md) - Distributed tracing with hops
+- [Message Context](../../fundamentals/messages/message-context.md) - MessageId, CorrelationId, CausationId
+- [Observability](../../fundamentals/persistence/observability.md) - Distributed tracing with hops
 
 **Source Generators**:
-- [Aggregate IDs](../source-generators/aggregate-ids.md) - Zero-reflection aggregate ID extraction
+- [Aggregate IDs](../../extending/source-generators/aggregate-ids.md) - Zero-reflection aggregate ID extraction
 
 **Advanced**:
 - [Multi-Tenancy](../advanced/multi-tenancy.md) - Tenant isolation patterns

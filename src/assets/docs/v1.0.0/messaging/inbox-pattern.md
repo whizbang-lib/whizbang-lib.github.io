@@ -694,8 +694,8 @@ public async Task InventoryWorker_DuplicateMessage_ProcessesOnceAsync() {
 ## Further Reading
 
 **Core Concepts**:
-- [Dispatcher](../core-concepts/dispatcher.md) - Message routing
-- [Receptors](../core-concepts/receptors.md) - Message handlers
+- [Dispatcher](../fundamentals/dispatcher/dispatcher.md) - Message routing
+- [Receptors](../fundamentals/receptors/receptors.md) - Message handlers
 
 **Messaging Patterns**:
 - [Outbox Pattern](outbox-pattern.md) - Reliable event publishing

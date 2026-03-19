@@ -547,7 +547,7 @@ await dispatcher
   .SendAsync(new DebugCommand());
 ```
 
-See [Message Security](../core-concepts/message-security.md#explicit-security-context-api) for more details.
+See [Message Security](./message-security.md#explicit-security-context-api) for more details.
 
 ## Testing
 
@@ -579,5 +579,5 @@ public async Task GetOrders_ReturnsOnlyTenantOrders() {
 
 ## Related Documentation
 
-- [Security](../core-concepts/security.md) - Permission and role system
-- [Scoping](../core-concepts/scoping.md) - Scope filters and composition
+- [Security](./security.md) - Permission and role system
+- [Scoping](./scoping.md) - Scope filters and composition

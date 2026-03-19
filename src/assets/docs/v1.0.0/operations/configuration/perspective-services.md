@@ -131,4 +131,4 @@ builder.Services.AddLensServices();         // Or use AddAllWhizbangServices()
 - [ServiceRegistrationExtensions](service-registration) - Parent class
 - [AddLensServices](lens-services) - Register Lens services
 - [AddAllWhizbangServices](all-services) - Register all services
-- [Perspectives](../components/perspectives) - Understanding Perspectives
+- [Perspectives](../../fundamentals/perspectives/perspectives) - Understanding Perspectives

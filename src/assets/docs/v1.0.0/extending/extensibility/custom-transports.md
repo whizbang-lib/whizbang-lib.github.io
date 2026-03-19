@@ -20,7 +20,7 @@ codeReferences:
 **Custom transports** enable Whizbang to work with any messaging system by implementing the `ITransport` interface. Support HTTP, gRPC, Kafka, RabbitMQ, NATS, or any custom communication protocol.
 
 :::note
-For built-in transports, see [Azure Service Bus](../transports/azure-service-bus.md) and [In-Memory](../transports/in-memory.md). This guide focuses on **implementing custom transport backends**.
+For built-in transports, see [Azure Service Bus](../../messaging/transports/azure-service-bus.md) and [In-Memory](../../messaging/transports/in-memory.md). This guide focuses on **implementing custom transport backends**.
 :::
 
 ---
@@ -864,8 +864,8 @@ public class KafkaTransportIntegrationTests {
 ## Further Reading
 
 **Transports**:
-- [Azure Service Bus](../transports/azure-service-bus.md) - Built-in Service Bus transport
-- [In-Memory](../transports/in-memory.md) - Testing transport
+- [Azure Service Bus](../../messaging/transports/azure-service-bus.md) - Built-in Service Bus transport
+- [In-Memory](../../messaging/transports/in-memory.md) - Testing transport
 
 **Messaging**:
 - [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable event publishing
@@ -875,7 +875,7 @@ public class KafkaTransportIntegrationTests {
 - [JSON Contexts](../source-generators/json-contexts.md) - AOT-compatible serialization
 
 **Infrastructure**:
-- [Health Checks](../infrastructure/health-checks.md) - Transport health monitoring
+- [Health Checks](../../operations/infrastructure/health-checks.md) - Transport health monitoring
 
 ---
 

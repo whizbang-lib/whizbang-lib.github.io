@@ -166,6 +166,6 @@ dotnet_diagnostic.WHIZ080.severity = warning
 
 ## See Also
 
-- [Receptors](../core-concepts/receptors.md) - Receptor implementation patterns
-- [Dispatcher](../core-concepts/dispatcher.md) - Message routing
+- [Receptors](../../fundamentals/receptors/receptors.md) - Receptor implementation patterns
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Message routing
 - [CQRS Pattern](../patterns/cqrs.md) - Command Query Responsibility Segregation

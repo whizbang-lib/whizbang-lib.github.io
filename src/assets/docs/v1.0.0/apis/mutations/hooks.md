@@ -460,8 +460,8 @@ Both transports call the hooks in the same order, providing consistent behavior 
 ## See Also
 
 - [Custom Request DTOs](custom-request-dto.md) - Map custom DTOs to commands
-- [Dispatcher](../core-concepts/dispatcher.md) - Command dispatch patterns
-- [Receptors](../core-concepts/receptors.md) - Command handlers
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Command dispatch patterns
+- [Receptors](../../fundamentals/receptors/receptors.md) - Command handlers
 
 ---
 

@@ -125,6 +125,6 @@ app.MapGraphQL();
 
 ## Related Documentation
 
-- [Lenses Overview](/docs/v1.0.0/core-concepts/lenses)
-- [Security & Scoping](/docs/v1.0.0/core-concepts/security)
+- [Lenses Overview](/docs/v1.0.0/fundamentals/lenses/lenses)
+- [Security & Scoping](/docs/v1.0.0/fundamentals/security/security)
 - [HotChocolate Documentation](https://chillicream.com/docs/hotchocolate)

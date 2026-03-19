@@ -286,9 +286,9 @@ public bool ShouldTrace(TraceVerbosity requiredVerbosity) {
 
 ## Further Reading
 
-- [Trace Verbosity](verbosity-levels.md) - Detail levels explained
+- [Trace Verbosity](../operations/observability/verbosity-levels.md) - Detail levels explained
 - [Trace Components](components.md) - Component filtering
-- [Trace Attributes](attributes.md) - `[TraceHandler]` and `[TraceMessage]`
+- [Trace Attributes](../operations/observability/tracing-attributes.md) - `[TraceHandler]` and `[TraceMessage]`
 
 ---
 

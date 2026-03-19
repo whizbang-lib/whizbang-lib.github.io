@@ -593,7 +593,7 @@ app.Run();
 ## Further Reading
 
 **Transports**:
-- [Azure Service Bus Transport](../transports/azure-service-bus.md) - Service Bus integration details
+- [Azure Service Bus Transport](../../messaging/transports/azure-service-bus.md) - Service Bus integration details
 
 **Infrastructure**:
 - [Health Checks](health-checks.md) - Application health monitoring

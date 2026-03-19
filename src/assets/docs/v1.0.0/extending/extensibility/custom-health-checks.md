@@ -17,7 +17,7 @@ codeReferences:
 **Custom health checks** enable monitoring application health for Kubernetes, load balancers, and observability tools. Implement checks for transports, databases, caches, external APIs, and custom services.
 
 :::note
-For built-in health checks, see [Health Checks](../infrastructure/health-checks.md). This guide focuses on **implementing custom health checks**.
+For built-in health checks, see [Health Checks](../../operations/infrastructure/health-checks.md). This guide focuses on **implementing custom health checks**.
 :::
 
 ---
@@ -365,7 +365,7 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions {
 ## Further Reading
 
 **Infrastructure**:
-- [Health Checks](../infrastructure/health-checks.md) - Built-in health checks
+- [Health Checks](../../operations/infrastructure/health-checks.md) - Built-in health checks
 
 **Transports**:
 - [Custom Transports](custom-transports.md) - Transport implementations

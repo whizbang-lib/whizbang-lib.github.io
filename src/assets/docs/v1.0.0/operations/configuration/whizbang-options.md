@@ -208,6 +208,6 @@ services.AddWhizbang(options => { });
 
 ## See Also
 
-- [Message Tags](../core-concepts/message-tags) - Complete tag processing guide
-- [Lifecycle Stages](../core-concepts/lifecycle-stages) - Pipeline timing reference
-- [Dispatcher](../core-concepts/dispatcher) - Message dispatch and routing
+- [Message Tags](../../fundamentals/messages/message-tags) - Complete tag processing guide
+- [Lifecycle Stages](../../fundamentals/lifecycle/lifecycle-stages) - Pipeline timing reference
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher) - Message dispatch and routing

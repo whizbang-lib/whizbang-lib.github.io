@@ -19,7 +19,7 @@ codeReferences:
 
 This guide explores how **MessageEnvelope** enables hop-based distributed tracing across Outbox, Inbox, and message transports like Azure Service Bus.
 
-See [Observability & Message Hops](../core-concepts/observability.md) for architectural overview. This document focuses on **practical messaging scenarios**.
+See [Observability & Message Hops](../fundamentals/persistence/observability.md) for architectural overview. This document focuses on **practical messaging scenarios**.
 
 ---
 
@@ -518,8 +518,8 @@ var json = JsonSerializer.Serialize(envelope);  // Not AOT-compatible
 ## Further Reading
 
 **Core Concepts**:
-- [Observability & Message Hops](../core-concepts/observability.md) - Architecture overview
-- [Message Context](../core-concepts/message-context.md) - MessageId, CorrelationId, CausationId
+- [Observability & Message Hops](../fundamentals/persistence/observability.md) - Architecture overview
+- [Message Context](../fundamentals/messages/message-context.md) - MessageId, CorrelationId, CausationId
 
 **Messaging Patterns**:
 - [Outbox Pattern](outbox-pattern.md) - Reliable publishing with hops
@@ -527,7 +527,7 @@ var json = JsonSerializer.Serialize(envelope);  // Not AOT-compatible
 - [Work Coordinator](work-coordinator.md) - Atomic batch processing
 
 **Transports**:
-- [Azure Service Bus](../transports/azure-service-bus.md) - ASB integration with hops
+- [Azure Service Bus](./transports/azure-service-bus.md) - ASB integration with hops
 
 ---
 

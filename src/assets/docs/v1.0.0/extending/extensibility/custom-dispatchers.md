@@ -116,7 +116,7 @@ public class EventSourcingDispatcher : IDispatcher {
 ## Further Reading
 
 **Core Concepts**:
-- [Dispatcher](../core-concepts/dispatcher.md) - Default dispatcher
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Default dispatcher
 
 ---
 

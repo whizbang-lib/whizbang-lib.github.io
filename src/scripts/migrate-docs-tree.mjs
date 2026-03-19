@@ -25,6 +25,8 @@ const LIBRARY_ROOT = process.env.WHIZBANG_LIB_PATH || path.resolve(__dirname, '.
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const UPDATE_TAGS = process.argv.includes('--update-tags');
+const UPDATE_LINKS = process.argv.includes('--update-links');
+const DOCS_BASE = path.resolve(__dirname, '../assets/docs');
 
 // ─── Complete old-path → new-path mapping ────────────────────────────────────
 // Paths are relative to v1.0.0/, without .md extension (matching <docs> tag format)
@@ -336,6 +338,36 @@ const PATH_MAP = new Map([
   ['diagnostics/whiz801', 'operations/diagnostics/whiz801'],
   ['diagnostics/whiz803', 'operations/diagnostics/whiz803'],
   ['diagnostics/whiz805', 'operations/diagnostics/whiz805'],
+
+  // ── Mappings for planned docs (don't exist yet, but links should use new paths) ──
+  ['core-concepts/json-serialization', 'fundamentals/messages/json-serialization'],
+  ['core-concepts/event-sourcing', 'fundamentals/events/event-sourcing'],
+  ['core-concepts/commands', 'fundamentals/messages/commands'],
+  ['core-concepts/aot-compatibility', 'operations/deployment/aot-compatibility'],
+  ['core-concepts/lifecycle-stages', 'fundamentals/lifecycle/lifecycle-stages'],
+  ['infrastructure/transports', 'messaging/transports/transports'],
+  ['infrastructure/observability-setup', 'operations/observability/observability-setup'],
+  ['infrastructure/postgresql-setup', 'operations/infrastructure/postgresql-setup'],
+  ['components/workers', 'operations/workers/workers'],
+  ['components/ordered-stream-processor', 'operations/workers/ordered-stream-processor'],
+  ['data-access/perspectives-storage', 'data/perspectives-storage'],
+  ['testing/foundation', 'operations/testing/foundation'],
+  ['testing/tunit', 'operations/testing/tunit'],
+  ['testing/bogus', 'operations/testing/bogus'],
+  ['testing/behavior-specs', 'operations/testing/behavior-specs'],
+  ['testing/test-doubles', 'operations/testing/test-doubles'],
+  ['testing/receptor-testing', 'operations/testing/receptor-testing'],
+  ['testing/integration', 'operations/testing/integration'],
+  ['extensibility/overview', 'extending/extensibility/overview'],
+  ['source-generators/overview', 'extending/source-generators/overview'],
+  ['source-generators/perspective-schema-generator', 'extending/source-generators/perspective-schema-generator'],
+  ['advanced-topics/aot-compatibility', 'operations/deployment/aot-compatibility'],
+  ['advanced-topics', 'operations/deployment'],
+  ['customization-examples', 'learn/examples'],
+  ['diagnostics/whiz030-whiz031', 'operations/diagnostics/whiz030'],
+  ['attributes/suppressguidinterception', 'extending/attributes/suppressguidinterception'],
+  ['perspectives/storage', 'fundamentals/perspectives/storage'],
+  ['workers/work-coordination', 'operations/workers/work-coordination'],
 ]);
 
 // Files that are merge targets (components/* → merged into core-concepts equivalent)
@@ -668,10 +700,166 @@ function findFiles(dir, ext) {
   return results;
 }
 
+// ─── Update internal markdown links in docs ──────────────────────────────────
+
+function updateInternalLinks() {
+  console.log('\n=== Updating internal markdown links ===\n');
+
+  // Build a sorted map (longest prefix first for greedy matching)
+  const sortedMap = [...PATH_MAP].sort((a, b) => b[0].length - a[0].length);
+
+  // Also build a reverse map: new-path → old-path (for resolving relative links)
+  const reverseMap = new Map();
+  for (const [oldPath, newPath] of PATH_MAP) {
+    reverseMap.set(newPath, oldPath);
+  }
+
+  // Find all .md files in docs (both v1.0.0 and drafts)
+  const mdFiles = [
+    ...findFiles(DOCS_ROOT, '.md'),
+    ...findFiles(path.join(DOCS_BASE, 'drafts'), '.md').filter(f => fs.existsSync(f)),
+    ...findFiles(path.join(DOCS_BASE, 'proposals'), '.md').filter(f => fs.existsSync(f)),
+  ];
+  log(`Found ${mdFiles.length} .md files to scan`);
+
+  let totalChanges = 0;
+  let filesChanged = 0;
+
+  for (const file of mdFiles) {
+    if (file.endsWith('_folder.md')) continue;
+
+    let content = fs.readFileSync(file, 'utf-8');
+    let changed = false;
+    const fileDir = path.dirname(file);
+
+    // Determine which docs root this file belongs to
+    let fileDocsRoot;
+    if (file.startsWith(DOCS_ROOT)) {
+      fileDocsRoot = DOCS_ROOT;
+    } else if (file.startsWith(path.join(DOCS_BASE, 'drafts'))) {
+      fileDocsRoot = path.join(DOCS_BASE, 'drafts');
+    } else {
+      fileDocsRoot = path.join(DOCS_BASE, 'proposals');
+    }
+
+    // Pattern 1: Absolute links like [text](/docs/v1.0.0/core-concepts/dispatcher)
+    content = content.replace(/\]\(\/docs\/v1\.0\.0\/([^)#\s]+)(#[^)]*)?(\))/g, (match, linkPath, anchor, close) => {
+      anchor = anchor || '';
+      const mapped = mapPath(linkPath, sortedMap);
+      if (mapped && mapped !== linkPath) {
+        changed = true;
+        totalChanges++;
+        return `](/docs/v1.0.0/${mapped}${anchor})`;
+      }
+      return match;
+    });
+
+    // Pattern 2: Relative links like [text](../core-concepts/dispatcher.md)
+    // or [text](core-concepts/dispatcher.md) or [text](../../core-concepts/dispatcher)
+    // Strategy: strip all ../ prefixes to get the "intended old path", match against PATH_MAP,
+    // then compute new relative path from current file location to new target.
+    content = content.replace(/\]\(((?:\.\.\/)+[a-z][a-z0-9/_.-]*)(#[^)]*)?(\))/g, (match, relPath, anchor, close) => {
+      anchor = anchor || '';
+
+      // Strip .md extension if present
+      const hasMdExt = relPath.endsWith('.md');
+      let cleanRelPath = hasMdExt ? relPath.slice(0, -3) : relPath;
+      // Also handle trailing /
+      cleanRelPath = cleanRelPath.replace(/\/$/, '');
+
+      // Strip all ../ prefixes to get the intended target path
+      const strippedPath = cleanRelPath.replace(/^(\.\.\/)+/, '');
+
+      // Try to map this path
+      const mapped = mapPath(strippedPath, sortedMap);
+      if (mapped && mapped !== strippedPath) {
+        // Compute new relative path from current file location to new target
+        const newTargetAbs = path.join(fileDocsRoot, mapped);
+        let newRelPath = path.relative(fileDir, newTargetAbs);
+        // Ensure it starts with ./ or ../
+        if (!newRelPath.startsWith('.')) {
+          newRelPath = './' + newRelPath;
+        }
+        if (hasMdExt) newRelPath += '.md';
+        changed = true;
+        totalChanges++;
+        return `](${newRelPath}${anchor})`;
+      }
+      return match;
+    });
+
+    // Pattern 3: Same-directory or sub-directory relative links (no ../ prefix)
+    // like [text](core-concepts/dispatcher.md) from README.md
+    content = content.replace(/\]\(([a-z][a-z0-9/_.-]*)(#[^)]*)?(\))/g, (match, relPath, anchor, close) => {
+      // Skip URLs, absolute paths, already-processed
+      if (relPath.startsWith('http') || relPath.startsWith('/') || relPath.startsWith('.')) return match;
+
+      anchor = anchor || '';
+      const hasMdExt = relPath.endsWith('.md');
+      let cleanRelPath = hasMdExt ? relPath.slice(0, -3) : relPath;
+      cleanRelPath = cleanRelPath.replace(/\/$/, '');
+
+      // Resolve relative to current file
+      const resolvedAbs = path.resolve(fileDir, cleanRelPath);
+      const resolvedRel = path.relative(fileDocsRoot, resolvedAbs);
+
+      // Try to map
+      const mapped = mapPath(resolvedRel, sortedMap);
+      if (mapped && mapped !== resolvedRel) {
+        const newTargetAbs = path.join(fileDocsRoot, mapped);
+        let newRelPath = path.relative(fileDir, newTargetAbs);
+        if (!newRelPath.startsWith('.')) {
+          newRelPath = './' + newRelPath;
+        }
+        if (hasMdExt) newRelPath += '.md';
+        changed = true;
+        totalChanges++;
+        return `](${newRelPath}${anchor})`;
+      }
+      return match;
+    });
+
+    if (changed) {
+      filesChanged++;
+      if (!DRY_RUN) {
+        fs.writeFileSync(file, content);
+      }
+      log(`  Updated: ${path.relative(DOCS_BASE, file)}`);
+    }
+  }
+
+  console.log(`\n  Total: ${totalChanges} link updates in ${filesChanged} files`);
+}
+
+function mapPath(pathStr, sortedMap) {
+  // Normalize path separators
+  pathStr = pathStr.replace(/\\/g, '/');
+
+  // Try exact match first
+  if (PATH_MAP.has(pathStr)) {
+    return PATH_MAP.get(pathStr);
+  }
+
+  // Try prefix match
+  for (const [oldPrefix, newPrefix] of sortedMap) {
+    if (pathStr === oldPrefix) {
+      return newPrefix;
+    }
+    if (pathStr.startsWith(oldPrefix + '/')) {
+      const suffix = pathStr.substring(oldPrefix.length);
+      return newPrefix + suffix;
+    }
+  }
+
+  return null;
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 if (UPDATE_TAGS) {
   updateDocsTags();
+} else if (UPDATE_LINKS) {
+  updateInternalLinks();
 } else {
   moveDocsFiles();
 }

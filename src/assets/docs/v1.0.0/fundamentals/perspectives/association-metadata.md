@@ -249,9 +249,9 @@ info WHIZ021: Multiple perspectives discovered for model 'OrderSummaryDto': Orde
 
 ## See Also
 
-- [Perspectives Guide](../core-concepts/perspectives.md) - Perspective fundamentals
-- [Perspective Discovery](../source-generators/perspective-discovery.md) - Source generator details
-- [Perspective Worker](../workers/perspective-worker.md) - Runtime execution
+- [Perspectives Guide](./perspectives.md) - Perspective fundamentals
+- [Perspective Discovery](../../extending/source-generators/perspective-discovery.md) - Source generator details
+- [Perspective Worker](../../operations/workers/perspective-worker.md) - Runtime execution
 - [Perspective Store](../data/perspective-store.md) - Model persistence
 
 ---

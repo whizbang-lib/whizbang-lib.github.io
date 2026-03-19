@@ -222,6 +222,6 @@ await dbContext.EnsureWhizbangDatabaseInitializedAsync();
 
 ## See Also
 
-- [Table Naming](/docs/v1.0.0/perspectives/table-naming) - Configure table name generation
+- [Table Naming](/docs/v1.0.0/fundamentals/perspectives/table-naming) - Configure table name generation
 - [Schema Migration](/docs/v1.0.0/data/schema-migration) - Database schema management
-- [Temporal Perspectives](/docs/v1.0.0/perspectives/temporal) - Append-only perspective pattern
+- [Temporal Perspectives](/docs/v1.0.0/fundamentals/perspectives/temporal) - Append-only perspective pattern

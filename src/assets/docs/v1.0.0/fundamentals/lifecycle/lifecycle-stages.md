@@ -458,7 +458,7 @@ public class PerspectiveCompletionReceptor<TEvent> : IReceptor<TEvent>
 }
 ```
 
-See [Lifecycle Synchronization](../testing/lifecycle-synchronization.md) for complete test patterns.
+See [Lifecycle Synchronization](../../operations/testing/lifecycle-synchronization.md) for complete test patterns.
 
 ---
 
@@ -602,9 +602,9 @@ See [Lifecycle Receptors](lifecycle-receptors.md) for API details.
 
 - [Lifecycle Receptors API](lifecycle-receptors.md) - Using `[FireAt]` and `ILifecycleContext`
 - [Receptors Guide](receptors.md) - Core receptor concepts
-- [Testing: Lifecycle Synchronization](../testing/lifecycle-synchronization.md) - Test patterns with lifecycle hooks
-- [PerspectiveWorker](../workers/perspective-worker.md) - Perspective processing worker
-- [Work Coordination](../workers/work-coordination.md) - Distributed work coordination
+- [Testing: Lifecycle Synchronization](../../operations/testing/lifecycle-synchronization.md) - Test patterns with lifecycle hooks
+- [PerspectiveWorker](../../operations/workers/perspective-worker.md) - Perspective processing worker
+- [Work Coordination](../../operations/workers/work-coordination.md) - Distributed work coordination
 
 ---
 

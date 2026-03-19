@@ -180,6 +180,6 @@ However, this is rare. Most domain events belong to a single aggregate.
 
 ## See Also
 
-- [StreamKey Attribute](../attributes/streamkey.md) - Detailed attribute documentation
-- [Perspectives](../core-concepts/perspectives.md) - Pure function perspectives with StreamKey
-- [Event Sourcing](../core-concepts/event-sourcing.md) - Understanding aggregates and streams
+- [StreamKey Attribute](../../extending/attributes/streamkey.md) - Detailed attribute documentation
+- [Perspectives](../../fundamentals/perspectives/perspectives.md) - Pure function perspectives with StreamKey
+- [Event Sourcing](../../fundamentals/events/event-sourcing.md) - Understanding aggregates and streams

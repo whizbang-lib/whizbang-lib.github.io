@@ -128,6 +128,6 @@ In your `.csproj`:
 
 ## See Also
 
-- [AOT Compatibility](../core-concepts/aot-compatibility.md) - AOT design principles
-- [Messages](../core-concepts/messages.md) - ICommand and IEvent documentation
-- [Source Generators](../source-generators/overview.md) - How Whizbang uses source generation
+- [AOT Compatibility](../deployment/aot-compatibility.md) - AOT design principles
+- [Messages](../../fundamentals/messages/messages.md) - ICommand and IEvent documentation
+- [Source Generators](../../extending/source-generators/overview.md) - How Whizbang uses source generation

@@ -133,7 +133,7 @@ public class OrderDto : IPerspectiveFor<OrderSummary, OrderCreatedEvent> { }
 
 ## Renaming Perspectives
 
-When you rename a perspective class, the [perspective registry](/docs/v1.0.0/perspectives/registry) automatically handles the table rename:
+When you rename a perspective class, the [perspective registry](/docs/v1.0.0/fundamentals/perspectives/registry) automatically handles the table rename:
 
 ### Before
 
@@ -183,6 +183,6 @@ Changing prefixes affects all table names:
 
 ## See Also
 
-- [Perspective Registry](/docs/v1.0.0/perspectives/registry) - Automatic table tracking and renaming
+- [Perspective Registry](/docs/v1.0.0/fundamentals/perspectives/registry) - Automatic table tracking and renaming
 - [Schema Migration](/docs/v1.0.0/data/schema-migration) - Database schema management
-- [Temporal Perspectives](/docs/v1.0.0/perspectives/temporal) - Append-only perspective pattern
+- [Temporal Perspectives](/docs/v1.0.0/fundamentals/perspectives/temporal) - Append-only perspective pattern

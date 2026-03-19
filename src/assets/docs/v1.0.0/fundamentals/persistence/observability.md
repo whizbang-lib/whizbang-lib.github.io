@@ -619,8 +619,8 @@ ORDER BY created_at;
 - [Event Store](../data/event-store.md) - Storing hops with events
 
 **Infrastructure**:
-- [Logging & Telemetry](../infrastructure/observability-setup.md) - Application Insights integration
-- [Policy Engine](../infrastructure/policies.md) - Policy decision trails
+- [Logging & Telemetry](../../operations/observability/observability-setup.md) - Application Insights integration
+- [Policy Engine](../../operations/infrastructure/policies.md) - Policy decision trails
 
 ---
 
