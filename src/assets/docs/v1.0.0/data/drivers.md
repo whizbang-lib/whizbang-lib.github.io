@@ -447,7 +447,7 @@ services.AddWhizbangDrivers(options => {
 
 - [Perspectives](perspectives.md) - Using drivers for write models
 - [Lenses](lenses.md) - Using drivers for read models
-- [Testing](../testing/foundation.md) - Testing with in-memory driver
+- [Testing](../operations/testing/foundation.md) - Testing with in-memory driver
 - [Feature Evolution](../../roadmap/FEATURE-EVOLUTION.md) - How drivers evolve
 
 ## Next Steps

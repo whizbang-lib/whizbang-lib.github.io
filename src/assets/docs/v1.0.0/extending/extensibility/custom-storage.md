@@ -127,7 +127,7 @@ public class ElasticsearchPerspectiveStore<TModel> : IPerspectiveStore<TModel>
 ## Further Reading
 
 **Data Access**:
-- [Perspectives Storage](../data-access/perspectives-storage.md) - PostgreSQL schema
+- [Perspectives Storage](../../data/perspectives-storage.md) - PostgreSQL schema
 
 **Extensibility**:
 - [Custom Perspectives](custom-perspectives.md) - Advanced perspective patterns

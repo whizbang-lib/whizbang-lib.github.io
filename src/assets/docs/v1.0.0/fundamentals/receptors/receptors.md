@@ -1085,7 +1085,7 @@ public class CompleteOrderReceptor : IReceptor<CompleteOrder, OrderCompleted> {
 - [Inbox Pattern](../messaging/inbox-pattern.md) - Exactly-once processing
 
 **Testing**:
-- [Receptor Testing](../testing/receptor-testing.md) - Comprehensive testing guide
+- [Receptor Testing](../../operations/testing/receptor-testing.md) - Comprehensive testing guide
 
 **Examples**:
 - [ECommerce: Order Service](../examples/ecommerce/order-service.md) - Real-world receptor patterns

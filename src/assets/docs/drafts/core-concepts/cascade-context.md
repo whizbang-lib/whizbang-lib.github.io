@@ -505,9 +505,9 @@ if (initiating is not null) {
 ## Further Reading
 
 **Related Concepts**:
-- [Message Context](message-context.md) - MessageId, CorrelationId, CausationId
-- [Security Context Propagation](security-context-propagation.md) - Multi-tenant security
-- [Observability](observability.md) - MessageEnvelope and hops
+- [Message Context](../fundamentals/messages/message-context.md) - MessageId, CorrelationId, CausationId
+- [Security Context Propagation](../fundamentals/security/security-context-propagation.md) - Multi-tenant security
+- [Observability](../fundamentals/persistence/observability.md) - MessageEnvelope and hops
 - [Scope Context](scope-context.md) - IScopeContext and authorization
 
 **API Reference**:

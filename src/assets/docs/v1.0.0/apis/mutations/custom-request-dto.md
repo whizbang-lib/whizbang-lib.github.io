@@ -414,8 +414,8 @@ public partial class TransferFundsEndpoint {
 ## See Also
 
 - [Mutation Hooks](hooks.md) - Pre/post execution hooks
-- [Dispatcher](../core-concepts/dispatcher.md) - Command dispatch patterns
-- [Receptors](../core-concepts/receptors.md) - Command handlers
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Command dispatch patterns
+- [Receptors](../../fundamentals/receptors/receptors.md) - Command handlers
 
 ---
 

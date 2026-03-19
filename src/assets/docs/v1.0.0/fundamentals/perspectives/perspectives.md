@@ -843,11 +843,11 @@ public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {
 - [Dispatcher](dispatcher.md) - How to publish events
 - [Lenses](lenses.md) - Query interfaces for read models
 - [Receptors](receptors.md) - Command handlers that produce events
-- [StreamKey Attribute](../attributes/streamkey.md) - Stream identification
+- [StreamKey Attribute](../../extending/attributes/streamkey.md) - Stream identification
 
 **Source Generators**:
-- [Perspective Discovery](../source-generators/perspective-discovery.md) - Auto-discovery and runner generation
-- [Diagnostics (WHIZ030/WHIZ031)](../diagnostics/whiz030-whiz031.md) - StreamKey validation
+- [Perspective Discovery](../../extending/source-generators/perspective-discovery.md) - Auto-discovery and runner generation
+- [Diagnostics (WHIZ030/WHIZ031)](../../operations/diagnostics/whiz030.md) - StreamKey validation
 
 **Data Access**:
 - [IPerspectiveStore](../data/perspective-store.md) - Persistence abstraction
@@ -855,9 +855,9 @@ public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {
 - [EF Core Integration](../data/efcore-integration.md) - Using EF Core for read models
 
 **Workers**:
-- [Perspective Worker](../workers/perspective-worker.md) - Checkpoint processing lifecycle and runtime behavior
-- [Execution Lifecycle](../workers/execution-lifecycle.md) - Startup/shutdown coordination
-- [Database Readiness](../workers/database-readiness.md) - Dependency coordination
+- [Perspective Worker](../../operations/workers/perspective-worker.md) - Checkpoint processing lifecycle and runtime behavior
+- [Execution Lifecycle](../../operations/workers/execution-lifecycle.md) - Startup/shutdown coordination
+- [Database Readiness](../../operations/workers/database-readiness.md) - Dependency coordination
 
 **Examples**:
 - [ECommerce: BFF Pattern](../examples/ecommerce/bff-pattern.md) - Real-world perspectives

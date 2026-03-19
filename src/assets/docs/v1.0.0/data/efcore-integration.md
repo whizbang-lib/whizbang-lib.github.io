@@ -1148,9 +1148,9 @@ public async Task UpdateOrderStatusAsync(Guid orderId, string newStatus) {
 ## Further Reading
 
 **Core Concepts**:
-- [Perspectives](../core-concepts/perspectives.md) - Event-driven read models
-- [Lenses](../core-concepts/lenses.md) - Query repositories
-- [Receptors](../core-concepts/receptors.md) - Message handlers
+- [Perspectives](../fundamentals/perspectives/perspectives.md) - Event-driven read models
+- [Lenses](../fundamentals/lenses/lenses.md) - Query repositories
+- [Receptors](../fundamentals/receptors/receptors.md) - Message handlers
 
 **Data Access**:
 - [Dapper Integration](dapper-integration.md) - Lightweight data access

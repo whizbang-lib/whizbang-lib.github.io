@@ -1121,14 +1121,14 @@ await foreach (var message in dlqReceiver.ReceiveMessagesAsync()) {
 - [Work Coordination](../messaging/work-coordination.md) - Lease-based message processing
 
 **Source Generators**:
-- [JSON Contexts](../source-generators/json-contexts.md) - AOT-compatible JSON serialization
+- [JSON Contexts](../../extending/source-generators/json-contexts.md) - AOT-compatible JSON serialization
 
 **Infrastructure**:
-- [Aspire Integration](../infrastructure/aspire-integration.md) - .NET Aspire orchestration
-- [Health Checks](../infrastructure/health-checks.md) - Application health monitoring
+- [Aspire Integration](../../operations/infrastructure/aspire-integration.md) - .NET Aspire orchestration
+- [Health Checks](../../operations/infrastructure/health-checks.md) - Application health monitoring
 
 **Advanced**:
-- [Custom Transports](../extensibility/custom-transports.md) - Implementing custom transports
+- [Custom Transports](../../extending/extensibility/custom-transports.md) - Implementing custom transports
 
 ---
 

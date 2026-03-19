@@ -597,7 +597,7 @@ public record CreateOrderCommand : ICommand { }
 **Messaging**:
 - [Topic Filters](../messaging/topic-filters.md) - User guide for topic filters
 - [Commands and Events](../messaging/commands-events.md) - Core message types
-- [Transports](../infrastructure/transports.md) - Message transport abstraction
+- [Transports](../../messaging/transports/transports.md) - Message transport abstraction
 
 ---
 

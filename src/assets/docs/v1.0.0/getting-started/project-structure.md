@@ -868,9 +868,9 @@ public async Task HandleAsync_ValidOrder_ReturnsOrderCancelledAsync() {
 ## Further Reading
 
 **Architecture Patterns**:
-- [Core Concepts: Dispatcher](../core-concepts/dispatcher.md)
-- [Core Concepts: Receptors](../core-concepts/receptors.md)
-- [Core Concepts: Perspectives](../core-concepts/perspectives.md)
+- [Core Concepts: Dispatcher](../fundamentals/dispatcher/dispatcher.md)
+- [Core Concepts: Receptors](../fundamentals/receptors/receptors.md)
+- [Core Concepts: Perspectives](../fundamentals/perspectives/perspectives.md)
 
 **Messaging**:
 - [Outbox Pattern](../messaging/outbox-pattern.md)
@@ -883,7 +883,7 @@ public async Task HandleAsync_ValidOrder_ReturnsOrderCancelledAsync() {
 
 ---
 
-**Next**: Dive into [Core Concepts: Dispatcher](../core-concepts/dispatcher.md) to master message routing patterns.
+**Next**: Dive into [Core Concepts: Dispatcher](../fundamentals/dispatcher/dispatcher.md) to master message routing patterns.
 
 ---
 

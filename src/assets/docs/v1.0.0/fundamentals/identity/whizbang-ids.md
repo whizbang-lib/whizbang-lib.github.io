@@ -382,8 +382,8 @@ Configuration options:
 
 ### Diagnostics
 
-- **[WHIZ058](../diagnostics/whiz058.md)** - Info: GUID call intercepted
-- **[WHIZ059](../diagnostics/whiz059.md)** - Info: Interception suppressed
+- **[WHIZ058](../../operations/diagnostics/whiz058.md)** - Info: GUID call intercepted
+- **[WHIZ059](../../operations/diagnostics/whiz059.md)** - Info: Interception suppressed
 
 ## GuidUsageAnalyzer: Roslyn Analyzer (WHIZ055-WHIZ056) {#analyzer}
 

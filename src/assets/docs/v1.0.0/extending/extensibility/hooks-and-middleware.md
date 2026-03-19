@@ -642,11 +642,11 @@ builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ThirdBehavior
 - [Custom Policies](custom-policies.md) - Dynamic routing logic
 
 **Core Concepts**:
-- [Receptors](../core-concepts/receptors.md) - Message handlers
-- [Dispatcher](../core-concepts/dispatcher.md) - Message routing
+- [Receptors](../../fundamentals/receptors/receptors.md) - Message handlers
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Message routing
 
 **Infrastructure**:
-- [Policies](../infrastructure/policies.md) - Policy-based routing
+- [Policies](../../operations/infrastructure/policies.md) - Policy-based routing
 
 **External Resources**:
 - [MediatR Pipeline Behaviors](https://github.com/jbogard/MediatR/wiki/Behaviors)

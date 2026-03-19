@@ -34,14 +34,14 @@ Version 1.0.0 is the foundation release of Whizbang, establishing a **complete s
 ## What's Included
 
 ### Core Components
-- **[Dispatcher](components/dispatcher.md)** - Message routing and coordination
-- **[Receptors](components/receptors.md)** - Command receivers (stateless)
-- **[Perspectives](components/perspectives.md)** - Event handlers
-- **[Lenses](components/lenses.md)** - Query interfaces
-- **[Policy Engine](components/policy-engine.md)** - Cross-cutting concerns
-- **[Ledger](components/ledger.md)** - Event store interface
-- **[Drivers](components/drivers.md)** - Storage abstraction
-- **[Transports](components/transports.md)** - Message broker abstraction
+- **[Dispatcher](./fundamentals/dispatcher/dispatcher.md)** - Message routing and coordination
+- **[Receptors](./fundamentals/receptors/receptors.md)** - Command receivers (stateless)
+- **[Perspectives](./fundamentals/perspectives/perspectives.md)** - Event handlers
+- **[Lenses](./fundamentals/lenses/lenses.md)** - Query interfaces
+- **[Policy Engine](./operations/infrastructure/policy-engine.md)** - Cross-cutting concerns
+- **[Ledger](./fundamentals/events/ledger.md)** - Event store interface
+- **[Drivers](./data/drivers.md)** - Storage abstraction
+- **[Transports](./messaging/transports/transports.md)** - Message broker abstraction
 
 ### Developer Experience
 - **[Source Generators](developer-experience/source-generators.md)** - Zero-reflection handler discovery
@@ -51,11 +51,11 @@ Version 1.0.0 is the foundation release of Whizbang, establishing a **complete s
 - **[Debugging](developer-experience/codelens.md)** - Time-travel debugging foundation
 
 ### Testing Foundation
-- **[Testing Strategy](testing/foundation.md)** - Overall testing approach
-- **[TUnit Integration](testing/tunit.md)** - Modern test framework
-- **[Bogus Scenarios](testing/bogus.md)** - Realistic data generation
-- **[Behavior Specs](testing/behavior-specs.md)** - BDD-style testing
-- **[Test Doubles](testing/test-doubles.md)** - In-memory mocking
+- **[Testing Strategy](./operations/testing/foundation.md)** - Overall testing approach
+- **[TUnit Integration](./operations/testing/tunit.md)** - Modern test framework
+- **[Bogus Scenarios](./operations/testing/bogus.md)** - Realistic data generation
+- **[Behavior Specs](./operations/testing/behavior-specs.md)** - BDD-style testing
+- **[Test Doubles](./operations/testing/test-doubles.md)** - In-memory mocking
 
 ## Quick Start
 
@@ -244,14 +244,14 @@ These limitations are addressed in subsequent versions while maintaining backwar
 ## Component Documentation
 
 ### Core Components
-- [Dispatcher](components/dispatcher.md)
-- [Receptors](components/receptors.md)
-- [Perspectives](components/perspectives.md)
-- [Lenses](components/lenses.md)
-- [Policy Engine](components/policy-engine.md)
-- [Ledger](components/ledger.md)
-- [Drivers](components/drivers.md)
-- [Transports](components/transports.md)
+- [Dispatcher](./fundamentals/dispatcher/dispatcher.md)
+- [Receptors](./fundamentals/receptors/receptors.md)
+- [Perspectives](./fundamentals/perspectives/perspectives.md)
+- [Lenses](./fundamentals/lenses/lenses.md)
+- [Policy Engine](./operations/infrastructure/policy-engine.md)
+- [Ledger](./fundamentals/events/ledger.md)
+- [Drivers](./data/drivers.md)
+- [Transports](./messaging/transports/transports.md)
 
 ### Developer Experience
 - [Source Generators](developer-experience/source-generators.md)
@@ -260,10 +260,10 @@ These limitations are addressed in subsequent versions while maintaining backwar
 - [Traceability](developer-experience/traceability.md)
 
 ### Testing
-- [Testing Foundation](testing/foundation.md)
-- [TUnit Integration](testing/tunit.md)
-- [Bogus Scenarios](testing/bogus.md)
-- [Behavior Specs](testing/behavior-specs.md)
+- [Testing Foundation](./operations/testing/foundation.md)
+- [TUnit Integration](./operations/testing/tunit.md)
+- [Bogus Scenarios](./operations/testing/bogus.md)
+- [Behavior Specs](./operations/testing/behavior-specs.md)
 
 ## Feedback
 

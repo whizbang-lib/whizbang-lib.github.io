@@ -748,8 +748,8 @@ public async Task NewTest_UsesLifecycleSyncAsync() {
 
 ## Related Topics
 
-- [Lifecycle Stages](../core-concepts/lifecycle-stages.md) - All 18 stages with timing guarantees
-- [Lifecycle Receptors](../core-concepts/lifecycle-receptors.md) - API reference for [FireAt] attribute
+- [Lifecycle Stages](../../fundamentals/lifecycle/lifecycle-stages.md) - All 18 stages with timing guarantees
+- [Lifecycle Receptors](../../fundamentals/receptors/lifecycle-receptors.md) - API reference for [FireAt] attribute
 - [Integration Testing](integration-testing.md) - Complete integration test patterns
 - [PerspectiveWorker](../workers/perspective-worker.md) - Perspective processing architecture
 

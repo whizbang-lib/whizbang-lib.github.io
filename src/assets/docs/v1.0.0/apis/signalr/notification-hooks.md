@@ -239,6 +239,6 @@ public class OrderService {
 
 ## Related Documentation
 
-- [SignalR Integration](../integrations/signalr.md) - Setup and configuration
-- [Message Tags](../core-concepts/message-tags.md) - Tag processing overview
-- [Dispatcher](../core-concepts/dispatcher.md) - Publishing events
+- [SignalR Integration](./signalr.md) - Setup and configuration
+- [Message Tags](../../fundamentals/messages/message-tags.md) - Tag processing overview
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Publishing events

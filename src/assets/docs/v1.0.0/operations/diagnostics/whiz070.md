@@ -139,6 +139,6 @@ Without this package, EF Core cannot properly handle vector columns, leading to 
 
 ## See Also
 
-- [Vector Search](../features/vector-search.md) - Complete vector search documentation
-- [VectorField Attribute](../features/vector-search.md#vectorfield-attribute) - Using the VectorField attribute
-- [Turnkey Setup](../features/vector-search.md#turnkey-setup) - Automatic vector configuration
+- [Vector Search](../../extending/features/vector-search.md) - Complete vector search documentation
+- [VectorField Attribute](../../extending/features/vector-search.md#vectorfield-attribute) - Using the VectorField attribute
+- [Turnkey Setup](../../extending/features/vector-search.md#turnkey-setup) - Automatic vector configuration

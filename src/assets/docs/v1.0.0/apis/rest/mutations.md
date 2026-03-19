@@ -283,5 +283,5 @@ protected override async ValueTask OnBeforeExecuteAsync(
 
 - [REST Setup](setup.md) - Installation and configuration
 - [REST Filtering](filtering.md) - Query endpoints
-- [Dispatcher](../core-concepts/dispatcher.md) - Command execution
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Command execution
 - [FastEndpoints Documentation](https://fast-endpoints.com/)

@@ -307,7 +307,7 @@ public async Task PublishCommandAsync<TCommand>(TCommand command)
 }
 ```
 
-See [Transports](../infrastructure/transports.md) for details on transport integration.
+See [Transports](./transports/transports.md) for details on transport integration.
 
 ## Diagnostics
 
@@ -393,9 +393,9 @@ var allFilters = TopicFilterRegistry.GetTopicFilters<CreateOrderCommand>();
 
 ## Related Topics
 
-- [Source Generators](../source-generators/topic-filter-discovery.md) - How TopicFilterGenerator works
+- [Source Generators](../extending/source-generators/topic-filter-discovery.md) - How TopicFilterGenerator works
 - [Commands and Events](commands-events.md) - Core message types
-- [Transports](../infrastructure/transports.md) - Message transport abstraction
+- [Transports](./transports/transports.md) - Message transport abstraction
 - [Message Envelopes](message-envelopes.md) - Message routing and metadata
 
 ## Summary
