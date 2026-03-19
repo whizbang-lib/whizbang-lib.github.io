@@ -1,866 +1,1187 @@
-.gradient-text, .text-gradient {
-    background: linear-gradient(90deg, #ff7c00, #ff0066, #7b3ff8);
+// ============================================================
+// Whizbang Home Page — Dark-Mode-First Keynote Style
+// ============================================================
+
+// --- Custom properties ---
+:host {
+    --nav-height: 70px;
+    --section-height: calc(100vh - var(--nav-height));
+    --brand-orange: #ff7c00;
+    --brand-pink: #ff0066;
+    --brand-purple: #7b3ff8;
+    --text-primary: #f0f0f0;
+    --text-muted: #9ca3af;
+    --bg-base: #0a0a0f;
+    --bg-section-1: #0f0f1a;
+    --bg-section-2: #121218;
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-border: rgba(255, 255, 255, 0.08);
+
+    display: block;
+    width: 100%;
+    overflow: visible !important;
+    contain: none;
+    background: var(--surface-ground);
+    color: var(--text-primary);
+}
+
+// --- Scroll Progress Bar ---
+.scroll-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--brand-orange), var(--brand-pink), var(--brand-purple));
+    transform-origin: left center;
+    transform: scaleX(0);
+    z-index: 10000;
+    pointer-events: none;
+    will-change: transform;
+}
+
+// --- Starfield + Rockets ---
+.starfield-container {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9990; // rockets fly above section content (tiny, barely noticeable over text)
+    overflow: visible;
+}
+
+// Star layers injected inside sections sit between bg and content
+.star-layer-inner {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 1 !important;
+    pointer-events: none !important;
+}
+
+// Content elements inside pinned sections must be above star layers
+.hero-content,
+.diff-item,
+.diff-bg-glow,
+.diff-icon,
+.hero-bg-orbs,
+.scroll-indicator,
+.code-headline,
+.code-showcase,
+.use-cases-panel,
+.roadmap-slide,
+.slide-headline {
+    z-index: 2 !important;
+}
+
+// Non-pinned section content
+.capabilities-inner,
+.ide-inner,
+.ide-headline,
+.cta-content {
+    position: relative;
+    z-index: 2;
+}
+
+.rocket {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #fff;
+    will-change: transform;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+
+    // Glowing trail
+    &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: 100%;
+        width: 18px;
+        height: 1.5px;
+        transform: translateY(-50%);
+        background: linear-gradient(to left, rgba(255, 255, 255, 0.7), transparent);
+        border-radius: 1px;
+    }
+
+    &.rocket-brand::after {
+        background: linear-gradient(to left, rgba(255, 124, 0, 0.6), transparent);
+    }
+
+    &.rocket-pink::after {
+        background: linear-gradient(to left, rgba(255, 0, 102, 0.5), transparent);
+    }
+
+    &.rocket-purple::after {
+        background: linear-gradient(to left, rgba(123, 63, 248, 0.5), transparent);
+    }
+}
+
+// --- Ambient Background Orbs ---
+.ambient-orbs {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    will-change: transform;
+}
+
+.orb-1 {
+    width: 600px;
+    height: 600px;
+    top: -10%;
+    left: -5%;
+    background: radial-gradient(circle, rgba(255, 124, 0, 0.06) 0%, transparent 70%);
+    animation: orbFloat1 25s ease-in-out infinite;
+}
+
+.orb-2 {
+    width: 500px;
+    height: 500px;
+    top: 40%;
+    right: -10%;
+    background: radial-gradient(circle, rgba(255, 0, 102, 0.05) 0%, transparent 70%);
+    animation: orbFloat2 30s ease-in-out infinite;
+}
+
+.orb-3 {
+    width: 700px;
+    height: 700px;
+    bottom: -15%;
+    left: 30%;
+    background: radial-gradient(circle, rgba(123, 63, 248, 0.05) 0%, transparent 70%);
+    animation: orbFloat3 35s ease-in-out infinite;
+}
+
+@keyframes orbFloat1 {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(40px, 60px); }
+    66% { transform: translate(-30px, 30px); }
+}
+
+@keyframes orbFloat2 {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(-50px, -40px); }
+    66% { transform: translate(30px, -60px); }
+}
+
+@keyframes orbFloat3 {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(60px, -30px); }
+    66% { transform: translate(-40px, 50px); }
+}
+
+// --- Section Wrapper (generic) ---
+.section-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.pinned-section {
+    position: sticky;
+    top: var(--nav-height);
+    height: var(--section-height);
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    z-index: 2;
+
+}
+
+// --- Wrapper heights (control scroll distance) ---
+.hero-wrapper {
+    height: 150vh; // 50vh of scroll before next section
+}
+
+.diff-wrapper {
+    height: 220vh; // 3 items cycling = ~40vh each
+}
+
+.code-wrapper {
+    height: 220vh; // headline + 3 code parts + CLI + auto-scroll room
+}
+
+.slide-wrapper {
+    height: 180vh; // use cases → roadmap crossfade
+}
+
+// ============================================================
+// SECTION 1: Hero
+// ============================================================
+
+.hero-section {
+    background: var(--bg-base);
+}
+
+.hero-bg-orbs {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.hero-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+.hero-orb-1 {
+    width: 500px;
+    height: 500px;
+    top: 10%;
+    left: 15%;
+    background: radial-gradient(circle, rgba(255, 124, 0, 0.12) 0%, transparent 70%);
+    animation: heroOrb1 18s ease-in-out infinite;
+}
+
+.hero-orb-2 {
+    width: 400px;
+    height: 400px;
+    top: 30%;
+    right: 10%;
+    background: radial-gradient(circle, rgba(255, 0, 102, 0.1) 0%, transparent 70%);
+    animation: heroOrb2 22s ease-in-out infinite;
+}
+
+.hero-orb-3 {
+    width: 600px;
+    height: 600px;
+    bottom: 5%;
+    left: 40%;
+    background: radial-gradient(circle, rgba(123, 63, 248, 0.1) 0%, transparent 70%);
+    animation: heroOrb3 20s ease-in-out infinite;
+}
+
+@keyframes heroOrb1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(30px, -20px) scale(1.1); }
+}
+
+@keyframes heroOrb2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-40px, 30px) scale(1.15); }
+}
+
+@keyframes heroOrb3 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(20px, -40px) scale(1.05); }
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 0 2rem;
+    will-change: transform, opacity;
+}
+
+.hero-wordmark {
+    font-size: 5.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+    flex-wrap: wrap;
+}
+
+.wordmark-logo {
+    height: 0.85em;
+    display: inline-block;
+    vertical-align: baseline;
+}
+
+.hero-tagline {
+    font-size: 2.25rem;
+    font-weight: 300;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+}
+
+.hero-subtitle {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+}
+
+.hero-cta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.scroll-indicator {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    will-change: opacity;
+}
+
+.scroll-text {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+}
+
+.scroll-chevron {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    animation: chevronBounce 2s ease-in-out infinite;
+}
+
+@keyframes chevronBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(8px); }
+}
+
+// ============================================================
+// SECTION 2: Differentiators
+// ============================================================
+
+.diff-section {
+    background: var(--bg-section-1);
+}
+
+.diff-bg-glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    transition: background 0.3s ease;
+}
+
+.diff-item {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    max-width: 700px;
+    text-align: center;
+    padding: 0 2rem;
+    will-change: transform, opacity;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.diff-icon {
+    margin-bottom: 1.5rem;
+
+    .pi {
+        font-size: 3rem;
+        background: linear-gradient(135deg, var(--brand-orange), var(--brand-pink), var(--brand-purple));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+}
+
+.diff-headline {
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 1.25rem;
+    color: var(--text-primary);
+}
+
+.diff-body {
+    font-size: 1.25rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+}
+
+.diff-link {
+    font-size: 1rem;
+    font-weight: 600;
+    background: linear-gradient(90deg, var(--brand-orange), var(--brand-pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-decoration: none;
+    transition: opacity 0.2s;
+
+    &:hover {
+        opacity: 0.8;
+    }
+}
+
+// ============================================================
+// SECTION 3: Code Showcase
+// ============================================================
+
+.code-section {
+    background: var(--bg-section-2);
+    justify-content: flex-start;
+    padding-top: 3rem;
+}
+
+.code-headline {
+    font-size: 3.5rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 2rem;
+    color: var(--text-primary);
+    opacity: 0;
+}
+
+.code-showcase {
+    width: 100%;
+    max-width: 750px;
+    padding: 0 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    will-change: transform;
+}
+
+.code-part,
+.cli-section {
+    will-change: transform, opacity;
+    opacity: 0;
+}
+
+.code-part-label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--brand-orange);
+    margin-bottom: 0.5rem;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid rgba(255, 124, 0, 0.25);
+    border-radius: 4px;
+    background: rgba(255, 124, 0, 0.06);
+}
+
+.code-part wb-enhanced-code-v2,
+.cli-section wb-enhanced-code-v2 {
+    display: block;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 0 30px rgba(123, 63, 248, 0.06);
+}
+
+.tutorial-link {
+    display: inline-block;
+    margin-top: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    background: linear-gradient(90deg, var(--brand-orange), var(--brand-pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-decoration: none;
+    transition: opacity 0.2s;
+
+    &:hover {
+        opacity: 0.8;
+    }
+}
+
+// ============================================================
+// SECTION 4: Capabilities (staggered grid)
+// ============================================================
+
+.capabilities-section {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6rem 2rem;
+    position: relative;
+    z-index: 2;
+    background: var(--bg-base);
+}
+
+.capabilities-inner {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    max-width: 1000px;
+    width: 100%;
+}
+
+.cap-card {
+    position: relative;
+    border-radius: 16px;
+    padding: 2px; // border via gradient
+    background: linear-gradient(135deg, rgba(255, 124, 0, 0.2), rgba(123, 63, 248, 0.2));
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease;
+    // Stagger reveal (hidden initially)
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+    transition: opacity 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+                transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.4s ease;
+
+    &:nth-child(1) { transition-delay: 0s; }
+    &:nth-child(2) { transition-delay: 0.12s; }
+    &:nth-child(3) { transition-delay: 0.24s; }
+    &:nth-child(4) { transition-delay: 0.36s; }
+
+    &.revealed {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    &:hover {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 20px 60px rgba(123, 63, 248, 0.12);
+    }
+}
+
+.cap-card-glow {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: radial-gradient(ellipse at 30% 20%, rgba(255, 124, 0, 0.06) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.cap-card-content {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 14px; // slightly less than wrapper
+    padding: 2rem;
+    height: 100%;
+}
+
+.cap-icon {
+    font-size: 2rem;
+    background: linear-gradient(135deg, var(--brand-orange), var(--brand-purple));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 1rem;
+    display: inline-block;
+}
+
+.cap-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+}
+
+.cap-body {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.cap-link {
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: linear-gradient(90deg, var(--brand-orange), var(--brand-pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-decoration: none;
+    transition: opacity 0.2s;
+
+    &:hover {
+        opacity: 0.8;
+    }
+}
+
+// ============================================================
+// SECTION 5: Use Cases + Roadmap (horizontal slide)
+// ============================================================
+
+.slide-section {
+    background: transparent; // stars show through both panels during slide
+    overflow: hidden;
+}
+
+// Each panel gets its own semi-transparent background so stars peek through
+.use-cases-panel,
+.roadmap-slide {
+    background: rgba(15, 15, 26, 0.85);
+}
+
+.use-cases-panel,
+.roadmap-slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    will-change: transform, opacity;
+}
+
+.slide-headline {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 2.5rem;
+    text-align: center;
+}
+
+// Use Cases grid
+.use-case-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+    max-width: 900px;
+    width: 100%;
+}
+
+.use-case-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+    &:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 40px rgba(123, 63, 248, 0.1);
+    }
+}
+
+.use-case-icon {
+    font-size: 1.75rem;
+    background: linear-gradient(135deg, var(--brand-orange), var(--brand-purple));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 0.75rem;
+    display: inline-block;
+}
+
+.use-case-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.use-case-body {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 0.75rem;
+}
+
+.use-case-link {
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: linear-gradient(90deg, var(--brand-orange), var(--brand-pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-decoration: none;
+
+    &:hover {
+        opacity: 0.8;
+    }
+}
+
+// Roadmap timeline
+.roadmap-timeline {
+    position: relative;
+    max-width: 600px;
+    width: 100%;
+    padding-left: 2rem;
+}
+
+.roadmap-connector {
+    position: absolute;
+    left: 0.5rem;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--brand-orange), var(--brand-pink), var(--brand-purple));
+    border-radius: 2px;
+}
+
+.roadmap-item {
+    position: relative;
+    padding-left: 1.5rem;
+    margin-bottom: 2rem;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+}
+
+.roadmap-marker {
+    position: absolute;
+    left: -2rem;
+    top: 0.25rem;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-orange), var(--brand-purple));
+    box-shadow: 0 0 12px rgba(255, 124, 0, 0.4);
+}
+
+.roadmap-quarter {
+    font-size: 1.25rem;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--brand-orange), var(--brand-pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 0.35rem;
+}
+
+.roadmap-desc {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.roadmap-link {
+    display: inline-block;
+    margin-top: 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    background: linear-gradient(90deg, var(--brand-orange), var(--brand-pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-decoration: none;
+    transition: opacity 0.2s;
+
+    &:hover {
+        opacity: 0.8;
+    }
+}
+
+// ============================================================
+// SECTIONS 6+7: IDE & CTA Crossfade
+// ============================================================
+
+.crossfade-wrapper {
+    height: 250vh; // room for IDE hold + crossfade + CTA hold
+}
+
+.crossfade-section {
+    background: var(--bg-section-2);
+}
+
+.ide-panel,
+.cta-panel {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    will-change: opacity, transform;
+    z-index: 2;
+}
+
+.cta-panel {
+    opacity: 0;
+}
+
+.ide-inner {
+    max-width: 900px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.ide-headline {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.ide-card {
+    position: relative;
+    border-radius: 16px;
+    padding: 2px;
+    background: linear-gradient(135deg, rgba(255, 0, 102, 0.2), rgba(123, 63, 248, 0.2));
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+    &:hover {
+        transform: translateY(-3px) scale(1.01);
+        box-shadow: 0 16px 50px rgba(255, 0, 102, 0.1);
+    }
+}
+
+.ide-card-glow {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: radial-gradient(ellipse at 70% 30%, rgba(123, 63, 248, 0.06) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.ide-card-content {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 14px;
+    padding: 2rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
+}
+
+.ide-icon {
+    font-size: 2rem;
+    background: linear-gradient(135deg, var(--brand-pink), var(--brand-purple));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    flex-shrink: 0;
+    margin-top: 0.2rem;
+}
+
+.ide-title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+}
+
+.ide-body {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+// CTA content styling (inside crossfade)
+.cta-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+}
+
+.cta-headline {
+    font-size: 3.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    background: linear-gradient(90deg, var(--brand-orange), var(--brand-pink), var(--brand-purple));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    line-height: 1.2;
+}
+
+.cta-subtitle {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    max-width: 550px;
+    line-height: 1.6;
+}
+
+.cta-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.cta-footer {
+    margin-top: 4rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+// ============================================================
+// Shared: Buttons
+// ============================================================
+
+.btn-gradient {
+    background: linear-gradient(90deg, var(--brand-orange), var(--brand-pink), var(--brand-purple)) !important;
+    border: none !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    padding: 0.75rem 2rem !important;
+    border-radius: 8px !important;
+    transition: box-shadow 0.3s ease, transform 0.2s ease !important;
+
+    &:hover {
+        box-shadow: 0 6px 25px rgba(255, 0, 102, 0.35) !important;
+        transform: translateY(-1px) !important;
+    }
+}
+
+.btn-outlined-brand {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+    padding: 0.75rem 2rem !important;
+    border-radius: 8px !important;
+    transition: border-color 0.3s ease, background 0.3s ease !important;
+
+    &:hover {
+        border-color: var(--brand-pink) !important;
+        background: rgba(255, 0, 102, 0.08) !important;
+    }
+}
+
+.btn-text-brand {
+    color: var(--text-muted) !important;
+    font-weight: 600 !important;
+    padding: 0.75rem 1.5rem !important;
+    transition: color 0.3s ease !important;
+
+    &:hover {
+        color: var(--text-primary) !important;
+    }
+}
+
+// ============================================================
+// Shared: Gradient Text
+// ============================================================
+
+.gradient-text,
+.text-gradient {
+    background: linear-gradient(90deg, var(--brand-orange), var(--brand-pink), var(--brand-purple));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
 }
 
-.btn-gradient {
-    background: linear-gradient(90deg, #ff7c00, #ff0066, #7b3ff8);
-    border: none;
-}
+// ============================================================
+// Light Theme Overrides
+// ============================================================
 
-.meet-whizbang-logo {
-    height: 1em;
-    vertical-align: bottom;
-    display: inline-block;
-}
+:host-context(:root:not([data-theme="dark"])) {
+    --text-primary: #1a1a2e;
+    --text-muted: #64748b;
+    --bg-base: #f8f9fc;
+    --bg-section-1: #f1f3f9;
+    --bg-section-2: #edf0f7;
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(0, 0, 0, 0.08);
 
-// Enhanced spacing and visual improvements
-section {
-    margin-bottom: 4rem;
-    padding: 2rem 0;
-    position: relative;
-    z-index: 1;
-    // Ensure sections don't cause horizontal shift
-    max-width: 100%;
-    overflow: visible; // Ensure overflow doesn't interfere with sticky positioning
-    
-    // Don't apply default styles to sticky sections (but NOT use-cases/roadmap since they're in container)
-    &.capabilities-section {
-        margin-bottom: 0 !important; // Override default section margin
-        padding: 0 !important; // Override default section padding
-        position: sticky !important; // Ensure sticky positioning isn't overridden
-        top: 70px !important; // REVERT: Back to 70px
+    .btn-outlined-brand {
+        border-color: rgba(0, 0, 0, 0.15) !important;
+        color: var(--text-primary) !important;
+
+        &:hover {
+            border-color: var(--brand-pink) !important;
+        }
     }
-    
-    // Use Cases and Roadmap are inside container, don't make them sticky
-    &.use-cases-section,
-    &.roadmap-section {
-        margin-bottom: 0 !important; // Override default section margin
-        padding: 0 !important; // Override default section padding
-        position: absolute !important; // They should be absolute within sticky container
-        top: 0 !important; // Position at top of their sticky container
+
+    .btn-text-brand {
+        color: var(--text-muted) !important;
+
+        &:hover {
+            color: var(--text-primary) !important;
+        }
+    }
+
+    .cap-card-content,
+    .ide-card-content,
+    .use-case-card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+
+    .orb-1 { background: radial-gradient(circle, rgba(255, 124, 0, 0.04) 0%, transparent 70%); }
+    .orb-2 { background: radial-gradient(circle, rgba(255, 0, 102, 0.03) 0%, transparent 70%); }
+    .orb-3 { background: radial-gradient(circle, rgba(123, 63, 248, 0.03) 0%, transparent 70%); }
+}
+
+// ============================================================
+// Responsive
+// ============================================================
+
+@media (max-width: 1024px) {
+    .hero-wordmark {
+        font-size: 4rem;
+    }
+
+    .hero-tagline {
+        font-size: 1.75rem;
+    }
+
+    .diff-headline {
+        font-size: 2.5rem;
+    }
+
+    .code-headline,
+    .cta-headline {
+        font-size: 2.75rem;
+    }
+
+    .slide-headline,
+    .ide-headline {
+        font-size: 2.5rem;
     }
 }
 
-
-
-.surface-card {
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    
-    &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-    }
-}
-
-/* Enhanced mobile responsiveness improvements */
 @media (max-width: 768px) {
-    /* Typography scaling for better mobile readability */
-    .text-6xl {
-        font-size: 2.5rem !important;
-        line-height: 1.2 !important;
-        margin-bottom: 1rem !important;
+    :host {
+        --nav-height: 64px;
     }
-    
-    .text-2xl {
-        font-size: 1.5rem !important;
-        line-height: 1.3 !important;
-        margin-bottom: 0.75rem !important;
+
+    .hero-wordmark {
+        font-size: 3rem;
     }
-    
-    .text-xl {
-        font-size: 1.125rem !important;
-        line-height: 1.4 !important;
-        margin-bottom: 0.75rem !important;
+
+    .hero-tagline {
+        font-size: 1.5rem;
     }
-    
-    /* Improve section spacing for mobile */
-    section {
-        padding: 2rem 0 !important;
-        margin-bottom: 2rem !important;
+
+    .hero-subtitle {
+        font-size: 1.1rem;
     }
-    
-    /* Optimize hero section for mobile */
-    .hero-section {
-        padding: 2rem 0 !important;
-        min-height: 80vh !important;
-        
-        .container-wrapper {
-            padding: 0 1rem !important;
-        }
+
+    .hero-cta {
+        flex-direction: column;
+        align-items: center;
     }
-    
-    /* Improve card layouts for mobile */
-    .surface-card {
-        margin-bottom: 1rem !important;
-        padding: 1rem !important;
-        
-        /* Ensure proper touch targets for interactive cards */
-        &:hover,
-        &.hover-lift:hover {
-            transform: translateY(-1px) !important; /* Reduced transform for mobile */
-        }
+
+    .diff-headline {
+        font-size: 2rem;
     }
-    
-    /* Better button spacing and sizing */
-    .p-button {
-        margin: 0.5rem 0.25rem !important;
-        min-width: 120px !important;
+
+    .diff-body {
+        font-size: 1.1rem;
     }
-    
-    /* Grid improvements for mobile */
-    .grid {
-        gap: 1rem !important;
-        
-        .col-12,
-        .col-6,
-        .col-4,
-        .col-3 {
-            padding: 0.5rem !important;
-        }
+
+    .code-headline {
+        font-size: 2.25rem;
     }
+
+    .capabilities-inner {
+        grid-template-columns: 1fr;
+    }
+
+    .use-case-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .slide-headline,
+    .ide-headline {
+        font-size: 2rem;
+    }
+
+    .cta-headline {
+        font-size: 2.25rem;
+    }
+
+    .ide-card-content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    // Reduce scroll distances on mobile for less scrolling
+    .hero-wrapper { height: 140vh; }
+    .diff-wrapper { height: 200vh; }
+    .code-wrapper { height: 190vh; }
+    .slide-wrapper { height: 170vh; }
 }
 
 @media (max-width: 480px) {
-    /* Enhanced mobile typography for very small screens */
-    .text-6xl {
-        font-size: 2rem !important;
-        line-height: 1.2 !important;
+    :host {
+        --nav-height: 56px;
     }
-    
-    .text-2xl {
-        font-size: 1.375rem !important;
-        line-height: 1.3 !important;
+
+    .hero-wordmark {
+        font-size: 2.25rem;
     }
-    
-    .text-xl {
-        font-size: 1.125rem !important;
-        line-height: 1.4 !important;
+
+    .hero-tagline {
+        font-size: 1.25rem;
     }
-    
-    /* Tighter spacing for small screens */
-    section {
-        padding: 1.5rem 0 !important;
-        margin-bottom: 1.5rem !important;
+
+    .diff-headline {
+        font-size: 1.75rem;
     }
-    
-    .hero-section {
-        padding: 1.5rem 0 !important;
-        min-height: 70vh !important;
-        
-        .container-wrapper {
-            padding: 0 0.75rem !important;
-        }
+
+    .code-headline,
+    .slide-headline,
+    .ide-headline {
+        font-size: 1.75rem;
     }
-    
-    /* Stack buttons vertically on very small screens */
-    .p-button {
-        width: 100% !important;
-        margin: 0.25rem 0 !important;
-        max-width: 300px !important;
+
+    .cta-headline {
+        font-size: 2rem;
     }
-    
-    /* Optimize grid for small mobile */
-    .grid {
-        gap: 0.75rem !important;
-        
-        .col-12,
-        .col-6,
-        .col-4,
-        .col-3 {
-            padding: 0.375rem !important;
-        }
+
+    .cap-title,
+    .ide-title {
+        font-size: 1.2rem;
     }
+
+    // Further reduce scroll distances
+    .hero-wrapper { height: 130vh; }
+    .diff-wrapper { height: 180vh; }
+    .code-wrapper { height: 170vh; }
+    .slide-wrapper { height: 160vh; }
 }
 
-// Icon styling
-.pi {
-    color: var(--primary-color);
-}
+// ============================================================
+// Reduced Motion
+// ============================================================
 
-// ===== PARALLAX & SCROLL ANIMATIONS =====
-
-// Fix for sticky positioning - the key issue!
-:host {
-    // CRITICAL: overflow: hidden breaks sticky positioning completely
-    overflow: visible !important; // This was the blocker!
-    // Prevent horizontal scrolling only on specific elements, not the host
-    width: 100%;
-    margin: 0;
-    // Explicitly allow sticky positioning
-    contain: none;
-}
-
-// Additional safety for sliding sections
-.flying-use-cases,
-.roadmap-section {
-    // Ensure sections don't create horizontal overflow during animation
-    max-width: 100vw;
-    box-sizing: border-box;
-    // Fix positioning to prevent rightward shift
-    left: 0;
-    right: 0;
-}
-
-// Overall page background
-:host {
-    background: linear-gradient(135deg, 
-        var(--surface-ground) 0%, 
-        var(--surface-section) 50%, 
-        var(--surface-card) 100%);
-    min-height: 100vh;
-    // Reset any positioning issues
-    display: block;
-    margin: 0;
-    padding: 0;
-    width: 100%;
-}
-
-// Hero section with parallax background
-.hero-section {
-    position: relative;
-    overflow: hidden;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    background: linear-gradient(135deg, 
-        rgba(var(--primary-color-rgb), 0.05) 0%,
-        transparent 50%,
-        rgba(var(--surface-section-rgb), 0.8) 100%);
-    
-    .parallax-bg {
-        position: absolute;
-        top: -20%;
-        left: -20%;
-        width: 140%;
-        height: 140%;
-        background: 
-            radial-gradient(circle at 20% 80%, rgba(255, 124, 0, 0.08) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(255, 0, 102, 0.08) 0%, transparent 50%),
-            radial-gradient(circle at 40% 40%, rgba(123, 63, 248, 0.08) 0%, transparent 50%);
-        animation: gradientFloat 20s ease-in-out infinite;
-        z-index: -1;
-    }
-}
-
-// Keyframe animations
-@keyframes gradientFloat {
-    0%, 100% { transform: rotate(0deg) scale(1); }
-    25% { transform: rotate(1deg) scale(1.05); }
-    50% { transform: rotate(0deg) scale(1.1); }
-    75% { transform: rotate(-1deg) scale(1.05); }
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(60px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes slideInLeft {
-    from {
-        opacity: 0;
-        transform: translateX(-60px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-@keyframes slideInRight {
-    from {
-        opacity: 0;
-        transform: translateX(60px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-@keyframes slideInUp {
-    from {
-        opacity: 0;
-        transform: translateY(60px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes scaleIn {
-    from {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-@keyframes zoomIn {
-    from {
-        opacity: 0;
-        transform: scale(0.9);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-@keyframes iconBounce {
-    0%, 20%, 50%, 80%, 100% {
-        transform: translateY(0);
-    }
-    40% {
-        transform: translateY(-10px);
-    }
-    60% {
-        transform: translateY(-5px);
-    }
-}
-
-// Animation classes - initially hidden
-.animate-on-scroll {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    
-    &.animate-in {
-        opacity: 1;
-        transform: translateY(0);
-    }
-    
-    // Specific animation types
-    &.slide-up.animate-in {
-        animation: slideUp 0.8s ease-out forwards;
-    }
-    
-    &.slide-in-left.animate-in {
-        animation: slideInLeft 0.8s ease-out forwards;
-    }
-    
-    &.slide-in-right.animate-in {
-        animation: slideInRight 0.8s ease-out forwards;
-    }
-    
-    &.slide-in-up.animate-in {
-        animation: slideInUp 0.8s ease-out forwards;
-    }
-    
-    &.fade-in.animate-in {
-        animation: fadeIn 1s ease-out forwards;
-    }
-    
-    &.fade-in-up.animate-in {
-        animation: fadeInUp 0.8s ease-out forwards;
-    }
-    
-    &.scale-in.animate-in {
-        animation: scaleIn 0.6s ease-out forwards;
-    }
-    
-    &.zoom-in.animate-in {
-        animation: zoomIn 0.8s ease-out forwards;
-    }
-}
-
-// Hover effects
-.hover-lift {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    
-    &:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-    }
-}
-
-.hover-glow {
-    transition: box-shadow 0.3s ease;
-    
-    &:hover {
-        box-shadow: 0 0 30px rgba(var(--primary-color-rgb), 0.3);
-    }
-}
-
-// Button animations
-.pulse-on-hover {
-    transition: all 0.3s ease;
-    
-    &:hover {
-        animation: pulse 1s infinite;
-    }
-}
-
-.bounce-on-hover {
-    transition: transform 0.2s ease;
-    
-    &:hover {
-        animation: bounce 0.6s ease;
-    }
-}
-
-.glow-on-hover {
-    transition: all 0.3s ease;
-    
-    &:hover {
-        text-shadow: 0 0 10px rgba(var(--primary-color-rgb), 0.6);
-        transform: scale(1.05);
-    }
-}
-
-@keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(var(--primary-color-rgb), 0); }
-    100% { box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0); }
-}
-
-@keyframes bounce {
-    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-    40% { transform: translateY(-10px); }
-    60% { transform: translateY(-5px); }
-}
-
-// Icon animations
-.icon-bounce {
-    &:hover {
-        animation: iconBounce 1s ease-in-out;
-    }
-}
-
-// Floating animation
-.float-animation {
-    animation: float 6s ease-in-out infinite;
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-}
-
-// Parallax elements
-.parallax-element {
-    will-change: transform;
-}
-
-// Fast moving header
-.fast-parallax-header {
-    will-change: transform;
-    transform-style: preserve-3d;
-    backface-visibility: hidden;
-}
-
-// Performance optimizations
-.animate-on-scroll,
-.parallax-element,
-.float-animation {
-    backface-visibility: hidden;
-    perspective: 1000px;
-    transform-style: preserve-3d;
-}
-
-// Section-specific styling
-.benefits-section {
-    background: var(--surface-section);
-    border-radius: 2rem;
-    margin: 2rem 0;
-    padding: 3rem 0;
-    position: relative;
-    z-index: 10; // Higher z-index to stay above parallax elements
-    transform: translateZ(0); // Force hardware acceleration and isolate stacking context
-    
-    h2 {
-        position: relative;
-        z-index: 11;
-        margin-bottom: 2rem;
-    }
-    
-    &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, 
-            rgba(var(--primary-color-rgb), 0.02) 0%,
-            transparent 50%,
-            rgba(var(--primary-color-rgb), 0.02) 100%);
-        border-radius: inherit;
-        z-index: -1;
-    }
-}
-
-.container-wrapper {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1rem;
-    // Ensure proper centering
-    width: 100%;
-    box-sizing: border-box;
-}
-
-// Code sample section styling
-.code-sample-section {
-    .surface-card {
-        max-width: 100%;
-        overflow: hidden;
-        box-shadow: none; // Remove any duplicate shadows
-    }
-    
-    .code-block-wrapper {
-        margin: 1rem 0;
-        min-height: 200px; // Ensure minimum height
-        
-        wb-enhanced-code-v2 {
-            display: block;
-            width: 100%;
-            
-            // Keep the inner shadow for nice hover effects
-        }
-    }
-}
-
-// Section-specific backgrounds for better visual separation
-// .hero-section - already has its own gradient background
-
-// Why Choose Whizbang header area (now integrated into benefits section)
-// .section-header - no longer needed, header is now part of benefits section
-
-// Benefits section
-.benefits-section {
-    background: linear-gradient(135deg, 
-        #a8e6cf 0%,     // Mint green
-        #dcedc8 50%,    // Light lime
-        #c8e6c9 100%);  // Soft green
-    margin: 3rem -50vw; // Extend to full viewport width
-    margin-left: calc(-50vw + 50%); // Center while extending to edges
-    margin-right: calc(-50vw + 50%);
-    padding: 3rem max(2rem, calc(50vw - 600px));
-    border-radius: 0; // Remove border radius for full width
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    border: none; // Remove border for seamless full width
-    // Ensure background moves with parallax
-    will-change: transform;
-    transform-style: preserve-3d;
-    position: relative;
-    z-index: 5; // Higher z-index so it scrolls over the pink section
-    
-    // Add background that extends beyond content but doesn't cause overflow
-    &::before {
-        content: '';
-        position: absolute;
-        top: -3rem;
-        left: -2rem;
-        right: -2rem;
-        bottom: -3rem;
-        background: inherit;
-        border-radius: inherit;
-        border: inherit;
-        box-shadow: inherit;
-        z-index: -1;
-    }
-}
-
-// Code sample section
-.code-sample-section {
-    background: linear-gradient(135deg, 
-        #e1bee7 0%,     // Light purple
-        #f8bbd9 50%,    // Pink
-        #e1bee7 100%);  // Light purple
-    margin: -12rem -50vw 3rem -50vw; // Extend to full viewport width
-    margin-left: calc(-50vw + 50%); // Center while extending to edges
-    margin-right: calc(-50vw + 50%);
-    padding: 3rem max(2rem, calc(50vw - 600px)) 3rem max(2rem, calc(50vw - 600px));
-    border-radius: 0; // Remove border radius for full width
-    border: none; // Remove border for seamless full width
-    box-shadow: none; // Remove outer shadow
-    // Ensure background moves with parallax
-    will-change: transform;
-    transform-style: preserve-3d;
-    position: relative;
-    z-index: 3; // Lower z-index so green section scrolls over it
-    
-    // Add background that extends beyond content but doesn't cause overflow
-    &::before {
-        content: '';
-        position: absolute;
-        top: -1rem;
-        left: -1rem;
-        right: -1rem;
-        bottom: -1rem;
-        background: inherit;
-        border-radius: inherit;
-        border: inherit;
-        box-shadow: inherit;
-        z-index: -1;
-    }
-}
-
-// Core Capabilities - Clean sticky section
-.capabilities-section {
-    background: linear-gradient(135deg, 
-        #ffcc80 0%,     // Light orange
-        #ffab91 50%,    // Peach
-        #ff8a65 100%);  // Coral
-    margin: 3rem -50vw;
-    margin-left: calc(-50vw + 50%); // Center while extending to edges
-    margin-right: calc(-50vw + 50%);
-    padding: 3rem max(2rem, calc(50vw - 600px));
-    border-radius: 0; // Remove border radius for full width
-    border: none; // Remove border for seamless full width
-    box-shadow: 0 4px 20px rgba(255, 112, 67, 0.2);
-    position: sticky !important;
-    top: 70px !important;
-    z-index: 4 !important;
-    
-    h3 {
-        padding-top: 2rem; // Extra padding above the header
-    }
-    
-    &::before {
-        content: '';
-        position: absolute;
-        top: -1rem;
-        left: -1rem;
-        right: -1rem;
-        bottom: -1rem;
-        background: inherit;
-        border-radius: inherit;
-        border: inherit;
-        box-shadow: inherit;
-        z-index: -1;
-    }
-}
-
-// Additional sticky class
-.sticky-capabilities {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 4 !important;
-}
-
-// Test sticky removed - sticky positioning now works!
-
-// Minimal spacer - Use Cases should appear immediately over Core Capabilities
-.capabilities-spacer {
-    height: 10vh; // Just enough to let capabilities stick, then Use Cases appears
-}
-
-// Use Cases - Clean version within sticky container
-.use-cases-section {
-    background: linear-gradient(135deg, 
-        #b3e5fc 0%,     // Light blue
-        #81d4fa 50%,    // Sky blue
-        #4fc3f7 100%);  // Blue
-    margin: 0;
-    padding: 0;
-    border-radius: 0;
-    border: none;
-    box-shadow: 0 4px 20px rgba(79, 195, 247, 0.2);
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    z-index: 100 !important;
-    overflow: hidden;
-    height: 100%;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    // Remove initial transform - let JavaScript handle all transforms
-    
-    .container-wrapper {
-        padding: 4rem 2rem 2rem 2rem;
-        width: 100%;
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-    
-    &::before {
-        content: '';
-        position: absolute;
-        top: -1rem;
-        left: -1rem;
-        right: -1rem;
-        bottom: -1rem;
-        background: inherit;
-        border-radius: inherit;
-        border: inherit;
-        box-shadow: inherit;
-        z-index: -1;
-    }
-}
-
-// Roadmap section - Clean version, starts off-screen left
-.roadmap-section {
-    background: linear-gradient(135deg, 
-        #f8bbd9 0%,     // Pink
-        #e1bee7 50%,    // Light purple
-        #d1c4e9 100%);  // Lavender
-    margin: 0;
-    padding: 0;
-    border-radius: 0;
-    border: none;
-    box-shadow: 0 4px 20px rgba(171, 71, 188, 0.2);
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    z-index: 50;
-    // Remove initial transform - let JavaScript handle all transforms
-    height: 100%;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    .container-wrapper {
-        padding: 4rem 2rem 2rem 2rem;
-        width: 100%;
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-    
-    &::before {
-        content: '';
-        position: absolute;
-        top: -1rem;
-        left: -1rem;
-        right: -1rem;
-        bottom: -1rem;
-        background: inherit;
-        border-radius: inherit;
-        border: inherit;
-        box-shadow: inherit;
-        z-index: -1;
-    }
-}
-
-// Container that sticks to top - Clean version
-.horizontal-slide-container {
-    position: sticky !important;
-    top: 70px !important;
-    width: 100%;
-    height: calc(100vh - 70px);
-    overflow: hidden; // Hide content sliding during animation
-    z-index: 50;
-    margin: -6rem 0 3rem 0; // Negative margin to position over capabilities
-}
-
-// Spacer to create scroll distance for the horizontal slide animation
-.horizontal-slide-spacer {
-    height: 150vh; // 1.5 viewport heights of scroll space for smooth animation
-}
-
-// Call to action section - pushes pinned content up
-.cta-section {
-    background: linear-gradient(135deg, 
-        #ffeb3b 0%,     // Bright yellow
-        #ffc107 50%,    // Amber
-        #ff9800 100%);  // Orange
-    margin: 0 -50vw 3rem -50vw; // Extend to full viewport width
-    margin-left: calc(-50vw + 50%); // Center while extending to edges
-    margin-right: calc(-50vw + 50%);
-    padding: 8rem max(2rem, calc(50vw - 600px)) 8rem max(2rem, calc(50vw - 600px));
-    border-radius: 0; // Remove border radius for full width
-    box-shadow: 0 8px 32px rgba(255, 152, 0, 0.3);
-    border: none; // Remove border for seamless full width
-    // High z-index to push over sticky content and horizontal slide container
-    position: relative;
-    z-index: 100;
-    // Ensure background moves with parallax
-    will-change: transform;
-    transform-style: preserve-3d;
-    
-    &::before {
-        content: '';
-        position: absolute;
-        top: -1rem;
-        left: -1rem;
-        right: -1rem;
-        bottom: -1rem;
-        background: inherit;
-        border-radius: inherit;
-        border: inherit;
-        box-shadow: inherit;
-        z-index: -1;
-    }
-    
-    // Extra space above the footer text
-    p:last-child {
-        margin-top: 4rem !important;
-    }
-}
-
-// Enhanced card styling with better spacing
-.surface-card {
-    background: var(--surface-card);
-    border: 1px solid var(--surface-border);
-    
-    &.hover-glow:hover {
-        border-color: rgba(var(--primary-color-rgb), 0.3);
-    }
-}
-
-// Better text spacing to prevent overlap
-.text-surface-600,
-.text-surface-300 {
-    line-height: 1.6;
-    margin-bottom: 1rem;
-}
-
-// Reduce motion for accessibility
 @media (prefers-reduced-motion: reduce) {
-    .animate-on-scroll,
-    .parallax-element,
-    .float-animation,
-    .hover-lift,
-    .pulse-on-hover,
-    .bounce-on-hover,
-    .glow-on-hover,
-    .icon-bounce {
+    .orb,
+    .hero-orb,
+    .scroll-chevron {
         animation: none !important;
+    }
+
+    .cap-card,
+    .ide-card,
+    .cta-section {
         transition: none !important;
+        opacity: 1 !important;
         transform: none !important;
     }
-    
-    .hero-section .parallax-bg {
-        animation: none !important;
+
+    .scroll-progress-bar {
+        display: none;
+    }
+
+    .starfield-container {
+        display: none;
     }
 }

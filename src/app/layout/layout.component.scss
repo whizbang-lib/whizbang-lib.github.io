@@ -55,12 +55,28 @@
     gap: 1rem;
 }
 
+// Static starfield for non-home pages (fixed, content scrolls past)
+.global-starfield {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: visible;
+}
+
 .main-content {
     padding-top: 70px;
     min-height: calc(100vh - 70px);
     // Ensure sticky positioning works
     overflow: visible;
     position: relative;
+}
+
+// Hide starfield for reduced motion
+@media (prefers-reduced-motion: reduce) {
+    .global-starfield {
+        display: none;
+    }
 }
 
 /* Ensure toolbar fills the header */
