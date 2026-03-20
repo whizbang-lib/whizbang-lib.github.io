@@ -2,1687 +2,1225 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://whizbang-lib.github.io</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/Advanced/configuration</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/Tutorials/getting-started-tutorial</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/aggregates</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/api</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/backlog/_folder</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/declined/_folder</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/_folder</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/attributes/auto-populate</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/attributes/must-exist</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/core-concepts/cascade-context</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/core-concepts/model-action</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/metrics/_folder</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/metrics/components</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/metrics/configuration</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/metrics/handlers</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/metrics/overview</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/test-error-display</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/tracing/attributes</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/tracing/components</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/tracing/configuration</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/tracing/custom-outputs</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/tracing/overview</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/drafts/tracing/verbosity-levels</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/enhanced-csharp-examples</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/enhanced-search-demo</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/future/README</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/getting-started</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/migrate-from-marten-wolverine/01-concept-mapping</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/migrate-from-marten-wolverine/02-project-setup</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/migrate-from-marten-wolverine/03-handler-migration</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/migrate-from-marten-wolverine/04-projection-migration</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/migrate-from-marten-wolverine/05-event-store-migration</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/migrate-from-marten-wolverine/06-transport-configuration</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/migrate-from-marten-wolverine/07-outbox-migration</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/migrate-from-marten-wolverine/08-testing-migration</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/migrate-from-marten-wolverine/09-cli-wizard</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/migrate-from-marten-wolverine/README</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/migrate-from-marten-wolverine/appendix-checklist</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/philosophy</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/projections</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/_folder</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/advanced-features</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/concurrency-control</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/deployment-operations</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/domain-ownership</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/event-store-projections</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/flags-tags-system</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/multi-tenancy</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/observability-metrics</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/open-questions</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/policy-engine</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/projection-management</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/schema-evolution</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/source-generation-ide</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/proposals/testing-development-tools</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/roadmap/FEATURE-EVOLUTION</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/roadmap/README</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/roadmap/SESSION-CONTEXT</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/roadmap/architecture</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/roadmap/philosophy</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/roadmap/success-metrics</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/simple-csharp-examples</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/README</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/_folder</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/graphql/filtering</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/advanced-topics/deployment-strategies</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/graphql/index</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/advanced-topics/monitoring</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/graphql/lens-integration</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/advanced-topics/multi-tenancy</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/graphql/polymorphic-types</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/advanced-topics/native-aot</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/graphql/scoping</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/advanced-topics/performance-tuning</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/graphql/setup</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/advanced-topics/scaling</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/graphql/sorting</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/advanced-topics/security</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/mutations/custom-request-dto</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/advanced-topics/testing-receptors</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/mutations/hooks</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/advanced-topics/troubleshooting</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/rest/filtering</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/architecture/message-lifecycle</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/rest/mutations</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/attributes/generatestreamid</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/rest/setup</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/attributes/streamid</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/signalr/notification-hooks</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/attributes/streamkey</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/apis/signalr/signalr</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/README</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/caching</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/data/postgres</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/dispatcher</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/drivers</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/ledger</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/lenses</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/perspectives</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/policy-engine</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/receptors</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/transports/azure-service-bus</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/transports/rabbitmq</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/transports</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/components/workers/transport-consumer</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/configuration/_folder</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/configuration/whizbang-options</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/assembly-registry</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/audit-logging</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/delivery-receipts</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/dispatcher</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/envelope-registry</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/envelope-serialization</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/event-store-query</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/event-store</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/event-streams</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/events</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/fuzzy-matching</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/lenses</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/lifecycle-receptors</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/lifecycle-stages</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/lifecycle</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/message-associations</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/message-context</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/message-security</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/message-tags</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/messages</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/observability</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/persistence</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/perspectives/association-info</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/perspectives/event-completion</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/perspectives/multi-stream</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/perspectives/perspective-sync</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/perspectives/typed-associations</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/perspectives</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/receptors</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/routing</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/rpc-extraction</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/scope-propagation</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/scoped-lenses</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/scoping</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/security-context-propagation</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/security</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/stream-id</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/system-events</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/time-provider</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/transport-consumer</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/type-formatting</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/type-matching</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/type-qualification</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/core-concepts/whizbang-ids</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/customization-examples/event-sourcing-cqrs</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/customization-examples/microservices-orchestration</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/customization-examples/multi-tenant-saas</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/customization-examples/real-time-analytics</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/data/caching</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/data/dapper-integration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/data/drivers</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/data/efcore-integration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/data/efcore-json-configuration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/data/event-store</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/data/perspectives-storage</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/data/postgres</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/data/schema-generation-pattern</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/data/schema-migration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/data/turnkey-initialization</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/data/work-coordinator-strategies</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/data-access/schema-generation-pattern</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/attributes/generatestreamid</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/di/_folder</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/attributes/streamid</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/di/all-services</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/attributes/streamkey</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/di/lens-services</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/extensibility/custom-dispatchers</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/di/perspective-services</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/extensibility/custom-health-checks</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/di/service-registration-options</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/extensibility/custom-id-generators</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/di/service-registration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/extensibility/custom-perspectives</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/diagnostics/serializable-property-analyzer</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/extensibility/custom-policies</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/diagnostics/whiz030</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/extensibility/custom-receptors</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/diagnostics/whiz031</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/extensibility/custom-serializers</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/diagnostics/whiz058</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/extensibility/custom-storage</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/diagnostics/whiz059</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/extensibility/custom-transports</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/diagnostics/whiz062</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/extensibility/custom-work-coordinators</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/diagnostics/whiz070</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/extensibility/database-schema-framework</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/diagnostics/whiz071</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/extensibility/hooks-and-middleware</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/diagnostics/whiz080</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/extensibility/plugin-architecture</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/diagnostics/whiz090</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/features/debugger-aware-clock</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/diagnostics/whiz400</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/features/vector-search</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/diagnostics/whiz802</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/internals/json-serialization-customizations</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/diagnostics/whiz807</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/internals/message-lifecycle</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extensibility/custom-dispatchers</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/source-generators/aggregate-ids</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extensibility/custom-health-checks</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/source-generators/attribute-utilities</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extensibility/custom-id-generators</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/source-generators/configuration</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extensibility/custom-perspectives</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/source-generators/json-contexts</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extensibility/custom-policies</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/source-generators/message-registry</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extensibility/custom-receptors</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/source-generators/perspective-discovery</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extensibility/custom-serializers</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/source-generators/polymorphic-serialization</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extensibility/custom-storage</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/source-generators/receptor-discovery</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extensibility/custom-transports</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extending/source-generators/topic-filter-discovery</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extensibility/custom-work-coordinators</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/dispatcher/dispatcher</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/dispatcher/routing</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extensibility/database-schema-framework</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/dispatcher/rpc-extraction</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/events/event-store-query</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/events/event-store</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extensibility/hooks-and-middleware</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/events/event-streams</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/events/events</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/events/ledger</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/extensibility/plugin-architecture</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/events/stream-id</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/events/system-events</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/identity/assembly-registry</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/identity/fuzzy-matching</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/features/_folder</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/identity/time-provider</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/identity/type-formatting</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/features/debugger-aware-clock</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/identity/type-matching</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/features/vector-search</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/identity/type-qualification</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/identity/whizbang-ids</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/lenses/lens-query-factory</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/lenses/lenses</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/lenses/multi-model-queries</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/lenses/raw-sql</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/lenses/scoped-lenses</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/lenses/scoped-queries</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/lenses/temporal-query</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/lenses/vector-search</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/lifecycle/lifecycle</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/messages/delivery-receipts</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/messages/envelope-registry</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/messages/envelope-serialization</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/messages/message-associations</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/messages/message-context</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/messages/message-tags</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/messages/messages</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/persistence/observability</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/persistence/persistence</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/association-info</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/association-metadata</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/event-completion</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/multi-stream</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/perspective-sync</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/perspectives</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/physical-fields</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/polymorphic-discriminator</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/polymorphic-types</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/rebuild</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/registry</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/sync</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/table-naming</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/temporal</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/typed-associations</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/perspectives/vector-fields</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/receptors/receptors</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/security/audit-logging</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/security/implementing-multi-tenancy</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/security/message-security</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/security/multi-tenancy</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/security/scope-propagation</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/security/scoping</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/security/security-context-propagation</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/fundamentals/security/security</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/getting-started/installation</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/getting-started/introduction</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/getting-started/project-structure</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/getting-started/quick-start</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/graphql/filtering</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/examples/event-sourcing-cqrs</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/graphql/index</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/examples/microservices-orchestration</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/graphql/lens-integration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/examples/multi-tenant-saas</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/graphql/polymorphic-types</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/examples/real-time-analytics</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/graphql/scoping</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/tutorial/analytics-service</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/graphql/setup</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/tutorial/customer-service</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/graphql/sorting</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/tutorial/deployment</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/guides/implementing-multi-tenancy</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/tutorial/inventory-service</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/infrastructure/aspire-integration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/tutorial/notification-service</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/infrastructure/health-checks</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/tutorial/order-management</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/infrastructure/migrations</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/tutorial/payment-processing</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/infrastructure/policies</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/tutorial/shipping-service</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/infrastructure/pooling</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/tutorial/testing-strategy</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/integrations/signalr</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/internals/json-serialization-customizations</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/lenses/lens-query-factory</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/lenses/multi-model-queries</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/lenses/raw-sql</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/lenses/scoped-queries</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/lenses/temporal-query</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/lenses/vector-search</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/learn/tutorial/tutorial-overview</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/commands-events</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/failure-handling</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/idempotency-patterns</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/inbox-pattern</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/message-envelopes</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/multi-instance-coordination</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/outbox-pattern</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/topic-filters</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/transports/azure-service-bus</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/transports/in-memory</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/transports/rabbitmq</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/transports/transport-consumer</loc>
+    <lastmod>2026-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/transports/transports</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/work-coordination</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/messaging/work-coordinator</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/migration-guide/01-concept-mapping</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/migration-guide/02-project-setup</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/migration-guide/03-handler-migration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/migration-guide/04-projection-migration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/migration-guide/05-event-store-migration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/migration-guide/06-transport-configuration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/migration-guide/07-outbox-migration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/migration-guide/08-testing-migration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/migration-guide/README</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/migration-guide/_folder</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://whizbang-lib.github.io/docs/v1.0.0/migration-guide/appendix-checklist</loc>
-    <lastmod>2026-03-19</lastmod>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/mutations/_folder</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/configuration/all-services</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/mutations/custom-request-dto</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/configuration/lens-services</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/mutations/hooks</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/configuration/perspective-services</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/observability/_folder</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/configuration/service-registration-options</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/observability/diagnostics</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/configuration/service-registration</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/observability/logging-categories</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/configuration/whizbang-options</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/observability/opentelemetry-integration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/deployment/deployment-strategies</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/observability/tracing</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/deployment/monitoring</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/perspectives/association-info</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/deployment/native-aot</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/perspectives/physical-fields</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/deployment/performance-tuning</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/perspectives/polymorphic-discriminator</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/deployment/scaling</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/perspectives/polymorphic-types</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/deployment/security</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/perspectives/rebuild</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/deployment/troubleshooting</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/perspectives/registry</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/diagnostics/serializable-property-analyzer</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/perspectives/sync</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/diagnostics/whiz030</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/perspectives/table-naming</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/diagnostics/whiz031</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/perspectives/temporal</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/diagnostics/whiz058</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/perspectives/vector-fields</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/diagnostics/whiz059</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/rest/filtering</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/diagnostics/whiz062</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/rest/mutations</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/diagnostics/whiz070</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/rest/setup</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/diagnostics/whiz071</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/signalr/notification-hooks</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/diagnostics/whiz080</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/source-generators/aggregate-ids</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/diagnostics/whiz090</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/source-generators/attribute-utilities</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/diagnostics/whiz400</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/source-generators/configuration</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/diagnostics/whiz802</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/source-generators/json-contexts</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/diagnostics/whiz807</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/source-generators/message-registry</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/infrastructure/aspire-integration</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/source-generators/perspective-discovery</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/infrastructure/health-checks</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/source-generators/polymorphic-serialization</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/infrastructure/migrations</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/source-generators/receptor-discovery</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/infrastructure/policies</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/source-generators/topic-filter-discovery</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/infrastructure/policy-engine</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/testing/lifecycle-synchronization</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/infrastructure/pooling</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/tracing/verbosity-levels</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/observability/diagnostics</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/transports/azure-service-bus</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/observability/logging-categories</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/transports/in-memory</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/observability/opentelemetry-integration</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/transports/rabbitmq</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/observability/tracing</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/tutorial/analytics-service</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/observability/verbosity-levels</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/tutorial/customer-service</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/testing/lifecycle-synchronization</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/tutorial/deployment</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/testing/testing-receptors</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/tutorial/inventory-service</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/workers/database-readiness</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/tutorial/notification-service</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/workers/execution-lifecycle</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/tutorial/order-management</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/tutorial/payment-processing</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/tutorial/shipping-service</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/tutorial/testing-strategy</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/tutorial/tutorial-overview</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/workers/database-readiness</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/workers/execution-lifecycle</loc>
-    <lastmod>2026-03-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://whizbang-lib.github.io/docs/v1.0.0/workers/perspective-worker</loc>
-    <lastmod>2026-03-19</lastmod>
+    <loc>https://whizbang-lib.github.io/docs/v1.0.0/operations/workers/perspective-worker</loc>
+    <lastmod>2026-03-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

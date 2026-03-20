@@ -1319,6 +1319,12 @@ mark.search-highlight {
 }
 
 // Ensure PrimeNG tooltips render above the sidebar (z-index: 10000)
+// and prevent narrow wrapping at viewport edges
 .p-tooltip {
   z-index: 10002 !important;
+  max-width: none !important;
+}
+
+.p-tooltip-text {
+  white-space: nowrap !important;
 }
