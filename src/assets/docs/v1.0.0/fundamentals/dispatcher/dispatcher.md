@@ -25,6 +25,8 @@ The **Dispatcher** is Whizbang's central message router. It provides three disti
 | `LocalInvokeAsync` | In-process queries/commands | `TResponse` | < 20ns | Local only |
 | `LocalInvokeAndSyncAsync` | Commands with perspective sync | `TResponse` / `SyncResult` | Varies | Local only |
 | `PublishAsync` | Event broadcasting | `void` | ~50μs | Local or Remote |
+| `SendManyAsync` | Batch commands (local + outbox) | `IEnumerable<DeliveryReceipt>` | Optimized | Local + Remote |
+| `LocalSendManyAsync` | Batch local-only dispatch | `IEnumerable<DeliveryReceipt>` | ~20ns/msg | Local only |
 
 ## IDispatcher Interface
 
@@ -795,6 +797,98 @@ await _dispatcher.PublishAsync(orderCreated);
 // Returns: void
 // Use: After command completes, update all perspectives
 ```
+
+---
+
+## Batch Operations
+
+### SendManyAsync
+
+**Use Case**: Send multiple messages in a single batch, optimized with a single outbox scope and flush. Messages are processed both **locally** (if a receptor exists) and via the **outbox** (for cross-service delivery).
+
+:::new{type="breaking"}
+**Behavior Change (v0.9.10)**: `SendManyAsync` now routes messages to **both** local receptors and the outbox — matching `PublishAsync` semantics. Previously, messages with a local receptor were dispatched locally only, silently skipping outbox delivery. This caused events to not propagate cross-service when sent via `SendManyAsync`.
+:::
+
+**Signatures**:
+```csharp
+// Generic (AOT-compatible, preserves type information)
+Task<IEnumerable<IDeliveryReceipt>> SendManyAsync<TMessage>(
+    IEnumerable<TMessage> messages) where TMessage : notnull;
+
+// Non-generic (backward compatible)
+Task<IEnumerable<IDeliveryReceipt>> SendManyAsync(
+    IEnumerable<object> messages);
+```
+
+**Returns**: `DeliveryReceipt` per message — `Delivered` for locally-handled messages, `Accepted` for outbox-only messages.
+
+**Example**:
+```csharp
+// Batch send commands — each gets local processing + outbox delivery
+var commands = new[] {
+    new UpdateInventory(productId1, 10),
+    new UpdateInventory(productId2, -5),
+    new UpdateInventory(productId3, 20)
+};
+
+var receipts = await _dispatcher.SendManyAsync(commands);
+// All messages: local receptor invoked AND queued for cross-service delivery
+```
+
+**Routing Behavior**:
+
+| Message Has Local Receptor | Has Outbox Strategy | Behavior |
+|---------------------------|--------------------|----|
+| Yes | Yes | Local + Outbox (receipt: Delivered) |
+| Yes | No | Local only (receipt: Delivered) |
+| No | Yes | Outbox only (receipt: Accepted) |
+| No | No | Throws `InvalidOperationException` |
+
+**Source**: [`src/Whizbang.Core/Dispatcher.cs`](src/Whizbang.Core/Dispatcher.cs) · **Tests**: [`tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs`](tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs)
+
+### LocalSendManyAsync
+
+**Use Case**: Send multiple messages to local receptors **only** — no outbox delivery. Useful when you want batch local-only processing without cross-service propagation.
+
+**Signatures**:
+```csharp
+// Generic (AOT-compatible)
+ValueTask<IEnumerable<IDeliveryReceipt>> LocalSendManyAsync<TMessage>(
+    IEnumerable<TMessage> messages) where TMessage : notnull;
+
+// Non-generic
+ValueTask<IEnumerable<IDeliveryReceipt>> LocalSendManyAsync(
+    IEnumerable<object> messages);
+```
+
+**Returns**: `DeliveryReceipt` per message — all with `Delivered` status.
+
+**Throws**: `ReceptorNotFoundException` if any message has no local receptor.
+
+**Example**:
+```csharp
+// Process commands locally only — no outbox, no cross-service delivery
+var commands = new[] {
+    new ValidateOrder(orderId1),
+    new ValidateOrder(orderId2)
+};
+
+var receipts = await _dispatcher.LocalSendManyAsync(commands);
+// All receipts have Status == Delivered (processed in-process)
+// No outbox messages created
+```
+
+**API Design Intent**:
+
+| Method | Local | Outbox | Use Case |
+|--------|-------|--------|----------|
+| `SendAsync` / `PublishAsync` | Yes | Yes | Default: full delivery |
+| `SendManyAsync` | Yes | Yes | Batch: full delivery |
+| `LocalInvokeAsync` | Yes | No | In-process RPC |
+| `LocalSendManyAsync` | Yes | No | Batch: local only |
+
+**Source**: [`src/Whizbang.Core/Dispatcher.cs`](src/Whizbang.Core/Dispatcher.cs) · **Tests**: [`tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs`](tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs)
 
 ---
 
