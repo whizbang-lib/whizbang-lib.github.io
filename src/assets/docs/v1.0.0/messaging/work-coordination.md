@@ -43,6 +43,80 @@ Messages within the same stream are processed in strict temporal order, even acr
 3. Scheduled retries block all later messages in the same stream until the scheduled time passes
 4. This guarantee holds across instance failures, scaling events, and partition reassignments
 
+## Message Flow Diagrams
+
+### Inbox Message Flow (Inline Processing)
+
+Shows how `TransportConsumerWorker` processes incoming messages in real-time via the inbox pattern.
+
+```mermaid
+sequenceDiagram
+    participant T as Transport
+    participant TCW as TransportConsumerWorker
+    participant S as Strategy (FlushAsync)
+    participant SQL as process_work_batch
+    participant DB as wh_inbox
+    participant R as Receptors
+
+    T->>TCW: message arrives
+    TCW->>TCW: _serializeToNewInboxMessage()
+    TCW->>S: QueueInboxMessage(msg)
+    S->>SQL: ProcessWorkBatchAsync({NewInboxMessages})
+    SQL->>DB: store_inbox_messages (partition, lease)
+    SQL-->>S: InboxWork[] returned
+    S-->>TCW: WorkBatch with InboxWork
+    TCW->>R: PreInboxAsync / PreInboxInline
+    TCW->>TCW: OrderedStreamProcessor.ProcessInboxWorkAsync
+    TCW->>R: PostInboxAsync / PostInboxInline
+    TCW->>S: QueueInboxCompletion(msgId, status)
+    S->>SQL: ProcessWorkBatchAsync({InboxCompletions})
+    SQL->>DB: update status, clear lease, set processed_at
+```
+
+### Orphaned Inbox Recovery (Poll Loop)
+
+Shows how `WorkCoordinatorPublisherWorker` recovers and processes orphaned inbox messages that were not completed (e.g., due to crashes or deployments).
+
+```mermaid
+sequenceDiagram
+    participant W as WorkCoordinatorPublisherWorker
+    participant SQL as process_work_batch
+    participant DB as wh_inbox
+    participant R as Receptors
+
+    loop every PollingIntervalMs
+        W->>SQL: ProcessWorkBatchAsync({InboxFailures, InboxCompletions})
+        SQL->>DB: report failures/completions from previous cycle
+        SQL->>DB: claim_orphaned_inbox (expired leases)
+        SQL-->>W: WorkBatch { InboxWork[] }
+        alt InboxWork present
+            W->>W: deserialize via ILifecycleMessageDeserializer (AOT-safe)
+            W->>R: PreInboxAsync / PreInboxInline
+            W->>W: OrderedStreamProcessor.ProcessInboxWorkAsync
+            W->>R: PostInboxAsync / PostInboxInline
+            W->>W: queue to _inboxCompletions or _inboxFailures
+        end
+    end
+```
+
+### What Was Broken (Before Fix)
+
+Before the inbox processing fix, orphaned inbox messages were stuck in an infinite loop because failures were routed to the wrong SQL parameter.
+
+```mermaid
+flowchart TD
+    A[Inbox message stored, status=1] -->|lease expires| B[claim_orphaned_inbox]
+    B --> C[InboxWork returned]
+    C --> D["_failures.Add('Inbox processing not yet implemented')"]
+    D --> E[Next poll: failures sent as OutboxFailures]
+    E --> F["SQL updates wh_outbox — wrong table!"]
+    F --> G[No matching rows → 0 processed]
+    G --> H[Failures never acknowledged]
+    H -->|lease expires again| B
+    style D fill:#dc3545,color:#fff
+    style F fill:#dc3545,color:#fff
+```
+
 ## Architecture Components
 
 ### Database Tables
