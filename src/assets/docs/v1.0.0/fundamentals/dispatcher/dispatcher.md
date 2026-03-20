@@ -26,6 +26,7 @@ The **Dispatcher** is Whizbang's central message router. It provides three disti
 | `LocalInvokeAndSyncAsync` | Commands with perspective sync | `TResponse` / `SyncResult` | Varies | Local only |
 | `PublishAsync` | Event broadcasting | `void` | ~50μs | Local or Remote |
 | `SendManyAsync` | Batch commands (local + outbox) | `IEnumerable<DeliveryReceipt>` | Optimized | Local + Remote |
+| `PublishManyAsync` | Batch event publishing | `IEnumerable<DeliveryReceipt>` | Optimized | Local + Remote |
 | `LocalSendManyAsync` | Batch local-only dispatch | `IEnumerable<DeliveryReceipt>` | ~20ns/msg | Local only |
 
 ## IDispatcher Interface
@@ -847,6 +848,43 @@ var receipts = await _dispatcher.SendManyAsync(commands);
 
 **Source**: [`src/Whizbang.Core/Dispatcher.cs`](src/Whizbang.Core/Dispatcher.cs) · **Tests**: [`tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs`](tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs)
 
+### PublishManyAsync
+
+**Use Case**: Publish multiple events in a single batch with event topic routing. The batch equivalent of `PublishAsync` — events are broadcast to local handlers and queued for cross-service delivery via the outbox.
+
+:::new{type="important"}
+**v0.9.11**: `PublishManyAsync` is the recommended API for batch event publishing. Unlike `SendManyAsync`, it is semantically explicit about publishing events. Both methods now correctly route events to event topics (not command destinations).
+:::
+
+**Signatures**:
+```csharp
+// Generic (AOT-compatible, preserves type information)
+Task<IEnumerable<IDeliveryReceipt>> PublishManyAsync<TEvent>(
+    IEnumerable<TEvent> events) where TEvent : notnull;
+
+// Non-generic (backward compatible)
+Task<IEnumerable<IDeliveryReceipt>> PublishManyAsync(
+    IEnumerable<object> events);
+```
+
+**Returns**: `DeliveryReceipt` per event — `Delivered` for locally-handled events, `Accepted` for outbox-only events.
+
+**Example**:
+```csharp
+// Batch publish events — single scope, single flush
+var events = new[] {
+    new OrderCreatedEvent(orderId1),
+    new OrderCreatedEvent(orderId2),
+    new OrderCreatedEvent(orderId3)
+};
+
+var receipts = await _dispatcher.PublishManyAsync(events);
+// All events: local handlers invoked AND queued for cross-service delivery
+// Events route to event topics (not command destinations)
+```
+
+**Source**: [`src/Whizbang.Core/Dispatcher.cs`](src/Whizbang.Core/Dispatcher.cs) · **Tests**: [`tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs`](tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs)
+
 ### LocalSendManyAsync
 
 **Use Case**: Send multiple messages to local receptors **only** — no outbox delivery. Useful when you want batch local-only processing without cross-service propagation.
@@ -884,7 +922,8 @@ var receipts = await _dispatcher.LocalSendManyAsync(commands);
 | Method | Local | Outbox | Use Case |
 |--------|-------|--------|----------|
 | `SendAsync` / `PublishAsync` | Yes | Yes | Default: full delivery |
-| `SendManyAsync` | Yes | Yes | Batch: full delivery |
+| `SendManyAsync` | Yes | Yes | Batch: full delivery (commands + events) |
+| `PublishManyAsync` | Yes | Yes | Batch: event publishing |
 | `LocalInvokeAsync` | Yes | No | In-process RPC |
 | `LocalSendManyAsync` | Yes | No | Batch: local only |
 
