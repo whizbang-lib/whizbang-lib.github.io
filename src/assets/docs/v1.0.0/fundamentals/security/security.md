@@ -29,7 +29,7 @@ The security system consists of:
 
 Permissions use a `resource:action` pattern and support wildcard matching.
 
-```csharp
+```csharp{title="Permissions" description="Permissions use a resource:action pattern and support wildcard matching." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Permissions"]}
 // Factory methods for common patterns
 var readOrders = Permission.Read("orders");      // "orders:read"
 var writeOrders = Permission.Write("orders");    // "orders:write"
@@ -58,7 +58,7 @@ var allOrderActions = Permission.All("orders");  // Matches orders:*
 
 Roles are named collections of permissions, defined via fluent configuration.
 
-```csharp
+```csharp{title="Roles" description="Roles are named collections of permissions, defined via fluent configuration." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Roles"]}
 var options = new SecurityOptions()
   .DefineRole("Admin", b => b
     .HasAllPermissions("*"))              // Super-admin
@@ -81,7 +81,7 @@ managerRole.HasPermission(Permission.Delete("reports")); // false
 
 The `RoleBuilder` provides a fluent API for defining roles with permissions:
 
-```csharp
+```csharp{title="Role Definition" description="The RoleBuilder provides a fluent API for defining roles with permissions:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Role", "Definition"]}
 public class RoleBuilder {
   public RoleBuilder HasPermission(Permission permission);
   public RoleBuilder HasPermission(string resource, string action);
@@ -104,7 +104,7 @@ var role = new RoleBuilder("OrderManager")
 
 The `Role` type represents a named collection of permissions:
 
-```csharp
+```csharp{title="Role Definition - Role" description="The Role type represents a named collection of permissions:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Role", "Definition"]}
 public sealed record Role {
   public required string Name { get; init; }
   public required IReadOnlySet<Permission> Permissions { get; init; }
@@ -119,7 +119,7 @@ public sealed record Role {
 
 Security principals identify users, groups, and services with type prefixes for clarity.
 
-```csharp
+```csharp{title="Security Principals" description="Security principals identify users, groups, and services with type prefixes for clarity." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Principals", "Security-principals"]}
 // Factory methods
 var user = SecurityPrincipalId.User("alice");           // "user:alice"
 var group = SecurityPrincipalId.Group("sales-team");    // "group:sales-team"
@@ -136,7 +136,7 @@ service.IsService; // true
 
 The `SecurityPrincipalIdJsonConverter` handles JSON serialization of security principal IDs:
 
-```csharp
+```csharp{title="JSON Serialization" description="The SecurityPrincipalIdJsonConverter handles JSON serialization of security principal IDs:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "JSON", "Serialization"]}
 // Serializes to simple string format
 var json = JsonSerializer.Serialize(SecurityPrincipalId.User("alice"));
 // Result: "user:alice"
@@ -150,7 +150,7 @@ var principal = JsonSerializer.Deserialize<SecurityPrincipalId>("\"group:sales-t
 
 Security principals support hierarchical group membership. When a user belongs to a group that's nested within another group, all memberships are pre-flattened in the scope context.
 
-```csharp
+```csharp{title="Nested Group Support" description="Security principals support hierarchical group membership." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Nested", "Group"]}
 // Alice is in "sales-team" which is in "all-employees"
 var context = new ScopeContext {
   SecurityPrincipals = new HashSet<SecurityPrincipalId> {
@@ -176,7 +176,7 @@ See the [Principal Filtering with EF Core](#principal-filtering) section below f
 
 `IScopeContext` is the ambient security context for the current operation, populated from JWT claims, message headers, or explicit injection.
 
-```csharp
+```csharp{title="Scope Context" description="IScopeContext is the ambient security context for the current operation, populated from JWT claims, message headers, or" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Context"]}
 public interface IScopeContext {
   PerspectiveScope Scope { get; }           // TenantId, UserId, etc.
   IReadOnlySet<string> Roles { get; }
@@ -196,7 +196,7 @@ public interface IScopeContext {
 
 ### Creating Scope Context
 
-```csharp
+```csharp{title="Creating Scope Context" description="Demonstrates creating Scope Context" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Creating", "Scope"]}
 var context = new ScopeContext {
   Scope = new PerspectiveScope {
     TenantId = "tenant-123",
@@ -223,7 +223,7 @@ var context = new ScopeContext {
 
 Access the current scope context via `IScopeContextAccessor`, which uses `AsyncLocal` for request-scoped propagation.
 
-```csharp
+```csharp{title="Scope Context Accessor" description="Access the current scope context via IScopeContextAccessor, which uses AsyncLocal for request-scoped propagation." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Scope", "Context"]}
 public interface IScopeContextAccessor {
   IScopeContext? Current { get; set; }
 }
@@ -276,7 +276,7 @@ public class OrderService {
 
 The `IPermissionExtractor` interface allows custom extraction of permissions from claims, tokens, or other sources.
 
-```csharp
+```csharp{title="Permission Extractors" description="The IPermissionExtractor interface allows custom extraction of permissions from claims, tokens, or other sources." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Permission", "Extractors"]}
 public interface IPermissionExtractor {
   IReadOnlySet<Permission> Extract(IReadOnlyDictionary<string, string> claims);
 }
@@ -334,7 +334,7 @@ public class RolePermissionExtractor : IPermissionExtractor {
 
 ### Registering Extractors
 
-```csharp
+```csharp{title="Registering Extractors" description="Demonstrates registering Extractors" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Registering", "Extractors"]}
 services.AddSingleton<IPermissionExtractor>(sp => {
   var options = sp.GetRequiredService<SecurityOptions>();
   return new CompositePermissionExtractor(
@@ -350,7 +350,7 @@ services.AddSingleton<IPermissionExtractor>(sp => {
 
 ### Composable Scope Filters
 
-```csharp
+```csharp{title="Composable Scope Filters" description="Demonstrates composable Scope Filters" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Composable", "Scope"]}
 [Flags]
 public enum ScopeFilter {
   None = 0,           // No filtering (admin access)
@@ -366,7 +366,7 @@ public enum ScopeFilter {
 
 Filters are combined with bitwise OR and applied as AND conditions (except User+Principal which uses OR).
 
-```csharp
+```csharp{title="Filter Combinations" description="Filters are combined with bitwise OR and applied as AND conditions (except User+Principal which uses OR)." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Filter", "Combinations"]}
 // Tenant only
 var lens = factory.GetLens<IOrderLens>(ScopeFilter.Tenant);
 // WHERE TenantId = ?
@@ -386,7 +386,7 @@ var lens = factory.GetMyOrSharedLens<IOrderLens>();
 
 ### Convenience Methods
 
-```csharp
+```csharp{title="Convenience Methods" description="Demonstrates convenience Methods" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Convenience", "Methods"]}
 // No filtering (admin)
 factory.GetGlobalLens<IOrderLens>();
 
@@ -410,7 +410,7 @@ factory.GetMyOrSharedLens<IOrderLens>();
 
 The factory can enforce permission checks before returning a lens.
 
-```csharp
+```csharp{title="Permission Checks" description="The factory can enforce permission checks before returning a lens." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Permission", "Checks"]}
 // Single permission required
 var lens = factory.GetLens<IOrderLens>(
   ScopeFilter.Tenant,
@@ -433,7 +433,7 @@ Whizbang provides EF Core integration for principal-based filtering using Postgr
 
 Use `WhizbangDbContextOptionsExtensions` to enable principal filtering:
 
-```csharp
+```csharp{title="DbContext Configuration" description="Use WhizbangDbContextOptionsExtensions to enable principal filtering:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "DbContext", "Configuration"]}
 public class OrderDbContext : DbContext {
   protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
     optionsBuilder
@@ -447,7 +447,7 @@ public class OrderDbContext : DbContext {
 
 The `WhizbangJsonDbFunctions` static class provides EF Core-translatable methods for JSONB operations:
 
-```csharp
+```csharp{title="WhizbangJsonDbFunctions" description="The WhizbangJsonDbFunctions static class provides EF Core-translatable methods for JSONB operations:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "WhizbangJsonDbFunctions"]}
 public static class WhizbangJsonDbFunctions {
   /// <summary>
   /// Checks if a JSONB array contains any of the specified values.
@@ -461,7 +461,7 @@ public static class WhizbangJsonDbFunctions {
 
 The `WhizbangMethodCallTranslatorPlugin` and `JsonArrayContainsAnyTranslator` handle translation of LINQ queries to PostgreSQL:
 
-```csharp
+```csharp{title="Query Translation" description="The WhizbangMethodCallTranslatorPlugin and JsonArrayContainsAnyTranslator handle translation of LINQ queries to" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Query", "Translation"]}
 // LINQ query
 var orders = await dbContext.Orders
   .Where(o => WhizbangJsonDbFunctions.JsonArrayContainsAny(
@@ -476,7 +476,7 @@ var orders = await dbContext.Orders
 
 ### Principal Filter Example
 
-```csharp
+```csharp{title="Principal Filter Example" description="Demonstrates principal Filter Example" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Principal", "Filter"]}
 public class OrderRepository {
   private readonly OrderDbContext _dbContext;
   private readonly IScopeContextAccessor _scopeAccessor;
@@ -506,7 +506,7 @@ Row-level security restricts which rows a user can access based on their identit
 
 Records can specify which security principals have access:
 
-```csharp
+```csharp{title="Row-Level Security via AllowedPrincipals" description="Records can specify which security principals have access:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Row-Level", "AllowedPrincipals"]}
 var row = new PerspectiveRow<Order> {
   Data = order,
   Scope = new PerspectiveScope {
@@ -526,7 +526,7 @@ When querying with `ScopeFilter.Principal`, records are returned where the calle
 
 A complete example showing row-level security for orders:
 
-```csharp
+```csharp{title="Order Example" description="A complete example showing row-level security for orders:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Order", "Example"]}
 public class Order {
   public required string OrderId { get; init; }
   public required string TenantId { get; init; }
@@ -588,7 +588,7 @@ Column-level security restricts which fields a user can view based on their perm
 
 A complete example showing column-level security for customer data:
 
-```csharp
+```csharp{title="Customer Example" description="A complete example showing column-level security for customer data:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Customer", "Example"]}
 public class Customer {
   public required string CustomerId { get; init; }
   public required string TenantId { get; init; }
@@ -654,7 +654,7 @@ public class CustomerService {
 
 The `MaskingStrategy` enum defines strategies for masking sensitive data in responses.
 
-```csharp
+```csharp{title="Data Masking" description="The MaskingStrategy enum defines strategies for masking sensitive data in responses." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Data", "Masking"]}
 public enum MaskingStrategy {
   /// <summary>No masking - return full value (requires permission)</summary>
   None,
@@ -699,7 +699,7 @@ public static class DataMasker {
 
 ### Using Masking with Column Security
 
-```csharp
+```csharp{title="Using Masking with Column Security" description="Demonstrates using Masking with Column Security" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Using", "Masking"]}
 public class CustomerDto {
   public required string CustomerId { get; init; }
   public required string Name { get; init; }
@@ -731,7 +731,7 @@ public CustomerDto ToDto(Customer customer, IScopeContext context) {
 
 `PerspectiveScope` stores scope metadata on perspective rows, separate from the data model.
 
-```csharp
+```csharp{title="Perspective Scope" description="PerspectiveScope stores scope metadata on perspective rows, separate from the data model." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Perspective", "Scope"]}
 public record PerspectiveScope {
   public string? TenantId { get; init; }
   public string? CustomerId { get; init; }
@@ -761,7 +761,7 @@ The security system emits events for auditing.
 
 Emitted when access is denied due to insufficient permissions.
 
-```csharp
+```csharp{title="AccessDenied" description="Emitted when access is denied due to insufficient permissions." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "AccessDenied"]}
 public sealed record AccessDenied : ISystemEvent {
   public required string ResourceType { get; init; }
   public string? ResourceId { get; init; }
@@ -778,7 +778,7 @@ public sealed record AccessDenied : ISystemEvent {
 
 Emitted when access to a sensitive resource is granted (optional, for audit trails).
 
-```csharp
+```csharp{title="AccessGranted" description="Emitted when access to a sensitive resource is granted (optional, for audit trails)." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "AccessGranted"]}
 public sealed record AccessGranted : ISystemEvent {
   public required string ResourceType { get; init; }
   public string? ResourceId { get; init; }
@@ -795,7 +795,7 @@ public sealed record AccessGranted : ISystemEvent {
 
 Thrown when a security check fails due to insufficient permissions.
 
-```csharp
+```csharp{title="AccessDeniedException" description="Thrown when a security check fails due to insufficient permissions." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "AccessDeniedException"]}
 public class AccessDeniedException : Exception {
   public required string ResourceType { get; init; }
   public string? ResourceId { get; init; }
@@ -828,7 +828,7 @@ public enum AccessDenialReason {
 
 ### Exception Handling
 
-```csharp
+```csharp{title="Exception Handling" description="Demonstrates exception Handling" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Exception", "Handling"]}
 try {
   var lens = factory.GetLens<IOrderLens>(
     ScopeFilter.Tenant,
@@ -849,7 +849,7 @@ try {
 
 ### Registering Security Services
 
-```csharp
+```csharp{title="Registering Security Services" description="Demonstrates registering Security Services" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Registering", "Services"]}
 services.AddSingleton<IScopeContextAccessor, ScopeContextAccessor>();
 services.AddSingleton<ISystemEventEmitter, SystemEventEmitter>();
 services.AddSingleton<LensOptions>();
@@ -866,7 +866,7 @@ services.AddSingleton(new SecurityOptions()
 
 ### Extracting from JWT Claims
 
-```csharp
+```csharp{title="Extracting from JWT Claims" description="Demonstrates extracting from JWT Claims" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Extracting", "JWT"]}
 var options = new SecurityOptions()
   .ExtractPermissionsFromClaim("permissions")  // "orders:read, orders:write"
   .ExtractRolesFromClaim("roles")              // "Admin, Support"
@@ -877,7 +877,7 @@ var options = new SecurityOptions()
 
 Optional marker interfaces for models that include scope in their data:
 
-```csharp
+```csharp{title="Marker Interfaces" description="Optional marker interfaces for models that include scope in their data:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Marker", "Interfaces"]}
 public interface ITenantScoped {
   string TenantId { get; }
 }

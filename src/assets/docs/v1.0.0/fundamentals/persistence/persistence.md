@@ -30,7 +30,7 @@ Whizbang addresses these needs through configurable persistence modes that can b
 
 The `PersistenceMode` enum defines three built-in strategies:
 
-```csharp
+```csharp{title="Persistence Modes" description="The PersistenceMode enum defines three built-in strategies:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Modes"]}
 public enum PersistenceMode {
   Immediate = 0,  // Default - commit after each append
   Batched = 1,    // Buffer and commit on flush/threshold
@@ -42,7 +42,7 @@ public enum PersistenceMode {
 
 Events are committed immediately after each `AppendAsync` call.
 
-```csharp
+```csharp{title="Immediate Mode (Default)" description="Events are committed immediately after each AppendAsync call." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Immediate", "Mode"]}
 // Events committed immediately - no explicit SaveChanges needed
 await _eventStore.AppendAsync(orderId, new OrderCreated(...));
 // Event is now visible to all readers
@@ -62,7 +62,7 @@ await _eventStore.AppendAsync(orderId, new OrderCreated(...));
 
 Events are buffered and committed when `FlushAsync` is called or when a configured batch threshold is reached.
 
-```csharp
+```csharp{title="Batched Mode" description="Events are buffered and committed when FlushAsync is called or when a configured batch threshold is reached." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Batched", "Mode"]}
 // Events are buffered
 await _eventStore.AppendAsync(streamId1, event1);
 await _eventStore.AppendAsync(streamId2, event2);
@@ -84,7 +84,7 @@ await _eventStore.FlushAsync();
 
 **Configuration** (appsettings.json):
 
-```json
+```json{title="Batched Mode (2)" description="Configuration (appsettings." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Batched", "Mode"]}
 {
   "Whizbang": {
     "Persistence": {
@@ -101,7 +101,7 @@ await _eventStore.FlushAsync();
 
 Events are queued for reliable delivery via `IWorkCoordinator`, ensuring at-least-once delivery with automatic retries.
 
-```csharp
+```csharp{title="Outbox Mode" description="Events are queued for reliable delivery via IWorkCoordinator, ensuring at-least-once delivery with automatic retries." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Outbox", "Mode"]}
 // Event queued to outbox table, processed reliably by worker
 await _eventStore.AppendAsync(orderId, new OrderCreated(...));
 // Event will be delivered even if this process crashes
@@ -125,7 +125,7 @@ Use the `[PersistenceStrategy]` attribute to configure persistence behavior per-
 
 ### Using Built-in Modes
 
-```csharp
+```csharp{title="Using Built-in Modes" description="Demonstrates using Built-in Modes" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Using", "Built-in"]}
 using Whizbang.Core.Attributes;
 using Whizbang.Core.Persistence;
 
@@ -167,7 +167,7 @@ public class NotifyExternalSystemReceptor : IReceptor<NotifyExternal, ExternalNo
 
 For more control, define custom strategies in `appsettings.json` and reference them by name:
 
-```json
+```json{title="Using Custom Named Strategies" description="For more control, define custom strategies in `appsettings." category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Using", "Custom"]}
 {
   "Whizbang": {
     "Persistence": {
@@ -189,7 +189,7 @@ For more control, define custom strategies in `appsettings.json` and reference t
 }
 ```
 
-```csharp
+```csharp{title="Using Custom Named Strategies - BulkImportReceptor" description="For more control, define custom strategies in `appsettings." category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Using", "Custom"]}
 // Reference custom strategy by name
 [PersistenceStrategy("high-throughput-batch")]
 public class BulkImportReceptor : IReceptor<ImportData, DataImported> {
@@ -216,7 +216,7 @@ public class PublishIntegrationEventReceptor : IReceptor<PublishEvent, EventPubl
 
 Receptors without the `[PersistenceStrategy]` attribute use the global default configured in `appsettings.json`:
 
-```csharp
+```csharp{title="Default Behavior (No Attribute)" description="Receptors without the [PersistenceStrategy] attribute use the global default configured in `appsettings." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Default", "Behavior"]}
 // No attribute = uses Persistence.DefaultMode (Immediate if not configured)
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
   public async ValueTask<OrderCreated> HandleAsync(
@@ -233,7 +233,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 Configure default persistence behavior in `appsettings.json`:
 
-```json
+```json{title="Global Configuration" description="Configure default persistence behavior in `appsettings." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Global", "Configuration"]}
 {
   "Whizbang": {
     "Persistence": {
@@ -275,7 +275,7 @@ Configure default persistence behavior in `appsettings.json`:
 
 The `PersistenceStrategyAttribute` supports two constructors:
 
-```csharp
+```csharp{title="Attribute Details" description="The PersistenceStrategyAttribute supports two constructors:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Attribute", "Details"]}
 // Use built-in mode
 [PersistenceStrategy(PersistenceMode.Batched)]
 
@@ -296,7 +296,7 @@ The `PersistenceStrategyAttribute` supports two constructors:
 - **Multiple**: Not allowed (`AllowMultiple = false`)
 - **Inherited**: Yes (`Inherited = true`) - base class strategy applies to derived classes
 
-```csharp
+```csharp{title="Attribute Behavior" description="- Target: Class only (`AttributeTargets." category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Attribute", "Behavior"]}
 // Base class strategy inherited by derived classes
 [PersistenceStrategy(PersistenceMode.Batched)]
 public abstract class BaseBatchReceptor<TMessage, TResponse>

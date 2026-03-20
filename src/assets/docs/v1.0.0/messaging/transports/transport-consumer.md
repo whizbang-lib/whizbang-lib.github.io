@@ -31,7 +31,7 @@ The `AddTransportConsumer()` extension method:
 
 The recommended approach chains `WithRouting()` and `AddTransportConsumer()`:
 
-```csharp
+```csharp{title="Auto-Configuration" description="The recommended approach chains WithRouting() and AddTransportConsumer():" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Auto-Configuration", "Auto-configuration"]}
 services.AddWhizbang()
     .WithRouting(routing => {
         routing
@@ -64,7 +64,7 @@ If your service has perspectives or receptors that handle events from other name
 
 Add custom destinations beyond auto-generated ones:
 
-```csharp
+```csharp{title="Additional Destinations" description="Add custom destinations beyond auto-generated ones:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Additional", "Destinations"]}
 services.AddWhizbang()
     .WithRouting(routing => {
         routing.OwnDomains("myapp.orders.commands");
@@ -86,7 +86,7 @@ Additional destinations are appended after auto-generated ones.
 
 A typical worker service includes transport registration, routing, and consumer:
 
-```csharp
+```csharp{title="Complete Worker Setup" description="A typical worker service includes transport registration, routing, and consumer:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Complete", "Worker"]}
 var builder = Host.CreateApplicationBuilder(args);
 
 // 1. Register transport (Azure Service Bus or RabbitMQ)
@@ -128,7 +128,7 @@ Transport-specific behavior is handled by the transport implementation registere
 
 When `WithRouting()` is not called before `AddTransportConsumer()`:
 
-```csharp
+```csharp{title="Error Handling" description="When WithRouting() is not called before AddTransportConsumer():" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Error", "Handling"]}
 // This throws InvalidOperationException at runtime
 services.AddWhizbang()
     .AddTransportConsumer();  // Error: WithRouting() must be called first
@@ -194,7 +194,7 @@ Attempt 9+: 120 seconds delay (continues at max)
 
 Customize resilience behavior through `TransportConsumerConfiguration`:
 
-```csharp
+```csharp{title="Configuration" description="Customize resilience behavior through TransportConsumerConfiguration:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Configuration"]}
 services.AddWhizbang()
     .WithRouting(routing => {
         routing.OwnDomains("myapp.orders.commands");
@@ -217,7 +217,7 @@ services.AddWhizbang()
 
 When resilience is enabled, a health check is automatically registered:
 
-```csharp
+```csharp{title="Health Monitoring" description="When resilience is enabled, a health check is automatically registered:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Health", "Monitoring"]}
 app.MapHealthChecks("/health");  // Includes subscription health
 ```
 
@@ -269,7 +269,7 @@ The consumer uses service name for subscription naming:
 
 Register a custom provider for explicit control:
 
-```csharp
+```csharp{title="Service Name Resolution" description="Register a custom provider for explicit control:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Service", "Name"]}
 builder.Services.AddSingleton<IServiceInstanceProvider>(
     new ServiceInstanceProvider("MyOrderService"));
 ```

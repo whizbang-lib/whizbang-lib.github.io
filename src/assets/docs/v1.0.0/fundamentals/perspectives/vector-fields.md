@@ -23,7 +23,7 @@ Vector fields are a specialized type of physical field designed for storing and 
 
 Use the `[VectorField]` attribute on `float[]` properties:
 
-```csharp
+```csharp{title="Defining Vector Fields" description="Use the [VectorField] attribute on float[] properties:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Defining", "Vector"]}
 [PerspectiveStorage(FieldStorageMode.Split)]
 public record ProductSearchDto {
     [StreamId]
@@ -56,7 +56,7 @@ public record ProductSearchDto {
 
 `VectorIndexType` defines the index algorithm for vector columns. Each type offers different trade-offs between build time, memory usage, and query performance.
 
-```csharp
+```csharp{title="VectorIndexType" description="VectorIndexType defines the index algorithm for vector columns." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "VectorIndexType"]}
 public enum VectorIndexType {
     None = 0,      // No index - exact (sequential) search
     IVFFlat = 1,   // Inverted File Flat - balanced performance
@@ -68,7 +68,7 @@ public enum VectorIndexType {
 
 No index is created; queries perform exact sequential search. Use only for small datasets (under 10,000 rows) or when perfect recall is required.
 
-```csharp
+```csharp{title="None" description="No index is created; queries perform exact sequential search." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "None"]}
 [VectorField(1536, IndexType = VectorIndexType.None)]
 public float[]? Embedding { get; init; }
 ```
@@ -77,7 +77,7 @@ public float[]? Embedding { get; init; }
 
 Inverted File Flat index partitions vectors into clusters for faster approximate search. Good balance of build speed and query performance.
 
-```csharp
+```csharp{title="IVFFlat" description="Inverted File Flat index partitions vectors into clusters for faster approximate search." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IVFFlat"]}
 [VectorField(1536, IndexType = VectorIndexType.IVFFlat, IndexLists = 100)]
 public float[]? Embedding { get; init; }
 ```
@@ -97,7 +97,7 @@ public float[]? Embedding { get; init; }
 
 Hierarchical Navigable Small World graph provides better recall and query performance at the cost of more memory and slower build time.
 
-```csharp
+```csharp{title="HNSW" description="Hierarchical Navigable Small World graph provides better recall and query performance at the cost of more memory and" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "HNSW"]}
 [VectorField(1536, IndexType = VectorIndexType.HNSW)]
 public float[]? Embedding { get; init; }
 ```
@@ -113,7 +113,7 @@ public float[]? Embedding { get; init; }
 
 `VectorDistanceMetric` defines the similarity measure used for vector comparisons. Each metric corresponds to a PostgreSQL operator for ordering results by similarity.
 
-```csharp
+```csharp{title="VectorDistanceMetric" description="VectorDistanceMetric defines the similarity measure used for vector comparisons." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "VectorDistanceMetric"]}
 public enum VectorDistanceMetric {
     L2 = 0,           // Euclidean distance
     InnerProduct = 1, // Negative inner product
@@ -125,7 +125,7 @@ public enum VectorDistanceMetric {
 
 Measures the straight-line distance between vectors. Lower values indicate more similar vectors.
 
-```csharp
+```csharp{title="L2 (Euclidean Distance)" description="Measures the straight-line distance between vectors." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Euclidean", "Distance"]}
 [VectorField(1536, DistanceMetric = VectorDistanceMetric.L2)]
 public float[]? Embedding { get; init; }
 ```
@@ -140,7 +140,7 @@ public float[]? Embedding { get; init; }
 
 Measures the dot product between vectors (negated for ordering). Higher original values indicate more similar vectors.
 
-```csharp
+```csharp{title="InnerProduct" description="Measures the dot product between vectors (negated for ordering)." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "InnerProduct"]}
 [VectorField(1536, DistanceMetric = VectorDistanceMetric.InnerProduct)]
 public float[]? Embedding { get; init; }
 ```
@@ -155,7 +155,7 @@ public float[]? Embedding { get; init; }
 
 Measures the angle between vectors. Lower values indicate more similar vectors (0 = identical, 2 = opposite).
 
-```csharp
+```csharp{title="Cosine (Default)" description="Measures the angle between vectors." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Cosine", "Default"]}
 [VectorField(1536, DistanceMetric = VectorDistanceMetric.Cosine)]
 public float[]? Embedding { get; init; }
 ```
@@ -172,7 +172,7 @@ public float[]? Embedding { get; init; }
 
 Vector fields are always stored as physical columns. Use `FieldStorageMode.Split` to avoid storing large vector arrays in JSONB:
 
-```csharp
+```csharp{title="Storage Mode for Vectors" description="Vector fields are always stored as physical columns." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Storage", "Mode"]}
 [PerspectiveStorage(FieldStorageMode.Split)]
 public record DocumentSearchDto {
     [StreamId]
@@ -192,7 +192,7 @@ public record DocumentSearchDto {
 
 Use the lens query API with vector similarity search:
 
-```csharp
+```csharp{title="Querying Vectors" description="Use the lens query API with vector similarity search:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Querying", "Vectors"]}
 // Find similar products
 var queryVector = await embeddingService.GetEmbeddingAsync("wireless headphones");
 
@@ -206,7 +206,7 @@ var results = await lens.QueryAsync<ProductSearchDto>()
 
 Combine vector search with traditional filters:
 
-```csharp
+```csharp{title="With Filters" description="Combine vector search with traditional filters:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Filters"]}
 var results = await lens.QueryAsync<ProductSearchDto>()
     .Where(r => r.Data.CategoryId == categoryId)
     .Where(r => r.Data.Price <= maxPrice)
@@ -239,7 +239,7 @@ var results = await lens.QueryAsync<ProductSearchDto>()
 
 Vector fields require the pgvector extension in PostgreSQL:
 
-```sql
+```sql{title="Prerequisites" description="Vector fields require the pgvector extension in PostgreSQL:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Prerequisites"]}
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 

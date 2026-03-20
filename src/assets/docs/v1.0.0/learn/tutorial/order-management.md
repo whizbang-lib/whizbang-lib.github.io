@@ -68,7 +68,7 @@ This is **Part 1** of the ECommerce Tutorial. Start with [Tutorial Overview](tut
 
 **ECommerce.Contracts/Commands/CreateOrder.cs**:
 
-```csharp
+```csharp{title="Commands" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Commands"]}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Commands;
@@ -98,7 +98,7 @@ public record Address(
 
 **ECommerce.Contracts/Events/OrderCreated.cs**:
 
-```csharp
+```csharp{title="Events" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Events"]}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
@@ -141,7 +141,7 @@ public record Address(
 
 **ECommerce.OrderService.API/Database/Migrations/001_CreateOrdersTable.sql**:
 
-```sql
+```sql{title="Orders Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Orders", "Table"]}
 CREATE TABLE IF NOT EXISTS orders (
   order_id TEXT PRIMARY KEY,
   customer_id TEXT NOT NULL,
@@ -160,7 +160,7 @@ CREATE INDEX idx_orders_created_at ON orders(created_at DESC);
 
 **ECommerce.OrderService.API/Database/Migrations/002_CreateOrderItemsTable.sql**:
 
-```sql
+```sql{title="Order Items Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Order", "Items"]}
 CREATE TABLE IF NOT EXISTS order_items (
   order_item_id TEXT PRIMARY KEY,
   order_id TEXT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
@@ -179,7 +179,7 @@ CREATE INDEX idx_order_items_product_id ON order_items(product_id);
 
 **ECommerce.OrderService.API/Database/Migrations/003_CreateOutboxTable.sql**:
 
-```sql
+```sql{title="Outbox Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Outbox", "Table"]}
 -- Whizbang outbox pattern for reliable event publishing
 CREATE TABLE IF NOT EXISTS outbox (
   message_id UUID PRIMARY KEY,
@@ -202,7 +202,7 @@ CREATE INDEX idx_outbox_unprocessed ON outbox(created_at)
 
 **ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs**:
 
-```csharp
+```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Commands;
 using ECommerce.Contracts.Events;
@@ -349,7 +349,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **ECommerce.OrderService.API/Controllers/OrdersController.cs**:
 
-```csharp
+```csharp{title="Step 4: HTTP API" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "HTTP"]}
 using Microsoft.AspNetCore.Mvc;
 using Whizbang.Core;
 using ECommerce.Contracts.Commands;
@@ -406,7 +406,7 @@ public class OrdersController : ControllerBase {
 
 **ECommerce.OrderService.API/Program.cs**:
 
-```csharp
+```csharp{title="Step 5: Service Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"]}
 using Whizbang.Core;
 using Whizbang.Data.Postgres;
 using Whizbang.Transports.AzureServiceBus;
@@ -461,7 +461,7 @@ app.Run();
 
 **ECommerce.OrderService.API/Extensions/MigrationExtensions.cs**:
 
-```csharp
+```csharp{title="Step 5: Service Configuration - MigrationExtensions" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
 using Npgsql;
 using Dapper;
 
@@ -493,7 +493,7 @@ public static class MigrationExtensions {
 
 **ECommerce.AppHost/Program.cs**:
 
-```csharp
+```csharp{title="Step 6: Aspire Orchestration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Aspire"]}
 var builder = DistributedApplication.CreateBuilder(args);
 
 // 1. Add PostgreSQL
@@ -516,7 +516,7 @@ builder.Build().Run();
 
 **appsettings.json**:
 
-```json
+```json{title="Step 6: Aspire Orchestration (2)" description="**appsettings." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Aspire"]}
 {
   "Logging": {
     "LogLevel": {
@@ -550,7 +550,7 @@ builder.Build().Run();
 
 ### 1. Start Aspire
 
-```bash
+```bash{title="Start Aspire" description="Demonstrates start Aspire" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Start", "Aspire"]}
 cd ECommerce.AppHost
 dotnet run
 ```
@@ -559,7 +559,7 @@ Open Aspire Dashboard: `http://localhost:15000`
 
 ### 2. Create Order
 
-```bash
+```bash{title="Create Order" description="Demonstrates create Order" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{
@@ -588,7 +588,7 @@ curl -X POST http://localhost:5000/api/orders \
 
 **Expected response**:
 
-```json
+```json{title="Create Order (2)" description="Expected response:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
 {
   "orderId": "a1b2c3d4e5f6",
   "customerId": "cust-123",
@@ -620,7 +620,7 @@ curl -X POST http://localhost:5000/api/orders \
 
 ### 3. Verify Database
 
-```sql
+```sql{title="Verify Database" description="Demonstrates verify Database" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Verify", "Database"]}
 -- Connect to PostgreSQL
 psql -h localhost -U postgres -d orders
 
@@ -682,7 +682,7 @@ Check Aspire Dashboard:
 
 ### Message Context
 
-```csharp
+```csharp{title="Message Context" description="Demonstrates message Context" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Message", "Context"]}
 public interface IMessageContext {
   Guid MessageId { get; }           // Unique ID for this message
   Guid? CorrelationId { get; }      // Business transaction ID
@@ -720,7 +720,7 @@ This enables **distributed tracing** across services.
 
 **ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs**:
 
-```csharp
+```csharp{title="Unit Test" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 using TUnit.Core;
 using TUnit.Assertions;
 using ECommerce.OrderService.API.Receptors;
@@ -758,7 +758,7 @@ public class CreateOrderReceptorTests {
 
 ### Integration Test
 
-```csharp
+```csharp{title="Integration Test" description="Demonstrates integration Test" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Integration", "Test"]}
 [Test]
 public async Task CreateOrder_EndToEnd_PublishesEvent() {
   // Arrange
@@ -798,7 +798,7 @@ public async Task CreateOrder_EndToEnd_PublishesEvent() {
 
 **Cause**: Migration not run
 **Fix**:
-```bash
+```bash{title="Issue 1: 'Outbox table not found'" description="Cause: Migration not run Fix:" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Issue", "'Outbox"]}
 # Ensure migrations executed on startup
 dotnet run --project ECommerce.OrderService.API
 ```

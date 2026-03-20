@@ -210,7 +210,7 @@ If no `order` is specified:
 
 When application code applies a default `OrderBy` before HotChocolate's sorting middleware runs, use `[UseOrderByStripping]` to ensure GraphQL sorting takes precedence:
 
-```csharp
+```csharp{title="Sort Precedence with Pre-Existing OrderBy" description="When application code applies a default OrderBy before HotChocolate's sorting middleware runs, use" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Sort", "Precedence"]}
 [UsePaging]
 [UseFiltering]
 [UseSorting]
@@ -239,7 +239,7 @@ Use `[UseOrderByStripping]` when:
 ### Example Scenario
 
 Without `[UseOrderByStripping]`:
-```csharp
+```csharp{title="Example Scenario" description="Without [UseOrderByStripping]:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Example", "Scenario"]}
 // Application code
 return _orders.Query.OrderBy(x => x.Id);  // Default order by ID
 
@@ -248,7 +248,7 @@ return _orders.Query.OrderBy(x => x.Id);  // Default order by ID
 ```
 
 With `[UseOrderByStripping]`:
-```csharp
+```csharp{title="Example Scenario (2)" description="With [UseOrderByStripping]:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Example", "Scenario"]}
 // Application code with middleware
 [UseOrderByStripping]
 return _orders.Query.OrderBy(x => x.Id);
@@ -261,7 +261,7 @@ return _orders.Query.OrderBy(x => x.Id);
 
 The `[UseOrderByStripping]` attribute must be placed AFTER `[UseSorting]` in the attribute stack:
 
-```csharp
+```csharp{title="Middleware Order" description="The [UseOrderByStripping] attribute must be placed AFTER [UseSorting] in the attribute stack:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Middleware", "Order"]}
 [UsePaging]       // Outermost
 [UseProjection]
 [UseFiltering]

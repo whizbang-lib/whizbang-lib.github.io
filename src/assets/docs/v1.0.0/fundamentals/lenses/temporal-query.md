@@ -41,7 +41,7 @@ Temporal Perspective (INSERT):
 
 ## ITemporalLensQuery Interface
 
-```csharp
+```csharp{title="ITemporalLensQuery Interface" description="Demonstrates iTemporalLensQuery Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "ITemporalLensQuery", "Interface"]}
 public interface ITemporalLensQuery<TModel> : ILensQuery where TModel : class {
   // Full history
   IQueryable<TemporalPerspectiveRow<TModel>> TemporalAll();
@@ -66,7 +66,7 @@ public interface ITemporalLensQuery<TModel> : ILensQuery where TModel : class {
 
 Each row in a temporal perspective contains:
 
-```csharp
+```csharp{title="TemporalPerspectiveRow Structure" description="Each row in a temporal perspective contains:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "TemporalPerspectiveRow", "Structure"]}
 public class TemporalPerspectiveRow<TModel> where TModel : class {
   // Identity
   public Guid Id { get; init; }           // Unique row ID (UUIDv7)
@@ -106,7 +106,7 @@ public class TemporalPerspectiveRow<TModel> where TModel : class {
 
 Get all events for a stream:
 
-```csharp
+```csharp{title="Full History" description="Get all events for a stream:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Full", "History"]}
 var history = await temporalLens
     .TemporalAll()
     .Where(r => r.StreamId == orderId)
@@ -122,7 +122,7 @@ foreach (var entry in history) {
 
 Get current state of multiple aggregates:
 
-```csharp
+```csharp{title="Latest State Per Stream" description="Get current state of multiple aggregates:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Latest", "State"]}
 var currentOrders = await temporalLens
     .LatestPerStream()
     .Where(r => r.Data.Status == "Pending")
@@ -134,7 +134,7 @@ var currentOrders = await temporalLens
 
 See the state as it was at a specific time:
 
-```csharp
+```csharp{title="Point-in-Time Query (AsOf)" description="See the state as it was at a specific time:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Point-in-Time", "Query"]}
 // What did the order look like last week?
 var lastWeekState = await temporalLens
     .TemporalAsOf(DateTimeOffset.UtcNow.AddDays(-7))
@@ -146,7 +146,7 @@ var lastWeekState = await temporalLens
 
 **FromTo** - Rows active during a range (overlapping):
 
-```csharp
+```csharp{title="Time Range Queries" description="FromTo - Rows active during a range (overlapping):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Time", "Range"]}
 // All activity during Q4
 var q4Activity = await temporalLens
     .TemporalFromTo(
@@ -157,7 +157,7 @@ var q4Activity = await temporalLens
 
 **ContainedIn** - Rows that started AND ended within a range:
 
-```csharp
+```csharp{title="Time Range Queries (2)" description="ContainedIn - Rows that started AND ended within a range:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Time", "Range"]}
 // Entries fully within December
 var decemberOnly = await temporalLens
     .TemporalContainedIn(
@@ -170,7 +170,7 @@ var decemberOnly = await temporalLens
 
 **Recent activity for a stream** (order history):
 
-```csharp
+```csharp{title="Activity Feeds" description="Recent activity for a stream (order history):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Activity", "Feeds"]}
 var orderHistory = await temporalLens
     .RecentActivityForStream(orderId, limit: 20)
     .ToListAsync();
@@ -178,7 +178,7 @@ var orderHistory = await temporalLens
 
 **Recent activity for a user** (user dashboard):
 
-```csharp
+```csharp{title="Activity Feeds (2)" description="Recent activity for a user (user dashboard):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Activity", "Feeds"]}
 var userActivity = await temporalLens
     .RecentActivityForUser(userId, limit: 50)
     .ToListAsync();
@@ -190,7 +190,7 @@ var userActivity = await temporalLens
 
 Track all changes to sensitive data:
 
-```csharp
+```csharp{title="Audit Trail" description="Track all changes to sensitive data:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Audit", "Trail"]}
 public class AccountAuditService {
   private readonly ITemporalLensQuery<AccountActivityLog> _lens;
 
@@ -218,7 +218,7 @@ public class AccountAuditService {
 
 Show recent activity across all entities:
 
-```csharp
+```csharp{title="Activity Dashboard" description="Show recent activity across all entities:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Activity", "Dashboard"]}
 public class DashboardService {
   private readonly ITemporalLensQuery<ActivityLog> _lens;
 
@@ -243,7 +243,7 @@ public class DashboardService {
 
 Generate reports showing data state at audit time:
 
-```csharp
+```csharp{title="Compliance Reporting" description="Generate reports showing data state at audit time:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Compliance", "Reporting"]}
 public class ComplianceReport {
   public async Task<IEnumerable<OrderSnapshot>> GetOrdersAsOfAuditDateAsync(
       DateTimeOffset auditDate, CancellationToken ct) {
@@ -266,7 +266,7 @@ public class ComplianceReport {
 
 Restore previous state by querying history:
 
-```csharp
+```csharp{title="Undo/Restore" description="Restore previous state by querying history:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Undo", "Restore"]}
 public async Task<TModel?> GetPreviousStateAsync<TModel>(
     ITemporalLensQuery<TModel> lens,
     Guid streamId,

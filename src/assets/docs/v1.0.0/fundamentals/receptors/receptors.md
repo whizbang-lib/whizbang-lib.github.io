@@ -30,7 +30,7 @@ A Receptor is analogous to a biological receptor:
 
 ## IReceptor Interface
 
-```csharp
+```csharp{title="IReceptor Interface" description="Demonstrates iReceptor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "IReceptor", "Interface"]}
 namespace Whizbang.Core;
 
 public interface IReceptor<in TMessage, TResponse>
@@ -61,7 +61,7 @@ public interface IReceptor<in TMessage, TResponse>
 For receptors that perform pure computation without async operations, use `ISyncReceptor`:
 :::
 
-```csharp
+```csharp{title="ISyncReceptor Interface" description=":::new For receptors that perform pure computation without async operations, use ISyncReceptor: :::" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "ISyncReceptor", "Interface"]}
 namespace Whizbang.Core;
 
 public interface ISyncReceptor<in TMessage, out TResponse>
@@ -101,7 +101,7 @@ The dispatcher uses `VoidSyncReceptorInvoker` (for void receptors) and regular i
 
 ### Sync Receptor Example
 
-```csharp
+```csharp{title="Sync Receptor Example" description="Demonstrates sync Receptor Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Sync", "Receptor"]}
 // Before (async ceremony for pure computation)
 public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)> {
     public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
@@ -135,7 +135,7 @@ public class CreateOrderReceptor : ISyncReceptor<CreateOrder, (OrderResult, Orde
 
 ### Void Sync Receptor Example
 
-```csharp
+```csharp{title="Void Sync Receptor Example" description="Demonstrates void Sync Receptor Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Void", "Sync"]}
 // For side-effect-only operations (logging, caching, etc.)
 public class LogUserActionReceptor : ISyncReceptor<LogUserAction> {
     private readonly ILogger<LogUserActionReceptor> _logger;
@@ -157,7 +157,7 @@ public class LogUserActionReceptor : ISyncReceptor<LogUserAction> {
 
 Sync receptors support the same auto-cascade feature as async receptors:
 
-```csharp
+```csharp{title="Auto-Cascade Works Identically" description="Sync receptors support the same auto-cascade feature as async receptors:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Auto-Cascade", "Works"]}
 public class ShipOrderReceptor : ISyncReceptor<ShipOrder, (ShipResult, OrderShipped, InventoryUpdated)> {
     public (ShipResult, OrderShipped, InventoryUpdated) Handle(ShipOrder message) {
         return (
@@ -174,7 +174,7 @@ public class ShipOrderReceptor : ISyncReceptor<ShipOrder, (ShipResult, OrderShip
 
 The Dispatcher API is unchanged - `LocalInvokeAsync` works with both sync and async receptors:
 
-```csharp
+```csharp{title="Invocation via Dispatcher" description="The Dispatcher API is unchanged - LocalInvokeAsync works with both sync and async receptors:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Invocation", "Dispatcher"]}
 // Invoking a sync receptor
 var result = await _dispatcher.LocalInvokeAsync<CreateOrder, (OrderResult, OrderCreated)>(command);
 // Internally: sync Handle() called, result wrapped in pre-completed ValueTask
@@ -190,7 +190,7 @@ var result = await _dispatcher.LocalInvokeAsync<ProcessPayment, PaymentResult>(c
 
 ## Basic Example
 
-```csharp
+```csharp{title="Basic Example" description="Demonstrates basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Basic", "Example"]}
 using Whizbang.Core;
 
 public record CreateOrder(
@@ -251,7 +251,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Use Case**: State-changing operations
 
-```csharp
+```csharp{title="Pattern 1: Command → Event" description="Use Case: State-changing operations" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern", "Command"]}
 public class CancelOrderReceptor : IReceptor<CancelOrder, OrderCancelled> {
     private readonly IDbConnectionFactory _db;
     private readonly ILogger<CancelOrderReceptor> _logger;
@@ -310,7 +310,7 @@ public class CancelOrderReceptor : IReceptor<CancelOrder, OrderCancelled> {
 
 **Use Case**: Read operations
 
-```csharp
+```csharp{title="Pattern 2: Query → Response" description="Use Case: Read operations" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern", "Query"]}
 public record GetOrderDetails(Guid OrderId);
 
 public record OrderDetails(
@@ -361,7 +361,7 @@ public class GetOrderDetailsReceptor : IReceptor<GetOrderDetails, OrderDetails> 
 
 **Use Case**: Complex business rules
 
-```csharp
+```csharp{title="Pattern 3: Validation-Heavy Receptor" description="Use Case: Complex business rules" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern", "Validation-Heavy"]}
 public class ProcessPaymentReceptor : IReceptor<ProcessPayment, PaymentResult> {
     private readonly IPaymentGateway _gateway;
     private readonly IDbConnectionFactory _db;
@@ -489,7 +489,7 @@ public class ProcessPaymentReceptor : IReceptor<ProcessPayment, PaymentResult> {
 
 The **auto-cascade** feature automatically publishes `IEvent` instances extracted from receptor return values. This enables a cleaner pattern where receptors return tuples containing both results and events.
 
-```csharp
+```csharp{title="Pattern 4: Tuple Return with Auto-Cascade" description="The auto-cascade feature automatically publishes IEvent instances extracted from receptor return values." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern", "Tuple"]}
 public record CreateOrder(Guid CustomerId, OrderLineItem[] Items);
 
 public record OrderResult(Guid OrderId);
@@ -561,7 +561,7 @@ For RPC-style calls where the caller extracts a specific response type from the 
 
 Receptors use **constructor injection** for dependencies:
 
-```csharp
+```csharp{title="Constructor Injection" description="Receptors use constructor injection for dependencies:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Constructor", "Injection"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IDbConnectionFactory _db;
     private readonly IInventoryService _inventory;
@@ -594,12 +594,12 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 ### Registration
 
 **Manual Registration**:
-```csharp
+```csharp{title="Registration" description="Manual Registration:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Registration"]}
 builder.Services.AddTransient<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
 ```
 
 **Auto-Discovery** (with Whizbang.Generators):
-```csharp
+```csharp{title="Registration (2)" description="Auto-Discovery (with Whizbang." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Registration"]}
 builder.Services.AddDiscoveredReceptors();  // Automatically finds all IReceptor implementations
 ```
 
@@ -612,7 +612,7 @@ builder.Services.AddDiscoveredReceptors();  // Automatically finds all IReceptor
 - Stateless (no benefit to reusing instances)
 - Minimal allocation cost
 
-```csharp
+```csharp{title="Lifetime" description="Demonstrates lifetime" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Lifetime"]}
 // Correct
 builder.Services.AddTransient<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
 
@@ -629,7 +629,7 @@ builder.Services.AddSingleton<IReceptor<CreateOrder, OrderCreated>, CreateOrderR
 
 Use exceptions for validation failures:
 
-```csharp
+```csharp{title="Validation Errors" description="Use exceptions for validation failures:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Validation", "Errors"]}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {
@@ -662,7 +662,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 Return error responses for expected failures:
 
-```csharp
+```csharp{title="Business Logic Errors" description="Return error responses for expected failures:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Business", "Logic"]}
 public record PaymentResult(
     Guid OrderId,
     decimal Amount,
@@ -715,7 +715,7 @@ public async ValueTask<PaymentResult> HandleAsync(
 
 Use `ValueTask<T>` for receptor signatures:
 
-```csharp
+```csharp{title="ValueTask vs Task" description="Use ValueTask<T> for receptor signatures:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "ValueTask", "Task"]}
 // ✅ CORRECT - ValueTask<T>
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
@@ -740,7 +740,7 @@ public async Task<OrderCreated> HandleAsync(
 
 Always accept and pass `CancellationToken`:
 
-```csharp
+```csharp{title="Cancellation Token" description="Always accept and pass CancellationToken:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Cancellation", "Token"]}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {  // Accept ct
@@ -771,7 +771,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 Test receptors in isolation:
 
-```csharp
+```csharp{title="Unit Tests" description="Test receptors in isolation:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Unit", "Tests"]}
 public class CreateOrderReceptorTests {
     [Test]
     public async Task HandleAsync_ValidOrder_ReturnsOrderCreatedAsync() {
@@ -820,7 +820,7 @@ public class CreateOrderReceptorTests {
 
 Use mocks for external dependencies:
 
-```csharp
+```csharp{title="Mocking Dependencies" description="Use mocks for external dependencies:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Mocking", "Dependencies"]}
 public class CancelOrderReceptorTests {
     [Test]
     public async Task HandleAsync_ExistingOrder_ReturnsOrderCancelledAsync() {
@@ -867,7 +867,7 @@ public class CancelOrderReceptorTests {
 
 ### Pattern: Multi-Step Validation
 
-```csharp
+```csharp{title="Pattern: Multi-Step Validation" description="Demonstrates pattern: Multi-Step Validation" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern:", "Multi-Step"]}
 public class ReserveInventoryReceptor : IReceptor<ReserveInventory, InventoryReserved> {
     private readonly IDbConnectionFactory _db;
     private readonly ILogger<ReserveInventoryReceptor> _logger;
@@ -986,7 +986,7 @@ internal record InventoryCheck(
 
 ### Pattern: Saga Coordination
 
-```csharp
+```csharp{title="Pattern: Saga Coordination" description="Demonstrates pattern: Saga Coordination" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern:", "Saga"]}
 public class CompleteOrderReceptor : IReceptor<CompleteOrder, OrderCompleted> {
     private readonly IDispatcher _dispatcher;
     private readonly ILogger<CompleteOrderReceptor> _logger;

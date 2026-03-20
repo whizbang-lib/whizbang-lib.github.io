@@ -70,7 +70,7 @@ This is **Part 5** of the ECommerce Tutorial. Complete [Notification Service](no
 
 **ECommerce.Contracts/Events/ShipmentCreated.cs**:
 
-```csharp
+```csharp{title="ShipmentCreated Event" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "ShipmentCreated", "Event"]}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
@@ -93,7 +93,7 @@ public record ShipmentCreated(
 
 **ECommerce.ShippingWorker/Services/ICarrierService.cs**:
 
-```csharp
+```csharp{title="Step 2: Carrier API Abstraction" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Carrier"]}
 namespace ECommerce.ShippingWorker.Services;
 
 public interface ICarrierService {
@@ -169,7 +169,7 @@ public record TrackingEvent(
 
 **ECommerce.ShippingWorker/Services/FedExCarrierService.cs**:
 
-```csharp
+```csharp{title="Step 3: FedEx Implementation" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "FedEx"]}
 using System.Net.Http.Json;
 
 namespace ECommerce.ShippingWorker.Services;
@@ -397,7 +397,7 @@ public record FedExShipmentDocument(
 
 **ECommerce.ShippingWorker/Database/Migrations/001_CreateShipmentsTable.sql**:
 
-```sql
+```sql{title="Step 4: Database Schema" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Database"]}
 CREATE TABLE IF NOT EXISTS shipments (
   shipment_id TEXT PRIMARY KEY,
   order_id TEXT NOT NULL UNIQUE,
@@ -419,7 +419,7 @@ CREATE INDEX idx_shipments_status ON shipments(status);
 
 **ECommerce.ShippingWorker/Database/Migrations/002_CreateTrackingEventsTable.sql**:
 
-```sql
+```sql{title="Step 4: Database Schema (2)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Database"]}
 CREATE TABLE IF NOT EXISTS tracking_events (
   event_id TEXT PRIMARY KEY,
   shipment_id TEXT NOT NULL REFERENCES shipments(shipment_id),
@@ -439,7 +439,7 @@ CREATE INDEX idx_tracking_events_timestamp ON tracking_events(timestamp DESC);
 
 **ECommerce.ShippingWorker/Receptors/CreateShipmentReceptor.cs**:
 
-```csharp
+```csharp{title="Step 5: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using ECommerce.ShippingWorker.Services;
@@ -673,7 +673,7 @@ public class ShipmentCreationFailedException : Exception {
 
 **ECommerce.ShippingWorker/Controllers/WebhooksController.cs**:
 
-```csharp
+```csharp{title="Step 6: Tracking Updates (Webhook)" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Tracking"]}
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Dapper;
@@ -773,7 +773,7 @@ public record FedExTrackingWebhook(
 
 ### 1. Create Order (Full End-to-End)
 
-```bash
+```bash{title="Create Order (Full End-to-End)" description="Demonstrates create Order (Full End-to-End)" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{ ... }'
@@ -790,7 +790,7 @@ Aspire Dashboard:
 
 ### 3. Verify Shipment
 
-```sql
+```sql{title="Verify Shipment" description="Demonstrates verify Shipment" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Shipment"]}
 SELECT * FROM shipments WHERE order_id = '<order-id>';
 ```
 

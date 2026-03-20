@@ -61,13 +61,13 @@ Version 1.0.0 is the foundation release of Whizbang, establishing a **complete s
 
 ### Installation
 
-```bash
+```bash{title="Installation" description="Demonstrates installation" category="Usage" difficulty="BEGINNER" tags=["Installation"]}
 dotnet add package Whizbang.Core --version 1.0.0
 ```
 
 ### Basic Usage
 
-```csharp
+```csharp{title="Basic Usage" description="Demonstrates basic Usage" category="Usage" difficulty="ADVANCED" tags=["Basic", "Usage"]}
 using Whizbang;
 
 // 1. Define a command
@@ -145,7 +145,7 @@ app.MapGet("/orders/{id}", (Guid id, IDispatcher dispatcher) => {
 ## IDE Features
 
 ### CodeLens References
-```csharp
+```csharp{title="CodeLens References" description="Demonstrates codeLens References" category="Usage" difficulty="BEGINNER" tags=["CodeLens", "References"]}
 // IDE shows: "2 handlers | 1 perspective | Last: 50ms ago"
 public record OrderCreated(Guid OrderId, Guid CustomerId);  
 
@@ -160,7 +160,7 @@ public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> { }
 - View execution timings and counts
 
 ### Analyzer Warnings
-```csharp
+```csharp{title="Analyzer Warnings" description="Demonstrates analyzer Warnings" category="Usage" difficulty="BEGINNER" tags=["Analyzer", "Warnings"]}
 // Warning WB0001: Command 'CancelOrder' has no handler
 public record CancelOrder(Guid OrderId);  // Squiggly line here
 
@@ -169,7 +169,7 @@ public record CancelOrder(Guid OrderId);  // Squiggly line here
 
 ## Testing Example
 
-```csharp
+```csharp{title="Testing Example" description="Demonstrates testing Example" category="Usage" difficulty="INTERMEDIATE" tags=["Testing", "Example"]}
 [TestClass]
 public class OrderTests : WhizbangTestBase {
     [Test]

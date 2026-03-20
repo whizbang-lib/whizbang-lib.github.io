@@ -187,7 +187,7 @@ Partition ownership is stable across instance scaling:
 
 ### Lease Configuration
 
-```csharp
+```csharp{title="Lease Configuration" description="Demonstrates lease Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Lease", "Configuration"]}
 await coordinator.ProcessWorkBatchAsync(
     instanceId,
     serviceName,
@@ -202,7 +202,7 @@ await coordinator.ProcessWorkBatchAsync(
 
 ### Partition Configuration
 
-```csharp
+```csharp{title="Partition Configuration" description="Demonstrates partition Configuration" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Partition", "Configuration"]}
 await coordinator.ProcessWorkBatchAsync(
     // ... other parameters
     partitionCount: 10000,  // Total partitions (default)
@@ -214,7 +214,7 @@ await coordinator.ProcessWorkBatchAsync(
 
 For fast tests, use short lease and stale times:
 
-```csharp
+```csharp{title="Testing Configuration" description="For fast tests, use short lease and stale times:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Testing", "Configuration"]}
 await coordinator.ProcessWorkBatchAsync(
     // ... other parameters
     leaseSeconds: 2,  // 2 seconds for fast tests
@@ -257,7 +257,7 @@ Horizontal scaling through partition distribution:
 
 ### C# Interface
 
-```csharp
+```csharp{title="C# Interface" description="Demonstrates c# Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Interface"]}
 public interface IWorkCoordinator<TDbContext> where TDbContext : DbContext {
     Task<WorkBatch> ProcessWorkBatchAsync(
         Guid instanceId,

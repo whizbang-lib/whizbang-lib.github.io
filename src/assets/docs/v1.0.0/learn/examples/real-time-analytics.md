@@ -58,7 +58,7 @@ Build **real-time analytics dashboards** with Whizbang featuring streaming metri
 
 **MetricsHub.cs**:
 
-```csharp
+```csharp{title="SignalR Hub" description="**MetricsHub." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "SignalR", "Hub"]}
 using Microsoft.AspNetCore.SignalR;
 
 public class MetricsHub : Hub {
@@ -106,7 +106,7 @@ public class MetricsHub : Hub {
 
 **Program.cs registration**:
 
-```csharp
+```csharp{title="SignalR Hub (2)" description="Demonstrates signalR Hub" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalR", "Hub"]}
 builder.Services.AddSignalR();
 
 app.MapHub<MetricsHub>("/hubs/metrics");
@@ -118,7 +118,7 @@ app.MapHub<MetricsHub>("/hubs/metrics");
 
 **RealtimeMetricsPerspective.cs**:
 
-```csharp
+```csharp{title="Real-Time Metrics Perspective" description="**RealtimeMetricsPerspective." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Real-Time", "Metrics"]}
 public class RealtimeMetricsPerspective :
   IPerspectiveOf<OrderCreated>,
   IPerspectiveOf<PaymentProcessed> {
@@ -230,7 +230,7 @@ public record RealtimeMetrics {
 
 **metrics-dashboard.ts**:
 
-```typescript
+```typescript{title="Client-Side (TypeScript)" description="**metrics-dashboard." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Client-Side", "TypeScript"]}
 import * as signalR from "@microsoft/signalr";
 
 class MetricsDashboard {
@@ -306,7 +306,7 @@ new MetricsDashboard();
 
 **HTML**:
 
-```html
+```html{title="Client-Side (TypeScript) (2)" description="Demonstrates client-Side (TypeScript)" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Client-Side", "TypeScript"]}
 <!DOCTYPE html>
 <html>
 <head>
@@ -376,7 +376,7 @@ new MetricsDashboard();
 
 **Sliding Window Analytics**:
 
-```csharp
+```csharp{title="Streaming Aggregations" description="Sliding Window Analytics:" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Streaming", "Aggregations"]}
 public class SlidingWindowAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
   private readonly IDistributedCache _cache;
   private readonly IHubContext<MetricsHub> _hubContext;
@@ -460,7 +460,7 @@ public record OrderEventData {
 
 Limit broadcast frequency to avoid overwhelming clients:
 
-```csharp
+```csharp{title="Throttling" description="Limit broadcast frequency to avoid overwhelming clients:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Throttling"]}
 public class ThrottledMetricsPerspective : IPerspectiveOf<OrderCreated> {
   private readonly IHubContext<MetricsHub> _hubContext;
   private readonly SemaphoreSlim _semaphore = new(1, 1);
@@ -489,7 +489,7 @@ public class ThrottledMetricsPerspective : IPerspectiveOf<OrderCreated> {
 
 Batch multiple updates before broadcasting:
 
-```csharp
+```csharp{title="Batching" description="Batch multiple updates before broadcasting:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Batching"]}
 public class BatchedMetricsPerspective {
   private readonly Channel<OrderCreated> _channel = Channel.CreateUnbounded<OrderCreated>();
 
@@ -534,7 +534,7 @@ public class BatchedMetricsPerspective {
 
 Simpler than SignalR for one-way updates:
 
-```csharp
+```csharp{title="Server-Sent Events (SSE)" description="Simpler than SignalR for one-way updates:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Server-Sent", "Events"]}
 app.MapGet("/sse/metrics", async (HttpContext context) => {
   context.Response.Headers.Add("Content-Type", "text/event-stream");
   context.Response.Headers.Add("Cache-Control", "no-cache");

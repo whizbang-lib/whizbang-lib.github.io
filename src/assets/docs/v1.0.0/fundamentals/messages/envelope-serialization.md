@@ -25,7 +25,7 @@ When storing or transmitting envelopes, they need to be serialized to JSON. The 
 
 ## EnvelopeSerializer {#envelopeserializer}
 
-```csharp
+```csharp{title="EnvelopeSerializer" description="Demonstrates envelopeSerializer" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "EnvelopeSerializer", "Envelopeserializer"]}
 namespace Whizbang.Core.Messaging;
 
 /// <summary>
@@ -54,7 +54,7 @@ public sealed class EnvelopeSerializer : IEnvelopeSerializer {
 
 ## IEnvelopeSerializer Interface {#ienvelopeserializer}
 
-```csharp
+```csharp{title="IEnvelopeSerializer Interface" description="Demonstrates iEnvelopeSerializer Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IEnvelopeSerializer", "Interface"]}
 namespace Whizbang.Core.Messaging;
 
 /// <summary>
@@ -75,7 +75,7 @@ public interface IEnvelopeSerializer {
 
 ## SerializedEnvelope {#serializedenvelope}
 
-```csharp
+```csharp{title="SerializedEnvelope" description="Demonstrates serializedEnvelope" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "SerializedEnvelope", "Serializedenvelope"]}
 namespace Whizbang.Core.Messaging;
 
 /// <summary>
@@ -113,7 +113,7 @@ public sealed record SerializedEnvelope(
 
 ### Serializing for Storage
 
-```csharp
+```csharp{title="Serializing for Storage" description="Demonstrates serializing for Storage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Serializing", "Storage"]}
 public class EventStore {
   private readonly IEnvelopeSerializer _serializer;
 
@@ -145,7 +145,7 @@ public class EventStore {
 
 ### Deserializing from Storage
 
-```csharp
+```csharp{title="Deserializing from Storage" description="Demonstrates deserializing from Storage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Deserializing", "Storage"]}
 public async Task<object> LoadMessageAsync(Guid messageId) {
   var row = await _db.QuerySingleAsync<EventRow>(
       "SELECT * FROM events WHERE message_id = @MessageId",
@@ -167,7 +167,7 @@ public async Task<object> LoadMessageAsync(Guid messageId) {
 
 ### Outbox Integration
 
-```csharp
+```csharp{title="Outbox Integration" description="Demonstrates outbox Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Outbox", "Integration"]}
 public async Task WriteToOutboxAsync<TMessage>(
     MessageEnvelope<TMessage> envelope,
     CancellationToken ct = default) {
@@ -191,7 +191,7 @@ public async Task WriteToOutboxAsync<TMessage>(
 
 The serializer detects and prevents double serialization:
 
-```csharp
+```csharp{title="Double Serialization Prevention" description="The serializer detects and prevents double serialization:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Double", "Serialization"]}
 // ❌ This will throw InvalidOperationException
 var alreadySerialized = new MessageEnvelope<JsonElement>(...);
 serializer.SerializeEnvelope(alreadySerialized);
@@ -204,7 +204,7 @@ This prevents bugs where envelopes are accidentally serialized twice.
 
 The serializer uses `JsonContextRegistry` for AOT-safe type resolution:
 
-```csharp
+```csharp{title="AOT Compatibility" description="The serializer uses JsonContextRegistry for AOT-safe type resolution:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "AOT", "Compatibility"]}
 public object DeserializeMessage(
     MessageEnvelope<JsonElement> jsonEnvelope,
     string messageTypeName) {
@@ -232,7 +232,7 @@ Types are registered via `[ModuleInitializer]` in generated code.
 
 ### Type Resolution Failure
 
-```csharp
+```csharp{title="Type Resolution Failure" description="Demonstrates type Resolution Failure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Type", "Resolution"]}
 try {
   var message = serializer.DeserializeMessage(jsonEnvelope, messageTypeName);
 } catch (InvalidOperationException ex) {
@@ -243,7 +243,7 @@ try {
 
 ### Serialization Failure
 
-```csharp
+```csharp{title="Serialization Failure" description="Demonstrates serialization Failure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Serialization", "Failure"]}
 try {
   var serialized = serializer.SerializeEnvelope(envelope);
 } catch (InvalidOperationException ex) {

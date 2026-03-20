@@ -50,7 +50,7 @@ The PerspectiveWorker implements a complete checkpoint system built across four 
 
 When a new event arrives in the event store, perspective checkpoints are **automatically created** for all matching perspectives.
 
-```sql
+```sql{title="**Phase 1: Auto-Creation on Event Arrival** (Migration 004)" description="When a new event arrives in the event store, perspective checkpoints are automatically created for all matching" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "**Phase", "Auto-Creation"]}
 -- Migration 004: Auto-create checkpoints when events arrive
 CREATE OR REPLACE FUNCTION auto_create_perspective_checkpoints()
 RETURNS TRIGGER AS $$
@@ -89,7 +89,7 @@ $$ LANGUAGE plpgsql;
 
 Perspectives are matched to events using **fuzzy type matching** via `wh_perspective_mappings`:
 
-```sql
+```sql{title="**Phase 2: Fuzzy Type Matching** (Migration 004)" description="Perspectives are matched to events using fuzzy type matching via wh_perspective_mappings:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "**Phase", "Fuzzy"]}
 -- Perspective mappings table (populated by source generator registration)
 CREATE TABLE wh_perspective_mappings (
   perspective_name VARCHAR(200) NOT NULL,
@@ -114,7 +114,7 @@ CREATE TABLE wh_perspective_mappings (
 
 The PerspectiveWorker **polls** for pending checkpoints and processes them:
 
-```sql
+```sql{title="**Phase 3: Checkpoint Processing** (Migration 005)" description="The PerspectiveWorker polls for pending checkpoints and processes them:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "**Phase", "Checkpoint"]}
 -- Migration 005: Claim checkpoint work for processing
 CREATE OR REPLACE FUNCTION claim_perspective_checkpoint_work(
   p_instance_id UUID,
@@ -163,7 +163,7 @@ $$ LANGUAGE plpgsql;
 
 When processing completes (success or failure), the checkpoint is **updated** with results:
 
-```sql
+```sql{title="**Phase 4: Error Tracking** (Migration 005a)" description="When processing completes (success or failure), the checkpoint is updated with results:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "**Phase", "Error"]}
 -- Migration 005a: Complete checkpoint work (with error tracking)
 CREATE OR REPLACE FUNCTION complete_perspective_checkpoint_work(
   p_stream_id UUID,
@@ -261,7 +261,7 @@ sequenceDiagram
 The PerspectiveWorker processes pending checkpoints **IMMEDIATELY** on startup (before the first polling delay):
 
 **PerspectiveWorker.cs:82-94**:
-```csharp
+```csharp{title="Startup Processing" description="**PerspectiveWorker." category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Startup", "Processing"]}
 // Process any pending perspective checkpoints IMMEDIATELY on startup (before first polling delay)
 try {
   _logger.LogDebug("Checking for pending perspective checkpoints on startup...");
@@ -299,7 +299,7 @@ t=1000ms: First regular poll begins (PollingIntervalMs)
 The PerspectiveWorker integrates with `IDatabaseReadinessCheck` to coordinate startup:
 
 **PerspectiveWorker.cs:98-121**:
-```csharp
+```csharp{title="Database Readiness Checks" description="**PerspectiveWorker." category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Database", "Readiness"]}
 while (!stoppingToken.IsCancellationRequested) {
   try {
     // Check database readiness before attempting work coordinator call
@@ -355,7 +355,7 @@ See [Database Readiness](database-readiness.md) for full details on `IDatabaseRe
 The PerspectiveWorker implements comprehensive error tracking:
 
 **PerspectiveWorker.cs:233-248**:
-```csharp
+```csharp{title="Error Tracking & Retry" description="**PerspectiveWorker." category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Error", "Tracking"]}
 } catch (Exception ex) {
   _logger.LogError(
     ex,
@@ -384,7 +384,7 @@ The PerspectiveWorker implements comprehensive error tracking:
 7. Future poll: Checkpoint retried (status reset to `Pending`)
 
 **Example Error Record**:
-```sql
+```sql{title="Error Tracking & Retry (2)" description="Example Error Record:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Error", "Tracking"]}
 -- wh_perspective_checkpoints after failure
 stream_id                           | perspective_name           | status | error
 ------------------------------------|----------------------------|--------|------------------
@@ -408,7 +408,7 @@ The PerspectiveWorker establishes security context before invoking lifecycle rec
 Before each perspective event is processed, the `_establishSecurityContextAsync` method performs two steps:
 
 **PerspectiveWorker.cs:775-808**:
-```csharp
+```csharp{title="How Security Context is Established" description="**PerspectiveWorker." category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Security", "Context"]}
 private static async ValueTask _establishSecurityContextAsync(
     MessageEnvelope<IEvent> envelope,
     IServiceProvider scopedProvider,
@@ -458,7 +458,7 @@ This ensures lifecycle receptors always have access to the security context from
 ### Accessing Security Context
 
 **In Lifecycle Receptors**:
-```csharp
+```csharp{title="Accessing Security Context" description="In Lifecycle Receptors:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Accessing", "Security"]}
 public class AuditLifecycleReceptor : ILifecycleReceptor<PrePerspectiveAsync> {
   private readonly IMessageContextAccessor _messageContext;
 
@@ -481,7 +481,7 @@ public class AuditLifecycleReceptor : ILifecycleReceptor<PrePerspectiveAsync> {
 ```
 
 **In Perspectives**:
-```csharp
+```csharp{title="Accessing Security Context - OrderSummaryPerspective" description="In Perspectives:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Accessing", "Security"]}
 public class OrderSummaryPerspective : IPerspective<OrderSummaryModel> {
   private readonly IScopeContextAccessor _scopeContext;
 
@@ -540,7 +540,7 @@ The PerspectiveWorker uses **lease-based coordination** to distribute work acros
 ### How Leases Work
 
 **Claim**:
-```sql
+```sql{title="How Leases Work" description="Demonstrates how Leases Work" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Leases", "Work"]}
 -- Worker A claims checkpoint
 UPDATE wh_perspective_checkpoints
 SET
@@ -552,7 +552,7 @@ WHERE (stream_id, perspective_name) = ('order-123', 'OrderSummaryPerspective')
 ```
 
 **Release** (on completion):
-```sql
+```sql{title="How Leases Work (2)" description="Release (on completion):" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Leases", "Work"]}
 -- Worker A completes and releases
 UPDATE wh_perspective_checkpoints
 SET
@@ -564,7 +564,7 @@ WHERE (stream_id, perspective_name) = ('order-123', 'OrderSummaryPerspective')
 ```
 
 **Reclaim** (on lease expiry):
-```sql
+```sql{title="How Leases Work (3)" description="Reclaim (on lease expiry):" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Leases", "Work"]}
 -- Worker B reclaims expired lease (5 minutes passed)
 UPDATE wh_perspective_checkpoints
 SET
@@ -587,7 +587,7 @@ WHERE (stream_id, perspective_name) = ('order-123', 'OrderSummaryPerspective')
 ## Configuration
 
 **PerspectiveWorkerOptions.cs**:
-```csharp
+```csharp{title="Configuration" description="**PerspectiveWorkerOptions." category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Configuration"]}
 public class PerspectiveWorkerOptions {
   /// <summary>
   /// Milliseconds to wait between polling for perspective checkpoint work.
@@ -638,7 +638,7 @@ public class PerspectiveWorkerOptions {
 ```
 
 **Configuration Example**:
-```csharp
+```csharp{title="Configuration (2)" description="Configuration Example:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Configuration"]}
 // Program.cs
 builder.Services.Configure<PerspectiveWorkerOptions>(options => {
   options.PollingIntervalMilliseconds = 500;  // Poll every 500ms (more responsive)
@@ -663,7 +663,7 @@ The PerspectiveWorker uses a **completion strategy pattern** to control when and
 ### Strategy Interface
 
 **IPerspectiveCompletionStrategy**:
-```csharp
+```csharp{title="Strategy Interface" description="IPerspectiveCompletionStrategy:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Strategy", "Interface"]}
 public interface IPerspectiveCompletionStrategy {
   /// <summary>
   /// Reports a perspective checkpoint completion.
@@ -731,7 +731,7 @@ sequenceDiagram
 - ✅ **Normal latency tolerance** - Completions appear after next poll cycle
 
 **Example**:
-```csharp
+```csharp{title="BatchedCompletionStrategy (Default)" description="Demonstrates batchedCompletionStrategy (Default)" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "BatchedCompletionStrategy", "Default"]}
 // Program.cs (production)
 builder.Services.AddHostedService<PerspectiveWorker>();  // Uses BatchedCompletionStrategy by default
 ```
@@ -768,7 +768,7 @@ sequenceDiagram
 - ✅ **Interactive scenarios** - User-facing queries need instant data
 
 **Example**:
-```csharp
+```csharp{title="InstantCompletionStrategy" description="Demonstrates instantCompletionStrategy" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "InstantCompletionStrategy"]}
 // Test fixture or low-latency service
 var strategy = new InstantCompletionStrategy();
 var worker = new PerspectiveWorker(
@@ -790,7 +790,7 @@ var worker = new PerspectiveWorker(
 The `InstantCompletionStrategy` uses lightweight out-of-band methods on `IWorkCoordinator`:
 
 **ReportPerspectiveCompletionAsync**:
-```csharp
+```csharp{title="Out-of-Band Reporting Methods" description="ReportPerspectiveCompletionAsync:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Out-of-Band", "Reporting"]}
 // Lightweight method that ONLY updates perspective checkpoint
 // Does NOT affect heartbeats, work claiming, or other coordination
 await coordinator.ReportPerspectiveCompletionAsync(
@@ -810,7 +810,7 @@ await coordinator.ReportPerspectiveCompletionAsync(
 ```
 
 **ReportPerspectiveFailureAsync**:
-```csharp
+```csharp{title="Out-of-Band Reporting Methods (2)" description="ReportPerspectiveFailureAsync:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Out-of-Band", "Reporting"]}
 await coordinator.ReportPerspectiveFailureAsync(
   new PerspectiveCheckpointFailure {
     StreamId = streamId,
@@ -846,7 +846,7 @@ await coordinator.ReportPerspectiveFailureAsync(
 
 You can implement custom strategies for advanced scenarios:
 
-```csharp
+```csharp{title="Custom Strategies" description="You can implement custom strategies for advanced scenarios:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Custom", "Strategies"]}
 public sealed class UnitOfWorkCompletionStrategy : IPerspectiveCompletionStrategy {
   private readonly List<PerspectiveCheckpointCompletion> _completions = [];
   private readonly List<PerspectiveCheckpointFailure> _failures = [];
@@ -885,7 +885,7 @@ public sealed class UnitOfWorkCompletionStrategy : IPerspectiveCompletionStrateg
 The PerspectiveWorker calls `IWorkCoordinator.ProcessWorkBatchAsync()` on every poll:
 
 **PerspectiveWorker.cs:161-184**:
-```csharp
+```csharp{title="Integration with Work Coordinator" description="**PerspectiveWorker." category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Integration", "Work"]}
 var workBatch = await workCoordinator.ProcessWorkBatchAsync(
   _instanceProvider.InstanceId,
   _instanceProvider.ServiceName,
@@ -932,21 +932,21 @@ See [Work Coordinator](../messaging/work-coordinator.md) for full details on ato
 ### Metrics
 
 **PerspectiveWorker.cs exposes**:
-```csharp
+```csharp{title="Metrics" description="**PerspectiveWorker." category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Metrics"]}
 public int ConsecutiveDatabaseNotReadyChecks { get; }  // Database availability tracking
 public int ConsecutiveEmptyPolls { get; }              // Work availability tracking
 public bool IsIdle { get; }                            // Worker state
 ```
 
 **Work Coordinator provides**:
-```csharp
+```csharp{title="Metrics (2)" description="Work Coordinator provides:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Metrics"]}
 workBatch.PerspectiveWork.Count  // Number of checkpoints claimed
 perspectiveCompletions.Length    // Number of checkpoints completed
 perspectiveFailures.Length       // Number of checkpoints failed
 ```
 
 **Example Logging**:
-```csharp
+```csharp{title="Metrics (3)" description="Example Logging:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Metrics"]}
 _logger.LogInformation(
   "Perspective batch: Claimed={Claimed}, completed={Completed}, failed={Failed}",
   workBatch.PerspectiveWork.Count,
@@ -967,7 +967,7 @@ _logger.LogInformation(
 - Useful for integration tests (wait for idle before asserting)
 
 **Example Usage**:
-```csharp
+```csharp{title="Events" description="Example Usage:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Events"]}
 var worker = serviceProvider.GetRequiredService<PerspectiveWorker>();
 
 worker.OnWorkProcessingIdle += () => {
@@ -978,7 +978,7 @@ worker.OnWorkProcessingIdle += () => {
 ### Database Queries
 
 **Check checkpoint status**:
-```sql
+```sql{title="Database Queries" description="Check checkpoint status:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Database", "Queries"]}
 SELECT
   perspective_name,
   COUNT(*) FILTER (WHERE status = 'Pending') AS pending,
@@ -990,7 +990,7 @@ GROUP BY perspective_name;
 ```
 
 **Find failed checkpoints**:
-```sql
+```sql{title="Database Queries (2)" description="Find failed checkpoints:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Database", "Queries"]}
 SELECT
   stream_id,
   perspective_name,
@@ -1002,7 +1002,7 @@ ORDER BY updated_at DESC;
 ```
 
 **Check worker health**:
-```sql
+```sql{title="Database Queries (3)" description="Check worker health:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Database", "Queries"]}
 SELECT
   instance_id,
   service_name,
@@ -1053,7 +1053,7 @@ ORDER BY last_heartbeat DESC;
 4. No `IPerspectiveRunner` found for perspective name
 
 **Solution**:
-```csharp
+```csharp{title="Problem: Checkpoints Not Processing" description="Demonstrates problem: Checkpoints Not Processing" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Checkpoints"]}
 // 1. Ensure worker is registered
 builder.Services.AddHostedService<PerspectiveWorker>();
 
@@ -1077,7 +1077,7 @@ builder.Services.AddPerspectiveRunners();  // Generated by source generator
 3. Clock skew between database and application servers
 
 **Solution**:
-```csharp
+```csharp{title="Problem: Duplicate Processing" description="Demonstrates problem: Duplicate Processing" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Duplicate"]}
 // Increase lease duration
 builder.Services.Configure<PerspectiveWorkerOptions>(options => {
   options.LeaseSeconds = 600;  // 10 minutes (longer)
@@ -1100,7 +1100,7 @@ Console.WriteLine(DateTimeOffset.UtcNow);  -- Application time
 4. Timeout during processing
 
 **Solution**:
-```sql
+```sql{title="Problem: Failed Checkpoints Accumulating" description="Demonstrates problem: Failed Checkpoints Accumulating" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Problem:", "Failed"]}
 -- Find most common errors
 SELECT
   error,
@@ -1135,7 +1135,7 @@ WHERE status = 'Failed';
 3. Only one service claims and processes work
 
 **Diagnostic Steps**:
-```csharp
+```csharp{title="Problem: Only One Service Processing Work (Multi-Service" description="Diagnostic Steps:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Only"]}
 // Enable diagnostic logging to check instance IDs
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
@@ -1145,7 +1145,7 @@ builder.Logging.SetMinimumLevel(LogLevel.Debug);
 ```
 
 **Solution**:
-```csharp
+```csharp{title="Problem: Only One Service Processing Work (Multi-Service" description="Demonstrates problem: Only One Service Processing Work (Multi-Service Setup)" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Problem:", "Only"]}
 // WRONG: Shared instance ID (causes collision)
 private readonly Guid _sharedInstanceId = Guid.CreateVersion7();
 builder.Services.AddSingleton<IServiceInstanceProvider>(sp =>
@@ -1165,7 +1165,7 @@ bffBuilder.Services.AddSingleton<IServiceInstanceProvider>(sp =>
 ```
 
 **Verification**:
-```sql
+```sql{title="Problem: Only One Service Processing Work (Multi-Service" description="Verification:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Problem:", "Only"]}
 -- Check that both services are active
 SELECT
   instance_id,

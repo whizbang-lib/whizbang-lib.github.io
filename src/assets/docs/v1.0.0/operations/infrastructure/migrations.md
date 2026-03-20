@@ -76,7 +76,7 @@ When a perspective's hash changes and the table already exists, Whizbang auto-de
 
 Preview what would happen without executing:
 
-```csharp
+```csharp{title="Preview (Dry Run)" description="Preview what would happen without executing:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Preview", "Dry"]}
 var initializer = new PostgresSchemaInitializer(connectionString, perspectiveEntries);
 var plan = await initializer.PreviewAsync();
 
@@ -93,7 +93,7 @@ foreach (var step in plan.Steps) {
 
 Restore a blue-green backup table:
 
-```csharp
+```csharp{title="Rollback" description="Restore a blue-green backup table:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Rollback"]}
 var success = await initializer.RollbackAsync("perspective:OrderPerspective");
 // Swaps: active -> discarded, backup -> active
 ```
@@ -102,7 +102,7 @@ var success = await initializer.RollbackAsync("perspective:OrderPerspective");
 
 Remove old backup tables:
 
-```csharp
+```csharp{title="Backup Cleanup" description="Remove old backup tables:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Backup", "Cleanup"]}
 var dropped = await initializer.CleanupBackupsAsync(olderThanDays: 30);
 // Drops tables matching *_bak_* with dates older than threshold
 ```

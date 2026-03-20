@@ -37,7 +37,7 @@ Multiple handlers found for 'GetOrderQuery' which returns a response (found: 2),
 
 RPC (Remote Procedure Call) pattern uses `IReceptor<TMessage, TResponse>` where a response is returned:
 
-```csharp
+```csharp{title="RPC Pattern (Single Handler Expected)" description="RPC (Remote Procedure Call) pattern uses IReceptor<TMessage, TResponse> where a response is returned:" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "RPC", "Pattern"]}
 // Query expecting a single response
 public record GetOrderQuery(Guid OrderId);
 public record OrderDto(Guid Id, string Status, decimal Total);
@@ -55,7 +55,7 @@ public class OrderQueryReceptor : IReceptor<GetOrderQuery, OrderDto> {
 
 For void receptors (event handlers), multiple handlers are expected:
 
-```csharp
+```csharp{title="Event Pattern (Multiple Handlers Allowed)" description="For void receptors (event handlers), multiple handlers are expected:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Event", "Pattern"]}
 // Event broadcast to multiple handlers - OK
 public record OrderPlaced(Guid OrderId) : IEvent;
 
@@ -82,7 +82,7 @@ When you have multiple handlers for an RPC message:
 
 Keep only one handler for the RPC message:
 
-```csharp
+```csharp{title="Option 1: Remove Duplicate Handlers" description="Keep only one handler for the RPC message:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Option", "Remove"]}
 // Keep only one handler
 public class OrderQueryReceptor : IReceptor<GetOrderQuery, OrderDto> {
   public Task<OrderDto> HandleAsync(GetOrderQuery query) => ...;
@@ -96,7 +96,7 @@ public class OrderQueryReceptor : IReceptor<GetOrderQuery, OrderDto> {
 
 If you need caching or cross-cutting concerns, use the decorator pattern:
 
-```csharp
+```csharp{title="Option 2: Use Decorator Pattern" description="If you need caching or cross-cutting concerns, use the decorator pattern:" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Option", "Decorator"]}
 public class CachedOrderQueryReceptor : IReceptor<GetOrderQuery, OrderDto> {
   private readonly OrderQueryReceptor _inner;
   private readonly ICache _cache;
@@ -116,7 +116,7 @@ public class CachedOrderQueryReceptor : IReceptor<GetOrderQuery, OrderDto> {
 
 If handlers serve different purposes, use distinct message types:
 
-```csharp
+```csharp{title="Option 3: Use Different Message Types" description="If handlers serve different purposes, use distinct message types:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Option", "Different"]}
 // Separate queries for different purposes
 public record GetOrderQuery(Guid OrderId);
 public record GetOrderWithDetailsQuery(Guid OrderId);
@@ -129,7 +129,7 @@ public class OrderDetailsReceptor : IReceptor<GetOrderWithDetailsQuery, OrderDet
 
 A future Whizbang release will support key-based RPC handler selection using `[RpcKey]`:
 
-```csharp
+```csharp{title="Future: Key-Based Handler Selection" description="A future Whizbang release will support key-based RPC handler selection using [RpcKey]:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Future:", "Key-Based"]}
 // Future syntax (not yet implemented)
 [RpcKey("default")]
 public class DefaultOrderReceptor : IReceptor<GetOrderQuery, OrderDto> { }
@@ -145,7 +145,7 @@ var result = await dispatcher.InvokeAsync<GetOrderQuery, OrderDto>(query, rpcKey
 
 This diagnostic is disabled by default. To enable:
 
-```xml
+```xml{title="Configuration" description="This diagnostic is disabled by default." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Configuration"]}
 <PropertyGroup>
   <WarningsAsErrors>$(WarningsAsErrors);WHIZ080</WarningsAsErrors>
 </PropertyGroup>

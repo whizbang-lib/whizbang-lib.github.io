@@ -30,7 +30,7 @@ Optimize **Whizbang performance** with zero-allocation patterns, object pooling,
 
 Whizbang achieves zero allocations through direct method invocation:
 
-```csharp
+```csharp{title="Zero-Allocation Dispatch" description="Whizbang achieves zero allocations through direct method invocation:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Zero-Allocation", "Dispatch"]}
 // Generated code (ReceptorDiscoveryGenerator)
 public class GeneratedDispatcher : IDispatcher {
   private readonly IServiceProvider _services;
@@ -71,7 +71,7 @@ public class GeneratedDispatcher : IDispatcher {
 
 Reuse `PolicyContext` objects to avoid allocations:
 
-```csharp
+```csharp{title="Policy Context Pooling" description="Reuse PolicyContext objects to avoid allocations:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Policy", "Context"]}
 public static class PolicyContextPool {
   private static readonly ObjectPool<PolicyContext> Pool =
     ObjectPool.Create<PolicyContext>();
@@ -99,7 +99,7 @@ public static class PolicyContextPool {
 
 **Usage**:
 
-```csharp
+```csharp{title="Policy Context Pooling (2)" description="Demonstrates policy Context Pooling" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Policy", "Context"]}
 var context = PolicyContextPool.Rent(message, envelope, services, "production");
 try {
   var config = await policyEngine.MatchAsync(context);
@@ -116,7 +116,7 @@ try {
 
 Pool arrays for bulk operations:
 
-```csharp
+```csharp{title="Bulk Processing Pools" description="Pool arrays for bulk operations:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Bulk", "Processing"]}
 public static class ArrayPool {
   public static T[] Rent<T>(int minLength) {
     return System.Buffers.ArrayPool<T>.Shared.Rent(minLength);
@@ -130,7 +130,7 @@ public static class ArrayPool {
 
 **Usage**:
 
-```csharp
+```csharp{title="Bulk Processing Pools (2)" description="Demonstrates bulk Processing Pools" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Bulk", "Processing"]}
 var buffer = ArrayPool.Rent<OutboxMessage>(100);
 try {
   var count = await ClaimWorkAsync(buffer);
@@ -148,7 +148,7 @@ try {
 
 Process multiple messages in single database transaction:
 
-```csharp
+```csharp{title="Database Batching" description="Process multiple messages in single database transaction:" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Database", "Batching"]}
 public async Task<WorkBatch> ProcessWorkBatchAsync(
   Guid instanceId,
   string serviceName,
@@ -219,7 +219,7 @@ public async Task<WorkBatch> ProcessWorkBatchAsync(
 
 Batch events before publishing to Service Bus:
 
-```csharp
+```csharp{title="Message Publishing Batching" description="Batch events before publishing to Service Bus:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Message", "Publishing"]}
 public class BatchingPublisher {
   private readonly Channel<OutboxMessage> _channel = Channel.CreateUnbounded<OutboxMessage>();
   private readonly ServiceBusSender _sender;
@@ -262,7 +262,7 @@ Configure aggressive connection pooling:
 
 **appsettings.json**:
 
-```json
+```json{title="Connection Pooling" description="**appsettings." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Connection", "Pooling"]}
 {
   "ConnectionStrings": {
     "OrdersDb": "Host=localhost;Database=orders;Username=postgres;Password=postgres;Pooling=true;MinPoolSize=10;MaxPoolSize=100;ConnectionIdleLifetime=300"
@@ -274,7 +274,7 @@ Configure aggressive connection pooling:
 
 Use Dapper with prepared statements:
 
-```csharp
+```csharp{title="Prepared Statements" description="Use Dapper with prepared statements:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Prepared", "Statements"]}
 var orders = await _db.QueryAsync<OrderRow>(
   """
   SELECT * FROM orders
@@ -292,7 +292,7 @@ PostgreSQL caches prepared statements automatically.
 
 Create indexes for common queries:
 
-```sql
+```sql{title="Indexes" description="Create indexes for common queries:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Indexes"]}
 -- Outbox queries (claim work)
 CREATE INDEX idx_outbox_claim ON outbox(created_at, partition_number)
   WHERE processed_at IS NULL;
@@ -309,7 +309,7 @@ CREATE INDEX idx_checkpoints_stream ON perspective_checkpoints(stream_id, perspe
 
 Partition large tables by date:
 
-```sql
+```sql{title="Partitioning" description="Partition large tables by date:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Partitioning"]}
 CREATE TABLE outbox (
   message_id UUID NOT NULL,
   created_at TIMESTAMP NOT NULL,
@@ -337,7 +337,7 @@ Benchmark critical paths:
 
 **CreateOrderBenchmark.cs**:
 
-```csharp
+```csharp{title="BenchmarkDotNet" description="**CreateOrderBenchmark." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "BenchmarkDotNet"]}
 using BenchmarkDotNet.Attributes;
 
 [MemoryDiagnoser]
@@ -361,7 +361,7 @@ public class CreateOrderBenchmark {
 
 **Run**:
 
-```bash
+```bash{title="BenchmarkDotNet (2)" description="Demonstrates benchmarkDotNet" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "BenchmarkDotNet"]}
 dotnet run -c Release --project Benchmarks
 ```
 
@@ -377,7 +377,7 @@ dotnet run -c Release --project Benchmarks
 
 Profile production workloads:
 
-```bash
+```bash{title="dotnet-trace" description="Profile production workloads:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dotnet-trace"]}
 # Start tracing
 dotnet-trace collect --process-id 1234 --profile cpu-sampling
 
@@ -389,7 +389,7 @@ dotnet-trace collect --process-id 1234 --profile cpu-sampling
 
 Monitor performance in production:
 
-```csharp
+```csharp{title="Application Insights" description="Monitor performance in production:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Application", "Insights"]}
 builder.Services.AddApplicationInsightsTelemetry();
 
 builder.Services.AddOpenTelemetryMetrics(metrics => {
@@ -417,7 +417,7 @@ requests
 
 Use structs for small, immutable data:
 
-```csharp
+```csharp{title="Struct Value Types" description="Use structs for small, immutable data:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Struct", "Value"]}
 // ✅ GOOD - Struct (stack-allocated)
 public readonly struct MessageId {
   private readonly Guid _value;
@@ -438,7 +438,7 @@ public class MessageId {
 
 Avoid allocations when slicing arrays:
 
-```csharp
+```csharp{title="Span<T> for Slicing" description="Avoid allocations when slicing arrays:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Span<T>", "Slicing"]}
 // ❌ BAD - Allocates new array
 var subset = array.Skip(10).Take(50).ToArray();
 
@@ -450,7 +450,7 @@ var subset = array.AsSpan(10, 50);
 
 Use `ValueTask` for frequently called async methods:
 
-```csharp
+```csharp{title="ValueTask for Hot Paths" description="Use ValueTask for frequently called async methods:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "ValueTask", "Hot"]}
 // ✅ GOOD - ValueTask avoids allocation if completed synchronously
 public ValueTask<OrderCreated> HandleAsync(
   CreateOrder command,
@@ -474,7 +474,7 @@ public ValueTask<OrderCreated> HandleAsync(
 
 Process perspectives in parallel:
 
-```csharp
+```csharp{title="Parallel Processing" description="Process perspectives in parallel:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Parallel", "Processing"]}
 public async Task HandleEventAsync(object @event, CancellationToken ct) {
   var perspectives = GetPerspectives(@event);
 
@@ -492,7 +492,7 @@ public async Task HandleEventAsync(object @event, CancellationToken ct) {
 
 Use `SemaphoreSlim` for async locking:
 
-```csharp
+```csharp{title="Async Coordination" description="Use SemaphoreSlim for async locking:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Async", "Coordination"]}
 // ✅ GOOD - Async-friendly
 private readonly SemaphoreSlim _lock = new(1, 1);
 

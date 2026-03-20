@@ -30,13 +30,13 @@ Notification hooks integrate Whizbang's message tag system with SignalR to:
 
 ## Installation
 
-```bash
+```bash{title="Installation" description="Demonstrates installation" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Installation"]}
 dotnet add package Whizbang.SignalR
 ```
 
 ## Registration
 
-```csharp
+```csharp{title="Registration" description="Demonstrates registration" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Registration"]}
 builder.Services.AddWhizbang(options => {
     options.Tags.UseHook<NotificationTagAttribute, SignalRNotificationHook<NotificationHub>>();
 });
@@ -48,7 +48,7 @@ builder.Services.AddWhizbangSignalR();
 
 ### Basic Notification
 
-```csharp
+```csharp{title="Basic Notification" description="Demonstrates basic Notification" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Basic", "Notification"]}
 [NotificationTag(Tag = "system-announcement")]
 public record SystemAnnouncementEvent(string Message) : IEvent;
 ```
@@ -57,7 +57,7 @@ This sends a broadcast notification to all connected clients.
 
 ### Group-Targeted Notification
 
-```csharp
+```csharp{title="Group-Targeted Notification" description="Demonstrates group-Targeted Notification" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Group-Targeted", "Notification"]}
 [NotificationTag(
     Tag = "order-shipped",
     Group = "customer-{CustomerId}",
@@ -72,7 +72,7 @@ The `{CustomerId}` placeholder is replaced with the actual value from the event 
 
 ### Priority Levels
 
-```csharp
+```csharp{title="Priority Levels" description="Demonstrates priority Levels" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Priority", "Levels"]}
 [NotificationTag(Tag = "new-message", Priority = NotificationPriority.Normal)]
 public record NewMessageEvent(Guid ConversationId, string Preview) : IEvent;
 
@@ -92,7 +92,7 @@ public record PaymentFailedEvent(Guid OrderId, string Reason) : IEvent;
 
 Placeholders are replaced from the message payload or scope:
 
-```csharp
+```csharp{title="Group Placeholders" description="Placeholders are replaced from the message payload or scope:" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Group", "Placeholders"]}
 // From payload properties
 [NotificationTag(Tag = "order-update", Group = "customer-{CustomerId}")]
 public record OrderUpdatedEvent(Guid OrderId, Guid CustomerId) : IEvent;
@@ -110,7 +110,7 @@ Placeholder resolution order:
 
 The notification sent to clients includes:
 
-```csharp
+```csharp{title="NotificationMessage Format" description="The notification sent to clients includes:" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "NotificationMessage", "Format"]}
 public sealed record NotificationMessage {
     public required string Tag { get; init; }
     public required string Priority { get; init; }
@@ -122,7 +122,7 @@ public sealed record NotificationMessage {
 
 ### Example Payload
 
-```json
+```json{title="Example Payload" description="Demonstrates example Payload" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", "Example", "Payload"]}
 {
   "tag": "order-shipped",
   "priority": "High",
@@ -140,7 +140,7 @@ public sealed record NotificationMessage {
 
 ### JavaScript
 
-```typescript
+```typescript{title="JavaScript" description="Demonstrates javaScript" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", "JavaScript"]}
 connection.on("ReceiveNotification", (notification: NotificationMessage) => {
     switch (notification.tag) {
         case "order-shipped":
@@ -171,7 +171,7 @@ useEffect(() => {
 
 ### Server Setup
 
-```csharp
+```csharp{title="Server Setup" description="Demonstrates server Setup" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Server", "Setup"]}
 // Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -188,7 +188,7 @@ app.Run();
 
 ### Hub Definition
 
-```csharp
+```csharp{title="Hub Definition" description="Demonstrates hub Definition" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Hub", "Definition"]}
 public class NotificationHub : Hub {
     public async Task JoinCustomerGroup(Guid customerId) {
         await Groups.AddToGroupAsync(Context.ConnectionId, $"customer-{customerId}");
@@ -202,7 +202,7 @@ public class NotificationHub : Hub {
 
 ### Event Definition
 
-```csharp
+```csharp{title="Event Definition" description="Demonstrates event Definition" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", "Event", "Definition"]}
 [NotificationTag(
     Tag = "order-status-changed",
     Group = "customer-{CustomerId}",
@@ -217,7 +217,7 @@ public record OrderStatusChangedEvent(
 
 ### Publishing Events
 
-```csharp
+```csharp{title="Publishing Events" description="Demonstrates publishing Events" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", "Publishing", "Events"]}
 public class OrderService {
     private readonly IDispatcher _dispatcher;
 

@@ -25,7 +25,7 @@ When processing messages, sometimes only the message payload is available, but t
 
 ## IEnvelopeRegistry Interface {#ienveloperegistry}
 
-```csharp
+```csharp{title="IEnvelopeRegistry Interface" description="Demonstrates iEnvelopeRegistry Interface" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "IEnvelopeRegistry", "Interface"]}
 namespace Whizbang.Core.Observability;
 
 /// <summary>
@@ -90,7 +90,7 @@ public interface IEnvelopeRegistry {
 
 The registry uses **object reference identity**, not equality:
 
-```csharp
+```csharp{title="Reference Identity" description="The registry uses object reference identity, not equality:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Reference", "Identity"]}
 var message = new OrderCreated { OrderId = orderId };
 
 // Same instance - works
@@ -108,7 +108,7 @@ This is intentional - it ensures the exact message being processed is matched.
 
 The registry is typically scoped to a request/operation:
 
-```csharp
+```csharp{title="Scoped Lifetime" description="The registry is typically scoped to a request/operation:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Scoped", "Lifetime"]}
 // Registered as scoped in DI
 services.AddScoped<IEnvelopeRegistry, EnvelopeRegistry>();
 
@@ -122,7 +122,7 @@ services.AddScoped<IEnvelopeRegistry, EnvelopeRegistry>();
 
 The event store uses the registry to get envelope context:
 
-```csharp
+```csharp{title="Event Store Integration" description="The event store uses the registry to get envelope context:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Event", "Store"]}
 public class EventStore : IEventStore {
   private readonly IEnvelopeRegistry _envelopeRegistry;
 
@@ -148,7 +148,7 @@ public class EventStore : IEventStore {
 
 ### Security Context Propagation
 
-```csharp
+```csharp{title="Security Context Propagation" description="Demonstrates security Context Propagation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Security", "Context"]}
 public class SecurityContextEventStoreDecorator : IEventStore {
   private readonly IEnvelopeRegistry _envelopeRegistry;
   private readonly IEventStore _inner;
@@ -175,7 +175,7 @@ public class SecurityContextEventStoreDecorator : IEventStore {
 
 ### Correlation Tracking
 
-```csharp
+```csharp{title="Correlation Tracking" description="Demonstrates correlation Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Correlation", "Tracking"]}
 public class CorrelationTrackingReceptor : IReceptor<CreateOrder, OrderCreated> {
   private readonly IEnvelopeRegistry _envelopeRegistry;
 
@@ -202,7 +202,7 @@ public class CorrelationTrackingReceptor : IReceptor<CreateOrder, OrderCreated> 
 
 The default implementation uses `ConcurrentDictionary`:
 
-```csharp
+```csharp{title="Thread Safety" description="The default implementation uses ConcurrentDictionary:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Thread", "Safety"]}
 public sealed class EnvelopeRegistry : IEnvelopeRegistry {
   private readonly ConcurrentDictionary<object, object> _envelopes = new();
 

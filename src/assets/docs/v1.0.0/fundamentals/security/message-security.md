@@ -60,7 +60,7 @@ The message security system uses a provider/extractor pattern to establish secur
 
 ### Registration {#registration}
 
-```csharp
+```csharp{title="Registration" description="Demonstrates registration" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Registration"]}
 services.AddWhizbangMessageSecurity(options => {
   // AllowAnonymous defaults to FALSE (least privilege)
   // Must explicitly opt-in to allow anonymous messages
@@ -104,7 +104,7 @@ When `ServiceBusConsumerWorker` receives a message:
 
 ## Configuration Options {#configuration}
 
-```csharp
+```csharp{title="Configuration Options" description="Demonstrates configuration Options" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Configuration", "Options"]}
 public sealed class MessageSecurityOptions {
   // When true, allows messages without security context.
   // DEFAULT: FALSE (least privilege - must explicitly enable)
@@ -140,7 +140,7 @@ The established security context is wrapped in `ImmutableScopeContext`, which pr
 - **Timestamp**: When it was established
 - **Propagation flag**: Whether to include in outgoing messages
 
-```csharp
+```csharp{title="Immutable Context" description="- Immutability: Cannot be modified after establishment - Source tracking: Which extractor created it - Timestamp: When" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Immutable", "Context"]}
 var context = await provider.EstablishContextAsync(envelope, scopedProvider, ct);
 
 if (context is ImmutableScopeContext immutable) {
@@ -158,7 +158,7 @@ See the [ImmutableScopeContext](#immutable-scope-context) section below for full
 
 Extracts security context from the message envelope's hop chain. This is the default extractor for distributed message security propagation.
 
-```csharp
+```csharp{title="MessageHopSecurityExtractor (Priority: 100)" description="Extracts security context from the message envelope's hop chain." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "MessageHopSecurityExtractor", "Priority:"]}
 // Message hops carry SecurityContext through the system
 var hop = new MessageHop {
   ServiceInstance = serviceInstance,
@@ -186,7 +186,7 @@ The `MessageHopSecurityExtractor` is the default built-in extractor that reads s
 
 **Example**:
 
-```csharp
+```csharp{title="Message Hop Extractor" description="Demonstrates message Hop Extractor" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Message", "Hop"]}
 // Message hops carry SecurityContext through the system
 var hop = new MessageHop {
   ServiceInstance = serviceInstance,
@@ -203,7 +203,7 @@ var hop = new MessageHop {
 
 Create custom extractors for different security sources:
 
-```csharp
+```csharp{title="Custom Extractors" description="Create custom extractors for different security sources:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Custom", "Extractors"]}
 public class JwtPayloadExtractor : ISecurityContextExtractor {
   public int Priority => 50;  // Runs before MessageHopSecurityExtractor
 
@@ -242,7 +242,7 @@ Callbacks run **after** security context is established but **before** business 
 
 ### ISecurityContextCallback Interface
 
-```csharp
+```csharp{title="ISecurityContextCallback Interface" description="Demonstrates iSecurityContextCallback Interface" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ISecurityContextCallback", "Interface"]}
 public interface ISecurityContextCallback {
   ValueTask OnContextEstablishedAsync(
     IScopeContext context,
@@ -303,7 +303,7 @@ HTTP Request or Message Arrival
 
 ### Example: UserContextManager Integration
 
-```csharp
+```csharp{title="Example: UserContextManager Integration" description="Demonstrates example: UserContextManager Integration" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Example:", "UserContextManager"]}
 public class UserContextManagerCallback : ISecurityContextCallback {
   private readonly UserContextManager _userContextManager;
 
@@ -348,7 +348,7 @@ services.AddScoped<ISecurityContextCallback, UserContextManagerCallback>();
 
 You can register multiple callbacks. They execute in registration order:
 
-```csharp
+```csharp{title="Multiple Callbacks" description="You can register multiple callbacks." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Multiple", "Callbacks"]}
 // Multiple callbacks for different concerns
 services.AddScoped<ISecurityContextCallback, UserContextManagerCallback>();
 services.AddScoped<ISecurityContextCallback, TenantConfigurationCallback>();
@@ -357,7 +357,7 @@ services.AddScoped<ISecurityContextCallback, AuditLogCallback>();
 
 ### Callback Registration
 
-```csharp
+```csharp{title="Callback Registration" description="Demonstrates callback Registration" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Callback", "Registration"]}
 // Option 1: Extension method (recommended)
 services.AddSecurityContextCallback<UserContextManagerCallback>();
 
@@ -400,7 +400,7 @@ Auto-Cascade via GetUntypedReceptorPublisher
 
 The generated `GetUntypedReceptorPublisher` method (created by source generators) ensures security context flows through cascades:
 
-```csharp
+```csharp{title="How It Works" description="The generated GetUntypedReceptorPublisher method (created by source generators) ensures security context flows through" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Works"]}
 // Generated by Whizbang.Generators
 protected override Func<object, IMessageEnvelope?, CancellationToken, Task>?
     GetUntypedReceptorPublisher(Type eventType) {
@@ -443,7 +443,7 @@ protected override Func<object, IMessageEnvelope?, CancellationToken, Task>?
 
 ### Example: Context Flow Through Cascade
 
-```csharp
+```csharp{title="Example: Context Flow Through Cascade" description="Demonstrates example: Context Flow Through Cascade" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Example:", "Context"]}
 // 1. Command receptor returns event
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IMessageContext _context;
@@ -491,7 +491,7 @@ public class OrderCreatedReceptor : IReceptor<OrderCreated> {
 
 Security context flows through nested dispatches from cascaded receptors:
 
-```csharp
+```csharp{title="Nested Dispatch Context Inheritance" description="Security context flows through nested dispatches from cascaded receptors:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Nested", "Dispatch"]}
 public class OrderCreatedReceptor : IReceptor<OrderCreated> {
     private readonly IDispatcher _dispatcher;
     private readonly IMessageContext _context;
@@ -529,7 +529,7 @@ Some cascade paths don't have a source envelope:
 
 **For system-initiated operations**, use explicit security context API:
 
-```csharp
+```csharp{title="Null Envelope Scenarios" description="For system-initiated operations, use explicit security context API:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Null", "Envelope"]}
 // Timer/scheduler scenario - establish system context explicitly
 await _dispatcher.AsSystem().SendAsync(new ScheduledCleanupCommand());
 ```
@@ -550,7 +550,7 @@ await _dispatcher.AsSystem().SendAsync(new ScheduledCleanupCommand());
 
 The `IMessageContext` interface provides direct access to security information from the current message being processed. This is a simpler alternative to `IScopeContextAccessor` when you only need basic TenantId/UserId access.
 
-```csharp
+```csharp{title="Message Context Accessor" description="The IMessageContext interface provides direct access to security information from the current message being processed." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Message", "Context"]}
 public interface IMessageContext {
   string? TenantId { get; }
   string? UserId { get; }
@@ -587,7 +587,7 @@ The `DefaultMessageSecurityContextProvider` is the built-in implementation of `I
 
 **Registration**:
 
-```csharp
+```csharp{title="Default Provider" description="Registration:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Default", "Provider"]}
 // Automatically registered by AddWhizbangMessageSecurity
 services.AddWhizbangMessageSecurity();
 
@@ -599,7 +599,7 @@ services.AddSingleton<IMessageSecurityContextProvider, DefaultMessageSecurityCon
 
 For Azure Service Bus, transport metadata can be accessed via the `ITransportMetadataAware` interface:
 
-```csharp
+```csharp{title="Service Bus Metadata" description="For Azure Service Bus, transport metadata can be accessed via the ITransportMetadataAware interface:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Service", "Bus"]}
 public class ServiceBusMetadataExtractor : ISecurityContextExtractor {
   public int Priority => 300;
 
@@ -641,7 +641,7 @@ public class ServiceBusMetadataExtractor : ISecurityContextExtractor {
 
 For extracting security from transport-level headers (e.g., Azure Service Bus application properties):
 
-```csharp
+```csharp{title="Transport Metadata" description="For extracting security from transport-level headers (e." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Transport", "Metadata"]}
 public class ServiceBusMetadataExtractor : ISecurityContextExtractor {
   public int Priority => 300;
 
@@ -687,7 +687,7 @@ The message security system defines specific exceptions for security failures:
 
 Thrown when a message requires security context but none could be established:
 
-```csharp
+```csharp{title="SecurityContextRequiredException" description="Thrown when a message requires security context but none could be established:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "SecurityContextRequiredException"]}
 public class SecurityContextRequiredException : Exception {
   public Type? MessageType { get; init; }
 
@@ -700,7 +700,7 @@ public class SecurityContextRequiredException : Exception {
 
 ### Handling Security Exceptions
 
-```csharp
+```csharp{title="Handling Security Exceptions" description="Demonstrates handling Security Exceptions" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Handling", "Exceptions"]}
 try {
   await provider.EstablishContextAsync(envelope, scopedProvider, ct);
 } catch (SecurityContextRequiredException ex) {
@@ -722,7 +722,7 @@ When messages are reconstructed from transport (deserialization), the security c
 
 **Example**:
 
-```csharp
+```csharp{title="Envelope Reconstruction" description="Demonstrates envelope Reconstruction" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Envelope", "Reconstruction"]}
 // Envelope reconstruction preserves security information
 var envelope = new MessageEnvelope {
   MessageId = messageId,
@@ -739,7 +739,7 @@ await provider.EstablishContextAsync(envelope, scopedProvider, ct);
 
 By default, security context is tenant-scoped. For cross-tenant operations (admin, reporting), use explicit security context:
 
-```csharp
+```csharp{title="Cross-Tenant Operations" description="By default, security context is tenant-scoped." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Cross-Tenant", "Operations"]}
 // Admin cross-tenant query
 await dispatcher.AsSystem().SendAsync(new GenerateTenantReport {
   TargetTenantId = "other-tenant"
@@ -759,7 +759,7 @@ scopeAccessor.Current = context;
 
 When `AllowAnonymous` is `false` (default) and no extractor can establish context:
 
-```csharp
+```csharp{title="Security Failure Handling" description="When AllowAnonymous is false (default) and no extractor can establish context:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Failure", "Handling"]}
 // SecurityContextRequiredException is thrown
 try {
   await provider.EstablishContextAsync(envelope, scopedProvider, ct);
@@ -778,7 +778,7 @@ try {
 
 When `EnableAuditLogging` is `true`, a `ScopeContextEstablished` system event is emitted:
 
-```csharp
+```csharp{title="Audit Events" description="When EnableAuditLogging is true, a ScopeContextEstablished system event is emitted:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Audit", "Events"]}
 public sealed record ScopeContextEstablished : ISystemEvent {
   public required PerspectiveScope Scope { get; init; }
   public required IReadOnlySet<string> Roles { get; init; }
@@ -797,7 +797,7 @@ The established security context is wrapped in `ImmutableScopeContext`, which pr
 - **Timestamp**: When it was established
 - **Propagation flag**: Whether to include in outgoing messages
 
-```csharp
+```csharp{title="ImmutableScopeContext" description="- Immutability: Cannot be modified after establishment - Source tracking: Which extractor created it - Timestamp: When" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ImmutableScopeContext", "Immutable-scope-context"]}
 var context = await provider.EstablishContextAsync(envelope, scopedProvider, ct);
 
 if (context is ImmutableScopeContext immutable) {
@@ -822,7 +822,7 @@ This enables seamless security context flow across service boundaries without ma
 
 `AddWhizbangDispatcher()` automatically registers `IScopeContextAccessor` by default, enabling security propagation without additional configuration:
 
-```csharp
+```csharp{title="Default Registration" description="AddWhizbangDispatcher() automatically registers IScopeContextAccessor by default, enabling security propagation without" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Default", "Registration"]}
 // IScopeContextAccessor is registered automatically
 services.AddWhizbangDispatcher();
 
@@ -835,7 +835,7 @@ To disable security propagation, set `ShouldPropagate = false` when creating `Im
 
 ### How It Works
 
-```csharp
+```csharp{title="How It Works (2)" description="Demonstrates how It Works" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Works"]}
 // When a message is sent, the Dispatcher:
 // 1. Reads IScopeContextAccessor.Current
 // 2. If ImmutableScopeContext with ShouldPropagate=true, extracts security info
@@ -855,7 +855,7 @@ var hop = new MessageHop {
 
 Propagation can be controlled at multiple levels:
 
-```csharp
+```csharp{title="Controlling Propagation" description="Propagation can be controlled at multiple levels:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Controlling", "Propagation"]}
 // 1. Globally via MessageSecurityOptions (default: true)
 services.AddWhizbangMessageSecurity(options => {
   options.PropagateToOutgoingMessages = true;  // default
@@ -912,7 +912,7 @@ For system-triggered operations (timers, schedulers) or impersonation scenarios,
 
 Use `AsSystem()` when dispatching messages from system contexts where no user identity exists, or when a user-initiated action should run with system privileges:
 
-```csharp
+```csharp{title="AsSystem() - System Operations" description="Use AsSystem() when dispatching messages from system contexts where no user identity exists, or when a user-initiated" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "AsSystem", "System"]}
 // Timer/scheduler with no user context
 await dispatcher.AsSystem().SendAsync(new ReseedSystemEvent());
 // Audit: ContextType=System, ActualPrincipal=null, EffectivePrincipal="SYSTEM"
@@ -932,7 +932,7 @@ Key behaviors:
 
 Use `RunAs()` when a user needs to perform actions as another identity, with full audit trail:
 
-```csharp
+```csharp{title="RunAs() - Impersonation" description="Use RunAs() when a user needs to perform actions as another identity, with full audit trail:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "RunAs", "Impersonation"]}
 // Support staff impersonating a user (full audit trail)
 await dispatcher.RunAs("target-user@example.com").SendAsync(command);
 // Audit: ContextType=Impersonated, ActualPrincipal="support@example.com", EffectivePrincipal="target-user@example.com"
@@ -948,7 +948,7 @@ Key behaviors:
 
 The security builder supports all dispatch methods:
 
-```csharp
+```csharp{title="Supported Methods" description="The security builder supports all dispatch methods:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Supported", "Methods"]}
 // Send commands
 await dispatcher.AsSystem().SendAsync(command);
 await dispatcher.AsSystem().SendAsync(command, options);
@@ -975,7 +975,7 @@ The explicit security API provides complete audit trail information:
 
 ### SecurityContextType Enum
 
-```csharp
+```csharp{title="SecurityContextType Enum" description="Demonstrates securityContextType Enum" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "SecurityContextType", "Enum"]}
 public enum SecurityContextType {
   User,           // Normal user context from HTTP/message
   System,         // System-initiated (no user involved)
@@ -988,7 +988,7 @@ public enum SecurityContextType {
 
 The explicit security context is propagated to outgoing message hops when `ImmutableScopeContext.ShouldPropagate` is `true` (the default for explicit contexts). This ensures downstream services receive the security context:
 
-```csharp
+```csharp{title="Context Propagation" description="The explicit security context is propagated to outgoing message hops when `ImmutableScopeContext." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Context", "Propagation"]}
 // This message will carry SYSTEM context to downstream services
 await dispatcher.AsSystem().SendAsync(new MaintenanceCommand());
 ```

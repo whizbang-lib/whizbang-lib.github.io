@@ -4,7 +4,7 @@ This guide covers installation and configuration of Whizbang's HotChocolate Grap
 
 ## Installation
 
-```bash
+```bash{title="Installation" description="Demonstrates installation" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Installation"]}
 dotnet add package Whizbang.Transports.HotChocolate
 ```
 
@@ -12,7 +12,7 @@ dotnet add package Whizbang.Transports.HotChocolate
 
 ### Minimal Setup
 
-```csharp
+```csharp{title="Minimal Setup" description="Demonstrates minimal Setup" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Minimal", "Setup"]}
 // Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,7 +30,7 @@ app.Run();
 
 For multi-tenancy and security filtering:
 
-```csharp
+```csharp{title="With Scope Middleware" description="For multi-tenancy and security filtering:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Scope", "Middleware"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services
@@ -56,7 +56,7 @@ app.Run();
 
 Configure default behavior for all lenses:
 
-```csharp
+```csharp{title="WhizbangGraphQLOptions" description="Configure default behavior for all lenses:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "WhizbangGraphQLOptions"]}
 builder.Services
     .AddGraphQLServer()
     .AddWhizbangLenses(options => {
@@ -76,7 +76,7 @@ builder.Services
 
 Configure scope extraction from HTTP context:
 
-```csharp
+```csharp{title="WhizbangScopeOptions" description="Configure scope extraction from HTTP context:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "WhizbangScopeOptions"]}
 builder.Services.AddWhizbangScope(options => {
     // Claim types
     options.TenantIdClaimType = "tenant_id";
@@ -106,7 +106,7 @@ builder.Services.AddWhizbangScope(options => {
 
 Define your query type with lens resolvers:
 
-```csharp
+```csharp{title="Query Type Setup" description="Define your query type with lens resolvers:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Query", "Type"]}
 public class Query {
     [UsePaging(DefaultPageSize = 10, MaxPageSize = 100, IncludeTotalCount = true)]
     [UseProjection]
@@ -131,7 +131,7 @@ public class Query {
 
 Register your lens implementations:
 
-```csharp
+```csharp{title="Service Registration" description="Register your lens implementations:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Service", "Registration"]}
 // If using EF Core
 builder.Services.AddScoped<IOrderLens, EFCoreOrderLens>();
 builder.Services.AddScoped<IProductLens, EFCoreProductLens>();

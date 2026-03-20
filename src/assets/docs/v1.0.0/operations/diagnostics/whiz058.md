@@ -47,7 +47,7 @@ The following GUID creation methods are intercepted:
 
 Add to your project file:
 
-```xml
+```xml{title="Enabling Interception" description="Add to your project file:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Enabling", "Interception"]}
 <PropertyGroup>
   <WhizbangGuidInterceptionEnabled>true</WhizbangGuidInterceptionEnabled>
 </PropertyGroup>
@@ -59,7 +59,7 @@ If you want to suppress interception for specific code:
 
 ### Method-Level Suppression
 
-```csharp
+```csharp{title="Method-Level Suppression" description="Demonstrates method-Level Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Method-Level", "Suppression"]}
 using Whizbang.Core;
 
 [SuppressGuidInterception]
@@ -70,7 +70,7 @@ public Guid CreateRawGuid() {
 
 ### Class-Level Suppression
 
-```csharp
+```csharp{title="Class-Level Suppression" description="Demonstrates class-Level Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Class-Level", "Suppression"]}
 [SuppressGuidInterception]
 public class TestFixtures {
   // All GUID calls in this class are not intercepted
@@ -79,7 +79,7 @@ public class TestFixtures {
 
 ### Pragma Suppression
 
-```csharp
+```csharp{title="Pragma Suppression" description="Demonstrates pragma Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Pragma", "Suppression"]}
 #pragma warning disable WHIZ058
 var id = Guid.NewGuid();
 #pragma warning restore WHIZ058
@@ -87,7 +87,7 @@ var id = Guid.NewGuid();
 
 ### Project-Level Suppression
 
-```xml
+```xml{title="Project-Level Suppression" description="Demonstrates project-Level Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Level", "Suppression"]}
 <PropertyGroup>
   <NoWarn>$(NoWarn);WHIZ058</NoWarn>
 </PropertyGroup>

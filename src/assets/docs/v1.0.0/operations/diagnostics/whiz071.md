@@ -40,19 +40,19 @@ Add the `Pgvector` package reference to your project:
 
 ### Using .NET CLI
 
-```bash
+```bash{title="Using .NET CLI" description="Demonstrates using .NET CLI" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", ".NET"]}
 dotnet add package Pgvector
 ```
 
 ### Using Package Manager Console
 
-```powershell
+```powershell{title="Using Package Manager Console" description="Demonstrates using Package Manager Console" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Package"]}
 Install-Package Pgvector
 ```
 
 ### Using PackageReference in .csproj
 
-```xml
+```xml{title="Using PackageReference in .csproj" description="Demonstrates using PackageReference in .csproj" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "PackageReference"]}
 <ItemGroup>
   <PackageReference Include="Pgvector" Version="0.3.0" />
 </ItemGroup>
@@ -62,7 +62,7 @@ Install-Package Pgvector
 
 In `Directory.Packages.props`:
 
-```xml
+```xml{title="Using Central Package Management" description="In `Directory." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Central"]}
 <ItemGroup>
   <PackageVersion Include="Pgvector" Version="0.3.0" />
 </ItemGroup>
@@ -70,7 +70,7 @@ In `Directory.Packages.props`:
 
 In your project file:
 
-```xml
+```xml{title="Using Central Package Management (2)" description="In your project file:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Central"]}
 <ItemGroup>
   <PackageReference Include="Pgvector" />
 </ItemGroup>
@@ -80,7 +80,7 @@ In your project file:
 
 When using `[VectorField]`, you typically need **both** packages:
 
-```xml
+```xml{title="Required Packages" description="When using [VectorField], you typically need both packages:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Required", "Packages"]}
 <ItemGroup>
   <!-- Base package for NpgsqlDataSourceBuilder.UseVector() -->
   <PackageReference Include="Pgvector" Version="0.3.0" />
@@ -94,7 +94,7 @@ When using `[VectorField]`, you typically need **both** packages:
 
 ### Before (causes WHIZ071)
 
-```csharp
+```csharp{title="Before (causes WHIZ071)" description="Demonstrates before (causes WHIZ071)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
 // Missing: <PackageReference Include="Pgvector" />
 
 public record ProductDto {
@@ -108,7 +108,7 @@ public record ProductDto {
 
 ### After (compiles successfully)
 
-```csharp
+```csharp{title="After (compiles successfully)" description="Demonstrates after (compiles successfully)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Compiles"]}
 // Added: <PackageReference Include="Pgvector" />
 
 public record ProductDto {
@@ -124,13 +124,13 @@ public record ProductDto {
 
 If you intentionally want to use `[VectorField]` without the Pgvector package (e.g., for testing or code generation scenarios), add the assembly-level suppression attribute:
 
-```csharp
+```csharp{title="Suppressing This Diagnostic" description="If you intentionally want to use [VectorField] without the Pgvector package (e." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
 [assembly: SuppressVectorPackageCheck]
 ```
 
 Or use pragma suppression:
 
-```csharp
+```csharp{title="Suppressing This Diagnostic (2)" description="Or use pragma suppression:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
 #pragma warning disable WHIZ071
 [VectorField(1536)]
 public float[]? Embedding { get; init; }

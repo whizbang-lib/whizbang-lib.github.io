@@ -61,7 +61,7 @@ Build **multi-tenant SaaS applications** with Whizbang featuring tenant isolatio
 
 **TenantContext.cs**:
 
-```csharp
+```csharp{title="Tenant Context" description="**TenantContext." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant", "Context"]}
 public class TenantContext {
   private static readonly AsyncLocal<string?> _tenantId = new();
 
@@ -87,7 +87,7 @@ public class TenantContext {
 
 **TenantIdentificationMiddleware.cs**:
 
-```csharp
+```csharp{title="Tenant Middleware" description="**TenantIdentificationMiddleware." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Tenant", "Middleware"]}
 public class TenantIdentificationMiddleware {
   private readonly RequestDelegate _next;
   private readonly ILogger<TenantIdentificationMiddleware> _logger;
@@ -141,7 +141,7 @@ public class TenantIdentificationMiddleware {
 
 **Program.cs registration**:
 
-```csharp
+```csharp{title="Tenant Middleware (2)" description="Demonstrates tenant Middleware" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Tenant", "Middleware"]}
 app.UseMiddleware<TenantIdentificationMiddleware>();
 ```
 
@@ -153,7 +153,7 @@ app.UseMiddleware<TenantIdentificationMiddleware>();
 
 **ITenantDatabaseResolver.cs**:
 
-```csharp
+```csharp{title="Tenant Database Resolver" description="**ITenantDatabaseResolver." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant", "Database"]}
 public interface ITenantDatabaseResolver {
   string GetConnectionString(string tenantId);
 }
@@ -189,7 +189,7 @@ public record TenantConfig(
 
 **appsettings.json**:
 
-```json
+```json{title="Tenant Database Resolver (2)" description="**appsettings." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant", "Database"]}
 {
   "Tenants": {
     "tenant-a": {
@@ -216,7 +216,7 @@ public record TenantConfig(
 
 **Program.cs**:
 
-```csharp
+```csharp{title="Tenant-Aware Database Connection" description="Demonstrates tenant-Aware Database Connection" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Tenant-Aware", "Database"]}
 builder.Services.AddScoped<NpgsqlConnection>(sp => {
   var tenantId = TenantContext.CurrentTenantId
     ?? throw new InvalidOperationException("Tenant context not set");
@@ -236,7 +236,7 @@ builder.Services.AddSingleton<ITenantDatabaseResolver, TenantDatabaseResolver>()
 
 **CreateOrderReceptor.cs**:
 
-```csharp
+```csharp{title="Tenant-Aware Receptors" description="**CreateOrderReceptor." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Tenant-Aware", "Receptors"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
   private readonly NpgsqlConnection _db;  // Tenant-specific database
   private readonly IMessageContext _context;
@@ -294,7 +294,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **TenantAwareMessageContext.cs**:
 
-```csharp
+```csharp{title="Message Context Propagation" description="**TenantAwareMessageContext." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Message", "Context"]}
 public class TenantAwareMessageContext : IMessageContext {
   private readonly IMessageContext _inner;
 
@@ -324,7 +324,7 @@ public class TenantAwareMessageContext : IMessageContext {
 
 **Program.cs**:
 
-```csharp
+```csharp{title="Message Context Propagation (2)" description="Demonstrates message Context Propagation" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Message", "Context"]}
 builder.Services.Decorate<IMessageContext, TenantAwareMessageContext>();
 ```
 
@@ -338,7 +338,7 @@ builder.Services.Decorate<IMessageContext, TenantAwareMessageContext>();
 
 **AnalyticsDbConnection.cs**:
 
-```csharp
+```csharp{title="Shared Analytics Database" description="**AnalyticsDbConnection." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Shared", "Analytics"]}
 public class AnalyticsDbConnectionFactory {
   private readonly string _connectionString;
 
@@ -357,7 +357,7 @@ public class AnalyticsDbConnectionFactory {
 
 **CrossTenantSalesPerspective.cs**:
 
-```csharp
+```csharp{title="Cross-Tenant Analytics Perspective" description="**CrossTenantSalesPerspective." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Cross-Tenant", "Analytics"]}
 public class CrossTenantSalesPerspective : IPerspectiveOf<OrderCreated> {
   private readonly AnalyticsDbConnectionFactory _analyticsDbFactory;
   private readonly ILogger<CrossTenantSalesPerspective> _logger;
@@ -407,7 +407,7 @@ public class CrossTenantSalesPerspective : IPerspectiveOf<OrderCreated> {
 
 **Schema (shared analytics database)**:
 
-```sql
+```sql{title="Cross-Tenant Analytics Perspective (2)" description="Schema (shared analytics database):" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Cross-Tenant", "Analytics"]}
 CREATE TABLE cross_tenant_daily_sales (
   date DATE NOT NULL,
   tenant_id TEXT NOT NULL,
@@ -426,7 +426,7 @@ CREATE INDEX idx_cross_tenant_sales_tenant ON cross_tenant_daily_sales(tenant_id
 
 **TenantProvisioningService.cs**:
 
-```csharp
+```csharp{title="Tenant Onboarding" description="**TenantProvisioningService." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Tenant", "Onboarding"]}
 public class TenantProvisioningService {
   private readonly NpgsqlConnection _masterDb;
   private readonly ILogger<TenantProvisioningService> _logger;
@@ -495,7 +495,7 @@ public class TenantProvisioningService {
 
 **Feature Flags per Tenant**:
 
-```csharp
+```csharp{title="Tenant-Specific Customizations" description="Feature Flags per Tenant:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant-Specific", "Customizations"]}
 public class TenantFeatureService {
   private readonly ITenantDatabaseResolver _resolver;
 
@@ -519,7 +519,7 @@ public class TenantFeatureService {
 
 **Usage**:
 
-```csharp
+```csharp{title="Tenant-Specific Customizations (2)" description="Demonstrates tenant-Specific Customizations" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant-Specific", "Customizations"]}
 public async Task<OrderCreated> HandleAsync(CreateOrder command, CancellationToken ct) {
   // Check if tenant has analytics feature
   var hasAnalytics = await _featureService.IsFeatureEnabledAsync("analytics");
@@ -549,7 +549,7 @@ public async Task<OrderCreated> HandleAsync(CreateOrder command, CancellationTok
 
 ### Shared Database with Row-Level Security
 
-```sql
+```sql{title="Shared Database with Row-Level Security" description="Demonstrates shared Database with Row-Level Security" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Shared", "Database"]}
 -- PostgreSQL Row-Level Security
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 

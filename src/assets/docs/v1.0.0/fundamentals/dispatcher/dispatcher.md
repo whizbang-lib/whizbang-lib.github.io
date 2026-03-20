@@ -30,7 +30,7 @@ The **Dispatcher** is Whizbang's central message router. It provides three disti
 
 ## IDispatcher Interface
 
-```csharp
+```csharp{title="IDispatcher Interface" description="Demonstrates iDispatcher Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "IDispatcher", "Interface"]}
 namespace Whizbang.Core;
 
 public interface IDispatcher {
@@ -68,7 +68,7 @@ public interface IDispatcher {
 **Use Case**: Send commands with delivery tracking, supports both local and remote dispatch.
 
 **Signature**:
-```csharp
+```csharp{title="Pattern 1: SendAsync - Command Dispatch" description="Demonstrates pattern 1: SendAsync - Command Dispatch" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "SendAsync"]}
 Task<DeliveryReceipt> SendAsync<TMessage>(
     TMessage message,
     CancellationToken cancellationToken = default
@@ -79,7 +79,7 @@ Task<DeliveryReceipt> SendAsync<TMessage>(
 
 ### Basic Usage
 
-```csharp
+```csharp{title="Basic Usage" description="Demonstrates basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Usage"]}
 public class OrdersController : ControllerBase {
     private readonly IDispatcher _dispatcher;
 
@@ -111,7 +111,7 @@ public class OrdersController : ControllerBase {
 
 ### DeliveryReceipt Structure
 
-```csharp
+```csharp{title="DeliveryReceipt Structure" description="Demonstrates deliveryReceipt Structure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "DeliveryReceipt", "Structure"]}
 public record DeliveryReceipt(
     Guid MessageId,        // Unique ID for this message
     Guid CorrelationId,    // ID for tracking related messages
@@ -148,7 +148,7 @@ Background Worker
 
 ### Example: Long-Running Order Processing
 
-```csharp
+```csharp{title="Example: Long-Running Order Processing" description="Demonstrates example: Long-Running Order Processing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "Long-Running"]}
 [HttpPost("orders")]
 public async Task<ActionResult> CreateOrder(
     [FromBody] CreateOrderRequest request,
@@ -190,7 +190,7 @@ public async Task<ActionResult> GetOrderStatus(Guid correlationId) {
 **Use Case**: Fast, synchronous-style command/query execution with typed response.
 
 **Signature**:
-```csharp
+```csharp{title="Pattern 2: LocalInvokeAsync - In-Process RPC" description="Demonstrates pattern 2: LocalInvokeAsync - In-Process RPC" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "LocalInvokeAsync"]}
 Task<TResponse> LocalInvokeAsync<TMessage, TResponse>(
     TMessage message,
     CancellationToken cancellationToken = default
@@ -203,7 +203,7 @@ Task<TResponse> LocalInvokeAsync<TMessage, TResponse>(
 
 ### Basic Usage
 
-```csharp
+```csharp{title="Basic Usage (2)" description="Demonstrates basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Usage"]}
 [HttpPost("orders")]
 public async Task<ActionResult<OrderCreated>> CreateOrder(
     [FromBody] CreateOrderRequest request,
@@ -251,7 +251,7 @@ Client
 
 ### Example: Query with Typed Response
 
-```csharp
+```csharp{title="Example: Query with Typed Response" description="Demonstrates example: Query with Typed Response" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Example:", "Query"]}
 public record GetOrderQuery(Guid OrderId);
 
 public record OrderDetails(
@@ -312,7 +312,7 @@ public async Task<ActionResult<OrderDetails>> GetOrder(
 
 ### Type Safety Enforcement
 
-```csharp
+```csharp{title="Type Safety Enforcement" description="Demonstrates type Safety Enforcement" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Type", "Safety"]}
 // ✅ CORRECT - Type mismatch caught at compile time
 var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
 
@@ -327,7 +327,7 @@ var wrong = await _dispatcher.LocalInvokeAsync<CreateOrder, PaymentProcessed>(co
 `LocalInvokeAsync` supports both async (`IReceptor`) and sync (`ISyncReceptor`) receptors transparently:
 :::
 
-```csharp
+```csharp{title="Synchronous Receptor Invocation" description=":::new LocalInvokeAsync supports both async (IReceptor) and sync (ISyncReceptor) receptors transparently: :::" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Synchronous", "Receptor"]}
 // Async receptor - uses HandleAsync, returns ValueTask
 public class AsyncOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
@@ -381,7 +381,7 @@ LocalInvokeAsync achieves < 20ns overhead through:
 4. **Zero reflection**: No runtime type discovery
 
 **Generated code example**:
-```csharp
+```csharp{title="Performance Optimization" description="Generated code example:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Performance", "Optimization"]}
 // Generated by Whizbang.Generators
 protected override ReceptorInvoker<TResult>? GetReceptorInvoker<TResult>(
     object message,
@@ -420,7 +420,7 @@ protected override SyncReceptorInvoker<TResult>? GetSyncReceptorInvoker<TResult>
 **Use Case**: Invoke a handler and wait for ALL perspectives to process any events emitted during the invocation. This enables synchronous-feeling APIs over event-sourced systems.
 
 **Signatures**:
-```csharp
+```csharp{title="LocalInvokeAndSyncAsync - Invoke with Perspective Sync" description="Signatures:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "LocalInvokeAndSyncAsync", "Invoke"]}
 // With typed result
 Task<TResult> LocalInvokeAndSyncAsync<TMessage, TResult>(
     TMessage message,
@@ -448,7 +448,7 @@ Use `LocalInvokeAndSyncAsync` when:
 
 ### Basic Usage
 
-```csharp
+```csharp{title="Basic Usage - OrderMutation" description="Demonstrates basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Usage"]}
 public class OrderMutation {
     private readonly IDispatcher _dispatcher;
 
@@ -474,7 +474,7 @@ public class OrderMutation {
 
 When using the void overload, you get a `SyncResult`:
 
-```csharp
+```csharp{title="SyncResult Outcomes" description="When using the void overload, you get a SyncResult:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "SyncResult", "Outcomes"]}
 var syncResult = await _dispatcher.LocalInvokeAndSyncAsync(command);
 
 switch (syncResult.Outcome) {
@@ -494,7 +494,7 @@ switch (syncResult.Outcome) {
 
 For the typed result overload, a `TimeoutException` is thrown if perspectives don't complete in time:
 
-```csharp
+```csharp{title="Timeout Handling" description="For the typed result overload, a TimeoutException is thrown if perspectives don't complete in time:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Timeout", "Handling"]}
 try {
     var result = await _dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderResult>(
         command,
@@ -521,7 +521,7 @@ The default timeout is 30 seconds if not specified.
 **Use Case**: Broadcast events to multiple listeners (perspectives).
 
 **Signature**:
-```csharp
+```csharp{title="Pattern 3: PublishAsync - Event Broadcasting" description="Demonstrates pattern 3: PublishAsync - Event Broadcasting" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "PublishAsync"]}
 Task PublishAsync<TMessage>(
     TMessage message,
     CancellationToken cancellationToken = default
@@ -532,7 +532,7 @@ Task PublishAsync<TMessage>(
 
 ### Basic Usage
 
-```csharp
+```csharp{title="Basic Usage (4)" description="Demonstrates basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Usage"]}
 [HttpPost("orders")]
 public async Task<ActionResult<OrderCreated>> CreateOrder(
     [FromBody] CreateOrderRequest request,
@@ -577,7 +577,7 @@ Client
 
 ### Example: Multiple Perspectives
 
-```csharp
+```csharp{title="Example: Multiple Perspectives" description="Demonstrates example: Multiple Perspectives" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Example:", "Multiple"]}
 // Event
 public record OrderCreated(
     Guid OrderId,
@@ -642,7 +642,7 @@ When you call `PublishAsync(orderCreated)`, **all three perspectives** are invok
 
 ### Remote Publishing with Outbox
 
-```csharp
+```csharp{title="Remote Publishing with Outbox" description="Demonstrates remote Publishing with Outbox" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Remote", "Publishing"]}
 // In receptor - store event in outbox for remote publishing
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IWorkCoordinator _coordinator;
@@ -711,7 +711,7 @@ Understanding when to use `IEventStore.AppendAsync` versus `IDispatcher.PublishA
 
 **For Events (most common case):**
 
-```csharp
+```csharp{title="Correct Patterns" description="For Events (most common case):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}
 // ✅ CORRECT: Just publish - handles perspectives + outbox
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder command,
@@ -728,14 +728,14 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 **For Commands:**
 
-```csharp
+```csharp{title="Correct Patterns (2)" description="For Commands:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}
 // ✅ CORRECT: Send command with delivery tracking
 await _dispatcher.SendAsync(new ProcessPayment(orderId, amount), ct);
 ```
 
 **For Direct Event Store Access (rare - infrastructure/workers only):**
 
-```csharp
+```csharp{title="Correct Patterns (3)" description="For Direct Event Store Access (rare - infrastructure/workers only):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}
 // ✅ CORRECT: When you need explicit transactional control
 await using var work = await _workCoordinator.BeginAsync(ct);
 await _eventStore.AppendAsync(streamId, @event, ct);
@@ -744,7 +744,7 @@ await work.CommitAsync(ct);
 
 ### Anti-Patterns to Avoid
 
-```csharp
+```csharp{title="Anti-Patterns to Avoid" description="Demonstrates anti-Patterns to Avoid" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Anti-Patterns", "Avoid"]}
 // ❌ WRONG: Redundant - calling both AppendAsync and PublishAsync
 await _eventStore.AppendAsync(orderId, @event, ct);
 await _dispatcher.PublishAsync(@event, ct);
@@ -779,7 +779,7 @@ await _dispatcher.PublishAsync(@event, ct);
 
 ### Pattern Comparison
 
-```csharp
+```csharp{title="Pattern Comparison" description="Demonstrates pattern Comparison" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern", "Comparison"]}
 // Scenario: Create an order
 
 // Option 1: SendAsync (async semantics, delivery tracking)
@@ -811,7 +811,7 @@ await _dispatcher.PublishAsync(orderCreated);
 :::
 
 **Signatures**:
-```csharp
+```csharp{title="SendManyAsync" description="Signatures:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "SendManyAsync"]}
 // Generic (AOT-compatible, preserves type information)
 Task<IEnumerable<IDeliveryReceipt>> SendManyAsync<TMessage>(
     IEnumerable<TMessage> messages) where TMessage : notnull;
@@ -824,7 +824,7 @@ Task<IEnumerable<IDeliveryReceipt>> SendManyAsync(
 **Returns**: `DeliveryReceipt` per message — `Delivered` for locally-handled messages, `Accepted` for outbox-only messages.
 
 **Example**:
-```csharp
+```csharp{title="SendManyAsync (2)" description="Demonstrates sendManyAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "SendManyAsync"]}
 // Batch send commands — each gets local processing + outbox delivery
 var commands = new[] {
     new UpdateInventory(productId1, 10),
@@ -852,7 +852,7 @@ var receipts = await _dispatcher.SendManyAsync(commands);
 **Use Case**: Send multiple messages to local receptors **only** — no outbox delivery. Useful when you want batch local-only processing without cross-service propagation.
 
 **Signatures**:
-```csharp
+```csharp{title="LocalSendManyAsync" description="Signatures:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "LocalSendManyAsync"]}
 // Generic (AOT-compatible)
 ValueTask<IEnumerable<IDeliveryReceipt>> LocalSendManyAsync<TMessage>(
     IEnumerable<TMessage> messages) where TMessage : notnull;
@@ -867,7 +867,7 @@ ValueTask<IEnumerable<IDeliveryReceipt>> LocalSendManyAsync(
 **Throws**: `ReceptorNotFoundException` if any message has no local receptor.
 
 **Example**:
-```csharp
+```csharp{title="LocalSendManyAsync (2)" description="Demonstrates localSendManyAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "LocalSendManyAsync"]}
 // Process commands locally only — no outbox, no cross-service delivery
 var commands = new[] {
     new ValidateOrder(orderId1),
@@ -896,7 +896,7 @@ var receipts = await _dispatcher.LocalSendManyAsync(commands);
 
 ### LocalInvokeAsync Error Handling
 
-```csharp
+```csharp{title="LocalInvokeAsync Error Handling" description="Demonstrates localInvokeAsync Error Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "LocalInvokeAsync", "Error"]}
 [HttpPost("orders")]
 public async Task<ActionResult> CreateOrder(
     [FromBody] CreateOrderRequest request,
@@ -940,7 +940,7 @@ public async Task<ActionResult> CreateOrder(
 
 ### SendAsync Error Handling
 
-```csharp
+```csharp{title="SendAsync Error Handling" description="Demonstrates sendAsync Error Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "SendAsync", "Error"]}
 try {
     var receipt = await _dispatcher.SendAsync(command, ct);
 
@@ -958,7 +958,7 @@ try {
 
 ### PublishAsync Error Handling
 
-```csharp
+```csharp{title="PublishAsync Error Handling" description="Demonstrates publishAsync Error Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "PublishAsync", "Error"]}
 try {
     await _dispatcher.PublishAsync(orderCreated, ct);
 
@@ -983,7 +983,7 @@ try {
 
 ### Pattern: Command + Event in Single Transaction
 
-```csharp
+```csharp{title="Pattern: Command + Event in Single Transaction" description="Demonstrates pattern: Command + Event in Single Transaction" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern:", "Command"]}
 [HttpPost("orders")]
 public async Task<ActionResult<OrderCreated>> CreateOrder(
     [FromBody] CreateOrderRequest request,
@@ -1014,7 +1014,7 @@ public async Task<ActionResult<OrderCreated>> CreateOrder(
 
 ### Pattern: Conditional Publishing
 
-```csharp
+```csharp{title="Pattern: Conditional Publishing" description="Demonstrates pattern: Conditional Publishing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern:", "Conditional"]}
 public async Task<ActionResult> ProcessPayment(
     [FromBody] ProcessPaymentRequest request,
     CancellationToken ct) {
@@ -1045,7 +1045,7 @@ public async Task<ActionResult> ProcessPayment(
 
 ### Pattern: Batch Processing
 
-```csharp
+```csharp{title="Pattern: Batch Processing" description="Demonstrates pattern: Batch Processing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern:", "Batch"]}
 public async Task<ActionResult> ProcessOrders(
     [FromBody] ProcessOrdersRequest request,
     CancellationToken ct) {
@@ -1080,7 +1080,7 @@ Whizbang automatically extracts and dispatches `IMessage` instances (both `IEven
 
 ### The Problem (Without Auto-Cascade)
 
-```csharp
+```csharp{title="The Problem (Without Auto-Cascade)" description="Demonstrates the Problem (Without Auto-Cascade)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Problem", "Without"]}
 // ❌ VERBOSE: Explicit PublishAsync required
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IDispatcher _dispatcher;
@@ -1102,7 +1102,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### The Solution (With Auto-Cascade)
 
-```csharp
+```csharp{title="The Solution (With Auto-Cascade)" description="Demonstrates the Solution (With Auto-Cascade)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Solution", "Auto-Cascade"]}
 // ✅ CLEAN: Framework auto-publishes events from return value
 public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)> {
 
@@ -1130,7 +1130,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCre
 The auto-cascade feature supports several return patterns:
 
 **Tuple with Event**:
-```csharp
+```csharp{title="Supported Return Types" description="Tuple with Event:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"]}
 public class OrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)> {
     public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
         CreateOrder command, CancellationToken ct = default) {
@@ -1145,7 +1145,7 @@ public class OrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)>
 ```
 
 **Tuple with Multiple Events**:
-```csharp
+```csharp{title="Supported Return Types - ShipOrderReceptor" description="Tuple with Multiple Events:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"]}
 public class ShipOrderReceptor : IReceptor<ShipOrder, (ShipResult, OrderShipped, InventoryUpdated)> {
     public ValueTask<(ShipResult, OrderShipped, InventoryUpdated)> HandleAsync(
         ShipOrder command, CancellationToken ct = default) {
@@ -1161,7 +1161,7 @@ public class ShipOrderReceptor : IReceptor<ShipOrder, (ShipResult, OrderShipped,
 ```
 
 **Array of Events**:
-```csharp
+```csharp{title="Supported Return Types - NotifyReceptor" description="Array of Events:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"]}
 public class NotifyReceptor : IReceptor<SendNotifications, IEvent[]> {
     public ValueTask<IEvent[]> HandleAsync(
         SendNotifications command, CancellationToken ct = default) {
@@ -1181,7 +1181,7 @@ public class NotifyReceptor : IReceptor<SendNotifications, IEvent[]> {
 ```
 
 **Nested Tuples**:
-```csharp
+```csharp{title="Supported Return Types - ComplexReceptor" description="Nested Tuples:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"]}
 public class ComplexReceptor : IReceptor<ComplexCommand, (Result, (Event1, Event2))> {
     public ValueTask<(Result, (Event1, Event2))> HandleAsync(
         ComplexCommand command, CancellationToken ct = default) {
@@ -1224,7 +1224,7 @@ Receptor Returns
 
 Auto-cascade works with all dispatch methods and message types:
 
-```csharp
+```csharp{title="Cascades Through All Dispatch Paths" description="Auto-cascade works with all dispatch methods and message types:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Cascades", "Through"]}
 // Via LocalInvokeAsync - Events auto-published
 var result = await _dispatcher.LocalInvokeAsync<CreateOrder, (OrderResult, OrderCreated)>(command);
 // OrderCreated auto-published ✓
@@ -1242,7 +1242,7 @@ var receipt = await _dispatcher.SendAsync(command);
 
 Receptors can return both events and commands in a single tuple:
 
-```csharp
+```csharp{title="Mixed Events and Commands" description="Receptors can return both events and commands in a single tuple:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Mixed", "Events"]}
 public class ProcessOrderReceptor : IReceptor<ProcessOrder, (OrderResult, OrderProcessed, SendInvoice)> {
     public ValueTask<(OrderResult, OrderProcessed, SendInvoice)> HandleAsync(
         ProcessOrder command, CancellationToken ct = default) {
@@ -1262,7 +1262,7 @@ public class ProcessOrderReceptor : IReceptor<ProcessOrder, (OrderResult, OrderP
 ### Best Practices
 
 **DO**: Return messages (events and commands) alongside business results in tuples
-```csharp
+```csharp{title="Best Practices" description="DO: Return messages (events and commands) alongside business results in tuples" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Best", "Practices"]}
 // ✅ GOOD: Event returned with result
 public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
     CreateOrder command, CancellationToken ct) {
@@ -1283,7 +1283,7 @@ public ValueTask<(PaymentResult, SendReceipt)> HandleAsync(
 ```
 
 **DON'T**: Return messages AND manually dispatch them
-```csharp
+```csharp{title="Best Practices (2)" description="DON'T: Return messages AND manually dispatch them" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Best", "Practices"]}
 // ❌ BAD: Double publishing!
 public async ValueTask<(OrderResult, OrderCreated)> HandleAsync(
     CreateOrder command, CancellationToken ct) {
@@ -1298,7 +1298,7 @@ public async ValueTask<(OrderResult, OrderCreated)> HandleAsync(
 ```
 
 **DON'T**: Return empty arrays to avoid cascade
-```csharp
+```csharp{title="Best Practices (3)" description="DON'T: Return empty arrays to avoid cascade" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Best", "Practices"]}
 // ⚠️ UNNECESSARY: Empty arrays are handled gracefully
 public ValueTask<(OrderResult, IMessage[])> HandleAsync(
     CreateOrder command, CancellationToken ct) {
@@ -1315,7 +1315,7 @@ public ValueTask<(OrderResult, IMessage[])> HandleAsync(
 By default, cascaded events are dispatched to local receptors only. To cascade events to the outbox for cross-service delivery, use the `Route` wrapper:
 
 **Route Wrappers**: {#routed-message-cascading}
-```csharp
+```csharp{title="Auto-Cascade to Outbox" description="Route Wrappers: {#routed-message-cascading}" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Auto-Cascade", "Outbox"]}
 // Cascade to local receptors AND persist to event store (default)
 return (result, new OrderCreated(orderId));
 
@@ -1347,7 +1347,7 @@ return (result, Route.Both(new OrderCreated(orderId)));
 - **Historical events**: Import or replay events into the store
 - **Deferred processing**: Store events for later perspective rebuilds
 
-```csharp
+```csharp{title="Event Store Only Mode" description="- Audit events: Record actions without triggering business logic - Historical events: Import or replay events into the" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Event", "Store"]}
 public class AuditReceptor : IReceptor<ProcessOrder, (OrderResult, Routed<AuditEvent>)> {
     public ValueTask<(OrderResult, Routed<AuditEvent>)> HandleAsync(
         ProcessOrder command, CancellationToken ct = default) {
@@ -1377,7 +1377,7 @@ public class AuditReceptor : IReceptor<ProcessOrder, (OrderResult, Routed<AuditE
 4. Event is marked as published (completed)
 
 **Example: Cross-Service Event Publishing**:
-```csharp
+```csharp{title="Event Store Only Mode - CreateOrderReceptor" description="Example: Cross-Service Event Publishing:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Event", "Store"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, Routed<OrderCreated>)> {
     public ValueTask<(OrderResult, Routed<OrderCreated>)> HandleAsync(
         CreateOrder command, CancellationToken ct = default) {
@@ -1401,7 +1401,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, Routed<O
 5. Generated dispatcher uses type-switch dispatch (zero reflection, AOT compatible)
 
 **Generated Code Pattern**: {#cascade-to-outbox}
-```csharp
+```csharp{title="Event Store Only Mode (3)" description="Generated Code Pattern: {#cascade-to-outbox}" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Event", "Store"]}
 // Generated by Whizbang.Generators
 protected override Task CascadeToOutboxAsync(IMessage message, Type messageType) {
     if (messageType == typeof(OrderCreated)) {
@@ -1451,7 +1451,7 @@ This ensures cascaded receptors have access to:
 - `UserContextManager.TenantContext` - Tenant-scoped context
 
 **Example Flow**:
-```csharp
+```csharp{title="Security Context in Cascade" description="Example Flow:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Security", "Context"]}
 // 1. HTTP request with UserId = "user@test.com", TenantId = "tenant-123"
 public class OrderCommandHandler : IReceptor<CreateOrder, OrderCreated> {
     private readonly IMessageContext _context;
@@ -1493,7 +1493,7 @@ public class OrderCreatedReceptor : IReceptor<OrderCreated> {
 
 The generated `GetUntypedReceptorPublisher` method creates a new DI scope for each cascade and establishes security context before invoking receptors:
 
-```csharp
+```csharp{title="Security Context in Cascade (2)" description="The generated GetUntypedReceptorPublisher method creates a new DI scope for each cascade and establishes security" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Security", "Context"]}
 // Generated by Whizbang.Generators
 protected override Func<object, IMessageEnvelope?, CancellationToken, Task>?
     GetUntypedReceptorPublisher(Type eventType) {
@@ -1558,7 +1558,7 @@ In these cases, receptors run without security context, which is expected behavi
 
 ### Basic Options
 
-```csharp
+```csharp{title="Basic Options" description="Demonstrates basic Options" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Options"]}
 // Cancellation token
 using var cts = new CancellationTokenSource();
 var options = new DispatchOptions().WithCancellationToken(cts.Token);
@@ -1578,7 +1578,7 @@ var options = new DispatchOptions()
 
 Wait for all perspectives to finish processing cascaded events before returning:
 
-```csharp
+```csharp{title="Perspective Synchronization" description="Wait for all perspectives to finish processing cascaded events before returning:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"]}
 // Wait with default timeout (30 seconds)
 var options = new DispatchOptions().WithPerspectiveWait();
 var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(
@@ -1603,7 +1603,7 @@ var options = new DispatchOptions().WithPerspectiveWait(TimeSpan.FromMinutes(2))
 
 **Alternative API**: Use `LocalInvokeAndSyncAsync` for built-in perspective synchronization without explicit options:
 
-```csharp
+```csharp{title="Perspective Synchronization (2)" description="Alternative API: Use LocalInvokeAndSyncAsync for built-in perspective synchronization without explicit options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"]}
 // Equivalent to LocalInvokeAsync with DispatchOptions.WithPerspectiveWait()
 var result = await dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderCreated>(
     command,
@@ -1624,7 +1624,7 @@ See [LocalInvokeAndSyncAsync](#localinvokeandsyncasync---invoke-with-perspective
 
 ### Example: Timeout Handling
 
-```csharp
+```csharp{title="Example: Timeout Handling" description="Demonstrates example: Timeout Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "Timeout"]}
 try {
     var options = new DispatchOptions()
         .WithTimeout(TimeSpan.FromSeconds(5))
@@ -1666,7 +1666,7 @@ try {
 
 Whizbang uses object pooling for message envelopes:
 
-```csharp
+```csharp{title="Object Pooling" description="Whizbang uses object pooling for message envelopes:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Object", "Pooling"]}
 // Automatically pooled
 var envelope = MessageEnvelope.Create(message, correlationId, causationId);
 
@@ -1684,7 +1684,7 @@ var envelope = MessageEnvelope.Create(message, correlationId, causationId);
 
 `SendAsync` integrates with the Outbox pattern:
 
-```csharp
+```csharp{title="Outbox Pattern" description="SendAsync integrates with the Outbox pattern:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Outbox", "Pattern"]}
 // Receptor stores event in outbox
 var @event = new OrderCreated(/* ... */);
 
@@ -1710,7 +1710,7 @@ See [Outbox Pattern](../messaging/outbox-pattern.md) for details.
 
 `SendAsync` integrates with the Inbox pattern for exactly-once processing:
 
-```csharp
+```csharp{title="Inbox Pattern" description="SendAsync integrates with the Inbox pattern for exactly-once processing:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Inbox", "Pattern"]}
 // Check inbox for duplicate
 var existing = await _coordinator.FindInboxMessageAsync(messageId);
 
@@ -1740,7 +1740,7 @@ See [Inbox Pattern](../messaging/inbox-pattern.md) for details.
 
 ### Testing with Dispatcher
 
-```csharp
+```csharp{title="Testing with Dispatcher" description="Demonstrates testing with Dispatcher" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Testing"]}
 public class OrderEndpointsTests {
     private IDispatcher _dispatcher;
     private OrdersController _controller;

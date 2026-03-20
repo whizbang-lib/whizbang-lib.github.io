@@ -38,7 +38,7 @@ Whizbang Perspectives are **pure functions** by design:
 
 ### Marten Single-Stream
 
-```csharp
+```csharp{title="Marten Single-Stream" description="Demonstrates marten Single-Stream" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Marten", "Single-Stream"]}
 // Marten: Can mutate, can have side effects
 public class OrderSummaryProjection : SingleStreamProjection<OrderSummary> {
     public OrderSummary Create(OrderCreated @event) {
@@ -70,7 +70,7 @@ public class OrderSummaryProjection : SingleStreamProjection<OrderSummary> {
 
 ### Whizbang Perspective
 
-```csharp
+```csharp{title="Whizbang Perspective" description="Demonstrates whizbang Perspective" category="Reference" difficulty="ADVANCED" tags=["Migration-Guide", "Whizbang", "Perspective"]}
 // Whizbang: Pure functions, returns new model
 public class OrderSummaryPerspective :
     IPerspectiveFor<OrderSummary, OrderCreated, OrderItemAdded, OrderShipped, OrderCancelled> {
@@ -113,7 +113,7 @@ public class OrderSummaryPerspective :
 
 ### Marten Multi-Stream
 
-```csharp
+```csharp{title="Marten Multi-Stream" description="Demonstrates marten Multi-Stream" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Marten", "Multi-Stream"]}
 // Marten: Aggregates across streams
 public class CustomerOrderStatsProjection :
     MultiStreamProjection<CustomerOrderStats, Guid> {
@@ -144,7 +144,7 @@ public class CustomerOrderStatsProjection :
 
 ### Whizbang Global Perspective
 
-```csharp
+```csharp{title="Whizbang Global Perspective" description="Demonstrates whizbang Global Perspective" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Whizbang", "Global", "Perspective"]}
 // Whizbang: Global perspective with partition key
 public class CustomerOrderStatsPerspective :
     IGlobalPerspectiveFor<CustomerOrderStats, Guid, OrderCreated, OrderCompleted> {
@@ -181,7 +181,7 @@ public class CustomerOrderStatsPerspective :
 
 **Marten (mutation)**:
 
-```csharp
+```csharp{title="Pattern: Mutation → `with` Expression" description="Marten (mutation):" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Pattern:", "Mutation", "Expression"]}
 public void Apply(OrderUpdated @event, OrderSummary model) {
     model.Title = @event.Title;
     model.Total = @event.Total;
@@ -191,7 +191,7 @@ public void Apply(OrderUpdated @event, OrderSummary model) {
 
 **Whizbang (immutable)**:
 
-```csharp
+```csharp{title="Pattern: Mutation → `with` Expression (2)" description="Whizbang (immutable):" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Pattern:", "Mutation", "Expression"]}
 public OrderSummary Apply(OrderSummary current, OrderUpdated @event) {
     return current with {
         Title = @event.Title,
@@ -205,7 +205,7 @@ public OrderSummary Apply(OrderSummary current, OrderUpdated @event) {
 
 **Marten (conditional mutation)**:
 
-```csharp
+```csharp{title="Pattern: Conditional Logic" description="Marten (conditional mutation):" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Pattern:", "Conditional", "Logic"]}
 public void Apply(PaymentReceived @event, OrderSummary model) {
     model.PaidAmount += @event.Amount;
     if (model.PaidAmount >= model.Total) {
@@ -216,7 +216,7 @@ public void Apply(PaymentReceived @event, OrderSummary model) {
 
 **Whizbang (conditional immutable)**:
 
-```csharp
+```csharp{title="Pattern: Conditional Logic (2)" description="Whizbang (conditional immutable):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Pattern:", "Conditional", "Logic"]}
 public OrderSummary Apply(OrderSummary current, PaymentReceived @event) {
     var newPaidAmount = current.PaidAmount + @event.Amount;
     var newStatus = newPaidAmount >= current.Total
@@ -234,7 +234,7 @@ public OrderSummary Apply(OrderSummary current, PaymentReceived @event) {
 
 **Marten (list mutation)**:
 
-```csharp
+```csharp{title="Pattern: Collection Updates" description="Marten (list mutation):" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Pattern:", "Collection", "Updates"]}
 public void Apply(ItemAdded @event, ShoppingCart model) {
     model.Items.Add(new CartItem(@event.ProductId, @event.Quantity));
 }
@@ -242,7 +242,7 @@ public void Apply(ItemAdded @event, ShoppingCart model) {
 
 **Whizbang (immutable collection)**:
 
-```csharp
+```csharp{title="Pattern: Collection Updates (2)" description="Whizbang (immutable collection):" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Pattern:", "Collection", "Updates"]}
 public ShoppingCart Apply(ShoppingCart current, ItemAdded @event) {
     var newItems = current.Items
         .Append(new CartItem(@event.ProductId, @event.Quantity))
@@ -258,7 +258,7 @@ public ShoppingCart Apply(ShoppingCart current, ItemAdded @event) {
 
 **Before (class with mutable properties)**:
 
-```csharp
+```csharp{title="Use Records for Immutability" description="Before (class with mutable properties):" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Records", "Immutability"]}
 public class OrderSummary {
     public Guid Id { get; set; }
     public OrderStatus Status { get; set; }
@@ -268,7 +268,7 @@ public class OrderSummary {
 
 **After (record with init properties)**:
 
-```csharp
+```csharp{title="Use Records for Immutability - OrderSummary" description="After (record with init properties):" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Records", "Immutability"]}
 public sealed record OrderSummary {
     public required Guid Id { get; init; }
     public OrderStatus Status { get; init; }
@@ -283,7 +283,7 @@ public sealed record OrderSummary {
 
 ### Marten Async Projections
 
-```csharp
+```csharp{title="Marten Async Projections" description="Demonstrates marten Async Projections" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Marten", "Async", "Projections"]}
 // Marten: Can do async work in projections
 public async Task Apply(OrderCreated @event, OrderSummary model, IQuerySession session) {
     var customer = await session.LoadAsync<Customer>(@event.CustomerId);
@@ -295,7 +295,7 @@ public async Task Apply(OrderCreated @event, OrderSummary model, IQuerySession s
 
 Perspectives must be pure. Move async logic to receptors:
 
-```csharp
+```csharp{title="Whizbang: Move Async to Receptor" description="Perspectives must be pure." category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Whizbang:", "Move", "Async"]}
 // Receptor enriches event before storing
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly ICustomerService _customers;
@@ -327,7 +327,7 @@ public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreate
 
 ### Marten Projection Registration
 
-```csharp
+```csharp{title="Marten Projection Registration" description="Demonstrates marten Projection Registration" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Marten", "Projection", "Registration"]}
 services.AddMarten(opts => {
     opts.Projections.Add<OrderSummaryProjection>(ProjectionLifecycle.Async);
     opts.Projections.Add<CustomerOrderStatsProjection>(ProjectionLifecycle.Inline);
@@ -336,7 +336,7 @@ services.AddMarten(opts => {
 
 ### Whizbang Perspective Registration
 
-```csharp
+```csharp{title="Whizbang Perspective Registration" description="Demonstrates whizbang Perspective Registration" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Whizbang", "Perspective", "Registration"]}
 services.AddWhizbang(options => {
     // Perspectives are auto-discovered via source generators
     // Explicit registration if needed:
@@ -349,7 +349,7 @@ services.AddWhizbang(options => {
 
 Perspectives are easy to test because they're pure functions:
 
-```csharp
+```csharp{title="Testing Perspectives" description="Perspectives are easy to test because they're pure functions:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Testing", "Perspectives"]}
 [Test]
 public void Apply_OrderCreated_CreatesNewSummaryAsync() {
     // Arrange

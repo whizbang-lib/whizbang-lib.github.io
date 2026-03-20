@@ -37,7 +37,7 @@ The **PerspectiveDiscoveryGenerator** discovers all `IPerspectiveOf<TEvent>` imp
 
 ### Traditional Approach (Direct Updates)
 
-```csharp
+```csharp{title="Traditional Approach (Direct Updates)" description="Demonstrates traditional Approach (Direct Updates)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Traditional", "Approach"]}
 // ❌ Tight coupling between command and query models
 public class OrderService {
     public async Task<OrderCreated> CreateOrderAsync(CreateOrder command) {
@@ -63,7 +63,7 @@ public class OrderService {
 
 ### Whizbang Approach (Event-Driven)
 
-```csharp
+```csharp{title="Whizbang Approach (Event-Driven)" description="Demonstrates whizbang Approach (Event-Driven)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Whizbang", "Approach"]}
 // ✅ Decoupled: Command handler publishes event, perspective updates read model
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(CreateOrder message, CancellationToken ct) {
@@ -145,7 +145,7 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 ### 2. Generated File
 
 **PerspectiveRegistrations.g.cs**:
-```csharp
+```csharp{title="Generated File" description="**PerspectiveRegistrations." category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "File"]}
 using Microsoft.Extensions.DependencyInjection;
 using Whizbang.Core;
 
@@ -189,7 +189,7 @@ public static class PerspectiveRegistrations {
 
 ### Registration in Program.cs
 
-```csharp
+```csharp{title="Registration in Program.cs" description="Demonstrates registration in Program.cs" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Registration", "Program.cs"]}
 // Program.cs
 using MyApp.Generated;
 
@@ -213,7 +213,7 @@ app.Run();
 
 ### Pattern 1: Single Event Handler
 
-```csharp
+```csharp{title="Pattern 1: Single Event Handler" description="Demonstrates pattern 1: Single Event Handler" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Single"]}
 public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
     private readonly IDbConnectionFactory _db;
 
@@ -236,7 +236,7 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 ```
 
 **Generated registration** (1 event):
-```csharp
+```csharp{title="Pattern 1: Single Event Handler (2)" description="Generated registration (1 event):" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Single"]}
 services.AddScoped<IPerspectiveOf<OrderCreated>, OrderSummaryPerspective>();
 ```
 
@@ -244,7 +244,7 @@ services.AddScoped<IPerspectiveOf<OrderCreated>, OrderSummaryPerspective>();
 
 ### Pattern 2: Multiple Event Handlers
 
-```csharp
+```csharp{title="Pattern 2: Multiple Event Handlers" description="Demonstrates pattern 2: Multiple Event Handlers" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Multiple"]}
 public class OrderSummaryPerspective :
     IPerspectiveOf<OrderCreated>,
     IPerspectiveOf<OrderShipped>,
@@ -285,7 +285,7 @@ public class OrderSummaryPerspective :
 ```
 
 **Generated registration** (3 events):
-```csharp
+```csharp{title="Pattern 2: Multiple Event Handlers (2)" description="Generated registration (3 events):" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Multiple"]}
 services.AddScoped<IPerspectiveOf<OrderCreated>, OrderSummaryPerspective>();
 services.AddScoped<IPerspectiveOf<OrderShipped>, OrderSummaryPerspective>();
 services.AddScoped<IPerspectiveOf<OrderCancelled>, OrderSummaryPerspective>();
@@ -300,7 +300,7 @@ services.AddScoped<IPerspectiveOf<OrderCancelled>, OrderSummaryPerspective>();
 
 ### Pattern 3: Aggregated Statistics
 
-```csharp
+```csharp{title="Pattern 3: Aggregated Statistics" description="Demonstrates pattern 3: Aggregated Statistics" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Aggregated"]}
 public class CustomerStatisticsPerspective :
     IPerspectiveOf<OrderCreated>,
     IPerspectiveOf<OrderShipped> {
@@ -373,7 +373,7 @@ public class CustomerStatisticsPerspective :
 
 Each perspective tracks **last processed event** per stream:
 
-```sql
+```sql{title="Checkpoint-Based Processing" description="Each perspective tracks last processed event per stream:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Checkpoint-Based", "Processing"]}
 -- wh_perspective_checkpoints table
 CREATE TABLE wh_perspective_checkpoints (
     stream_id UUID NOT NULL,
@@ -404,7 +404,7 @@ order-abc-123                       | InventoryPerspective       | event-001    
 
 ### Full Rebuild
 
-```csharp
+```csharp{title="Full Rebuild" description="Demonstrates full Rebuild" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Full", "Rebuild"]}
 public class PerspectiveRebuilder {
     private readonly IEventStore _eventStore;
     private readonly IServiceProvider _services;
@@ -456,7 +456,7 @@ public class PerspectiveRebuilder {
 
 Like ReceptorDiscoveryGenerator, uses **value-based caching**:
 
-```csharp
+```csharp{title="Incremental Caching" description="Like ReceptorDiscoveryGenerator, uses value-based caching:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Incremental", "Caching"]}
 internal sealed record PerspectiveInfo(
     string ClassName,
     string[] EventTypes  // Arrays support value equality in records!
@@ -479,7 +479,7 @@ Subsequent compilation (no changes):
 
 ### Syntactic Filtering
 
-```csharp
+```csharp{title="Syntactic Filtering" description="Demonstrates syntactic Filtering" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Syntactic", "Filtering"]}
 // Fast syntactic check (no semantic model access)
 predicate: static (node, _) => node is ClassDeclarationSyntax { BaseList.Types.Count: > 0 },
 
@@ -502,7 +502,7 @@ obj/Debug/net10.0/generated/Whizbang.Generators/PerspectiveDiscoveryGenerator/
 ```
 
 Or configured output:
-```xml
+```xml{title="View Generated File" description="Or configured output:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
 <PropertyGroup>
   <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   <CompilerGeneratedFilesOutputPath>.whizbang-generated</CompilerGeneratedFilesOutputPath>
@@ -549,7 +549,7 @@ info WHIZ003: Found perspective 'OrderSummaryPerspective' handling OrderCreated,
 
 **One event, many read models**:
 
-```csharp
+```csharp{title="Multiple Perspectives Per Event" description="One event, many read models:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Multiple", "Perspectives"]}
 // Event
 public record OrderCreated(
     Guid OrderId,
@@ -581,7 +581,7 @@ public class InventoryPerspective : IPerspectiveOf<OrderCreated> {
 ```
 
 **Generator registers all three**:
-```csharp
+```csharp{title="Multiple Perspectives Per Event (2)" description="Generator registers all three:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Multiple", "Perspectives"]}
 services.AddScoped<IPerspectiveOf<OrderCreated>, OrderSummaryPerspective>();
 services.AddScoped<IPerspectiveOf<OrderCreated>, CustomerStatisticsPerspective>();
 services.AddScoped<IPerspectiveOf<OrderCreated>, InventoryPerspective>();
@@ -597,7 +597,7 @@ services.AddScoped<IPerspectiveOf<OrderCreated>, InventoryPerspective>();
 
 Generated registration uses **no reflection**:
 
-```csharp
+```csharp{title="Zero Reflection Guarantee" description="Generated registration uses no reflection:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"]}
 // ✅ Direct type registration (AOT-compatible)
 services.AddScoped<IPerspectiveOf<OrderCreated>, OrderSummaryPerspective>();
 
@@ -609,7 +609,7 @@ services.AddScoped(perspectiveType, implementationType);
 
 ### Native AOT Verification
 
-```xml
+```xml{title="Native AOT Verification" description="Demonstrates native AOT Verification" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Native", "AOT"]}
 <PropertyGroup>
   <PublishAot>true</PublishAot>
 </PropertyGroup>
@@ -662,7 +662,7 @@ Generating native code
 3. Event type mismatch (spelling, namespace)
 
 **Solution**:
-```csharp
+```csharp{title="Problem: Perspective Not Invoked" description="Demonstrates problem: Perspective Not Invoked" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Perspective"]}
 // ✅ Correct interface implementation
 public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
     public async Task UpdateAsync(OrderCreated @event, CancellationToken ct) {
@@ -684,7 +684,7 @@ builder.Services.AddWhizbangPerspectives();  // Required!
 
 **Solution**: Use `IWorkCoordinator.ProcessWorkBatchAsync` with perspective checkpoint tracking:
 
-```csharp
+```csharp{title="Problem: Duplicate Perspective Updates" description="Solution: Use `IWorkCoordinator." category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Problem:", "Duplicate"]}
 await _coordinator.ProcessWorkBatchAsync(
     /* ... */,
     perspectiveCompletions: new[] {
@@ -708,7 +708,7 @@ await _coordinator.ProcessWorkBatchAsync(
 2. Perspectives are abstract classes (can't be instantiated)
 
 **Solution**:
-```csharp
+```csharp{title="Problem: Generator Doesn't Find Perspectives" description="Demonstrates problem: Generator Doesn't Find Perspectives" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Problem:", "Generator"]}
 // ✅ Concrete class
 public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
     // Implementation

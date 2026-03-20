@@ -40,7 +40,7 @@ With `IExecutionStrategy` lifecycle:
 ## IExecutionStrategy Interface
 
 **IExecutionStrategy.cs**:
-```csharp
+```csharp{title="IExecutionStrategy Interface" description="**IExecutionStrategy." category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "IExecutionStrategy", "Interface"]}
 /// <summary>
 /// Defines a strategy for executing message handlers.
 /// Implementations control ordering, concurrency, and lifecycle.
@@ -176,7 +176,7 @@ sequenceDiagram
 ### Execution Strategy Responsibilities
 
 **Example: SerialExecutionStrategy**:
-```csharp
+```csharp{title="Execution Strategy Responsibilities" description="Example: SerialExecutionStrategy:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"]}
 public class SerialExecutionStrategy : IExecutionStrategy {
   private Channel<WorkItem>? _channel;
   private Task? _worker;
@@ -211,7 +211,7 @@ public class SerialExecutionStrategy : IExecutionStrategy {
 ### BackgroundService Integration
 
 **PerspectiveWorker (BackgroundService)**:
-```csharp
+```csharp{title="BackgroundService Integration" description="PerspectiveWorker (BackgroundService):" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "BackgroundService", "Integration"]}
 public class PerspectiveWorker : BackgroundService {
   protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
     _logger.LogInformation(
@@ -255,7 +255,7 @@ public class PerspectiveWorker : BackgroundService {
 ### Execution Strategy Responsibilities
 
 **Example: SerialExecutionStrategy**:
-```csharp
+```csharp{title="Execution Strategy Responsibilities (2)" description="Example: SerialExecutionStrategy:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Execution", "Strategy"]}
 public async Task StopAsync(CancellationToken ct = default) {
   // 1. Stop accepting new work
   _channel?.Writer.Complete();
@@ -280,7 +280,7 @@ public async Task StopAsync(CancellationToken ct = default) {
 ### BackgroundService Integration
 
 **PerspectiveWorker**:
-```csharp
+```csharp{title="BackgroundService Integration (2)" description="PerspectiveWorker:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "BackgroundService", "Integration"]}
 protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
   while (!stoppingToken.IsCancellationRequested) {
     try {
@@ -324,7 +324,7 @@ t=250ms:  StopAsync() returns
 ### Execution Strategy Responsibilities
 
 **Example: SerialExecutionStrategy**:
-```csharp
+```csharp{title="Execution Strategy Responsibilities (3)" description="Example: SerialExecutionStrategy:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"]}
 public async Task DrainAsync(CancellationToken ct = default) {
   // 1. Wait for background worker to complete
   if (_worker != null) {
@@ -356,7 +356,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 ### Application Integration
 
 **ASP.NET Core Program.cs**:
-```csharp
+```csharp{title="Application Integration" description="Demonstrates application Integration" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Application", "Integration"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure services
@@ -401,7 +401,7 @@ Workers use `IDatabaseReadinessCheck` to coordinate startup with database availa
 ### Why Database Readiness Matters
 
 **Without readiness checks**:
-```csharp
+```csharp{title="Why Database Readiness Matters" description="Without readiness checks:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"]}
 // ❌ Worker starts before database is ready
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
@@ -419,7 +419,7 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 ```
 
 **With readiness checks**:
-```csharp
+```csharp{title="Why Database Readiness Matters (2)" description="With readiness checks:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"]}
 // ✅ Worker waits for database before processing
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
@@ -445,7 +445,7 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 ### Implementation Example
 
 **PostgresDatabaseReadinessCheck**:
-```csharp
+```csharp{title="Implementation Example" description="PostgresDatabaseReadinessCheck:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Implementation", "Example"]}
 public class PostgresDatabaseReadinessCheck : IDatabaseReadinessCheck {
   private readonly IDbConnectionFactory _connectionFactory;
   private readonly ILogger<PostgresDatabaseReadinessCheck> _logger;
@@ -498,7 +498,7 @@ See [Database Readiness](database-readiness.md) for full details.
 ### DO ✅
 
 **1. Complete Current Batch**:
-```csharp
+```csharp{title="DO ✅" description="Demonstrates dO ✅" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers"]}
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
     var workBatch = await GetWorkBatchAsync(ct);
@@ -520,7 +520,7 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 ```
 
 **2. Set Reasonable Drain Timeout**:
-```csharp
+```csharp{title="DO ✅ (2)" description="Demonstrates dO ✅" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers"]}
 public async Task DrainAsync(CancellationToken ct = default) {
   var timeout = TimeSpan.FromSeconds(30);  // ✅ 30 seconds max
 
@@ -533,7 +533,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 ```
 
 **3. Use Shutdown Token for New Work**:
-```csharp
+```csharp{title="DO ✅ (3)" description="Demonstrates dO ✅" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers"]}
 public ValueTask<TResult> ExecuteAsync<TResult>(
   IMessageEnvelope envelope,
   Func<IMessageEnvelope, PolicyContext, ValueTask<TResult>> handler,
@@ -552,7 +552,7 @@ public ValueTask<TResult> ExecuteAsync<TResult>(
 ### DON'T ❌
 
 **1. Don't Abandon In-Flight Work**:
-```csharp
+```csharp{title="DON'T ❌" description="Demonstrates dON'T ❌" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "DON'T"]}
 // ❌ BAD: Immediately exit on cancellation
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
@@ -570,7 +570,7 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 ```
 
 **2. Don't Block Shutdown Indefinitely**:
-```csharp
+```csharp{title="DON'T ❌ (2)" description="Demonstrates dON'T ❌" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "DON'T"]}
 // ❌ BAD: No timeout on drain
 public async Task DrainAsync(CancellationToken ct = default) {
   await _worker;  // ❌ Could wait forever if worker is stuck
@@ -578,7 +578,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 ```
 
 **3. Don't Throw on Shutdown**:
-```csharp
+```csharp{title="DON'T ❌ (3)" description="Demonstrates dON'T ❌" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "DON'T"]}
 // ❌ BAD: Throwing exceptions during shutdown
 public async Task StopAsync(CancellationToken ct = default) {
   if (_worker == null) {
@@ -605,7 +605,7 @@ public async Task StopAsync(CancellationToken ct = default) {
 
 ### Logging Startup
 
-```csharp
+```csharp{title="Logging Startup" description="Demonstrates logging Startup" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Logging", "Startup"]}
 public async Task StartAsync(CancellationToken ct = default) {
   _logger.LogInformation(
     "Starting {StrategyName} execution strategy",
@@ -623,7 +623,7 @@ public async Task StartAsync(CancellationToken ct = default) {
 
 ### Logging Shutdown
 
-```csharp
+```csharp{title="Logging Shutdown" description="Demonstrates logging Shutdown" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Logging", "Shutdown"]}
 public async Task StopAsync(CancellationToken ct = default) {
   _logger.LogInformation(
     "{StrategyName} stopping - no new work will be accepted",
@@ -652,7 +652,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 ### Metrics
 
 **Track shutdown duration**:
-```csharp
+```csharp{title="Metrics" description="Track shutdown duration:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Metrics"]}
 private readonly Stopwatch _shutdownTimer = new();
 
 public async Task StopAsync(CancellationToken ct = default) {
@@ -677,7 +677,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 
 ### Testing StartAsync
 
-```csharp
+```csharp{title="Testing StartAsync" description="Demonstrates testing StartAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "StartAsync"]}
 [Test]
 public async Task StartAsync_ShouldBeIdempotentAsync() {
   // Arrange
@@ -694,7 +694,7 @@ public async Task StartAsync_ShouldBeIdempotentAsync() {
 
 ### Testing StopAsync
 
-```csharp
+```csharp{title="Testing StopAsync" description="Demonstrates testing StopAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "StopAsync"]}
 [Test]
 public async Task StopAsync_ShouldPreventNewExecutionsAsync() {
   // Arrange
@@ -713,7 +713,7 @@ public async Task StopAsync_ShouldPreventNewExecutionsAsync() {
 
 ### Testing DrainAsync
 
-```csharp
+```csharp{title="Testing DrainAsync" description="Demonstrates testing DrainAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "DrainAsync"]}
 [Test]
 public async Task DrainAsync_ShouldWaitForPendingWorkAsync() {
   // Arrange
@@ -748,7 +748,7 @@ public async Task DrainAsync_ShouldWaitForPendingWorkAsync() {
 **Problem**: Worker needs database migrations before starting.
 
 **Solution**:
-```csharp
+```csharp{title="Pattern 1: Initialization Dependencies" description="Demonstrates pattern 1: Initialization Dependencies" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Pattern", "Initialization"]}
 public class PerspectiveWorker : BackgroundService {
   private readonly IDatabaseReadinessCheck _dbCheck;
 
@@ -774,7 +774,7 @@ public class PerspectiveWorker : BackgroundService {
 **Problem**: Need to drain work from multiple channels.
 
 **Solution**:
-```csharp
+```csharp{title="Pattern 2: Multi-Phase Shutdown" description="Demonstrates pattern 2: Multi-Phase Shutdown" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Pattern", "Multi-Phase"]}
 public async Task DrainAsync(CancellationToken ct = default) {
   // Phase 1: Drain primary work queue
   _primaryChannel.Writer.Complete();
@@ -793,7 +793,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 **Problem**: Expose readiness to container orchestrator (Kubernetes).
 
 **Solution**:
-```csharp
+```csharp{title="Pattern 3: Startup Health Checks" description="Demonstrates pattern 3: Startup Health Checks" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Pattern", "Startup"]}
 // ASP.NET Core health checks
 builder.Services.AddHealthChecks()
   .AddCheck<DatabaseReadinessHealthCheck>("database")
@@ -813,7 +813,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions {
 **Symptoms**: Exceptions on startup, "connection refused" errors.
 
 **Solution**: Implement `IDatabaseReadinessCheck` and poll until ready:
-```csharp
+```csharp{title="Problem: Worker Starts Before Database Ready" description="Solution: Implement IDatabaseReadinessCheck and poll until ready:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Worker"]}
 var isDatabaseReady = await _databaseReadinessCheck.IsReadyAsync(ct);
 if (!isDatabaseReady) {
   await Task.Delay(_pollingInterval, ct);
@@ -831,7 +831,7 @@ if (!isDatabaseReady) {
 3. Deadlock in work processing
 
 **Solution**: Add timeout to drain:
-```csharp
+```csharp{title="Problem: Shutdown Hangs Indefinitely" description="Solution: Add timeout to drain:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Shutdown"]}
 public async Task DrainAsync(CancellationToken ct = default) {
   try {
     await _worker.WaitAsync(TimeSpan.FromSeconds(30), ct);
@@ -851,7 +851,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 3. `DrainAsync()` not awaited
 
 **Solution**: Complete current batch before exiting:
-```csharp
+```csharp{title="Problem: Work Abandoned on Shutdown" description="Solution: Complete current batch before exiting:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Problem:", "Work"]}
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
     var batch = await GetWorkBatchAsync(ct);

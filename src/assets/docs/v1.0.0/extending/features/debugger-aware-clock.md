@@ -20,7 +20,7 @@ Whizbang provides a central clock service that tracks "active" time - time when 
 
 ## The Problem
 
-```csharp
+```csharp{title="The Problem" description="Demonstrates the Problem" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Problem"]}
 // Traditional timeout - triggers during debugging!
 var stopwatch = Stopwatch.StartNew();
 await DoWorkAsync();  // You hit a breakpoint here, examine variables for 30 seconds...
@@ -31,7 +31,7 @@ if (stopwatch.Elapsed > TimeSpan.FromSeconds(5)) {
 
 ## The Solution
 
-```csharp
+```csharp{title="The Solution" description="Demonstrates the Solution" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Solution"]}
 // Debugger-aware timeout - ignores breakpoint time
 using var clock = new DebuggerAwareClock();
 var stopwatch = clock.StartNew();
@@ -47,7 +47,7 @@ if (stopwatch.HasTimedOut(TimeSpan.FromSeconds(5))) {
 
 The main clock service interface that creates stopwatches and tracks pause state.
 
-```csharp
+```csharp{title="IDebuggerAwareClock" description="The main clock service interface that creates stopwatches and tracks pause state." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "IDebuggerAwareClock", "Idebugger-aware-clock"]}
 public interface IDebuggerAwareClock : IDisposable {
   // Current detection mode
   DebuggerDetectionMode Mode { get; }
@@ -70,7 +70,7 @@ public interface IDebuggerAwareClock : IDisposable {
 
 A stopwatch that distinguishes between active execution time and frozen/paused time.
 
-```csharp
+```csharp{title="IActiveStopwatch" description="A stopwatch that distinguishes between active execution time and frozen/paused time." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "IActiveStopwatch", "Iactive-stopwatch"]}
 public interface IActiveStopwatch {
   // Time spent actually executing (excludes frozen periods)
   TimeSpan ActiveElapsed { get; }
@@ -93,7 +93,7 @@ public interface IActiveStopwatch {
 
 Configurable detection modes that trade off between accuracy and performance.
 
-```csharp
+```csharp{title="DebuggerDetectionMode" description="Configurable detection modes that trade off between accuracy and performance." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "DebuggerDetectionMode", "Debugger-detection-mode"]}
 public enum DebuggerDetectionMode {
   // Always use wall clock time (fastest, no detection)
   Disabled,
@@ -124,7 +124,7 @@ public enum DebuggerDetectionMode {
 
 Configuration for the clock service.
 
-```csharp
+```csharp{title="DebuggerAwareClockOptions" description="Configuration for the clock service." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "DebuggerAwareClockOptions", "Debugger-aware-clock-options"]}
 public class DebuggerAwareClockOptions {
   // Detection mode (default: Auto)
   public DebuggerDetectionMode Mode { get; set; } = DebuggerDetectionMode.Auto;
@@ -142,7 +142,7 @@ public class DebuggerAwareClockOptions {
 
 The default implementation of `IDebuggerAwareClock`.
 
-```csharp
+```csharp{title="DebuggerAwareClock" description="The default implementation of IDebuggerAwareClock." category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "DebuggerAwareClock", "Debugger-aware-clock"]}
 // Default options (Auto mode)
 using var clock = new DebuggerAwareClock();
 
@@ -158,7 +158,7 @@ using var clock = new DebuggerAwareClock(new DebuggerAwareClockOptions {
 
 ### Basic Timeout Check
 
-```csharp
+```csharp{title="Basic Timeout Check" description="Demonstrates basic Timeout Check" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Basic", "Timeout"]}
 public class WorkCoordinator {
   private readonly IDebuggerAwareClock _clock;
 
@@ -184,7 +184,7 @@ public class WorkCoordinator {
 
 ### Monitoring Pause State
 
-```csharp
+```csharp{title="Monitoring Pause State" description="Demonstrates monitoring Pause State" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Monitoring", "Pause"]}
 // Subscribe to pause/resume events (useful for VS Code extension)
 using var subscription = clock.OnPauseStateChanged(isPaused => {
   if (isPaused) {
@@ -197,7 +197,7 @@ using var subscription = clock.OnPauseStateChanged(isPaused => {
 
 ### Performance Metrics
 
-```csharp
+```csharp{title="Performance Metrics" description="Demonstrates performance Metrics" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "Performance", "Metrics"]}
 var stopwatch = clock.StartNew();
 await DoWorkAsync();
 stopwatch.Halt();
@@ -216,7 +216,7 @@ Console.WriteLine($"Frozen time: {stopwatch.FrozenTime}");
 
 Whizbang registers `IDebuggerAwareClock` as a singleton:
 
-```csharp
+```csharp{title="Dependency Injection" description="Whizbang registers IDebuggerAwareClock as a singleton:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Dependency", "Injection"]}
 builder.Services.AddWhizbang();
 
 // Inject where needed
@@ -231,7 +231,7 @@ public class MyService {
 
 ### Custom Configuration
 
-```csharp
+```csharp{title="Custom Configuration" description="Demonstrates custom Configuration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Custom", "Configuration"]}
 builder.Services.AddWhizbang(options => {
   options.ConfigureDebuggerAwareClock(clockOptions => {
     clockOptions.Mode = DebuggerDetectionMode.CpuTimeSampling;
@@ -262,7 +262,7 @@ This works even when the debugger is not attached, detecting external pauses.
 
 For VS Code extension integration, the clock can wait for external signals:
 
-```csharp
+```csharp{title="External Hook" description="For VS Code extension integration, the clock can wait for external signals:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "External", "Hook"]}
 // VS Code extension signals pause via IPC
 clock.SignalPause();  // When breakpoint hit
 clock.SignalResume(); // When continuing
@@ -292,7 +292,7 @@ The debugger-aware clock is used throughout Whizbang:
 
 For unit tests, you can control the clock behavior:
 
-```csharp
+```csharp{title="Testing" description="For unit tests, you can control the clock behavior:" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "Testing"]}
 [Test]
 public async Task WorkCoordinator_Timeout_UsesActiveTimeAsync() {
   // Arrange

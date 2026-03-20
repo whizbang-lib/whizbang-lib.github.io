@@ -22,7 +22,7 @@ When you dispatch a command that publishes events, the perspective may not be im
 
 `SyncInquiry` is a query object that checks whether specific events have been processed by a perspective. Pass it to the work coordinator's batch function to query the `wh_perspective_events` table.
 
-```csharp
+```csharp{title="SyncInquiry" description="SyncInquiry is a query object that checks whether specific events have been processed by a perspective." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "SyncInquiry"]}
 public sealed record SyncInquiry {
     // Required: Stream to check
     public required Guid StreamId { get; init; }
@@ -52,7 +52,7 @@ public sealed record SyncInquiry {
 
 ### Creating a Sync Inquiry
 
-```csharp
+```csharp{title="Creating a Sync Inquiry" description="Demonstrates creating a Sync Inquiry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Creating", "Sync"]}
 // Check if specific events have been processed
 var inquiry = new SyncInquiry {
     StreamId = orderId,
@@ -72,7 +72,7 @@ var inquiry = new SyncInquiry {
 
 `SyncInquiryResult` contains the result of a sync inquiry, indicating how many events are pending and whether synchronization is complete.
 
-```csharp
+```csharp{title="SyncInquiryResult" description="SyncInquiryResult contains the result of a sync inquiry, indicating how many events are pending and whether" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "SyncInquiryResult"]}
 public sealed record SyncInquiryResult {
     // Correlation ID from the inquiry
     public required Guid InquiryId { get; init; }
@@ -102,7 +102,7 @@ public sealed record SyncInquiryResult {
 
 ### Checking Sync Status
 
-```csharp
+```csharp{title="Checking Sync Status" description="Demonstrates checking Sync Status" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Checking", "Sync"]}
 var result = await workCoordinator.CheckSyncAsync(inquiry);
 
 if (result.IsFullySynced) {
@@ -123,7 +123,7 @@ The `IsFullySynced` property uses different logic depending on whether explicit 
 
 When `ExpectedEventIds` is set, `IsFullySynced` returns `true` only when ALL expected events are found in `ProcessedEventIds`:
 
-```csharp
+```csharp{title="With Explicit Event Tracking" description="When ExpectedEventIds is set, IsFullySynced returns true only when ALL expected events are found in ProcessedEventIds:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Explicit", "Event"]}
 // Explicit tracking prevents false positives
 var inquiry = new SyncInquiry {
     StreamId = orderId,
@@ -141,7 +141,7 @@ This prevents the false positive where `PendingCount == 0` because events haven'
 
 When `ExpectedEventIds` is null or empty, falls back to simple check:
 
-```csharp
+```csharp{title="Without Explicit Tracking (Legacy)" description="When ExpectedEventIds is null or empty, falls back to simple check:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Without", "Explicit"]}
 // Legacy behavior
 public bool IsFullySynced => PendingCount == 0;
 ```
@@ -150,7 +150,7 @@ public bool IsFullySynced => PendingCount == 0;
 
 The `PerspectiveSyncAwaiter` provides a high-level API for waiting on perspective sync:
 
-```csharp
+```csharp{title="Using PerspectiveSyncAwaiter" description="The PerspectiveSyncAwaiter provides a high-level API for waiting on perspective sync:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Using", "PerspectiveSyncAwaiter"]}
 // Wait for perspective to catch up with tracked events
 await syncAwaiter.WaitForPerspectiveAsync<OrderPerspective>(
     orderId,
@@ -163,7 +163,7 @@ var order = await lens.GetAsync<OrderPerspective>(orderId);
 
 ### With Event Tracking
 
-```csharp
+```csharp{title="With Event Tracking" description="Demonstrates with Event Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Event", "Tracking"]}
 // Track events during command handling
 using var tracker = scopedEventTracker.BeginTracking();
 
@@ -181,7 +181,7 @@ await syncAwaiter.WaitForPerspectiveAsync<OrderPerspective>(
 
 For scenarios where you need to sync across different scopes or requests (e.g., between API calls), use the `DiscoverPendingFromOutbox` option:
 
-```csharp
+```csharp{title="Cross-Scope Sync" description="For scenarios where you need to sync across different scopes or requests (e." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Cross-Scope", "Sync"]}
 var inquiry = new SyncInquiry {
     StreamId = orderId,
     PerspectiveName = "OrderPerspective",
@@ -196,7 +196,7 @@ This queries the outbox to find events that haven't been processed yet, enabling
 
 ### Read-Your-Writes Consistency
 
-```csharp
+```csharp{title="Read-Your-Writes Consistency" description="Demonstrates read-Your-Writes Consistency" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Read-Your-Writes", "Consistency"]}
 public async Task<OrderDto> CreateOrderAsync(CreateOrderRequest request) {
     using var tracker = _eventTracker.BeginTracking();
 
@@ -218,7 +218,7 @@ public async Task<OrderDto> CreateOrderAsync(CreateOrderRequest request) {
 
 ### Timeout Handling
 
-```csharp
+```csharp{title="Timeout Handling" description="Demonstrates timeout Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Timeout", "Handling"]}
 try {
     await syncAwaiter.WaitForPerspectiveAsync<OrderPerspective>(
         orderId,
@@ -235,7 +235,7 @@ catch (TimeoutException) {
 
 ### Conditional Sync
 
-```csharp
+```csharp{title="Conditional Sync" description="Demonstrates conditional Sync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Conditional", "Sync"]}
 // Only sync for specific operations
 if (request.RequiresFreshData) {
     await syncAwaiter.WaitForPerspectiveAsync<OrderPerspective>(orderId);
@@ -256,7 +256,7 @@ return await lens.GetAsync<OrderDto>(orderId);
 
 Enable detailed logging for sync operations:
 
-```csharp
+```csharp{title="Debugging" description="Enable detailed logging for sync operations:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Debugging"]}
 var inquiry = new SyncInquiry {
     StreamId = orderId,
     PerspectiveName = "OrderPerspective",

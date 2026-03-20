@@ -51,7 +51,7 @@ When Whizbang creates perspective tables, it registers metadata about each persp
 
 ### Registry Table Schema
 
-```sql
+```sql{title="Registry Table Schema" description="Demonstrates registry Table Schema" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Registry", "Table"]}
 CREATE TABLE wh_perspective_registry (
   id UUID PRIMARY KEY,
   clr_type_name VARCHAR(500) NOT NULL,    -- "MyApp.OrderProjection, MyApp"
@@ -78,7 +78,7 @@ When your application starts, the reconciliation function compares registered pe
 
 ### Example Output
 
-```csharp
+```csharp{title="Example Output" description="Demonstrates example Output" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Example", "Output"]}
 // Startup logs show reconciliation results
 [INF] Perspective registry reconciliation complete:
 [INF]   - inserted: MyApp.NewOrderProjection -> wh_per_new_order
@@ -105,7 +105,7 @@ When drift is detected, Whizbang logs a warning. You can then:
 2. **Recreate the table** if the changes are breaking
 3. **Ignore** if the changes are backward-compatible
 
-```csharp
+```csharp{title="Handling Drift" description="Demonstrates handling Drift" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Handling", "Drift"]}
 // Configure drift handling behavior
 services.AddWhizbang(options => {
   options.Perspectives.OnSchemaDrift = SchemaDriftBehavior.LogWarning;
@@ -119,7 +119,7 @@ When you rename a perspective class or change its table name, the registry autom
 
 ### Before
 
-```csharp
+```csharp{title="Before" description="Demonstrates before" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Before"]}
 [Perspective("customer_dto")]  // Old name
 public class CustomerDto : IPerspectiveFor<CustomerData, CustomerCreatedEvent> {
   // ...
@@ -128,7 +128,7 @@ public class CustomerDto : IPerspectiveFor<CustomerData, CustomerCreatedEvent> {
 
 ### After
 
-```csharp
+```csharp{title="After" description="Demonstrates after" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "After"]}
 [Perspective("customer")]  // New name (or rely on suffix stripping)
 public class CustomerDto : IPerspectiveFor<CustomerData, CustomerCreatedEvent> {
   // ...
@@ -149,7 +149,7 @@ This happens automatically - no manual migration required.
 
 In microservice architectures, multiple services may define perspectives. The registry tracks which service owns each perspective via the `service_name` column.
 
-```csharp
+```csharp{title="Multi-Service Scenarios" description="In microservice architectures, multiple services may define perspectives." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Multi-Service", "Scenarios"]}
 // Service A: OrderService
 public class OrderProjection : IPerspectiveFor<OrderData, OrderCreatedEvent> { }
 // Registered as: OrderService.OrderProjection, wh_per_order, "OrderService"
@@ -165,7 +165,7 @@ The unique constraint `(clr_type_name, service_name)` allows the same type name 
 
 The registry stores the full schema definition as JSON for debugging and migration tooling:
 
-```json
+```json{title="Schema JSON Format" description="The registry stores the full schema definition as JSON for debugging and migration tooling:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Schema", "JSON"]}
 {
   "columns": [
     {"name": "id", "type": "uuid", "nullable": false, "isPrimaryKey": true},
@@ -193,7 +193,7 @@ This ensures consistent hashes across deployments regardless of serialization or
 
 You can query the registry directly for debugging:
 
-```sql
+```sql{title="Querying the Registry" description="You can query the registry directly for debugging:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Querying", "Registry"]}
 -- All perspectives for a service
 SELECT clr_type_name, table_name, schema_hash, updated_at
 FROM wh_perspective_registry
@@ -215,7 +215,7 @@ WHERE updated_at > NOW() - INTERVAL '1 hour';
 
 The registry is automatically created as part of the Whizbang infrastructure schema. No additional configuration is required.
 
-```csharp
+```csharp{title="Configuration" description="The registry is automatically created as part of the Whizbang infrastructure schema." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Configuration"]}
 // Registry is included in standard initialization
 await dbContext.EnsureWhizbangDatabaseInitializedAsync();
 ```

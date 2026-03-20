@@ -40,7 +40,7 @@ Specify a valid positive integer for the dimensions:
 
 ### Before (causes WHIZ802)
 
-```csharp
+```csharp{title="Before (causes WHIZ802)" description="Demonstrates before (causes WHIZ802)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
 public record ProductDto {
   [StreamKey]
   public Guid ProductId { get; init; }
@@ -53,7 +53,7 @@ public record ProductDto {
 
 ### After (error resolved)
 
-```csharp
+```csharp{title="After (error resolved)" description="Demonstrates after (error resolved)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Error"]}
 public record ProductDto {
   [StreamKey]
   public Guid ProductId { get; init; }
@@ -86,7 +86,7 @@ The dimensions parameter:
 
 ## Example: Multiple Embedding Types
 
-```csharp
+```csharp{title="Example: Multiple Embedding Types" description="Demonstrates example: Multiple Embedding Types" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Multiple"]}
 public record DocumentDto {
   [StreamKey]
   public Guid DocumentId { get; init; }
@@ -106,7 +106,7 @@ This is an error diagnostic and should not be suppressed. Fix the dimensions val
 
 If you have a legitimate need:
 
-```csharp
+```csharp{title="Suppressing This Diagnostic" description="If you have a legitimate need:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
 #pragma warning disable WHIZ802
 [VectorField(0)]  // Not recommended
 public float[]? TestEmbedding { get; init; }

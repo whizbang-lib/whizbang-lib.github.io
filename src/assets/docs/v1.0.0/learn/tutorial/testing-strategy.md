@@ -49,7 +49,7 @@ This is **Part 8** of the ECommerce Tutorial. Complete [Analytics Service](analy
 
 **ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs**:
 
-```csharp
+```csharp{title="Testing Receptors" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Receptors"]}
 using TUnit.Core;
 using TUnit.Assertions;
 using ECommerce.OrderService.API.Receptors;
@@ -160,7 +160,7 @@ public class CreateOrderReceptorTests {
 
 **ECommerce.CustomerService.Tests/OrderSummaryPerspectiveTests.cs**:
 
-```csharp
+```csharp{title="Testing Perspectives" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Perspectives"]}
 using TUnit.Core;
 using TUnit.Assertions;
 using ECommerce.CustomerService.API.Perspectives;
@@ -258,7 +258,7 @@ public class OrderSummaryPerspectiveTests {
 
 **ECommerce.OrderService.IntegrationTests/CreateOrderIntegrationTests.cs**:
 
-```csharp
+```csharp{title="Testing with Test Database" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Test"]}
 using TUnit.Core;
 using TUnit.Assertions;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -370,7 +370,7 @@ public class CreateOrderIntegrationTests : IAsyncDisposable {
 
 **ECommerce.IntegrationTests/OrderToPaymentFlowTests.cs**:
 
-```csharp
+```csharp{title="Testing Event Flow" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Event"]}
 using TUnit.Core;
 using TUnit.Assertions;
 using Whizbang.Testing;
@@ -432,7 +432,7 @@ public class OrderToPaymentFlowTests {
 
 **ECommerce.E2ETests/FullOrderLifecycleTests.cs**:
 
-```csharp
+```csharp{title="End-to-End Tests" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "End-to-End", "Tests"]}
 using TUnit.Core;
 using TUnit.Assertions;
 using Testcontainers.PostgreSql;
@@ -528,7 +528,7 @@ public class FullOrderLifecycleTests : IAsyncDisposable {
 
 **ECommerce.Testing/Fixtures/OrderFixture.cs**:
 
-```csharp
+```csharp{title="Test Fixtures" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Test", "Fixtures"]}
 using Bogus;
 using ECommerce.Contracts.Commands;
 using ECommerce.Contracts.Events;
@@ -567,7 +567,7 @@ public static class OrderFixture {
 
 **Usage**:
 
-```csharp
+```csharp{title="Test Fixtures (2)" description="Demonstrates test Fixtures" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Test", "Fixtures"]}
 [Test]
 public async Task SomeTest_WithRandomData_WorksCorrectlyAsync() {
   // Arrange
@@ -587,7 +587,7 @@ public async Task SomeTest_WithRandomData_WorksCorrectlyAsync() {
 
 **ECommerce.Testing/Mocks/MockPaymentGateway.cs**:
 
-```csharp
+```csharp{title="Mocking External Services" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Mocking", "External"]}
 using ECommerce.PaymentWorker.Services;
 
 namespace ECommerce.Testing.Mocks;
@@ -649,7 +649,7 @@ public class MockPaymentGateway : IPaymentGateway {
 
 ### Running Tests with Coverage
 
-```bash
+```bash{title="Running Tests with Coverage" description="Demonstrates running Tests with Coverage" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Running", "Tests"]}
 cd ECommerce.OrderService.Tests
 dotnet run -- --coverage --coverage-output-format cobertura --coverage-output coverage.xml
 ```
