@@ -178,7 +178,8 @@ interface NavTreeNode {
     .sidebar-header-content {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center;
+      position: relative;
     }
 
     .sidebar-close-btn {
@@ -187,6 +188,8 @@ interface NavTreeNode {
       width: 2.5rem;
       height: 2.5rem;
       flex-shrink: 0;
+      position: absolute;
+      right: 0;
     }
 
     .sidebar-close-btn:hover {

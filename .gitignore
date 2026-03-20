@@ -46,3 +46,6 @@ Thumbs.db
 .playwright-mcp/
 claude-scratch/
 .vscode/
+
+# AI build-time cache
+src/scripts/.ai-cache.json
