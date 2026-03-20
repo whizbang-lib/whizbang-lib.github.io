@@ -49,3 +49,9 @@ claude-scratch/
 
 # AI build-time cache
 src/scripts/.ai-cache.json
+
+# Generated at build time by prebuild scripts
+src/assets/search-index.json
+src/assets/enhanced-search-index.json
+src/assets/docs-list.json
+src/assets/sitemap.xml
