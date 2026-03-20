@@ -53,7 +53,7 @@ For built-in transports, see [Azure Service Bus](../../messaging/transports/azur
 
 ### ITransport Interface
 
-```csharp
+```csharp{title="ITransport Interface" description="Demonstrates iTransport Interface" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "ITransport", "Interface"]}
 namespace Whizbang.Core.Transports;
 
 public interface ITransport {
@@ -106,7 +106,7 @@ public interface ITransport {
 
 ### Transport Capabilities
 
-```csharp
+```csharp{title="Transport Capabilities" description="Demonstrates transport Capabilities" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Transport", "Capabilities"]}
 [Flags]
 public enum TransportCapabilities {
   None = 0,
@@ -138,7 +138,7 @@ public enum TransportCapabilities {
 
 **Use Case**: Call remote HTTP APIs using Whizbang message patterns.
 
-```csharp
+```csharp{title="Pattern 1: HTTP Client Transport" description="Use Case: Call remote HTTP APIs using Whizbang message patterns." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "HTTP"]}
 using Whizbang.Core;
 using Whizbang.Core.Transports;
 using System.Net.Http.Json;
@@ -239,7 +239,7 @@ public class HttpTransport : ITransport {
 ```
 
 **Registration**:
-```csharp
+```csharp{title="Pattern 1: HTTP Client Transport (2)" description="Registration:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "HTTP"]}
 builder.Services.AddHttpClient<HttpTransport>(client => {
   client.BaseAddress = new Uri("https://api.example.com");
   client.Timeout = TimeSpan.FromSeconds(30);
@@ -249,7 +249,7 @@ builder.Services.AddSingleton<ITransport, HttpTransport>();
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 1: HTTP Client Transport (3)" description="Demonstrates pattern 1: HTTP Client Transport" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "HTTP"]}
 var request = MessageEnvelope.Create(
   messageId: MessageId.New(),
   correlationId: CorrelationId.New(),
@@ -270,7 +270,7 @@ var response = await transport.SendAsync<CreateOrder, OrderCreated>(request, des
 
 **Use Case**: High-performance RPC with streaming support.
 
-```csharp
+```csharp{title="Pattern 2: gRPC Channel Transport" description="Use Case: High-performance RPC with streaming support." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "GRPC"]}
 using Whizbang.Core;
 using Whizbang.Core.Transports;
 using Grpc.Net.Client;
@@ -379,7 +379,7 @@ public class GrpcTransport : ITransport {
 
 **Use Case**: High-throughput event streaming with ordering and persistence.
 
-```csharp
+```csharp{title="Pattern 3: Kafka Producer/Consumer Transport" description="Use Case: High-throughput event streaming with ordering and persistence." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Kafka"]}
 using Whizbang.Core;
 using Whizbang.Core.Transports;
 using Confluent.Kafka;
@@ -582,7 +582,7 @@ internal class KafkaSubscription : ISubscription {
 ```
 
 **Registration**:
-```csharp
+```csharp{title="Pattern 3: Kafka Producer/Consumer Transport (2)" description="Registration:" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Kafka"]}
 var producerConfig = new ProducerConfig {
   BootstrapServers = "localhost:9092",
   Acks = Acks.All,  // Wait for all replicas
@@ -612,7 +612,7 @@ builder.Services.AddSingleton<ITransport>(sp =>
 
 ### Pattern 4: Transport with Health Checks
 
-```csharp
+```csharp{title="Pattern 4: Transport with Health Checks" description="Demonstrates pattern 4: Transport with Health Checks" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Transport"]}
 using Whizbang.Core.Transports;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -657,7 +657,7 @@ builder.Services.AddHealthChecks()
 
 ### Pattern 5: Batching Transport (High Throughput)
 
-```csharp
+```csharp{title="Pattern 5: Batching Transport (High Throughput)" description="Demonstrates pattern 5: Batching Transport (High Throughput)" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Batching"]}
 using Whizbang.Core.Transports;
 using System.Threading.Channels;
 
@@ -734,7 +734,7 @@ public class BatchingTransport : ITransport {
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 5: Batching Transport (High Throughput) (2)" description="Demonstrates pattern 5: Batching Transport (High Throughput)" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Batching"]}
 // Wrap existing transport with batching
 var kafkaTransport = new KafkaTransport(...);
 var batchingTransport = new BatchingTransport(kafkaTransport);
@@ -753,7 +753,7 @@ builder.Services.AddSingleton<ITransport>(batchingTransport);
 
 ### Testing Initialization
 
-```csharp
+```csharp{title="Testing Initialization" description="Demonstrates testing Initialization" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Initialization"]}
 public class KafkaTransportTests {
   [Test]
   public async Task InitializeAsync_ValidBroker_SucceedsAsync() {
@@ -792,7 +792,7 @@ public class KafkaTransportTests {
 
 ### Testing Publish/Subscribe
 
-```csharp
+```csharp{title="Testing Publish/Subscribe" description="Demonstrates testing Publish/Subscribe" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Publish"]}
 public class KafkaTransportIntegrationTests {
   [Test]
   public async Task PublishAndSubscribe_MessageReceivedAsync() {

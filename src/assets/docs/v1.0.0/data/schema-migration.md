@@ -6,7 +6,7 @@ Whizbang provides automatic schema management for perspective tables, with built
 
 When your application starts, Whizbang automatically creates all required infrastructure tables and perspective tables:
 
-```csharp
+```csharp{title="Automatic Schema Creation" description="When your application starts, Whizbang automatically creates all required infrastructure tables and perspective tables:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Automatic", "Schema", "Creation"]}
 // In your startup code
 await dbContext.EnsureWhizbangDatabaseInitializedAsync();
 ```
@@ -82,7 +82,7 @@ You have several options:
 
 If the changes are backward-compatible (adding nullable columns), you can proceed safely:
 
-```csharp
+```csharp{title="Option 1: Ignore (Default)" description="If the changes are backward-compatible (adding nullable columns), you can proceed safely:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Option", "Ignore", "Default"]}
 services.AddWhizbang(options => {
   options.Perspectives.OnSchemaDrift = SchemaDriftBehavior.LogWarning;
 });
@@ -92,7 +92,7 @@ services.AddWhizbang(options => {
 
 For strict environments where drift should block deployment:
 
-```csharp
+```csharp{title="Option 2: Throw Exception" description="For strict environments where drift should block deployment:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Option", "Throw", "Exception"]}
 services.AddWhizbang(options => {
   options.Perspectives.OnSchemaDrift = SchemaDriftBehavior.ThrowException;
 });
@@ -102,7 +102,7 @@ services.AddWhizbang(options => {
 
 For breaking changes, create a migration:
 
-```sql
+```sql{title="Option 3: Manual Migration" description="For breaking changes, create a migration:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Option", "Manual", "Migration"]}
 -- Add new column
 ALTER TABLE wh_per_customer
 ADD COLUMN email VARCHAR(255);
@@ -128,7 +128,7 @@ When you rename a perspective class or change its [table naming](/docs/v1.0.0/fu
 
 ### Example
 
-```csharp
+```csharp{title="Example" description="Demonstrates example" category="Implementation" difficulty="BEGINNER" tags=["Data", "Example"]}
 // Before: Table is wh_per_customer_dto
 public class CustomerDto : IPerspectiveFor<CustomerData, CustomerEvent> { }
 
@@ -138,7 +138,7 @@ public class CustomerDto : IPerspectiveFor<CustomerData, CustomerEvent> { }
 ```
 
 On deployment:
-```sql
+```sql{title="Example (2)" description="On deployment:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Example"]}
 -- Executed automatically
 ALTER TABLE wh_per_customer_dto RENAME TO wh_per_customer;
 ```
@@ -155,7 +155,7 @@ The rename operation is safe because:
 
 ### Development vs Production
 
-```csharp
+```csharp{title="Development vs Production" description="Demonstrates development vs Production" category="Implementation" difficulty="BEGINNER" tags=["Data", "Development", "Production"]}
 services.AddWhizbang(options => {
   if (env.IsDevelopment()) {
     // Recreate tables on schema change (lose data)
@@ -171,7 +171,7 @@ services.AddWhizbang(options => {
 
 Include schema validation in your deployment pipeline:
 
-```yaml
+```yaml{title="CI/CD Pipeline" description="Include schema validation in your deployment pipeline:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Pipeline"]}
 # Azure DevOps / GitHub Actions example
 - name: Validate Schema
   run: |
@@ -214,7 +214,7 @@ Migrations are applied automatically and idempotently.
 
 The registry stores full schema definitions as JSON:
 
-```json
+```json{title="Schema JSON Format" description="The registry stores full schema definitions as JSON:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Schema", "JSON", "Format"]}
 {
   "columns": [
     {
@@ -275,7 +275,7 @@ The registry stores full schema definitions as JSON:
 
 Before making breaking changes, rename the old table:
 
-```sql
+```sql{title="Preserve Old Table" description="Before making breaking changes, rename the old table:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Preserve", "Old", "Table"]}
 -- Before deployment
 ALTER TABLE wh_per_customer RENAME TO wh_per_customer_backup;
 

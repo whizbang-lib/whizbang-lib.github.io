@@ -33,7 +33,7 @@ Whizbang provides a complete foundation for building modern, scalable applicatio
 
 Every feature in Whizbang is built without runtime reflection:
 
-```csharp
+```csharp{title="Zero Reflection" description="Every feature in Whizbang is built without runtime reflection:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Zero", "Reflection"]}
 // Source generators discover this at compile time
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
@@ -59,7 +59,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 Whizbang enforces type safety at compile time:
 
-```csharp
+```csharp{title="Type-Safe Messaging" description="Whizbang enforces type safety at compile time:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Type-Safe", "Messaging"]}
 // Compiler knows CreateOrder → OrderCreated
 var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
 
@@ -75,7 +75,7 @@ Built around three core patterns:
 2. **Perspectives**: Event listeners that maintain read models
 3. **Lenses**: Query interfaces for optimized data access
 
-```csharp
+```csharp{title="Event-Driven Architecture" description="Demonstrates event-Driven Architecture" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Event-Driven", "Architecture"]}
 // Receptor: Receives command, produces event
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> { }
 
@@ -92,7 +92,7 @@ public class OrderLens : ILensQuery { }
 
 Central message router with three dispatch patterns:
 
-```csharp
+```csharp{title="Dispatcher" description="Central message router with three dispatch patterns:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Dispatcher"]}
 // SendAsync: Command dispatch with delivery receipt (can work over wire)
 var receipt = await dispatcher.SendAsync(new CreateOrder(/* ... */));
 
@@ -107,7 +107,7 @@ await dispatcher.PublishAsync(@event);
 
 Stateless message handlers:
 
-```csharp
+```csharp{title="Receptors" description="Stateless message handlers:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Receptors"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
         CreateOrder message,
@@ -134,7 +134,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 Event-driven read model updates:
 
-```csharp
+```csharp{title="Perspectives" description="Event-driven read model updates:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Perspectives"]}
 public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
     private readonly IDbConnectionFactory _db;
 
@@ -159,7 +159,7 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 
 Query-optimized read repositories:
 
-```csharp
+```csharp{title="Lenses" description="Query-optimized read repositories:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Lenses"]}
 public class OrderLens : ILensQuery {
     private readonly IDbConnectionFactory _db;
 

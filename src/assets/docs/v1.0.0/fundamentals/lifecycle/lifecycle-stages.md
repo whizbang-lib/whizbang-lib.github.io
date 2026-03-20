@@ -103,7 +103,7 @@ At each stage, **lifecycle receptors** can execute to:
 - Errors propagate to caller
 
 **Example**:
-```csharp
+```csharp{title="`ImmediateAsync`" description="Demonstrates `ImmediateAsync`" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ImmediateAsync"]}
 [FireAt(LifecycleStage.ImmediateAsync)]
 public class CommandMetricsReceptor : IReceptor<ICommand> {
     private readonly IMetricsCollector _metrics;
@@ -140,7 +140,7 @@ LocalImmediate stages are new in v1.0.0 and enable in-memory mediator-style mess
 - Errors propagate to caller
 
 **Example**:
-```csharp
+```csharp{title="`LocalImmediateInline` ⭐ **Default Stage for Local Path**" description="Demonstrates `LocalImmediateInline` ⭐ **Default Stage for Local Path**" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "LocalImmediateInline", "**Default"]}
 // Receptor WITHOUT [FireAt] fires here when dispatched locally!
 public class CreateTenantCommandHandler : IReceptor<CreateTenantCommand, TenantCreatedEvent> {
     public async ValueTask<TenantCreatedEvent> HandleAsync(CreateTenantCommand cmd, CancellationToken ct) {
@@ -171,7 +171,7 @@ await dispatcher.DispatchAsync(new CreateTenantCommand("Acme"), local: true);
 - Errors logged but don't affect caller
 
 **Example**:
-```csharp
+```csharp{title="`LocalImmediateAsync`" description="Demonstrates `LocalImmediateAsync`" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "LocalImmediateAsync"]}
 [FireAt(LifecycleStage.LocalImmediateAsync)]
 public class LocalDispatchLogger : IReceptor<ICommand> {
     public ValueTask HandleAsync(ICommand cmd, CancellationToken ct) {
@@ -415,7 +415,7 @@ Perspective lifecycle stages are new in v1.0.0 and enable deterministic test syn
 **Hook Location**: Generated perspective runner (from `PerspectiveRunnerTemplate.cs`) during event processing loop, after `Apply()` and before checkpoint save
 
 **Example**:
-```csharp
+```csharp{title="`PostPerspectiveAsync`" description="Demonstrates `PostPerspectiveAsync`" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PostPerspectiveAsync"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class PerspectiveMetricsReceptor : IReceptor<IEvent> {
     private readonly IMetricsCollector _metrics;
@@ -444,7 +444,7 @@ public class PerspectiveMetricsReceptor : IReceptor<IEvent> {
 **Hook Location**: Generated perspective runner (from `PerspectiveRunnerTemplate.cs`) during event processing loop, after `Apply()` and before checkpoint save
 
 **Example** (Test Synchronization):
-```csharp
+```csharp{title="`PostPerspectiveInline` ⭐ **Critical for Testing**" description="Example (Test Synchronization):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PostPerspectiveInline", "**Critical"]}
 [FireAt(LifecycleStage.PostPerspectiveInline)]
 public class PerspectiveCompletionReceptor<TEvent> : IReceptor<TEvent>
     where TEvent : IEvent {
@@ -526,7 +526,7 @@ Most lifecycle stages come in pairs:
 
 Use `[FireAt]` attribute for compile-time registration:
 
-```csharp
+```csharp{title="Compile-Time (Production)" description="Use [FireAt] attribute for compile-time registration:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "Compile-Time", "Production"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class MyMetricsReceptor : IReceptor<ProductCreatedEvent> {
     public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
@@ -542,7 +542,7 @@ Source generators discover and wire these automatically.
 
 Use `ILifecycleReceptorRegistry` for dynamic registration:
 
-```csharp
+```csharp{title="Runtime (Testing)" description="Use ILifecycleReceptorRegistry for dynamic registration:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Runtime", "Testing"]}
 var registry = host.Services.GetRequiredService<ILifecycleReceptorRegistry>();
 var receptor = new PerspectiveCompletionReceptor<ProductCreatedEvent>(completionSource);
 

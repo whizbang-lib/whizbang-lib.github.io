@@ -29,13 +29,13 @@ Lens Query (automatic filtering)
 
 ### 1. Register Services
 
-```csharp
+```csharp{title="Register Services" description="Demonstrates register Services" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Register", "Services"]}
 builder.Services.AddWhizbangScope();
 ```
 
 ### 2. Add Middleware
 
-```csharp
+```csharp{title="Add Middleware" description="Demonstrates add Middleware" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Add", "Middleware"]}
 app.UseAuthentication();
 app.UseWhizbangScope();  // After auth
 app.MapGraphQL();
@@ -56,7 +56,7 @@ app.MapGraphQL();
 
 ### Custom Configuration
 
-```csharp
+```csharp{title="Custom Configuration" description="Demonstrates custom Configuration" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Custom", "Configuration"]}
 builder.Services.AddWhizbangScope(options => {
     // Custom claim types
     options.TenantIdClaimType = "https://myapp.com/tenant_id";
@@ -78,7 +78,7 @@ builder.Services.AddWhizbangScope(options => {
 
 The middleware extracts scope from the request:
 
-```csharp
+```csharp{title="Scope Extraction" description="The middleware extracts scope from the request:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Scope", "Extraction"]}
 // JWT claims take priority over headers
 var tenantId = context.User?.FindFirst("tenant_id")?.Value
     ?? context.Request.Headers["X-Tenant-Id"];
@@ -88,7 +88,7 @@ var tenantId = context.User?.FindFirst("tenant_id")?.Value
 
 The scope context is populated with:
 
-```csharp
+```csharp{title="Context Population" description="The scope context is populated with:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Context", "Population"]}
 scopeContextAccessor.Current = new RequestScopeContext {
     Scope = new PerspectiveScope {
         TenantId = "tenant-123",
@@ -108,7 +108,7 @@ scopeContextAccessor.Current = new RequestScopeContext {
 
 Your lens implementation uses the scope context:
 
-```csharp
+```csharp{title="Lens Filtering" description="Your lens implementation uses the scope context:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Lens", "Filtering"]}
 public class ScopedOrderLens : IOrderLens {
     private readonly IScopeContextAccessor _scopeContextAccessor;
     private readonly DbContext _db;
@@ -143,7 +143,7 @@ public class ScopedOrderLens : IOrderLens {
 
 Each `PerspectiveRow` can have `AllowedPrincipals`:
 
-```csharp
+```csharp{title="Row-Level Security" description="Each PerspectiveRow can have AllowedPrincipals:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Row-Level", "Security"]}
 var order = new PerspectiveRow<OrderReadModel> {
     Data = orderData,
     Scope = new PerspectiveScope {
@@ -160,7 +160,7 @@ var order = new PerspectiveRow<OrderReadModel> {
 
 The lens filters using "array overlap":
 
-```sql
+```sql{title="Query Filtering" description="The lens filters using 'array overlap':" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Query", "Filtering"]}
 -- PostgreSQL example
 WHERE scope->'AllowedPrincipals' ?| ARRAY['user:user-456', 'group:sales-team']
 ```
@@ -169,7 +169,7 @@ WHERE scope->'AllowedPrincipals' ?| ARRAY['user:user-456', 'group:sales-team']
 
 ### Via IScopeContextAccessor
 
-```csharp
+```csharp{title="Via IScopeContextAccessor" description="Demonstrates via IScopeContextAccessor" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "IScopeContextAccessor"]}
 public class Query {
     public CurrentUser GetCurrentUser([Service] IScopeContextAccessor accessor) {
         var context = accessor.Current;
@@ -204,7 +204,7 @@ type ScopeInfo {
 
 Each row has a `TenantId` in its scope:
 
-```csharp
+```csharp{title="Tenant-Per-Row" description="Each row has a TenantId in its scope:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Tenant-Per-Row"]}
 [GraphQLLens(QueryName = "orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 
@@ -215,7 +215,7 @@ public interface IOrderLens : ILensQuery<OrderReadModel> { }
 
 Different databases per tenant (configured at startup):
 
-```csharp
+```csharp{title="Tenant-Per-Database" description="Different databases per tenant (configured at startup):" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Tenant-Per-Database"]}
 builder.Services.AddScoped<IOrderLens>(sp => {
     var context = sp.GetRequiredService<IScopeContextAccessor>().Current;
     var tenantId = context?.Scope.TenantId ?? "default";
@@ -228,7 +228,7 @@ builder.Services.AddScoped<IOrderLens>(sp => {
 
 ### In Resolvers
 
-```csharp
+```csharp{title="In Resolvers" description="Demonstrates in Resolvers" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Resolvers"]}
 public class Query {
     public async Task<Order?> GetOrder(
         Guid id,
@@ -249,7 +249,7 @@ public class Query {
 
 ### With Attributes
 
-```csharp
+```csharp{title="With Attributes" description="Demonstrates with Attributes" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Attributes"]}
 [RequirePermission("orders:read")]
 public IQueryable<PerspectiveRow<OrderReadModel>> GetOrders(
     [Service] IOrderLens lens) {
@@ -259,7 +259,7 @@ public IQueryable<PerspectiveRow<OrderReadModel>> GetOrders(
 
 ## Testing Scoped Queries
 
-```csharp
+```csharp{title="Testing Scoped Queries" description="Demonstrates testing Scoped Queries" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Testing", "Scoped"]}
 [Test]
 public async Task Query_FiltersByTenantAsync() {
     // Arrange

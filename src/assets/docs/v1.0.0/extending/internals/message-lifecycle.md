@@ -406,7 +406,7 @@ graph TB
 
 ### Phase 1: Validation
 
-```csharp
+```csharp{title="Phase 1: Validation" description="Demonstrates phase 1: Validation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Validation"]}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {
@@ -430,7 +430,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 ### Phase 2: Business Logic
 
-```csharp
+```csharp{title="Phase 2: Business Logic" description="Demonstrates phase 2: Business Logic" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Business"]}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {
@@ -468,7 +468,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 ### Phase 3: Event Generation
 
-```csharp
+```csharp{title="Phase 3: Event Generation" description="Demonstrates phase 3: Event Generation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Event"]}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {
@@ -500,7 +500,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 This phase is **automatic** - no receptor code needed:
 
-```csharp
+```csharp{title="Phase 4: Event Store (Automatic)" description="This phase is automatic - no receptor code needed:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Event"]}
 // Inside Dispatcher.SendAsync():
 await _workCoordinatorStrategy.QueueOutboxMessage(
     new NewOutboxMessage {
@@ -520,7 +520,7 @@ await _workCoordinatorStrategy.QueueOutboxMessage(
 
 **Automatic via `PublishAsync()`**:
 
-```csharp
+```csharp{title="Phase 5: Perspective Update" description="Automatic via PublishAsync():" category="Internals" difficulty="BEGINNER" tags=["Extending", "Internals", "Phase", "Perspective"]}
 // Inside Dispatcher after receptor returns
 if (result is not null) {
     await PublishAsync(result, cancellationToken);
@@ -535,7 +535,7 @@ if (result is not null) {
 
 **Automatic scope disposal**:
 
-```csharp
+```csharp{title="Phase 6: Completion" description="Automatic scope disposal:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Internals", "Phase", "Completion"]}
 // Inside HTTP request handler
 await using var scope = _scopeFactory.CreateAsyncScope();
 var dispatcher = scope.ServiceProvider.GetRequiredService<IDispatcher>();
@@ -558,7 +558,7 @@ var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(comman
 
 ### 1. Immediate Strategy (Lowest Latency)
 
-```csharp
+```csharp{title="Immediate Strategy (Lowest Latency)" description="Demonstrates immediate Strategy (Lowest Latency)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Internals", "Immediate", "Strategy"]}
 public class ImmediateWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
     public async Task QueueOutboxMessage(NewOutboxMessage message) {
         _pendingOutbox.Add(message);
@@ -575,7 +575,7 @@ public class ImmediateWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
 
 ### 2. Scoped Strategy (Per-Request Batching)
 
-```csharp
+```csharp{title="Scoped Strategy (Per-Request Batching)" description="Demonstrates scoped Strategy (Per-Request Batching)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Scoped", "Strategy"]}
 public class ScopedWorkCoordinatorStrategy : IWorkCoordinatorStrategy, IAsyncDisposable {
     public async Task QueueOutboxMessage(NewOutboxMessage message) {
         _pendingOutbox.Add(message);
@@ -595,7 +595,7 @@ public class ScopedWorkCoordinatorStrategy : IWorkCoordinatorStrategy, IAsyncDis
 
 ### 3. Interval Strategy (Highest Throughput)
 
-```csharp
+```csharp{title="Interval Strategy (Highest Throughput)" description="Demonstrates interval Strategy (Highest Throughput)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Interval", "Strategy"]}
 public class IntervalWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
     public async Task QueueOutboxMessage(NewOutboxMessage message) {
         _pendingOutbox.Add(message);
@@ -621,7 +621,7 @@ public class IntervalWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
 
 All operations in `process_work_batch` are **atomic** (single transaction):
 
-```sql
+```sql{title="Work Coordinator: Atomic Operations" description="All operations in process_work_batch are atomic (single transaction):" category="Internals" difficulty="ADVANCED" tags=["Extending", "Internals", "Work", "Coordinator:"]}
 CREATE OR REPLACE FUNCTION process_work_batch(...)
 RETURNS TABLE (...) AS $$
 BEGIN

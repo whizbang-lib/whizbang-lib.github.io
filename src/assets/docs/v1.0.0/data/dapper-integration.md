@@ -34,7 +34,7 @@ codeReferences:
 
 ## Installation
 
-```bash
+```bash{title="Installation" description="Demonstrates installation" category="Implementation" difficulty="BEGINNER" tags=["Data", "Installation"]}
 dotnet add package Whizbang.Data.Dapper.Postgres
 ```
 
@@ -52,7 +52,7 @@ Whizbang uses **`IDbConnectionFactory`** pattern for database connections.
 
 ### Interface
 
-```csharp
+```csharp{title="Interface" description="Demonstrates interface" category="Implementation" difficulty="BEGINNER" tags=["Data", "Interface"]}
 public interface IDbConnectionFactory {
     IDbConnection CreateConnection();
 }
@@ -66,7 +66,7 @@ public interface IDbConnectionFactory {
 
 ### PostgreSQL Implementation
 
-```csharp
+```csharp{title="PostgreSQL Implementation" description="Demonstrates postgreSQL Implementation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "PostgreSQL", "Implementation"]}
 public class PostgresConnectionFactory : IDbConnectionFactory {
     private readonly string _connectionString;
 
@@ -82,7 +82,7 @@ public class PostgresConnectionFactory : IDbConnectionFactory {
 
 ### Registration
 
-```csharp
+```csharp{title="Registration" description="Demonstrates registration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Registration"]}
 // appsettings.json
 {
   "ConnectionStrings": {
@@ -106,7 +106,7 @@ builder.Services.AddSingleton<IDbConnectionFactory>(
 
 ### Query Single Row
 
-```csharp
+```csharp{title="Query Single Row" description="Demonstrates query Single Row" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Query", "Single", "Row"]}
 public class OrderLens : ILensQuery {
     private readonly IDbConnectionFactory _db;
 
@@ -147,7 +147,7 @@ public class OrderLens : ILensQuery {
 
 ### Query Multiple Rows
 
-```csharp
+```csharp{title="Query Multiple Rows" description="Demonstrates query Multiple Rows" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Query", "Multiple", "Rows"]}
 public async Task<OrderSummary[]> GetOrdersByCustomerAsync(
     Guid customerId,
     CancellationToken ct = default) {
@@ -177,7 +177,7 @@ public async Task<OrderSummary[]> GetOrdersByCustomerAsync(
 
 ### Execute Non-Query
 
-```csharp
+```csharp{title="Execute Non-Query" description="Demonstrates execute Non-Query" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Execute", "Non-Query"]}
 public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
     private readonly IDbConnectionFactory _db;
 
@@ -212,7 +212,7 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 
 ### JSONB Columns
 
-```csharp
+```csharp{title="JSONB Columns" description="Demonstrates jSONB Columns" category="Implementation" difficulty="ADVANCED" tags=["Data", "JSONB", "Columns"]}
 // Query JSONB column
 public async Task<Product[]> GetProductsByCategoryAsync(
     string category,
@@ -263,7 +263,7 @@ public async Task UpdateProductMetadataAsync(
 
 ### Array Parameters
 
-```csharp
+```csharp{title="Array Parameters" description="Demonstrates array Parameters" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Array", "Parameters"]}
 public async Task<Product[]> GetProductsByIdsAsync(
     Guid[] productIds,
     CancellationToken ct = default) {
@@ -285,7 +285,7 @@ public async Task<Product[]> GetProductsByIdsAsync(
 
 ### UPSERT (ON CONFLICT)
 
-```csharp
+```csharp{title="UPSERT (ON CONFLICT)" description="Demonstrates uPSERT (ON CONFLICT)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "UPSERT", "CONFLICT"]}
 public async Task UpsertInventoryAsync(
     Guid productId,
     int quantity,
@@ -312,7 +312,7 @@ public async Task UpsertInventoryAsync(
 
 ### Basic Transaction
 
-```csharp
+```csharp{title="Basic Transaction" description="Demonstrates basic Transaction" category="Implementation" difficulty="BEGINNER" tags=["Data", "Basic", "Transaction"]}
 public async Task CreateOrderWithItemsAsync(
     Order order,
     OrderItem[] items,
@@ -353,7 +353,7 @@ public async Task CreateOrderWithItemsAsync(
 
 ### Transaction Scope (Distributed Transactions)
 
-```csharp
+```csharp{title="Transaction Scope (Distributed Transactions)" description="Demonstrates transaction Scope (Distributed Transactions)" category="Implementation" difficulty="BEGINNER" tags=["Data", "Transaction", "Scope", "Distributed"]}
 using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
 
 await using var conn = _db.CreateConnection();
@@ -371,7 +371,7 @@ scope.Complete();  // Commit
 
 ### Custom Type Mapping
 
-```csharp
+```csharp{title="Custom Type Mapping" description="Demonstrates custom Type Mapping" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Custom", "Type", "Mapping"]}
 // Map custom types
 SqlMapper.AddTypeHandler(new GuidTypeHandler());
 SqlMapper.AddTypeHandler(new DateTimeOffsetTypeHandler());
@@ -389,7 +389,7 @@ public class GuidTypeHandler : SqlMapper.TypeHandler<Guid> {
 
 ### Column Name Mapping
 
-```csharp
+```csharp{title="Column Name Mapping" description="Demonstrates column Name Mapping" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Column", "Name", "Mapping"]}
 // Explicit column mapping
 public async Task<OrderSummary?> GetOrderAsync(Guid orderId) {
     await using var conn = _db.CreateConnection();
@@ -418,7 +418,7 @@ public async Task<OrderSummary?> GetOrderAsync(Guid orderId) {
 
 ### Buffered vs Unbuffered
 
-```csharp
+```csharp{title="Buffered vs Unbuffered" description="Demonstrates buffered vs Unbuffered" category="Implementation" difficulty="BEGINNER" tags=["Data", "Buffered", "Unbuffered"]}
 // ✅ Buffered (default) - loads all rows into memory
 var orders = await conn.QueryAsync<OrderSummary>(sql);
 
@@ -432,7 +432,7 @@ await foreach (var order in orders) {
 
 ### Batch Operations
 
-```csharp
+```csharp{title="Batch Operations" description="Demonstrates batch Operations" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Batch", "Operations"]}
 // ✅ Batch insert (single roundtrip)
 await conn.ExecuteAsync(
     "INSERT INTO order_items (order_item_id, order_id, product_id, quantity) VALUES (@OrderItemId, @OrderId, @ProductId, @Quantity)",
@@ -465,7 +465,7 @@ Host=localhost;Database=whizbang;Username=postgres;Password=pass;Minimum Pool Si
 
 ### Unit Tests with Mock
 
-```csharp
+```csharp{title="Unit Tests with Mock" description="Demonstrates unit Tests with Mock" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Unit", "Tests", "Mock"]}
 public class OrderLensTests {
     [Test]
     public async Task GetOrderAsync_ExistingOrder_ReturnsOrderAsync() {
@@ -492,7 +492,7 @@ public class OrderLensTests {
 
 ### Integration Tests with PostgreSQL
 
-```csharp
+```csharp{title="Integration Tests with PostgreSQL" description="Demonstrates integration Tests with PostgreSQL" category="Implementation" difficulty="ADVANCED" tags=["Data", "Integration", "Tests", "PostgreSQL"]}
 public class OrderLensIntegrationTests {
     private IDbConnectionFactory _db;
     private OrderLens _lens;
@@ -567,7 +567,7 @@ public class OrderLensIntegrationTests {
 
 ### Pattern 1: Perspective Update
 
-```csharp
+```csharp{title="Pattern 1: Perspective Update" description="Demonstrates pattern 1: Perspective Update" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Perspective", "Update"]}
 public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
     private readonly IDbConnectionFactory _db;
 
@@ -595,7 +595,7 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 
 ### Pattern 2: Lens Query
 
-```csharp
+```csharp{title="Pattern 2: Lens Query" description="Demonstrates pattern 2: Lens Query" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Lens", "Query"]}
 public class OrderLens : ILensQuery {
     private readonly IDbConnectionFactory _db;
 
@@ -622,7 +622,7 @@ public class OrderLens : ILensQuery {
 
 ### Pattern 3: Aggregation
 
-```csharp
+```csharp{title="Pattern 3: Aggregation" description="Demonstrates pattern 3: Aggregation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Aggregation"]}
 public async Task<OrderStatistics> GetOrderStatisticsAsync(
     Guid customerId,
     CancellationToken ct = default) {

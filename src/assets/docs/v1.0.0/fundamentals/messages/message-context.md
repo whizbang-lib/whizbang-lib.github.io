@@ -77,7 +77,7 @@ User clicks "Create Order" button
 
 **Type**: Strongly-typed value object using UUIDv7.
 
-```csharp
+```csharp{title="MessageId" description="Type: Strongly-typed value object using UUIDv7." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "MessageId"]}
 public record struct MessageId(Guid Value) {
     public static MessageId New() => new(Guid.CreateVersion7());
 
@@ -93,7 +93,7 @@ public record struct MessageId(Guid Value) {
 
 ### Usage
 
-```csharp
+```csharp{title="Usage" description="Demonstrates usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Usage"]}
 // Whizbang creates MessageId automatically
 var receipt = await _dispatcher.SendAsync(command);
 
@@ -111,7 +111,7 @@ Console.WriteLine($"Message ID: {receipt.MessageId}");
 
 **Type**: Strongly-typed value object using UUIDv7.
 
-```csharp
+```csharp{title="CorrelationId" description="Type: Strongly-typed value object using UUIDv7." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CorrelationId"]}
 public record struct CorrelationId(Guid Value) {
     public static CorrelationId New() => new(Guid.CreateVersion7());
 
@@ -150,7 +150,7 @@ public record struct CorrelationId(Guid Value) {
 
 ### Usage
 
-```csharp
+```csharp{title="Usage (2)" description="Demonstrates usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Usage"]}
 // Create new correlation for HTTP request
 var correlationId = CorrelationId.New();
 
@@ -167,7 +167,7 @@ Console.WriteLine($"Correlation ID: {result.CorrelationId}");
 
 ### Querying by CorrelationId
 
-```csharp
+```csharp{title="Querying by CorrelationId" description="Demonstrates querying by CorrelationId" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Querying", "CorrelationId"]}
 // Find all messages in a workflow
 public async Task<Message[]> GetWorkflowMessagesAsync(
     CorrelationId correlationId,
@@ -200,7 +200,7 @@ public async Task<Message[]> GetWorkflowMessagesAsync(
 
 **Type**: Strongly-typed value object using Guid (refers to a MessageId).
 
-```csharp
+```csharp{title="CausationId" description="Type: Strongly-typed value object using Guid (refers to a MessageId)." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CausationId"]}
 public record struct CausationId(Guid Value) {
     public static CausationId From(MessageId messageId) => new(messageId.Value);
 
@@ -248,7 +248,7 @@ PaymentProcessed Event
 
 ### Usage
 
-```csharp
+```csharp{title="Usage - CreateOrderReceptor" description="Demonstrates usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Usage"]}
 // Receptor creates event with causation
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
@@ -279,7 +279,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 Whizbang wraps all messages in a **MessageEnvelope** containing context:
 
-```csharp
+```csharp{title="MessageEnvelope" description="Whizbang wraps all messages in a MessageEnvelope containing context:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "MessageEnvelope"]}
 public class MessageEnvelope {
     public MessageId MessageId { get; init; }
     public CorrelationId CorrelationId { get; init; }
@@ -294,7 +294,7 @@ public class MessageEnvelope {
 
 ### Automatic Context Propagation
 
-```csharp
+```csharp{title="Automatic Context Propagation" description="Demonstrates automatic Context Propagation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Automatic", "Context"]}
 // 1. HTTP Request arrives
 [HttpPost("orders")]
 public async Task<ActionResult> CreateOrder(
@@ -327,7 +327,7 @@ public async Task<ActionResult> CreateOrder(
 
 ### Querying Workflow History
 
-```csharp
+```csharp{title="Querying Workflow History" description="Demonstrates querying Workflow History" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "Querying", "Workflow"]}
 public class WorkflowTracer {
     private readonly IDbConnectionFactory _db;
 
@@ -393,7 +393,7 @@ Workflow: corr-abc
 
 ### Visualizing Causation Chains
 
-```csharp
+```csharp{title="Visualizing Causation Chains" description="Demonstrates visualizing Causation Chains" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Visualizing", "Causation"]}
 public class CausationVisualizer {
     public void VisualizeCausationChain(TraceMessage[] messages) {
         var messageMap = messages.ToDictionary(m => m.MessageId);
@@ -439,7 +439,7 @@ public class CausationVisualizer {
 
 ### Structured Logging
 
-```csharp
+```csharp{title="Structured Logging" description="Demonstrates structured Logging" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Structured", "Logging"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly ILogger<CreateOrderReceptor> _logger;
 
@@ -472,7 +472,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 ```
 
 **Log Output** (JSON format):
-```json
+```json{title="Structured Logging (2)" description="Log Output (JSON format):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Structured", "Logging"]}
 {
   "Timestamp": "2024-12-12T10:00:00.123Z",
   "Level": "Information",
@@ -487,7 +487,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### Application Insights Integration
 
-```csharp
+```csharp{title="Application Insights Integration" description="Demonstrates application Insights Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Application", "Insights"]}
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly TelemetryClient _telemetry;
 
@@ -545,7 +545,7 @@ public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### ASP.NET Core Middleware
 
-```csharp
+```csharp{title="ASP.NET Core Middleware" description="Demonstrates aSP.NET Core Middleware" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ASP.NET", "Core"]}
 public class CorrelationIdMiddleware {
     private readonly RequestDelegate _next;
 
@@ -574,7 +574,7 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 
 ### Propagating to Downstream Services
 
-```csharp
+```csharp{title="Propagating to Downstream Services" description="Demonstrates propagating to Downstream Services" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Propagating", "Downstream"]}
 public class HttpClientWithCorrelation {
     private readonly HttpClient _httpClient;
     private readonly IHttpContextAccessor _httpContext;

@@ -87,7 +87,7 @@ codeReferences:
 
 ### 1. Create Aspire AppHost Project
 
-```bash
+```bash{title="Create Aspire AppHost Project" description="Demonstrates create Aspire AppHost Project" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Create", "Aspire"]}
 # Create solution structure
 dotnet new sln -n MyDistributedApp
 dotnet new aspire-apphost -n MyDistributedApp.AppHost
@@ -102,13 +102,13 @@ dotnet sln add InventoryService NotificationService
 ### 2. Add Whizbang NuGet Packages
 
 **AppHost Project**:
-```bash
+```bash{title="Add Whizbang NuGet Packages" description="AppHost Project:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Add", "Whizbang"]}
 cd MyDistributedApp.AppHost
 dotnet add package Whizbang.Hosting.Azure.ServiceBus
 ```
 
 **Service Projects**:
-```bash
+```bash{title="Add Whizbang NuGet Packages (2)" description="Service Projects:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Add", "Whizbang"]}
 cd ../InventoryService
 dotnet add package Whizbang
 dotnet add package Whizbang.Transports.AzureServiceBus
@@ -117,7 +117,7 @@ dotnet add package Whizbang.Transports.AzureServiceBus
 ### 3. Configure AppHost
 
 **AppHost/Program.cs**:
-```csharp
+```csharp{title="Configure AppHost" description="**AppHost/Program." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Configure", "AppHost"]}
 using Whizbang.Hosting.Azure.ServiceBus;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -169,7 +169,7 @@ builder.Build().Run();
 ### 1. Add Aspire Service Defaults
 
 **InventoryService/Program.cs**:
-```csharp
+```csharp{title="Add Aspire Service Defaults" description="**InventoryService/Program." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Add", "Aspire"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Add Aspire service defaults (health checks, telemetry, service discovery)
@@ -199,7 +199,7 @@ app.Run();
 
 ### 2. Verify Aspire Integration
 
-```bash
+```bash{title="Verify Aspire Integration" description="Demonstrates verify Aspire Integration" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Verify", "Aspire"]}
 # Run AppHost
 cd MyDistributedApp.AppHost
 dotnet run
@@ -221,7 +221,7 @@ dotnet run
 **Purpose**: Route messages to specific services based on `Destination` property.
 
 **Implementation**:
-```csharp
+```csharp{title="WithDestinationFilter Extension" description="Implementation:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "WithDestinationFilter", "Extension"]}
 public static IResourceBuilder<AzureServiceBusSubscriptionResource> WithDestinationFilter(
   this IResourceBuilder<AzureServiceBusSubscriptionResource> subscription,
   string destination
@@ -237,7 +237,7 @@ public static IResourceBuilder<AzureServiceBusSubscriptionResource> WithDestinat
 ```
 
 **Usage Pattern**:
-```csharp
+```csharp{title="WithDestinationFilter Extension (2)" description="Usage Pattern:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "WithDestinationFilter", "Extension"]}
 // AppHost - provision filters
 var inventorySub = topic.AddSubscription("inventory-service")
   .WithDestinationFilter("inventory");  // Only messages with Destination = "inventory"
@@ -262,7 +262,7 @@ await transport.PublishAsync(envelope, destination);
 
 ### Development (Emulator)
 
-```csharp
+```csharp{title="Development (Emulator)" description="Demonstrates development (Emulator)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Development", "Emulator"]}
 var serviceBus = builder.AddAzureServiceBus("messaging")
   .RunAsEmulator();  // Starts container with Service Bus emulator
 ```
@@ -281,7 +281,7 @@ Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAcce
 
 ### Production (Azure)
 
-```csharp
+```csharp{title="Production (Azure)" description="Demonstrates production (Azure)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Production", "Azure"]}
 var serviceBus = builder.AddAzureServiceBus("messaging")
   .PublishAsAzureServiceBusNamespace();  // Generates Bicep for Azure deployment
 ```
@@ -308,7 +308,7 @@ Endpoint=sb://my-namespace.servicebus.windows.net/;...
 **Use Case**: Services define their messaging requirements programmatically, generator creates AppHost config.
 
 **Example**:
-```csharp
+```csharp{title="AspireConfigurationGenerator" description="Demonstrates aspireConfigurationGenerator" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "AspireConfigurationGenerator"]}
 using Whizbang.Core.Transports.AzureServiceBus;
 
 // Service defines requirements
@@ -328,7 +328,7 @@ Console.WriteLine(code);
 ```
 
 **Generated Output**:
-```csharp
+```csharp{title="AspireConfigurationGenerator (2)" description="Generated Output:" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "AspireConfigurationGenerator"]}
 // === Whizbang Service Bus Configuration ===
 // Service Bus topics for OrderService service
 
@@ -353,14 +353,14 @@ whizbangEventsTopic.AddServiceBusSubscription("notification-service");
 **Purpose**: Verify Service Bus connectivity before accepting traffic.
 
 **Pattern**:
-```csharp
+```csharp{title="ServiceBusReadinessCheck" description="Demonstrates serviceBusReadinessCheck" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "ServiceBusReadinessCheck"]}
 using Whizbang.Hosting.Azure.ServiceBus;
 
 builder.Services.AddSingleton<ITransportReadinessCheck, ServiceBusReadinessCheck>();
 ```
 
 **How It Works**:
-```csharp
+```csharp{title="ServiceBusReadinessCheck (2)" description="How It Works:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "ServiceBusReadinessCheck"]}
 public async Task<bool> IsReadyAsync(CancellationToken ct) {
   // 1. Check if transport initialized
   if (!_transport.IsInitialized) {
@@ -395,7 +395,7 @@ public async Task<bool> IsReadyAsync(CancellationToken ct) {
 
 ### Fan-Out Events
 
-```csharp
+```csharp{title="Fan-Out Events" description="Demonstrates fan-Out Events" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Fan-Out", "Events"]}
 // AppHost - multiple services subscribe to same topic
 var topic = serviceBus.AddTopic("order-events");
 
@@ -421,7 +421,7 @@ await transport.PublishAsync(envelope, new TransportDestination("order-events", 
 
 ### Service-to-Service Communication
 
-```csharp
+```csharp{title="Service-to-Service Communication" description="Demonstrates service-to-Service Communication" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Service-to-Service", "Communication"]}
 // AppHost - inventory service references notification service
 var notificationService = builder.AddProject<Projects.NotificationService>("notification-service")
   .WithReference(serviceBus);
@@ -509,7 +509,7 @@ OrderService.DispatcherInvokeReceptor (50ms)
 **Cause**: Service not referenced in AppHost or missing `.WithReference(serviceBus)`.
 
 **Solution**:
-```csharp
+```csharp{title="Problem: 'Connection string 'messaging' not found'" description="Demonstrates problem: 'Connection string 'messaging' not found'" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Problem:", "'Connection"]}
 // AppHost - add reference to Service Bus
 var inventoryService = builder.AddProject<Projects.InventoryService>("inventory-service")
   .WithReference(serviceBus);  // ⭐ Required for connection string injection
@@ -529,7 +529,7 @@ var connectionString = builder.Configuration.GetConnectionString("messaging");
 3. Filter value mismatch
 
 **Solution**:
-```csharp
+```csharp{title="Problem: Messages Not Filtered Correctly" description="Demonstrates problem: Messages Not Filtered Correctly" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Messages"]}
 // AppHost - verify filter provisioning
 var inventorySub = topic.AddSubscription("inventory-service")
   .WithDestinationFilter("inventory");  // Filter value: "inventory"
@@ -557,7 +557,7 @@ await transport.PublishAsync(envelope, destination);
 3. Emulator image not pulled
 
 **Solution**:
-```bash
+```bash{title="Problem: Emulator Fails to Start" description="Demonstrates problem: Emulator Fails to Start" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Problem:", "Emulator"]}
 # Verify Docker is running
 docker ps
 
@@ -578,7 +578,7 @@ dotnet run
 **Cause**: Missing `.AddServiceDefaults()` in service `Program.cs`.
 
 **Solution**:
-```csharp
+```csharp{title="Problem: Service Not Appearing in Dashboard" description="Demonstrates problem: Service Not Appearing in Dashboard" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Problem:", "Service"]}
 // Service Program.cs - add service defaults
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();  // ⭐ Required for dashboard integration

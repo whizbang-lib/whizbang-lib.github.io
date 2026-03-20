@@ -31,7 +31,7 @@ The Event Store Query feature provides `IQueryable<EventStoreRecord>` access to 
 
 ### Scoped Access (Web APIs, Receptors)
 
-```csharp
+```csharp{title="Scoped Access (Web APIs, Receptors)" description="Demonstrates scoped Access (Web APIs, Receptors)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Scoped", "Access"]}
 public class EventsController : ControllerBase {
   private readonly IScopedLensFactory _lensFactory;
 
@@ -65,7 +65,7 @@ public class EventsController : ControllerBase {
 
 ### Global Access (Admin Operations)
 
-```csharp
+```csharp{title="Global Access (Admin Operations)" description="Demonstrates global Access (Admin Operations)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Global", "Access"]}
 // Global access requires explicit permission
 var globalQuery = _lensFactory.GetEventStoreQuery(
     ScopeFilter.None,
@@ -77,7 +77,7 @@ var allEvents = _lensFactory.GetGlobalEventStoreQuery();
 
 ### Singleton Services (Background Workers)
 
-```csharp
+```csharp{title="Singleton Services (Background Workers)" description="Demonstrates singleton Services (Background Workers)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Singleton", "Services"]}
 public class EventAnalyzerWorker : BackgroundService {
   private readonly IScopedEventStoreQuery _scopedQuery;
 
@@ -98,7 +98,7 @@ public class EventAnalyzerWorker : BackgroundService {
 
 ### Batch Operations (Manual Scope Control)
 
-```csharp
+```csharp{title="Batch Operations (Manual Scope Control)" description="Demonstrates batch Operations (Manual Scope Control)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Batch", "Operations"]}
 var factory = serviceProvider.GetRequiredService<IEventStoreQueryFactory>();
 
 using var scope = factory.CreateScoped();
@@ -131,7 +131,7 @@ var events = await scope.Value.Query
 
 Event store queries support filtering by TenantId and UserId (the fields available in `MessageScope`).
 
-```csharp
+```csharp{title="Scope Filtering" description="Event store queries support filtering by TenantId and UserId (the fields available in MessageScope)." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Scope", "Filtering"]}
 // Tenant-only filtering
 var tenantQuery = _lensFactory.GetTenantEventStoreQuery();
 // Generates: WHERE scope->>'TenantId' = 'tenant-123'
@@ -147,7 +147,7 @@ var userQuery = _lensFactory.GetUserEventStoreQuery();
 
 For Dapper users, raw SQL access to the event store table is available:
 
-```csharp
+```csharp{title="Dapper Integration" description="For Dapper users, raw SQL access to the event store table is available:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Dapper", "Integration"]}
 var events = await connection.QueryAsync<EventStoreRecord>(@"
     SELECT * FROM wh_event_store
     WHERE stream_id = @StreamId

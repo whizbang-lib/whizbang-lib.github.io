@@ -36,7 +36,7 @@ Comprehensive guide to **scaling Whizbang applications** - horizontal autoscalin
 
 **hpa.yaml**:
 
-```yaml
+```yaml{title="CPU-Based Autoscaling" description="Demonstrates cPU-Based Autoscaling" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "CPU-Based", "Autoscaling"]}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -75,7 +75,7 @@ spec:
 
 **deployment.yaml** (with resource limits):
 
-```yaml
+```yaml{title="CPU-Based Autoscaling (2)" description="**deployment." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "CPU-Based", "Autoscaling"]}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -100,7 +100,7 @@ spec:
 
 **hpa-custom.yaml**:
 
-```yaml
+```yaml{title="Custom Metrics Autoscaling" description="**hpa-custom." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Custom", "Metrics"]}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -131,7 +131,7 @@ spec:
 
 **Expose custom metrics** (Prometheus Adapter):
 
-```yaml
+```yaml{title="Custom Metrics Autoscaling (2)" description="Expose custom metrics (Prometheus Adapter):" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Custom", "Metrics"]}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -192,7 +192,7 @@ data:
 
 **Connection factory**:
 
-```csharp
+```csharp{title="Read Replicas" description="Connection factory:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Read", "Replicas"]}
 public interface IDbConnectionFactory {
   Task<IDbConnection> CreateWriteConnectionAsync(CancellationToken ct = default);
   Task<IDbConnection> CreateReadConnectionAsync(CancellationToken ct = default);
@@ -223,7 +223,7 @@ public class PostgresConnectionFactory : IDbConnectionFactory {
 
 **appsettings.json**:
 
-```json
+```json{title="Read Replicas (2)" description="**appsettings." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Read", "Replicas"]}
 {
   "Database": {
     "Primary": {
@@ -239,7 +239,7 @@ public class PostgresConnectionFactory : IDbConnectionFactory {
 
 **Usage**:
 
-```csharp
+```csharp{title="Read Replicas (3)" description="Demonstrates read Replicas" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Read", "Replicas"]}
 // Write operations use primary
 public async Task<OrderCreated> HandleAsync(CreateOrder command, CancellationToken ct) {
   await using var connection = await _dbFactory.CreateWriteConnectionAsync(ct);
@@ -260,7 +260,7 @@ public async Task<OrderRow?> GetOrderAsync(string orderId, CancellationToken ct)
 
 **Partition by date** (e.g., monthly partitions):
 
-```sql
+```sql{title="Table Partitioning" description="Partition by date (e." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Table", "Partitioning"]}
 -- Create partitioned table
 CREATE TABLE orders (
   order_id UUID NOT NULL,
@@ -287,7 +287,7 @@ CREATE INDEX idx_orders_2025_02_customer ON orders_2025_02(customer_id);
 
 **Automated partition management**:
 
-```csharp
+```csharp{title="Table Partitioning - PartitionManagementService" description="Automated partition management:" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Table", "Partitioning"]}
 public class PartitionManagementService : BackgroundService {
   private readonly IDbConnection _db;
   private readonly ILogger<PartitionManagementService> _logger;
@@ -338,7 +338,7 @@ public class PartitionManagementService : BackgroundService {
 
 ### Partition by Hash (Customer ID)
 
-```sql
+```sql{title="Partition by Hash (Customer ID)" description="Demonstrates partition by Hash (Customer ID)" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Partition", "Hash"]}
 -- Partition by hash (distribute evenly across partitions)
 CREATE TABLE orders (
   order_id UUID NOT NULL,
@@ -371,7 +371,7 @@ CREATE TABLE orders_7 PARTITION OF orders FOR VALUES WITH (MODULUS 8, REMAINDER 
 
 **Multiple instances claim work from different partitions**:
 
-```sql
+```sql{title="Partition by Instance" description="Multiple instances claim work from different partitions:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Partition", "Instance"]}
 CREATE TABLE outbox (
   message_id UUID PRIMARY KEY,
   partition_number INT NOT NULL,  -- 0-9 (10 partitions)
@@ -387,7 +387,7 @@ CREATE INDEX idx_outbox_partition ON outbox(partition_number, created_at)
 
 **Claim work from specific partition**:
 
-```csharp
+```csharp{title="Partition by Instance (2)" description="Claim work from specific partition:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Partition", "Instance"]}
 public async Task<OutboxMessage[]> ClaimWorkAsync(
   Guid instanceId,
   int partitionNumber,
@@ -416,7 +416,7 @@ public async Task<OutboxMessage[]> ClaimWorkAsync(
 
 **Assign partition to instance**:
 
-```csharp
+```csharp{title="Partition by Instance - OutboxWorker" description="Assign partition to instance:" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Partition", "Instance"]}
 public class OutboxWorker : BackgroundService {
   private readonly int _partitionNumber;
 
@@ -450,7 +450,7 @@ public class OutboxWorker : BackgroundService {
 
 **destinationrule.yaml** (connection pool settings):
 
-```yaml
+```yaml{title="Service Mesh (Istio)" description="**destinationrule." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Service", "Mesh"]}
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
@@ -478,7 +478,7 @@ spec:
 
 **service.yaml**:
 
-```yaml
+```yaml{title="Sticky Sessions (Session Affinity)" description="Demonstrates sticky Sessions (Session Affinity)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Sticky", "Sessions"]}
 apiVersion: v1
 kind: Service
 metadata:
@@ -504,7 +504,7 @@ spec:
 
 **Program.cs**:
 
-```csharp
+```csharp{title="Distributed Cache (Redis)" description="Demonstrates distributed Cache (Redis)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Distributed", "Cache"]}
 builder.Services.AddStackExchangeRedisCache(options => {
   options.Configuration = builder.Configuration["Redis:ConnectionString"];
   options.InstanceName = "whizbang:";
@@ -513,7 +513,7 @@ builder.Services.AddStackExchangeRedisCache(options => {
 
 **Usage**:
 
-```csharp
+```csharp{title="Distributed Cache (Redis) - GetOrderReceptor" description="Demonstrates distributed Cache (Redis)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Distributed", "Cache"]}
 public class GetOrderReceptor : IReceptor<GetOrder, OrderRow?> {
   private readonly IDistributedCache _cache;
   private readonly IDbConnection _db;
@@ -554,7 +554,7 @@ public class GetOrderReceptor : IReceptor<GetOrder, OrderRow?> {
 
 **OrderSummaryPerspective.cs**:
 
-```csharp
+```csharp{title="Cache Invalidation" description="**OrderSummaryPerspective." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Cache", "Invalidation"]}
 public async Task HandleAsync(OrderCreated @event, CancellationToken ct) {
   // Update read model
   await _db.ExecuteAsync(
@@ -574,7 +574,7 @@ public async Task HandleAsync(OrderCreated @event, CancellationToken ct) {
 
 **appsettings.json**:
 
-```json
+```json{title="Npgsql Connection Pool" description="**appsettings." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Npgsql", "Connection"]}
 {
   "Database": {
     "ConnectionString": "Host=postgres;Database=orders;Username=app;Password=***;Pooling=true;MinPoolSize=10;MaxPoolSize=100;ConnectionIdleLifetime=300"
@@ -584,7 +584,7 @@ public async Task HandleAsync(OrderCreated @event, CancellationToken ct) {
 
 **Connection pool metrics**:
 
-```csharp
+```csharp{title="Npgsql Connection Pool - ConnectionPoolMetrics" description="Connection pool metrics:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Npgsql", "Connection"]}
 public class ConnectionPoolMetrics {
   private static readonly Gauge ActiveConnections = Metrics.CreateGauge(
     "npgsql_active_connections",
@@ -606,7 +606,7 @@ public class ConnectionPoolMetrics {
 
 **RateLimitingMiddleware.cs**:
 
-```csharp
+```csharp{title="Distributed Rate Limiting (Redis)" description="**RateLimitingMiddleware." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Distributed", "Rate"]}
 public class RateLimitingMiddleware {
   private readonly RequestDelegate _next;
   private readonly IDistributedCache _cache;
@@ -645,7 +645,7 @@ public class RateLimitingMiddleware {
 
 **load-test.js**:
 
-```javascript
+```javascript{title="k6 Load Test" description="**load-test." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Load", "Test"]}
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
@@ -691,7 +691,7 @@ export default function () {
 
 **Run**:
 
-```bash
+```bash{title="k6 Load Test (2)" description="Demonstrates k6 Load Test" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Load", "Test"]}
 k6 run load-test.js
 ```
 

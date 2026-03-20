@@ -22,7 +22,7 @@ The **MessageJsonContextGenerator** discovers all message types (`ICommand`, `IE
 
 **Problem**: Traditional `JsonSerializer` uses **reflection** at runtime:
 
-```csharp
+```csharp{title="Why JSON Source Generation?" description="Problem: Traditional JsonSerializer uses reflection at runtime:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Why", "JSON"]}
 // ❌ Reflection-based (not AOT-compatible)
 var json = JsonSerializer.Serialize(message);  // Scans type at runtime!
 var deserialized = JsonSerializer.Deserialize<CreateOrder>(json);  // Reflection!
@@ -36,7 +36,7 @@ var deserialized = JsonSerializer.Deserialize<CreateOrder>(json);  // Reflection
 
 **Solution**: **Source-Generated JsonSerializerContext**:
 
-```csharp
+```csharp{title="Why JSON Source Generation? (2)" description="Solution: Source-Generated JsonSerializerContext:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Why", "JSON"]}
 // ✅ AOT-compatible (compile-time metadata)
 var options = new JsonSerializerOptions {
     TypeInfoResolver = new WhizbangJsonContext()  // Generated at compile-time
@@ -86,7 +86,7 @@ var deserialized = JsonSerializer.Deserialize<CreateOrder>(json, options);
 ### 2. Generated Code
 
 **WhizbangJsonContext.g.cs** (facade):
-```csharp
+```csharp{title="Generated Code" description="**WhizbangJsonContext." category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"]}
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -122,7 +122,7 @@ public partial class WhizbangJsonContext : JsonSerializerContext {
 ```
 
 **MessageJsonContext.g.cs** (implementation):
-```csharp
+```csharp{title="Generated Code - MessageJsonContext" description="**MessageJsonContext." category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Generated", "Code"]}
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -204,7 +204,7 @@ By default, the `MessageJsonContextGenerator` automatically discovers types that
 
 Use the `[WhizbangSerializable]` attribute to mark any type for automatic inclusion in the generated JSON context:
 
-```csharp
+```csharp{title="WhizbangSerializableAttribute" description="Use the [WhizbangSerializable] attribute to mark any type for automatic inclusion in the generated JSON context:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "WhizbangSerializableAttribute"]}
 namespace Whizbang;
 
 /// <summary>
@@ -222,7 +222,7 @@ public sealed class WhizbangSerializableAttribute : Attribute { }
 
 **Usage Example**:
 
-```csharp
+```csharp{title="WhizbangSerializableAttribute - ProductDto" description="Usage Example:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "WhizbangSerializableAttribute"]}
 using Whizbang;
 
 // Perspective lens DTOs (read models)
@@ -274,7 +274,7 @@ public record MoneyValue {
 3. **AOT Compatible**: Full Native AOT support with zero reflection
 
 **Generated Code**:
-```csharp
+```csharp{title="How It Works" description="Generated Code:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Works"]}
 // Types marked with [WhizbangSerializable] are included
 [JsonSerializable(typeof(CreateOrder))]         // ICommand
 [JsonSerializable(typeof(OrderCreated))]        // IEvent
@@ -302,7 +302,7 @@ public partial class WhizbangJsonContext : JsonSerializerContext { }
 
 ### Pattern 1: Command/Event Discovery
 
-```csharp
+```csharp{title="Pattern 1: Command/Event Discovery" description="Demonstrates pattern 1: Command/Event Discovery" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Command"]}
 // Commands and events are auto-discovered
 public record CreateOrder(
     Guid OrderId,
@@ -324,7 +324,7 @@ public record OrderCreated(
 
 ### Pattern 2: Nested Type Discovery
 
-```csharp
+```csharp{title="Pattern 2: Nested Type Discovery" description="Demonstrates pattern 2: Nested Type Discovery" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Nested"]}
 // Command uses OrderItem (nested type)
 public record CreateOrder(
     Guid OrderId,
@@ -346,7 +346,7 @@ public record OrderItem(
 
 ### Pattern 3: Collection Type Discovery
 
-```csharp
+```csharp{title="Pattern 3: Collection Type Discovery" description="Demonstrates pattern 3: Collection Type Discovery" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Collection"]}
 // List<T> types discovered from properties
 public record CreateOrder(
     Guid OrderId,
@@ -360,7 +360,7 @@ public record CreateOrder(
 
 ### Pattern 4: WhizbangId Converter Discovery
 
-```csharp
+```csharp{title="Pattern 4: WhizbangId Converter Discovery" description="Demonstrates pattern 4: WhizbangId Converter Discovery" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "WhizbangId"]}
 // Generator infers converters for *Id types
 public record CreateOrder(
     ProductId ProductId,  // ← Infers ProductIdJsonConverter
@@ -369,7 +369,7 @@ public record CreateOrder(
 ```
 
 **Result**: Converters automatically registered in `CreateOptions()`:
-```csharp
+```csharp{title="Pattern 4: WhizbangId Converter Discovery (2)" description="Result: Converters automatically registered in CreateOptions():" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "WhizbangId"]}
 options.Converters.Add(new ProductIdJsonConverter());
 options.Converters.Add(new CustomerIdJsonConverter());
 ```
@@ -380,7 +380,7 @@ options.Converters.Add(new CustomerIdJsonConverter());
 
 ### Basic Serialization
 
-```csharp
+```csharp{title="Basic Serialization" description="Demonstrates basic Serialization" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Basic", "Serialization"]}
 using MyApp.Generated;
 
 // Create options with generated context
@@ -398,7 +398,7 @@ var deserialized = JsonSerializer.Deserialize<CreateOrder>(json, options);
 
 ### Dependency Injection
 
-```csharp
+```csharp{title="Dependency Injection" description="Demonstrates dependency Injection" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Dependency", "Injection"]}
 // Program.cs
 using MyApp.Generated;
 
@@ -418,7 +418,7 @@ builder.Services.Configure<JsonOptions>(options => {
 
 ### Outbox/Inbox Serialization
 
-```csharp
+```csharp{title="Outbox/Inbox Serialization" description="Demonstrates outbox/Inbox Serialization" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Outbox", "Inbox"]}
 public class OutboxPublisher {
     private readonly JsonSerializerOptions _jsonOptions;
 
@@ -467,7 +467,7 @@ public class OutboxPublisher {
 
 ### Publish Native AOT
 
-```xml
+```xml{title="Publish Native AOT" description="Demonstrates publish Native AOT" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Publish", "Native"]}
 <!-- MyApp.csproj -->
 <PropertyGroup>
   <PublishAot>true</PublishAot>
@@ -475,7 +475,7 @@ public class OutboxPublisher {
 ```
 
 **Build**:
-```bash
+```bash{title="Publish Native AOT (2)" description="Demonstrates publish Native AOT" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Publish", "Native"]}
 dotnet publish -c Release
 
 # Output:
@@ -486,7 +486,7 @@ Generating native code...
 ```
 
 **Verification**:
-```bash
+```bash{title="Publish Native AOT (3)" description="Verification:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Publish", "Native"]}
 # Check binary doesn't use reflection
 nm MyApp.exe | grep -i "reflection"
 # No results = success!
@@ -557,7 +557,7 @@ info WHIZ007: Found JSON-serializable type 'List<OrderItem>' (collection type)
 2. Verify type implements `ICommand` or `IEvent`
 3. Rebuild project to regenerate context
 
-```csharp
+```csharp{title="Problem: Type Not Serializable in Native AOT" description="Solution: 1." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Type"]}
 // ❌ Internal type (not discovered)
 internal record CreateOrder(...) : ICommand;
 
@@ -572,7 +572,7 @@ public record CreateOrder(...) : ICommand;
 **Cause**: `OrderItem` not public or in different assembly.
 
 **Solution**: Make nested types public in same assembly:
-```csharp
+```csharp{title="Problem: Nested Type Not Found" description="Solution: Make nested types public in same assembly:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Nested"]}
 // ✅ Public nested type
 public record OrderItem(Guid ProductId, int Quantity);
 ```
@@ -584,7 +584,7 @@ public record OrderItem(Guid ProductId, int Quantity);
 **Cause**: Converter not auto-discovered (name doesn't match convention).
 
 **Solution**: Ensure converter follows naming convention:
-```csharp
+```csharp{title="Problem: WhizbangId Converter Not Registered" description="Solution: Ensure converter follows naming convention:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "WhizbangId"]}
 // Type: ProductId
 // Converter: ProductIdJsonConverter (must match!)
 public class ProductIdJsonConverter : JsonConverter<ProductId> {

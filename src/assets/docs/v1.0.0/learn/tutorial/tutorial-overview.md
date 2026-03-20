@@ -124,7 +124,7 @@ A distributed e-commerce platform with 7 microservices:
 
 ### 1. Create Solution
 
-```bash
+```bash{title="Create Solution" description="Demonstrates create Solution" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Solution"]}
 mkdir ECommerce
 cd ECommerce
 
@@ -133,7 +133,7 @@ dotnet new sln -n ECommerce
 
 ### 2. Add Projects
 
-```bash
+```bash{title="Add Projects" description="Demonstrates add Projects" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Add", "Projects"]}
 # Order Service (HTTP API)
 dotnet new webapi -n ECommerce.OrderService.API
 dotnet sln add ECommerce.OrderService.API
@@ -173,7 +173,7 @@ dotnet sln add ECommerce.AppHost
 
 ### 3. Add Whizbang Packages
 
-```bash
+```bash{title="Add Whizbang Packages" description="Demonstrates add Whizbang Packages" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Add", "Whizbang"]}
 # All projects
 dotnet add ECommerce.OrderService.API package Whizbang.Core
 dotnet add ECommerce.InventoryWorker package Whizbang.Core
@@ -252,7 +252,7 @@ ECommerce/
 
 ### Event-Driven Architecture
 
-```csharp
+```csharp{title="Event-Driven Architecture" description="Demonstrates event-Driven Architecture" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Event-Driven", "Architecture"]}
 // Command: Create Order (synchronous)
 CreateOrder command → CreateOrderReceptor → OrderCreated event
 
@@ -292,7 +292,7 @@ Compensation (if payment fails):
 
 ### 1. Run Locally (Aspire)
 
-```bash
+```bash{title="Run Locally (Aspire)" description="Demonstrates run Locally (Aspire)" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Run", "Locally"]}
 cd ECommerce.AppHost
 dotnet run
 ```
@@ -301,7 +301,7 @@ Open Aspire Dashboard: `http://localhost:15000`
 
 ### 2. Create Order via API
 
-```bash
+```bash{title="Create Order via API" description="Demonstrates create Order via API" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/orders \
   -H "Content-Type: application/json" \
   -d '{
@@ -323,7 +323,7 @@ Check Aspire Dashboard:
 
 ### 4. Query Read Model
 
-```bash
+```bash{title="Query Read Model" description="Demonstrates query Read Model" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Read"]}
 curl http://localhost:5001/customers/cust-123/orders
 ```
 

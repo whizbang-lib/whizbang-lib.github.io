@@ -33,7 +33,7 @@ REST filtering provides:
 
 The `LensRequest` class captures filtering, sorting, and paging parameters:
 
-```csharp
+```csharp{title="LensRequest Model" description="The LensRequest class captures filtering, sorting, and paging parameters:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "LensRequest", "Model"]}
 public class LensRequest {
     public int Page { get; set; } = 1;
     public int? PageSize { get; set; }
@@ -110,14 +110,14 @@ All filters are AND'd together.
 
 ### Basic Lens
 
-```csharp
+```csharp{title="Basic Lens" description="Demonstrates basic Lens" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Basic", "Lens"]}
 [RestLens(Route = "/api/orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 ```
 
 ### With Custom Paging
 
-```csharp
+```csharp{title="With Custom Paging" description="Demonstrates with Custom Paging" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Custom", "Paging"]}
 [RestLens(
     Route = "/api/orders",
     DefaultPageSize = 25,
@@ -127,7 +127,7 @@ public interface IOrderLens : ILensQuery<OrderReadModel> { }
 
 ### Filtering Only (No Sorting)
 
-```csharp
+```csharp{title="Filtering Only (No Sorting)" description="Demonstrates filtering Only (No Sorting)" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Filtering", "Only"]}
 [RestLens(
     Route = "/api/statuses",
     EnableSorting = false,
@@ -150,7 +150,7 @@ public interface IStatusLens : ILensQuery<StatusReadModel> { }
 
 ### LensResponse
 
-```csharp
+```csharp{title="LensResponse" description="Demonstrates lensResponse" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "LensResponse"]}
 public class LensResponse<T> {
     public IReadOnlyList<T> Data { get; init; }
     public int Page { get; init; }
@@ -164,7 +164,7 @@ public class LensResponse<T> {
 
 ### Example Response
 
-```json
+```json{title="Example Response" description="Demonstrates example Response" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "Example", "Response"]}
 {
   "data": [
     {
@@ -188,7 +188,7 @@ public class LensResponse<T> {
 
 The `LensEndpointBase` provides a helper for parsing sort strings:
 
-```csharp
+```csharp{title="Sort Expression Parsing" description="The LensEndpointBase provides a helper for parsing sort strings:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Sort", "Expression"]}
 protected IReadOnlyList<SortExpression> ParseSortExpression(string? sort);
 
 public readonly record struct SortExpression(string Field, bool Descending);
@@ -196,7 +196,7 @@ public readonly record struct SortExpression(string Field, bool Descending);
 
 ### Example
 
-```csharp
+```csharp{title="Example" description="Demonstrates example" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Example"]}
 var sorts = ParseSortExpression("-createdAt,name,+status");
 // Returns:
 // [
@@ -210,7 +210,7 @@ var sorts = ParseSortExpression("-createdAt,name,+status");
 
 The base class provides bounds-checked paging:
 
-```csharp
+```csharp{title="Paging Calculation" description="The base class provides bounds-checked paging:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Paging", "Calculation"]}
 protected (int skip, int take) CalculatePaging(
     LensRequest request,
     int defaultPageSize,
@@ -219,7 +219,7 @@ protected (int skip, int take) CalculatePaging(
 
 ### Example
 
-```csharp
+```csharp{title="Example (2)" description="Demonstrates example" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Example"]}
 // With request: page=3, pageSize=50, max=100
 var (skip, take) = CalculatePaging(request, 10, 100);
 // skip = 100 (page 3, 0-indexed: 2 * 50)
@@ -230,7 +230,7 @@ var (skip, take) = CalculatePaging(request, 10, 100);
 
 Extend the generated endpoint to add custom filtering:
 
-```csharp
+```csharp{title="Customizing Filter Behavior" description="Extend the generated endpoint to add custom filtering:" category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "Customizing", "Filter"]}
 public partial class OrderLensEndpoint {
     protected override async ValueTask OnBeforeQueryAsync(LensRequest request, CancellationToken ct) {
         // Add default filters
@@ -251,7 +251,7 @@ public partial class OrderLensEndpoint {
 
 ### JavaScript/TypeScript
 
-```typescript
+```typescript{title="JavaScript/TypeScript" description="Demonstrates javaScript/TypeScript" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "JavaScript", "TypeScript"]}
 async function getOrders(params: {
     page?: number;
     pageSize?: number;
@@ -285,7 +285,7 @@ const orders = await getOrders({
 
 ### C# HttpClient
 
-```csharp
+```csharp{title="C# HttpClient" description="Demonstrates c# HttpClient" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "HttpClient"]}
 public async Task<LensResponse<OrderReadModel>> GetOrdersAsync(
     int page = 1,
     int pageSize = 10,

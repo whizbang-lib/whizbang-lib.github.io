@@ -41,7 +41,7 @@ Replace non-generic interfaces with generic versions or concrete types:
 
 ### Before (causes WHIZ062)
 
-```csharp
+```csharp{title="Before (causes WHIZ062)" description="Demonstrates before (causes WHIZ062)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
 public record CreateOrderCommand : ICommand {
   public Guid OrderId { get; init; }
   public IEnumerable Items { get; init; }      // WHIZ062
@@ -52,7 +52,7 @@ public record CreateOrderCommand : ICommand {
 
 ### After (error resolved)
 
-```csharp
+```csharp{title="After (error resolved)" description="Demonstrates after (error resolved)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Error"]}
 public record CreateOrderCommand : ICommand {
   public Guid OrderId { get; init; }
   public IEnumerable<OrderItem> Items { get; init; } = [];
@@ -65,7 +65,7 @@ public record CreateOrderCommand : ICommand {
 
 Generic interfaces with type parameters are serializable:
 
-```csharp
+```csharp{title="Generic Interfaces Are Allowed" description="Generic interfaces with type parameters are serializable:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Generic", "Interfaces"]}
 public record ValidCommand : ICommand {
   // All OK - generic interfaces
   public IEnumerable<string> Tags { get; init; } = [];
@@ -93,7 +93,7 @@ For custom interfaces, either:
 
 ### Example: Custom Interface Fix
 
-```csharp
+```csharp{title="Example: Custom Interface Fix" description="Demonstrates example: Custom Interface Fix" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Custom"]}
 // Before - non-generic interface
 public interface IPaymentMethod { }
 
@@ -111,7 +111,7 @@ public record ProcessPaymentCommand : ICommand {
 
 If you must use a non-generic interface:
 
-```csharp
+```csharp{title="Suppressing This Diagnostic" description="If you must use a non-generic interface:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
 #pragma warning disable WHIZ062
 public IEnumerable LegacyItems { get; init; }
 #pragma warning restore WHIZ062
@@ -119,7 +119,7 @@ public IEnumerable LegacyItems { get; init; }
 
 Or in your `.csproj`:
 
-```xml
+```xml{title="Suppressing This Diagnostic (2)" description="Or in your `." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
 <PropertyGroup>
   <NoWarn>$(NoWarn);WHIZ062</NoWarn>
 </PropertyGroup>

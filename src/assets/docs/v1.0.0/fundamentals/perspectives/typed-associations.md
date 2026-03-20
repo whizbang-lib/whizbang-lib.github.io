@@ -15,7 +15,7 @@ GetPerspectiveAssociations is a source-generated method that returns strongly-ty
 
 ### Basic Usage
 
-```csharp
+```csharp{title="Basic Usage" description="Demonstrates basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Basic", "Usage"]}
 using Whizbang.Core.Generated;
 
 // Get all perspectives handling ProductCreatedEvent for ProductModel
@@ -36,7 +36,7 @@ Console.WriteLine($"Final model: {model}");
 
 ### Type Safety
 
-```csharp
+```csharp{title="Type Safety" description="Demonstrates type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Type", "Safety"]}
 // Compile-time type safety ensures matching types
 var associations = PerspectiveRegistrationExtensions
     .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);
@@ -59,7 +59,7 @@ productModel = assoc.ApplyDelegate(productModel, orderEvent); // Compiler error!
 
 ### Declaration
 
-```csharp
+```csharp{title="Declaration" description="Demonstrates declaration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Declaration"]}
 namespace Whizbang.Core.Generated;
 
 public static class PerspectiveRegistrationExtensions {
@@ -105,7 +105,7 @@ public static class PerspectiveRegistrationExtensions {
 
 The source generator produces compile-time type checks for each perspective:
 
-```csharp
+```csharp{title="How It Works" description="The source generator produces compile-time type checks for each perspective:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Works"]}
 // Generated method (simplified example)
 public static IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>
     GetPerspectiveAssociations<TModel, TEvent>(string serviceName)
@@ -172,7 +172,7 @@ Key features ensuring AOT compatibility:
 
 **When**: Building a generic event processing pipeline
 
-```csharp
+```csharp{title="Scenario 1: Generic Event Processor" description="When: Building a generic event processing pipeline" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Generic"]}
 public class EventProcessor {
     private readonly string _serviceName;
 
@@ -212,7 +212,7 @@ var updatedOrder = processor.ProcessEvent(orderModel, orderCreatedEvent);
 
 **When**: Replaying historical events to rebuild state
 
-```csharp
+```csharp{title="Scenario 2: Event Replay Engine" description="When: Replaying historical events to rebuild state" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Event"]}
 public class EventReplayEngine {
     public async Task<TModel> ReplayAsync<TModel, TEvent>(
         TModel initialModel,
@@ -255,7 +255,7 @@ var currentState = await replayEngine.ReplayAsync(
 
 **When**: Testing that all perspectives handle an event correctly
 
-```csharp
+```csharp{title="Scenario 3: Multi-Perspective Testing" description="When: Testing that all perspectives handle an event correctly" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Multi-Perspective"]}
 [Test]
 public async Task AllPerspectives_HandleProductCreatedEvent_CorrectlyAsync() {
     // Arrange
@@ -287,7 +287,7 @@ public async Task AllPerspectives_HandleProductCreatedEvent_CorrectlyAsync() {
 
 **When**: Applying perspectives based on runtime conditions
 
-```csharp
+```csharp{title="Scenario 4: Conditional Perspective Application" description="When: Applying perspectives based on runtime conditions" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Conditional"]}
 public class ConditionalPerspectiveApplier {
     public TModel ApplyWithFilter<TModel, TEvent>(
         TModel model,
@@ -322,7 +322,7 @@ var filtered = applier.ApplyWithFilter(
 
 **When**: Monitoring perspective performance
 
-```csharp
+```csharp{title="Scenario 5: Performance Monitoring" description="When: Monitoring perspective performance" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Performance"]}
 public class MonitoredPerspectiveApplier {
     private readonly ILogger _logger;
 
@@ -359,7 +359,7 @@ public class MonitoredPerspectiveApplier {
 
 GetPerspectiveAssociations uses exact type matching (not assignable types):
 
-```csharp
+```csharp{title="Exact Type Matching" description="GetPerspectiveAssociations uses exact type matching (not assignable types):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Exact", "Type"]}
 // Perspective definition
 public class ProductPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> {
     public ProductModel Apply(ProductModel model, ProductCreatedEvent evt) {
@@ -387,7 +387,7 @@ var associations3 = PerspectiveRegistrationExtensions
 
 If multiple perspectives handle the same model/event combination, all are returned:
 
-```csharp
+```csharp{title="Multiple Perspectives" description="If multiple perspectives handle the same model/event combination, all are returned:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Multiple"]}
 // Two perspectives handling ProductModel + ProductCreatedEvent
 public class InventoryPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> { }
 public class CatalogPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> { }
@@ -408,7 +408,7 @@ foreach (var assoc in associations) {
 
 ### Caching Associations
 
-```csharp
+```csharp{title="Caching Associations" description="Demonstrates caching Associations" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Caching", "Associations"]}
 // ❌ WRONG: Calling in loop
 foreach (var evt in events) {
     var associations = PerspectiveRegistrationExtensions
@@ -431,7 +431,7 @@ foreach (var evt in events) {
 
 The method uses compile-time type checks, so the JIT compiler can optimize aggressively:
 
-```csharp
+```csharp{title="Compile-Time Optimization" description="The method uses compile-time type checks, so the JIT compiler can optimize aggressively:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Compile-Time", "Optimization"]}
 // JIT can inline typeof() checks
 // Result: Very fast (~1-2ns per call once JIT'd)
 var associations = PerspectiveRegistrationExtensions
@@ -440,7 +440,7 @@ var associations = PerspectiveRegistrationExtensions
 
 ### Delegate Invocation Cost
 
-```csharp
+```csharp{title="Delegate Invocation Cost" description="Demonstrates delegate Invocation Cost" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Delegate", "Invocation"]}
 // Delegate invocation is extremely fast
 // Approximately 1-2ns per invocation (similar to virtual method call)
 var result = assoc.ApplyDelegate(model, evt);
@@ -453,7 +453,7 @@ var result = assoc.ApplyDelegate(model, evt);
 
 ### Complementary APIs
 
-```csharp
+```csharp{title="Complementary APIs" description="Demonstrates complementary APIs" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Complementary", "APIs"]}
 // 1. Discovery with MessageAssociation (string-based)
 var allAssociations = PerspectiveRegistrationExtensions
     .GetMessageAssociations(serviceName);
@@ -526,7 +526,7 @@ foreach (var assoc in typedAssociations) {
 
 ### ❌ Not Handling Empty Results
 
-```csharp
+```csharp{title="❌ Not Handling Empty Results" description="Demonstrates ❌ Not Handling Empty Results" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Not", "Handling"]}
 // ❌ WRONG: Assuming results exist
 var associations = PerspectiveRegistrationExtensions
     .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);
@@ -543,7 +543,7 @@ if (associations.Any()) {
 
 ### ❌ Calling in Hot Paths
 
-```csharp
+```csharp{title="❌ Calling in Hot Paths" description="Demonstrates ❌ Calling in Hot Paths" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Calling", "Hot"]}
 // ❌ WRONG: Calling repeatedly
 public TModel ProcessEvents<TModel, TEvent>(
     TModel model,
@@ -580,7 +580,7 @@ public TModel ProcessEvents<TModel, TEvent>(
 
 ### ❌ Ignoring Type Constraints
 
-```csharp
+```csharp{title="❌ Ignoring Type Constraints" description="Demonstrates ❌ Ignoring Type Constraints" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Ignoring", "Type"]}
 // ❌ WRONG: Forgetting IEvent constraint
 public void ProcessEvent<TModel, TMessage>(TModel model, TMessage message) {
     var associations = PerspectiveRegistrationExtensions

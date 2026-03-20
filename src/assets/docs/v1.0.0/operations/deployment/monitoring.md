@@ -32,7 +32,7 @@ Comprehensive **monitoring and observability** for Whizbang applications - Appli
 
 **Program.cs**:
 
-```csharp
+```csharp{title="Setup" description="Demonstrates setup" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Setup"]}
 builder.Services.AddApplicationInsightsTelemetry(options => {
   options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
   options.EnableAdaptiveSampling = true;
@@ -45,7 +45,7 @@ builder.Services.AddApplicationInsightsTelemetryProcessor<FilterHealthChecksTele
 
 **appsettings.json**:
 
-```json
+```json{title="Setup (2)" description="**appsettings." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Setup"]}
 {
   "ApplicationInsights": {
     "ConnectionString": "InstrumentationKey=...;IngestionEndpoint=https://..."
@@ -55,7 +55,7 @@ builder.Services.AddApplicationInsightsTelemetryProcessor<FilterHealthChecksTele
 
 ### Structured Logging
 
-```csharp
+```csharp{title="Structured Logging" description="Demonstrates structured Logging" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Structured", "Logging"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
   private readonly ILogger<CreateOrderReceptor> _logger;
 
@@ -150,7 +150,7 @@ requests
 
 **Program.cs**:
 
-```csharp
+```csharp{title="Setup (3)" description="Demonstrates setup" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Setup"]}
 builder.Services.AddOpenTelemetry()
   .WithMetrics(metrics => {
     metrics
@@ -167,7 +167,7 @@ app.MapPrometheusScrapingEndpoint();  // /metrics endpoint
 
 **OrderMetrics.cs**:
 
-```csharp
+```csharp{title="Custom Metrics" description="**OrderMetrics." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Custom", "Metrics"]}
 using System.Diagnostics.Metrics;
 
 public class OrderMetrics {
@@ -204,7 +204,7 @@ public class OrderMetrics {
 
 **Usage**:
 
-```csharp
+```csharp{title="Custom Metrics (2)" description="Demonstrates custom Metrics" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Custom", "Metrics"]}
 public async Task<OrderCreated> HandleAsync(
   CreateOrder command,
   CancellationToken ct = default
@@ -255,7 +255,7 @@ rate(orders_created_total[1m]) * 60
 
 **CreateOrderReceptor.cs**:
 
-```csharp
+```csharp{title="Activity (W3C Trace Context)" description="**CreateOrderReceptor." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Activity", "W3C"]}
 public async Task<OrderCreated> HandleAsync(
   CreateOrder command,
   CancellationToken ct = default
@@ -282,7 +282,7 @@ public async Task<OrderCreated> HandleAsync(
 
 **MessageEnvelope.cs**:
 
-```csharp
+```csharp{title="Propagate Trace Context" description="**MessageEnvelope." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Propagate", "Trace"]}
 public record MessageEnvelope {
   public required string MessageId { get; init; }
   public required string MessageType { get; init; }
@@ -310,7 +310,7 @@ public record MessageEnvelope {
 
 **ServiceBusPublisher.cs**:
 
-```csharp
+```csharp{title="Propagate Trace Context (2)" description="**ServiceBusPublisher." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Propagate", "Trace"]}
 public async Task PublishAsync(object @event, CancellationToken ct = default) {
   var envelope = MessageEnvelope.CreateFromActivity(
     messageId: Guid.NewGuid().ToString(),
@@ -333,7 +333,7 @@ public async Task PublishAsync(object @event, CancellationToken ct = default) {
 
 **ServiceBusProcessor.cs**:
 
-```csharp
+```csharp{title="Propagate Trace Context (3)" description="**ServiceBusProcessor." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Propagate", "Trace"]}
 private async Task ProcessMessageAsync(ProcessMessageEventArgs args) {
   // Extract trace context from message
   var traceparent = args.Message.ApplicationProperties.GetValueOrDefault("traceparent") as string;
@@ -365,7 +365,7 @@ private async Task ProcessMessageAsync(ProcessMessageEventArgs args) {
 
 **Program.cs**:
 
-```csharp
+```csharp{title="Basic Health Checks" description="Demonstrates basic Health Checks" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Basic", "Health"]}
 builder.Services.AddHealthChecks()
   .AddNpgSql(
     builder.Configuration["Database:ConnectionString"],
@@ -401,7 +401,7 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions {
 
 **OrderServiceHealthCheck.cs**:
 
-```csharp
+```csharp{title="Custom Health Check" description="**OrderServiceHealthCheck." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Custom", "Health"]}
 public class OrderServiceHealthCheck : IHealthCheck {
   private readonly IDbConnection _db;
 
@@ -439,7 +439,7 @@ public class OrderServiceHealthCheck : IHealthCheck {
 
 **Registration**:
 
-```csharp
+```csharp{title="Custom Health Check (2)" description="Registration:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Custom", "Health"]}
 builder.Services.AddHealthChecks()
   .AddCheck<OrderServiceHealthCheck>("order-service", tags: ["ready"]);
 ```
@@ -452,7 +452,7 @@ builder.Services.AddHealthChecks()
 
 **orders-dashboard.json**:
 
-```json
+```json{title="Grafana Dashboard (JSON)" description="**orders-dashboard." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Grafana", "Dashboard"]}
 {
   "dashboard": {
     "title": "Order Service Metrics",
@@ -541,7 +541,7 @@ requests
 
 **alerts.yml**:
 
-```yaml
+```yaml{title="Prometheus Alerts" description="Demonstrates prometheus Alerts" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Prometheus", "Alerts"]}
 groups:
   - name: order-service
     interval: 30s
@@ -586,7 +586,7 @@ groups:
 
 **Azure CLI**:
 
-```bash
+```bash{title="Application Insights Alerts" description="Demonstrates application Insights Alerts" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Application", "Insights"]}
 # Create alert for error rate
 az monitor metrics alert create \
   --name "High Error Rate" \
@@ -618,7 +618,7 @@ az monitor metrics alert create \
 
 **Program.cs**:
 
-```csharp
+```csharp{title="Serilog with Sinks" description="Demonstrates serilog with Sinks" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Serilog", "Sinks"]}
 using Serilog;
 using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
@@ -640,7 +640,7 @@ builder.Host.UseSerilog();
 
 **appsettings.json**:
 
-```json
+```json{title="Serilog with Sinks (2)" description="**appsettings." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Serilog", "Sinks"]}
 {
   "Serilog": {
     "MinimumLevel": {
@@ -662,7 +662,7 @@ builder.Host.UseSerilog();
 
 **CreateOrderBenchmark.cs**:
 
-```csharp
+```csharp{title="BenchmarkDotNet Integration" description="**CreateOrderBenchmark." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "BenchmarkDotNet", "Integration"]}
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 
@@ -692,7 +692,7 @@ public class CreateOrderBenchmark {
 
 **Run**:
 
-```bash
+```bash{title="BenchmarkDotNet Integration (2)" description="Demonstrates benchmarkDotNet Integration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "BenchmarkDotNet", "Integration"]}
 dotnet run -c Release --project Benchmarks
 
 # Output:

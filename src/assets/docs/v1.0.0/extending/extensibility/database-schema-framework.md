@@ -55,7 +55,7 @@ This documentation is for **library developers** implementing database drivers. 
 
 ### Core Types
 
-```csharp
+```csharp{title="Core Types" description="Demonstrates core Types" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Core", "Types"]}
 namespace Whizbang.Data.Schema;
 
 // Complete table definition
@@ -116,7 +116,7 @@ public enum DefaultValueFunction {
 
 **Use Case**: Minimal table for permanent message deduplication tracking.
 
-```csharp
+```csharp{title="Pattern 1: Message Deduplication Table (2 Columns)" description="Use Case: Minimal table for permanent message deduplication tracking." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Message"]}
 using System.Collections.Immutable;
 using Whizbang.Data.Schema;
 
@@ -166,7 +166,7 @@ public static class MessageDeduplicationSchema {
 
 **Use Case**: Complete transactional outbox with work coordination, partitioning, and leasing.
 
-```csharp
+```csharp{title="Pattern 2: Outbox Table (18 Columns, 6 Indexes)" description="Use Case: Complete transactional outbox with work coordination, partitioning, and leasing." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Outbox"]}
 using System.Collections.Immutable;
 using Whizbang.Data.Schema;
 
@@ -350,7 +350,7 @@ public static class OutboxSchema {
 
 **Use Case**: Convert TableDefinition to PostgreSQL DDL.
 
-```csharp
+```csharp{title="Pattern 3: Generating CREATE TABLE for PostgreSQL" description="Use Case: Convert TableDefinition to PostgreSQL DDL." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Generating"]}
 using Whizbang.Data.Schema;
 using System.Text;
 
@@ -446,7 +446,7 @@ public static class PostgresSchemaGenerator {
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 3: Generating CREATE TABLE for PostgreSQL (2)" description="Demonstrates pattern 3: Generating CREATE TABLE for PostgreSQL" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Generating"]}
 var createTableSql = PostgresSchemaGenerator.GenerateCreateTable(
   OutboxSchema.Table,
   prefix: "wh_"
@@ -474,7 +474,7 @@ var createTableSql = PostgresSchemaGenerator.GenerateCreateTable(
 
 **Use Case**: Convert TableDefinition to SQLite DDL (different type mappings).
 
-```csharp
+```csharp{title="Pattern 4: Generating CREATE TABLE for SQLite" description="Use Case: Convert TableDefinition to SQLite DDL (different type mappings)." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Generating"]}
 using Whizbang.Data.Schema;
 using System.Text;
 
@@ -584,7 +584,7 @@ public static class SqliteSchemaGenerator {
 
 **Use Case**: Generate schemas for all infrastructure tables with custom prefix.
 
-```csharp
+```csharp{title="Pattern 5: Using SchemaConfiguration" description="Use Case: Generate schemas for all infrastructure tables with custom prefix." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Using"]}
 using Whizbang.Data.Schema;
 using Whizbang.Data.Schema.Schemas;
 
@@ -623,7 +623,7 @@ public interface ISchemaGenerator {
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 5: Using SchemaConfiguration (2)" description="Demonstrates pattern 5: Using SchemaConfiguration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Using"]}
 var config = new SchemaConfiguration { Prefix = "prod_" };
 var postgresGenerator = new PostgresSchemaGenerator();
 
@@ -639,7 +639,7 @@ var fullSchemaSql = config.GenerateFullSchema(postgresGenerator);
 
 ### Testing Table Generation
 
-```csharp
+```csharp{title="Testing Table Generation" description="Demonstrates testing Table Generation" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Table"]}
 using TUnit.Assertions;
 using TUnit.Core;
 using Whizbang.Data.Schema;

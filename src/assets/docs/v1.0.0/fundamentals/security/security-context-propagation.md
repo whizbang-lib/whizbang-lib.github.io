@@ -92,7 +92,7 @@ In distributed systems, security context must flow across multiple hops:
 
 The `WhizbangScopeMiddleware` extracts security context from HTTP requests:
 
-```csharp
+```csharp{title="Step 1: HTTP Request Establishes Context" description="The WhizbangScopeMiddleware extracts security context from HTTP requests:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "HTTP"]}
 // Startup.cs
 app.UseWhizbangScopeMiddleware(options => {
   options.ExtractFromJwt = true;
@@ -116,7 +116,7 @@ This middleware:
 
 When business logic dispatches a message, the dispatcher automatically reads the ambient security context:
 
-```csharp
+```csharp{title="Step 2: Dispatcher Reads Ambient Context" description="When business logic dispatches a message, the dispatcher automatically reads the ambient security context:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Dispatcher"]}
 // In your controller or service
 public class OrderController : ControllerBase {
   private readonly IDispatcher _dispatcher;
@@ -140,7 +140,7 @@ No manual context passing required - the dispatcher finds it via `IScopeContextA
 
 The dispatcher attaches security context to the message's hop:
 
-```csharp
+```csharp{title="Step 3: Security Context Attached to MessageHop" description="The dispatcher attaches security context to the message's hop:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Context"]}
 // Inside Dispatcher.SendAsync()
 var scopeContext = _scopeContextAccessor.Current;
 
@@ -166,7 +166,7 @@ if (scopeContext is ImmutableScopeContext immutable && immutable.ShouldPropagate
 
 The message envelope, including hop chain with security context, is serialized and sent to the transport:
 
-```json
+```json{title="Step 4: Message Serialized with SecurityContext" description="The message envelope, including hop chain with security context, is serialized and sent to the transport:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Message"]}
 {
   "messageId": "123e4567-e89b-12d3-a456-426614174000",
   "messageType": "MyApp.Orders.CreateOrder",
@@ -192,7 +192,7 @@ The message envelope, including hop chain with security context, is serialized a
 
 The `ServiceBusConsumerWorker` receives the message from the transport and deserializes the envelope:
 
-```csharp
+```csharp{title="Step 5: Consumer Receives Message" description="The ServiceBusConsumerWorker receives the message from the transport and deserializes the envelope:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Consumer"]}
 // Inside ServiceBusConsumerWorker
 var envelope = await DeserializeEnvelopeAsync(serviceBusMessage);
 
@@ -213,7 +213,7 @@ await _dispatcher.LocalInvokeAsync(envelope.Payload, cancellationToken);
 
 The `MessageHopSecurityExtractor` reads the security context from the hop chain:
 
-```csharp
+```csharp{title="Step 6: Security Context Extracted from Hops" description="The MessageHopSecurityExtractor reads the security context from the hop chain:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Context"]}
 public class MessageHopSecurityExtractor : ISecurityContextExtractor {
   public int Priority => 100; // Runs first
 
@@ -254,7 +254,7 @@ public class MessageHopSecurityExtractor : ISecurityContextExtractor {
 
 The `DefaultMessageSecurityContextProvider` establishes the context:
 
-```csharp
+```csharp{title="Step 7: Context Populated and Callbacks Invoked" description="The DefaultMessageSecurityContextProvider establishes the context:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Context"]}
 // 1. Extract security (via MessageHopSecurityExtractor)
 var extraction = await extractor.ExtractAsync(envelope, options, ct);
 
@@ -285,7 +285,7 @@ if (options.EnableAuditLogging) {
 
 The receptor now has full access to the original security context:
 
-```csharp
+```csharp{title="Step 8: Handler Executes with Context" description="The receptor now has full access to the original security context:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Handler"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder> {
   private readonly IScopeContextAccessor _scopeAccessor;
   private readonly IScopedLensFactory _lensFactory;
@@ -311,7 +311,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder> {
 
 ### Enable/Disable Globally
 
-```csharp
+```csharp{title="Enable/Disable Globally" description="Demonstrates enable/Disable Globally" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enable", "Disable"]}
 services.AddWhizbangMessageSecurity(options => {
   // Enable/disable propagation globally
   options.PropagateToOutgoingMessages = true; // default
@@ -320,7 +320,7 @@ services.AddWhizbangMessageSecurity(options => {
 
 ### Per-Context Control
 
-```csharp
+```csharp{title="Per-Context Control" description="Demonstrates per-Context Control" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Per-Context", "Control"]}
 // Create context with propagation enabled
 var extraction = new SecurityExtraction { /* ... */ };
 var propagate = new ImmutableScopeContext(extraction, shouldPropagate: true);
@@ -333,7 +333,7 @@ var local = new ImmutableScopeContext(extraction, shouldPropagate: false);
 
 For system operations or impersonation, use explicit context:
 
-```csharp
+```csharp{title="Explicit Context Override" description="For system operations or impersonation, use explicit context:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Explicit", "Context"]}
 // System context (no user)
 await dispatcher.AsSystem().SendAsync(new MaintenanceCommand());
 // SecurityContext on hop: { ContextType = System, EffectivePrincipal = "SYSTEM" }
@@ -362,7 +362,7 @@ Service C (Processor)
 
 Each service adds a new hop to the chain, preserving the security context:
 
-```json
+```json{title="Multi-Hop Propagation" description="Each service adds a new hop to the chain, preserving the security context:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Multi-Hop", "Propagation"]}
 {
   "hops": [
     {
@@ -387,7 +387,7 @@ Each service adds a new hop to the chain, preserving the security context:
 
 Every security context establishment is audited (when `EnableAuditLogging = true`):
 
-```csharp
+```csharp{title="Audit Trail" description="Every security context establishment is audited (when EnableAuditLogging = true):" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Audit", "Trail"]}
 public sealed record ScopeContextEstablished : ISystemEvent {
   public required PerspectiveScope Scope { get; init; }
   public required IReadOnlySet<string> Roles { get; init; }
@@ -411,7 +411,7 @@ This enables:
 
 **Solution**: Use different extractors for internal vs external messages:
 
-```csharp
+```csharp{title="Trust Boundaries" description="Solution: Use different extractors for internal vs external messages:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Trust", "Boundaries"]}
 // Internal service-to-service: Trust MessageHop
 services.AddSecurityExtractor<MessageHopSecurityExtractor>(); // Priority 100
 
@@ -447,7 +447,7 @@ services.AddSecurityExtractor<JwtPayloadExtractor>(); // Priority 50 (runs first
 
 For legacy systems with existing `UserContextManager`, use a callback to bridge:
 
-```csharp
+```csharp{title="Integration with UserContextManager" description="For legacy systems with existing UserContextManager, use a callback to bridge:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Integration", "UserContextManager"]}
 public class UserContextManagerCallback : ISecurityContextCallback {
   private readonly UserContextManager _userContextManager;
 

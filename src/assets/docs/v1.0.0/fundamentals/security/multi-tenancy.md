@@ -61,7 +61,7 @@ Comprehensive guide to **multi-tenancy architectures** with Whizbang - database-
 
 **TenantContext.cs**:
 
-```csharp
+```csharp{title="Tenant Context (AsyncLocal)" description="**TenantContext." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Context"]}
 public static class TenantContext {
   private static readonly AsyncLocal<string?> _tenantId = new();
 
@@ -86,7 +86,7 @@ public static class TenantContext {
 
 **TenantIdentificationMiddleware.cs**:
 
-```csharp
+```csharp{title="Tenant Identification Middleware" description="**TenantIdentificationMiddleware." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Identification"]}
 public class TenantIdentificationMiddleware {
   private readonly RequestDelegate _next;
 
@@ -125,7 +125,7 @@ public class TenantIdentificationMiddleware {
 
 **Registration (Program.cs)**:
 
-```csharp
+```csharp{title="Tenant Identification Middleware (2)" description="**Registration (Program." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Tenant", "Identification"]}
 app.UseMiddleware<TenantIdentificationMiddleware>();
 ```
 
@@ -133,7 +133,7 @@ app.UseMiddleware<TenantIdentificationMiddleware>();
 
 **TenantDbConnectionFactory.cs**:
 
-```csharp
+```csharp{title="Tenant-Aware Database Connections" description="**TenantDbConnectionFactory." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant-Aware", "Database"]}
 public interface ITenantDbConnectionFactory {
   Task<IDbConnection> CreateConnectionAsync(CancellationToken ct = default);
 }
@@ -172,7 +172,7 @@ public class TenantDbConnectionFactory : ITenantDbConnectionFactory {
 
 **appsettings.json**:
 
-```json
+```json{title="Tenant-Aware Database Connections (2)" description="**appsettings." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Tenant-Aware", "Database"]}
 {
   "Database": {
     "TenantTemplate": "Host=db.myapp.com;Database=tenant_{TenantId};Username=app;Password=***"
@@ -184,7 +184,7 @@ public class TenantDbConnectionFactory : ITenantDbConnectionFactory {
 
 **CreateOrderReceptor.cs**:
 
-```csharp
+```csharp{title="Tenant-Aware Receptors" description="**CreateOrderReceptor." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Tenant-Aware", "Receptors"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
   private readonly ITenantDbConnectionFactory _dbFactory;
 
@@ -241,7 +241,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **TenantOnboardingReceptor.cs**:
 
-```csharp
+```csharp{title="Tenant Onboarding" description="**TenantOnboardingReceptor." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Tenant", "Onboarding"]}
 public record CreateTenant : ICommand<TenantCreated> {
   public required string TenantId { get; init; }
   public required string Name { get; init; }
@@ -304,7 +304,7 @@ public class TenantOnboardingReceptor : IReceptor<CreateTenant, TenantCreated> {
 
 **PostgreSQL schemas**:
 
-```sql
+```sql{title="Schema Management" description="PostgreSQL schemas:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Schema", "Management"]}
 -- Create tenant schemas
 CREATE SCHEMA tenant_acme;
 CREATE SCHEMA tenant_globex;
@@ -329,7 +329,7 @@ CREATE TABLE tenant_globex.orders (
 
 **SchemaPerTenantDbConnectionFactory.cs**:
 
-```csharp
+```csharp{title="Tenant-Aware Connection" description="**SchemaPerTenantDbConnectionFactory." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant-Aware", "Connection"]}
 public class SchemaPerTenantDbConnectionFactory : ITenantDbConnectionFactory {
   private readonly IConfiguration _config;
 
@@ -350,7 +350,7 @@ public class SchemaPerTenantDbConnectionFactory : ITenantDbConnectionFactory {
 
 ### Tenant Onboarding (Schema)
 
-```csharp
+```csharp{title="Tenant Onboarding (Schema)" description="Demonstrates tenant Onboarding (Schema)" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Onboarding"]}
 public async Task<TenantCreated> HandleAsync(
   CreateTenant command,
   CancellationToken ct = default
@@ -392,7 +392,7 @@ public async Task<TenantCreated> HandleAsync(
 
 ### PostgreSQL RLS Setup
 
-```sql
+```sql{title="PostgreSQL RLS Setup" description="Demonstrates postgreSQL RLS Setup" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "PostgreSQL", "RLS"]}
 -- Enable RLS on table
 CREATE TABLE orders (
   order_id UUID PRIMARY KEY,
@@ -416,7 +416,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON orders TO app_user;
 
 **RLSDbConnectionFactory.cs**:
 
-```csharp
+```csharp{title="Tenant Context (PostgreSQL)" description="**RLSDbConnectionFactory." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Context"]}
 public class RLSDbConnectionFactory : ITenantDbConnectionFactory {
   private readonly IConfiguration _config;
 
@@ -442,7 +442,7 @@ public class RLSDbConnectionFactory : ITenantDbConnectionFactory {
 
 With RLS enabled, all queries automatically filter by tenant:
 
-```csharp
+```csharp{title="Automatic Tenant Filtering" description="With RLS enabled, all queries automatically filter by tenant:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Automatic", "Tenant"]}
 // This query automatically filters to current tenant
 var orders = await connection.QueryAsync<OrderRow>(
   """
@@ -465,7 +465,7 @@ var orders = await connection.QueryAsync<OrderRow>(
 
 ### Schema
 
-```sql
+```sql{title="Schema" description="Demonstrates schema" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Schema"]}
 CREATE TABLE orders (
   order_id UUID PRIMARY KEY,
   tenant_id TEXT NOT NULL,  -- Discriminator column
@@ -482,7 +482,7 @@ CREATE INDEX idx_orders_tenant_id ON orders(tenant_id);
 
 **CreateOrderReceptor.cs**:
 
-```csharp
+```csharp{title="Manual Filtering" description="**CreateOrderReceptor." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Manual", "Filtering"]}
 public async Task<OrderCreated> HandleAsync(
   CreateOrder command,
   CancellationToken ct = default
@@ -557,7 +557,7 @@ var orders = await connection.QueryAsync<OrderRow>(
 
 **CrossTenantAnalyticsPerspective.cs**:
 
-```csharp
+```csharp{title="Cross-Tenant Perspective" description="**CrossTenantAnalyticsPerspective." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Cross-Tenant", "Perspective"]}
 public class CrossTenantAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
   private readonly IDbConnection _analyticsDb;  // Shared analytics database
 
@@ -582,7 +582,7 @@ public class CrossTenantAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
 
 ### Analytics Queries
 
-```csharp
+```csharp{title="Analytics Queries" description="Demonstrates analytics Queries" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Analytics", "Queries"]}
 // Query across all tenants
 var metrics = await _analyticsDb.QueryAsync<TenantMetrics>(
   """
@@ -606,7 +606,7 @@ var metrics = await _analyticsDb.QueryAsync<TenantMetrics>(
 
 **TenantIsolationTests.cs**:
 
-```csharp
+```csharp{title="Tenant Isolation Testing" description="**TenantIsolationTests." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Isolation"]}
 public class TenantIsolationTests {
   [Test]
   public async Task CreateOrder_DifferentTenants_IsolatedData() {
@@ -653,7 +653,7 @@ public class TenantIsolationTests {
 
 **Step 1: Export tenant data**:
 
-```csharp
+```csharp{title="Migrating from Discriminator to Database-Per-Tenant" description="Step 1: Export tenant data:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Migrating", "Discriminator"]}
 var tenantIds = await _db.QueryAsync<string>("SELECT DISTINCT tenant_id FROM orders");
 
 foreach (var tenantId in tenantIds) {
@@ -671,7 +671,7 @@ foreach (var tenantId in tenantIds) {
 
 **Step 2: Create tenant databases**:
 
-```csharp
+```csharp{title="Migrating from Discriminator to Database-Per-Tenant (2)" description="Step 2: Create tenant databases:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Migrating", "Discriminator"]}
 foreach (var tenantId in tenantIds) {
   await _adminDb.ExecuteAsync($"CREATE DATABASE tenant_{tenantId}");
 
@@ -686,7 +686,7 @@ foreach (var tenantId in tenantIds) {
 
 **Step 3: Import data**:
 
-```csharp
+```csharp{title="Migrating from Discriminator to Database-Per-Tenant (3)" description="Step 3: Import data:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Migrating", "Discriminator"]}
 foreach (var tenantId in tenantIds) {
   var orders = JsonSerializer.Deserialize<OrderRow[]>(
     await File.ReadAllTextAsync($"export/tenant-{tenantId}-orders.json")

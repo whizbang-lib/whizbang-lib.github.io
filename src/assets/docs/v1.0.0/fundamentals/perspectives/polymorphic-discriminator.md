@@ -21,7 +21,7 @@ When your perspective models contain polymorphic types (abstract classes or `[Js
 
 Use `[PolymorphicDiscriminator]` on a string property that stores the type discriminator value:
 
-```csharp
+```csharp{title="Field Discriminator" description="Use [PolymorphicDiscriminator] on a string property that stores the type discriminator value:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Field", "Discriminator"]}
 public record FormFieldModel {
     [StreamId]
     public Guid FieldId { get; init; }
@@ -49,7 +49,7 @@ The source generator creates:
 2. A B-tree index on the discriminator column
 3. Registration in the physical field registry
 
-```sql
+```sql{title="Generated Schema" description="Demonstrates generated Schema" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Generated", "Schema"]}
 CREATE TABLE wh_per_form_field (
     id UUID PRIMARY KEY,
     stream_id UUID NOT NULL,
@@ -67,7 +67,7 @@ CREATE INDEX idx_form_field_settings_type ON wh_per_form_field(settings_type);
 
 Query the discriminator column directly:
 
-```csharp
+```csharp{title="Direct Column Query" description="Query the discriminator column directly:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Direct", "Column"]}
 var textFields = await lens.QueryAsync<FormFieldModel>()
     .Where(r => r.Data.SettingsTypeName == "TextFieldSettings")
     .ToListAsync();
@@ -77,7 +77,7 @@ var textFields = await lens.QueryAsync<FormFieldModel>()
 
 Use the `WherePolymorphic` extension for type-safe queries:
 
-```csharp
+```csharp{title="Type-Safe Polymorphic API" description="Use the WherePolymorphic extension for type-safe queries:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Type-Safe", "Polymorphic"]}
 var textFields = await lens.QueryAsync<FormFieldModel>()
     .WherePolymorphic(m => m.Settings)
     .As<TextFieldSettings>(s => s.MaxLength > 100)
@@ -86,7 +86,7 @@ var textFields = await lens.QueryAsync<FormFieldModel>()
 
 This generates SQL that uses both the discriminator column and JSONB for the filter:
 
-```sql
+```sql{title="Type-Safe Polymorphic API (2)" description="This generates SQL that uses both the discriminator column and JSONB for the filter:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Type-Safe", "Polymorphic"]}
 SELECT * FROM wh_per_form_field
 WHERE settings_type = 'TextFieldSettings'
   AND (data->'Settings'->>'MaxLength')::int > 100;
@@ -96,7 +96,7 @@ WHERE settings_type = 'TextFieldSettings'
 
 Set the discriminator value when applying events to your perspective:
 
-```csharp
+```csharp{title="Setting the Discriminator Value" description="Set the discriminator value when applying events to your perspective:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Setting", "Discriminator"]}
 public class FormFieldPerspective : IPerspectiveFor<FormFieldModel, FieldCreatedEvent> {
     public FormFieldModel Apply(FormFieldModel current, FieldCreatedEvent @event) {
         return current with {
@@ -113,7 +113,7 @@ public class FormFieldPerspective : IPerspectiveFor<FormFieldModel, FieldCreated
 
 For disambiguation, use fully qualified type names:
 
-```csharp
+```csharp{title="Using Full Type Names" description="For disambiguation, use fully qualified type names:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Using", "Full"]}
 SettingsTypeName = @event.Settings.GetType().FullName
 // e.g., "MyApp.Forms.TextFieldSettings"
 ```
@@ -122,7 +122,7 @@ SettingsTypeName = @event.Settings.GetType().FullName
 
 For collections of polymorphic types, consider a separate perspective table:
 
-```csharp
+```csharp{title="Collection Discriminators" description="For collections of polymorphic types, consider a separate perspective table:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Collection", "Discriminators"]}
 // Main form perspective
 public record FormModel {
     [StreamId]
@@ -157,7 +157,7 @@ This enables efficient queries like "find all text fields across all forms."
 
 ### Multiple Polymorphic Properties
 
-```csharp
+```csharp{title="Multiple Polymorphic Properties" description="Demonstrates multiple Polymorphic Properties" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Multiple", "Polymorphic"]}
 public record ConfigModel {
     [PolymorphicDiscriminator(ColumnName = "input_type")]
     public string InputSettingsType { get; init; }
@@ -173,7 +173,7 @@ public record ConfigModel {
 
 While string discriminators are most flexible, you can use enums:
 
-```csharp
+```csharp{title="Enum-Based Discriminators" description="While string discriminators are most flexible, you can use enums:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Enum-Based", "Discriminators"]}
 public record FormFieldModel {
     [PhysicalField(Indexed = true)]
     public FieldType FieldType { get; init; }

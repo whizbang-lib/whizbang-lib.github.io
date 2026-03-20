@@ -50,7 +50,7 @@ Whizbang Message:
 
 ## MessageEnvelope Structure
 
-```csharp
+```csharp{title="MessageEnvelope Structure" description="Demonstrates messageEnvelope Structure" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "MessageEnvelope", "Structure"]}
 public class MessageEnvelope {
     // Identity
     public required MessageId MessageId { get; init; }
@@ -77,7 +77,7 @@ public class MessageEnvelope {
 
 ## MessageHop Structure
 
-```csharp
+```csharp{title="MessageHop Structure" description="Demonstrates messageHop Structure" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "MessageHop", "Structure"]}
 public class MessageHop {
     // Hop Type
     public required MessageHopType Type { get; init; }  // Current or Causation
@@ -129,7 +129,7 @@ public enum MessageHopType {
 
 **Purpose**: Captures context for **this message**.
 
-```csharp
+```csharp{title="Current Hop" description="Purpose: Captures context for this message." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Current", "Hop"]}
 var currentHop = new MessageHop {
     Type = MessageHopType.Current,
     Topic = "orders",
@@ -153,7 +153,7 @@ var currentHop = new MessageHop {
 
 **Purpose**: Captures context from **parent message** (inherited).
 
-```csharp
+```csharp{title="Causation Hop" description="Purpose: Captures context from parent message (inherited)." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Causation", "Hop"]}
 // When OrderCreated event is created from CreateOrder command:
 var envelope = MessageEnvelope.Create(
     messageId: MessageId.New(),
@@ -237,7 +237,7 @@ var envelope = MessageEnvelope.Create(
 
 ## Security Context
 
-```csharp
+```csharp{title="Security Context" description="Demonstrates security Context" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Security", "Context"]}
 public record SecurityContext {
     public Guid? UserId { get; init; }
     public Guid? TenantId { get; init; }
@@ -250,7 +250,7 @@ public record SecurityContext {
 
 ### Example: Multi-Tenant Authorization
 
-```csharp
+```csharp{title="Example: Multi-Tenant Authorization" description="Demonstrates example: Multi-Tenant Authorization" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Example:", "Multi-Tenant"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IHttpContextAccessor _httpContext;
 
@@ -287,7 +287,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ## Policy Decision Trail
 
-```csharp
+```csharp{title="Policy Decision Trail" description="Demonstrates policy Decision Trail" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Policy", "Decision"]}
 public record PolicyDecisionTrail {
     public List<PolicyDecision> Decisions { get; init; } = new();
 }
@@ -304,7 +304,7 @@ public record PolicyDecision {
 
 ### Example: Rate Limiting Policy
 
-```csharp
+```csharp{title="Example: Rate Limiting Policy" description="Demonstrates example: Rate Limiting Policy" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Example:", "Rate"]}
 public class RateLimitingPolicy : IPolicy {
     public async Task<PolicyDecision> EvaluateAsync(
         MessageEnvelope envelope,
@@ -357,7 +357,7 @@ public class RateLimitingPolicy : IPolicy {
 
 Metadata **stitches across hops**, accumulating context:
 
-```csharp
+```csharp{title="Metadata Stitching" description="Metadata stitches across hops, accumulating context:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Metadata", "Stitching"]}
 // Hop 1 (API Gateway)
 Metadata: {
     "ServiceName": "API Gateway",
@@ -389,7 +389,7 @@ Metadata: {
 
 ## Debugging Information
 
-```csharp
+```csharp{title="Debugging Information" description="Demonstrates debugging Information" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Debugging", "Information"]}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     [CallerMemberName] string memberName = "",
@@ -436,7 +436,7 @@ Stack Trace from Hops:
 
 ## Timing & Performance
 
-```csharp
+```csharp{title="Timing & Performance" description="Demonstrates timing & Performance" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Timing", "Performance"]}
 public class MessageHop {
     public DateTimeOffset Timestamp { get; init; }  // When hop was created
     public TimeSpan? Duration { get; init; }        // How long this hop took
@@ -445,7 +445,7 @@ public class MessageHop {
 
 ### Example: Performance Profiling
 
-```csharp
+```csharp{title="Example: Performance Profiling" description="Demonstrates example: Performance Profiling" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Example:", "Performance"]}
 var startTime = DateTimeOffset.UtcNow;
 
 // Business logic...
@@ -463,7 +463,7 @@ var currentHop = new MessageHop {
 ```
 
 **Query Performance**:
-```csharp
+```csharp{title="Example: Performance Profiling (2)" description="Query Performance:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Example:", "Performance"]}
 // Find slow hops
 var slowHops = envelope.Hops
     .Where(h => h.Duration > TimeSpan.FromMilliseconds(500))
@@ -479,7 +479,7 @@ foreach (var hop in slowHops) {
 
 ## Visualizing Hops
 
-```csharp
+```csharp{title="Visualizing Hops" description="Demonstrates visualizing Hops" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Visualizing", "Hops"]}
 public class HopVisualizer {
     public void PrintHops(MessageEnvelope envelope) {
         Console.WriteLine($"Message: {envelope.MessageId}");
@@ -575,7 +575,7 @@ Hops:
 
 Hops are stored with events for full auditability:
 
-```sql
+```sql{title="Integration with Event Store" description="Hops are stored with events for full auditability:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Integration", "Event"]}
 CREATE TABLE wh_event_store (
     event_id UUID PRIMARY KEY,
     message_id UUID NOT NULL,
@@ -592,7 +592,7 @@ CREATE INDEX idx_event_store_causation_id ON wh_event_store(causation_id);
 ```
 
 **Query hops**:
-```sql
+```sql{title="Integration with Event Store (2)" description="Query hops:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Integration", "Event"]}
 SELECT
     event_id,
     event_type,

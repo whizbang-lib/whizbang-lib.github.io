@@ -27,7 +27,7 @@ A Lens is a **focused view** for querying specific read models:
 
 ## ILensQuery Interface
 
-```csharp
+```csharp{title="ILensQuery Interface" description="Demonstrates iLensQuery Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "ILensQuery", "Interface"]}
 namespace Whizbang.Core;
 
 public interface ILensQuery {
@@ -78,7 +78,7 @@ public interface ILensQuery {
 
 ## Basic Example
 
-```csharp
+```csharp{title="Basic Example" description="Demonstrates basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Basic", "Example"]}
 using Whizbang.Core;
 using Dapper;
 
@@ -176,7 +176,7 @@ public record OrderSummary(
 
 ### Pattern 1: Get by ID
 
-```csharp
+```csharp{title="Pattern 1: Get by ID" description="Demonstrates pattern 1: Get by ID" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Get"]}
 public async Task<OrderSummary?> GetOrderAsync(
     Guid orderId,
     CancellationToken ct = default) {
@@ -195,7 +195,7 @@ public async Task<OrderSummary?> GetOrderAsync(
 
 ### Pattern 2: List with Filtering
 
-```csharp
+```csharp{title="Pattern 2: List with Filtering" description="Demonstrates pattern 2: List with Filtering" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "List"]}
 public async Task<OrderSummary[]> GetOrdersByStatusAsync(
     string status,
     CancellationToken ct = default) {
@@ -220,7 +220,7 @@ public async Task<OrderSummary[]> GetOrdersByStatusAsync(
 
 ### Pattern 3: Pagination
 
-```csharp
+```csharp{title="Pattern 3: Pagination" description="Demonstrates pattern 3: Pagination" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Pattern", "Pagination"]}
 public async Task<PagedResult<OrderSummary>> GetOrdersPagedAsync(
     int pageNumber,
     int pageSize,
@@ -271,7 +271,7 @@ public record PagedResult<T>(
 
 ### Pattern 4: Aggregations
 
-```csharp
+```csharp{title="Pattern 4: Aggregations" description="Demonstrates pattern 4: Aggregations" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Aggregations"]}
 public async Task<OrderStatistics> GetOrderStatisticsAsync(
     Guid customerId,
     CancellationToken ct = default) {
@@ -305,7 +305,7 @@ public record OrderStatistics(
 
 ### Pattern 5: Search
 
-```csharp
+```csharp{title="Pattern 5: Search" description="Demonstrates pattern 5: Search" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Search"]}
 public async Task<OrderSummary[]> SearchOrdersAsync(
     string searchTerm,
     CancellationToken ct = default) {
@@ -338,7 +338,7 @@ public async Task<OrderSummary[]> SearchOrdersAsync(
 
 Different lenses can query the same read model with different methods:
 
-```csharp
+```csharp{title="Multiple Lenses for Same Read Model" description="Different lenses can query the same read model with different methods:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Multiple", "Same"]}
 // Lens 1: Customer-focused queries
 public class CustomerOrderLens : ILensQuery {
     public async Task<OrderSummary[]> GetOrdersByCustomerAsync(Guid customerId, CancellationToken ct = default) {
@@ -376,7 +376,7 @@ While lenses prefer simple queries, you can handle complexity when needed:
 
 ### Joining Denormalized Tables
 
-```csharp
+```csharp{title="Joining Denormalized Tables" description="Demonstrates joining Denormalized Tables" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Joining", "Denormalized"]}
 public async Task<CustomerOrderHistory> GetCustomerOrderHistoryAsync(
     Guid customerId,
     CancellationToken ct = default) {
@@ -413,7 +413,7 @@ public async Task<CustomerOrderHistory> GetCustomerOrderHistoryAsync(
 
 ### JSON Querying (PostgreSQL)
 
-```csharp
+```csharp{title="JSON Querying (PostgreSQL)" description="Demonstrates jSON Querying (PostgreSQL)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "JSON", "Querying"]}
 public async Task<Product[]> GetProductsByCategoryAsync(
     string category,
     CancellationToken ct = default) {
@@ -442,7 +442,7 @@ public async Task<Product[]> GetProductsByCategoryAsync(
 ### Registration
 
 **Manual**:
-```csharp
+```csharp{title="Registration" description="Demonstrates registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"]}
 builder.Services.AddTransient<ILensQuery, OrderLens>();
 builder.Services.AddTransient<ILensQuery, InventoryLens>();
 
@@ -452,7 +452,7 @@ builder.Services.AddTransient<IInventoryLens, InventoryLens>();
 ```
 
 **Auto-Discovery** (with Whizbang.Generators):
-```csharp
+```csharp{title="Registration (2)" description="Auto-Discovery (with Whizbang." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"]}
 builder.Services.AddDiscoveredLenses();  // Finds all ILensQuery implementations
 ```
 
@@ -465,7 +465,7 @@ builder.Services.AddDiscoveredLenses();  // Finds all ILensQuery implementations
 - Stateless (no benefit to reusing instances)
 - Lightweight (minimal allocation cost)
 
-```csharp
+```csharp{title="Lifetime" description="Demonstrates lifetime" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Lifetime"]}
 builder.Services.AddTransient<IOrderLens, OrderLens>();
 ```
 
@@ -475,7 +475,7 @@ builder.Services.AddTransient<IOrderLens, OrderLens>();
 
 ### In-Memory Caching
 
-```csharp
+```csharp{title="In-Memory Caching" description="Demonstrates in-Memory Caching" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "In-Memory", "Caching"]}
 public class OrderLens : ILensQuery {
     private readonly IDbConnectionFactory _db;
     private readonly IMemoryCache _cache;
@@ -515,7 +515,7 @@ public class OrderLens : ILensQuery {
 
 ### Distributed Caching (Redis)
 
-```csharp
+```csharp{title="Distributed Caching (Redis)" description="Demonstrates distributed Caching (Redis)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Distributed", "Caching"]}
 public class OrderLens : ILensQuery {
     private readonly IDbConnectionFactory _db;
     private readonly IDistributedCache _cache;
@@ -562,7 +562,7 @@ public class OrderLens : ILensQuery {
 
 **Cache Invalidation**: Perspectives can invalidate cache when updating read models:
 
-```csharp
+```csharp{title="Distributed Caching (Redis) - OrderSummaryPerspective" description="Cache Invalidation: Perspectives can invalidate cache when updating read models:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Distributed", "Caching"]}
 public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
     private readonly IDbConnectionFactory _db;
     private readonly IDistributedCache _cache;
@@ -584,7 +584,7 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 
 ### Unit Tests
 
-```csharp
+```csharp{title="Unit Tests" description="Demonstrates unit Tests" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Unit", "Tests"]}
 public class OrderLensTests {
     [Test]
     public async Task GetOrderAsync_ExistingOrder_ReturnsOrderSummaryAsync() {
@@ -643,7 +643,7 @@ public class OrderLensTests {
 
 ### Integration Tests
 
-```csharp
+```csharp{title="Integration Tests" description="Demonstrates integration Tests" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Integration", "Tests"]}
 public class OrderLensIntegrationTests {
     private IDbConnectionFactory _db;
     private OrderLens _lens;
@@ -698,7 +698,7 @@ public class OrderLensIntegrationTests {
 
 ### Pattern: Lens with Multiple Read Models
 
-```csharp
+```csharp{title="Pattern: Lens with Multiple Read Models" description="Demonstrates pattern: Lens with Multiple Read Models" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Pattern:", "Lens"]}
 public class OrderDetailsLens : ILensQuery {
     private readonly IDbConnectionFactory _db;
 
@@ -751,7 +751,7 @@ public record OrderDetailsView(
 
 ### Pattern: Graph QL Integration
 
-```csharp
+```csharp{title="Pattern: Graph QL Integration" description="Demonstrates pattern: Graph QL Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern:", "Graph"]}
 public class OrderQueries {
     private readonly IOrderLens _lens;
 

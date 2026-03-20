@@ -123,7 +123,7 @@ For basic receptor usage, see [Receptors Guide](../../fundamentals/receptors/rec
 
 **Use Case**: Multiple receptors sharing common validation, logging, or setup logic.
 
-```csharp
+```csharp{title="Pattern 1: Base Class with Shared Logic" description="Use Case: Multiple receptors sharing common validation, logging, or setup logic." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Base"]}
 using Whizbang.Core;
 
 /// <summary>
@@ -197,7 +197,7 @@ public abstract class ReceptorBase<TMessage, TResponse> : IReceptor<TMessage, TR
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 1: Base Class with Shared Logic - CreateOrder" description="Demonstrates pattern 1: Base Class with Shared Logic" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Base"]}
 public record CreateOrder(Guid CustomerId, OrderLineItem[] Items);
 public record OrderCreated(Guid OrderId, Guid CustomerId, decimal Total);
 
@@ -259,7 +259,7 @@ public class CreateOrderReceptor : ReceptorBase<CreateOrder, OrderCreated> {
 
 **Use Case**: Automatically wrap HandleAsync in a database transaction.
 
-```csharp
+```csharp{title="Pattern 2: Transactional Receptor Base" description="Use Case: Automatically wrap HandleAsync in a database transaction." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Transactional"]}
 using Whizbang.Core;
 using System.Data;
 
@@ -327,7 +327,7 @@ public abstract class TransactionalReceptor<TMessage, TResponse> : IReceptor<TMe
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 2: Transactional Receptor Base - TransferFunds" description="Demonstrates pattern 2: Transactional Receptor Base" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Transactional"]}
 public record TransferFunds(Guid FromAccountId, Guid ToAccountId, decimal Amount);
 public record FundsTransferred(Guid TransactionId, DateTimeOffset CompletedAt);
 
@@ -375,7 +375,7 @@ public class TransferFundsReceptor : TransactionalReceptor<TransferFunds, FundsT
 
 **Use Case**: Automatically resolve tenant context for all receptors.
 
-```csharp
+```csharp{title="Pattern 3: Multi-Tenant Receptor Base" description="Use Case: Automatically resolve tenant context for all receptors." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Multi-Tenant"]}
 using Whizbang.Core;
 
 public interface ITenantContext {
@@ -436,7 +436,7 @@ public abstract class TenantReceptor<TMessage, TResponse> : IReceptor<TMessage, 
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 3: Multi-Tenant Receptor Base - CreateProduct" description="Demonstrates pattern 3: Multi-Tenant Receptor Base" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Multi-Tenant"]}
 public record CreateProduct(string Name, decimal Price);
 public record ProductCreated(Guid ProductId, Guid TenantId);
 
@@ -487,7 +487,7 @@ public class CreateProductReceptor : TenantReceptor<CreateProduct, ProductCreate
 
 **Use Case**: Stream large result sets without loading everything into memory.
 
-```csharp
+```csharp{title="Pattern 4: IAsyncEnumerable Streaming" description="Use Case: Stream large result sets without loading everything into memory." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "IAsyncEnumerable"]}
 using Whizbang.Core;
 
 /// <summary>
@@ -505,7 +505,7 @@ public interface IStreamingReceptor<in TMessage, out TResponse> {
 ```
 
 **Implementation**:
-```csharp
+```csharp{title="Pattern 4: IAsyncEnumerable Streaming - GetOrderHistory" description="Implementation:" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "IAsyncEnumerable"]}
 public record GetOrderHistory(Guid CustomerId);
 public record OrderSummary(Guid OrderId, decimal Total, DateTimeOffset CreatedAt);
 
@@ -551,7 +551,7 @@ public class GetOrderHistoryReceptor : IStreamingReceptor<GetOrderHistory, Order
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 4: IAsyncEnumerable Streaming -" description="Demonstrates pattern 4: IAsyncEnumerable Streaming" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "IAsyncEnumerable"]}
 public class OrderHistoryController : ControllerBase {
   private readonly GetOrderHistoryReceptor _receptor;
 
@@ -582,7 +582,7 @@ public class OrderHistoryController : ControllerBase {
 
 **Use Case**: Receptor manages expensive resources (connections, file handles).
 
-```csharp
+```csharp{title="Pattern 5: IAsyncDisposable Receptor" description="Use Case: Receptor manages expensive resources (connections, file handles)." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "IAsyncDisposable"]}
 using Whizbang.Core;
 
 public record ImportCsv(string FilePath);
@@ -644,7 +644,7 @@ public class ImportCsvReceptor : IReceptor<ImportCsv, CsvImported>, IAsyncDispos
 ```
 
 **Registration**:
-```csharp
+```csharp{title="Pattern 5: IAsyncDisposable Receptor (2)" description="Registration:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "IAsyncDisposable"]}
 // Transient lifetime ensures new instance per invocation
 builder.Services.AddTransient<IReceptor<ImportCsv, CsvImported>, ImportCsvReceptor>();
 ```
@@ -662,7 +662,7 @@ builder.Services.AddTransient<IReceptor<ImportCsv, CsvImported>, ImportCsvRecept
 
 **Use Case**: High-throughput event processing with no response needed.
 
-```csharp
+```csharp{title="Pattern 6: Zero-Allocation Void Receptor" description="Use Case: High-throughput event processing with no response needed." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Zero-Allocation"]}
 using Whizbang.Core;
 
 public record OrderShipped(Guid OrderId, string TrackingNumber);
@@ -707,7 +707,7 @@ public class OrderShippedReceptor : IReceptor<OrderShipped> {
 
 **Use Case**: Reuse expensive objects across receptor invocations.
 
-```csharp
+```csharp{title="Pattern 7: Pooled Resources" description="Use Case: Reuse expensive objects across receptor invocations." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Pooled"]}
 using Whizbang.Core;
 using System.Buffers;
 
@@ -769,7 +769,7 @@ public class ProcessLargeFileReceptor : IReceptor<ProcessLargeFile, FileProcesse
 
 **Use Case**: Automatically retry transient failures.
 
-```csharp
+```csharp{title="Pattern 8: Resilient Receptor (Retry + Circuit Breaker)" description="Use Case: Automatically retry transient failures." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Resilient"]}
 using Whizbang.Core;
 using Polly;
 using Polly.CircuitBreaker;
@@ -831,7 +831,7 @@ public abstract class ResilientReceptor<TMessage, TResponse> : IReceptor<TMessag
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 8: Resilient Receptor (Retry + Circuit Breaker) -" description="Demonstrates pattern 8: Resilient Receptor (Retry + Circuit Breaker)" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Resilient"]}
 public record CallExternalApi(string Endpoint);
 public record ApiResponse(string Data);
 
@@ -885,7 +885,7 @@ public class CallExternalApiReceptor : ResilientReceptor<CallExternalApi, ApiRes
 
 ### Testing Base Classes
 
-```csharp
+```csharp{title="Testing Base Classes" description="Demonstrates testing Base Classes" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Base"]}
 public class ReceptorBaseTests {
   [Test]
   public async Task HandleAsync_CallsValidateAndExecuteAsync() {
@@ -930,7 +930,7 @@ internal class TestReceptor : ReceptorBase<TestMessage, TestResponse> {
 
 ### Testing Streaming Receptors
 
-```csharp
+```csharp{title="Testing Streaming Receptors" description="Demonstrates testing Streaming Receptors" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Streaming"]}
 public class StreamingReceptorTests {
   [Test]
   public async Task StreamAsync_YieldsAllResultsAsync() {

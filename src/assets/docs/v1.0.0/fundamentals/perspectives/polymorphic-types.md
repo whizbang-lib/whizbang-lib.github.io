@@ -30,7 +30,7 @@ The analyzer finds perspective models containing properties that are:
 
 ### Example Warning
 
-```csharp
+```csharp{title="Example Warning" description="Demonstrates example Warning" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Example", "Warning"]}
 public record FormModel {
     public Guid FormId { get; init; }
 
@@ -49,7 +49,7 @@ The analyzer recursively checks nested types, so it catches polymorphic properti
 - Collection element types (e.g., `List<AbstractType>`)
 - Generic type arguments
 
-```csharp
+```csharp{title="Recursive Detection" description="- Direct properties - Properties of nested types - Collection element types (e." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Recursive", "Detection"]}
 public record FormModel {
     // Analyzer checks FieldConfig for polymorphic properties
     public FieldConfig Config { get; init; }
@@ -65,7 +65,7 @@ public record FormModel {
 
 Consider a form builder where fields can have different settings types:
 
-```csharp
+```csharp{title="The Problem" description="Consider a form builder where fields can have different settings types:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Problem"]}
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(TextFieldSettings), "text")]
 [JsonDerivedType(typeof(NumberFieldSettings), "number")]
@@ -85,7 +85,7 @@ public class NumberFieldSettings : AbstractFieldSettings {
 
 Querying by derived type in JSONB requires parsing JSON at query time:
 
-```sql
+```sql{title="The Problem (2)" description="Querying by derived type in JSONB requires parsing JSON at query time:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Problem"]}
 -- Slow: parses JSON for every row
 SELECT * FROM wh_per_form
 WHERE data->'Settings'->>'$type' = 'text';
@@ -95,7 +95,7 @@ WHERE data->'Settings'->>'$type' = 'text';
 
 Add a discriminator column that stores the type information:
 
-```csharp
+```csharp{title="The Solution" description="Add a discriminator column that stores the type information:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Solution"]}
 public record FormModel {
     [StreamId]
     public Guid FormId { get; init; }
@@ -110,7 +110,7 @@ public record FormModel {
 
 Now queries use the indexed column:
 
-```sql
+```sql{title="The Solution (2)" description="Now queries use the indexed column:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Solution"]}
 -- Fast: uses indexed column
 SELECT * FROM wh_per_form
 WHERE settings_type = 'text';
@@ -127,7 +127,7 @@ WHERE settings_type = 'text';
 
 If you don't need to query by type, suppress the diagnostic:
 
-```csharp
+```csharp{title="Suppressing the Analyzer" description="If you don't need to query by type, suppress the diagnostic:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Suppressing", "Analyzer"]}
 #pragma warning disable WHIZ811
 public AbstractFieldSettings Settings { get; init; }
 #pragma warning restore WHIZ811

@@ -16,7 +16,7 @@ Whizbang's event store is designed for:
 
 ### Appending Events
 
-```csharp
+```csharp{title="Appending Events" description="Demonstrates appending Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Appending"]}
 public class OrderHandler {
   private readonly IEventStore _eventStore;
 
@@ -32,7 +32,7 @@ public class OrderHandler {
 
 ### Reading Events
 
-```csharp
+```csharp{title="Reading Events" description="Demonstrates reading Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Reading"]}
 // Read all events of a specific type
 await foreach (var envelope in _eventStore.ReadAsync<OrderCreatedEvent>(orderId, fromSequence: 0)) {
   var evt = envelope.Payload;
@@ -62,7 +62,7 @@ The decorator is automatically applied when using `DecorateEventStoreWithSyncTra
 
 ### Usage
 
-```csharp
+```csharp{title="Usage" description="Demonstrates usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Usage"]}
 var syncResult = await _eventStore.AppendAndWaitAsync<OrderCreatedEvent, OrderProjection>(
     streamId: orderId,
     message: new OrderCreatedEvent(orderId, customerId, items),
@@ -84,7 +84,7 @@ var syncResult = await _eventStore.AppendAndWaitAsync<OrderCreatedEvent, OrderPr
 
 Returns a `SyncResult` with the outcome:
 
-```csharp
+```csharp{title="SyncResult" description="Returns a SyncResult with the outcome:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "SyncResult"]}
 var result = await eventStore.AppendAndWaitAsync<OrderCreatedEvent, OrderProjection>(
     streamId, evt);
 
@@ -117,7 +117,7 @@ When appending events with the message-only overload (`AppendAsync<TMessage>(str
 
 This happens via the `SecurityContextEventStoreDecorator`:
 
-```csharp
+```csharp{title="Security Context Propagation" description="This happens via the SecurityContextEventStoreDecorator:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Security", "Context"]}
 // Security context from ScopeContextAccessor.CurrentContext is auto-propagated
 await _eventStore.AppendAsync(orderId, new OrderCreatedEvent(...));
 
@@ -135,7 +135,7 @@ Security context is propagated when:
 1. `ScopeContextAccessor.CurrentContext` contains an `ImmutableScopeContext`
 2. The context has `ShouldPropagate = true`
 
-```csharp
+```csharp{title="When Context is Propagated" description="Security context is propagated when: 1." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "When", "Context"]}
 // Context is set by middleware or scope initialization
 var extraction = new SecurityExtraction {
   Scope = new PerspectiveScope { UserId = "user-123", TenantId = "tenant-456" },
@@ -149,7 +149,7 @@ await _eventStore.AppendAsync(orderId, evt);
 
 ## IEventStore Interface
 
-```csharp
+```csharp{title="IEventStore Interface" description="Demonstrates iEventStore Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "IEventStore", "Interface"]}
 public interface IEventStore {
   // Append with envelope (full control)
   Task AppendAsync<TMessage>(Guid streamId, MessageEnvelope<TMessage> envelope, CancellationToken ct = default);
@@ -203,7 +203,7 @@ These decorators are automatically applied when using `DecorateEventStoreWithSyn
 
 Event stores are registered by data providers:
 
-```csharp
+```csharp{title="Registration" description="Event stores are registered by data providers:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Registration"]}
 services.AddWhizbang()
     .WithEFCore<MyDbContext>()
     .WithDriver.Postgres;  // Registers EFCoreEventStore with decorators

@@ -39,7 +39,7 @@ Think of transports as the postal service of your application - they ensure mess
 The basic transport interface for message passing:
 :::
 
-```csharp
+```csharp{title="Core Interface (v1.0.0)" description=":::new The basic transport interface for message passing: :::" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Core", "Interface"]}
 public interface ITransport {
     // Send a message
     Task<TResponse> Send<TRequest, TResponse>(TRequest request, string destination)
@@ -75,7 +75,7 @@ public enum TransportCapabilities {
 The default in-process transport for v1.0.0:
 :::
 
-```csharp
+```csharp{title="In-Process Transport" description=":::new The default in-process transport for v1." category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "In-Process", "Transport"]}
 [WhizbangTransport("InProcess")]
 public class InProcessTransport : ITransport {
     private readonly Dictionary<string, object> _handlers = new();
@@ -155,7 +155,7 @@ public class InProcessTransport : ITransport {
 Define messages for transport:
 :::
 
-```csharp
+```csharp{title="Message Contracts" description=":::new Define messages for transport: :::" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Message", "Contracts"]}
 public interface IMessage {
     Guid Id { get; }
     DateTimeOffset Timestamp { get; }
@@ -199,7 +199,7 @@ public record OrderResponse : Message {
 
 Transports are registered and configured at startup:
 
-```csharp
+```csharp{title="Transport Registration" description="Transports are registered and configured at startup:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Transport", "Registration"]}
 // Manual registration
 services.AddWhizbangTransports(options => {
     options.UseInProcess();
@@ -232,7 +232,7 @@ public static partial class WhizbangGenerated {
 
 ### In Receptors
 
-```csharp
+```csharp{title="In Receptors" description="Demonstrates in Receptors" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Receptors"]}
 public class OrderReceptor : IReceptor<CreateOrder> {
     private readonly ITransport _transport;
     
@@ -277,7 +277,7 @@ public class OrderReceptor : IReceptor<CreateOrder> {
 
 ### Event Subscriptions
 
-```csharp
+```csharp{title="Event Subscriptions" description="Demonstrates event Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Event", "Subscriptions"]}
 public class NotificationService {
     private readonly ITransport _transport;
     
@@ -314,7 +314,7 @@ public class NotificationService {
 Simple message pipeline for v1.0.0:
 :::
 
-```csharp
+```csharp{title="Message Pipeline" description=":::new Simple message pipeline for v1." category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Message", "Pipeline"]}
 public interface IMessagePipeline {
     Task<TResponse> Process<TRequest, TResponse>(
         TRequest request,
@@ -367,7 +367,7 @@ public class LoggingMiddleware : IMessageMiddleware {
 
 ## Testing with Transports
 
-```csharp
+```csharp{title="Testing with Transports" description="Demonstrates testing with Transports" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Testing"]}
 [Test]
 public class TransportTests {
     private InProcessTransport _transport;
@@ -428,7 +428,7 @@ public class TransportTests {
 
 ## IDE Features
 
-```csharp
+```csharp{title="IDE Features" description="Demonstrates iDE Features" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "IDE", "Features"]}
 // IDE shows: "Transport: InProcess | Handlers: 12 | Subscribers: 34"
 public interface ITransport { }
 
@@ -468,7 +468,7 @@ These limitations are addressed in future versions:
 v0.2.0 adds network transports:
 :::
 
-```csharp
+```csharp{title="To v0.2.0 (HTTP/WebSocket)" description=":::planned v0." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "V0.2.0", "HTTP"]}
 // v0.2.0 - HTTP transport
 services.AddWhizbangTransports(options => {
     options.UseHttp(http => {
@@ -484,7 +484,7 @@ services.AddWhizbangTransports(options => {
 v0.3.0 adds message queue support:
 :::
 
-```csharp
+```csharp{title="To v0.3.0 (Message Queues)" description=":::planned v0." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "V0.3.0", "Message"]}
 // v0.3.0 - RabbitMQ transport
 services.AddWhizbangTransports(options => {
     options.UseRabbitMQ(rabbit => {

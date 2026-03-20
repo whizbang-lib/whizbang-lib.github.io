@@ -30,7 +30,7 @@ The `Whizbang.Transports.FastEndpoints` package provides:
 
 ## Installation
 
-```bash
+```bash{title="Installation" description="Demonstrates installation" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Installation"]}
 dotnet add package Whizbang.Transports.FastEndpoints
 dotnet add package FastEndpoints
 ```
@@ -39,7 +39,7 @@ dotnet add package FastEndpoints
 
 ### Minimal Setup
 
-```csharp
+```csharp{title="Minimal Setup" description="Demonstrates minimal Setup" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Minimal", "Setup"]}
 // Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,7 +55,7 @@ app.Run();
 
 ### With Whizbang Core
 
-```csharp
+```csharp{title="With Whizbang Core" description="Demonstrates with Whizbang Core" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Whizbang", "Core"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Add Whizbang core services
@@ -79,7 +79,7 @@ app.Run();
 
 Registers lens endpoint services. Generated lens endpoints are auto-discovered by FastEndpoints.
 
-```csharp
+```csharp{title="AddWhizbangLenses" description="Registers lens endpoint services." category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "AddWhizbangLenses"]}
 builder.Services.AddFastEndpoints()
     .AddWhizbangLenses();
 ```
@@ -88,7 +88,7 @@ builder.Services.AddFastEndpoints()
 
 Registers mutation endpoint services. Generated mutation endpoints are auto-discovered by FastEndpoints.
 
-```csharp
+```csharp{title="AddWhizbangMutations" description="Registers mutation endpoint services." category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "AddWhizbangMutations"]}
 builder.Services.AddFastEndpoints()
     .AddWhizbangLenses()
     .AddWhizbangMutations();
@@ -98,7 +98,7 @@ builder.Services.AddFastEndpoints()
 
 Use the `[RestLens]` attribute to mark lens interfaces for REST endpoint generation:
 
-```csharp
+```csharp{title="Defining REST Lenses" description="Use the [RestLens] attribute to mark lens interfaces for REST endpoint generation:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Defining", "REST"]}
 [RestLens(Route = "/api/orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 ```
@@ -109,7 +109,7 @@ See [REST Filtering](filtering.md) for query parameter usage.
 
 Use the `[CommandEndpoint]` attribute to generate mutation endpoints:
 
-```csharp
+```csharp{title="Defining REST Mutations" description="Use the [CommandEndpoint] attribute to generate mutation endpoints:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Defining", "REST"]}
 [CommandEndpoint<CreateOrderCommand, OrderResult>(RestRoute = "/api/orders")]
 public partial class CreateOrderEndpoint;
 ```
@@ -122,14 +122,14 @@ See [REST Mutations](mutations.md) for details.
 
 For a lens like:
 
-```csharp
+```csharp{title="Lens Endpoint" description="For a lens like:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Lens", "Endpoint"]}
 [RestLens(Route = "/api/orders", DefaultPageSize = 25, MaxPageSize = 100)]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 ```
 
 The generator creates:
 
-```csharp
+```csharp{title="Lens Endpoint - OrderLensEndpoint" description="The generator creates:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "Lens", "Endpoint"]}
 public partial class OrderLensEndpoint : LensEndpointBase<OrderReadModel> {
     public override void Configure() {
         Get("/api/orders");
@@ -150,14 +150,14 @@ public partial class OrderLensEndpoint : LensEndpointBase<OrderReadModel> {
 
 For a command like:
 
-```csharp
+```csharp{title="Mutation Endpoint" description="For a command like:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Mutation", "Endpoint"]}
 [CommandEndpoint<CreateOrderCommand, OrderResult>(RestRoute = "/api/orders")]
 public partial class CreateOrderEndpoint;
 ```
 
 The generator creates:
 
-```csharp
+```csharp{title="Mutation Endpoint - CreateOrderEndpoint" description="The generator creates:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "Mutation", "Endpoint"]}
 public partial class CreateOrderEndpoint : RestMutationEndpointBase<CreateOrderCommand, OrderResult> {
     public override void Configure() {
         Post("/api/orders");
@@ -174,7 +174,7 @@ public partial class CreateOrderEndpoint : RestMutationEndpointBase<CreateOrderC
 
 Generated endpoints are partial classes, allowing customization:
 
-```csharp
+```csharp{title="Customizing Endpoints" description="Generated endpoints are partial classes, allowing customization:" category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "Customizing", "Endpoints"]}
 // Your partial class extension
 public partial class OrderLensEndpoint {
     protected override async ValueTask OnBeforeQueryAsync(LensRequest request, CancellationToken ct) {

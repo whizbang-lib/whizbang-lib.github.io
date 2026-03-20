@@ -324,7 +324,7 @@ sequenceDiagram
 
 **Deduplication Table**:
 
-```sql
+```sql{title="Sequence Diagram" description="Deduplication Table:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Sequence", "Diagram"]}
 CREATE TABLE wh_message_deduplication (
   message_id UUID PRIMARY KEY,  -- Idempotency key
   first_seen_at TIMESTAMPTZ NOT NULL

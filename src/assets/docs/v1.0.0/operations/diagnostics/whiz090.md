@@ -41,7 +41,7 @@ Whizbang uses Roslyn's `AttributeData` API to extract attribute constructor argu
 
 ### Incorrect Code (Triggers WHIZ090)
 
-```csharp
+```csharp{title="Incorrect Code (Triggers WHIZ090)" description="Demonstrates incorrect Code (Triggers WHIZ090)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Incorrect", "Code"]}
 [AttributeUsage(AttributeTargets.Class)]
 public class NotificationTagAttribute : MessageTagAttribute {
   public NotificationTagAttribute(string tagName) {  // WHIZ090: 'tagName' doesn't match 'Tag'
@@ -52,7 +52,7 @@ public class NotificationTagAttribute : MessageTagAttribute {
 
 ### Correct Code
 
-```csharp
+```csharp{title="Correct Code" description="Demonstrates correct Code" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Correct", "Code"]}
 [AttributeUsage(AttributeTargets.Class)]
 public class NotificationTagAttribute : MessageTagAttribute {
   public NotificationTagAttribute(string tag) {  // 'tag' matches 'Tag' (case-insensitive)
@@ -67,7 +67,7 @@ public class NotificationTagAttribute : MessageTagAttribute {
 
 Parameter names are matched to property names case-insensitively:
 
-```csharp
+```csharp{title="Case-Insensitive Matching" description="Parameter names are matched to property names case-insensitively:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Case-Insensitive", "Matching"]}
 // All of these are valid:
 public MyTagAttribute(string tag) { Tag = tag; }       // Exact match
 public MyTagAttribute(string TAG) { Tag = TAG; }       // All caps
@@ -78,7 +78,7 @@ public MyTagAttribute(string Tag) { Tag = Tag; }       // PascalCase
 
 Each constructor parameter must match a corresponding property:
 
-```csharp
+```csharp{title="Multiple Parameters" description="Each constructor parameter must match a corresponding property:" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Multiple", "Parameters"]}
 [AttributeUsage(AttributeTargets.Class)]
 public class MyTagAttribute : MessageTagAttribute {
   public string? Category { get; set; }
@@ -95,7 +95,7 @@ public class MyTagAttribute : MessageTagAttribute {
 
 Parameters can match properties from base classes:
 
-```csharp
+```csharp{title="Inherited Properties" description="Parameters can match properties from base classes:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Inherited", "Properties"]}
 public class MyTagAttribute : MessageTagAttribute {
   // 'tag' matches inherited 'Tag' property
   // 'includeEvent' matches inherited 'IncludeEvent' property
@@ -110,7 +110,7 @@ public class MyTagAttribute : MessageTagAttribute {
 
 ### Option 1: Rename Parameter to Match Property
 
-```csharp
+```csharp{title="Option 1: Rename Parameter to Match Property" description="Demonstrates option 1: Rename Parameter to Match Property" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Option", "Rename"]}
 // Before (WHIZ090 error)
 public MyTagAttribute(string tagName) {
   Tag = tagName;
@@ -126,7 +126,7 @@ public MyTagAttribute(string tag) {
 
 If you intentionally want a different parameter name, add a property that matches:
 
-```csharp
+```csharp{title="Option 2: Add a Property That Matches the Parameter" description="If you intentionally want a different parameter name, add a property that matches:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Option", "Add"]}
 public class MyTagAttribute : MessageTagAttribute {
   // Property matches parameter name
   public string TagName { get => Tag; set => Tag = value; }
@@ -141,7 +141,7 @@ public class MyTagAttribute : MessageTagAttribute {
 
 Roslyn's `AttributeData` exposes constructor arguments via `ConstructorArguments`, but these are identified by the parameter's declared name in the method signature. The Roslyn API cannot see what happens inside the constructor body, so it cannot determine which property a parameter value is assigned to.
 
-```csharp
+```csharp{title="Technical Background" description="Roslyn's AttributeData exposes constructor arguments via ConstructorArguments, but these are identified by the" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Technical", "Background"]}
 // What Roslyn sees:
 // - Constructor parameter: "tagName"
 // - Constructor arguments: ["tenants"]

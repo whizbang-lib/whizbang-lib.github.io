@@ -25,7 +25,7 @@ The time provider abstraction solves common challenges:
 
 ## ITimeProvider Interface {#itimeprovider}
 
-```csharp
+```csharp{title="ITimeProvider Interface" description="Demonstrates iTimeProvider Interface" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "ITimeProvider", "Interface"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -68,7 +68,7 @@ public interface ITimeProvider {
 
 The default implementation delegates to .NET's `TimeProvider.System`:
 
-```csharp
+```csharp{title="SystemTimeProvider" description="The default implementation delegates to ." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "SystemTimeProvider", "Systemtimeprovider"]}
 namespace Whizbang.Core;
 
 public sealed class SystemTimeProvider : ITimeProvider {
@@ -95,7 +95,7 @@ public sealed class SystemTimeProvider : ITimeProvider {
 
 `SystemTimeProvider` is registered as a singleton by default:
 
-```csharp
+```csharp{title="Registration" description="SystemTimeProvider is registered as a singleton by default:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Registration"]}
 services.AddWhizbang();
 // ITimeProvider -> SystemTimeProvider (singleton)
 ```
@@ -104,7 +104,7 @@ services.AddWhizbang();
 
 ### Basic Usage
 
-```csharp
+```csharp{title="Basic Usage" description="Demonstrates basic Usage" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Usage"]}
 public class OrderService {
   private readonly ITimeProvider _timeProvider;
 
@@ -125,7 +125,7 @@ public class OrderService {
 
 ### Measuring Elapsed Time
 
-```csharp
+```csharp{title="Measuring Elapsed Time" description="Demonstrates measuring Elapsed Time" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Measuring", "Elapsed"]}
 public async Task ProcessBatchAsync(IEnumerable<Order> orders) {
   var startTimestamp = _timeProvider.GetTimestamp();
 
@@ -140,7 +140,7 @@ public async Task ProcessBatchAsync(IEnumerable<Order> orders) {
 
 ### Testing with Mock Time
 
-```csharp
+```csharp{title="Testing with Mock Time" description="Demonstrates testing with Mock Time" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Testing", "Mock"]}
 public class FakeTimeProvider : ITimeProvider {
   private DateTimeOffset _currentTime = DateTimeOffset.UtcNow;
 
@@ -184,7 +184,7 @@ public async Task Order_ExpiresAfter30Minutes_ReturnsExpiredAsync() {
 
 For more sophisticated testing, use `FakeTimeProvider` from `Microsoft.Extensions.TimeProvider.Testing`:
 
-```csharp
+```csharp{title="Using Microsoft.Extensions.TimeProvider.Testing" description="For more sophisticated testing, use FakeTimeProvider from `Microsoft." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Using", "Microsoft.Extensions.TimeProvider.Testing"]}
 using Microsoft.Extensions.Time.Testing;
 
 [Test]
@@ -224,7 +224,7 @@ public void Order_WithFakeTimeProvider_RespectsTimeAdvancementAsync() {
 
 For performance-critical code, use the timestamp methods:
 
-```csharp
+```csharp{title="High-Precision Timing" description="For performance-critical code, use the timestamp methods:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "High-Precision", "Timing"]}
 // ✅ GOOD: High-precision timing
 var start = _timeProvider.GetTimestamp();
 DoWork();

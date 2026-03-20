@@ -24,7 +24,7 @@ Whizbang provides first-class PostgreSQL support through:
 
 ## Installation
 
-```bash
+```bash{title="Installation" description="Demonstrates installation" category="Implementation" difficulty="BEGINNER" tags=["Data", "Installation"]}
 dotnet add package Whizbang.Data.EFCore.Postgres
 ```
 
@@ -32,7 +32,7 @@ dotnet add package Whizbang.Data.EFCore.Postgres
 
 ### Basic Setup
 
-```csharp
+```csharp{title="Basic Setup" description="Demonstrates basic Setup" category="Implementation" difficulty="BEGINNER" tags=["Data", "Basic", "Setup"]}
 services.AddWhizbang()
     .WithEFCore<MyDbContext>()
     .WithDriver.Postgres(connectionString);
@@ -48,7 +48,7 @@ Host=localhost;Port=5432;Database=myapp;Username=postgres;Password=secret
 
 The PostgreSQL provider includes built-in connection retry with exponential backoff:
 
-```csharp
+```csharp{title="With Connection Retry" description="The PostgreSQL provider includes built-in connection retry with exponential backoff:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Connection", "Retry", "Connection-retry"]}
 services.AddWhizbang()
     .WithEFCore<MyDbContext>()
     .WithDriver.Postgres(connectionString, options => {
@@ -72,7 +72,7 @@ services.AddWhizbang()
 
 The provider includes database readiness checks for health monitoring:
 
-```csharp
+```csharp{title="Readiness Checks" description="The provider includes database readiness checks for health monitoring:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Readiness", "Checks"]}
 services.AddHealthChecks()
     .AddPostgresReadinessCheck();
 ```
@@ -88,7 +88,7 @@ This verifies:
 
 PostgreSQL is the recommended backend for the Whizbang event store:
 
-```csharp
+```csharp{title="Event Store" description="PostgreSQL is the recommended backend for the Whizbang event store:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Event", "Store"]}
 // Events stored in optimized JSONB columns
 await eventStore.AppendAsync(streamId, new OrderCreatedEvent(...));
 ```
@@ -97,7 +97,7 @@ await eventStore.AppendAsync(streamId, new OrderCreatedEvent(...));
 
 Perspectives are stored as PostgreSQL tables with automatic schema generation:
 
-```csharp
+```csharp{title="Perspectives" description="Perspectives are stored as PostgreSQL tables with automatic schema generation:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Perspectives"]}
 [PerspectiveStorage(StorageMode.Table)]
 public class OrderPerspective : IPerspectiveFor<Order> {
     public Guid Id { get; set; }
@@ -110,7 +110,7 @@ public class OrderPerspective : IPerspectiveFor<Order> {
 
 For AI/ML workloads, enable pgvector support:
 
-```csharp
+```csharp{title="Vector Search" description="For AI/ML workloads, enable pgvector support:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Vector", "Search"]}
 services.AddWhizbang()
     .WithEFCore<MyDbContext>()
     .WithDriver.Postgres(connectionString)

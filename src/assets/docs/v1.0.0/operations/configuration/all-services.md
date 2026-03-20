@@ -17,7 +17,7 @@ codeReferences:
 
 ## Signature
 
-```csharp
+```csharp{title="Signature" description="Demonstrates signature" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "Signature"]}
 public static IServiceCollection AddAllWhizbangServices(
     this IServiceCollection services,
     Action<ServiceRegistrationOptions>? configure = null)
@@ -38,7 +38,7 @@ public static IServiceCollection AddAllWhizbangServices(
 
 This method is equivalent to calling both registration methods with the same options:
 
-```csharp
+```csharp{title="Behavior" description="This method is equivalent to calling both registration methods with the same options:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "Behavior"]}
 services.AddPerspectiveServices(configure);
 services.AddLensServices(configure);
 ```

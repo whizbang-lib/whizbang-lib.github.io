@@ -21,7 +21,7 @@ The **AttributeUtilities** class provides shared utilities for extracting attrib
 
 C# attributes can receive values through multiple syntax patterns:
 
-```csharp
+```csharp{title="Why Shared Utilities?" description="C# attributes can receive values through multiple syntax patterns:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Why", "Shared"]}
 // Named arguments
 [NotificationTag(Tag = "orders", IncludeEvent = true)]
 public record OrderCreated(Guid OrderId);
@@ -66,7 +66,7 @@ AttributeData
 
 Named arguments always take precedence over constructor arguments:
 
-```csharp
+```csharp{title="Value Precedence" description="Named arguments always take precedence over constructor arguments:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Value", "Precedence"]}
 // Given this attribute usage:
 [MyTag("from-ctor", Tag = "from-named")]
 
@@ -78,7 +78,7 @@ Named arguments always take precedence over constructor arguments:
 
 Constructor parameters are matched case-insensitively to property names:
 
-```csharp
+```csharp{title="Case-Insensitive Parameter Matching" description="Constructor parameters are matched case-insensitively to property names:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Case-Insensitive", "Parameter"]}
 // Attribute definition
 public class TenantTagAttribute : MessageTagAttribute {
   public TenantTagAttribute(string tag) {  // lowercase "tag"
@@ -101,7 +101,7 @@ public class TenantTagAttribute : MessageTagAttribute {
 
 Extracts a string property value from an attribute.
 
-```csharp
+```csharp{title="GetStringValue" description="Extracts a string property value from an attribute." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "GetStringValue"]}
 public static string? GetStringValue(
     AttributeData attribute,
     string propertyName)
@@ -109,7 +109,7 @@ public static string? GetStringValue(
 
 **Example**:
 
-```csharp
+```csharp{title="GetStringValue (2)" description="Demonstrates getStringValue" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetStringValue"]}
 // Named argument
 [NotificationTag(Tag = "orders")]
 var tag = AttributeUtilities.GetStringValue(attr, "Tag");  // "orders"
@@ -129,7 +129,7 @@ var tag = AttributeUtilities.GetStringValue(attr, "Tag");  // null
 
 Extracts a boolean property value from an attribute.
 
-```csharp
+```csharp{title="GetBoolValue" description="Extracts a boolean property value from an attribute." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "GetBoolValue"]}
 public static bool GetBoolValue(
     AttributeData attribute,
     string propertyName,
@@ -138,7 +138,7 @@ public static bool GetBoolValue(
 
 **Example**:
 
-```csharp
+```csharp{title="GetBoolValue (2)" description="Demonstrates getBoolValue" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetBoolValue"]}
 // Named argument
 [NotificationTag(IncludeEvent = true)]
 var include = AttributeUtilities.GetBoolValue(attr, "IncludeEvent", false);  // true
@@ -158,7 +158,7 @@ var include = AttributeUtilities.GetBoolValue(attr, "IncludeEvent", false);  // 
 
 Extracts an integer property value from an attribute.
 
-```csharp
+```csharp{title="GetIntValue" description="Extracts an integer property value from an attribute." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "GetIntValue"]}
 public static int GetIntValue(
     AttributeData attribute,
     string propertyName,
@@ -167,7 +167,7 @@ public static int GetIntValue(
 
 **Example**:
 
-```csharp
+```csharp{title="GetIntValue (2)" description="Demonstrates getIntValue" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetIntValue"]}
 // Named argument
 [RetryPolicy(MaxAttempts = 5)]
 var attempts = AttributeUtilities.GetIntValue(attr, "MaxAttempts", 3);  // 5
@@ -187,7 +187,7 @@ var priority = AttributeUtilities.GetIntValue(attr, "Priority", 50);  // 50
 
 Extracts a string array property value from an attribute.
 
-```csharp
+```csharp{title="GetStringArrayValue" description="Extracts a string array property value from an attribute." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "GetStringArrayValue"]}
 public static string[]? GetStringArrayValue(
     AttributeData attribute,
     string propertyName)
@@ -195,7 +195,7 @@ public static string[]? GetStringArrayValue(
 
 **Example**:
 
-```csharp
+```csharp{title="GetStringArrayValue (2)" description="Demonstrates getStringArrayValue" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetStringArrayValue"]}
 // Named argument
 [NotificationTag(Properties = new[] { "OrderId", "CustomerId" })]
 var props = AttributeUtilities.GetStringArrayValue(attr, "Properties");
@@ -218,7 +218,7 @@ var props = AttributeUtilities.GetStringArrayValue(attr, "Properties");
 
 ### MessageTagDiscoveryGenerator Example
 
-```csharp
+```csharp{title="MessageTagDiscoveryGenerator Example" description="Demonstrates messageTagDiscoveryGenerator Example" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "MessageTagDiscoveryGenerator", "Example"]}
 private static MessageTagInfo? _extractTagInfo(
     GeneratorSyntaxContext context,
     CancellationToken ct) {
@@ -269,7 +269,7 @@ When creating custom attributes that inherit from Whizbang base attributes, you 
 
 ### Named-Only Pattern
 
-```csharp
+```csharp{title="Named-Only Pattern" description="Demonstrates named-Only Pattern" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Named-Only", "Pattern"]}
 // Attribute with required init properties (C# 11+)
 public class NotificationTagAttribute : MessageTagAttribute {
   public required string Tag { get; init; }
@@ -283,7 +283,7 @@ public record OrderCreated(Guid OrderId);
 
 ### Constructor Pattern
 
-```csharp
+```csharp{title="Constructor Pattern" description="Demonstrates constructor Pattern" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Constructor", "Pattern"]}
 // Attribute with constructor parameter
 public class TenantTagAttribute : MessageTagAttribute {
   public TenantTagAttribute(string tag) {
@@ -298,7 +298,7 @@ public record TenantCreated(Guid TenantId);
 
 ### Mixed Pattern
 
-```csharp
+```csharp{title="Mixed Pattern" description="Demonstrates mixed Pattern" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Mixed", "Pattern"]}
 // Attribute with constructor + optional named arguments
 public class DomainTagAttribute : MessageTagAttribute {
   public DomainTagAttribute(string tag) {
@@ -360,7 +360,7 @@ This means:
 
 Comprehensive unit tests verify all extraction scenarios:
 
-```csharp
+```csharp{title="Testing" description="Comprehensive unit tests verify all extraction scenarios:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Testing"]}
 [Test]
 public async Task GetStringValue_ConstructorArgument_ReturnsValueAsync() {
   var source = @"

@@ -26,7 +26,7 @@ Messages are the **data carriers** in Whizbang applications. They represent:
 
 ## IMessage Interface {#imessage}
 
-```csharp
+```csharp{title="IMessage Interface" description="Demonstrates iMessage Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IMessage", "Interface"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -68,7 +68,7 @@ IMessage (marker interface)
 
 Commands represent **intentions** - requests to perform actions:
 
-```csharp
+```csharp{title="Commands" description="Commands represent intentions - requests to perform actions:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Commands"]}
 public record CreateOrder : ICommand {
   public required Guid CustomerId { get; init; }
   public required OrderItem[] Items { get; init; }
@@ -85,7 +85,7 @@ public record CancelOrder : ICommand {
 
 Events represent **facts** - things that have happened:
 
-```csharp
+```csharp{title="Events" description="Events represent facts - things that have happened:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Events"]}
 public record OrderCreated : IEvent {
   [StreamKey]
   public required Guid OrderId { get; init; }
@@ -107,7 +107,7 @@ public record OrderCancelled : IEvent {
 
 ### Use Records for Immutability
 
-```csharp
+```csharp{title="Use Records for Immutability" description="Demonstrates use Records for Immutability" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Records", "Immutability"]}
 // ✅ GOOD: Immutable record with init-only properties
 public record CreateOrder : ICommand {
   public required Guid CustomerId { get; init; }
@@ -123,7 +123,7 @@ public class CreateOrder : ICommand {
 
 ### Make Messages Self-Contained
 
-```csharp
+```csharp{title="Make Messages Self-Contained" description="Demonstrates make Messages Self-Contained" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Make", "Self-Contained"]}
 // ✅ GOOD: All data needed to process the command
 public record CreateOrder : ICommand {
   public required Guid CustomerId { get; init; }
@@ -141,7 +141,7 @@ public record CreateOrder : ICommand {
 
 ### Use Value Objects for Type Safety
 
-```csharp
+```csharp{title="Use Value Objects for Type Safety" description="Demonstrates use Value Objects for Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Value", "Objects"]}
 // ✅ GOOD: Type-safe value objects
 public record CreateOrder : ICommand {
   public required CustomerId CustomerId { get; init; }  // Strongly-typed
@@ -158,7 +158,7 @@ public record CreateOrder : ICommand {
 
 `IMessage` enables generic constraints throughout Whizbang:
 
-```csharp
+```csharp{title="Message Constraints" description="IMessage enables generic constraints throughout Whizbang:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Message", "Constraints"]}
 // Receptors handle specific message types
 public interface IReceptor<TMessage, TResponse>
     where TMessage : notnull {
@@ -203,7 +203,7 @@ public interface IDispatcher {
 
 Messages are wrapped in envelopes for routing and tracing:
 
-```csharp
+```csharp{title="Message Envelopes" description="Messages are wrapped in envelopes for routing and tracing:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Message", "Envelopes"]}
 // Message payload is wrapped in an envelope
 var envelope = MessageEnvelope.Create(
     messageId: MessageId.New(),
@@ -230,7 +230,7 @@ See [Message Envelopes](../messaging/message-envelopes.md) for details.
 
 Each message should represent **one** logical operation:
 
-```csharp
+```csharp{title="Single Responsibility" description="Each message should represent one logical operation:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Single", "Responsibility"]}
 // ✅ GOOD: Specific commands
 public record CreateOrder : ICommand { ... }
 public record UpdateOrderAddress : ICommand { ... }
@@ -246,7 +246,7 @@ public record ModifyOrder : ICommand {
 
 Events should capture **all relevant state**:
 
-```csharp
+```csharp{title="Event Data Completeness" description="Events should capture all relevant state:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Event", "Data"]}
 // ✅ GOOD: Complete state snapshot
 public record ProductPriceChanged : IEvent {
   [StreamKey]

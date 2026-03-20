@@ -62,7 +62,7 @@ Handler B queries OrderPerspective  ◄── May not see the order!
 
 Build synchronization filters with fluent AND/OR logic:
 
-```csharp
+```csharp{title="SyncFilter - Fluent Filter Builder" description="Build synchronization filters with fluent AND/OR logic:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "SyncFilter", "Fluent"]}
 using Whizbang.Core.Perspectives.Sync;
 
 // Wait for all events in current scope
@@ -173,7 +173,7 @@ The type registry system automatically discovers which event types each perspect
 
 The registry interface provides a simple API to query tracked event types:
 
-```csharp
+```csharp{title="ITrackedEventTypeRegistry" description="The registry interface provides a simple API to query tracked event types:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "ITrackedEventTypeRegistry"]}
 public interface ITrackedEventTypeRegistry {
   /// <summary>
   /// Checks if the given event type should be tracked for sync.
@@ -198,7 +198,7 @@ The default implementation supports two modes:
 
 **Static Mode** - Uses a dictionary provided at construction:
 
-```csharp
+```csharp{title="TrackedEventTypeRegistry Implementation" description="Static Mode - Uses a dictionary provided at construction:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "TrackedEventTypeRegistry", "Implementation"]}
 // Explicit mappings
 var mappings = new Dictionary<Type, string[]> {
   [typeof(OrderCreatedEvent)] = ["OrderPerspective", "ReportingPerspective"],
@@ -210,7 +210,7 @@ var registry = new TrackedEventTypeRegistry(mappings);
 
 **Dynamic Mode** - Reads from `SyncEventTypeRegistrations` (default):
 
-```csharp
+```csharp{title="TrackedEventTypeRegistry Implementation (2)" description="Dynamic Mode - Reads from SyncEventTypeRegistrations (default):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "TrackedEventTypeRegistry", "Implementation"]}
 // Registered via AddWhizbang() - reads from static registrations
 var registry = new TrackedEventTypeRegistry();
 
@@ -247,7 +247,7 @@ The `SyncEventTypeRegistrations` class provides a static, thread-safe registry f
 
 The source generator (`SyncEventTypeRegistryGenerator`) discovers all `[AwaitPerspectiveSync]` attributes and generates registration code:
 
-```csharp
+```csharp{title="SyncEventTypeRegistryGenerator" description="The source generator (SyncEventTypeRegistryGenerator) discovers all [AwaitPerspectiveSync] attributes and generates" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "SyncEventTypeRegistryGenerator"]}
 // Input: Attribute on receptor
 [AwaitPerspectiveSync(typeof(OrderPerspective),
     EventTypes = [typeof(OrderCreatedEvent), typeof(OrderUpdatedEvent)])]
@@ -285,7 +285,7 @@ The tracker maintains three tracking modes:
 
 Events are keyed by `(EventId, PerspectiveName)` to allow the same event to be tracked for multiple perspectives:
 
-```csharp
+```csharp{title="Architecture" description="Events are keyed by (EventId, PerspectiveName) to allow the same event to be tracked for multiple perspectives:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Architecture"]}
 // Internal structure
 ConcurrentDictionary<(Guid EventId, string PerspectiveName), TrackedSyncEvent>
 
@@ -298,7 +298,7 @@ ConcurrentDictionary<(Guid EventId, string PerspectiveName), TrackedSyncEvent>
 
 Used by `IPerspectiveSyncAwaiter` to wait for a single perspective:
 
-```csharp
+```csharp{title="Architecture (2)" description="Used by IPerspectiveSyncAwaiter to wait for a single perspective:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Architecture"]}
 await tracker.WaitForPerspectiveEventsAsync(
     eventIds: [eventId],
     perspectiveName: "OrderPerspective",
@@ -310,7 +310,7 @@ await tracker.WaitForPerspectiveEventsAsync(
 
 Used by `IEventCompletionAwaiter` to wait for all perspectives:
 
-```csharp
+```csharp{title="Architecture (3)" description="Used by IEventCompletionAwaiter to wait for all perspectives:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Architecture"]}
 await tracker.WaitForAllPerspectivesAsync(
     eventIds: [eventId],
     timeout: TimeSpan.FromSeconds(30)
@@ -321,7 +321,7 @@ await tracker.WaitForAllPerspectivesAsync(
 
 The tracker uses `TaskCompletionSource<bool>` with race condition protection:
 
-```csharp
+```csharp{title="Thread-Safe Completion" description="The tracker uses TaskCompletionSource<bool> with race condition protection:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Thread-Safe", "Completion"]}
 // Registering a waiter
 var tcs = new TaskCompletionSource<bool>(
     TaskCreationOptions.RunContinuationsAsynchronously);
@@ -346,7 +346,7 @@ await tcs.Task;
 
 **MarkProcessedByPerspective** - Per-perspective completion:
 
-```csharp
+```csharp{title="Completion Semantics" description="MarkProcessedByPerspective - Per-perspective completion:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Completion", "Semantics"]}
 tracker.MarkProcessedByPerspective(
     eventIds: [eventId],
     perspectiveName: "OrderPerspective");
@@ -366,7 +366,7 @@ The `SyncContext` provides handlers with information about the perspective sync 
 
 #### SyncContext Properties
 
-```csharp
+```csharp{title="SyncContext Properties" description="Demonstrates syncContext Properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "SyncContext", "Properties"]}
 public sealed class SyncContext {
   public Guid StreamId { get; init; }
   public Type PerspectiveType { get; init; }
@@ -385,7 +385,7 @@ public sealed class SyncContext {
 
 Inject `SyncContext` to access sync results (particularly useful with `FireAlways` behavior):
 
-```csharp
+```csharp{title="Using SyncContext in Handlers" description="Inject SyncContext to access sync results (particularly useful with FireAlways behavior):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Using", "SyncContext"]}
 [AwaitPerspectiveSync(typeof(OrderPerspective),
     FireBehavior = SyncFireBehavior.FireAlways)]
 public class GetOrderHandler : IReceptor<GetOrderQuery, Order?> {
@@ -426,7 +426,7 @@ public class GetOrderHandler : IReceptor<GetOrderQuery, Order?> {
 
 The accessor provides ambient access to the current sync context:
 
-```csharp
+```csharp{title="ISyncContextAccessor" description="The accessor provides ambient access to the current sync context:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "ISyncContextAccessor"]}
 public interface ISyncContextAccessor {
   SyncContext? Current { get; set; }
 }
@@ -446,7 +446,7 @@ public class SyncContextAccessor : ISyncContextAccessor {
 
 **Scoped Services** - Inject `ISyncContextAccessor`:
 
-```csharp
+```csharp{title="ISyncContextAccessor - MyService" description="Scoped Services - Inject ISyncContextAccessor:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "ISyncContextAccessor"]}
 public class MyService {
   private readonly ISyncContextAccessor _syncContextAccessor;
 
@@ -461,7 +461,7 @@ public class MyService {
 
 **Singleton Services** - Use static accessor:
 
-```csharp
+```csharp{title="ISyncContextAccessor - MySingletonService" description="Singleton Services - Use static accessor:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "ISyncContextAccessor"]}
 public class MySingletonService {
   public void DoWork() {
     var context = SyncContextAccessor.CurrentContext;
@@ -480,7 +480,7 @@ public class MySingletonService {
 
 **The Problem**: Singleton services (like `Dispatcher`) cannot inject scoped dependencies directly:
 
-```csharp
+```csharp{title="Why AsyncLocal?" description="The Problem: Singleton services (like Dispatcher) cannot inject scoped dependencies directly:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Why", "AsyncLocal?"]}
 // ❌ WRONG - DI error
 public class Dispatcher {
   public Dispatcher(IScopedEventTracker tracker) { }  // Cannot inject scoped into singleton!
@@ -489,7 +489,7 @@ public class Dispatcher {
 
 **The Solution**: Use `AsyncLocal<T>` for ambient access:
 
-```csharp
+```csharp{title="Why AsyncLocal? - Dispatcher" description="The Solution: Use AsyncLocal<T> for ambient access:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Why", "AsyncLocal?"]}
 // ✅ CORRECT - Ambient access via AsyncLocal
 public class Dispatcher {
   public void Send(IMessage message) {
@@ -503,7 +503,7 @@ public class Dispatcher {
 
 #### Implementation
 
-```csharp
+```csharp{title="Implementation" description="Demonstrates implementation" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Implementation"]}
 public static class ScopedEventTrackerAccessor {
   private static readonly AsyncLocal<IScopedEventTracker?> _current = new();
 
@@ -524,7 +524,7 @@ public static class ScopedEventTrackerAccessor {
 
 The tracker is automatically set when resolved from a DI scope:
 
-```csharp
+```csharp{title="Automatic Lifetime Management" description="The tracker is automatically set when resolved from a DI scope:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Automatic", "Lifetime"]}
 // In DI registration
 services.AddScoped<IScopedEventTracker>(sp => {
   var tracker = new ScopedEventTracker();
@@ -543,7 +543,7 @@ Two interfaces provide event tracking at different scopes:
 
 Tracks events emitted within the current request/operation scope:
 
-```csharp
+```csharp{title="IScopedEventTracker - Request-Scoped Tracking" description="Tracks events emitted within the current request/operation scope:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "IScopedEventTracker", "Request-Scoped"]}
 public interface IScopedEventTracker {
   // Track event emitted in this scope
   void TrackEmittedEvent(Guid streamId, Type eventType, Guid eventId);
@@ -561,7 +561,7 @@ public interface IScopedEventTracker {
 
 **Usage**: Query events within the same request for `SyncFilter.CurrentScope()`:
 
-```csharp
+```csharp{title="IScopedEventTracker - Request-Scoped Tracking (2)" description="Usage: Query events within the same request for `SyncFilter." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IScopedEventTracker", "Request-Scoped"]}
 // Handler emits events
 await _eventStore.AppendAsync(streamId, new OrderCreatedEvent());
 
@@ -574,7 +574,7 @@ var events = _scopedTracker.GetEmittedEvents();
 
 Singleton service tracking events across all requests:
 
-```csharp
+```csharp{title="ISyncEventTracker - Cross-Scope Tracking" description="Singleton service tracking events across all requests:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "ISyncEventTracker", "Cross-Scope"]}
 public interface ISyncEventTracker {
   // Track event for perspective sync (cross-scope)
   void TrackEvent(Type eventType, Guid eventId, Guid streamId, string perspectiveName);
@@ -621,7 +621,7 @@ The `awaiterId` parameter and `UnregisterAwaiter` method enable per-awaiter clea
 
 **Usage**: Cross-request synchronization and event completion:
 
-```csharp
+```csharp{title="ISyncEventTracker - Cross-Scope Tracking (2)" description="Usage: Cross-request synchronization and event completion:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "ISyncEventTracker", "Cross-Scope"]}
 // Request 1 emits event
 _syncTracker.TrackEvent(
     typeof(OrderCreatedEvent),
@@ -640,7 +640,7 @@ await _syncTracker.WaitForPerspectiveEventsAsync(
 
 When multiple awaiters wait on the same events and some cancel, the `awaiterId` parameter enables precise cleanup without affecting other awaiters:
 
-```csharp
+```csharp{title="Per-Awaiter Cleanup" description="When multiple awaiters wait on the same events and some cancel, the awaiterId parameter enables precise cleanup without" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Per-Awaiter", "Cleanup"]}
 var awaiterId = Guid.NewGuid();
 
 // Start waiting with a tracked awaiter ID
@@ -660,7 +660,7 @@ Internally, waiter registrations are keyed by `awaiterId` using `ConcurrentDicti
 All awaiter classes implement `IAwaiterIdentity`, providing a unique `AwaiterId` for per-awaiter tracking and cleanup.
 :::
 
-```csharp
+```csharp{title="Awaiter Identity" description=":::new All awaiter classes implement IAwaiterIdentity, providing a unique AwaiterId for per-awaiter tracking and" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Awaiter", "Identity"]}
 public interface IAwaiterIdentity {
   Guid AwaiterId { get; }
 }
@@ -668,7 +668,7 @@ public interface IAwaiterIdentity {
 
 Both `IPerspectiveSyncAwaiter` and `IEventCompletionAwaiter` extend this interface:
 
-```csharp
+```csharp{title="Awaiter Identity - IPerspectiveSyncAwaiter" description="Both IPerspectiveSyncAwaiter and IEventCompletionAwaiter extend this interface:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Awaiter", "Identity"]}
 public interface IPerspectiveSyncAwaiter : IAwaiterIdentity { ... }
 public interface IEventCompletionAwaiter : IAwaiterIdentity { ... }
 ```
@@ -708,7 +708,7 @@ IsFullySynced = true  ❌ FALSE POSITIVE!
 
 Track EventIds explicitly and send them to the database:
 
-```csharp
+```csharp{title="The Solution" description="Track EventIds explicitly and send them to the database:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Solution"]}
 // 1. Capture EventId when emitted
 _scopedTracker.TrackEmittedEvent(streamId, typeof(OrderCreatedEvent), eventId);
 
@@ -730,7 +730,7 @@ return result.ProcessedEventIds.Contains(eventId);
 
 The `SyncInquiry` includes a flag to request processed EventIds:
 
-```csharp
+```csharp{title="IncludeProcessedEventIds Option" description="The SyncInquiry includes a flag to request processed EventIds:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IncludeProcessedEventIds", "Option"]}
 public sealed class SyncInquiry {
   public Guid StreamId { get; init; }
   public string PerspectiveType { get; init; }
@@ -742,7 +742,7 @@ public sealed class SyncInquiry {
 
 When `IncludeProcessedEventIds = true`, the database returns:
 
-```csharp
+```csharp{title="IncludeProcessedEventIds Option - SyncInquiryResult" description="When IncludeProcessedEventIds = true, the database returns:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "IncludeProcessedEventIds", "Option"]}
 public sealed class SyncInquiryResult {
   public int PendingCount { get; init; }
   public int ProcessedCount { get; init; }
@@ -783,7 +783,7 @@ Scope A (Command Handler):              Scope B (Event Receptor):
 
 The attribute handler automatically discovers pending events from the database outbox:
 
-```csharp
+```csharp{title="The Solution: DiscoverPendingFromOutbox" description="The attribute handler automatically discovers pending events from the database outbox:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Solution:", "DiscoverPendingFromOutbox"]}
 // Attribute handler logic (simplified)
 var incomingEventId = message.GetEventId();  // abc123 from the event being processed
 
@@ -822,7 +822,7 @@ This enables cross-scope sync even though the events weren't emitted in the curr
 
 #### Behavior Options
 
-```csharp
+```csharp{title="Behavior Options" description="Demonstrates behavior Options" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Behavior", "Options"]}
 public enum SyncFireBehavior {
   /// <summary>
   /// Only invoke handler if sync completes successfully. Throw on timeout.
@@ -845,7 +845,7 @@ public enum SyncFireBehavior {
 
 Handler only executes if sync completes:
 
-```csharp
+```csharp{title="FireOnSuccess (Default)" description="Handler only executes if sync completes:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "FireOnSuccess", "Default"]}
 [AwaitPerspectiveSync(typeof(OrderPerspective))]  // Default: FireOnSuccess
 public class Handler : IReceptor<OrderCreatedEvent> {
   public async ValueTask HandleAsync(OrderCreatedEvent evt, CancellationToken ct) {
@@ -862,7 +862,7 @@ public class Handler : IReceptor<OrderCreatedEvent> {
 
 Handler always executes, inject `SyncContext` to check outcome:
 
-```csharp
+```csharp{title="FireAlways" description="Handler always executes, inject SyncContext to check outcome:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "FireAlways"]}
 [AwaitPerspectiveSync(typeof(OrderPerspective),
     FireBehavior = SyncFireBehavior.FireAlways)]
 public class Handler : IReceptor<GetOrderQuery, Order?> {
@@ -896,7 +896,7 @@ The `Dispatcher` integrates with perspective sync through the `_awaitPerspective
 
 The method is called from all local invocation paths:
 
-```csharp
+```csharp{title="Integration Points" description="The method is called from all local invocation paths:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Integration", "Points"]}
 // LocalInvokeAsync with return value
 public async ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(TMessage message) {
   var invoker = GetReceptorInvoker<TResult>(message, messageType);
@@ -937,7 +937,7 @@ public async ValueTask LocalInvokeAsync<TMessage>(TMessage message) {
 
 #### Implementation Logic
 
-```csharp
+```csharp{title="Implementation Logic" description="Demonstrates implementation Logic" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Implementation", "Logic"]}
 private async ValueTask _awaitPerspectiveSyncIfNeededAsync(
     object message,
     Type messageType,
@@ -1015,7 +1015,7 @@ private async ValueTask _awaitPerspectiveSyncIfNeededAsync(
 
 Configuration for synchronization:
 
-```csharp
+```csharp{title="PerspectiveSyncOptions" description="Configuration for synchronization:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "PerspectiveSyncOptions", "Options"]}
 public sealed class PerspectiveSyncOptions {
     // Filter tree (supports AND/OR combinations)
     public SyncFilterNode Filter { get; init; }
@@ -1046,7 +1046,7 @@ Whizbang provides two distinct waiting semantics for different use cases:
 - You want read-your-writes consistency for one perspective only
 - Using `[AwaitPerspectiveSync]` attribute on receptors
 
-```csharp
+```csharp{title="When to Use Each" description="Perspective-Based (IPerspectiveSyncAwaiter): - You need to query a specific perspective after emitting events - You" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "When", "Each"]}
 // Wait for OrderPerspective to catch up, then query
 await _syncAwaiter.WaitAsync(typeof(OrderPerspective),
     SyncFilter.CurrentScope().Build(), ct);
@@ -1058,7 +1058,7 @@ var order = await _orderLens.GetByIdAsync(orderId, ct);
 - Need guarantee ALL perspectives have processed before responding
 - Caller needs complete side-effect confirmation
 
-```csharp
+```csharp{title="When to Use Each (2)" description="Event-Based (IEventCompletionAwaiter): - Making RPC calls via LocalInvokeAsync - Need guarantee ALL perspectives have" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "When", "Each"]}
 // Wait for ALL perspectives before returning RPC response
 var options = new DispatchOptions().WithPerspectiveWait();
 await _dispatcher.LocalInvokeAsync(command, options, ct);
@@ -1074,7 +1074,7 @@ For details on event-based waiting, see [Event Completion Awaiter](event-complet
 
 Wrap lens queries with synchronization:
 
-```csharp
+```csharp{title="Approach 1: Sync-Aware Lens Queries" description="Wrap lens queries with synchronization:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Approach", "Sync-Aware"]}
 using Whizbang.Core.Lenses;
 using Whizbang.Core.Perspectives.Sync;
 
@@ -1112,7 +1112,7 @@ public class OrderHandler : IReceptor<OrderCreatedEvent> {
 
 Declaratively wait before receptor execution:
 
-```csharp
+```csharp{title="Approach 2: Lifecycle Attribute" description="Declaratively wait before receptor execution:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Approach", "Lifecycle"]}
 using Whizbang.Core.Messaging;
 using Whizbang.Core.Perspectives.Sync;
 
@@ -1142,7 +1142,7 @@ public class FullSyncHandler : IReceptor<OrderCreatedEvent> {
 
 Maximum control over synchronization:
 
-```csharp
+```csharp{title="Approach 3: Explicit Awaiter" description="Maximum control over synchronization:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Approach", "Explicit"]}
 using Whizbang.Core.Perspectives.Sync;
 
 public class ReconciliationHandler : IReceptor<ReconcileOrdersCommand> {
@@ -1181,7 +1181,7 @@ public class ReconciliationHandler : IReceptor<ReconcileOrdersCommand> {
 
 Ensure API responses include just-created data:
 
-```csharp
+```csharp{title="API Response Consistency" description="Ensure API responses include just-created data:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "API", "Response"]}
 [HttpPost]
 public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
     var orderId = await _dispatcher.SendAsync(new CreateOrderCommand {
@@ -1208,7 +1208,7 @@ public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
 
 Wait for multiple conditions:
 
-```csharp
+```csharp{title="AND Logic" description="Wait for multiple conditions:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Logic"]}
 // Stream AND specific event types (supports up to 10 types)
 var options = SyncFilter.ForStream(orderId)
     .AndEventTypes<OrderCreatedEvent, PaymentProcessedEvent, ShippingStartedEvent>()
@@ -1224,7 +1224,7 @@ var options = SyncFilter.CurrentScope()
 
 Wait for any matching condition:
 
-```csharp
+```csharp{title="OR Logic" description="Wait for any matching condition:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Logic"]}
 // Either order created OR order cancelled
 var options = SyncFilter.ForEventTypes<OrderCreatedEvent>()
     .OrEventTypes<OrderCancelledEvent>()
@@ -1233,7 +1233,7 @@ var options = SyncFilter.ForEventTypes<OrderCreatedEvent>()
 
 ### Combined AND/OR
 
-```csharp
+```csharp{title="Combined AND/OR" description="Demonstrates combined AND/OR" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Combined"]}
 // (OrderCreated AND PaymentProcessed) OR OrderCancelled
 var options = SyncFilter.ForStream(orderId)
     .AndEventTypes<OrderCreatedEvent>()
@@ -1254,7 +1254,7 @@ By default, synchronization uses **debugger-aware timeouts**. When you hit a bre
 
 This is controlled by `DebuggerAwareTimeout`:
 
-```csharp
+```csharp{title="Debugger-Aware Timeout" description="This is controlled by DebuggerAwareTimeout:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Debugger-Aware", "Timeout"]}
 var options = SyncFilter.CurrentScope()
     .WithTimeout(TimeSpan.FromSeconds(5))
     .Build();
@@ -1280,21 +1280,21 @@ The system uses CPU time sampling to detect when execution is frozen at a breakp
 
 ### Do: Use CurrentScope for Same-Request Consistency
 
-```csharp
+```csharp{title="Do: Use CurrentScope for Same-Request Consistency" description="Demonstrates do: Use CurrentScope for Same-Request Consistency" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "CurrentScope"]}
 // Handler chain within same HTTP request - tracks all emitted events
 SyncFilter.CurrentScope()
 ```
 
 ### Do: Use ForStream for Specific Stream Consistency
 
-```csharp
+```csharp{title="Do: Use ForStream for Specific Stream Consistency" description="Demonstrates do: Use ForStream for Specific Stream Consistency" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "ForStream"]}
 // Wait for events on a specific stream
 SyncFilter.ForStream(orderId)
 ```
 
 ### Don't: Over-synchronize
 
-```csharp
+```csharp{title="Don't: Over-synchronize" description="Demonstrates don't: Over-synchronize" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "Over-synchronize"]}
 // Avoid: Waiting for all events when you only need specific ones
 SyncFilter.All()  // Too broad
 
@@ -1304,7 +1304,7 @@ SyncFilter.ForEventTypes<OrderCreatedEvent>()
 
 ### Do: Set Appropriate Timeouts
 
-```csharp
+```csharp{title="Do: Set Appropriate Timeouts" description="Demonstrates do: Set Appropriate Timeouts" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "Set"]}
 // Short timeout for real-time responses
 .WithTimeout(TimeSpan.FromMilliseconds(500))
 

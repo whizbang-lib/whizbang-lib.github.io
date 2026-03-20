@@ -60,7 +60,7 @@ Whizbang provides audit logging through **System Events** - internal events emit
 
 ### 1. Enable System Audit
 
-```csharp
+```csharp{title="Enable System Audit" description="Demonstrates enable System Audit" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enable", "System"]}
 // In Program.cs - BFF or any host that needs audit logging
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAudit();
@@ -69,7 +69,7 @@ services.AddWhizbang(options => {
 
 ### 2. Create Audit Perspective
 
-```csharp
+```csharp{title="Create Audit Perspective" description="Demonstrates create Audit Perspective" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Create", "Audit"]}
 using Whizbang.Core.Audit;
 using Whizbang.Core.Perspectives;
 using Whizbang.Core.SystemEvents;
@@ -99,7 +99,7 @@ public sealed class AuditPerspective : IPerspectiveFor<AuditLogEntry, EventAudit
 
 ### 3. Query Audit Log
 
-```csharp
+```csharp{title="Query Audit Log" description="Demonstrates query Audit Log" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Query", "Audit"]}
 public interface IAuditLogLens : ILensQuery<AuditLogEntry> { }
 
 public class ComplianceService {
@@ -131,7 +131,7 @@ System events are internal Whizbang events stored in a dedicated `$wb-system` st
 
 ### ISystemEvent Interface
 
-```csharp
+```csharp{title="ISystemEvent Interface" description="Demonstrates iSystemEvent Interface" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ISystemEvent", "Interface"]}
 namespace Whizbang.Core.SystemEvents;
 
 /// <summary>
@@ -145,7 +145,7 @@ public interface ISystemEvent : IEvent { }
 
 The `EventAudited` event captures metadata about each domain event:
 
-```csharp
+```csharp{title="EventAudited" description="The EventAudited event captures metadata about each domain event:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "EventAudited"]}
 public sealed record EventAudited : ISystemEvent {
   // Identity
   public required Guid Id { get; init; }
@@ -172,7 +172,7 @@ public sealed record EventAudited : ISystemEvent {
 
 ### Dedicated System Stream
 
-```csharp
+```csharp{title="Dedicated System Stream" description="Demonstrates dedicated System Stream" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Dedicated", "System"]}
 public static class SystemEventStreams {
   /// <summary>The dedicated system event stream name.</summary>
   public static string Name => "$wb-system";
@@ -188,7 +188,7 @@ public static class SystemEventStreams {
 
 By default, **all events are audited** when system audit is enabled. Use `[AuditEvent(Exclude = true)]` to opt-out specific event types:
 
-```csharp
+```csharp{title="Excluding Events from Audit" description="By default, all events are audited when system audit is enabled." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Excluding", "Events"]}
 using Whizbang.Core.Attributes;
 
 // High-frequency event - exclude from audit to avoid log bloat
@@ -207,7 +207,7 @@ public record OrderCreated(Guid OrderId, Guid CustomerId) : IEvent;
 
 Use `[AuditEvent]` without `Exclude` to add context to audited events:
 
-```csharp
+```csharp{title="Adding Audit Context" description="Use [AuditEvent] without Exclude to add context to audited events:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Adding", "Audit"]}
 // Mark with audit reason for compliance queries
 [AuditEvent(Reason = "PII access", Level = AuditLevel.Warning)]
 public record CustomerDataViewed(Guid CustomerId, string ViewedBy) : IEvent;
@@ -229,7 +229,7 @@ In addition to event auditing, Whizbang supports **command auditing** to capture
 
 When command auditing is enabled, Whizbang emits a `CommandAudited` system event for each command processed:
 
-```csharp
+```csharp{title="CommandAudited System Event" description="When command auditing is enabled, Whizbang emits a CommandAudited system event for each command processed:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "CommandAudited", "System"]}
 public sealed record CommandAudited : ISystemEvent {
   // Identity
   public required Guid Id { get; init; }
@@ -257,7 +257,7 @@ public sealed record CommandAudited : ISystemEvent {
 
 ### Enabling Command Auditing
 
-```csharp
+```csharp{title="Enabling Command Auditing" description="Demonstrates enabling Command Auditing" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enabling", "Command"]}
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAudit();         // Events only
   options.SystemEvents.EnableCommandAudit();  // Commands only
@@ -267,7 +267,7 @@ services.AddWhizbang(options => {
 
 ### Command Audit Perspective
 
-```csharp
+```csharp{title="Command Audit Perspective" description="Demonstrates command Audit Perspective" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Command", "Audit"]}
 public sealed class CommandAuditPerspective
     : IPerspectiveFor<CommandAuditEntry, CommandAudited> {
   public CommandAuditEntry Apply(CommandAuditEntry current, CommandAudited @event) {
@@ -291,7 +291,7 @@ public sealed class CommandAuditPerspective
 
 ### Querying Command Audit
 
-```csharp
+```csharp{title="Querying Command Audit" description="Demonstrates querying Command Audit" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Querying", "Command"]}
 public interface ICommandAuditLens : ILensQuery<CommandAuditEntry> { }
 
 public class SecurityService {
@@ -328,7 +328,7 @@ public class SecurityService {
 
 ## AuditEventAttribute
 
-```csharp
+```csharp{title="AuditEventAttribute" description="Demonstrates auditEventAttribute" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "AuditEventAttribute"]}
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
 public sealed class AuditEventAttribute : MessageTagAttribute {
   /// <summary>
@@ -357,7 +357,7 @@ public sealed class AuditEventAttribute : MessageTagAttribute {
 
 Categorize audit entries by severity:
 
-```csharp
+```csharp{title="AuditLevel Enum" description="Categorize audit entries by severity:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "AuditLevel", "Enum"]}
 public enum AuditLevel {
   Info,     // Routine operations (default)
   Warning,  // Sensitive data access, unusual patterns
@@ -371,7 +371,7 @@ public enum AuditLevel {
 
 For real-time audit alerts in addition to durable persistence, use a tag hook:
 
-```csharp
+```csharp{title="Real-Time Alerts (Optional)" description="For real-time audit alerts in addition to durable persistence, use a tag hook:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Real-Time", "Alerts"]}
 // Hook provides real-time logging/alerts
 // Perspective provides durable persistence
 services.AddWhizbang(options => {
@@ -405,7 +405,7 @@ public sealed class AuditAlertHook : IMessageTagHook<AuditEventAttribute> {
 
 ## Database Schema
 
-```sql
+```sql{title="Database Schema" description="Demonstrates database Schema" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Database", "Schema"]}
 -- Audit log table (perspective store)
 CREATE TABLE wb_audit_log (
     id UUID PRIMARY KEY,
@@ -436,7 +436,7 @@ CREATE INDEX idx_audit_log_level ON wb_audit_log(audit_level) WHERE audit_level 
 
 ### GDPR: User Activity Report
 
-```csharp
+```csharp{title="GDPR: User Activity Report" description="Demonstrates gDPR: User Activity Report" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "GDPR:", "User"]}
 public async Task<DataAccessReport> GenerateAccessReportAsync(
     string userId, CancellationToken ct) {
   var entries = await _auditLens.QueryAsync(q => q
@@ -453,7 +453,7 @@ public async Task<DataAccessReport> GenerateAccessReportAsync(
 
 ### SOX: Financial Transaction Trail
 
-```csharp
+```csharp{title="SOX: Financial Transaction Trail" description="Demonstrates sOX: Financial Transaction Trail" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "SOX:", "Financial"]}
 public async Task<IReadOnlyList<AuditLogEntry>> GetFinancialAuditTrailAsync(
     DateTimeOffset from, DateTimeOffset to, CancellationToken ct) {
   return await _auditLens.QueryAsync(q => q
@@ -465,7 +465,7 @@ public async Task<IReadOnlyList<AuditLogEntry>> GetFinancialAuditTrailAsync(
 
 ### Critical Events Dashboard
 
-```csharp
+```csharp{title="Critical Events Dashboard" description="Demonstrates critical Events Dashboard" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Critical", "Events"]}
 public async Task<IReadOnlyList<AuditLogEntry>> GetCriticalEventsAsync(
     int hours, CancellationToken ct) {
   var since = DateTimeOffset.UtcNow.AddHours(-hours);
@@ -511,7 +511,7 @@ Audit is just one category of system events. Whizbang provides others for observ
 | `MessageDeadLettered` | Message sent to DLQ | DLQ monitoring |
 
 Enable specific categories:
-```csharp
+```csharp{title="Other System Events" description="Enable specific categories:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Other", "System"]}
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAudit();           // EventAudited
   options.SystemEvents.EnablePerspectiveEvents(); // Rebuilding, rebuilt

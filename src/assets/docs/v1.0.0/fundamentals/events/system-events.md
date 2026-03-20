@@ -64,7 +64,7 @@ System events are **internal events emitted by Whizbang** for observability, aud
 
 ### Enable System Events
 
-```csharp
+```csharp{title="Enable System Events" description="Demonstrates enable System Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Enable", "System"]}
 // In Program.cs - enable the system events you need
 services.AddWhizbang(options => {
   // Enable event and command auditing
@@ -89,7 +89,7 @@ services.AddWhizbang(options => {
 
 System events are consumed like domain events - create perspectives:
 
-```csharp
+```csharp{title="Consume System Events" description="System events are consumed like domain events - create perspectives:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Consume", "System"]}
 using Whizbang.Core.Perspectives;
 using Whizbang.Core.SystemEvents;
 using Whizbang.Core.Audit;
@@ -163,7 +163,7 @@ public sealed class SecurityAuditPerspective :
 
 Emitted when a domain event is appended to a stream (when `EnableEventAudit()` is configured).
 
-```csharp
+```csharp{title="EventAudited" description="Emitted when a domain event is appended to a stream (when EnableEventAudit() is configured)." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "EventAudited"]}
 public sealed record EventAudited : ISystemEvent {
   /// <summary>
   /// Unique identifier for this audit event.
@@ -227,7 +227,7 @@ public sealed record EventAudited : ISystemEvent {
 
 **Excluding events from audit**:
 
-```csharp
+```csharp{title="EventAudited - ServiceHeartbeat" description="Excluding events from audit:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "EventAudited"]}
 // Exclude high-frequency or non-essential events from audit
 [AuditEvent(Exclude = true, Reason = "High-frequency heartbeat event")]
 public sealed record ServiceHeartbeat : IEvent {
@@ -240,7 +240,7 @@ public sealed record ServiceHeartbeat : IEvent {
 
 Emitted when a command is processed by a receptor (when `EnableCommandAudit()` is configured).
 
-```csharp
+```csharp{title="CommandAudited" description="Emitted when a command is processed by a receptor (when EnableCommandAudit() is configured)." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "CommandAudited"]}
 public sealed record CommandAudited : ISystemEvent {
   /// <summary>
   /// Unique identifier for this audit entry.
@@ -301,7 +301,7 @@ public sealed record CommandAudited : ISystemEvent {
 
 Emitted when a scope context is established for a request/operation.
 
-```csharp
+```csharp{title="ScopeContextEstablished" description="Emitted when a scope context is established for a request/operation." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "ScopeContextEstablished"]}
 public sealed record ScopeContextEstablished : ISystemEvent {
   [StreamId]
   public Guid Id { get; init; }
@@ -343,7 +343,7 @@ public sealed record ScopeContextEstablished : ISystemEvent {
 
 Emitted when a user's permissions or roles change.
 
-```csharp
+```csharp{title="PermissionChanged" description="Emitted when a user's permissions or roles change." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "PermissionChanged"]}
 public sealed record PermissionChanged : ISystemEvent {
   [StreamId]
   public Guid Id { get; init; }
@@ -405,7 +405,7 @@ public sealed record PermissionChanged : ISystemEvent {
 
 Emitted when access to a sensitive resource is granted.
 
-```csharp
+```csharp{title="AccessGranted" description="Emitted when access to a sensitive resource is granted." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "AccessGranted"]}
 public sealed record AccessGranted : ISystemEvent {
   [StreamId]
   public Guid Id { get; init; }
@@ -452,7 +452,7 @@ public sealed record AccessGranted : ISystemEvent {
 
 Emitted when access to a resource is denied due to insufficient permissions.
 
-```csharp
+```csharp{title="AccessDenied" description="Emitted when access to a resource is denied due to insufficient permissions." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "AccessDenied"]}
 public sealed record AccessDenied : ISystemEvent {
   [StreamId]
   public Guid Id { get; init; }
@@ -511,7 +511,7 @@ public sealed record AccessDenied : ISystemEvent {
 
 The `ISystemEventEmitter` is responsible for emitting system events to the dedicated `$wb-system` stream.
 
-```csharp
+```csharp{title="System Event Emitter" description="The ISystemEventEmitter is responsible for emitting system events to the dedicated $wb-system stream." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"]}
 public interface ISystemEventEmitter {
   /// <summary>
   /// Emits an EventAudited system event for a domain event.
@@ -548,7 +548,7 @@ public interface ISystemEventEmitter {
 
 **Default implementation**: `SystemEventEmitter`
 
-```csharp
+```csharp{title="System Event Emitter - SystemEventEmitter" description="Default implementation: SystemEventEmitter" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "System", "Event"]}
 public sealed class SystemEventEmitter : ISystemEventEmitter {
   private readonly SystemEventOptions _options;
   private readonly IEventStore _systemEventStore;
@@ -561,7 +561,7 @@ public sealed class SystemEventEmitter : ISystemEventEmitter {
 
 **Manual emission** (advanced scenarios):
 
-```csharp
+```csharp{title="System Event Emitter - MySecurityService" description="Manual emission (advanced scenarios):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"]}
 public class MySecurityService {
   private readonly ISystemEventEmitter _emitter;
 
@@ -592,7 +592,7 @@ public class MySecurityService {
 
 System events are configured via `SystemEventOptions`:
 
-```csharp
+```csharp{title="System Event Configuration" description="System events are configured via SystemEventOptions:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"]}
 public sealed class SystemEventOptions {
   /// <summary>
   /// When true, system events stay local (no transport publishing).
@@ -629,7 +629,7 @@ public sealed class SystemEventOptions {
 
 **Configuration methods**:
 
-```csharp
+```csharp{title="System Event Configuration (2)" description="Configuration methods:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"]}
 // Enable all system events
 options.SystemEvents.EnableAll();
 
@@ -648,7 +648,7 @@ options.SystemEvents.Broadcast(); // Sets LocalOnly = false
 
 **LocalOnly vs Broadcast**:
 
-```csharp
+```csharp{title="System Event Configuration (3)" description="LocalOnly vs Broadcast:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"]}
 // Default: LocalOnly = true
 // Each service audits what it processes locally
 // No network traffic, no duplication
@@ -690,7 +690,7 @@ With `LocalOnly = true`:
 
 The `SystemEventTransportFilter` implements `ITransportPublishFilter` to control which events flow through the transport layer:
 
-```csharp
+```csharp{title="Transport Filtering" description="The SystemEventTransportFilter implements ITransportPublishFilter to control which events flow through the transport" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Transport", "Filtering"]}
 public sealed class SystemEventTransportFilter : ITransportPublishFilter {
   private readonly SystemEventOptions _options;
 
@@ -732,7 +732,7 @@ This ensures:
 
 The `AuditingEventStoreDecorator` wraps your `IEventStore` implementation and automatically emits `EventAudited` system events:
 
-```csharp
+```csharp{title="Event Auditing Decorator" description="The AuditingEventStoreDecorator wraps your IEventStore implementation and automatically emits EventAudited system" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Auditing"]}
 public sealed class AuditingEventStoreDecorator : IEventStore {
   private readonly IEventStore _inner;
   private readonly ISystemEventEmitter _emitter;
@@ -757,7 +757,7 @@ public sealed class AuditingEventStoreDecorator : IEventStore {
 
 **Registration** (automatic with `AddSystemEventAuditing`):
 
-```csharp
+```csharp{title="Event Auditing Decorator (2)" description="Registration (automatic with AddSystemEventAuditing):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Event", "Auditing"]}
 services.AddSingleton<IEventStore, PostgresEventStore>();
 services.AddSystemEvents(options => options.EnableEventAudit());
 services.DecorateEventStoreWithAuditing();
@@ -765,7 +765,7 @@ services.DecorateEventStoreWithAuditing();
 
 Or use the combined method:
 
-```csharp
+```csharp{title="Event Auditing Decorator (3)" description="Or use the combined method:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Event", "Auditing"]}
 services
   .AddWhizbang()
   .WithEFCore<MyDbContext>()
@@ -785,7 +785,7 @@ services.AddSystemEventAuditing(options => {
 
 The `CommandAuditPipelineBehavior<TCommand, TResponse>` automatically emits `CommandAudited` system events for commands processed by receptors:
 
-```csharp
+```csharp{title="Command Auditing Pipeline Behavior" description="The CommandAuditPipelineBehavior<TCommand, TResponse> automatically emits CommandAudited system events for commands" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Command", "Auditing"]}
 public sealed class CommandAuditPipelineBehavior<TCommand, TResponse> : PipelineBehavior<TCommand, TResponse>
     where TCommand : notnull {
   private readonly ISystemEventEmitter _emitter;
@@ -827,7 +827,7 @@ public sealed class CommandAuditPipelineBehavior<TCommand, TResponse> : Pipeline
 
 **Registration** (automatic with `AddSystemEventAuditing`):
 
-```csharp
+```csharp{title="Command Auditing Pipeline Behavior (2)" description="Registration (automatic with AddSystemEventAuditing):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Command", "Auditing"]}
 services.AddSystemEventAuditing(options => {
   options.EnableCommandAudit();
 });
@@ -835,7 +835,7 @@ services.AddSystemEventAuditing(options => {
 
 The pipeline behavior is registered automatically:
 
-```csharp
+```csharp{title="Command Auditing Pipeline Behavior (3)" description="The pipeline behavior is registered automatically:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Command", "Auditing"]}
 services.TryAddSingleton(
     typeof(IPipelineBehavior<,>),
     typeof(CommandAuditPipelineBehavior<,>));
@@ -848,7 +848,7 @@ services.TryAddSingleton(
 
 System events are stored in a dedicated stream with a fixed identifier:
 
-```csharp
+```csharp{title="System Event Stream" description="System events are stored in a dedicated stream with a fixed identifier:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"]}
 public static class SystemEventStreams {
   /// <summary>
   /// The name of the dedicated system event stream.
@@ -882,7 +882,7 @@ public static class SystemEventStreams {
 
 ### Basic Registration
 
-```csharp
+```csharp{title="Basic Registration" description="Demonstrates basic Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Basic", "Registration"]}
 services.AddSystemEvents(options => {
   options.EnableAudit();
 });
@@ -894,7 +894,7 @@ This registers:
 
 ### Full Auditing Registration
 
-```csharp
+```csharp{title="Full Auditing Registration" description="Demonstrates full Auditing Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Full", "Auditing"]}
 services.AddSystemEventAuditing(options => {
   options.EnableEventAudit();
   options.EnableCommandAudit();
@@ -908,7 +908,7 @@ This registers:
 
 ### Complete Setup Example
 
-```csharp
+```csharp{title="Complete Setup Example" description="Demonstrates complete Setup Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Complete", "Setup"]}
 // In Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -938,7 +938,7 @@ app.Run();
 
 ### 1. Enable Only What You Need
 
-```csharp
+```csharp{title="Enable Only What You Need" description="Demonstrates enable Only What You Need" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Enable", "Only"]}
 // BFF: Enable full audit for compliance
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAudit();
@@ -955,7 +955,7 @@ services.AddWhizbang();
 
 ### 2. Use LocalOnly (Default)
 
-```csharp
+```csharp{title="Use LocalOnly (Default)" description="Demonstrates use LocalOnly (Default)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "LocalOnly", "Default"]}
 // Default behavior - system events stay local
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAudit();
@@ -969,7 +969,7 @@ services.AddWhizbang(options => {
 
 ### 3. Exclude High-Frequency Events
 
-```csharp
+```csharp{title="Exclude High-Frequency Events" description="Demonstrates exclude High-Frequency Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Exclude", "High-Frequency"]}
 // Exclude events that would create excessive audit volume
 [AuditEvent(Exclude = true, Reason = "High-frequency telemetry event")]
 public sealed record MetricCaptured : IEvent {
@@ -983,7 +983,7 @@ public sealed record MetricCaptured : IEvent {
 
 System events are already marked with `[AuditEvent(Exclude = true)]` to prevent infinite loops:
 
-```csharp
+```csharp{title="Prevent Self-Auditing Loops" description="System events are already marked with [AuditEvent(Exclude = true)] to prevent infinite loops:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Prevent", "Self-Auditing"]}
 [AuditEvent(Exclude = true, Reason = "System event - prevents infinite self-auditing loop")]
 public sealed record EventAudited : ISystemEvent {
   // ...
@@ -994,7 +994,7 @@ Never remove this attribute from system events!
 
 ### 5. Query System Events Like Domain Events
 
-```csharp
+```csharp{title="Query System Events Like Domain Events" description="Demonstrates query System Events Like Domain Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Query", "System"]}
 public interface ISecurityAuditLens : ILensQuery<SecurityAuditEntry> { }
 
 public class SecurityService {
@@ -1019,7 +1019,7 @@ public class SecurityService {
 
 ### Centralized Monitoring Service
 
-```csharp
+```csharp{title="Centralized Monitoring Service" description="Demonstrates centralized Monitoring Service" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Centralized", "Monitoring"]}
 // Monitoring service receives system events from all hosts
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAll();
@@ -1032,7 +1032,7 @@ services.AddWhizbang(options => {
 
 ### Selective Security Auditing
 
-```csharp
+```csharp{title="Selective Security Auditing" description="Demonstrates selective Security Auditing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Selective", "Security"]}
 // Only audit high-sensitivity operations
 public class DocumentService {
   private readonly ISystemEventEmitter _emitter;
@@ -1063,7 +1063,7 @@ public class DocumentService {
 
 ### Multi-Tenant Audit Queries
 
-```csharp
+```csharp{title="Multi-Tenant Audit Queries" description="Demonstrates multi-Tenant Audit Queries" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Multi-Tenant", "Audit"]}
 public class AuditService {
   private readonly IAuditLogLens _auditLens;
 

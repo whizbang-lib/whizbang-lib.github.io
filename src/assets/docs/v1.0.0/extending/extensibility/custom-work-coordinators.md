@@ -40,7 +40,7 @@ Whizbang uses PostgreSQL stored procedures for work coordination by default. Cus
 
 ## IWorkCoordinator Interface
 
-```csharp
+```csharp{title="IWorkCoordinator Interface" description="Demonstrates iWorkCoordinator Interface" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "IWorkCoordinator", "Interface"]}
 public interface IWorkCoordinator {
   Task<WorkBatch> ProcessWorkBatchAsync(
     Guid instanceId,
@@ -57,7 +57,7 @@ public interface IWorkCoordinator {
 
 ### Pattern 1: Redis Queue-Based Coordination
 
-```csharp
+```csharp{title="Pattern 1: Redis Queue-Based Coordination" description="Demonstrates pattern 1: Redis Queue-Based Coordination" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Redis"]}
 using StackExchange.Redis;
 
 public class RedisWorkCoordinator : IWorkCoordinator {

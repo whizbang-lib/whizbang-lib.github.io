@@ -36,7 +36,7 @@ Event type 'MyNamespace.ProductCreatedEvent' used in perspective 'ProductCatalog
 
 Add the `[StreamKey]` attribute to exactly one property on your event type:
 
-```csharp
+```csharp{title="How to Fix" description="Add the [StreamKey] attribute to exactly one property on your event type:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix"]}
 public record ProductCreatedEvent : IEvent {
   [StreamKey]  // ✅ Add this attribute
   public Guid ProductId { get; init; }
@@ -54,7 +54,7 @@ public record ProductCreatedEvent : IEvent {
 ## Example: Product Catalog Perspective
 
 **Before (causes WHIZ030)**:
-```csharp
+```csharp{title="Example: Product Catalog Perspective" description="Before (causes WHIZ030):" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Product"]}
 // ❌ Missing [StreamKey] attribute
 public record ProductCreatedEvent : IEvent {
   public Guid ProductId { get; init; }  // No [StreamKey]!
@@ -78,7 +78,7 @@ public class ProductCatalogPerspective : IPerspectiveFor<ProductDto, ProductCrea
 ```
 
 **After (error resolved)**:
-```csharp
+```csharp{title="Example: Product Catalog Perspective - ProductCreatedEvent" description="After (error resolved):" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Product"]}
 // ✅ [StreamKey] added to event
 public record ProductCreatedEvent : IEvent {
   [StreamKey]  // Identifies the stream

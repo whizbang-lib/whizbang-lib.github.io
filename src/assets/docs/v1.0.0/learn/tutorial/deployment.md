@@ -150,7 +150,7 @@ ENTRYPOINT ["dotnet", "ECommerce.InventoryWorker.dll"]
 
 **k8s/order-service/deployment.yaml**:
 
-```yaml
+```yaml{title="Order Service Deployment" description="**k8s/order-service/deployment." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Order", "Service"]}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -226,7 +226,7 @@ spec:
 
 **k8s/order-service/hpa.yaml**:
 
-```yaml
+```yaml{title="Horizontal Pod Autoscaler" description="**k8s/order-service/hpa." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Horizontal", "Pod"]}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -271,7 +271,7 @@ spec:
 
 **k8s/ingress.yaml**:
 
-```yaml
+```yaml{title="Ingress" description="**k8s/ingress." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Ingress"]}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -450,7 +450,7 @@ output serviceBusNamespace string = serviceBus.name
 
 **Deploy infrastructure**:
 
-```bash
+```bash{title="Step 3: Azure Infrastructure (Bicep)" description="Deploy infrastructure:" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Step", "Azure"]}
 az deployment group create \
   --resource-group ecommerce-rg \
   --template-file infra/main.bicep \
@@ -463,7 +463,7 @@ az deployment group create \
 
 **.github/workflows/deploy.yaml**:
 
-```yaml
+```yaml{title="Step 4: CI/CD Pipeline (GitHub Actions)" description="Demonstrates step 4: CI/CD Pipeline (GitHub Actions)" category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Pipeline"]}
 name: Build and Deploy
 
 on:
@@ -575,7 +575,7 @@ jobs:
 
 **Program.cs**:
 
-```csharp
+```csharp{title="Application Insights Integration" description="Demonstrates application Insights Integration" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Application", "Insights"]}
 builder.Services.AddApplicationInsightsTelemetry(options => {
   options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
 });
@@ -600,7 +600,7 @@ builder.Services.AddOpenTelemetryTracing(tracing => {
 
 **k8s/monitoring/prometheus.yaml**:
 
-```yaml
+```yaml{title="Prometheus Metrics" description="**k8s/monitoring/prometheus." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Prometheus", "Metrics"]}
 apiVersion: v1
 kind: ServiceMonitor
 metadata:
@@ -620,7 +620,7 @@ spec:
 
 **Receptors/CreateOrderReceptor.cs**:
 
-```csharp
+```csharp{title="Custom Metrics" description="**Receptors/CreateOrderReceptor." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Custom", "Metrics"]}
 private readonly Meter _meter = new("ECommerce.OrderService");
 private readonly Counter<long> _ordersCreated;
 
@@ -651,7 +651,7 @@ public async Task<OrderCreated> HandleAsync(CreateOrder command, CancellationTok
 
 **k8s/jobs/migrate-orders-db.yaml**:
 
-```yaml
+```yaml{title="Migration Job" description="**k8s/jobs/migrate-orders-db." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Migration", "Job"]}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -676,7 +676,7 @@ spec:
 
 **Run migration before deployment**:
 
-```bash
+```bash{title="Migration Job (2)" description="Run migration before deployment:" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Migration", "Job"]}
 kubectl apply -f k8s/jobs/migrate-orders-db.yaml
 kubectl wait --for=condition=complete job/migrate-orders-db --timeout=5m
 ```
@@ -687,7 +687,7 @@ kubectl wait --for=condition=complete job/migrate-orders-db --timeout=5m
 
 **k8s/order-service/deployment-blue.yaml**:
 
-```yaml
+```yaml{title="Step 7: Blue-Green Deployment" description="**k8s/order-service/deployment-blue." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Blue-Green"]}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -716,7 +716,7 @@ spec:
 
 **k8s/order-service/service-switch.yaml**:
 
-```yaml
+```yaml{title="Step 7: Blue-Green Deployment (2)" description="**k8s/order-service/service-switch." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Blue-Green"]}
 apiVersion: v1
 kind: Service
 metadata:
@@ -733,7 +733,7 @@ spec:
 
 **Deployment process**:
 
-```bash
+```bash{title="Step 7: Blue-Green Deployment (3)" description="Deployment process:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Blue-Green"]}
 # Deploy green version
 kubectl apply -f k8s/order-service/deployment-green.yaml
 

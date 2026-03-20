@@ -28,7 +28,7 @@ This enables receptors to return multiple values (via tuples) while callers rece
 
 ## Example
 
-```csharp
+```csharp{title="Example" description="Demonstrates example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example"]}
 // Command
 public record CreateOrder(Guid OrderId, decimal Amount);
 
@@ -63,7 +63,7 @@ public class CreateOrderReceptor
 
 ### Caller Side
 
-```csharp
+```csharp{title="Caller Side" description="Demonstrates caller Side" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Caller", "Side"]}
 // RPC call - OrderConfirmation returned to caller
 var confirmation = await dispatcher.LocalInvokeAsync<OrderConfirmation>(
     new CreateOrder(Guid.NewGuid(), 99.99m));
@@ -97,7 +97,7 @@ After extraction, remaining values cascade based on their routing:
 
 RPC responses are extracted regardless of routing wrappers:
 
-```csharp
+```csharp{title="Routing Wrappers Ignored for RPC" description="RPC responses are extracted regardless of routing wrappers:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Routing", "Wrappers"]}
 // Even if wrapped in Route.Local() or Route.Outbox(),
 // the value is still extracted and returned to RPC caller
 return (Route.Local(confirmation), inventory);
@@ -108,7 +108,7 @@ return (Route.Local(confirmation), inventory);
 
 ### Tuples (2-8 elements)
 
-```csharp
+```csharp{title="Tuples (2-8 elements)" description="Demonstrates tuples (2-8 elements)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Tuples", "2-8"]}
 // 2-tuple
 IReceptor<Cmd, (Response, Event)>
 
@@ -118,14 +118,14 @@ IReceptor<Cmd, (Response, Event1, Event2)>
 
 ### Mixed with Routing
 
-```csharp
+```csharp{title="Mixed with Routing" description="Demonstrates mixed with Routing" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Mixed", "Routing"]}
 // Explicit routing on cascaded events
 IReceptor<Cmd, (Response, Routed<CacheInvalidated>)>
 ```
 
 ### Interface-Based Extraction
 
-```csharp
+```csharp{title="Interface-Based Extraction" description="Demonstrates interface-Based Extraction" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Interface-Based", "Extraction"]}
 // Extract by interface
 var evt = await dispatcher.LocalInvokeAsync<IEvent>(command);
 // Returns first IEvent found in tuple
@@ -139,7 +139,7 @@ Discriminated unions enable receptors to return multiple possible outcomes in a 
 
 `Route.None()` explicitly marks a tuple position as "no value":
 
-```csharp
+```csharp{title="Using Route.None()" description="Demonstrates using Route.None()" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Using", "Route.None"]}
 // Receptor returning success OR failure
 public class ProcessPaymentReceptor
     : IReceptor<ProcessPayment, (PaymentSucceeded?, PaymentFailed?)> {
@@ -165,7 +165,7 @@ public class ProcessPaymentReceptor
 
 The caller extracts whichever value is present:
 
-```csharp
+```csharp{title="Extracting from Discriminated Unions" description="The caller extracts whichever value is present:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Extracting", "Discriminated"]}
 // Try to extract success
 var success = await dispatcher.LocalInvokeAsync<PaymentSucceeded>(command);
 // Returns PaymentSucceeded if success path was taken
@@ -176,7 +176,7 @@ var success = await dispatcher.LocalInvokeAsync<PaymentSucceeded>(command);
 
 For more explicit code, use `Route.None()` instead of `null`:
 
-```csharp
+```csharp{title="Explicit Route.None() Syntax" description="For more explicit code, use `Route." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Explicit", "Route.None"]}
 return (success: Route.None(), failure: new PaymentFailed(...));
 ```
 
@@ -189,7 +189,7 @@ return (success: Route.None(), failure: new PaymentFailed(...));
 
 `Route.None()` returns a `RoutedNone` struct:
 
-```csharp
+```csharp{title="RoutedNone Type" description="Demonstrates routedNone Type" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "RoutedNone", "Type"]}
 /// <summary>
 /// Represents an explicitly empty value in a discriminated union tuple.
 /// </summary>
@@ -208,7 +208,7 @@ public readonly struct RoutedNone : IRouted {
 
 Discriminated unions can have more than two paths:
 
-```csharp
+```csharp{title="Three-Way Unions" description="Discriminated unions can have more than two paths:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Three-Way", "Unions"]}
 // Success, validation error, or system error
 IReceptor<Cmd, (SuccessResult?, ValidationError?, SystemError?)>
 
@@ -226,7 +226,7 @@ return command.Amount < 0
 
 If the requested type doesn't exist in the return value:
 
-```csharp
+```csharp{title="Type Not Found" description="If the requested type doesn't exist in the return value:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Type", "Not"]}
 // Receptor returns (OrderConfirmation, InventoryReserved)
 // But caller requests PaymentProcessed
 await dispatcher.LocalInvokeAsync<PaymentProcessed>(command);
@@ -237,7 +237,7 @@ await dispatcher.LocalInvokeAsync<PaymentProcessed>(command);
 
 If multiple values match the requested type, the **first** match is returned:
 
-```csharp
+```csharp{title="Multiple Matches" description="If multiple values match the requested type, the first match is returned:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Multiple", "Matches"]}
 // Tuple: (OrderCreated{Id="first"}, OrderCreated{Id="second"})
 var order = await dispatcher.LocalInvokeAsync<OrderCreated>(command);
 // order.Id == "first"
@@ -249,7 +249,7 @@ var order = await dispatcher.LocalInvokeAsync<OrderCreated>(command);
 
 When the receptor's return type exactly matches `TResponse`, no extraction is needed:
 
-```csharp
+```csharp{title="Fast Path (Exact Match)" description="When the receptor's return type exactly matches TResponse, no extraction is needed:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Fast", "Path"]}
 // Receptor: IReceptor<Cmd, OrderConfirmation>
 // Caller: LocalInvokeAsync<OrderConfirmation>(cmd)
 // Result: Fast path - no extraction overhead

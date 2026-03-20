@@ -15,7 +15,7 @@ MatchStrictness is a flag enum that controls how type names are compared during 
 
 ### Basic Fuzzy Matching
 
-```csharp
+```csharp{title="Basic Fuzzy Matching" description="Demonstrates basic Fuzzy Matching" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Fuzzy"]}
 using Whizbang.Core;
 
 var fullType = "ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts, Version=1.0.0";
@@ -40,7 +40,7 @@ bool caseMatch = TypeMatcher.Matches(
 
 ### Combining Multiple Flags
 
-```csharp
+```csharp{title="Combining Multiple Flags" description="Demonstrates combining Multiple Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Combining", "Multiple"]}
 // Ignore both case AND version
 var strictness = MatchStrictness.IgnoreCase | MatchStrictness.IgnoreVersion;
 
@@ -86,7 +86,7 @@ Each flag controls a specific transformation applied to type strings before comp
 
 **When**: Case-insensitive type name matching
 
-```csharp
+```csharp{title="IgnoreCase" description="When: Case-insensitive type name matching" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "IgnoreCase"]}
 var type1 = "ECommerce.Contracts.Events.ProductCreatedEvent";
 var type2 = "ecommerce.contracts.events.productcreatedevent";
 
@@ -107,7 +107,7 @@ bool simpleMatch = TypeMatcher.Matches(
 
 **When**: Matching types across different assembly versions
 
-```csharp
+```csharp{title="IgnoreVersion" description="When: Matching types across different assembly versions" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "IgnoreVersion"]}
 var v1 = "MyApp.Events.OrderCreated, MyApp, Version=1.0.0, Culture=neutral";
 var v2 = "MyApp.Events.OrderCreated, MyApp, Version=2.0.0, Culture=neutral";
 
@@ -124,7 +124,7 @@ bool match = TypeMatcher.Matches(v1, v2, MatchStrictness.IgnoreVersion);
 
 **When**: Matching types by namespace.TypeName only
 
-```csharp
+```csharp{title="IgnoreAssembly" description="When: Matching types by namespace." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "IgnoreAssembly"]}
 var type1 = "ECommerce.Events.ProductCreated, ECommerce.Contracts";
 var type2 = "ECommerce.Events.ProductCreated, ECommerce.Core";
 
@@ -140,7 +140,7 @@ bool match = TypeMatcher.Matches(type1, type2, MatchStrictness.IgnoreAssembly);
 
 **When**: Matching types by simple name only
 
-```csharp
+```csharp{title="IgnoreNamespace" description="When: Matching types by simple name only" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "IgnoreNamespace"]}
 var type1 = "ECommerce.Contracts.Events.ProductCreatedEvent";
 var type2 = "MyApp.Domain.Events.ProductCreatedEvent";
 var type3 = "ProductCreatedEvent";
@@ -172,7 +172,7 @@ bool match2 = TypeMatcher.Matches(type1, type3, MatchStrictness.IgnoreNamespace)
 
 ### Preset Examples
 
-```csharp
+```csharp{title="Preset Examples" description="Demonstrates preset Examples" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "Preset", "Examples"]}
 // Exact preset (default)
 bool exact = TypeMatcher.Matches(
     "MyApp.OrderCreated",
@@ -220,7 +220,7 @@ bool simpleNameCI = TypeMatcher.Matches(
 
 Flags are combined using bitwise OR, and each flag adds a transformation:
 
-```csharp
+```csharp{title="Additive Behavior" description="Flags are combined using bitwise OR, and each flag adds a transformation:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Additive", "Behavior"]}
 // Single flag
 var ignoreCase = MatchStrictness.IgnoreCase;
 
@@ -239,7 +239,7 @@ var veryFlexible = MatchStrictness.SimpleName | MatchStrictness.IgnoreCase;
 
 Transformations are applied in a specific order before comparison:
 
-```csharp
+```csharp{title="Order of Operations" description="Transformations are applied in a specific order before comparison:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Order", "Operations"]}
 // Example input
 var type = "MyApp.Events.OrderCreated, MyApp, Version=1.0.0";
 
@@ -262,7 +262,7 @@ var type = "MyApp.Events.OrderCreated, MyApp, Version=1.0.0";
 
 **When**: Matching events from different assembly versions
 
-```csharp
+```csharp{title="Scenario 1: Cross-Version Type Matching" description="When: Matching events from different assembly versions" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Cross-Version"]}
 public bool IsProductEvent(string eventTypeName) {
     var productEventTypes = new[] {
         "ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts, Version=1.0.0",
@@ -285,7 +285,7 @@ public bool IsProductEvent(string eventTypeName) {
 
 **When**: Matching user-provided type names (case-insensitive)
 
-```csharp
+```csharp{title="Scenario 2: User Input Matching" description="When: Matching user-provided type names (case-insensitive)" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Scenario", "User"]}
 public IEnumerable<string> FindPerspectives(string eventName) {
     // User types "ordercreated" - find "OrderCreated", "orderCreated", etc.
     return PerspectiveRegistrationExtensions.GetPerspectivesForEvent(
@@ -300,7 +300,7 @@ public IEnumerable<string> FindPerspectives(string eventName) {
 
 **When**: Discovering types from external assemblies
 
-```csharp
+```csharp{title="Scenario 3: Plugin System Type Discovery" description="When: Discovering types from external assemblies" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Plugin"]}
 public IEnumerable<Type> FindEventHandlers(string eventTypeName) {
     var allTypes = AppDomain.CurrentDomain.GetAssemblies()
         .SelectMany(a => a.GetTypes());
@@ -321,7 +321,7 @@ public IEnumerable<Type> FindEventHandlers(string eventTypeName) {
 
 **When**: Routing messages based on configuration
 
-```csharp
+```csharp{title="Scenario 4: Configuration-Based Routing" description="When: Routing messages based on configuration" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Configuration-Based"]}
 public class MessageRouteConfig {
     public string EventPattern { get; set; } = null!;
     public MatchStrictness Strictness { get; set; }
@@ -352,7 +352,7 @@ public string? FindHandler(string eventType, List<MessageRouteConfig> routes) {
 
 ### Checking Flags
 
-```csharp
+```csharp{title="Checking Flags" description="Demonstrates checking Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Checking", "Flags"]}
 var strictness = MatchStrictness.IgnoreCase | MatchStrictness.IgnoreVersion;
 
 // Check if a flag is set
@@ -369,7 +369,7 @@ bool hasIgnoreCaseAlt = (strictness & MatchStrictness.IgnoreCase) == MatchStrict
 
 ### Adding and Removing Flags
 
-```csharp
+```csharp{title="Adding and Removing Flags" description="Demonstrates adding and Removing Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Adding", "Removing"]}
 var strictness = MatchStrictness.IgnoreVersion;
 
 // Add a flag
@@ -387,7 +387,7 @@ strictness ^= MatchStrictness.IgnoreAssembly;
 
 ### Building Strictness Dynamically
 
-```csharp
+```csharp{title="Building Strictness Dynamically" description="Demonstrates building Strictness Dynamically" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Building", "Strictness"]}
 public MatchStrictness BuildStrictness(
     bool ignoreCase,
     bool ignoreVersion,
@@ -423,7 +423,7 @@ var strictness = BuildStrictness(
 
 MatchStrictness is extensively used in message association queries:
 
-```csharp
+```csharp{title="Integration with Message Associations" description="MatchStrictness is extensively used in message association queries:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Integration", "Message"]}
 // Find perspectives for event (exact)
 var exactPerspectives = PerspectiveRegistrationExtensions.GetPerspectivesForEvent(
     "ECommerce.Contracts.Events.ProductCreatedEvent",
@@ -459,7 +459,7 @@ var events = PerspectiveRegistrationExtensions.GetEventsForPerspective(
 
 **Namespace**: `Whizbang.Core`
 
-```csharp
+```csharp{title="Enum Definition" description="Namespace: `Whizbang." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Enum", "Definition"]}
 [Flags]
 public enum MatchStrictness {
   None = 0,              // Exact match (default)
@@ -482,7 +482,7 @@ public enum MatchStrictness {
 
 ### Usage with TypeMatcher
 
-```csharp
+```csharp{title="Usage with TypeMatcher" description="Demonstrates usage with TypeMatcher" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Usage", "TypeMatcher"]}
 // Match two type strings with strictness
 bool match = TypeMatcher.Matches(
     string typeString1,
@@ -510,7 +510,7 @@ bool simple = TypeMatcher.Matches("MyApp.MyType", "MyType", MatchStrictness.Simp
 
 ### ❌ Confusing Exact with None
 
-```csharp
+```csharp{title="❌ Confusing Exact with None" description="Demonstrates ❌ Confusing Exact with None" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Confusing", "Exact"]}
 // ❌ WRONG: Assuming None means no matching
 bool match = TypeMatcher.Matches(type1, type2, MatchStrictness.None);
 // Actually: Exact match (None = 0 = Exact)
@@ -521,7 +521,7 @@ bool match = TypeMatcher.Matches(type1, type2, MatchStrictness.Exact);
 
 ### ❌ Over-Permissive Matching
 
-```csharp
+```csharp{title="❌ Over-Permissive Matching" description="Demonstrates ❌ Over-Permissive Matching" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Over-Permissive", "Matching"]}
 // ❌ WRONG: Too permissive for security-sensitive code
 var strictness = MatchStrictness.SimpleNameCaseInsensitive;
 if (TypeMatcher.Matches(userProvidedType, "AdminCommand", strictness)) {
@@ -537,7 +537,7 @@ if (TypeMatcher.Matches(userProvidedType, expectedType, strictness)) {
 
 ### ❌ Forgetting Version Implications
 
-```csharp
+```csharp{title="❌ Forgetting Version Implications" description="Demonstrates ❌ Forgetting Version Implications" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Forgetting", "Version"]}
 // ❌ WRONG: Exact match breaks with version changes
 bool match = TypeMatcher.Matches(
     "MyType, MyAssembly, Version=1.0.0",

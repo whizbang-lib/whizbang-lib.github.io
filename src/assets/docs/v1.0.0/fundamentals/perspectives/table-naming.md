@@ -28,7 +28,7 @@ Suffixes like `Projection`, `Model`, `Dto`, and `View` describe what the class *
 
 Configure suffix stripping in your project file:
 
-```xml
+```xml{title="MSBuild Properties" description="Configure suffix stripping in your project file:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "MSBuild", "Properties"]}
 <PropertyGroup>
   <!-- Enable/disable suffix stripping (default: true) -->
   <WhizbangStripTableNameSuffixes>true</WhizbangStripTableNameSuffixes>
@@ -42,7 +42,7 @@ Configure suffix stripping in your project file:
 
 To keep the full class name in table names:
 
-```xml
+```xml{title="Disabling Suffix Stripping" description="To keep the full class name in table names:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Disabling", "Suffix"]}
 <PropertyGroup>
   <WhizbangStripTableNameSuffixes>false</WhizbangStripTableNameSuffixes>
 </PropertyGroup>
@@ -59,7 +59,7 @@ With stripping disabled:
 
 Add or modify the suffixes to strip:
 
-```xml
+```xml{title="Custom Suffixes" description="Add or modify the suffixes to strip:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Custom", "Suffixes"]}
 <PropertyGroup>
   <!-- Add custom suffixes -->
   <WhizbangTableNameSuffixesToStrip>Model,Projection,ReadModel,Dto,View,ViewModel,State</WhizbangTableNameSuffixesToStrip>
@@ -70,7 +70,7 @@ Add or modify the suffixes to strip:
 
 Override the generated name using the `[Perspective]` attribute:
 
-```csharp
+```csharp{title="Explicit Table Names" description="Override the generated name using the [Perspective] attribute:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Explicit", "Table"]}
 // Explicit table name - ignores all conventions
 [Perspective("custom_orders")]
 public class OrderProjection : IPerspectiveFor<OrderData, OrderCreatedEvent> {
@@ -114,7 +114,7 @@ This is useful when:
 
 If two perspectives would generate the same table name, you'll get a compile-time error:
 
-```csharp
+```csharp{title="Table Name Conflicts" description="If two perspectives would generate the same table name, you'll get a compile-time error:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Table", "Name"]}
 // Both would generate wh_per_order
 public class OrderProjection : IPerspectiveFor<OrderData, OrderCreatedEvent> { }
 public class OrderDto : IPerspectiveFor<OrderSummary, OrderCreatedEvent> { }
@@ -123,7 +123,7 @@ public class OrderDto : IPerspectiveFor<OrderSummary, OrderCreatedEvent> { }
 
 Resolve by using explicit names:
 
-```csharp
+```csharp{title="Table Name Conflicts - OrderProjection" description="Resolve by using explicit names:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Table", "Name"]}
 [Perspective("order_details")]
 public class OrderProjection : IPerspectiveFor<OrderData, OrderCreatedEvent> { }
 
@@ -137,14 +137,14 @@ When you rename a perspective class, the [perspective registry](/docs/v1.0.0/fun
 
 ### Before
 
-```csharp
+```csharp{title="Before" description="Demonstrates before" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Before"]}
 public class CustomerDataProjection : IPerspectiveFor<CustomerData, CustomerEvent> { }
 // Table: wh_per_customer_data
 ```
 
 ### After
 
-```csharp
+```csharp{title="After" description="Demonstrates after" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "After"]}
 public class CustomerProjection : IPerspectiveFor<CustomerData, CustomerEvent> { }
 // Table: wh_per_customer
 ```
@@ -158,7 +158,7 @@ On next application start:
 
 The `wh_per_` prefix is part of Whizbang's schema configuration:
 
-```csharp
+```csharp{title="Prefix Configuration" description="The wh_per_ prefix is part of Whizbang's schema configuration:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Prefix", "Configuration"]}
 services.AddWhizbang(options => {
   options.Schema.InfrastructurePrefix = "wh_";    // Default
   options.Schema.PerspectivePrefix = "wh_per_";   // Default

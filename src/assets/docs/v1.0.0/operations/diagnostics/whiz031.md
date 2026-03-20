@@ -32,7 +32,7 @@ Event type 'MyNamespace.OrderEvent' has multiple properties marked with [StreamK
 Remove the `[StreamKey]` attribute from all but one property. Keep it only on the property that identifies the aggregate/stream:
 
 **Before (causes WHIZ031)**:
-```csharp
+```csharp{title="How to Fix" description="Before (causes WHIZ031):" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix"]}
 public record OrderEvent : IEvent {
   [StreamKey]  // ❌ Multiple [StreamKey] attributes!
   public Guid OrderId { get; init; }
@@ -45,7 +45,7 @@ public record OrderEvent : IEvent {
 ```
 
 **After (error resolved)**:
-```csharp
+```csharp{title="How to Fix - OrderEvent" description="After (error resolved):" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix"]}
 public record OrderEvent : IEvent {
   [StreamKey]  // ✅ Single [StreamKey] on the aggregate ID
   public Guid OrderId { get; init; }
@@ -61,7 +61,7 @@ public record OrderEvent : IEvent {
 
 The `[StreamKey]` should mark the property that identifies the **primary aggregate** for this event:
 
-```csharp
+```csharp{title="Choosing the Right Property" description="The [StreamKey] should mark the property that identifies the primary aggregate for this event:" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Choosing", "Right"]}
 // Order-centric events
 public record OrderCreatedEvent : IEvent {
   [StreamKey]  // Order is the aggregate
@@ -99,7 +99,7 @@ Having multiple stream keys would create ambiguity:
 ## Example: Order Aggregate
 
 **Correct - Single stream key**:
-```csharp
+```csharp{title="Example: Order Aggregate" description="Correct - Single stream key:" category="Troubleshooting" difficulty="ADVANCED" tags=["Operations", "Diagnostics", "Example:", "Order"]}
 public record OrderCreatedEvent : IEvent {
   [StreamKey]
   public Guid OrderId { get; init; }
@@ -146,7 +146,7 @@ public class OrderPerspective :
 
 If your event references multiple entities, only mark the **primary aggregate**:
 
-```csharp
+```csharp{title="Scenario 1: Event with Multiple IDs" description="If your event references multiple entities, only mark the primary aggregate:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Scenario", "Event"]}
 public record OrderLineItemAddedEvent : IEvent {
   [StreamKey]  // Order is the primary aggregate
   public Guid OrderId { get; init; }
@@ -161,7 +161,7 @@ public record OrderLineItemAddedEvent : IEvent {
 
 If you truly need a composite key, create a single property that represents it:
 
-```csharp
+```csharp{title="Scenario 2: Composite Keys" description="If you truly need a composite key, create a single property that represents it:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Scenario", "Composite"]}
 public record OrderLineItemEvent : IEvent {
   [StreamKey]  // Composite key as single property
   public string StreamKey => $"{OrderId}:{ProductId}";

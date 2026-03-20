@@ -26,7 +26,7 @@ Events are the **source of truth** in event-sourced systems:
 
 ## IEvent Interface
 
-```csharp
+```csharp{title="IEvent Interface" description="Demonstrates iEvent Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IEvent", "Interface"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -40,7 +40,7 @@ public interface IEvent : IMessage {
 
 ## EventId Value Object {#eventid}
 
-```csharp
+```csharp{title="EventId Value Object" description="Demonstrates eventId Value Object" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "EventId", "Value"]}
 namespace Whizbang.Core.ValueObjects;
 
 /// <summary>
@@ -54,7 +54,7 @@ public readonly partial struct EventId;
 
 ### Creating EventIds
 
-```csharp
+```csharp{title="Creating EventIds" description="Demonstrates creating EventIds" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Creating", "EventIds"]}
 // Create new EventId (UUIDv7)
 var eventId = EventId.New();
 
@@ -75,7 +75,7 @@ Guid underlying = eventId.Value;
 
 ### Basic Event
 
-```csharp
+```csharp{title="Basic Event" description="Demonstrates basic Event" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Basic", "Event"]}
 public record OrderCreated : IEvent {
   [StreamKey]
   public required Guid OrderId { get; init; }
@@ -90,7 +90,7 @@ public record OrderCreated : IEvent {
 
 Capture all relevant information:
 
-```csharp
+```csharp{title="Event with Complete State" description="Capture all relevant information:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Complete"]}
 public record ProductPriceChanged : IEvent {
   [StreamKey]
   public required Guid ProductId { get; init; }
@@ -105,7 +105,7 @@ public record ProductPriceChanged : IEvent {
 
 ### Event with Nested Data
 
-```csharp
+```csharp{title="Event with Nested Data" description="Demonstrates event with Nested Data" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Nested"]}
 public record OrderShipped : IEvent {
   [StreamKey]
   public required Guid OrderId { get; init; }
@@ -127,7 +127,7 @@ public record ShippingInfo {
 
 Events describe what **has happened**:
 
-```csharp
+```csharp{title="Use Past Tense" description="Events describe what has happened:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Past", "Tense"]}
 // ✅ GOOD: Past tense
 public record OrderCreated : IEvent { }
 public record PaymentProcessed : IEvent { }
@@ -142,7 +142,7 @@ public record ProcessPayment : IEvent { }   // This is a command!
 
 Events should clearly describe the state change:
 
-```csharp
+```csharp{title="Be Specific" description="Events should clearly describe the state change:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Specific"]}
 // ✅ GOOD: Specific events
 public record OrderStatusChangedToShipped : IEvent { }
 public record OrderStatusChangedToDelivered : IEvent { }
@@ -161,7 +161,7 @@ public record OrderChanged : IEvent { }  // What changed?
 
 ### Capture Complete State
 
-```csharp
+```csharp{title="Capture Complete State" description="Demonstrates capture Complete State" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Capture", "Complete"]}
 // ✅ GOOD: Complete state for reconstruction
 public record AccountBalanceChanged : IEvent {
   [StreamKey]
@@ -183,7 +183,7 @@ public record AccountBalanceChanged : IEvent {
 
 ### Include Temporal Information
 
-```csharp
+```csharp{title="Include Temporal Information" description="Demonstrates include Temporal Information" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Include", "Temporal"]}
 public record OrderCreated : IEvent {
   [StreamKey]
   public required Guid OrderId { get; init; }
@@ -200,7 +200,7 @@ public record OrderCancelled : IEvent {
 
 ### Use Value Objects for Type Safety
 
-```csharp
+```csharp{title="Use Value Objects for Type Safety" description="Demonstrates use Value Objects for Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Value", "Objects"]}
 // ✅ GOOD: Type-safe identifiers
 public record OrderCreated : IEvent {
   [StreamKey]
@@ -221,7 +221,7 @@ public record OrderCreated : IEvent {
 
 Events are **facts** and must be immutable:
 
-```csharp
+```csharp{title="Event Immutability" description="Events are facts and must be immutable:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Immutability"]}
 // ✅ GOOD: Immutable record with init-only properties
 public record OrderCreated : IEvent {
   public required Guid OrderId { get; init; }  // Can only be set during construction
@@ -239,7 +239,7 @@ public class OrderCreated : IEvent {
 
 Events are **not** commands or intentions. They represent **accomplished facts**:
 
-```csharp
+```csharp{title="Event vs Fact" description="Events are not commands or intentions." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Fact"]}
 // Command (intention): "Please create an order"
 public record CreateOrder : ICommand {
   public required Guid CustomerId { get; init; }
@@ -266,7 +266,7 @@ Key differences:
 
 ### In Receptors
 
-```csharp
+```csharp{title="In Receptors" description="Demonstrates in Receptors" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Receptors"]}
 public class InventoryReceptor : IReceptor<OrderCreated, InventoryReserved> {
   public async ValueTask<InventoryReserved> HandleAsync(
       OrderCreated @event,
@@ -286,7 +286,7 @@ public class InventoryReceptor : IReceptor<OrderCreated, InventoryReserved> {
 
 ### In Perspectives
 
-```csharp
+```csharp{title="In Perspectives" description="Demonstrates in Perspectives" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspectives"]}
 public class OrderSummaryPerspective : IPerspective<OrderSummary> {
   public async Task<OrderSummary> ProjectAsync(
       IEvent @event,

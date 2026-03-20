@@ -31,7 +31,7 @@ This guide covers migrating from Marten's document store and event sourcing to W
 
 **Marten**:
 
-```csharp
+```csharp{title="Appending Events" description="Demonstrates appending Events" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Appending", "Events"]}
 public class OrderService {
     private readonly IDocumentStore _store;
 
@@ -49,7 +49,7 @@ public class OrderService {
 
 **Whizbang**:
 
-```csharp
+```csharp{title="Appending Events - CreateOrderReceptor" description="Demonstrates appending Events" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Appending", "Events"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IEventStore _eventStore;
 
@@ -82,7 +82,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Marten**:
 
-```csharp
+```csharp{title="Reading Events" description="Demonstrates reading Events" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Reading", "Events"]}
 public async Task<Order> RehydrateOrderAsync(Guid orderId) {
     await using var session = _store.QuerySession();
 
@@ -99,7 +99,7 @@ public async Task<Order> RehydrateOrderAsync(Guid orderId) {
 
 **Whizbang**:
 
-```csharp
+```csharp{title="Reading Events (2)" description="Demonstrates reading Events" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Reading", "Events"]}
 public async Task<Order> RehydrateOrderAsync(Guid orderId, CancellationToken ct) {
     var events = await _eventStore.ReadAsync<IOrderEvent>(
         orderId,
@@ -118,7 +118,7 @@ public async Task<Order> RehydrateOrderAsync(Guid orderId, CancellationToken ct)
 
 **Marten**:
 
-```csharp
+```csharp{title="Multiple Events in One Append" description="Demonstrates multiple Events in One Append" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Multiple", "Events", "One"]}
 await using var session = _store.LightweightSession();
 
 session.Events.Append(orderId,
@@ -132,7 +132,7 @@ await session.SaveChangesAsync();
 
 **Whizbang**:
 
-```csharp
+```csharp{title="Multiple Events in One Append (2)" description="Demonstrates multiple Events in One Append" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Multiple", "Events", "One"]}
 // Append multiple events individually
 var events = new IOrderEvent[] {
     new OrderCreated(orderId),
@@ -155,14 +155,14 @@ await _eventStore.AppendManyAsync(orderId, envelopes, ct);
 
 **Marten** (implicit stream creation):
 
-```csharp
+```csharp{title="Starting a Stream" description="Marten (implicit stream creation):" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Starting", "Stream"]}
 // Marten creates stream automatically
 session.Events.Append(newStreamId, firstEvent);
 ```
 
 **Whizbang** (explicit stream):
 
-```csharp
+```csharp{title="Starting a Stream (2)" description="Whizbang (explicit stream):" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Starting", "Stream"]}
 // Whizbang creates stream on first append
 var streamId = Guid.CreateVersion7();  // Use UUIDv7 for time-ordering
 var envelope = CreateEnvelope(firstEvent);
@@ -173,14 +173,14 @@ await _eventStore.AppendAsync(streamId, envelope, ct);
 
 **Marten**:
 
-```csharp
+```csharp{title="Checking Stream Existence" description="Demonstrates checking Stream Existence" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Checking", "Stream", "Existence"]}
 var state = await session.Events.FetchStreamStateAsync(streamId);
 var exists = state != null;
 ```
 
 **Whizbang**:
 
-```csharp
+```csharp{title="Checking Stream Existence (2)" description="Demonstrates checking Stream Existence" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Checking", "Stream", "Existence"]}
 var events = await _eventStore.ReadAsync<IEvent>(streamId, fromSequence: 0, ct);
 var exists = await events.AnyAsync(ct);
 ```
@@ -189,7 +189,7 @@ var exists = await events.AnyAsync(ct);
 
 ### Marten Expected Version
 
-```csharp
+```csharp{title="Marten Expected Version" description="Demonstrates marten Expected Version" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Marten", "Expected", "Version"]}
 // Marten: Optimistic concurrency via expected version
 session.Events.Append(orderId, expectedVersion: 5, newEvent);
 await session.SaveChangesAsync();  // Throws if version != 5
@@ -197,7 +197,7 @@ await session.SaveChangesAsync();  // Throws if version != 5
 
 ### Whizbang Sequence-Based
 
-```csharp
+```csharp{title="Whizbang Sequence-Based" description="Demonstrates whizbang Sequence-Based" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Whizbang", "Sequence-Based"]}
 // Whizbang: Sequence-based concurrency
 // Events have monotonic sequence numbers per stream
 // Concurrency handled at append time
@@ -216,7 +216,7 @@ await _eventStore.AppendAsync(streamId, envelope, ct);
 
 ### Marten Unit of Work
 
-```csharp
+```csharp{title="Marten Unit of Work" description="Demonstrates marten Unit of Work" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Marten", "Unit", "Work"]}
 // Marten: Batch multiple operations
 await using var session = _store.LightweightSession();
 
@@ -229,7 +229,7 @@ await session.SaveChangesAsync();  // All-or-nothing
 
 ### Whizbang Transactional
 
-```csharp
+```csharp{title="Whizbang Transactional" description="Demonstrates whizbang Transactional" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Whizbang", "Transactional"]}
 // Whizbang: Use EF Core transaction or explicit transaction
 await using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
 
@@ -249,7 +249,7 @@ try {
 
 ### Marten Query Session
 
-```csharp
+```csharp{title="Marten Query Session" description="Demonstrates marten Query Session" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Marten", "Query", "Session"]}
 // Marten: Query events directly
 await using var session = _store.QuerySession();
 
@@ -261,7 +261,7 @@ var recentOrders = await session.Events
 
 ### Whizbang Event Queries
 
-```csharp
+```csharp{title="Whizbang Event Queries" description="Demonstrates whizbang Event Queries" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Whizbang", "Event", "Queries"]}
 // Whizbang: Query via event store
 var events = await _eventStore.GetEventsBetweenAsync<OrderCreated>(
     fromPosition: lastCheckpoint,
@@ -277,7 +277,7 @@ await foreach (var envelope in events) {
 
 Create a helper method for consistent envelope creation:
 
-```csharp
+```csharp{title="MessageEnvelope Creation Helper" description="Create a helper method for consistent envelope creation:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "MessageEnvelope", "Creation", "Helper"]}
 public static class EnvelopeFactory {
     public static MessageEnvelope<T> Create<T>(
         T payload,

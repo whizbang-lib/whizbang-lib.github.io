@@ -26,7 +26,7 @@ When a service starts, it **reconciles** its message associations with the datab
 
 ## MessageAssociationRecord {#messageassociationrecord}
 
-```csharp
+```csharp{title="MessageAssociationRecord" description="Demonstrates messageAssociationRecord" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationRecord", "Messageassociationrecord"]}
 namespace Whizbang.Core.Messaging;
 
 /// <summary>
@@ -74,7 +74,7 @@ public sealed class MessageAssociationRecord {
 
 ## MessageAssociationsSchema {#messageassociationsschema}
 
-```csharp
+```csharp{title="MessageAssociationsSchema" description="Demonstrates messageAssociationsSchema" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationsSchema", "Messageassociationsschema"]}
 namespace Whizbang.Data.Schema.Schemas;
 
 /// <summary>
@@ -146,7 +146,7 @@ At startup, services reconcile their associations:
 
 ### Implementation Example
 
-```csharp
+```csharp{title="Implementation Example" description="Demonstrates implementation Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Implementation", "Example"]}
 public class MessageAssociationReconciler {
   private readonly IDbConnection _db;
   private readonly string _serviceName;
@@ -185,7 +185,7 @@ public class MessageAssociationReconciler {
 
 When a new perspective is deployed, associations enable automatic checkpoint creation:
 
-```csharp
+```csharp{title="Auto-Creating Perspective Checkpoints" description="When a new perspective is deployed, associations enable automatic checkpoint creation:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Auto-Creating", "Perspective"]}
 public async Task EnsureCheckpointsAsync(CancellationToken ct = default) {
   // Find perspectives without checkpoints
   var missingCheckpoints = await _db.QueryAsync<string>(
@@ -213,7 +213,7 @@ public async Task EnsureCheckpointsAsync(CancellationToken ct = default) {
 
 Query which consumers handle a message type:
 
-```csharp
+```csharp{title="Runtime Message Flow Inspection" description="Query which consumers handle a message type:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Runtime", "Message"]}
 public async Task<IEnumerable<ConsumerInfo>> GetConsumersAsync(
     string messageType,
     CancellationToken ct = default) {
@@ -233,7 +233,7 @@ public async Task<IEnumerable<ConsumerInfo>> GetConsumersAsync(
 
 Find all message types consumed by a service:
 
-```csharp
+```csharp{title="Service Dependency Analysis" description="Find all message types consumed by a service:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Service", "Dependency"]}
 public async Task<IEnumerable<string>> GetConsumedTypesAsync(
     string serviceName,
     CancellationToken ct = default) {
@@ -251,7 +251,7 @@ public async Task<IEnumerable<string>> GetConsumedTypesAsync(
 
 ## Database Schema
 
-```sql
+```sql{title="Database Schema" description="Demonstrates database Schema" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Database", "Schema"]}
 CREATE TABLE wb_message_associations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   message_type VARCHAR(500) NOT NULL,

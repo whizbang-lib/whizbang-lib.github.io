@@ -54,7 +54,7 @@ Implement **full event sourcing with CQRS** using Whizbang - event store, aggreg
 
 **Migrations/001_CreateEventStore.sql**:
 
-```sql
+```sql{title="Event Store Schema" description="**Migrations/001_CreateEventStore." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Event", "Store"]}
 CREATE TABLE event_store (
   event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   stream_id UUID NOT NULL,
@@ -90,7 +90,7 @@ CREATE INDEX idx_snapshots_stream_id ON event_store_snapshots(stream_id);
 
 **OrderEvents.cs**:
 
-```csharp
+```csharp{title="Domain Events" description="**OrderEvents." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Domain", "Events"]}
 public record OrderCreatedEvent(
   string CustomerId,
   OrderItem[] Items,
@@ -121,7 +121,7 @@ public record OrderCancelledEvent(
 
 **OrderAggregate.cs**:
 
-```csharp
+```csharp{title="Aggregate Root" description="**OrderAggregate." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Aggregate", "Root"]}
 public class OrderAggregate {
   private readonly List<object> _uncommittedEvents = [];
 
@@ -270,7 +270,7 @@ public enum OrderStatus {
 
 **EventStoreRepository.cs**:
 
-```csharp
+```csharp{title="Event Store Repository" description="**EventStoreRepository." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Event", "Store"]}
 public class EventStoreRepository {
   private readonly NpgsqlConnection _db;
   private readonly ILogger<EventStoreRepository> _logger;
@@ -445,7 +445,7 @@ public record SnapshotRow(int Version, string State);
 
 **CreateOrderReceptor.cs**:
 
-```csharp
+```csharp{title="Command Handler (Receptor)" description="**CreateOrderReceptor." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Command", "Handler"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
   private readonly EventStoreRepository _eventStore;
   private readonly IMessageBus _bus;
@@ -493,7 +493,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Get aggregate state at specific point in time**:
 
-```csharp
+```csharp{title="Temporal Queries" description="Get aggregate state at specific point in time:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Temporal", "Queries"]}
 public class EventStoreQueryService {
   private readonly NpgsqlConnection _db;
 
@@ -525,7 +525,7 @@ public class EventStoreQueryService {
 
 **Usage**:
 
-```csharp
+```csharp{title="Temporal Queries (2)" description="Demonstrates temporal Queries" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Temporal", "Queries"]}
 // Get order state as of yesterday
 var orderYesterday = await queryService.LoadAsOfAsync(
   orderId,
@@ -541,7 +541,7 @@ Console.WriteLine($"Order status yesterday: {orderYesterday?.Status}");
 
 **OrderSummaryProjection.cs**:
 
-```csharp
+```csharp{title="Projections (Read Models)" description="**OrderSummaryProjection." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Projections", "Read"]}
 public class OrderSummaryProjection :
   IPerspectiveOf<OrderCreatedEvent>,
   IPerspectiveOf<PaymentProcessedEvent>,
@@ -611,7 +611,7 @@ public class OrderSummaryProjection :
 
 **Rebuild all projections from event store**:
 
-```csharp
+```csharp{title="Rebuilding Projections" description="Rebuild all projections from event store:" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Rebuilding", "Projections"]}
 public class ProjectionRebuilder {
   private readonly EventStoreRepository _eventStore;
   private readonly OrderSummaryProjection _projection;
@@ -688,7 +688,7 @@ Create snapshots every 100 events to avoid replaying thousands of events.
 
 Cache frequently accessed aggregates in memory:
 
-```csharp
+```csharp{title="Caching" description="Cache frequently accessed aggregates in memory:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Caching"]}
 public class CachedEventStoreRepository {
   private readonly EventStoreRepository _inner;
   private readonly IMemoryCache _cache;

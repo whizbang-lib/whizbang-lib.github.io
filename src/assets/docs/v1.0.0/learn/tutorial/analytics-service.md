@@ -69,7 +69,7 @@ This is **Part 7** of the ECommerce Tutorial. Complete [Customer Service](custom
 
 **ECommerce.AnalyticsWorker/Database/Migrations/001_CreateDailySalesAnalyticsTable.sql**:
 
-```sql
+```sql{title="Daily Sales Analytics" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Daily", "Sales"]}
 CREATE TABLE IF NOT EXISTS daily_sales_analytics (
   date DATE NOT NULL,
   total_orders BIGINT NOT NULL DEFAULT 0,
@@ -96,7 +96,7 @@ CREATE INDEX idx_daily_sales_date ON daily_sales_analytics(date DESC);
 
 **ECommerce.AnalyticsWorker/Database/Migrations/002_CreateHourlySalesAnalyticsTable.sql**:
 
-```sql
+```sql{title="Hourly Sales Analytics" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Hourly", "Sales"]}
 CREATE TABLE IF NOT EXISTS hourly_sales_analytics (
   hour TIMESTAMP NOT NULL,  -- Truncated to hour (e.g., 2024-12-12 10:00:00)
   total_orders BIGINT NOT NULL DEFAULT 0,
@@ -113,7 +113,7 @@ CREATE INDEX idx_hourly_sales_hour ON hourly_sales_analytics(hour DESC);
 
 **ECommerce.AnalyticsWorker/Database/Migrations/003_CreateProductAnalyticsTable.sql**:
 
-```sql
+```sql{title="Product Analytics" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Product", "Analytics"]}
 CREATE TABLE IF NOT EXISTS product_analytics (
   product_id TEXT NOT NULL,
   date DATE NOT NULL,
@@ -144,7 +144,7 @@ CREATE INDEX idx_product_analytics_revenue ON product_analytics(total_revenue DE
 
 **ECommerce.AnalyticsWorker/Perspectives/DailySalesAnalyticsPerspective.cs**:
 
-```csharp
+```csharp{title="Daily Sales Analytics Perspective" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Daily", "Sales"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
@@ -203,7 +203,7 @@ public class DailySalesAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
 
 **ECommerce.AnalyticsWorker/Perspectives/HourlySalesAnalyticsPerspective.cs**:
 
-```csharp
+```csharp{title="Hourly Sales Analytics Perspective" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Hourly", "Sales"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
@@ -265,7 +265,7 @@ public class HourlySalesAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
 
 **ECommerce.AnalyticsWorker/Perspectives/ProductAnalyticsPerspective.cs**:
 
-```csharp
+```csharp{title="Product Analytics Perspective" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Product", "Analytics"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
@@ -333,7 +333,7 @@ public class ProductAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
 
 **ECommerce.AnalyticsWorker/Models/DailySalesDto.cs**:
 
-```csharp
+```csharp{title="DTOs" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "DTOs"]}
 namespace ECommerce.AnalyticsWorker.Models;
 
 public record DailySalesDto(
@@ -348,7 +348,7 @@ public record DailySalesDto(
 
 **ECommerce.AnalyticsWorker/Models/ProductPerformanceDto.cs**:
 
-```csharp
+```csharp{title="DTOs - ProductPerformanceDto" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "DTOs"]}
 namespace ECommerce.AnalyticsWorker.Models;
 
 public record ProductPerformanceDto(
@@ -364,7 +364,7 @@ public record ProductPerformanceDto(
 
 **ECommerce.AnalyticsWorker/Controllers/AnalyticsController.cs**:
 
-```csharp
+```csharp{title="Controllers" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Controllers"]}
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Dapper;
@@ -518,7 +518,7 @@ public record ProductAnalyticsRow(
 
 **ECommerce.AnalyticsWorker/Program.cs**:
 
-```csharp
+```csharp{title="Step 4: Service Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"]}
 using Whizbang.Core;
 using Whizbang.Data.Postgres;
 using Whizbang.Transports.AzureServiceBus;
@@ -567,7 +567,7 @@ app.Run();
 
 ### 1. Create Orders (Generate Data)
 
-```bash
+```bash{title="Create Orders (Generate Data)" description="Demonstrates create Orders (Generate Data)" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Orders"]}
 # Create 10 orders
 for i in {1..10}; do
   curl -X POST http://localhost:5000/api/orders \
@@ -579,13 +579,13 @@ done
 
 ### 2. Query Daily Sales
 
-```bash
+```bash{title="Query Daily Sales" description="Demonstrates query Daily Sales" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Daily"]}
 curl "http://localhost:5002/api/analytics/sales/daily?startDate=2024-12-01&endDate=2024-12-31"
 ```
 
 **Response**:
 
-```json
+```json{title="Query Daily Sales (2)" description="Demonstrates query Daily Sales" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Query", "Daily"]}
 [
   {
     "date": "2024-12-12",
@@ -600,13 +600,13 @@ curl "http://localhost:5002/api/analytics/sales/daily?startDate=2024-12-01&endDa
 
 ### 3. Query Hourly Sales
 
-```bash
+```bash{title="Query Hourly Sales" description="Demonstrates query Hourly Sales" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Hourly"]}
 curl "http://localhost:5002/api/analytics/sales/hourly?date=2024-12-12"
 ```
 
 **Response**:
 
-```json
+```json{title="Query Hourly Sales (2)" description="Demonstrates query Hourly Sales" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Hourly"]}
 [
   { "hour": "2024-12-12T10:00:00Z", "totalOrders": 3, "totalRevenue": 119.94 },
   { "hour": "2024-12-12T11:00:00Z", "totalOrders": 5, "totalRevenue": 199.90 },
@@ -616,13 +616,13 @@ curl "http://localhost:5002/api/analytics/sales/hourly?date=2024-12-12"
 
 ### 4. Query Top Products
 
-```bash
+```bash{title="Query Top Products" description="Demonstrates query Top Products" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Top"]}
 curl "http://localhost:5002/api/analytics/products/top?limit=5"
 ```
 
 **Response**:
 
-```json
+```json{title="Query Top Products (2)" description="Demonstrates query Top Products" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Query", "Top"]}
 [
   {
     "productId": "prod-456",
@@ -647,7 +647,7 @@ curl "http://localhost:5002/api/analytics/products/top?limit=5"
 
 ### Time-Series Perspectives
 
-```csharp
+```csharp{title="Time-Series Perspectives" description="Demonstrates time-Series Perspectives" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Time-Series", "Perspectives"]}
 // Truncate timestamp to hour for hourly aggregation
 var hour = new DateTime(
   @event.CreatedAt.Year,
@@ -670,7 +670,7 @@ ON CONFLICT (hour) DO UPDATE SET
 
 ### Partitioned Tables
 
-```sql
+```sql{title="Partitioned Tables" description="Demonstrates partitioned Tables" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Partitioned", "Tables"]}
 CREATE TABLE daily_sales_analytics (...)
 PARTITION BY RANGE (date);
 
@@ -692,7 +692,7 @@ For complex aggregations, use materialized views:
 
 **ECommerce.AnalyticsWorker/Database/Migrations/004_CreateMaterializedViews.sql**:
 
-```sql
+```sql{title="Advanced: Materialized Views" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Advanced:", "Materialized"]}
 CREATE MATERIALIZED VIEW monthly_sales_summary AS
 SELECT
   DATE_TRUNC('month', date) AS month,
@@ -715,7 +715,7 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY monthly_sales_summary;
 
 ### Unit Test - Daily Sales Perspective
 
-```csharp
+```csharp{title="Unit Test - Daily Sales Perspective" description="Demonstrates unit Test - Daily Sales Perspective" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task DailySalesPerspective_OrderCreated_UpdatesDailySalesAsync() {
   // Arrange

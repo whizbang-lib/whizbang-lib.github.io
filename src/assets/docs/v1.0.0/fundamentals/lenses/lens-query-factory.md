@@ -21,7 +21,7 @@ The `ILensQueryFactory` provides thread-safe access to read models in scenarios 
 
 EF Core's `DbContext` is **not thread-safe**. When HotChocolate runs field resolvers in parallel within the same HTTP request scope, all resolvers share the same scoped `DbContext` instance:
 
-```csharp
+```csharp{title="The Problem: DbContext Concurrency" description="EF Core's DbContext is not thread-safe." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Problem:", "DbContext"]}
 // GraphQL query that triggers parallel execution
 {
   products { id name }      // Resolver 1 - uses DbContext
@@ -37,7 +37,7 @@ This causes the error:
 
 Whizbang solves this automatically. When you configure `.AddWhizbang().WithEFCore<T>().WithDriver.Postgres`, it registers `ILensQuery<T>` as **transient** with each injection receiving its own DbContext:
 
-```csharp
+```csharp{title="The Solution: Automatic Thread Safety" description="Whizbang solves this automatically." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Solution:", "Automatic"]}
 // Each resolver gets its OWN DbContext - safe for parallel execution
 public class CatalogQueries {
   public async Task<IEnumerable<Product>> GetProducts([Service] ILensQuery<Product> lens) {
@@ -60,7 +60,7 @@ Use `ILensQueryFactory` when you need multiple queries to **share the same DbCon
 - **Transactional consistency** - Reading related data within a single transaction
 - **Batch operations** - Multiple queries that should use one connection
 
-```csharp
+```csharp{title="When to Use ILensQueryFactory" description="- Cross-model joins - Joining data from different perspective tables - Transactional consistency - Reading related data" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "When", "ILensQueryFactory"]}
 public class OrderWithCustomerQuery {
   public async Task<OrderWithCustomer?> GetOrderWithCustomer(
       Guid orderId,
@@ -98,7 +98,7 @@ public class OrderWithCustomerQuery {
 
 For most queries, inject `ILensQuery<T>` directly:
 
-```csharp
+```csharp{title="Pattern 1: Direct Injection (Most Common)" description="For most queries, inject ILensQuery<T> directly:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Pattern", "Direct"]}
 [QueryType]
 public class ProductQueries {
   public IQueryable<Product> GetProducts([Service] ILensQuery<Product> lens) =>
@@ -113,7 +113,7 @@ public class ProductQueries {
 
 When joining across models, inject `ILensQueryFactory`:
 
-```csharp
+```csharp{title="Pattern 2: Factory for Joins" description="When joining across models, inject ILensQueryFactory:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Factory"]}
 public class InventoryReportQuery {
   public async Task<IEnumerable<InventoryReport>> GetInventoryReport(
       [Service] ILensQueryFactory factory) {
@@ -138,7 +138,7 @@ public class InventoryReportQuery {
 
 For repository classes that need joins:
 
-```csharp
+```csharp{title="Pattern 3: Repository with Factory" description="For repository classes that need joins:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Repository"]}
 public class OrderRepository {
   private readonly ILensQuery<Order> _orders;
   private readonly ILensQuery<Customer> _customers;
@@ -182,7 +182,7 @@ This approach:
 
 The factory is automatically registered when using the Whizbang fluent API:
 
-```csharp
+```csharp{title="Registration" description="The factory is automatically registered when using the Whizbang fluent API:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"]}
 builder.Services
   .AddWhizbang()
   .WithEFCore<MyDbContext>()
@@ -215,7 +215,7 @@ builder.Services
 
 The `ScopedDbContextFactory<TContext>` is a singleton implementation of `IDbContextFactory<T>` that creates DbContext instances via service scopes:
 
-```csharp
+```csharp{title="ScopedDbContextFactory" description="The ScopedDbContextFactory<TContext> is a singleton implementation of IDbContextFactory<T> that creates DbContext" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "ScopedDbContextFactory"]}
 public sealed class ScopedDbContextFactory<TContext> : IDbContextFactory<TContext>
     where TContext : DbContext {
 
@@ -246,7 +246,7 @@ EF Core's `AddPooledDbContextFactory` registers scoped option configurations int
 
 The `EFCoreLensQueryFactory<TDbContext>` is the EF Core implementation of `ILensQueryFactory`:
 
-```csharp
+```csharp{title="EFCoreLensQueryFactory" description="The EFCoreLensQueryFactory<TDbContext> is the EF Core implementation of ILensQueryFactory:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "EFCoreLensQueryFactory"]}
 public sealed class EFCoreLensQueryFactory<TDbContext> : ILensQueryFactory
     where TDbContext : DbContext {
 
@@ -282,7 +282,7 @@ Key characteristics:
 
 The `FactoryOwnedLensQuery<TModel>` wraps a factory to provide the standard `ILensQuery<T>` interface while managing factory disposal:
 
-```csharp
+```csharp{title="FactoryOwnedLensQuery" description="The FactoryOwnedLensQuery<TModel> wraps a factory to provide the standard ILensQuery<T> interface while managing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "FactoryOwnedLensQuery"]}
 public sealed class FactoryOwnedLensQuery<TModel> : ILensQuery<TModel>, IAsyncDisposable, IDisposable
     where TModel : class {
 

@@ -28,7 +28,7 @@ Whizbang recommends **TUnit** with **Rocks** for AOT-compatible testing:
 
 ### Remove
 
-```xml
+```xml{title="Remove" description="Demonstrates remove" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Remove"]}
 <PackageReference Include="xunit" />
 <PackageReference Include="xunit.runner.visualstudio" />
 <PackageReference Include="Moq" />
@@ -37,7 +37,7 @@ Whizbang recommends **TUnit** with **Rocks** for AOT-compatible testing:
 
 ### Add
 
-```xml
+```xml{title="Add" description="Demonstrates add" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Add"]}
 <PackageReference Include="TUnit" Version="1.2.11" />
 <PackageReference Include="TUnit.Assertions" Version="1.2.11" />
 <PackageReference Include="Rocks" Version="9.3.0" />
@@ -51,7 +51,7 @@ Whizbang recommends **TUnit** with **Rocks** for AOT-compatible testing:
 
 **xUnit + Moq (before)**:
 
-```csharp
+```csharp{title="Handler/Receptor Tests" description="xUnit + Moq (before):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Handler", "Receptor", "Tests"]}
 public class OrderHandlerTests {
     [Fact]
     public async Task Handle_ValidOrder_ReturnsOrderCreated() {
@@ -76,7 +76,7 @@ public class OrderHandlerTests {
 
 **TUnit + Rocks (after)**:
 
-```csharp
+```csharp{title="Handler/Receptor Tests - CreateOrderReceptorTests" description="TUnit + Rocks (after):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Handler", "Receptor", "Tests"]}
 public class CreateOrderReceptorTests {
     [Test]
     public async Task HandleAsync_ValidOrder_ReturnsOrderCreatedAsync() {
@@ -108,7 +108,7 @@ Perspectives are pure functions - no mocks needed!
 
 **TUnit (Whizbang perspective test)**:
 
-```csharp
+```csharp{title="Perspective Tests" description="TUnit (Whizbang perspective test):" category="Reference" difficulty="ADVANCED" tags=["Migration-Guide", "Perspective", "Tests"]}
 public class OrderSummaryPerspectiveTests {
     [Test]
     public async Task Apply_OrderCreated_CreatesNewSummaryAsync() {
@@ -159,7 +159,7 @@ public class OrderSummaryPerspectiveTests {
 
 **Before (Marten)**:
 
-```csharp
+```csharp{title="Marten Test Harness" description="Before (Marten):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Marten", "Test", "Harness"]}
 public class OrderIntegrationTests : IAsyncLifetime {
     private IDocumentStore _store = null!;
 
@@ -192,7 +192,7 @@ public class OrderIntegrationTests : IAsyncLifetime {
 
 **After (Whizbang)**:
 
-```csharp
+```csharp{title="Whizbang Test Harness" description="After (Whizbang):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Whizbang", "Test", "Harness"]}
 public class OrderIntegrationTests : IAsyncLifetime {
     private ServiceProvider _provider = null!;
     private IEventStore _eventStore = null!;
@@ -232,7 +232,7 @@ public class OrderIntegrationTests : IAsyncLifetime {
 
 ### TestContainers for PostgreSQL
 
-```csharp
+```csharp{title="TestContainers for PostgreSQL" description="Demonstrates testContainers for PostgreSQL" category="Reference" difficulty="ADVANCED" tags=["Migration-Guide", "TestContainers", "PostgreSQL"]}
 public class PostgresIntegrationTests : IAsyncLifetime {
     private PostgreSqlContainer _postgres = null!;
     private ServiceProvider _provider = null!;
@@ -281,7 +281,7 @@ public class PostgresIntegrationTests : IAsyncLifetime {
 
 ### Bogus Faker for Test Data
 
-```csharp
+```csharp{title="Bogus Faker for Test Data" description="Demonstrates bogus Faker for Test Data" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Bogus", "Faker", "Test"]}
 public class OrderFaker : Faker<CreateOrder> {
     public OrderFaker() {
         RuleFor(o => o.CustomerId, f => Guid.CreateVersion7());
@@ -314,7 +314,7 @@ public async Task HandleAsync_ValidOrder_ProcessesCorrectlyAsync() {
 
 ### TUnit Async Assertions
 
-```csharp
+```csharp{title="TUnit Async Assertions" description="Demonstrates tUnit Async Assertions" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "TUnit", "Async", "Assertions"]}
 [Test]
 public async Task Receptor_ThrowsOnInvalidInput_Async() {
     var receptor = new CreateOrderReceptor(_eventStore);
@@ -346,7 +346,7 @@ public async Task EventStore_ReturnsEventsInOrder_Async() {
 
 All async test methods must end with `Async`:
 
-```csharp
+```csharp{title="Test Naming Convention" description="All async test methods must end with Async:" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Test", "Naming", "Convention"]}
 // ✅ CORRECT
 [Test]
 public async Task HandleAsync_ValidInput_ReturnsExpectedResultAsync() { }
@@ -358,7 +358,7 @@ public async Task HandleAsync_ValidInput_ReturnsExpectedResult() { }
 
 ## Running Tests
 
-```bash
+```bash{title="Running Tests" description="Demonstrates running Tests" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Running", "Tests"]}
 # Run all tests
 dotnet test
 

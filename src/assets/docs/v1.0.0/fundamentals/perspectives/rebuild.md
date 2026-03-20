@@ -23,7 +23,7 @@ When a perspective's schema changes or data becomes stale, Whizbang provides mul
 
 ## IPerspectiveRebuilder
 
-```csharp
+```csharp{title="IPerspectiveRebuilder" description="Demonstrates iPerspectiveRebuilder" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveRebuilder"]}
 public interface IPerspectiveRebuilder {
   Task<RebuildResult> RebuildBlueGreenAsync(string perspectiveName, CancellationToken ct = default);
   Task<RebuildResult> RebuildInPlaceAsync(string perspectiveName, CancellationToken ct = default);
@@ -38,7 +38,7 @@ public interface IPerspectiveRebuilder {
 
 Create a new table, replay all events into it, then atomically swap with the old table. The old table is kept as a backup.
 
-```csharp
+```csharp{title="Blue-Green" description="Create a new table, replay all events into it, then atomically swap with the old table." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Blue-Green"]}
 var result = await rebuilder.RebuildBlueGreenAsync("OrderPerspective");
 // App continues serving reads from old table during rebuild
 // Swap is atomic — no downtime
@@ -50,7 +50,7 @@ var result = await rebuilder.RebuildBlueGreenAsync("OrderPerspective");
 
 Truncate the active table and replay all events directly. Faster but causes temporary data unavailability during replay.
 
-```csharp
+```csharp{title="In-Place" description="Truncate the active table and replay all events directly." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "In-Place"]}
 var result = await rebuilder.RebuildInPlaceAsync("OrderPerspective");
 ```
 
@@ -60,7 +60,7 @@ var result = await rebuilder.RebuildInPlaceAsync("OrderPerspective");
 
 Replay events for specific streams only. Useful for fixing individual corrupted or stale projections without rebuilding everything.
 
-```csharp
+```csharp{title="Selected Streams" description="Replay events for specific streams only." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Selected", "Streams"]}
 var corruptedStreams = new[] { orderId1, orderId2 };
 var result = await rebuilder.RebuildStreamsAsync("OrderPerspective", corruptedStreams);
 ```
@@ -69,7 +69,7 @@ var result = await rebuilder.RebuildStreamsAsync("OrderPerspective", corruptedSt
 
 ## RebuildResult
 
-```csharp
+```csharp{title="RebuildResult" description="Demonstrates rebuildResult" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "RebuildResult"]}
 public record RebuildResult(
     string PerspectiveName,
     int StreamsProcessed,
@@ -83,7 +83,7 @@ public record RebuildResult(
 
 Trigger rebuilds across distributed services via messaging:
 
-```csharp
+```csharp{title="System Commands" description="Trigger rebuilds across distributed services via messaging:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "System", "Commands"]}
 // Rebuild specific perspectives
 await dispatcher.SendAsync(new RebuildPerspectiveCommand(
     PerspectiveNames: ["OrderPerspective", "InventoryPerspective"],
@@ -125,7 +125,7 @@ See [Migration Tracking](infrastructure/migrations) for details.
 
 A built-in read model tracks all perspective health:
 
-```csharp
+```csharp{title="PerspectiveStatusModel" description="A built-in read model tracks all perspective health:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "PerspectiveStatusModel"]}
 public record PerspectiveStatusModel {
   public Guid Id { get; init; }
   public string PerspectiveName { get; init; }

@@ -39,7 +39,7 @@ Think of the ledger as your system's permanent memory - every significant action
 The basic ledger interface for event storage:
 :::
 
-```csharp
+```csharp{title="Core Interface (v1.0.0)" description=":::new The basic ledger interface for event storage: :::" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Core", "Interface"]}
 public interface ILedger {
     // Append an event to the ledger
     Task<long> Append(IEvent @event);
@@ -61,7 +61,7 @@ public interface ILedger {
 In v1.0.0, the ledger uses in-memory storage:
 :::
 
-```csharp
+```csharp{title="Basic Implementation" description=":::new In v1." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Basic", "Implementation"]}
 [WhizbangLedger]
 public class InMemoryLedger : ILedger {
     private readonly List<StoredEvent> _events = new();
@@ -107,7 +107,7 @@ public class InMemoryLedger : ILedger {
 
 ### Event Structure
 
-```csharp
+```csharp{title="Event Structure" description="Demonstrates event Structure" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Structure"]}
 public interface IEvent {
     Guid Id { get; }
     DateTimeOffset Timestamp { get; }
@@ -130,7 +130,7 @@ internal class StoredEvent {
 Events are automatically appended by the dispatcher:
 :::
 
-```csharp
+```csharp{title="Appending Events" description=":::new Events are automatically appended by the dispatcher: :::" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Appending"]}
 // Events flow from receptors through dispatcher to ledger
 public class OrderReceptor : IReceptor<CreateOrder> {
     public OrderCreated Receive(CreateOrder cmd) {
@@ -154,7 +154,7 @@ public class OrderReceptor : IReceptor<CreateOrder> {
 Basic event retrieval in v1.0.0:
 :::
 
-```csharp
+```csharp{title="Reading Events" description=":::new Basic event retrieval in v1." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Reading"]}
 public class EventReader {
     private readonly ILedger _ledger;
     
@@ -188,7 +188,7 @@ public class EventReader {
 
 The ledger is automatically integrated with the dispatcher:
 
-```csharp
+```csharp{title="Integration with Dispatcher" description="The ledger is automatically integrated with the dispatcher:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Integration", "Dispatcher"]}
 // Source generated registration
 public static partial class WhizbangGenerated {
     public static void RegisterLedger(IServiceCollection services) {
@@ -223,7 +223,7 @@ public class Dispatcher : IDispatcher {
 The ledger enables powerful debugging capabilities:
 :::
 
-```csharp
+```csharp{title="Debugging with the Ledger" description=":::new The ledger enables powerful debugging capabilities: :::" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Debugging", "Ledger"]}
 public class LedgerDebugger {
     private readonly ILedger _ledger;
     
@@ -262,7 +262,7 @@ public class LedgerDebugger {
 
 ## Testing with the Ledger
 
-```csharp
+```csharp{title="Testing with the Ledger" description="Demonstrates testing with the Ledger" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Testing", "Ledger"]}
 [Test]
 public class LedgerTests {
     private InMemoryLedger _ledger;
@@ -327,7 +327,7 @@ public class LedgerTests {
 
 ## IDE Features
 
-```csharp
+```csharp{title="IDE Features" description="Demonstrates iDE Features" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IDE", "Features"]}
 // IDE shows: "Events stored: 1,234 | Size: 5.2MB | Last: 2s ago"
 public interface ILedger { }
 
@@ -367,7 +367,7 @@ These limitations are addressed in future versions:
 v0.2.0 adds persistent storage:
 :::
 
-```csharp
+```csharp{title="To v0.2.0 (Persistence)" description=":::planned v0." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "V0.2.0", "Persistence"]}
 // v0.2.0 - File-based persistence
 public interface ILedger {
     Task<long> Append(string streamId, IEvent @event);
@@ -382,7 +382,7 @@ public interface ILedger {
 v0.3.0 adds full event sourcing:
 :::
 
-```csharp
+```csharp{title="To v0.3.0 (Event Sourcing)" description=":::planned v0." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "V0.3.0", "Event"]}
 // v0.3.0 - Event sourcing with projections
 public interface IEventStore : ILedger {
     Task<T> LoadAggregate<T>(string aggregateId) where T : IAggregate;

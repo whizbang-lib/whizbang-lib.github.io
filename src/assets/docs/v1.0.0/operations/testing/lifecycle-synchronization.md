@@ -27,7 +27,7 @@ Integration tests must wait for **asynchronous perspective processing** to compl
 
 Traditional polling approach checks if database queues are empty:
 
-```csharp
+```csharp{title="Why Polling Fails" description="Traditional polling approach checks if database queues are empty:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Why", "Polling"]}
 // ❌ RACE CONDITION!
 public async Task WaitForEventProcessingAsync() {
   for (var i = 0; i < 100; i++) {
@@ -67,7 +67,7 @@ sequenceDiagram
 
 ### Test Failures
 
-```csharp
+```csharp{title="Test Failures" description="Demonstrates test Failures" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Failures"]}
 [Test]
 public async Task CreateProduct_UpdatesProductCatalog_FailsRandomlyAsync() {
   // Arrange
@@ -133,7 +133,7 @@ sequenceDiagram
 
 ### Step 1: Create Completion Receptor
 
-```csharp
+```csharp{title="Step 1: Create Completion Receptor" description="Demonstrates step 1: Create Completion Receptor" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Step", "Create"]}
 using Whizbang.Core;
 using Whizbang.Core.Messaging;
 
@@ -172,7 +172,7 @@ public sealed class PerspectiveCompletionReceptor<TEvent> : IReceptor<TEvent>
 
 ### Step 2: Register at Runtime
 
-```csharp
+```csharp{title="Step 2: Register at Runtime" description="Demonstrates step 2: Register at Runtime" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Step", "Register"]}
 [Test]
 public async Task CreateProduct_UpdatesProductCatalog_DeterministicallyAsync() {
   // Arrange
@@ -217,7 +217,7 @@ public async Task CreateProduct_UpdatesProductCatalog_DeterministicallyAsync() {
 
 Create a reusable helper method in your test fixtures:
 
-```csharp
+```csharp{title="Extension Method" description="Create a reusable helper method in your test fixtures:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Extension", "Method"]}
 // File: tests/ECommerce.Integration.Tests/Fixtures/LifecycleReceptorTestExtensions.cs
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -255,7 +255,7 @@ public static class LifecycleReceptorTestExtensions {
 
 ### Simplified Test Usage
 
-```csharp
+```csharp{title="Simplified Test Usage" description="Demonstrates simplified Test Usage" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Simplified", "Test"]}
 [Test]
 public async Task CreateProduct_UpdatesProductCatalog_SimpleAsync() {
   // Arrange
@@ -291,7 +291,7 @@ public async Task CreateProduct_UpdatesProductCatalog_SimpleAsync() {
 
 Wait for multiple different events (e.g., command triggers multiple perspectives):
 
-```csharp
+```csharp{title="Pattern 1: Multiple Event Types" description="Wait for multiple different events (e." category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Pattern", "Multiple"]}
 public static async Task WaitForMultiplePerspectiveCompletionsAsync(
     this IHost host,
     Type[] eventTypes,
@@ -349,7 +349,7 @@ public static async Task WaitForMultiplePerspectiveCompletionsAsync(
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 1: Multiple Event Types (2)" description="Demonstrates pattern 1: Multiple Event Types" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Pattern", "Multiple"]}
 [Test]
 public async Task UpdateInventory_UpdatesMultiplePerspectives_DeterministicallyAsync() {
   // Arrange
@@ -377,7 +377,7 @@ public async Task UpdateInventory_UpdatesMultiplePerspectives_DeterministicallyA
 
 Wait for a specific perspective to complete (useful when multiple perspectives process same event):
 
-```csharp
+```csharp{title="Pattern 2: Perspective-Specific Filtering" description="Wait for a specific perspective to complete (useful when multiple perspectives process same event):" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Pattern", "Perspective-Specific"]}
 [Test]
 public async Task CreateProduct_UpdatesOnlyProductCatalog_NotInventoryAsync() {
   // Arrange
@@ -405,7 +405,7 @@ public async Task CreateProduct_UpdatesOnlyProductCatalog_NotInventoryAsync() {
 
 Handle timeouts gracefully with diagnostic information:
 
-```csharp
+```csharp{title="Pattern 3: Timeout Handling" description="Handle timeouts gracefully with diagnostic information:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Pattern", "Timeout"]}
 [Test]
 public async Task SlowPerspective_TimesOut_WithDiagnosticsAsync() {
   // Arrange
@@ -440,7 +440,7 @@ public async Task SlowPerspective_TimesOut_WithDiagnosticsAsync() {
 
 Wait for **any one** of multiple events (first to complete):
 
-```csharp
+```csharp{title="Pattern 4: Any-Of-Multiple Events" description="Wait for any one of multiple events (first to complete):" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Pattern", "Any-Of-Multiple"]}
 [Test]
 public async Task Command_TriggersOneOfSeveralEvents_FlexiblyAsync() {
   // Arrange
@@ -490,7 +490,7 @@ public async Task Command_TriggersOneOfSeveralEvents_FlexiblyAsync() {
 
 ### Base Fixture Setup
 
-```csharp
+```csharp{title="Base Fixture Setup" description="Demonstrates base Fixture Setup" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Base", "Fixture"]}
 public class ServiceBusIntegrationFixture : IAsyncDisposable {
   protected IHost _inventoryHost = null!;
   protected IHost _bffHost = null!;
@@ -536,7 +536,7 @@ public class ServiceBusIntegrationFixture : IAsyncDisposable {
 
 ### Test Class Usage
 
-```csharp
+```csharp{title="Test Class Usage" description="Demonstrates test Class Usage" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Class"]}
 public class CreateProductWorkflowTests : ServiceBusIntegrationFixture {
 
   [Test]
@@ -580,7 +580,7 @@ public class CreateProductWorkflowTests : ServiceBusIntegrationFixture {
 4. **Message routing issue** - Event not reaching perspective
 
 **Debugging**:
-```csharp
+```csharp{title="Problem: TimeoutException" description="Demonstrates problem: TimeoutException" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Problem:", "TimeoutException"]}
 // Check pending work items
 var pendingWork = await _dbContext.WorkItems.ToListAsync();
 Console.WriteLine($"Pending work: {pendingWork.Count}");
@@ -607,7 +607,7 @@ Console.WriteLine($"ProductCreatedEvent count: {events.Count}");
 3. **Async stage instead of Inline** - Use `PostPerspectiveInline`, not `PostPerspectiveAsync`
 
 **Fix**:
-```csharp
+```csharp{title="Problem: Test Passes But Assertions Fail" description="Demonstrates problem: Test Passes But Assertions Fail" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Test"]}
 // ❌ WRONG: PostPerspectiveAsync (non-blocking, no guarantee)
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class CompletionReceptor : IReceptor<ProductCreatedEvent> { }
@@ -628,7 +628,7 @@ public class CompletionReceptor : IReceptor<ProductCreatedEvent> { }
 4. **Perspective name filter excludes event** - Check filter logic
 
 **Debugging**:
-```csharp
+```csharp{title="Problem: Receptor Not Firing" description="Demonstrates problem: Receptor Not Firing" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Receptor"]}
 // Add logging to receptor
 public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
   Console.WriteLine($"RECEPTOR FIRED: {evt.GetType().Name}");
@@ -645,7 +645,7 @@ public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
 **Symptoms**: `GetRequiredService<ILifecycleReceptorRegistry>()` throws exception.
 
 **Fix**: Register in DI container:
-```csharp
+```csharp{title="Problem: Registry Not Found" description="Fix: Register in DI container:" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Registry"]}
 // In Startup.cs or Program.cs
 services
   .AddWhizbang()  // Automatically registers ILifecycleReceptorRegistry
@@ -672,7 +672,7 @@ services
 
 ### Timeout Recommendations
 
-```csharp
+```csharp{title="Timeout Recommendations" description="Demonstrates timeout Recommendations" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Timeout", "Recommendations"]}
 // Local development (fast)
 timeoutMilliseconds: 5000   // 5 seconds
 
@@ -689,7 +689,7 @@ timeoutMilliseconds: 30000  // 30 seconds
 
 ### Before: Polling-Based Tests
 
-```csharp
+```csharp{title="Before: Polling-Based Tests" description="Demonstrates before: Polling-Based Tests" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Before:", "Polling-Based"]}
 [Test]
 public async Task OldTest_UsesPollingSyncAsync() {
   // Arrange
@@ -717,7 +717,7 @@ private async Task WaitForEventProcessingAsync() {
 
 ### After: Lifecycle Synchronization
 
-```csharp
+```csharp{title="After: Lifecycle Synchronization" description="Demonstrates after: Lifecycle Synchronization" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "After:", "Lifecycle"]}
 [Test]
 public async Task NewTest_UsesLifecycleSyncAsync() {
   // Arrange

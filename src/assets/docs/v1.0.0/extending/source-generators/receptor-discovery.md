@@ -20,7 +20,7 @@ The **ReceptorDiscoveryGenerator** discovers all `IReceptor<TMessage, TResponse>
 
 Traditional frameworks discover handlers at runtime using **reflection**:
 
-```csharp
+```csharp{title="Zero Reflection Philosophy" description="Traditional frameworks discover handlers at runtime using reflection:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"]}
 // ❌ Reflection-based (incompatible with AOT, slow startup)
 foreach (var type in assembly.GetTypes()) {
     if (type.IsAssignableTo(typeof(IReceptor<,>))) {
@@ -31,7 +31,7 @@ foreach (var type in assembly.GetTypes()) {
 
 Whizbang uses **Roslyn source generators** for compile-time discovery:
 
-```csharp
+```csharp{title="Zero Reflection Philosophy (2)" description="Whizbang uses Roslyn source generators for compile-time discovery:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"]}
 // ✅ Zero reflection (AOT-compatible, instant startup)
 services.AddScoped<IReceptor<CreateOrder, OrderCreated>, OrderReceptor>();
 services.AddScoped<IReceptor<ShipOrder, OrderShipped>, ShipOrderReceptor>();
@@ -88,7 +88,7 @@ services.AddScoped<IReceptor<ShipOrder, OrderShipped>, ShipOrderReceptor>();
 ### 2. Generated Files
 
 **DispatcherRegistrations.g.cs** (DI Registration):
-```csharp
+```csharp{title="Generated Files" description="**DispatcherRegistrations." category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Files"]}
 using Microsoft.Extensions.DependencyInjection;
 using Whizbang.Core;
 
@@ -112,7 +112,7 @@ public static class DispatcherRegistrations {
 ```
 
 **Dispatcher.g.cs** (Type-Safe Routing):
-```csharp
+```csharp{title="Generated Files - GeneratedDispatcher" description="**Dispatcher." category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Generated", "Files"]}
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -150,7 +150,7 @@ public class GeneratedDispatcher : Dispatcher {
 ```
 
 **ReceptorDiscoveryDiagnostics.g.cs** (Startup Info):
-```csharp
+```csharp{title="Generated Files - ReceptorDiscoveryDiagnostics" description="**ReceptorDiscoveryDiagnostics." category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Files"]}
 using System.Text;
 using Whizbang.Core.Diagnostics;
 
@@ -180,7 +180,7 @@ internal static class ReceptorDiscoveryDiagnostics {
 
 ### Registration in Program.cs
 
-```csharp
+```csharp{title="Registration in Program.cs" description="Demonstrates registration in Program.cs" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Registration", "Program.cs"]}
 // Program.cs
 using MyApp.Generated;  // Generated namespace
 
@@ -201,7 +201,7 @@ app.Run();
 
 ### Pattern 1: Command → Event
 
-```csharp
+```csharp{title="Pattern 1: Command → Event" description="Demonstrates pattern 1: Command → Event" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Command"]}
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
         CreateOrder message,
@@ -222,7 +222,7 @@ public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 ```
 
 **Generated routing**:
-```csharp
+```csharp{title="Pattern 1: Command → Event (2)" description="Generated routing:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Command"]}
 if (messageType == typeof(CreateOrder)) {
     var receptor = _serviceProvider.GetRequiredService<IReceptor<CreateOrder, OrderCreated>>();
     return async msg => (TResult)(object)await receptor.HandleAsync((CreateOrder)msg);
@@ -231,7 +231,7 @@ if (messageType == typeof(CreateOrder)) {
 
 ### Pattern 2: Query → Result
 
-```csharp
+```csharp{title="Pattern 2: Query → Result" description="Demonstrates pattern 2: Query → Result" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Query"]}
 public class GetOrderReceptor : IReceptor<GetOrder, OrderSummary> {
     private readonly IDbConnectionFactory _db;
 
@@ -252,7 +252,7 @@ public class GetOrderReceptor : IReceptor<GetOrder, OrderSummary> {
 
 ### Pattern 3: Void Receptor (No Response)
 
-```csharp
+```csharp{title="Pattern 3: Void Receptor (No Response)" description="Demonstrates pattern 3: Void Receptor (No Response)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Void"]}
 public class SendEmailReceptor : IReceptor<SendEmail> {  // No response type
     private readonly IEmailService _email;
 
@@ -273,7 +273,7 @@ public class SendEmailReceptor : IReceptor<SendEmail> {  // No response type
 ```
 
 **Generated routing** (void pattern):
-```csharp
+```csharp{title="Pattern 3: Void Receptor (No Response) (2)" description="Generated routing (void pattern):" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Void"]}
 if (messageType == typeof(SendEmail)) {
     var receptor = _serviceProvider.GetRequiredService<IReceptor<SendEmail>>();
     await receptor.HandleAsync((SendEmail)msg);
@@ -315,7 +315,7 @@ Compilation after receptor change:
 
 Generator uses **syntactic predicates** to filter 95%+ of nodes before expensive semantic analysis:
 
-```csharp
+```csharp{title="Syntactic Filtering" description="Generator uses syntactic predicates to filter 95%+ of nodes before expensive semantic analysis:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Syntactic", "Filtering"]}
 // Fast syntactic check (no semantic model access)
 predicate: static (node, _) => node is ClassDeclarationSyntax { BaseList.Types.Count: > 0 },
 
@@ -344,7 +344,7 @@ obj/Debug/net10.0/generated/Whizbang.Generators/ReceptorDiscoveryGenerator/
 ```
 
 Or optionally configured output folder:
-```xml
+```xml{title="View Generated Files" description="Or optionally configured output folder:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
 <PropertyGroup>
   <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   <CompilerGeneratedFilesOutputPath>.whizbang-generated</CompilerGeneratedFilesOutputPath>
@@ -368,7 +368,7 @@ Build succeeded.
 
 View discovered receptors at application startup:
 
-```csharp
+```csharp{title="Startup Diagnostics" description="View discovered receptors at application startup:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Startup", "Diagnostics"]}
 // Enable diagnostics
 WhizbangDiagnostics.EnableLogging = true;
 
@@ -438,7 +438,7 @@ warning WHIZ002: No IReceptor implementations were found in the compilation
 
 **One message, multiple destinations**:
 
-```csharp
+```csharp{title="Multiple Receptors Per Message" description="One message, multiple destinations:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Multiple", "Receptors"]}
 // Local receptor (in-process)
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(CreateOrder message, CancellationToken ct) {
@@ -457,7 +457,7 @@ public class NotifyInventoryReceptor : IReceptor<CreateOrder, InventoryNotified>
 ```
 
 **Generator handles both**:
-```csharp
+```csharp{title="Multiple Receptors Per Message (2)" description="Generator handles both:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Multiple", "Receptors"]}
 // SendAsync: Routes to first receptor
 if (messageType == typeof(CreateOrder)) {
     var receptor = _serviceProvider.GetRequiredService<IReceptor<CreateOrder, OrderCreated>>();
@@ -481,7 +481,7 @@ if (messageType == typeof(CreateOrder)) {
 
 Generated code uses **no reflection**:
 
-```csharp
+```csharp{title="Zero Reflection Guarantee" description="Generated code uses no reflection:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Zero", "Reflection"]}
 // ✅ Direct type checks (AOT-compatible)
 if (messageType == typeof(CreateOrder)) {
     var receptor = _serviceProvider.GetRequiredService<IReceptor<CreateOrder, OrderCreated>>();
@@ -497,7 +497,7 @@ return method.Invoke(receptor, new[] { message });
 
 ### Native AOT Verification
 
-```xml
+```xml{title="Native AOT Verification" description="Demonstrates native AOT Verification" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Native", "AOT"]}
 <!-- Enable Native AOT -->
 <PropertyGroup>
   <PublishAot>true</PublishAot>
@@ -529,7 +529,7 @@ Generating native code
 | **PublishAsync** | ~50ns per receptor | Parallel invocation |
 
 **Benchmark**:
-```csharp
+```csharp{title="Dispatch Overhead" description="Demonstrates dispatch Overhead" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Dispatch", "Overhead"]}
 [Benchmark]
 public async Task LocalInvokeAsync_CreateOrder() {
     var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(
@@ -543,7 +543,7 @@ public async Task LocalInvokeAsync_CreateOrder() {
 
 Generated routing uses **object pooling** to avoid allocations:
 
-```csharp
+```csharp{title="Zero Allocations" description="Generated routing uses object pooling to avoid allocations:" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Zero", "Allocations"]}
 // Generated code (simplified)
 protected override ReceptorInvoker<TResult>? GetReceptorInvoker<TResult>(
     object message,
@@ -573,7 +573,7 @@ Memory Diagnostics:
 
 ### Value Type Records for Caching
 
-```csharp
+```csharp{title="Value Type Records for Caching" description="Demonstrates value Type Records for Caching" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Value", "Type"]}
 internal sealed record ReceptorInfo(
     string ClassName,
     string MessageType,
@@ -587,7 +587,7 @@ internal sealed record ReceptorInfo(
 - **Performance**: Compiler optimizes sealed types
 
 **Comparison**:
-```csharp
+```csharp{title="Value Type Records for Caching (2)" description="Comparison:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Value", "Type"]}
 // With record (value equality)
 var cached = new ReceptorInfo("OrderReceptor", "CreateOrder", "OrderCreated");
 var current = new ReceptorInfo("OrderReceptor", "CreateOrder", "OrderCreated");
@@ -605,7 +605,7 @@ cached == current;  // ❌ false (different references, generator always re-runs
 
 Generator uses **real C# templates** with IDE support:
 
-```csharp
+```csharp{title="Template-Based Generation" description="Generator uses real C# templates with IDE support:" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Template-Based", "Generation"]}
 // Templates/DispatcherTemplate.cs
 namespace Whizbang.Core.Generated;
 
@@ -663,7 +663,7 @@ public class GeneratedDispatcher : Dispatcher {
 2. Generator disabled in project file
 
 **Solution**:
-```xml
+```xml{title="Problem: Generator Doesn't Run" description="Demonstrates problem: Generator Doesn't Run" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Problem:", "Generator"]}
 <ItemGroup>
   <PackageReference Include="Whizbang.Generators" OutputItemType="Analyzer" />
 </ItemGroup>
@@ -678,7 +678,7 @@ public class GeneratedDispatcher : Dispatcher {
 2. Namespace import missing
 
 **Solution**:
-```csharp
+```csharp{title="Problem: No Receptors Found (WHIZ002)" description="Demonstrates problem: No Receptors Found (WHIZ002)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Receptors"]}
 using Whizbang.Core;  // Required!
 
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
@@ -695,7 +695,7 @@ public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 2. Message type in different assembly not referenced
 
 **Solution**:
-```csharp
+```csharp{title="Problem: Type Not Found in Generated Code" description="Demonstrates problem: Type Not Found in Generated Code" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Type"]}
 // ✅ Public message types
 public record CreateOrder(Guid CustomerId, OrderItem[] Items);
 

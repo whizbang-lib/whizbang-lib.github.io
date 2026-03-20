@@ -53,7 +53,7 @@ For basic policy usage, see [Policy-Based Routing](../../operations/infrastructu
 
 **Use Case**: Policies have explicit priorities instead of first-match.
 
-```csharp
+```csharp{title="Pattern 1: Priority-Based Evaluation" description="Use Case: Policies have explicit priorities instead of first-match." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Priority-Based"]}
 using Whizbang.Core.Policies;
 
 public class WeightedPolicyEngine : IPolicyEngine {
@@ -138,7 +138,7 @@ public class WeightedPolicyEngine : IPolicyEngine {
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 1: Priority-Based Evaluation (2)" description="Demonstrates pattern 1: Priority-Based Evaluation" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Priority-Based"]}
 var engine = new WeightedPolicyEngine(logger);
 
 // High-priority tenant routing (priority 100)
@@ -168,7 +168,7 @@ engine.AddPolicy(
 
 **Use Case**: Predicates need database lookups, API calls, feature flags.
 
-```csharp
+```csharp{title="Pattern 2: Async Predicate Evaluation" description="Use Case: Predicates need database lookups, API calls, feature flags." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Async"]}
 using Whizbang.Core.Policies;
 
 public class AsyncPolicyEngine : IPolicyEngine {
@@ -255,7 +255,7 @@ public class AsyncPolicyEngine : IPolicyEngine {
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 2: Async Predicate Evaluation (2)" description="Demonstrates pattern 2: Async Predicate Evaluation" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Async"]}
 var engine = new AsyncPolicyEngine(logger);
 
 // Async predicate: lookup feature flag from database
@@ -292,7 +292,7 @@ engine.AddAsyncPolicy(
 
 **Use Case**: Reduce policy evaluation overhead for high-frequency messages.
 
-```csharp
+```csharp{title="Pattern 3: Policy Result Caching" description="Use Case: Reduce policy evaluation overhead for high-frequency messages." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Policy"]}
 using Whizbang.Core.Policies;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -373,7 +373,7 @@ public class CachedPolicyEngine : IPolicyEngine {
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 3: Policy Result Caching (2)" description="Demonstrates pattern 3: Policy Result Caching" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Policy"]}
 var baseEngine = new PolicyEngine();
 var cachedEngine = new CachedPolicyEngine(baseEngine, memoryCache, logger);
 
@@ -401,7 +401,7 @@ cachedEngine.ClearCache();
 
 **Use Case**: Add/remove policies at runtime based on feature flags, tenant config.
 
-```csharp
+```csharp{title="Pattern 4: Runtime Policy Updates" description="Use Case: Add/remove policies at runtime based on feature flags, tenant config." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Runtime"]}
 using Whizbang.Core.Policies;
 
 public class DynamicPolicyEngine : IPolicyEngine {
@@ -485,7 +485,7 @@ public class DynamicPolicyEngine : IPolicyEngine {
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 4: Runtime Policy Updates (2)" description="Demonstrates pattern 4: Runtime Policy Updates" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Runtime"]}
 var engine = new DynamicPolicyEngine(logger);
 
 // Add initial policies
@@ -518,7 +518,7 @@ public async Task OnTenantOffboardedAsync(string tenantId) {
 
 **Use Case**: Route X% of traffic to new feature for canary/gradual rollout.
 
-```csharp
+```csharp{title="Pattern 5: Percentage-Based Traffic Splitting" description="Use Case: Route X% of traffic to new feature for canary/gradual rollout." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Percentage-Based"]}
 using Whizbang.Core.Policies;
 
 public class ABTestingPolicyEngine : IPolicyEngine {
@@ -611,7 +611,7 @@ public class ABTestingPolicyEngine : IPolicyEngine {
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 5: Percentage-Based Traffic Splitting (2)" description="Demonstrates pattern 5: Percentage-Based Traffic Splitting" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Percentage-Based"]}
 var baseEngine = new PolicyEngine();
 var abEngine = new ABTestingPolicyEngine(baseEngine, logger);
 
@@ -644,7 +644,7 @@ var config = await abEngine.MatchAsync(context);
 
 ### Testing Weighted Policies
 
-```csharp
+```csharp{title="Testing Weighted Policies" description="Demonstrates testing Weighted Policies" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Weighted"]}
 public class WeightedPolicyEngineTests {
   [Test]
   public async Task MatchAsync_HighPriorityMatchesFirst_SkipsLowerPriorityAsync() {
@@ -680,7 +680,7 @@ public class WeightedPolicyEngineTests {
 
 ### Testing Async Policies
 
-```csharp
+```csharp{title="Testing Async Policies" description="Demonstrates testing Async Policies" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Async"]}
 public class AsyncPolicyEngineTests {
   [Test]
   public async Task MatchAsync_AsyncPredicate_CallsDatabaseAsync() {
@@ -714,7 +714,7 @@ public class AsyncPolicyEngineTests {
 
 ### Testing Cached Policies
 
-```csharp
+```csharp{title="Testing Cached Policies" description="Demonstrates testing Cached Policies" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Cached"]}
 public class CachedPolicyEngineTests {
   [Test]
   public async Task MatchAsync_SecondCall_UsesCacheAsync() {

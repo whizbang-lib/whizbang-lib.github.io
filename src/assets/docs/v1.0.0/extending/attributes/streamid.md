@@ -19,13 +19,13 @@ The `[StreamId]` attribute marks a property or parameter as the stream identifie
 
 ## Namespace
 
-```csharp
+```csharp{title="Namespace" description="Demonstrates namespace" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Namespace"]}
 using Whizbang.Core;
 ```
 
 ## Syntax
 
-```csharp
+```csharp{title="Syntax" description="Demonstrates syntax" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Syntax"]}
 // On a record parameter
 public record OrderCreated([property: StreamId] Guid OrderId, string ProductName) : IEvent;
 
@@ -286,7 +286,7 @@ public Guid OrderId { get; init; } = Guid.CreateVersion7();
 The `[StreamId]` attribute enables zero-reflection stream ID extraction:
 
 **Without [StreamId] (reflection)**:
-```csharp
+```csharp{title="Zero Reflection and AOT" description="Without [StreamId] (reflection):" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Zero", "Reflection"]}
 // Runtime reflection - not AOT-compatible
 var streamId = @event.GetType()
     .GetProperty("OrderId")
@@ -294,7 +294,7 @@ var streamId = @event.GetType()
 ```
 
 **With [StreamId] (generated)**:
-```csharp
+```csharp{title="Zero Reflection and AOT (2)" description="With [StreamId] (generated):" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Zero", "Reflection"]}
 // Compile-time code generation - AOT-compatible
 public static Guid? ExtractStreamId(OrderCreated @event) {
   return @event.OrderId;  // Direct property access

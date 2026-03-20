@@ -15,7 +15,7 @@ Whizbang uses strongly-typed identity values based on UUIDv7 for all identifiers
 
 For scenarios where you need to work with raw GUIDs while preserving generation metadata, Whizbang provides `TrackedGuid`:
 
-```csharp
+```csharp{title="TrackedGuid: Metadata-Aware GUID Wrapper" description="For scenarios where you need to work with raw GUIDs while preserving generation metadata, Whizbang provides TrackedGuid:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "TrackedGuid:", "Metadata-Aware"]}
 using Whizbang.Core.ValueObjects;
 
 // Create with sub-millisecond precision (recommended)
@@ -51,7 +51,7 @@ var external = TrackedGuid.FromExternal(someGuid);
 
 `TrackedGuid` tracks where and how each GUID was created using the `GuidMetadata` flags:
 
-```csharp
+```csharp{title="Tracking GUID Sources" description="TrackedGuid tracks where and how each GUID was created using the GuidMetadata flags:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Tracking", "GUID"]}
 // Freshly created - full metadata available
 var fresh = TrackedGuid.NewMedo();
 Console.WriteLine(fresh.IsTracking);           // true (authoritative)
@@ -73,7 +73,7 @@ Console.WriteLine(loaded.Metadata);            // Version7 | SourceExternal (inf
 
 #### Problem 1: "Where did this GUID come from?"
 
-```csharp
+```csharp{title="Problem 1: 'Where did this GUID come from?'" description="Demonstrates problem 1: 'Where did this GUID come from?'" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Problem", "'Where"]}
 public class OrderService {
   private readonly ILogger<OrderService> _logger;
 
@@ -110,7 +110,7 @@ Processing order 019c7df5-494b-77d6-b994-e7145b796ec0 from source: Database/API,
 
 #### Problem 2: "Why are my IDs not sorting chronologically?"
 
-```csharp
+```csharp{title="Problem 2: 'Why are my IDs not sorting chronologically?'" description="Demonstrates problem 2: 'Why are my IDs not sorting chronologically?'" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Problem", "'Why"]}
 public void DebugIdOrdering(List<TrackedGuid> ids) {
   foreach (var id in ids) {
     var timestamp = id.Timestamp;
@@ -141,7 +141,7 @@ ID: 550e8400-e29b-41d4-a716-446655440000, Version: v4, Timestamp: 0001-01-01T00:
 
 #### Problem 3: "Did I use the right GUID generator?"
 
-```csharp
+```csharp{title="Problem 3: 'Did I use the right GUID generator?'" description="Demonstrates problem 3: 'Did I use the right GUID generator?'" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "Problem", "'Did"]}
 public class IdGenerationValidator {
   public void ValidateIdUsage(TrackedGuid id, string context) {
     // Check if using recommended generator
@@ -184,7 +184,7 @@ validator.ValidateIdUsage(TrackedGuid.NewRandom(), "TestId");
 
 #### Problem 4: "When was this GUID created?"
 
-```csharp
+```csharp{title="Problem 4: 'When was this GUID created?'" description="Demonstrates problem 4: 'When was this GUID created?'" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Problem", "'When"]}
 public void InvestigateEventTiming(TrackedGuid eventId) {
   if (!eventId.IsTimeOrdered) {
     Console.WriteLine("Cannot extract timestamp - this is not a UUIDv7");
@@ -217,7 +217,7 @@ Event 019c7df5-494b-77d6-b994-e7145b796ec0:
 
 `TrackedGuid` serializes as a plain UUID string, not as an object with metadata:
 
-```csharp
+```csharp{title="JSON Serialization with TrackedGuidJsonConverter" description="TrackedGuid serializes as a plain UUID string, not as an object with metadata:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "JSON", "Serialization"]}
 using System.Text.Json;
 using Whizbang.Core.ValueObjects;
 
@@ -258,7 +258,7 @@ Whizbang includes an optional compile-time interceptor that automatically wraps 
 
 Add to your project file to enable automatic interception:
 
-```xml
+```xml{title="Enabling Interception" description="Add to your project file to enable automatic interception:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Enabling", "Interception"]}
 <PropertyGroup>
   <WhizbangGuidInterceptionEnabled>true</WhizbangGuidInterceptionEnabled>
 </PropertyGroup>
@@ -277,7 +277,7 @@ The `GuidInterceptorGenerator` uses C# 12 `[InterceptsLocation]` to replace GUID
 
 The `GuidMetadata` flags enum tracks both the UUID version and creation source:
 
-```csharp
+```csharp{title="GuidMetadata Flags" description="The GuidMetadata flags enum tracks both the UUID version and creation source:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "GuidMetadata", "Flags"]}
 namespace Whizbang.Core.ValueObjects;
 
 [Flags]
@@ -304,7 +304,7 @@ public enum GuidMetadata : ushort {
 
 **Usage**:
 
-```csharp
+```csharp{title="GuidMetadata Flags (2)" description="Demonstrates guidMetadata Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "GuidMetadata", "Flags"]}
 // Your code (with interception enabled)
 var id = Guid.NewGuid();
 
@@ -341,7 +341,7 @@ Tracking the source helps you:
 
 Use `[SuppressGuidInterception]` to opt-out of interception:
 
-```csharp
+```csharp{title="Suppressing Interception" description="Use [SuppressGuidInterception] to opt-out of interception:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Suppressing", "Interception"]}
 using Whizbang.Core;
 
 public class LegacyService {
@@ -362,7 +362,7 @@ public class TestFixtures {
 
 Use `GuidOrderingValidator` to validate TrackedGuids at runtime:
 
-```csharp
+```csharp{title="Runtime Validation" description="Use GuidOrderingValidator to validate TrackedGuids at runtime:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Runtime", "Validation"]}
 using Whizbang.Core.Configuration;
 using Whizbang.Core.Validation;
 
@@ -389,7 +389,7 @@ Configuration options:
 
 Whizbang includes a Roslyn analyzer (`GuidUsageAnalyzer`) that detects problematic GUID generation patterns at compile-time:
 
-```csharp
+```csharp{title="GuidUsageAnalyzer: Roslyn Analyzer (WHIZ055-WHIZ056)" description="Whizbang includes a Roslyn analyzer (GuidUsageAnalyzer) that detects problematic GUID generation patterns at" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "GuidUsageAnalyzer:", "Roslyn"]}
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class GuidUsageAnalyzer : DiagnosticAnalyzer {
   // Detects: Guid.NewGuid(), Guid.CreateVersion7(), raw Guid in ID positions
@@ -402,7 +402,7 @@ The analyzer runs during compilation and provides **instant feedback in your IDE
 
 **Severity**: Warning
 
-```csharp
+```csharp{title="WHIZ055: Guid.NewGuid() Usage" description="Severity: Warning" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WHIZ055:", "Guid.NewGuid"]}
 // ⚠️ Warning: Use TrackedGuid.NewMedo() or a [WhizbangId] type instead
 var id = Guid.NewGuid();  // WHIZ055: Detected at compile-time
                           // IDE shows squiggle and warning
@@ -425,7 +425,7 @@ var orderId = OrderId.New();
 
 **Severity**: Warning
 
-```csharp
+```csharp{title="WHIZ056: Guid.CreateVersion7() Usage" description="Severity: Warning" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WHIZ056:", "Guid.CreateVersion7"]}
 // ⚠️ Warning: Use TrackedGuid.NewMedo() for sub-millisecond precision
 var id = Guid.CreateVersion7();  // WHIZ056: Detected at compile-time
 
@@ -440,7 +440,7 @@ var id = TrackedGuid.NewMedo();
 
 **Real-World Example**:
 
-```csharp
+```csharp{title="WHIZ056: Guid.CreateVersion7() Usage (2)" description="Real-World Example:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WHIZ056:", "Guid.CreateVersion7"]}
 // Problematic with Guid.CreateVersion7()
 for (int i = 0; i < 100; i++) {
   var id = Guid.CreateVersion7();  // Multiple IDs in same millisecond
@@ -458,7 +458,7 @@ for (int i = 0; i < 100; i++) {
 
 For **legitimate cases** where you need raw GUID operations:
 
-```csharp
+```csharp{title="Suppressing Analyzer Warnings" description="For legitimate cases where you need raw GUID operations:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Suppressing", "Analyzer"]}
 // Suppress for specific line
 #pragma warning disable WHIZ055
 var testId = Guid.NewGuid();  // Intentional for test fixture
@@ -490,7 +490,7 @@ public class LegacyGuidService {
 
 The `GuidUsageAnalyzer` uses **syntax node analysis** to detect problematic patterns:
 
-```csharp
+```csharp{title="How the Analyzer Works" description="The GuidUsageAnalyzer uses syntax node analysis to detect problematic patterns:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Analyzer", "Works"]}
 public override void Initialize(AnalysisContext context) {
   context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
   context.EnableConcurrentExecution();
@@ -527,7 +527,7 @@ private static void _analyzeInvocation(SyntaxNodeAnalysisContext context) {
 
 ### Defining a WhizbangId
 
-```csharp
+```csharp{title="Defining a WhizbangId" description="Demonstrates defining a WhizbangId" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Defining", "WhizbangId"]}
 using Whizbang.Core;
 
 [WhizbangId]
@@ -550,7 +550,7 @@ The `[WhizbangId]` attribute triggers source generation that creates:
 
 ### Using WhizbangIds
 
-```csharp
+```csharp{title="Using WhizbangIds" description="Demonstrates using WhizbangIds" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Using", "WhizbangIds"]}
 // Static creation (uses global WhizbangIdProvider)
 var orderId = OrderId.New();
 
@@ -573,7 +573,7 @@ Guid underlyingGuid = orderId.Value;
 
 When writing generic services or utilities, you need type-safe ID generation:
 
-```csharp
+```csharp{title="The Problem: Generic Code Needs Type-Safe IDs" description="When writing generic services or utilities, you need type-safe ID generation:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Problem:", "Generic"]}
 // ❌ WRONG: Loses type safety
 public class Repository<TEntity> {
     private readonly IWhizbangIdProvider _idProvider;
@@ -599,7 +599,7 @@ public class Repository<TEntity, TId>
 
 The generic `IWhizbangIdProvider<TId>` interface enables **type-safe ID generation** in generic code:
 
-```csharp
+```csharp{title="Interface: `IWhizbangIdProvider<TId>`" description="The generic IWhizbangIdProvider<TId> interface enables type-safe ID generation in generic code:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Interface:", "IWhizbangIdProvider<TId>"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -617,7 +617,7 @@ public interface IWhizbangIdProvider<TId> where TId : struct {
 
 Without generic providers, you lose type safety in generic code:
 
-```csharp
+```csharp{title="Interface: `IWhizbangIdProvider<TId>` - Repository" description="Without generic providers, you lose type safety in generic code:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Interface:", "IWhizbangIdProvider<TId>"]}
 // ❌ WITHOUT generic provider - loses type safety
 public class Repository<TEntity> {
   private readonly IWhizbangIdProvider _provider;
@@ -641,7 +641,7 @@ public class Repository<TEntity, TId> where TId : struct {
 
 **Real-World Example**:
 
-```csharp
+```csharp{title="Interface: `IWhizbangIdProvider<TId>` - Order" description="Real-World Example:" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "Interface:", "IWhizbangIdProvider<TId>"]}
 // Domain entities with different ID types
 public class Order {
   public OrderId Id { get; set; }
@@ -731,7 +731,7 @@ public class OrderService {
 
 **When**: Standard application setup
 
-```csharp
+```csharp{title="Auto-Register All Providers (Recommended)" description="When: Standard application setup" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Auto-Register", "All"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Registers IWhizbangIdProvider (Uuid7IdProvider by default)
@@ -751,7 +751,7 @@ var app = builder.Build();
 
 **When**: Using database sequences, tenant-specific IDs, or custom ID generation
 
-```csharp
+```csharp{title="Custom Base Provider" description="When: Using database sequences, tenant-specific IDs, or custom ID generation" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Custom", "Base"]}
 // Custom ID generator
 public class SequenceBasedIdProvider : IWhizbangIdProvider {
     private readonly IDbConnection _db;
@@ -772,7 +772,7 @@ builder.Services.AddWhizbangIdProviders();
 
 **When**: Some IDs need special generation (e.g., CustomerIds from external system)
 
-```csharp
+```csharp{title="Override Specific ID Types" description="When: Some IDs need special generation (e." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Override", "Specific"]}
 builder.Services.AddWhizbangIdProviders();
 
 // Override CustomerIdProvider
@@ -786,7 +786,7 @@ builder.Services.AddSingleton<IWhizbangIdProvider<CustomerId>>(sp => {
 
 **When**: Tests need deterministic or custom IDs
 
-```csharp
+```csharp{title="Test Project Overrides" description="When: Tests need deterministic or custom IDs" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Test", "Project"]}
 // Test setup
 var services = new ServiceCollection();
 
@@ -805,7 +805,7 @@ var id2 = orderIdProvider.NewId(); // TestOrderId(00000000-0000-0000-0000-000000
 
 **When**: Console apps, scripts, or areas without DI
 
-```csharp
+```csharp{title="No DI - Direct Provider Creation" description="When: Console apps, scripts, or areas without DI" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Direct", "Provider"]}
 // Create typed provider directly
 var baseProvider = new Uuid7IdProvider();
 var orderIdProvider = OrderId.CreateProvider(baseProvider);
@@ -817,7 +817,7 @@ var orderId = orderIdProvider.NewId();
 
 **When**: Want to use global static provider AND DI
 
-```csharp
+```csharp{title="Global Provider Configuration" description="When: Want to use global static provider AND DI" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Global", "Provider"]}
 // Configure global provider (affects OrderId.New())
 WhizbangIdProvider.Configure(new Uuid7IdProvider());
 
@@ -833,7 +833,7 @@ var id2 = orderIdProvider.NewId(); // Uses injected provider (same implementatio
 
 **When**: Some code uses static `New()`, some uses DI
 
-```csharp
+```csharp{title="Hybrid - Static + DI" description="When: Some code uses static New(), some uses DI" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Hybrid", "Static"]}
 // Configure global provider
 WhizbangIdProvider.Configure(new Uuid7IdProvider());
 
@@ -869,7 +869,7 @@ public class OrderService {
 
 **When**: IDs need tenant prefix or tenant-specific sequences
 
-```csharp
+```csharp{title="Multi-Tenant ID Generation" description="When: IDs need tenant prefix or tenant-specific sequences" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Multi-Tenant", "Generation"]}
 public class TenantAwareIdProvider : IWhizbangIdProvider {
     private readonly IHttpContextAccessor _contextAccessor;
 
@@ -888,7 +888,7 @@ builder.Services.AddWhizbangIdProviders();
 
 **When**: Using database-generated sequences for distributed ID generation
 
-```csharp
+```csharp{title="Database Sequence IDs" description="When: Using database-generated sequences for distributed ID generation" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Database", "Sequence"]}
 public class PostgresSequenceIdProvider : IWhizbangIdProvider {
     private readonly NpgsqlConnection _connection;
 
@@ -908,7 +908,7 @@ builder.Services.AddWhizbangIdProviders();
 
 **When**: Provider needs request-scoped dependencies
 
-```csharp
+```csharp{title="Scoped vs Singleton Providers" description="When: Provider needs request-scoped dependencies" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "10.", "Scoped"]}
 // Scoped base provider
 builder.Services.AddScoped<IWhizbangIdProvider, RequestScopedIdProvider>();
 
@@ -922,7 +922,7 @@ builder.Services.AddWhizbangIdProviders();
 
 ### Custom Provider Implementation
 
-```csharp
+```csharp{title="Custom Provider Implementation" description="Demonstrates custom Provider Implementation" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Custom", "Provider"]}
 public class CustomOrderIdProvider : IWhizbangIdProvider<OrderId> {
     private readonly ILogger<CustomOrderIdProvider> _logger;
 
@@ -943,7 +943,7 @@ builder.Services.AddSingleton<IWhizbangIdProvider<OrderId>, CustomOrderIdProvide
 
 ### Composite Provider (Multiple Strategies)
 
-```csharp
+```csharp{title="Composite Provider (Multiple Strategies)" description="Demonstrates composite Provider (Multiple Strategies)" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Composite", "Provider"]}
 public class CompositeIdProvider : IWhizbangIdProvider {
     private readonly IWhizbangIdProvider _primary;
     private readonly IWhizbangIdProvider _fallback;
@@ -961,7 +961,7 @@ public class CompositeIdProvider : IWhizbangIdProvider {
 
 ### Logging Wrapper
 
-```csharp
+```csharp{title="Logging Wrapper" description="Demonstrates logging Wrapper" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Logging", "Wrapper"]}
 public class LoggingIdProviderWrapper<TId> : IWhizbangIdProvider<TId>
     where TId : struct {
 
@@ -988,7 +988,7 @@ public class LoggingIdProviderWrapper<TId> : IWhizbangIdProvider<TId>
 - `TId NewId()` - Generates a new ID instance
 
 **Usage**:
-```csharp
+```csharp{title="IWhizbangIdProvider&lt;TId&gt;" description="Demonstrates iWhizbangIdProvider&lt;TId&gt;" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "IWhizbangIdProvider&lt;TId&gt;"]}
 public class OrderService {
     private readonly IWhizbangIdProvider<OrderId> _idProvider;
 
@@ -1026,7 +1026,7 @@ public class OrderService {
 **Purpose**: Registers all WhizbangId providers with DI.
 
 **Signature**:
-```csharp
+```csharp{title="AddWhizbangIdProviders Extension" description="Demonstrates addWhizbangIdProviders Extension" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "AddWhizbangIdProviders", "Extension"]}
 public static IServiceCollection AddWhizbangIdProviders(
     this IServiceCollection services,
     IWhizbangIdProvider? baseProvider = null
@@ -1039,7 +1039,7 @@ public static IServiceCollection AddWhizbangIdProviders(
 **Returns**: `IServiceCollection` for chaining
 
 **Example**:
-```csharp
+```csharp{title="AddWhizbangIdProviders Extension (2)" description="Demonstrates addWhizbangIdProviders Extension" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "AddWhizbangIdProviders", "Extension"]}
 builder.Services.AddWhizbangIdProviders(); // Uses Uuid7IdProvider
 // OR
 builder.Services.AddWhizbangIdProviders(new CustomIdProvider());
@@ -1049,7 +1049,7 @@ builder.Services.AddWhizbangIdProviders(new CustomIdProvider());
 
 ### Test with Sequential IDs
 
-```csharp
+```csharp{title="Test with Sequential IDs" description="Demonstrates test with Sequential IDs" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Test", "Sequential"]}
 public class SequentialTestIdProvider : IWhizbangIdProvider {
     private long _counter = 0;
 
@@ -1067,7 +1067,7 @@ services.AddWhizbangIdProviders();
 
 ### Test with Known IDs
 
-```csharp
+```csharp{title="Test with Known IDs" description="Demonstrates test with Known IDs" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Test", "Known"]}
 public class KnownIdProvider<TId> : IWhizbangIdProvider<TId>
     where TId : struct {
 
@@ -1090,7 +1090,7 @@ Assert.Equal(knownOrderId, order.Id);
 
 ### Test Direct Provider Creation
 
-```csharp
+```csharp{title="Test Direct Provider Creation" description="Demonstrates test Direct Provider Creation" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Test", "Direct"]}
 [Test]
 public void OrderId_CreateProvider_GeneratesValidIds() {
     // Arrange
@@ -1113,7 +1113,7 @@ public void OrderId_CreateProvider_GeneratesValidIds() {
 
 Whizbang provides automated code transformation for migrating from raw Guid usage:
 
-```bash
+```bash{title="Automated Migration with `whizbang-migrate`" description="Whizbang provides automated code transformation for migrating from raw Guid usage:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Automated", "Migration"]}
 # Analyze codebase for Guid patterns
 whizbang-migrate analyze ./src
 
@@ -1133,7 +1133,7 @@ The `GuidToTrackedGuidTransformer` automatically:
 ### Migrating from Guid to WhizbangId
 
 **Before**:
-```csharp
+```csharp{title="Migrating from Guid to WhizbangId" description="Demonstrates migrating from Guid to WhizbangId" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Migrating", "Guid"]}
 public class Order {
     public Guid OrderId { get; init; }
 }
@@ -1148,7 +1148,7 @@ public class OrderService {
 ```
 
 **After**:
-```csharp
+```csharp{title="Migrating from Guid to WhizbangId - OrderId" description="Demonstrates migrating from Guid to WhizbangId" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Migrating", "Guid"]}
 [WhizbangId]
 public readonly partial struct OrderId;
 
@@ -1174,7 +1174,7 @@ public class OrderService {
 ### Migrating from IWhizbangIdProvider to IWhizbangIdProvider&lt;TId&gt;
 
 **Before**:
-```csharp
+```csharp{title="Migrating from IWhizbangIdProvider to" description="Demonstrates migrating from IWhizbangIdProvider to IWhizbangIdProvider&lt;TId&gt;" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Migrating", "IWhizbangIdProvider"]}
 public class Repository<TEntity> {
     private readonly IWhizbangIdProvider _idProvider;
 
@@ -1190,7 +1190,7 @@ public class Repository<TEntity> {
 ```
 
 **After**:
-```csharp
+```csharp{title="Migrating from IWhizbangIdProvider to" description="Demonstrates migrating from IWhizbangIdProvider to IWhizbangIdProvider&lt;TId&gt;" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Migrating", "IWhizbangIdProvider"]}
 public class Repository<TEntity, TId>
     where TId : struct {
 

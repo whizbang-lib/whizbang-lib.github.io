@@ -79,7 +79,7 @@ This is **Part 3** of the ECommerce Tutorial. Complete [Inventory Service](inven
 
 **ECommerce.Contracts/Events/PaymentProcessed.cs**:
 
-```csharp
+```csharp{title="PaymentProcessed Event" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "PaymentProcessed", "Event"]}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
@@ -106,7 +106,7 @@ public enum PaymentStatus {
 
 **ECommerce.Contracts/Events/PaymentFailed.cs**:
 
-```csharp
+```csharp{title="PaymentFailed Event (Compensation)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "PaymentFailed", "Event"]}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
@@ -128,7 +128,7 @@ public record PaymentFailed(
 
 **ECommerce.PaymentWorker/Database/Migrations/001_CreatePaymentsTable.sql**:
 
-```sql
+```sql{title="Payments Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Payments", "Table"]}
 CREATE TABLE IF NOT EXISTS payments (
   payment_id TEXT PRIMARY KEY,
   order_id TEXT NOT NULL UNIQUE,  -- One payment per order
@@ -152,7 +152,7 @@ CREATE INDEX idx_payments_status ON payments(status);
 
 **ECommerce.PaymentWorker/Services/IPaymentGateway.cs**:
 
-```csharp
+```csharp{title="Step 3: Payment Gateway Abstraction" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Payment"]}
 namespace ECommerce.PaymentWorker.Services;
 
 public interface IPaymentGateway {
@@ -189,7 +189,7 @@ public record RefundResult(
 
 **ECommerce.PaymentWorker/Services/StripePaymentGateway.cs**:
 
-```csharp
+```csharp{title="Stripe Implementation" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Stripe", "Implementation"]}
 using Stripe;
 
 namespace ECommerce.PaymentWorker.Services;
@@ -302,7 +302,7 @@ public class StripePaymentGateway : IPaymentGateway {
 
 **ECommerce.PaymentWorker/Receptors/ProcessPaymentReceptor.cs**:
 
-```csharp
+```csharp{title="Step 4: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using ECommerce.PaymentWorker.Services;
@@ -574,7 +574,7 @@ public class PaymentFailedException : Exception {
 
 **ECommerce.PaymentWorker/Receptors/RefundPaymentReceptor.cs**:
 
-```csharp
+```csharp{title="Step 5: Compensation Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Compensation"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using ECommerce.PaymentWorker.Services;
@@ -716,7 +716,7 @@ public class RefundFailedException : Exception {
 
 **ECommerce.PaymentWorker/Program.cs**:
 
-```csharp
+```csharp{title="Step 6: Service Configuration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
 using Whizbang.Core;
 using Whizbang.Data.Postgres;
 using Whizbang.Transports.AzureServiceBus;
@@ -759,7 +759,7 @@ await host.RunAsync();
 
 **appsettings.json**:
 
-```json
+```json{title="Step 6: Service Configuration (2)" description="**appsettings." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
 {
   "Logging": {
     "LogLevel": {
@@ -798,7 +798,7 @@ await host.RunAsync();
 
 **ECommerce.AppHost/Program.cs**:
 
-```csharp
+```csharp{title="Update Aspire Configuration" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Update", "Aspire"]}
 var paymentDb = postgres.AddDatabase("payment-db");
 
 var paymentWorker = builder.AddProject<Projects.ECommerce_PaymentWorker>("payment-worker")
@@ -808,7 +808,7 @@ var paymentWorker = builder.AddProject<Projects.ECommerce_PaymentWorker>("paymen
 
 ### 2. Create Order (Full Flow)
 
-```bash
+```bash{title="Create Order (Full Flow)" description="Demonstrates create Order (Full Flow)" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{
@@ -836,7 +836,7 @@ Aspire Dashboard shows:
 
 ### 4. Verify Payment
 
-```sql
+```sql{title="Verify Payment" description="Demonstrates verify Payment" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Payment"]}
 SELECT * FROM payments WHERE order_id = '<order-id>';
 ```
 
@@ -887,7 +887,7 @@ SELECT * FROM payments WHERE order_id = '<order-id>';
 
 ### Retry Logic with Polly
 
-```csharp
+```csharp{title="Retry Logic with Polly" description="Demonstrates retry Logic with Polly" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Retry", "Logic"]}
 // Exponential backoff: 2s, 4s, 8s
 Policy
   .Handle<HttpRequestException>()
@@ -905,7 +905,7 @@ Policy
 
 ### Circuit Breaker
 
-```csharp
+```csharp{title="Circuit Breaker" description="Demonstrates circuit Breaker" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Circuit", "Breaker"]}
 // Open circuit after 5 failures, half-open after 30s
 Policy
   .Handle<HttpRequestException>()
@@ -926,7 +926,7 @@ Policy
 
 ### Unit Test - Successful Payment
 
-```csharp
+```csharp{title="Unit Test - Successful Payment" description="Demonstrates unit Test - Successful Payment" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task ProcessPayment_ValidCard_ChargesAndPublishesEventAsync() {
   // Arrange
@@ -953,7 +953,7 @@ public async Task ProcessPayment_ValidCard_ChargesAndPublishesEventAsync() {
 
 ### Unit Test - Payment Failure
 
-```csharp
+```csharp{title="Unit Test - Payment Failure" description="Demonstrates unit Test - Payment Failure" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task ProcessPayment_InvalidCard_PublishesPaymentFailedEventAsync() {
   // Arrange

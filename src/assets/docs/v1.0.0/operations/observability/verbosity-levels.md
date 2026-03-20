@@ -18,7 +18,7 @@ The `TraceVerbosity` enum controls how much detail Whizbang emits in traces. Ver
 
 ## Namespace
 
-```csharp
+```csharp{title="Namespace" description="Demonstrates namespace" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Observability", "Namespace"]}
 using Whizbang.Core.Tracing;
 ```
 
