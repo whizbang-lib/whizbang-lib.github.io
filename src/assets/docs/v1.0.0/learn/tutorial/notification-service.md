@@ -65,7 +65,7 @@ This is **Part 4** of the ECommerce Tutorial. Complete [Payment Processing](paym
 
 **ECommerce.NotificationWorker/Services/IEmailProvider.cs**:
 
-```csharp
+```csharp{title="Email Provider (SendGrid)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Email", "Provider"]}
 namespace ECommerce.NotificationWorker.Services;
 
 public interface IEmailProvider {
@@ -87,7 +87,7 @@ public record EmailResult(
 
 **ECommerce.NotificationWorker/Services/SendGridEmailProvider.cs**:
 
-```csharp
+```csharp{title="Email Provider (SendGrid) - SendGridEmailProvider" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Email", "Provider"]}
 using SendGrid;
 using SendGrid.Helpers.Mail;
 
@@ -177,7 +177,7 @@ public class SendGridEmailProvider : IEmailProvider {
 
 **ECommerce.NotificationWorker/Services/ISmsProvider.cs**:
 
-```csharp
+```csharp{title="SMS Provider (Twilio)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "SMS", "Provider"]}
 namespace ECommerce.NotificationWorker.Services;
 
 public interface ISmsProvider {
@@ -197,7 +197,7 @@ public record SmsResult(
 
 **ECommerce.NotificationWorker/Services/TwilioSmsProvider.cs**:
 
-```csharp
+```csharp{title="SMS Provider (Twilio) - TwilioSmsProvider" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "SMS", "Provider"]}
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
 using Twilio.Types;
@@ -280,7 +280,7 @@ public class TwilioSmsProvider : ISmsProvider {
 
 **ECommerce.NotificationWorker/Services/ITemplateRenderer.cs**:
 
-```csharp
+```csharp{title="Step 2: Template Engine" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Step", "Template"]}
 namespace ECommerce.NotificationWorker.Services;
 
 public interface ITemplateRenderer {
@@ -294,7 +294,7 @@ public interface ITemplateRenderer {
 
 **ECommerce.NotificationWorker/Services/ScribanTemplateRenderer.cs**:
 
-```csharp
+```csharp{title="Step 2: Template Engine - ScribanTemplateRenderer" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Template"]}
 using Scriban;
 using Scriban.Runtime;
 
@@ -420,7 +420,7 @@ public class ScribanTemplateRenderer : ITemplateRenderer {
 
 **ECommerce.NotificationWorker/Database/Migrations/001_CreateNotificationsTable.sql**:
 
-```sql
+```sql{title="Step 3: Database Schema" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Database"]}
 CREATE TABLE IF NOT EXISTS notifications (
   notification_id TEXT PRIMARY KEY,
   order_id TEXT NOT NULL,
@@ -449,7 +449,7 @@ CREATE INDEX idx_notifications_created_at ON notifications(created_at DESC);
 
 **ECommerce.NotificationWorker/Receptors/OrderConfirmationReceptor.cs**:
 
-```csharp
+```csharp{title="Order Confirmation Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Order", "Confirmation"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using ECommerce.NotificationWorker.Services;
@@ -591,7 +591,7 @@ public class NotificationFailedException : Exception {
 
 **ECommerce.NotificationWorker/Receptors/PaymentReceiptReceptor.cs**:
 
-```csharp
+```csharp{title="Payment Receipt Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Payment", "Receipt"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using ECommerce.NotificationWorker.Services;
@@ -644,7 +644,7 @@ public class PaymentReceiptReceptor : IReceptor<PaymentProcessed, NotificationSe
 
 **ECommerce.NotificationWorker/Receptors/ShipmentNotificationReceptor.cs**:
 
-```csharp
+```csharp{title="Shipment Notification Receptor (SMS)" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Shipment", "Notification"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using ECommerce.NotificationWorker.Services;
@@ -751,7 +751,7 @@ public class ShipmentNotificationReceptor : IReceptor<ShipmentCreated, Notificat
 
 **ECommerce.NotificationWorker/Program.cs**:
 
-```csharp
+```csharp{title="Step 5: Service Configuration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
 using Whizbang.Core;
 using Whizbang.Data.Postgres;
 using Whizbang.Transports.AzureServiceBus;
@@ -790,7 +790,7 @@ await host.RunAsync();
 
 **appsettings.json**:
 
-```json
+```json{title="Step 5: Service Configuration (2)" description="**appsettings." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"]}
 {
   "Logging": {
     "LogLevel": {
@@ -833,7 +833,7 @@ await host.RunAsync();
 
 **ECommerce.AppHost/Program.cs**:
 
-```csharp
+```csharp{title="Update Aspire" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Update", "Aspire"]}
 var notificationDb = postgres.AddDatabase("notification-db");
 
 var notificationWorker = builder.AddProject<Projects.ECommerce_NotificationWorker>("notification-worker")
@@ -843,7 +843,7 @@ var notificationWorker = builder.AddProject<Projects.ECommerce_NotificationWorke
 
 ### 2. Create Order
 
-```bash
+```bash{title="Create Order" description="Demonstrates create Order" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{ ... }'
@@ -855,7 +855,7 @@ Navigate to SendGrid dashboard → Activity Feed → Search for recipient email
 
 ### 4. Verify Database
 
-```sql
+```sql{title="Verify Database" description="Demonstrates verify Database" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Database"]}
 SELECT * FROM notifications WHERE order_id = '<order-id>';
 ```
 
@@ -870,7 +870,7 @@ SELECT * FROM notifications WHERE order_id = '<order-id>';
 
 ### Multi-Event Subscriptions
 
-```csharp
+```csharp{title="Multi-Event Subscriptions" description="Demonstrates multi-Event Subscriptions" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Multi-Event", "Subscriptions"]}
 // Single service subscribes to multiple events
 public class OrderConfirmationReceptor : IReceptor<OrderCreated, NotificationSent> { }
 public class PaymentReceiptReceptor : IReceptor<PaymentProcessed, NotificationSent> { }
@@ -905,7 +905,7 @@ public class ShipmentNotificationReceptor : IReceptor<ShipmentCreated, Notificat
 
 ### Unit Test - Email Rendering
 
-```csharp
+```csharp{title="Unit Test - Email Rendering" description="Demonstrates unit Test - Email Rendering" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task OrderConfirmation_RendersTemplateCorrectlyAsync() {
   // Arrange

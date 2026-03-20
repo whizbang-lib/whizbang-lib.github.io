@@ -41,7 +41,7 @@ Comprehensive **security guide** for Whizbang applications - authentication, aut
 
 **appsettings.json**:
 
-```json
+```json{title="JWT with RS256" description="**appsettings." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "JWT", "RS256"]}
 {
   "Authentication": {
     "Authority": "https://login.microsoftonline.com/{tenant-id}/v2.0",
@@ -53,7 +53,7 @@ Comprehensive **security guide** for Whizbang applications - authentication, aut
 
 **Program.cs**:
 
-```csharp
+```csharp{title="JWT with RS256 (2)" description="Demonstrates jWT with RS256" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "JWT", "RS256"]}
 builder.Services
   .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
   .AddJwtBearer(options => {
@@ -75,7 +75,7 @@ app.UseAuthorization();
 
 ### Require Authentication on Endpoints
 
-```csharp
+```csharp{title="Require Authentication on Endpoints" description="Demonstrates require Authentication on Endpoints" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Require", "Authentication"]}
 app.MapPost("/orders", async (
   CreateOrder command,
   IDispatcher dispatcher,
@@ -95,7 +95,7 @@ app.MapPost("/orders", async (
 
 **Program.cs**:
 
-```csharp
+```csharp{title="Policy-Based Authorization" description="Demonstrates policy-Based Authorization" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Policy-Based", "Authorization"]}
 builder.Services.AddAuthorizationBuilder()
   .AddPolicy("CreateOrder", policy => policy
     .RequireAuthenticatedUser()
@@ -110,7 +110,7 @@ builder.Services.AddAuthorizationBuilder()
 
 **Usage**:
 
-```csharp
+```csharp{title="Policy-Based Authorization (2)" description="Demonstrates policy-Based Authorization" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Policy-Based", "Authorization"]}
 app.MapPost("/orders", async (
   CreateOrder command,
   IDispatcher dispatcher,
@@ -138,7 +138,7 @@ app.MapGet("/orders/{orderId}", async (
 
 **OrderAuthorizationHandler.cs**:
 
-```csharp
+```csharp{title="Resource-Based Authorization" description="**OrderAuthorizationHandler." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Resource-Based", "Authorization"]}
 public class OrderAuthorizationHandler : AuthorizationHandler<OperationAuthorizationRequirement, OrderRow> {
   protected override Task HandleRequirementAsync(
     AuthorizationHandlerContext context,
@@ -168,13 +168,13 @@ public class OrderAuthorizationHandler : AuthorizationHandler<OperationAuthoriza
 
 **Registration**:
 
-```csharp
+```csharp{title="Resource-Based Authorization (2)" description="Registration:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Resource-Based", "Authorization"]}
 builder.Services.AddSingleton<IAuthorizationHandler, OrderAuthorizationHandler>();
 ```
 
 **Usage**:
 
-```csharp
+```csharp{title="Resource-Based Authorization (3)" description="Demonstrates resource-Based Authorization" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Resource-Based", "Authorization"]}
 app.MapDelete("/orders/{orderId}", async (
   string orderId,
   IDbConnection db,
@@ -219,7 +219,7 @@ app.MapDelete("/orders/{orderId}", async (
 
 **appsettings.json**:
 
-```json
+```json{title="TLS 1.3 (In Transit)" description="**appsettings." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "TLS", "1.3"]}
 {
   "Kestrel": {
     "Endpoints": {
@@ -241,7 +241,7 @@ app.MapDelete("/orders/{orderId}", async (
 
 **DataEncryptionService.cs**:
 
-```csharp
+```csharp{title="AES-256 Encryption (At Rest)" description="**DataEncryptionService." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "AES-256", "Encryption"]}
 public interface IDataEncryptionService {
   byte[] Encrypt(byte[] plaintext);
   byte[] Decrypt(byte[] ciphertext);
@@ -299,7 +299,7 @@ public class AesDataEncryptionService : IDataEncryptionService {
 
 **Usage**:
 
-```csharp
+```csharp{title="AES-256 Encryption (At Rest) (2)" description="Demonstrates aES-256 Encryption (At Rest)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "AES-256", "Encryption"]}
 public async Task<PaymentProcessed> HandleAsync(
   ProcessPayment command,
   CancellationToken ct = default
@@ -333,7 +333,7 @@ public async Task<PaymentProcessed> HandleAsync(
 
 **Program.cs**:
 
-```csharp
+```csharp{title="Azure Key Vault" description="Demonstrates azure Key Vault" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Key"]}
 var keyVaultUri = new Uri(builder.Configuration["KeyVault:VaultUri"]);
 
 builder.Configuration.AddAzureKeyVault(
@@ -344,7 +344,7 @@ builder.Configuration.AddAzureKeyVault(
 
 **Azure Key Vault Secrets**:
 
-```bash
+```bash{title="Azure Key Vault (2)" description="Azure Key Vault Secrets:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Azure", "Key"]}
 # Create secrets in Key Vault
 az keyvault secret set \
   --vault-name whizbang-kv \
@@ -364,7 +364,7 @@ az keyvault secret set \
 
 **Usage**:
 
-```csharp
+```csharp{title="Azure Key Vault (3)" description="Demonstrates azure Key Vault" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Key"]}
 // Automatically resolved from Key Vault
 var connectionString = builder.Configuration["Database:ConnectionString"];
 var serviceBusConnectionString = builder.Configuration["AzureServiceBus:ConnectionString"];
@@ -375,7 +375,7 @@ var encryptionKey = builder.Configuration["Encryption:Key"];
 
 **appsettings.json**:
 
-```json
+```json{title="Managed Identity (Avoid Credentials)" description="**appsettings." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Managed", "Identity"]}
 {
   "KeyVault": {
     "VaultUri": "https://whizbang-kv.vault.azure.net/"
@@ -385,7 +385,7 @@ var encryptionKey = builder.Configuration["Encryption:Key"];
 
 **No credentials needed** - Azure Managed Identity provides access:
 
-```bash
+```bash{title="Managed Identity (Avoid Credentials) (2)" description="No credentials needed - Azure Managed Identity provides access:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Managed", "Identity"]}
 # Assign Managed Identity to App Service
 az webapp identity assign --name whizbang-api --resource-group whizbang-rg
 
@@ -404,7 +404,7 @@ az keyvault set-policy \
 
 **CreateOrderValidator.cs**:
 
-```csharp
+```csharp{title="Command Validation" description="**CreateOrderValidator." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Command", "Validation"]}
 public static class CreateOrderValidator {
   public static ValidationResult Validate(CreateOrder command) {
     var errors = new List<string>();
@@ -436,7 +436,7 @@ public static class CreateOrderValidator {
 
 **ValidationPolicy.cs**:
 
-```csharp
+```csharp{title="Command Validation - ValidationPolicy" description="**ValidationPolicy." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Command", "Validation"]}
 public class ValidationPolicy : IPolicy {
   public async Task ApplyAsync(PolicyContext context, CancellationToken ct = default) {
     var result = context.Message switch {
@@ -456,7 +456,7 @@ public class ValidationPolicy : IPolicy {
 
 **✅ ALWAYS use parameterized queries**:
 
-```csharp
+```csharp{title="SQL Injection Prevention" description="✅ ALWAYS use parameterized queries:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "SQL", "Injection"]}
 // ✅ GOOD - Parameterized query (safe)
 var orders = await _db.QueryAsync<OrderRow>(
   """
@@ -480,7 +480,7 @@ var orders = await _db.QueryAsync<OrderRow>(
 
 **✅ Mitigation**: Policy-based authorization + resource-based authorization
 
-```csharp
+```csharp{title="Broken Access Control" description="✅ Mitigation: Policy-based authorization + resource-based authorization" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Broken", "Access"]}
 // Check user can access resource
 var authResult = await _authz.AuthorizeAsync(user, order, "View");
 if (!authResult.Succeeded) {
@@ -492,7 +492,7 @@ if (!authResult.Succeeded) {
 
 **✅ Mitigation**: TLS 1.3 + AES-256 encryption + Azure Key Vault
 
-```csharp
+```csharp{title="Cryptographic Failures" description="✅ Mitigation: TLS 1." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Cryptographic", "Failures"]}
 // Encrypt sensitive data
 var encryptedData = _encryption.Encrypt(sensitiveData);
 ```
@@ -501,7 +501,7 @@ var encryptedData = _encryption.Encrypt(sensitiveData);
 
 **✅ Mitigation**: Parameterized queries + input validation
 
-```csharp
+```csharp{title="Injection" description="✅ Mitigation: Parameterized queries + input validation" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Injection"]}
 // Always use parameters
 await _db.ExecuteAsync(
   "INSERT INTO orders (...) VALUES (@Value)",
@@ -513,7 +513,7 @@ await _db.ExecuteAsync(
 
 **✅ Mitigation**: Principle of least privilege + defense in depth
 
-```csharp
+```csharp{title="Insecure Design" description="✅ Mitigation: Principle of least privilege + defense in depth" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Insecure", "Design"]}
 // Multiple layers of security
 .RequireAuthorization("CreateOrder")  // Layer 1: Policy
 .AddPolicy(new ValidationPolicy())    // Layer 2: Validation
@@ -524,7 +524,7 @@ await _db.ExecuteAsync(
 
 **✅ Mitigation**: Secure defaults + configuration validation
 
-```csharp
+```csharp{title="Security Misconfiguration" description="✅ Mitigation: Secure defaults + configuration validation" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Security", "Misconfiguration"]}
 // Validate configuration on startup
 var requiredSettings = new[] {
   "Database:ConnectionString",
@@ -543,7 +543,7 @@ foreach (var setting in requiredSettings) {
 
 **✅ Mitigation**: Automated dependency scanning
 
-```yaml
+```yaml{title="Vulnerable and Outdated Components" description="✅ Mitigation: Automated dependency scanning" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Vulnerable", "Outdated"]}
 # .github/workflows/security-scan.yml
 name: Security Scan
 
@@ -575,7 +575,7 @@ jobs:
 
 **✅ Mitigation**: JWT with short expiry + refresh tokens
 
-```csharp
+```csharp{title="Identification and Authentication Failures" description="✅ Mitigation: JWT with short expiry + refresh tokens" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Identification", "Authentication"]}
 options.TokenValidationParameters = new TokenValidationParameters {
   ValidateLifetime = true,
   ClockSkew = TimeSpan.Zero  // No grace period
@@ -586,7 +586,7 @@ options.TokenValidationParameters = new TokenValidationParameters {
 
 **✅ Mitigation**: Message signing + envelope validation
 
-```csharp
+```csharp{title="Software and Data Integrity Failures" description="✅ Mitigation: Message signing + envelope validation" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Software", "Data"]}
 public class MessageIntegrityPolicy : IPolicy {
   public async Task ApplyAsync(PolicyContext context, CancellationToken ct = default) {
     var signature = context.Envelope.Headers.GetValueOrDefault("signature");
@@ -612,7 +612,7 @@ public class MessageIntegrityPolicy : IPolicy {
 
 **✅ Mitigation**: Structured logging + Application Insights
 
-```csharp
+```csharp{title="Security Logging and Monitoring Failures" description="✅ Mitigation: Structured logging + Application Insights" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Security", "Logging"]}
 _logger.LogWarning(
   "Unauthorized access attempt: User {UserId} attempted to access Order {OrderId}",
   userId,
@@ -624,7 +624,7 @@ _logger.LogWarning(
 
 **✅ Mitigation**: Whitelist allowed hosts + URL validation
 
-```csharp
+```csharp{title="Server-Side Request Forgery (SSRF)" description="✅ Mitigation: Whitelist allowed hosts + URL validation" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "10.", "Server-Side"]}
 public class UrlValidationPolicy : IPolicy {
   private static readonly string[] AllowedHosts = [
     "api.stripe.com",
@@ -648,7 +648,7 @@ public class UrlValidationPolicy : IPolicy {
 
 **SecurityHeadersMiddleware.cs**:
 
-```csharp
+```csharp{title="Security Headers" description="**SecurityHeadersMiddleware." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Security", "Headers"]}
 app.Use(async (context, next) => {
   // Prevent clickjacking
   context.Response.Headers.Append("X-Frame-Options", "DENY");
@@ -681,7 +681,7 @@ app.Use(async (context, next) => {
 
 **Program.cs**:
 
-```csharp
+```csharp{title="Rate Limiting" description="Demonstrates rate Limiting" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Rate", "Limiting"]}
 builder.Services.AddRateLimiter(options => {
   options.AddFixedWindowLimiter("api", limiter => {
     limiter.PermitLimit = 100;
@@ -696,7 +696,7 @@ app.UseRateLimiter();
 
 **Usage**:
 
-```csharp
+```csharp{title="Rate Limiting (2)" description="Demonstrates rate Limiting" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Rate", "Limiting"]}
 app.MapPost("/orders", async (
   CreateOrder command,
   IDispatcher dispatcher,

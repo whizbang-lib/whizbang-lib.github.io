@@ -63,7 +63,7 @@ Implement **saga orchestration patterns** with Whizbang for distributed workflow
 
 **OrderSagaState.cs**:
 
-```csharp
+```csharp{title="Saga State Machine" description="**OrderSagaState." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Saga", "State"]}
 public record OrderSagaState {
   public required string SagaId { get; init; }
   public required string OrderId { get; init; }
@@ -104,7 +104,7 @@ public enum SagaStep {
 
 **OrderSagaOrchestrator.cs**:
 
-```csharp
+```csharp{title="Saga Orchestrator" description="**OrderSagaOrchestrator." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Saga", "Orchestrator"]}
 public class OrderSagaOrchestrator :
   IPerspectiveOf<OrderCreated>,
   IPerspectiveOf<InventoryReserved>,
@@ -352,7 +352,7 @@ public class OrderSagaOrchestrator :
 
 **Migrations/001_CreateSagaTables.sql**:
 
-```sql
+```sql{title="Saga Database Schema" description="**Migrations/001_CreateSagaTables." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Saga", "Database"]}
 CREATE TABLE saga_state (
   saga_id TEXT PRIMARY KEY,
   order_id TEXT NOT NULL UNIQUE,
@@ -379,7 +379,7 @@ CREATE INDEX idx_saga_state_created_at ON saga_state(created_at DESC);
 
 **SagaTimeoutMonitor.cs**:
 
-```csharp
+```csharp{title="Timeout Handling" description="**SagaTimeoutMonitor." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Timeout", "Handling"]}
 public class SagaTimeoutMonitor : BackgroundService {
   private readonly NpgsqlConnection _db;
   private readonly IMessageBus _bus;
@@ -463,7 +463,7 @@ public class SagaTimeoutMonitor : BackgroundService {
 
 **SagasController.cs**:
 
-```csharp
+```csharp{title="Saga Visualization API" description="**SagasController." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Saga", "Visualization"]}
 [ApiController]
 [Route("api/[controller]")]
 public class SagasController : ControllerBase {
@@ -518,7 +518,7 @@ public class SagasController : ControllerBase {
 
 **Response**:
 
-```json
+```json{title="Saga Visualization API (2)" description="Demonstrates saga Visualization API" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Saga", "Visualization"]}
 {
   "sagaId": "abc123",
   "orderId": "order-456",

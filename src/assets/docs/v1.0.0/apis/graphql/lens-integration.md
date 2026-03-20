@@ -4,7 +4,7 @@ The `[GraphQLLens]` attribute marks lens interfaces for GraphQL exposure, enabli
 
 ## Basic Usage
 
-```csharp
+```csharp{title="Basic Usage" description="Demonstrates basic Usage" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Basic", "Usage"]}
 [GraphQLLens(QueryName = "orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 ```
@@ -43,7 +43,7 @@ The `data` field contains your actual business model that the perspective projec
 
 Control which parts of `PerspectiveRow<T>` are exposed:
 
-```csharp
+```csharp{title="Scope Control" description="Control which parts of PerspectiveRow<T> are exposed:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Scope", "Control"]}
 [Flags]
 public enum GraphQLLensScope {
     Default = 0,           // Use system default
@@ -65,7 +65,7 @@ public enum GraphQLLensScope {
 
 Expose only the business data:
 
-```csharp
+```csharp{title="Data Only (Default)" description="Expose only the business data:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Data", "Only"]}
 [GraphQLLens(QueryName = "products", Scope = GraphQLLensScope.DataOnly)]
 public interface IProductLens : ILensQuery<ProductReadModel> { }
 ```
@@ -88,7 +88,7 @@ public interface IProductLens : ILensQuery<ProductReadModel> { }
 
 Include event sourcing metadata:
 
-```csharp
+```csharp{title="With Metadata" description="Include event sourcing metadata:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Metadata"]}
 [GraphQLLens(
     QueryName = "auditLog",
     Scope = GraphQLLensScope.Data | GraphQLLensScope.Metadata | GraphQLLensScope.SystemFields)]
@@ -119,7 +119,7 @@ public interface IAuditLens : ILensQuery<AuditReadModel> { }
 
 Expose everything including scope data:
 
-```csharp
+```csharp{title="Full Row (Admin View)" description="Expose everything including scope data:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Full", "Row"]}
 [GraphQLLens(QueryName = "adminOrders", Scope = GraphQLLensScope.All)]
 public interface IAdminOrderLens : ILensQuery<OrderReadModel> { }
 ```
@@ -153,7 +153,7 @@ public interface IAdminOrderLens : ILensQuery<OrderReadModel> { }
 
 Disable paging for simple lists:
 
-```csharp
+```csharp{title="Filter-Only (No Paging)" description="Disable paging for simple lists:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Filter-Only", "Paging"]}
 [GraphQLLens(
     QueryName = "statuses",
     EnablePaging = false,
@@ -177,7 +177,7 @@ public interface IStatusLens : ILensQuery<StatusReadModel> { }
 
 Configure paging limits:
 
-```csharp
+```csharp{title="Custom Page Sizes" description="Configure paging limits:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Custom", "Page"]}
 [GraphQLLens(
     QueryName = "transactions",
     DefaultPageSize = 50,
@@ -189,7 +189,7 @@ public interface ITransactionLens : ILensQuery<TransactionReadModel> { }
 
 For a lens like:
 
-```csharp
+```csharp{title="Generated Schema" description="For a lens like:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Generated", "Schema"]}
 [GraphQLLens(QueryName = "orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 
@@ -250,7 +250,7 @@ input OrderFilterInput {
 
 You can create multiple lenses for the same model with different configurations:
 
-```csharp
+```csharp{title="Multiple Lenses for Same Model" description="You can create multiple lenses for the same model with different configurations:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Multiple", "Lenses"]}
 // Public API - data only
 [GraphQLLens(QueryName = "orders", Scope = GraphQLLensScope.DataOnly)]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }

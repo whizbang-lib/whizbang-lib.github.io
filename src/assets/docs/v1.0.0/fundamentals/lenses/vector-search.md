@@ -6,7 +6,7 @@ Whizbang supports pgvector similarity queries for semantic search, embeddings, a
 
 Whizbang provides a **turnkey experience** for pgvector. When your perspective models use `[VectorField]` attributes, the source generator automatically creates an `Add{YourDbContext}()` extension method that handles all pgvector configuration:
 
-```csharp
+```csharp{title="Turnkey Setup" description="Whizbang provides a turnkey experience for pgvector." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Turnkey", "Setup"]}
 // Single call configures everything:
 // - NpgsqlDataSource with UseVector()
 // - DbContext with UseVector()
@@ -27,7 +27,7 @@ When Whizbang detects `[VectorField]` attributes in your perspective models, the
 
 If you need to configure the data source (e.g., for JSON options), pass a callback:
 
-```csharp
+```csharp{title="Customization" description="If you need to configure the data source (e." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Customization"]}
 builder.Services.AddMyAppDbContext(connectionString, dataSourceBuilder => {
   dataSourceBuilder.ConfigureJsonOptions(jsonOptions);
   dataSourceBuilder.EnableDynamicJson();
@@ -36,7 +36,7 @@ builder.Services.AddMyAppDbContext(connectionString, dataSourceBuilder => {
 
 Or configure DbContext options:
 
-```csharp
+```csharp{title="Customization (2)" description="Or configure DbContext options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Customization"]}
 builder.Services.AddMyAppDbContext(connectionString, configureDbContext: options => {
   options.EnableSensitiveDataLogging();
 });
@@ -46,7 +46,7 @@ builder.Services.AddMyAppDbContext(connectionString, configureDbContext: options
 
 When using `[VectorField]` attributes on your perspective models, you must add both pgvector packages:
 
-```xml
+```xml{title="Prerequisites" description="When using [VectorField] attributes on your perspective models, you must add both pgvector packages:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Prerequisites"]}
 <ItemGroup>
   <!-- Base package for NpgsqlDataSourceBuilder.UseVector() -->
   <PackageReference Include="Pgvector" Version="0.3.0" />
@@ -65,7 +65,7 @@ If you forget these packages, compiler diagnostics will guide you:
 
 Add `[VectorField]` to properties in your perspective model:
 
-```csharp
+```csharp{title="Defining Vector Fields" description="Add [VectorField] to properties in your perspective model:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Defining", "Vector"]}
 public class DocumentModel {
   public Guid Id { get; init; }
   public string Title { get; init; } = "";
@@ -96,7 +96,7 @@ All methods use **strongly-typed lambda selectors** for compile-time safety.
 
 Use when the search vector comes from your application (e.g., embedding a user's search query):
 
-```csharp
+```csharp{title="Pattern 1: App-Side Vector (Search Query)" description="Use when the search vector comes from your application (e." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Pattern", "App-Side"]}
 // Get embedding from your embedding service (OpenAI, etc.)
 var searchEmbedding = await embeddingService.EmbedAsync(userSearchQuery);
 
@@ -108,7 +108,7 @@ var results = await documentLens.Query
 ```
 
 **SQL Generated:**
-```sql
+```sql{title="Pattern 1: App-Side Vector (Search Query) (2)" description="SQL Generated:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Pattern", "App-Side"]}
 SELECT * FROM documents
 ORDER BY content_embedding <=> @p0 ASC
 LIMIT 10
@@ -118,7 +118,7 @@ LIMIT 10
 
 Use when comparing two vector columns on the same row (100% SQL, no vector data round-trip):
 
-```csharp
+```csharp{title="Pattern 2: Same-Table Column Comparison" description="Use when comparing two vector columns on the same row (100% SQL, no vector data round-trip):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Same-Table"]}
 // Find documents where content differs significantly from summary
 // (potential quality issue - summary doesn't match content)
 var mismatchedDocs = await documentLens.Query
@@ -135,7 +135,7 @@ var wellSummarized = await documentLens.Query
 ```
 
 **SQL Generated:**
-```sql
+```sql{title="Pattern 2: Same-Table Column Comparison (2)" description="SQL Generated:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Pattern", "Same-Table"]}
 -- No vector data sent to/from C# - all computed in PostgreSQL!
 SELECT * FROM documents
 WHERE content_embedding IS NOT NULL AND summary_embedding IS NOT NULL
@@ -147,7 +147,7 @@ LIMIT 20
 
 Use when comparing vectors from different tables:
 
-```csharp
+```csharp{title="Pattern 3: Cross-Table Comparison (Joins)" description="Use when comparing vectors from different tables:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Cross-Table"]}
 // Find documents that match a user's preferences
 var userId = currentUserId;
 
@@ -164,7 +164,7 @@ var recommendations = await documentLens.Query
 ```
 
 **SQL Generated:**
-```sql
+```sql{title="Pattern 3: Cross-Table Comparison (Joins) (2)" description="SQL Generated:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Pattern", "Cross-Table"]}
 SELECT d.* FROM documents d
 JOIN user_preferences up ON up.user_id = @userId
 ORDER BY d.content_embedding <=> up.preference_embedding ASC
@@ -175,7 +175,7 @@ LIMIT 10
 
 Use when you only want results within a certain similarity range:
 
-```csharp
+```csharp{title="Pattern 4: Filtering by Distance Threshold" description="Use when you only want results within a certain similarity range:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Pattern", "Filtering"]}
 var searchEmbedding = await embeddingService.EmbedAsync(userQuery);
 
 // Only return documents with cosine distance < 0.3 (very similar)
@@ -186,7 +186,7 @@ var closeMatches = await documentLens.Query
 ```
 
 **SQL Generated:**
-```sql
+```sql{title="Pattern 4: Filtering by Distance Threshold (2)" description="SQL Generated:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Pattern", "Filtering"]}
 SELECT * FROM documents
 WHERE content_embedding <=> @p0 < 0.3
 ORDER BY content_embedding <=> @p0 ASC
@@ -202,7 +202,7 @@ You cannot chain `.OrderBy(r => r.Distance)` or `.Where(r => r.Distance < x)` af
 `OrderByCosineDistance` and `WithinCosineDistance` for SQL-side operations first.
 :::
 
-```csharp
+```csharp{title="Pattern 5: Combined Filter + Sort + Project" description=":::updated Important: WithCosineDistance must be used as the final projection before ToListAsync()." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Combined"]}
 var searchEmbedding = await embeddingService.EmbedAsync(userQuery);
 
 // Filter -> Sort -> Project with scores
@@ -251,7 +251,7 @@ Returns `VectorSearchResult<TModel>` with:
 
 For testing or manual calculations, use the static helper methods:
 
-```csharp
+```csharp{title="Distance Calculators" description="For testing or manual calculations, use the static helper methods:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Distance", "Calculators"]}
 double cosine = VectorSearchExtensions.CalculateCosineDistance(vectorA, vectorB);
 double l2 = VectorSearchExtensions.CalculateL2Distance(vectorA, vectorB);
 double innerProduct = VectorSearchExtensions.CalculateInnerProductDistance(vectorA, vectorB);
@@ -259,7 +259,7 @@ double innerProduct = VectorSearchExtensions.CalculateInnerProductDistance(vecto
 
 ## Complete Example: Semantic Search with Ranking
 
-```csharp
+```csharp{title="Complete Example: Semantic Search with Ranking" description="Demonstrates complete Example: Semantic Search with Ranking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Complete", "Example:"]}
 public class SearchService {
   private readonly ILensQueryFactory<DocumentModel> _documentLens;
   private readonly IEmbeddingService _embeddingService;
@@ -291,7 +291,7 @@ public class SearchService {
 
 If you prefer manual configuration over the turnkey approach, you can set up pgvector yourself:
 
-```csharp
+```csharp{title="Manual Configuration" description="If you prefer manual configuration over the turnkey approach, you can set up pgvector yourself:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Manual", "Configuration"]}
 // 1. Create data source with UseVector()
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 dataSourceBuilder.UseVector();

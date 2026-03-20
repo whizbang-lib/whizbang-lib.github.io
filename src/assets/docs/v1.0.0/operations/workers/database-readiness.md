@@ -24,7 +24,7 @@ The **IDatabaseReadinessCheck** pattern provides a standard way for workers to c
 ### Why Database Readiness Checks?
 
 **Without readiness checks**:
-```csharp
+```csharp{title="Why Database Readiness Checks?" description="Without readiness checks:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"]}
 // ❌ Worker starts immediately, database might not be ready
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
@@ -43,7 +43,7 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 ```
 
 **With readiness checks**:
-```csharp
+```csharp{title="Why Database Readiness Checks? (2)" description="With readiness checks:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"]}
 // ✅ Worker coordinates with database availability
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
@@ -78,7 +78,7 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 ## IDatabaseReadinessCheck Interface
 
 **IDatabaseReadinessCheck.cs**:
-```csharp
+```csharp{title="IDatabaseReadinessCheck Interface" description="**IDatabaseReadinessCheck." category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "IDatabaseReadinessCheck", "Interface"]}
 /// <summary>
 /// Interface for checking whether the database is ready for work coordinator operations.
 /// Implementations can check connectivity, schema availability, or other readiness criteria.
@@ -121,7 +121,7 @@ public interface IDatabaseReadinessCheck {
 ## PostgreSQL Implementation
 
 **PostgresDatabaseReadinessCheck.cs**:
-```csharp
+```csharp{title="PostgreSQL Implementation" description="**PostgresDatabaseReadinessCheck." category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "PostgreSQL", "Implementation"]}
 public class PostgresDatabaseReadinessCheck : IDatabaseReadinessCheck {
   private readonly IDbConnectionFactory _connectionFactory;
   private readonly ILogger<PostgresDatabaseReadinessCheck> _logger;
@@ -208,7 +208,7 @@ public class PostgresDatabaseReadinessCheck : IDatabaseReadinessCheck {
 ### PerspectiveWorker Integration
 
 **PerspectiveWorker.cs:98-121**:
-```csharp
+```csharp{title="PerspectiveWorker Integration" description="**PerspectiveWorker." category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "PerspectiveWorker", "Integration"]}
 while (!stoppingToken.IsCancellationRequested) {
   try {
     // Check database readiness before attempting work coordinator call
@@ -262,7 +262,7 @@ while (!stoppingToken.IsCancellationRequested) {
 ### Startup Processing Integration
 
 **PerspectiveWorker.cs:82-94**:
-```csharp
+```csharp{title="Startup Processing Integration" description="**PerspectiveWorker." category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Startup", "Processing"]}
 // Process any pending perspective checkpoints IMMEDIATELY on startup (before first polling delay)
 try {
   _logger.LogDebug("Checking for pending perspective checkpoints on startup...");
@@ -290,7 +290,7 @@ try {
 ### Strategy 1: Cache Once Ready (Recommended)
 
 **PostgreSQL Example**:
-```csharp
+```csharp{title="Strategy 1: Cache Once Ready (Recommended)" description="PostgreSQL Example:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Strategy", "Cache"]}
 private bool? _isReady;
 
 public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
@@ -318,7 +318,7 @@ public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
 
 **Use Case**: Periodic health checks for monitoring dashboards.
 
-```csharp
+```csharp{title="Strategy 2: Time-Based Caching" description="Use Case: Periodic health checks for monitoring dashboards." category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Strategy", "Time-Based"]}
 private bool? _isReady;
 private DateTimeOffset? _lastCheck;
 private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(1);
@@ -346,7 +346,7 @@ public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
 
 **Use Case**: Avoid overwhelming unhealthy database with connection attempts.
 
-```csharp
+```csharp{title="Strategy 3: Circuit Breaker" description="Use Case: Avoid overwhelming unhealthy database with connection attempts." category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Strategy", "Circuit"]}
 private CircuitBreakerState _state = CircuitBreakerState.Closed;
 private int _consecutiveFailures;
 private DateTimeOffset? _circuitOpenedAt;
@@ -409,14 +409,14 @@ enum CircuitBreakerState { Closed, Open, HalfOpen }
 ## Configuration
 
 **Service Registration**:
-```csharp
+```csharp{title="Configuration" description="Service Registration:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Configuration"]}
 // Program.cs
 builder.Services.AddSingleton<IDatabaseReadinessCheck, PostgresDatabaseReadinessCheck>();
 builder.Services.AddHostedService<PerspectiveWorker>();
 ```
 
 **Options Pattern** (optional):
-```csharp
+```csharp{title="Configuration - DatabaseReadinessOptions" description="Options Pattern (optional):" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Configuration"]}
 public class DatabaseReadinessOptions {
   /// <summary>
   /// Required tables that must exist for database to be considered ready.
@@ -443,7 +443,7 @@ public class DatabaseReadinessOptions {
 ```
 
 **Configuration Example**:
-```csharp
+```csharp{title="Configuration (3)" description="Configuration Example:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Configuration"]}
 builder.Services.Configure<DatabaseReadinessOptions>(options => {
   options.RequiredTables = new[] {
     "wh_outbox",
@@ -461,7 +461,7 @@ builder.Services.Configure<DatabaseReadinessOptions>(options => {
 ## Health Checks Integration
 
 **ASP.NET Core Health Checks**:
-```csharp
+```csharp{title="Health Checks Integration" description="Demonstrates health Checks Integration" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Health", "Checks"]}
 public class DatabaseReadinessHealthCheck : IHealthCheck {
   private readonly IDatabaseReadinessCheck _readinessCheck;
 
@@ -491,7 +491,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions {
 ```
 
 **Kubernetes Integration**:
-```yaml
+```yaml{title="Health Checks Integration (2)" description="Kubernetes Integration:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Health", "Checks"]}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -520,7 +520,7 @@ spec:
 ### Metrics
 
 **Track readiness state**:
-```csharp
+```csharp{title="Metrics" description="Track readiness state:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Metrics"]}
 public class ObservableDatabaseReadinessCheck : IDatabaseReadinessCheck {
   private readonly IDatabaseReadinessCheck _inner;
   private readonly IMetrics _metrics;
@@ -546,7 +546,7 @@ public class ObservableDatabaseReadinessCheck : IDatabaseReadinessCheck {
 ### Logging
 
 **Log level guidance**:
-```csharp
+```csharp{title="Logging" description="Log level guidance:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Logging"]}
 // ✅ GOOD: Log levels match severity
 if (!isReady) {
   _logger.LogDebug("Database not ready: {Reason}", reason);  // Startup
@@ -560,7 +560,7 @@ if (consecutiveFailures > 10) {
 ```
 
 **❌ BAD: Logging "not ready" at Error level**:
-```csharp
+```csharp{title="Logging (2)" description="❌ BAD: Logging 'not ready' at Error level:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Logging"]}
 if (!isReady) {
   _logger.LogError("Database not ready");  // ❌ Creates noise during startup
 }
@@ -572,7 +572,7 @@ if (!isReady) {
 
 ### Testing Readiness Check
 
-```csharp
+```csharp{title="Testing Readiness Check" description="Demonstrates testing Readiness Check" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "Readiness"]}
 [Test]
 public async Task IsReadyAsync_WithRunningDatabase_ReturnsTrueAsync() {
   // Arrange
@@ -600,7 +600,7 @@ public async Task IsReadyAsync_WithMissingTables_ReturnsFalseAsync() {
 
 ### Testing Worker Integration
 
-```csharp
+```csharp{title="Testing Worker Integration" description="Demonstrates testing Worker Integration" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "Worker"]}
 [Test]
 public async Task Worker_DatabaseNotReady_SkipsProcessingAsync() {
   // Arrange
@@ -665,7 +665,7 @@ public async Task Worker_DatabaseNotReady_SkipsProcessingAsync() {
 4. Database server not started
 
 **Solution**:
-```bash
+```bash{title="Problem: Worker Keeps Reporting 'Database Not Ready'" description="Demonstrates problem: Worker Keeps Reporting 'Database Not Ready'" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Worker"]}
 # Check if database is accessible
 psql -h localhost -U postgres -d whizbang -c "SELECT 1;"
 
@@ -688,7 +688,7 @@ grep "table '.*' not found" logs.txt
 2. Caching bug (cache `false` as `true`)
 
 **Solution**: Enhance check to verify table existence:
-```csharp
+```csharp{title="Problem: False Positive (Reports Ready When Not)" description="Solution: Enhance check to verify table existence:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "False"]}
 public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
   // Don't just check connection - verify tables too
   var tableExists = await connection.ExecuteScalarAsync<bool>(
@@ -709,7 +709,7 @@ public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
 2. Expensive query (complex schema check)
 
 **Solution**: Implement caching and lightweight checks:
-```csharp
+```csharp{title="Problem: Performance Impact" description="Solution: Implement caching and lightweight checks:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Problem:", "Performance"]}
 private bool? _isReady;
 
 public async Task<bool> IsReadyAsync(CancellationToken ct = default) {

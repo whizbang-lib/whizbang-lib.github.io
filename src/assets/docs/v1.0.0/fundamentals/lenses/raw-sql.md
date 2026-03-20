@@ -16,7 +16,7 @@ For advanced scenarios where LINQ extensions are insufficient, Whizbang provides
 
 Execute parameterized SQL queries with typed results:
 
-```csharp
+```csharp{title="ExecuteSqlAsync" description="Execute parameterized SQL queries with typed results:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "ExecuteSqlAsync"]}
 var category = "electronics";
 var limit = 10;
 
@@ -28,7 +28,7 @@ var products = await lensQuery.ExecuteSqlAsync<Product, ProductSummary>(
 
 The `FormattableString` parameter ensures parameters are properly escaped:
 
-```csharp
+```csharp{title="SQL Injection Protection" description="The FormattableString parameter ensures parameters are properly escaped:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "SQL", "Injection"]}
 // SAFE: Parameters are extracted and passed separately
 var results = await lensQuery.ExecuteSqlAsync<Order, OrderSummary>(
     $"SELECT id, total FROM orders WHERE status = {status}");
@@ -43,7 +43,7 @@ var results = await lensQuery.ExecuteSqlAsync<Order, OrderSummary>(
 
 Get the underlying connection without opening:
 
-```csharp
+```csharp{title="GetConnection (Synchronous)" description="Get the underlying connection without opening:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "GetConnection", "Synchronous"]}
 var connection = lensQuery.GetConnection<Order>();
 
 // Use for synchronous operations
@@ -56,7 +56,7 @@ var version = command.ExecuteScalar();
 
 Get the connection and ensure it's open:
 
-```csharp
+```csharp{title="GetConnectionAsync (Asynchronous)" description="Get the connection and ensure it's open:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "GetConnectionAsync", "Asynchronous"]}
 await using var connection = await lensQuery.GetConnectionAsync<Order>();
 
 await using var command = connection.CreateCommand();
@@ -68,7 +68,7 @@ await command.ExecuteNonQueryAsync();
 
 ### Stored Procedures
 
-```csharp
+```csharp{title="Stored Procedures" description="Demonstrates stored Procedures" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Stored", "Procedures"]}
 await using var connection = await lensQuery.GetConnectionAsync<Product>();
 await using var command = connection.CreateCommand();
 command.CommandText = "CALL update_inventory(@product_id, @quantity)";
@@ -79,7 +79,7 @@ await command.ExecuteNonQueryAsync();
 
 ### Bulk Import (Npgsql Binary COPY)
 
-```csharp
+```csharp{title="Bulk Import (Npgsql Binary COPY)" description="Demonstrates bulk Import (Npgsql Binary COPY)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Bulk", "Import"]}
 await using var connection = await lensQuery.GetConnectionAsync<Product>();
 
 await using var writer = await ((NpgsqlConnection)connection)
@@ -97,7 +97,7 @@ await writer.CompleteAsync();
 
 ### Materialized View Refresh
 
-```csharp
+```csharp{title="Materialized View Refresh" description="Demonstrates materialized View Refresh" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Materialized", "View"]}
 await using var connection = await lensQuery.GetConnectionAsync<Analytics>();
 await using var command = connection.CreateCommand();
 command.CommandText = "REFRESH MATERIALIZED VIEW CONCURRENTLY sales_summary";
@@ -106,7 +106,7 @@ await command.ExecuteNonQueryAsync();
 
 ### Database-Specific Functions
 
-```csharp
+```csharp{title="Database-Specific Functions" description="Demonstrates database-Specific Functions" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Database-Specific", "Functions"]}
 // PostgreSQL full-text search
 var searchResults = await lensQuery.ExecuteSqlAsync<Document, SearchResult>(
     $@"SELECT id, title, ts_rank(search_vector, query) AS rank

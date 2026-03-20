@@ -76,7 +76,7 @@ This is **Part 2** of the ECommerce Tutorial. Complete [Order Management](order-
 
 **ECommerce.Contracts/Events/InventoryReserved.cs**:
 
-```csharp
+```csharp{title="InventoryReserved Event" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "InventoryReserved", "Event"]}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
@@ -94,7 +94,7 @@ public record InventoryReserved(
 
 **ECommerce.Contracts/Events/InventoryInsufficient.cs**:
 
-```csharp
+```csharp{title="InventoryInsufficient Event (Compensation)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "InventoryInsufficient", "Event"]}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
@@ -120,7 +120,7 @@ public record InventoryInsufficient(
 
 **ECommerce.InventoryWorker/Database/Migrations/001_CreateInventoryTable.sql**:
 
-```sql
+```sql{title="Inventory Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Inventory", "Table"]}
 CREATE TABLE IF NOT EXISTS inventory (
   product_id TEXT PRIMARY KEY,
   available_stock INTEGER NOT NULL CHECK (available_stock >= 0),
@@ -144,7 +144,7 @@ ON CONFLICT (product_id) DO NOTHING;
 
 **ECommerce.InventoryWorker/Database/Migrations/002_CreateReservationsTable.sql**:
 
-```sql
+```sql{title="Reservations Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Reservations", "Table"]}
 CREATE TABLE IF NOT EXISTS inventory_reservations (
   reservation_id TEXT PRIMARY KEY,
   order_id TEXT NOT NULL,
@@ -165,7 +165,7 @@ CREATE INDEX idx_reservations_expires_at ON inventory_reservations(expires_at)
 
 **ECommerce.InventoryWorker/Database/Migrations/003_CreateInboxTable.sql**:
 
-```sql
+```sql{title="Inbox Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Inbox", "Table"]}
 -- Whizbang inbox pattern for exactly-once processing
 CREATE TABLE IF NOT EXISTS inbox (
   message_id UUID PRIMARY KEY,
@@ -188,7 +188,7 @@ CREATE INDEX idx_inbox_unprocessed ON inbox(received_at)
 
 **ECommerce.InventoryWorker/Receptors/ReserveInventoryReceptor.cs**:
 
-```csharp
+```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
@@ -395,7 +395,7 @@ public class ConcurrencyException : Exception {
 
 **ECommerce.InventoryWorker/Perspectives/InventorySummaryPerspective.cs**:
 
-```csharp
+```csharp{title="Step 4: Perspective (Read Model)" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Perspective"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
@@ -485,7 +485,7 @@ public class InventorySummaryPerspective :
 
 **ECommerce.InventoryWorker/Database/Migrations/004_CreateInventorySummaryTable.sql**:
 
-```sql
+```sql{title="Step 4: Perspective (Read Model) (2)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Perspective"]}
 CREATE TABLE IF NOT EXISTS inventory_summary (
   product_id TEXT PRIMARY KEY,
   total_reservations BIGINT NOT NULL DEFAULT 0,
@@ -509,7 +509,7 @@ CREATE INDEX idx_inventory_summary_last_reservation ON inventory_summary(last_re
 
 **ECommerce.InventoryWorker/Worker.cs**:
 
-```csharp
+```csharp{title="Step 5: Worker Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Worker"]}
 using Whizbang.Core;
 
 namespace ECommerce.InventoryWorker;
@@ -586,7 +586,7 @@ public class Worker : BackgroundService {
 
 **Program.cs**:
 
-```csharp
+```csharp{title="Step 5: Worker Configuration (2)" description="Demonstrates step 5: Worker Configuration" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Worker"]}
 using Whizbang.Core;
 using Whizbang.Data.Postgres;
 using Whizbang.Transports.AzureServiceBus;
@@ -628,7 +628,7 @@ await host.RunAsync();
 
 **Update ECommerce.AppHost/Program.cs**:
 
-```csharp
+```csharp{title="Step 6: Aspire Integration" description="**Update ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Aspire"]}
 var builder = DistributedApplication.CreateBuilder(args);
 
 // 1. PostgreSQL
@@ -654,7 +654,7 @@ builder.Build().Run();
 
 **appsettings.json**:
 
-```json
+```json{title="Step 6: Aspire Integration (2)" description="**appsettings." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Aspire"]}
 {
   "Logging": {
     "LogLevel": {
@@ -687,14 +687,14 @@ builder.Build().Run();
 
 ### 1. Start Aspire
 
-```bash
+```bash{title="Start Aspire" description="Demonstrates start Aspire" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Start", "Aspire"]}
 cd ECommerce.AppHost
 dotnet run
 ```
 
 ### 2. Create Order (Triggers Inventory Reservation)
 
-```bash
+```bash{title="Create Order (Triggers Inventory Reservation)" description="Demonstrates create Order (Triggers Inventory Reservation)" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{
@@ -723,7 +723,7 @@ Check Aspire Dashboard:
 
 ### 4. Verify Database
 
-```sql
+```sql{title="Verify Database" description="Demonstrates verify Database" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Database"]}
 -- Check inventory (stock should be reduced)
 SELECT * FROM inventory WHERE product_id = 'prod-456';
 
@@ -794,7 +794,7 @@ OrderCreated → InventoryReserved → PaymentFailed → ReleaseInventory (compe
 
 **ECommerce.InventoryWorker/Receptors/ReleaseInventoryReceptor.cs**:
 
-```csharp
+```csharp{title="Compensation (Saga Pattern)" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Compensation", "Saga"]}
 public class ReleaseInventoryReceptor : IReceptor<PaymentFailed, InventoryReleased> {
   public async Task<InventoryReleased> HandleAsync(
     PaymentFailed @event,
@@ -853,7 +853,7 @@ public class ReleaseInventoryReceptor : IReceptor<PaymentFailed, InventoryReleas
 
 ### Unit Test - Sufficient Stock
 
-```csharp
+```csharp{title="Unit Test - Sufficient Stock" description="Demonstrates unit Test - Sufficient Stock" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task ReserveInventory_SufficientStock_ReservesAndPublishesEventAsync() {
   // Arrange
@@ -883,7 +883,7 @@ public async Task ReserveInventory_SufficientStock_ReservesAndPublishesEventAsyn
 
 ### Unit Test - Insufficient Stock
 
-```csharp
+```csharp{title="Unit Test - Insufficient Stock" description="Demonstrates unit Test - Insufficient Stock" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task ReserveInventory_InsufficientStock_ThrowsExceptionAsync() {
   // Arrange

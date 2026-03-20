@@ -28,7 +28,7 @@ Use custom request DTOs when:
 
 ### Step 1: Define the Request DTO
 
-```csharp
+```csharp{title="Step 1: Define the Request DTO" description="Demonstrates step 1: Define the Request DTO" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Mutations", "Step", "Define"]}
 // Request DTO - what the API receives
 public record CreateOrderRequest(
     string CustomerEmail,           // User provides email, not ID
@@ -43,7 +43,7 @@ public record OrderItemInput(
 
 ### Step 2: Define the Command
 
-```csharp
+```csharp{title="Step 2: Define the Command" description="Demonstrates step 2: Define the Command" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Mutations", "Step", "Define"]}
 // Command - what the domain processes
 public record CreateOrderCommand(
     Guid CustomerId,                // Domain uses ID
@@ -59,7 +59,7 @@ public record OrderItem(
 
 ### Step 3: Configure the Endpoint
 
-```csharp
+```csharp{title="Step 3: Configure the Endpoint" description="Demonstrates step 3: Configure the Endpoint" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "Step", "Configure"]}
 [CommandEndpoint<CreateOrderCommand, OrderResult>(
     RestRoute = "/api/orders",
     GraphQLMutation = "createOrder",
@@ -73,7 +73,7 @@ public partial class CreateOrderEndpoint {
 
 You **must** override `MapRequestToCommandAsync` when using `RequestType`. The default implementation throws `NotImplementedException`:
 
-```csharp
+```csharp{title="Step 4: Override MapRequestToCommandAsync" description="You must override MapRequestToCommandAsync when using RequestType." category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Step", "Override"]}
 public partial class CreateOrderEndpoint {
     private readonly ICustomerLookup _customers;
     private readonly IProductLookup _products;
@@ -121,7 +121,7 @@ public partial class CreateOrderEndpoint {
 ## The MapRequestToCommandAsync Method {#execution}
 
 **Signature**:
-```csharp
+```csharp{title="The MapRequestToCommandAsync Method" description="Demonstrates the MapRequestToCommandAsync Method" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "MapRequestToCommandAsync", "Method"]}
 protected virtual ValueTask<TCommand> MapRequestToCommandAsync<TRequest>(
     TRequest request,
     CancellationToken ct) where TRequest : notnull
@@ -165,7 +165,7 @@ Request arrives (CreateOrderRequest)
 
 When fields just need renaming or type conversion:
 
-```csharp
+```csharp{title="Pattern 1: Simple Field Mapping" description="When fields just need renaming or type conversion:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Pattern", "Simple"]}
 // Request
 public record UpdateProductRequest(
     string Id,              // String in API
@@ -199,7 +199,7 @@ protected override ValueTask<UpdateProductCommand> MapRequestToCommandAsync<TReq
 
 When the command needs data from services:
 
-```csharp
+```csharp{title="Pattern 2: Enrichment from Services" description="When the command needs data from services:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Pattern", "Enrichment"]}
 public partial class CreateOrderEndpoint {
     private readonly ICurrentUser _user;
     private readonly IClock _clock;
@@ -224,7 +224,7 @@ public partial class CreateOrderEndpoint {
 
 When mapping requires database queries:
 
-```csharp
+```csharp{title="Pattern 3: Async Lookups" description="When mapping requires database queries:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Pattern", "Async"]}
 public partial class AssignTaskEndpoint {
     private readonly IUserLookup _users;
     private readonly IProjectLookup _projects;
@@ -261,7 +261,7 @@ public partial class AssignTaskEndpoint {
 
 When mapping logic varies based on request content:
 
-```csharp
+```csharp{title="Pattern 4: Conditional Mapping" description="When mapping logic varies based on request content:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Pattern", "Conditional"]}
 public partial class ProcessPaymentEndpoint {
     private readonly IPaymentGatewayResolver _gateways;
 
@@ -294,7 +294,7 @@ public partial class ProcessPaymentEndpoint {
 
 You can perform validation during mapping:
 
-```csharp
+```csharp{title="Validation in Mapping" description="You can perform validation during mapping:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Validation", "Mapping"]}
 protected override async ValueTask<CreateOrderCommand> MapRequestToCommandAsync<TRequest>(
     TRequest request,
     CancellationToken ct) where TRequest : notnull {
@@ -331,7 +331,7 @@ Exceptions thrown from `MapRequestToCommandAsync` are **not** caught by `OnError
 - Mapping errors are typically validation errors (4xx)
 - Command execution errors are typically business errors (handled by `OnErrorAsync`)
 
-```csharp
+```csharp{title="Error Handling" description="- Mapping errors are typically validation errors (4xx) - Command execution errors are typically business errors" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Error", "Handling"]}
 // Mapping errors - return 400 Bad Request
 protected override ValueTask<TCommand> MapRequestToCommandAsync<TRequest>(...) {
     // This exception becomes HTTP 400
@@ -346,7 +346,7 @@ protected override async ValueTask OnErrorAsync(...) {
 
 ## Complete Example
 
-```csharp
+```csharp{title="Complete Example" description="Demonstrates complete Example" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Complete", "Example"]}
 // Request DTO
 public record TransferFundsRequest(
     string FromAccountNumber,

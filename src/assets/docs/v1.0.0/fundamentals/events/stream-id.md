@@ -26,7 +26,7 @@ Every event in Whizbang belongs to a **stream** - a sequence of events for a spe
 
 ## IHasStreamId Interface {#ihasstreamid}
 
-```csharp
+```csharp{title="IHasStreamId Interface" description="Demonstrates iHasStreamId Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "IHasStreamId", "Interface"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -51,7 +51,7 @@ Stream ID auto-generation is controlled per-event-type using the `[GenerateStrea
 
 Apply `[GenerateStreamId]` alongside `[StreamId]` to opt-in to auto-generation:
 
-```csharp
+```csharp{title="`[GenerateStreamId]` Attribute" description="Apply [GenerateStreamId] alongside [StreamId] to opt-in to auto-generation:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "GenerateStreamId", "Attribute"]}
 // Stream-initiating event: ALWAYS gets a new StreamId
 public record OrderCreated : IEvent {
   [StreamId] [GenerateStreamId]
@@ -75,7 +75,7 @@ Events without `[GenerateStreamId]` are validated at pipeline boundaries by `Str
 
 ### Usage Example
 
-```csharp
+```csharp{title="Usage Example" description="Demonstrates usage Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage", "Example"]}
 // Stream-initiating event with auto-generation
 public record OrderCreated : IEvent {
   [StreamId] [GenerateStreamId]
@@ -106,7 +106,7 @@ For full details, see the [`[GenerateStreamId]` attribute reference](../../exten
 3. Sets the `StreamId` property on the message
 4. Message is then processed with the generated ID
 
-```csharp
+```csharp{title="How Auto-Generation Works" description="Demonstrates how Auto-Generation Works" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Auto-Generation", "Works"]}
 // Internal dispatcher logic (simplified)
 if (message is IHasStreamId hasStreamId && hasStreamId.StreamId == Guid.Empty) {
   hasStreamId.StreamId = TrackedGuid.NewMedo();
@@ -117,7 +117,7 @@ if (message is IHasStreamId hasStreamId && hasStreamId.StreamId == Guid.Empty) {
 
 For type-safe stream IDs, use the generated `StreamId` value object:
 
-```csharp
+```csharp{title="StreamId Value Object" description="For type-safe stream IDs, use the generated StreamId value object:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Value"]}
 namespace Whizbang.Core.ValueObjects;
 
 /// <summary>
@@ -130,7 +130,7 @@ public readonly partial struct StreamId;
 
 ### Usage
 
-```csharp
+```csharp{title="Usage" description="Demonstrates usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage"]}
 // Create new StreamId
 var streamId = StreamId.New();
 
@@ -155,7 +155,7 @@ Whizbang supports two ways to identify stream keys:
 
 Use when you want **automatic generation** of stream IDs:
 
-```csharp
+```csharp{title="IHasStreamId Interface" description="Use when you want automatic generation of stream IDs:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IHasStreamId", "Interface"]}
 public record OrderCreated : IEvent, IHasStreamId {
   public Guid StreamId { get; set; }  // Auto-generated if empty
   // ...
@@ -166,7 +166,7 @@ public record OrderCreated : IEvent, IHasStreamId {
 
 Use when stream ID is derived from **business data**:
 
-```csharp
+```csharp{title="[StreamKey] Attribute" description="Use when stream ID is derived from business data:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamKey", "Attribute"]}
 public record OrderCreated : IEvent {
   [StreamKey]
   public required Guid OrderId { get; init; }  // Business ID is stream key
@@ -188,7 +188,7 @@ public record OrderCreated : IEvent {
 
 ### Appending Events
 
-```csharp
+```csharp{title="Appending Events" description="Demonstrates appending Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Appending"]}
 // Event store uses StreamId for organization
 await eventStore.AppendAsync(order.StreamId, new OrderShipped {
   OrderId = order.Id,
@@ -198,7 +198,7 @@ await eventStore.AppendAsync(order.StreamId, new OrderShipped {
 
 ### Reading Events
 
-```csharp
+```csharp{title="Reading Events" description="Demonstrates reading Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Reading"]}
 // Read all events for a stream
 await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromSequence: 0)) {
   var evt = envelope.Payload;
@@ -208,7 +208,7 @@ await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromSequen
 
 ### Polymorphic Reads
 
-```csharp
+```csharp{title="Polymorphic Reads" description="Demonstrates polymorphic Reads" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Polymorphic", "Reads"]}
 // Read multiple event types from a stream
 var eventTypes = new[] { typeof(OrderCreated), typeof(OrderShipped), typeof(OrderDelivered) };
 

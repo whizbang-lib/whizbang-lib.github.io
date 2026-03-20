@@ -21,7 +21,7 @@ Delivery receipts provide tracking information when messages are dispatched. Str
 
 When you dispatch a message via `SendAsync`, you receive a `DeliveryReceipt`:
 
-```csharp
+```csharp{title="Overview" description="When you dispatch a message via SendAsync, you receive a DeliveryReceipt:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Overview"]}
 var receipt = await dispatcher.SendAsync(new CreateOrder {
   CustomerId = customerId,
   Items = items
@@ -36,7 +36,7 @@ var receipt = await dispatcher.SendAsync(new CreateOrder {
 
 ## DeliveryReceipt Structure
 
-```csharp
+```csharp{title="DeliveryReceipt Structure" description="Demonstrates deliveryReceipt Structure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "DeliveryReceipt", "Structure"]}
 public record DeliveryReceipt(
     Guid MessageId,        // Unique message identifier
     Guid CorrelationId,    // For distributed tracing
@@ -49,7 +49,7 @@ public record DeliveryReceipt(
 
 ### IStreamIdExtractor Interface {#istreamidextractor}
 
-```csharp
+```csharp{title="IStreamIdExtractor Interface" description="Demonstrates iStreamIdExtractor Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IStreamIdExtractor", "Interface"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -73,7 +73,7 @@ public interface IStreamIdExtractor {
 
 The default implementation delegates to source-generated extractors:
 
-```csharp
+```csharp{title="StreamIdExtractor Implementation" description="The default implementation delegates to source-generated extractors:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "StreamIdExtractor", "Implementation"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -103,7 +103,7 @@ public sealed class StreamIdExtractor : IStreamIdExtractor {
 
 Registry for multi-assembly stream ID extraction:
 
-```csharp
+```csharp{title="StreamIdExtractorRegistry" description="Registry for multi-assembly stream ID extraction:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "StreamIdExtractorRegistry", "Streamidextractorregistry"]}
 namespace Whizbang.Core.Registry;
 
 /// <summary>
@@ -137,7 +137,7 @@ public static class StreamIdExtractorRegistry {
 
 Mark properties that identify the event stream:
 
-```csharp
+```csharp{title="Using [StreamKey] Attribute" description="Mark properties that identify the event stream:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Using", "StreamKey"]}
 public record OrderCreated : IEvent {
   [StreamKey]
   public required Guid OrderId { get; init; }  // This is the stream ID
@@ -158,7 +158,7 @@ var receipt = await dispatcher.SendAsync(new OrderCreated {
 
 For auto-generated stream IDs:
 
-```csharp
+```csharp{title="Using IHasStreamId Interface" description="For auto-generated stream IDs:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Using", "IHasStreamId"]}
 public record OrderCreated : IEvent, IHasStreamId {
   public Guid StreamId { get; set; }  // Auto-generated if empty
   public required Guid CustomerId { get; init; }
@@ -169,7 +169,7 @@ public record OrderCreated : IEvent, IHasStreamId {
 
 Extractors are **source-generated** at compile time:
 
-```csharp
+```csharp{title="Source-Generated Extractors" description="Extractors are source-generated at compile time:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Source-Generated", "Extractors"]}
 // Generated code (simplified)
 namespace Whizbang.Core.Generated;
 
@@ -195,7 +195,7 @@ Benefits:
 
 When messages are defined in a "contracts" assembly:
 
-```csharp
+```csharp{title="Multi-Assembly Extraction" description="When messages are defined in a 'contracts' assembly:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Multi-Assembly", "Extraction"]}
 // MyApp.Contracts assembly
 namespace MyApp.Contracts;
 
@@ -207,7 +207,7 @@ public record OrderCreated : IEvent {
 
 The generated extractor is registered via `[ModuleInitializer]`:
 
-```csharp
+```csharp{title="Multi-Assembly Extraction (2)" description="The generated extractor is registered via [ModuleInitializer]:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Multi-Assembly", "Extraction"]}
 // Generated in MyApp.Contracts assembly
 [ModuleInitializer]
 public static void RegisterStreamIdExtractors() {
@@ -228,7 +228,7 @@ When the service assembly loads:
 
 ### Tracking Message Delivery
 
-```csharp
+```csharp{title="Tracking Message Delivery" description="Demonstrates tracking Message Delivery" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Tracking", "Message"]}
 [HttpPost("orders")]
 public async Task<ActionResult> CreateOrder(
     [FromBody] CreateOrderRequest request,
@@ -254,7 +254,7 @@ public async Task<ActionResult> CreateOrder(
 
 ### Correlation Tracking
 
-```csharp
+```csharp{title="Correlation Tracking" description="Demonstrates correlation Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Correlation", "Tracking"]}
 // Check status by correlation ID
 [HttpGet("orders/status/{correlationId:guid}")]
 public async Task<ActionResult> GetStatus(Guid correlationId) {
@@ -270,7 +270,7 @@ public async Task<ActionResult> GetStatus(Guid correlationId) {
 
 ### Idempotency
 
-```csharp
+```csharp{title="Idempotency" description="Demonstrates idempotency" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Idempotency"]}
 // Use MessageId for idempotency
 public async Task ProcessWithIdempotencyAsync(DeliveryReceipt receipt) {
   if (await _idempotencyStore.ExistsAsync(receipt.MessageId)) {

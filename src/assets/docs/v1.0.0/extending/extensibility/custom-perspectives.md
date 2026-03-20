@@ -75,7 +75,7 @@ See [Perspective Worker](../../operations/workers/perspective-worker.md) for det
 
 **Use Case**: Automatically track checkpoint after processing each event.
 
-```csharp
+```csharp{title="Pattern 1: Checkpoint-Aware Perspective Base" description="Use Case: Automatically track checkpoint after processing each event." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Checkpoint-Aware"]}
 using Whizbang.Core;
 using Whizbang.Core.Messaging;
 
@@ -152,7 +152,7 @@ public abstract class CheckpointPerspective<TEvent> : IPerspectiveOf<TEvent> whe
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 1: Checkpoint-Aware Perspective Base - OrderCreated" description="Demonstrates pattern 1: Checkpoint-Aware Perspective Base" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Checkpoint-Aware"]}
 public record OrderCreated(
   Guid StreamId,
   Guid EventId,
@@ -198,7 +198,7 @@ public class OrderSummaryPerspective : CheckpointPerspective<OrderCreated> {
 
 **Use Case**: Periodic snapshots instead of full event replay for large streams.
 
-```csharp
+```csharp{title="Pattern 2: Snapshot Perspective Base" description="Use Case: Periodic snapshots instead of full event replay for large streams." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Snapshot"]}
 using Whizbang.Core;
 
 public abstract class SnapshotPerspective<TEvent, TSnapshot> : IPerspectiveOf<TEvent>
@@ -257,7 +257,7 @@ public abstract class SnapshotPerspective<TEvent, TSnapshot> : IPerspectiveOf<TE
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 2: Snapshot Perspective Base - OrderSnapshot" description="Demonstrates pattern 2: Snapshot Perspective Base" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Snapshot"]}
 public record OrderSnapshot {
   public Guid OrderId { get; set; }
   public Guid CustomerId { get; set; }
@@ -301,7 +301,7 @@ public class OrderSnapshotPerspective : SnapshotPerspective<OrderCreated, OrderS
 
 **Use Case**: Rebuild read model from event history for any point in time.
 
-```csharp
+```csharp{title="Pattern 3: Event Replay Perspective" description="Use Case: Rebuild read model from event history for any point in time." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Event"]}
 using Whizbang.Core;
 
 public class TimeravelOrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
@@ -383,7 +383,7 @@ public class TimeravelOrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 3: Event Replay Perspective (2)" description="Demonstrates pattern 3: Event Replay Perspective" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Event"]}
 // Standard event processing
 await perspective.UpdateAsync(orderCreated, ct);
 
@@ -409,7 +409,7 @@ await perspective.RebuildAllAsync(ct);
 
 **Use Case**: Batch multiple events for single database roundtrip.
 
-```csharp
+```csharp{title="Pattern 4: Batching Perspective" description="Use Case: Batch multiple events for single database roundtrip." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Batching"]}
 using Whizbang.Core;
 using System.Threading.Channels;
 
@@ -525,7 +525,7 @@ public class BatchingOrderSummaryPerspective : IPerspectiveOf<OrderCreated>, IAs
 
 **Use Case**: In-memory cache + database for read-heavy scenarios.
 
-```csharp
+```csharp{title="Pattern 5: Cached Perspective" description="Use Case: In-memory cache + database for read-heavy scenarios." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Cached"]}
 using Whizbang.Core;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -629,7 +629,7 @@ public record OrderSummary {
 
 **Use Case**: Custom storage backend (Redis, Elasticsearch, etc.).
 
-```csharp
+```csharp{title="Pattern 6: IPerspectiveStore Implementation" description="Use Case: Custom storage backend (Redis, Elasticsearch, etc." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "IPerspectiveStore"]}
 using Whizbang.Core.Perspectives;
 using StackExchange.Redis;
 using System.Text.Json;
@@ -701,7 +701,7 @@ public class RedisPerspectiveStore<TModel> : IPerspectiveStore<TModel> where TMo
 ```
 
 **Usage**:
-```csharp
+```csharp{title="Pattern 6: IPerspectiveStore Implementation -" description="Demonstrates pattern 6: IPerspectiveStore Implementation" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "IPerspectiveStore"]}
 // Register Redis perspective store
 builder.Services.AddSingleton<IConnectionMultiplexer>(
   ConnectionMultiplexer.Connect("localhost:6379")
@@ -739,7 +739,7 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 
 **Use Case**: Parent-child read models (order → order items).
 
-```csharp
+```csharp{title="Pattern 7: Hierarchical Perspective" description="Use Case: Parent-child read models (order → order items)." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Hierarchical"]}
 using Whizbang.Core;
 
 public class OrderDetailsPerspective :
@@ -780,7 +780,7 @@ public class OrderDetailsPerspective :
 ```
 
 **Schema**:
-```sql
+```sql{title="Pattern 7: Hierarchical Perspective (2)" description="Demonstrates pattern 7: Hierarchical Perspective" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Hierarchical"]}
 CREATE TABLE order_details (
     order_id UUID PRIMARY KEY,
     customer_id UUID NOT NULL,
@@ -803,7 +803,7 @@ CREATE TABLE order_detail_items (
 
 **Use Case**: Transform events before storing (enrich, filter, aggregate).
 
-```csharp
+```csharp{title="Pattern 8: Transformation Perspective" description="Use Case: Transform events before storing (enrich, filter, aggregate)." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Transformation"]}
 using Whizbang.Core;
 
 public class EnrichedOrderPerspective : IPerspectiveOf<OrderCreated> {
@@ -854,7 +854,7 @@ public class EnrichedOrderPerspective : IPerspectiveOf<OrderCreated> {
 
 ### Testing Checkpoint Perspectives
 
-```csharp
+```csharp{title="Testing Checkpoint Perspectives" description="Demonstrates testing Checkpoint Perspectives" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Checkpoint"]}
 public class CheckpointPerspectiveTests {
   [Test]
   public async Task UpdateAsync_UpdatesCheckpointAfterProcessingAsync() {
@@ -888,7 +888,7 @@ public class CheckpointPerspectiveTests {
 
 ### Testing Time-Travel Perspectives
 
-```csharp
+```csharp{title="Testing Time-Travel Perspectives" description="Demonstrates testing Time-Travel Perspectives" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Time-Travel"]}
 public class TimeravelPerspectiveTests {
   [Test]
   public async Task RebuildToEventAsync_ReplaysEventsUpToTargetAsync() {

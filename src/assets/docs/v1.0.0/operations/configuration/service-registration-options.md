@@ -30,14 +30,14 @@ When Whizbang's source generator discovers Perspective and Lens implementations,
 Controls whether concrete types are registered as themselves in addition to their interfaces.
 
 **When enabled (default)**:
-```csharp
+```csharp{title="IncludeSelfRegistration" description="When enabled (default):" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "IncludeSelfRegistration"]}
 // Both registrations are made
 services.AddScoped<IOrderLens, OrderLens>();  // Interface registration
 services.AddScoped<OrderLens>();               // Self-registration
 ```
 
 **When disabled**:
-```csharp
+```csharp{title="IncludeSelfRegistration - registration" description="When disabled:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "IncludeSelfRegistration"]}
 // Only interface registration
 services.AddScoped<IOrderLens, OrderLens>();
 ```

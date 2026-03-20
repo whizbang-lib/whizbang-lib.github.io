@@ -26,7 +26,7 @@ The **Outbox Pattern** ensures reliable event publishing in distributed systems 
 
 ### Naive Approach (BROKEN)
 
-```csharp
+```csharp{title="Naive Approach (BROKEN)" description="Demonstrates naive Approach (BROKEN)" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Naive", "Approach", "BROKEN"]}
 public async Task<OrderCreated> HandleAsync(CreateOrder message, CancellationToken ct) {
     // 1. Update database
     await _db.ExecuteAsync(
@@ -85,7 +85,7 @@ public async Task<OrderCreated> HandleAsync(CreateOrder message, CancellationTok
 
 ### Database Schema
 
-```sql
+```sql{title="Database Schema" description="Demonstrates database Schema" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Database", "Schema"]}
 CREATE TABLE wh_outbox (
     message_id UUID PRIMARY KEY,
     correlation_id UUID NOT NULL,
@@ -130,7 +130,7 @@ CREATE INDEX idx_outbox_correlation ON wh_outbox(correlation_id);
 
 ### IWorkCoordinator Interface
 
-```csharp
+```csharp{title="IWorkCoordinator Interface" description="Demonstrates iWorkCoordinator Interface" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "IWorkCoordinator", "Interface"]}
 public interface IWorkCoordinator {
     Task<WorkBatch> ProcessWorkBatchAsync(
         Guid instanceId,
@@ -183,7 +183,7 @@ public interface IWorkCoordinator {
 
 ### Example: CreateOrderReceptor
 
-```csharp
+```csharp{title="Example: CreateOrderReceptor" description="Demonstrates example: CreateOrderReceptor" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Example:", "CreateOrderReceptor"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IWorkCoordinator _coordinator;
     private readonly IDbConnectionFactory _db;
@@ -279,7 +279,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### WorkCoordinatorPublisher Worker
 
-```csharp
+```csharp{title="WorkCoordinatorPublisher Worker" description="Demonstrates workCoordinatorPublisher Worker" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "WorkCoordinatorPublisher", "Worker"]}
 public class WorkCoordinatorPublisherWorker : BackgroundService {
     private readonly IWorkCoordinator _coordinator;
     private readonly IMessageTransport _transport;
@@ -407,7 +407,7 @@ public class WorkCoordinatorPublisherWorker : BackgroundService {
 
 ### How Leasing Works
 
-```sql
+```sql{title="How Leasing Works" description="Demonstrates how Leasing Works" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Leasing", "Works"]}
 -- Claim messages for this instance
 UPDATE wh_outbox
 SET
@@ -433,7 +433,7 @@ RETURNING *;
 
 ### Configuration
 
-```json
+```json{title="Configuration" description="Demonstrates configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Configuration"]}
 {
   "WorkCoordinatorPublisher": {
     "PollingIntervalMilliseconds": 1000,
@@ -475,7 +475,7 @@ The Outbox Pattern provides **at-least-once delivery**:
 
 ### Retry Strategy
 
-```csharp
+```csharp{title="Retry Strategy" description="Demonstrates retry Strategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Retry", "Strategy"]}
 public async Task ProcessWorkBatchAsync(...) {
     // Failed messages: increment attempt count, update status
     foreach (var failure in outboxFailures) {
@@ -504,7 +504,7 @@ public async Task ProcessWorkBatchAsync(...) {
 - Attempt 5+: Give up (status = Failed)
 
 **Monitoring**:
-```sql
+```sql{title="Retry Strategy (2)" description="Monitoring:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Retry", "Strategy"]}
 -- Find messages with multiple failures
 SELECT message_id, message_type, attempts, last_error, created_at
 FROM wh_outbox
@@ -543,7 +543,7 @@ ORDER BY created_at DESC;
 
 ### Key Metrics
 
-```csharp
+```csharp{title="Key Metrics" description="Demonstrates key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Key", "Metrics"]}
 public class OutboxMetrics {
     public int StoredCount { get; set; }      // Messages waiting to be published
     public int PublishedCount { get; set; }   // Messages successfully published
@@ -589,7 +589,7 @@ public async Task<OutboxMetrics> GetMetricsAsync(CancellationToken ct = default)
 
 ### Unit Tests
 
-```csharp
+```csharp{title="Unit Tests" description="Demonstrates unit Tests" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Unit", "Tests"]}
 [Test]
 public async Task ProcessWorkBatchAsync_NewOutboxMessage_StoresInDatabaseAsync() {
     // Arrange
@@ -642,7 +642,7 @@ public async Task ProcessWorkBatchAsync_NewOutboxMessage_StoresInDatabaseAsync()
 
 ### Integration Tests
 
-```csharp
+```csharp{title="Integration Tests" description="Demonstrates integration Tests" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Integration", "Tests"]}
 [Test]
 public async Task WorkCoordinatorPublisher_PublishesFromOutboxAsync() {
     // Arrange

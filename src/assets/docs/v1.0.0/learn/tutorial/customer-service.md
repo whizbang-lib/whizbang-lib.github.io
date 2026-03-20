@@ -68,7 +68,7 @@ This is **Part 6** of the ECommerce Tutorial. Complete [Shipping Service](shippi
 
 **ECommerce.CustomerService.API/Database/Migrations/001_CreateOrderSummaryTable.sql**:
 
-```sql
+```sql{title="Order Summary View" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Order", "Summary"]}
 CREATE TABLE IF NOT EXISTS order_summary (
   order_id TEXT PRIMARY KEY,
   customer_id TEXT NOT NULL,
@@ -96,7 +96,7 @@ CREATE INDEX idx_order_summary_created_at ON order_summary(created_at DESC);
 
 **ECommerce.CustomerService.API/Database/Migrations/002_CreateCustomerActivityTable.sql**:
 
-```sql
+```sql{title="Customer Activity View" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Customer", "Activity"]}
 CREATE TABLE IF NOT EXISTS customer_activity (
   customer_id TEXT PRIMARY KEY,
   total_orders INTEGER NOT NULL DEFAULT 0,
@@ -119,7 +119,7 @@ CREATE INDEX idx_customer_activity_last_order_at ON customer_activity(last_order
 
 **ECommerce.CustomerService.API/Perspectives/OrderSummaryPerspective.cs**:
 
-```csharp
+```csharp{title="Order Summary Perspective" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Order", "Summary"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
@@ -242,7 +242,7 @@ public class OrderSummaryPerspective :
 
 **ECommerce.CustomerService.API/Perspectives/CustomerActivityPerspective.cs**:
 
-```csharp
+```csharp{title="Customer Activity Perspective" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Customer", "Activity"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
@@ -303,7 +303,7 @@ public class CustomerActivityPerspective : IPerspectiveOf<OrderCreated> {
 
 **ECommerce.CustomerService.API/Models/OrderSummaryDto.cs**:
 
-```csharp
+```csharp{title="DTOs" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "DTOs"]}
 namespace ECommerce.CustomerService.API.Models;
 
 public record OrderSummaryDto(
@@ -342,7 +342,7 @@ public record ShipmentInfoDto(
 
 **ECommerce.CustomerService.API/Models/CustomerActivityDto.cs**:
 
-```csharp
+```csharp{title="DTOs - CustomerActivityDto" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "DTOs"]}
 namespace ECommerce.CustomerService.API.Models;
 
 public record CustomerActivityDto(
@@ -359,7 +359,7 @@ public record CustomerActivityDto(
 
 **ECommerce.CustomerService.API/Controllers/CustomersController.cs**:
 
-```csharp
+```csharp{title="Controllers" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Controllers"]}
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Dapper;
@@ -478,7 +478,7 @@ public record OrderSummaryRow(
 
 **ECommerce.CustomerService.API/Controllers/OrdersController.cs**:
 
-```csharp
+```csharp{title="Controllers - OrdersController" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Controllers"]}
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Dapper;
@@ -550,7 +550,7 @@ public class OrdersController : ControllerBase {
 
 **ECommerce.CustomerService.API/Program.cs**:
 
-```csharp
+```csharp{title="Step 4: Service Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"]}
 using Whizbang.Core;
 using Whizbang.Data.Postgres;
 using Whizbang.Transports.AzureServiceBus;
@@ -602,7 +602,7 @@ app.Run();
 
 ### 1. Create Order (Full Flow)
 
-```bash
+```bash{title="Create Order (Full Flow)" description="Demonstrates create Order (Full Flow)" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{ ... }'
@@ -612,13 +612,13 @@ Wait for events to propagate through system (~10 seconds).
 
 ### 2. Query Customer Activity
 
-```bash
+```bash{title="Query Customer Activity" description="Demonstrates query Customer Activity" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Customer"]}
 curl http://localhost:5001/api/customers/cust-123
 ```
 
 **Response**:
 
-```json
+```json{title="Query Customer Activity (2)" description="Demonstrates query Customer Activity" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Customer"]}
 {
   "customerId": "cust-123",
   "totalOrders": 1,
@@ -631,13 +631,13 @@ curl http://localhost:5001/api/customers/cust-123
 
 ### 3. Query Customer Orders
 
-```bash
+```bash{title="Query Customer Orders" description="Demonstrates query Customer Orders" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Customer"]}
 curl http://localhost:5001/api/customers/cust-123/orders
 ```
 
 **Response**:
 
-```json
+```json{title="Query Customer Orders (2)" description="Demonstrates query Customer Orders" category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Query", "Customer"]}
 [
   {
     "orderId": "order-abc123",
@@ -670,7 +670,7 @@ curl http://localhost:5001/api/customers/cust-123/orders
 
 ### 4. Query Single Order
 
-```bash
+```bash{title="Query Single Order" description="Demonstrates query Single Order" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Single"]}
 curl http://localhost:5001/api/orders/order-abc123
 ```
 
@@ -717,7 +717,7 @@ curl http://localhost:5001/api/orders/order-abc123
 
 ### Event-Driven Read Models
 
-```csharp
+```csharp{title="Event-Driven Read Models" description="Demonstrates event-Driven Read Models" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Event-Driven", "Read"]}
 // Single perspective updates from multiple events
 public class OrderSummaryPerspective :
   IPerspectiveOf<OrderCreated>,       // Sets initial state
@@ -772,7 +772,7 @@ public class OrderSummaryPerspective :
 
 ### Unit Test - Perspective
 
-```csharp
+```csharp{title="Unit Test - Perspective" description="Demonstrates unit Test - Perspective" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task OrderSummaryPerspective_OrderCreated_CreatesOrderSummaryAsync() {
   // Arrange

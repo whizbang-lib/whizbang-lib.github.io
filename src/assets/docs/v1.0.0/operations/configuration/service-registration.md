@@ -81,7 +81,7 @@ See [ServiceRegistrationOptions](service-registration-options) for available opt
 
 All services are registered as **Scoped** to match typical DbContext lifetime:
 
-```csharp
+```csharp{title="Service Lifetime" description="All services are registered as Scoped to match typical DbContext lifetime:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "Service", "Lifetime"]}
 // Generated registration
 services.AddScoped<IOrderLens, OrderLens>();
 ```

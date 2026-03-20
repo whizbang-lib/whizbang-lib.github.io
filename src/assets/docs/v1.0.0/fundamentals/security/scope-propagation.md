@@ -31,7 +31,7 @@ As of v1.0.0, `AsSystem()` and `RunAs()` require explicit tenant strategy select
 
 Use `AsSystem()` for timer/scheduler jobs, background workers, or elevated system operations:
 
-```csharp
+```csharp{title="System Operations" description="Use AsSystem() for timer/scheduler jobs, background workers, or elevated system operations:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "System", "Operations"]}
 // Cross-tenant system operation (use sparingly)
 await _dispatcher.AsSystem().ForAllTenants().SendAsync(new ReindexAllTenantsCommand());
 
@@ -49,7 +49,7 @@ await _dispatcher.AsSystem().KeepTenant().SendAsync(new ProcessPendingItemsComma
 
 Use `RunAs()` when an admin or service performs operations on behalf of another user:
 
-```csharp
+```csharp{title="Impersonation Operations" description="Use RunAs() when an admin or service performs operations on behalf of another user:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Impersonation", "Operations"]}
 // Support agent debugging in user's tenant
 await _dispatcher.RunAs("target-user@example.com").ForTenant("user-tenant").SendAsync(debugCommand);
 
@@ -72,7 +72,7 @@ await _dispatcher.RunAs("admin-system").ForAllTenants().SendAsync(systemCommand)
 
 The `TenantConstants.AllTenants` constant (`"*"`) represents cross-tenant operations:
 
-```csharp
+```csharp{title="TenantConstants" description="The `TenantConstants." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "TenantConstants"]}
 public static class TenantConstants {
   /// <summary>
   /// Represents "all tenants" for cross-tenant system operations.
@@ -91,7 +91,7 @@ public static class TenantConstants {
 
 Each `MessageHop` can carry a `ScopeDelta` containing only the changes from the previous hop:
 
-```csharp
+```csharp{title="Delta Storage on Message Hops" description="Each MessageHop can carry a ScopeDelta containing only the changes from the previous hop:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Delta", "Storage"]}
 public sealed class ScopeDelta {
   /// <summary>Simple value changes (TenantId, UserId, etc.)</summary>
   [JsonPropertyName("v")]
@@ -107,7 +107,7 @@ public sealed class ScopeDelta {
 
 Collections (Roles, Permissions, SecurityPrincipals) support three operations:
 
-```csharp
+```csharp{title="Collection Changes" description="Collections (Roles, Permissions, SecurityPrincipals) support three operations:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Collection", "Changes"]}
 public readonly struct CollectionChanges {
   [JsonPropertyName("s")] public JsonElement? Set { get; init; }    // Replace entire collection
   [JsonPropertyName("a")] public JsonElement? Add { get; init; }    // Add values
@@ -124,7 +124,7 @@ public readonly struct CollectionChanges {
 
 To get the current full scope, call `GetCurrentScope()` on the envelope:
 
-```csharp
+```csharp{title="Rebuilding Full Scope" description="To get the current full scope, call GetCurrentScope() on the envelope:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Rebuilding", "Full"]}
 var envelope = /* received message envelope */;
 var fullScope = envelope.GetCurrentScope();
 
@@ -166,7 +166,7 @@ All scope-related types use abbreviated JSON property names for minimal wire siz
 
 ### Wire Format Examples
 
-```json
+```json{title="Wire Format Examples" description="Demonstrates wire Format Examples" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Wire", "Format"]}
 // Change TenantId only:
 {"v":{"Sc":{"t":"new-tenant"}}}
 
@@ -194,7 +194,7 @@ All scope-related types use abbreviated JSON property names for minimal wire siz
 | `_dispatcher.RunAs(id).WithTenant(tid).SendAsync(cmd)` | `_dispatcher.RunAs(id).ForTenant(tid).SendAsync(cmd)` |
 
 For cross-tenant operations (rare):
-```csharp
+```csharp{title="From Previous API" description="For cross-tenant operations (rare):" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Previous", "API"]}
 _dispatcher.AsSystem().ForAllTenants().SendAsync(cmd)
 _dispatcher.RunAs(identity).ForAllTenants().SendAsync(cmd)
 ```

@@ -4,7 +4,7 @@ Whizbang provides a simple one-line initialization method that ensures your data
 
 ## Quick Start
 
-```csharp
+```csharp{title="Quick Start" description="Demonstrates quick Start" category="Implementation" difficulty="BEGINNER" tags=["Data", "Quick", "Start"]}
 var app = builder.Build();
 
 // Initialize Whizbang database BEFORE starting the app
@@ -28,7 +28,7 @@ await app.RunAsync();
 
 ### Before (Manual Initialization)
 
-```csharp
+```csharp{title="Before (Manual Initialization)" description="Demonstrates before (Manual Initialization)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Before", "Manual", "Initialization"]}
 // Error-prone: Must remember to do this for each DbContext
 // Risk: Code might run in the wrong order or be forgotten
 {
@@ -42,7 +42,7 @@ await app.RunAsync();
 
 ### After (Turnkey Initialization)
 
-```csharp
+```csharp{title="After (Turnkey Initialization)" description="Demonstrates after (Turnkey Initialization)" category="Implementation" difficulty="BEGINNER" tags=["Data", "After", "Turnkey", "Initialization"]}
 // Simple: One line initializes ALL registered DbContexts
 // Safe: Runs before app starts, preventing race conditions
 await app.EnsureWhizbangInitializedAsync();
@@ -63,7 +63,7 @@ This is AOT-compatible with no reflection - all registration happens via source-
 
 If your application has multiple Whizbang DbContexts, they are all initialized automatically:
 
-```csharp
+```csharp{title="Multiple DbContexts" description="If your application has multiple Whizbang DbContexts, they are all initialized automatically:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Multiple", "DbContexts"]}
 // Both DbContexts are initialized with one call
 builder.Services.AddWhizbang()
     .WithEFCore<OrderDbContext>()

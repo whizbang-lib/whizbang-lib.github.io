@@ -141,13 +141,13 @@ Publisher (Order Service)
 
 ### 1. Add NuGet Package
 
-```bash
+```bash{title="Add NuGet Package" description="Demonstrates add NuGet Package" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Add", "NuGet"]}
 dotnet add package Whizbang.Transports.AzureServiceBus
 ```
 
 ### 2. Register Transport (Standard .NET)
 
-```csharp
+```csharp{title="Register Transport (Standard .NET)" description="Demonstrates register Transport (Standard .NET)" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Register", "Transport"]}
 using Whizbang.Transports.AzureServiceBus;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -174,7 +174,7 @@ app.Run();
 
 **.NET Aspire App Host** (`AppHost/Program.cs`):
 
-```csharp
+```csharp{title="Register Transport (.NET Aspire)" description="Demonstrates register Transport (.NET Aspire)" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Register", "Transport"]}
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Add Azure Service Bus resource (or emulator)
@@ -203,7 +203,7 @@ var notificationService = builder.AddProject<Projects.NotificationService>("noti
 
 **Service Project** (`InventoryService/Program.cs`):
 
-```csharp
+```csharp{title="Register Transport (.NET Aspire) (2)" description="Service Project (`InventoryService/Program." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Register", "Transport"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Aspire adds Service Bus connection string via environment variables
@@ -243,7 +243,7 @@ The transport includes built-in connection retry with exponential backoff for ha
 | `RetryIndefinitely` | `true` | Continue retrying after initial attempts |
 
 **Example Configuration**:
-```csharp
+```csharp{title="Connection Retry Options" description="Example Configuration:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Connection", "Retry"]}
 builder.Services.AddAzureServiceBusTransport(
     connectionString: "Endpoint=sb://...",
     configureOptions: options => {
@@ -279,7 +279,7 @@ builder.Services.AddAzureServiceBusTransport(
 - **Infrastructure Outage**: Service survives extended outages and reconnects automatically
 
 **Fail Fast** (disable indefinite retry):
-```csharp
+```csharp{title="Connection Retry Options (2)" description="Fail Fast (disable indefinite retry):" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Connection", "Retry"]}
 options.RetryIndefinitely = false;  // Throws after InitialRetryAttempts
 ```
 
@@ -304,7 +304,7 @@ Subscription names are automatically derived from the **SubscriberName** metadat
 
 **How Subscription Names Are Generated**:
 
-```csharp
+```csharp{title="Subscription Name Derivation" description="How Subscription Names Are Generated:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Subscription", "Name"]}
 // Format: {subscriberName}-{topicName}
 // Example: "bff-service" + "jdx.contracts.chat" → "bff-service-jdx.contracts.chat"
 
@@ -344,7 +344,7 @@ When `AutoProvisionInfrastructure` is enabled (default: `true`), the transport a
 :::
 
 **Enable Auto-Provisioning** (default behavior):
-```csharp
+```csharp{title="Auto-Provisioning Infrastructure" description="Enable Auto-Provisioning (default behavior):" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Auto-Provisioning", "Infrastructure"]}
 // Auto-provisioning is ON by default
 services.AddAzureServiceBusTransport(
   connectionString,
@@ -358,7 +358,7 @@ services.AddAzureServiceBusTransport(
 ```
 
 **Disable Auto-Provisioning** (production):
-```csharp
+```csharp{title="Auto-Provisioning Infrastructure (2)" description="Disable Auto-Provisioning (production):" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Auto-Provisioning", "Infrastructure"]}
 services.AddAzureServiceBusTransport(
   connectionString,
   options => {
@@ -392,7 +392,7 @@ When a service declares domain ownership via `OwnDomains()`, Whizbang can automa
 **Important**: Topic provisioning requires a connection string with **Manage** permissions. In production environments, topics are often pre-provisioned via infrastructure-as-code, so this step is optional.
 
 **Enable Domain Topic Provisioning**:
-```csharp
+```csharp{title="Domain Topic Provisioning" description="Enable Domain Topic Provisioning:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Domain", "Topic"]}
 // Requires separate call with Manage permissions (or use AutoProvisionInfrastructure)
 services.AddAzureServiceBusTransport(connectionString);
 services.AddAzureServiceBusProvisioner(adminConnectionString);
@@ -422,7 +422,7 @@ The provisioner is registered separately from the transport because:
 3. **Security**: Not all environments should have Manage permissions
 
 **Development vs Production**:
-```csharp
+```csharp{title="Domain Topic Provisioning (2)" description="Development vs Production:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Domain", "Topic"]}
 // Development: Auto-provision for convenience
 if (builder.Environment.IsDevelopment()) {
     services.AddAzureServiceBusProvisioner(connectionString);
@@ -465,7 +465,7 @@ The **Admin Client** (`ServiceBusAdministrationClient`) is used for infrastructu
 
 The admin client is automatically registered when auto-provisioning is enabled:
 
-```csharp
+```csharp{title="Admin Client" description="The admin client is automatically registered when auto-provisioning is enabled:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Admin", "Client"]}
 // Auto-provisioning mode (default)
 services.AddAzureServiceBusTransport(
   connectionString,
@@ -477,7 +477,7 @@ services.AddAzureServiceBusTransport(
 
 For domain topic provisioning with separate admin permissions:
 
-```csharp
+```csharp{title="Admin Client (2)" description="For domain topic provisioning with separate admin permissions:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Admin", "Client"]}
 // Separate admin client with Manage permissions
 services.AddAzureServiceBusTransport(connectionString);  // Send/Receive permissions
 services.AddAzureServiceBusProvisioner(adminConnectionString);  // Manage permissions
@@ -496,7 +496,7 @@ The connection string used for the admin client must have **Manage** permissions
 
 **Production Considerations**:
 
-```csharp
+```csharp{title="Admin Client (3)" description="Production Considerations:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Admin", "Client"]}
 // Development: Auto-provision with Manage permissions
 if (builder.Environment.IsDevelopment()) {
     services.AddAzureServiceBusTransport(
@@ -544,7 +544,7 @@ When using wildcard routing patterns (e.g., `ns.#` or `ns1.#,ns2.#`), the transp
 
 **Example with Multiple Patterns**:
 
-```csharp
+```csharp{title="Routing Pattern Filters" description="Example with Multiple Patterns:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Routing", "Pattern"]}
 // Subscribe to messages from multiple namespaces
 var destination = new TransportDestination(
   Address: "shared.inbox",
@@ -573,7 +573,7 @@ var destination = new TransportDestination(
 
 ### Publishing Messages
 
-```csharp
+```csharp{title="Publishing Messages" description="Demonstrates publishing Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Publishing", "Messages"]}
 using Whizbang.Core.Transports;
 
 public class OrderService {
@@ -624,7 +624,7 @@ public class OrderService {
 
 ### Subscribing to Messages
 
-```csharp
+```csharp{title="Subscribing to Messages" description="Demonstrates subscribing to Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Subscribing", "Messages"]}
 using Whizbang.Core.Transports;
 
 public class InventoryServiceWorker : BackgroundService {
@@ -676,7 +676,7 @@ public class InventoryServiceWorker : BackgroundService {
 
 **Without Aspire** - Manual filter provisioning:
 
-```csharp
+```csharp{title="Correlation Filters (Production)" description="Without Aspire - Manual filter provisioning:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Correlation", "Filters"]}
 // Destination metadata triggers automatic filter provisioning
 var destination = new TransportDestination(
   Address: "whizbang-events",
@@ -695,7 +695,7 @@ var subscription = await transport.SubscribeAsync(handler, destination);
 
 **With Aspire** - Automatic filter provisioning:
 
-```csharp
+```csharp{title="Correlation Filters (Production) (2)" description="With Aspire - Automatic filter provisioning:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Correlation", "Filters"]}
 // Aspire handles filter provisioning in AppHost
 var subscription = topic.AddSubscription("inventory-service")
   .WithDestinationFilter("inventory");  // Provisioned by Aspire at startup
@@ -707,7 +707,7 @@ var subscription = topic.AddSubscription("inventory-service")
 
 The Azure Service Bus transport declares these capabilities:
 
-```csharp
+```csharp{title="Transport Capabilities" description="The Azure Service Bus transport declares these capabilities:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Transport", "Capabilities"]}
 TransportCapabilities.PublishSubscribe |   // ✅ Pub/sub via topics
 TransportCapabilities.Reliable |           // ✅ At-least-once delivery
 TransportCapabilities.Ordered              // ✅ FIFO within sessions
@@ -726,7 +726,7 @@ TransportCapabilities.Ordered              // ✅ FIFO within sessions
 
 Azure Service Bus transport uses `JsonContextRegistry` for AOT-compatible serialization:
 
-```csharp
+```csharp{title="JsonContextRegistry Integration" description="Azure Service Bus transport uses JsonContextRegistry for AOT-compatible serialization:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "JsonContextRegistry", "Integration"]}
 // Publishing (serialize envelope)
 var envelopeType = envelope.GetType();
 var typeInfo = _jsonOptions.GetTypeInfo(envelopeType)
@@ -740,7 +740,7 @@ message.ApplicationProperties["EnvelopeType"] = envelopeType.AssemblyQualifiedNa
 
 **Subscribing (deserialize envelope)**:
 
-```csharp
+```csharp{title="JsonContextRegistry Integration (2)" description="Subscribing (deserialize envelope):" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "JsonContextRegistry", "Integration"]}
 // Get envelope type from metadata
 var envelopeTypeName = message.ApplicationProperties["EnvelopeType"] as string;
 var envelopeType = Type.GetType(envelopeTypeName);
@@ -763,7 +763,7 @@ var envelope = JsonSerializer.Deserialize(json, typeInfo) as IMessageEnvelope;
 
 Whizbang detects the emulator automatically:
 
-```csharp
+```csharp{title="Aspire Service Bus Emulator" description="Whizbang detects the emulator automatically:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Aspire", "Service"]}
 // Detection logic
 _isEmulator = connectionString.Contains("localhost") ||
               connectionString.Contains("127.0.0.1");
@@ -780,7 +780,7 @@ _isEmulator = connectionString.Contains("localhost") ||
 
 **Example**:
 
-```csharp
+```csharp{title="Aspire Service Bus Emulator (2)" description="Demonstrates aspire Service Bus Emulator" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Aspire", "Service"]}
 // AppHost
 var serviceBus = builder.AddAzureServiceBus("messaging")
   .RunAsEmulator();  // Starts container with emulator
@@ -796,7 +796,7 @@ await transport.InitializeAsync();  // Skips admin verification for emulator
 
 ### Automatic Retry with Abandon
 
-```csharp
+```csharp{title="Automatic Retry with Abandon" description="Demonstrates automatic Retry with Abandon" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Automatic", "Retry"]}
 try {
   // Invoke handler
   await handler(envelope, ct);
@@ -828,7 +828,7 @@ try {
 
 ### Dead Letter Queue Monitoring
 
-```csharp
+```csharp{title="Dead Letter Queue Monitoring" description="Demonstrates dead Letter Queue Monitoring" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Dead", "Letter"]}
 // Monitor DLQ for failed messages
 var receiver = client.CreateReceiver(
   "whizbang-events",
@@ -854,7 +854,7 @@ await foreach (var message in receiver.ReceiveMessagesAsync()) {
 
 ### Automatic Lock Extension
 
-```csharp
+```csharp{title="Automatic Lock Extension" description="Demonstrates automatic Lock Extension" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Automatic", "Lock"]}
 var processorOptions = new ServiceBusProcessorOptions {
   MaxConcurrentCalls = 20,
   AutoCompleteMessages = false,  // Manual completion after handler succeeds
@@ -878,7 +878,7 @@ var processorOptions = new ServiceBusProcessorOptions {
 
 Azure Service Bus transport emits OpenTelemetry spans:
 
-```csharp
+```csharp{title="OpenTelemetry Integration" description="Azure Service Bus transport emits OpenTelemetry spans:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "OpenTelemetry", "Integration"]}
 using var activity = WhizbangActivitySource.Transport.StartActivity("PublishAsync");
 
 activity?.SetTag("transport.type", "AzureServiceBus");
@@ -896,7 +896,7 @@ activity?.SetTag("message.correlation_id", correlationId);
 
 ### Health Checks
 
-```csharp
+```csharp{title="Health Checks" description="Demonstrates health Checks" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Health", "Checks"]}
 // Register health check
 builder.Services.AddAzureServiceBusHealthChecks();
 
@@ -905,7 +905,7 @@ app.MapHealthChecks("/health");
 ```
 
 **Health Check Logic**:
-```csharp
+```csharp{title="Health Checks (2)" description="Health Check Logic:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Health", "Checks"]}
 public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken ct) {
   if (!_transport.IsInitialized) {
     return HealthCheckResult.Unhealthy("Transport not initialized");
@@ -935,7 +935,7 @@ public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context
 
 ### Concurrency
 
-```csharp
+```csharp{title="Concurrency" description="Demonstrates concurrency" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Concurrency"]}
 options.MaxConcurrentCalls = 20;  // Process 20 messages in parallel
 ```
 
@@ -948,7 +948,7 @@ options.MaxConcurrentCalls = 20;  // Process 20 messages in parallel
 
 Service Bus supports batch sends (not yet implemented):
 
-```csharp
+```csharp{title="Batching (Future)" description="Service Bus supports batch sends (not yet implemented):" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Batching", "Future"]}
 // TODO: Batch sending for higher throughput
 await sender.SendMessagesAsync(batch);  // Send multiple at once
 ```
@@ -991,7 +991,7 @@ await sender.SendMessagesAsync(batch);  // Send multiple at once
 2. Or declare the domain via `OwnDomains()` for startup provisioning
 3. Or pre-create the topic via infrastructure-as-code (Terraform, Bicep)
 
-```csharp
+```csharp{title="Problem: 'MessagingEntityNotFound' on Publish" description="Solution: 1." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Problem:", "'MessagingEntityNotFound'"]}
 // Option 1: Auto-provisioning (default, creates topics on first publish)
 services.AddAzureServiceBusTransport(connectionString, options => {
     options.AutoProvisionInfrastructure = true;  // Default
@@ -1015,7 +1015,7 @@ services.AddWhizbang()
 
 **Solution**:
 
-```csharp
+```csharp{title="Problem: Messages Not Reaching Subscriber" description="Demonstrates problem: Messages Not Reaching Subscriber" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "Messages"]}
 // Verify destination property matches filter
 var destination = new TransportDestination(
   Address: "whizbang-events",
@@ -1038,7 +1038,7 @@ var destination = new TransportDestination(
 
 **Solution**:
 
-```csharp
+```csharp{title="Problem: 'No JsonTypeInfo found for envelope type'" description="Demonstrates problem: 'No JsonTypeInfo found for envelope type'" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Problem:", "'No"]}
 // Ensure envelope type is registered
 // In library: MessageEnvelope<T> should auto-register via MessageJsonContextGenerator
 
@@ -1061,7 +1061,7 @@ if (typeInfo == null) {
 
 **Solution**:
 
-```csharp
+```csharp{title="Problem: Transport Initialization Fails" description="Demonstrates problem: Transport Initialization Fails" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Problem:", "Transport"]}
 try {
   await transport.InitializeAsync();
 } catch (InvalidOperationException ex) {
@@ -1084,7 +1084,7 @@ try {
 
 **Solution**:
 
-```csharp
+```csharp{title="Problem: Messages Dead-Lettered Immediately" description="Demonstrates problem: Messages Dead-Lettered Immediately" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "Messages"]}
 // Check DLQ for failure reason
 var dlqReceiver = client.CreateReceiver(
   "whizbang-events",

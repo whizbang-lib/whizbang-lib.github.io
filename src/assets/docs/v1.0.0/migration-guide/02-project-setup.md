@@ -19,7 +19,7 @@ This guide covers the NuGet package changes and initial configuration needed whe
 
 Remove these packages from your `.csproj` files:
 
-```xml
+```xml{title="Remove Marten/Wolverine Packages" description="Remove these packages from your `." category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Remove", "Marten", "Wolverine"]}
 <!-- REMOVE THESE -->
 <PackageReference Include="Marten" Version="x.x.x" />
 <PackageReference Include="Marten.AspNetCore" Version="x.x.x" />
@@ -35,7 +35,7 @@ Remove these packages from your `.csproj` files:
 
 Add the Whizbang packages from NuGet.org:
 
-```xml
+```xml{title="Add Whizbang Packages" description="Add the Whizbang packages from NuGet." category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Add", "Whizbang", "Packages"]}
 <ItemGroup>
   <!-- Core Whizbang -->
   <PackageReference Include="Whizbang.Core" Version="0.1.0" />
@@ -65,7 +65,7 @@ Add the Whizbang packages from NuGet.org:
 
 **Before (Marten/Wolverine)**:
 
-```csharp
+```csharp{title="Program.cs Migration" description="Before (Marten/Wolverine):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Program.cs", "Migration"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Marten configuration
@@ -89,7 +89,7 @@ var app = builder.Build();
 
 **After (Whizbang)**:
 
-```csharp
+```csharp{title="Program.cs Migration (2)" description="After (Whizbang):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Program.cs", "Migration"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Whizbang configuration
@@ -127,7 +127,7 @@ var app = builder.Build();
 
 **appsettings.Development.json** (for local Aspire development):
 
-```json
+```json{title="AppSettings Configuration" description="**appsettings." category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "AppSettings", "Configuration"]}
 {
   "UseRabbitMQ": true,
   "ConnectionStrings": {
@@ -139,7 +139,7 @@ var app = builder.Build();
 
 **appsettings.Production.json** (for Azure deployment):
 
-```json
+```json{title="AppSettings Configuration (2)" description="**appsettings." category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "AppSettings", "Configuration"]}
 {
   "UseRabbitMQ": false,
   "ConnectionStrings": {
@@ -155,7 +155,7 @@ var app = builder.Build();
 
 Whizbang uses a different database schema than Marten. Initialize it on startup:
 
-```csharp
+```csharp{title="Initialize Whizbang Schema" description="Whizbang uses a different database schema than Marten." category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Initialize", "Whizbang", "Schema"]}
 var app = builder.Build();
 
 // Initialize Whizbang schema
@@ -182,7 +182,7 @@ app.Run();
 
 Update your using statements:
 
-```csharp
+```csharp{title="Namespace Changes" description="Update your using statements:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Namespace", "Changes"]}
 // Remove
 using Marten;
 using Marten.Events;
@@ -202,7 +202,7 @@ using Whizbang.Core.Perspectives;
 
 **Before**:
 
-```csharp
+```csharp{title="Service Registration" description="Demonstrates service Registration" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Service", "Registration"]}
 // Marten session injection
 public class OrderService {
     private readonly IDocumentSession _session;
@@ -215,7 +215,7 @@ public class OrderService {
 
 **After**:
 
-```csharp
+```csharp{title="Service Registration - OrderService" description="Demonstrates service Registration" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Service", "Registration"]}
 // Whizbang direct injection
 public class OrderService {
     private readonly IEventStore _eventStore;

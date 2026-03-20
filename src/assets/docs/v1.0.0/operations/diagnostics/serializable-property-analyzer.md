@@ -48,7 +48,7 @@ Using these types in messages causes runtime serialization failures in AOT-compi
 
 ### Valid (AOT-Compatible)
 
-```csharp
+```csharp{title="Valid (AOT-Compatible)" description="Demonstrates valid (AOT-Compatible)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Valid", "AOT-Compatible"]}
 public record CreateOrderCommand : ICommand {
   public Guid OrderId { get; init; }
   public string CustomerName { get; init; } = string.Empty;
@@ -60,7 +60,7 @@ public record CreateOrderCommand : ICommand {
 
 ### Invalid (Causes Diagnostics)
 
-```csharp
+```csharp{title="Invalid (Causes Diagnostics)" description="Demonstrates invalid (Causes Diagnostics)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Invalid", "Causes"]}
 public record BadCommand : ICommand {
   public object Payload { get; init; }          // WHIZ060
   public dynamic Data { get; init; }            // WHIZ061
@@ -72,7 +72,7 @@ public record BadCommand : ICommand {
 
 The analyzer recursively validates nested types:
 
-```csharp
+```csharp{title="Nested Type Checking" description="The analyzer recursively validates nested types:" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Nested", "Type"]}
 public record OrderCreated : IEvent {
   [StreamKey]
   public Guid OrderId { get; init; }
@@ -89,7 +89,7 @@ public record CustomerInfo {
 
 Types marked with `[WhizbangSerializable]` are also analyzed:
 
-```csharp
+```csharp{title="Whizbang Serializable Attribute" description="Types marked with [WhizbangSerializable] are also analyzed:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Whizbang", "Serializable"]}
 [WhizbangSerializable]
 public record ProductDto {
   public Guid Id { get; init; }
@@ -103,7 +103,7 @@ The analyzer is enabled by default. To suppress specific diagnostics:
 
 ### Per-Property Suppression
 
-```csharp
+```csharp{title="Per-Property Suppression" description="Demonstrates per-Property Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Per-Property", "Suppression"]}
 #pragma warning disable WHIZ060
 public object LegacyData { get; init; }
 #pragma warning restore WHIZ060
@@ -113,7 +113,7 @@ public object LegacyData { get; init; }
 
 In your `.csproj`:
 
-```xml
+```xml{title="Project-Wide Suppression" description="Demonstrates project-Wide Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Wide", "Suppression"]}
 <PropertyGroup>
   <NoWarn>$(NoWarn);WHIZ060;WHIZ061;WHIZ062;WHIZ063</NoWarn>
 </PropertyGroup>

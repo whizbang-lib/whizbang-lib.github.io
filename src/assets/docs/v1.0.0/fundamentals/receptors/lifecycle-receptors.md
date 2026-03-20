@@ -28,7 +28,7 @@ Lifecycle receptors are **regular receptors** that execute at specific stages in
 
 **Lifecycle receptors reuse the existing `IReceptor<TMessage>` interface** - no new interfaces to learn. The `[FireAt]` attribute controls timing:
 
-```csharp
+```csharp{title="Core Concept" description="Lifecycle receptors reuse the existing IReceptor<TMessage> interface - no new interfaces to learn." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Core", "Concept"]}
 // Regular receptor - fires at default stages (see below)
 public class CreateTenantHandler : IReceptor<CreateTenantCommand, TenantCreatedEvent> {
   public ValueTask<TenantCreatedEvent> HandleAsync(CreateTenantCommand cmd, CancellationToken ct) {
@@ -72,7 +72,7 @@ Lifecycle receptors can inject **scoped dependencies** just like regular recepto
 
 ### Example with Scoped Dependencies
 
-```csharp
+```csharp{title="Example with Scoped Dependencies" description="Demonstrates example with Scoped Dependencies" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Example", "Scoped"]}
 [FireAt(LifecycleStage.PostDistributeInline)]
 public class StartupHandler : IReceptor<StartedEvent> {
   private readonly AppDbContext _dbContext;        // Scoped!
@@ -101,7 +101,7 @@ public class StartupHandler : IReceptor<StartedEvent> {
 
 The generated `LifecycleInvoker` uses `IServiceScopeFactory` to create a scope per invocation:
 
-```csharp
+```csharp{title="How It Works" description="The generated LifecycleInvoker uses IServiceScopeFactory to create a scope per invocation:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Works"]}
 // Generated code pattern
 if (messageType == typeof(StartedEvent) && stage == LifecycleStage.PostDistributeInline) {
   using var scope = _scopeFactory.CreateScope();
@@ -125,7 +125,7 @@ if (messageType == typeof(StartedEvent) && stage == LifecycleStage.PostDistribut
 
 Apply `[FireAt]` to receptor classes to control execution timing:
 
-```csharp
+```csharp{title="Basic Usage" description="Apply [FireAt] to receptor classes to control execution timing:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Basic", "Usage"]}
 using Whizbang.Core;
 using Whizbang.Core.Observability;
 
@@ -158,7 +158,7 @@ public class EventMetricsReceptor : IReceptor<ProductCreatedEvent> {
 
 Apply `[FireAt]` multiple times to fire at multiple stages:
 
-```csharp
+```csharp{title="Multiple Stages (Multiple Attributes)" description="Apply [FireAt] multiple times to fire at multiple stages:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Multiple", "Stages"]}
 // Fire at BOTH PreOutbox and PostOutbox stages
 [FireAt(LifecycleStage.PreOutboxInline)]
 [FireAt(LifecycleStage.PostOutboxAsync)]
@@ -204,7 +204,7 @@ Receptors **without `[FireAt]` fire at default stages** based on the dispatch pa
 | **Distributed (Sender)** | `PreOutboxInline` | Before publishing to transport |
 | **Distributed (Receiver)** | `PostInboxInline` | After receiving from transport |
 
-```csharp
+```csharp{title="Default Behavior (No Attribute)" description="| Path | Default Stage | When | |------|--------------|------| | Local | LocalImmediateInline | DispatchAsync(msg" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Default", "Behavior"]}
 // No [FireAt] attribute = fires at default stages
 public class CreateProductReceptor : IReceptor<CreateProductCommand, ProductCreatedEvent> {
   public async ValueTask<ProductCreatedEvent> HandleAsync(
@@ -228,7 +228,7 @@ public class CreateProductReceptor : IReceptor<CreateProductCommand, ProductCrea
 - **Default receptors "just work"** regardless of how message is dispatched
 - **Adding `[FireAt]` opts OUT of defaults** - you control exactly when receptor fires:
 
-```csharp
+```csharp{title="Default Behavior (No Attribute) - LocalOnlyHandler" description="**Why these defaults?" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Default", "Behavior"]}
 // ONLY fires locally, never on distributed path
 [FireAt(LifecycleStage.LocalImmediateInline)]
 public class LocalOnlyHandler : IReceptor<SomeCommand> { }
@@ -251,7 +251,7 @@ Receptors can optionally inject `ILifecycleContext` to access metadata about the
 
 ### Interface Definition
 
-```csharp
+```csharp{title="Interface Definition" description="Demonstrates interface Definition" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Interface", "Definition"]}
 public interface ILifecycleContext {
   /// <summary>The lifecycle stage currently executing</summary>
   LifecycleStage CurrentStage { get; }
@@ -272,7 +272,7 @@ public interface ILifecycleContext {
 
 ### Constructor Injection
 
-```csharp
+```csharp{title="Constructor Injection" description="Demonstrates constructor Injection" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Constructor", "Injection"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class PerspectiveProgressReceptor : IReceptor<IEvent> {
   private readonly ILogger _logger;
@@ -302,7 +302,7 @@ public class PerspectiveProgressReceptor : IReceptor<IEvent> {
 
 Use context to filter invocations:
 
-```csharp
+```csharp{title="Filtering by Context" description="Use context to filter invocations:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Filtering", "Context"]}
 [FireAt(LifecycleStage.PostPerspectiveInline)]
 public class SpecificPerspectiveReceptor : IReceptor<ProductCreatedEvent> {
   private readonly ILifecycleContext _context;
@@ -350,7 +350,7 @@ When a lifecycle receptor fires at **deferred stages** like `PostPerspectiveAsyn
 - Any service that depends on `IHttpContextAccessor` will return `null`
 
 **Example of what DOESN'T work**:
-```csharp
+```csharp{title="The Problem: HTTP Context Unavailable" description="Example of what DOESN'T work:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Problem:", "HTTP"]}
 // ❌ WRONG - This fails at PostPerspectiveAsync!
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class MyHandler(IHttpContextAccessor httpContextAccessor) : IReceptor<MyEvent> {
@@ -382,7 +382,7 @@ Choose the method that fits your needs (simplest to most powerful):
 
 For simple user/tenant access, inject `IMessageContext`:
 
-```csharp
+```csharp{title="Method 1: IMessageContext (Simplest)" description="For simple user/tenant access, inject IMessageContext:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Method", "IMessageContext"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class TenantAwareHandler : IReceptor<ProductCreatedEvent> {
   private readonly IMessageContext _messageContext;
@@ -425,7 +425,7 @@ public class TenantAwareHandler : IReceptor<ProductCreatedEvent> {
 
 For access to the complete security scope including roles, permissions, and custom properties:
 
-```csharp
+```csharp{title="Method 2: IScopeContextAccessor (Full Scope Access)" description="For access to the complete security scope including roles, permissions, and custom properties:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Method", "IScopeContextAccessor"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class PermissionAwareHandler : IReceptor<SensitiveOperationEvent> {
   private readonly IScopeContextAccessor _scopeContextAccessor;
@@ -479,7 +479,7 @@ public class PermissionAwareHandler : IReceptor<SensitiveOperationEvent> {
 
 For complex scenarios where you need to **initialize custom services** when security context is established (before receptors run):
 
-```csharp
+```csharp{title="Method 3: ISecurityContextCallback (Setup-Time Hook)" description="For complex scenarios where you need to initialize custom services when security context is established (before" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Method", "ISecurityContextCallback"]}
 /// <summary>
 /// Callback that fires when Whizbang establishes security context.
 /// Use this to populate custom services with tenant/user information.
@@ -544,7 +544,7 @@ Security context is established **before** each lifecycle receptor invocation fo
 
 ### Example: Tenant-Aware Audit Trail
 
-```csharp
+```csharp{title="Example: Tenant-Aware Audit Trail" description="Demonstrates example: Tenant-Aware Audit Trail" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Example:", "Tenant-Aware"]}
 [FireAt(LifecycleStage.PostPerspectiveInline)]
 public class TenantAuditReceptor : IReceptor<OrderPlacedEvent> {
   private readonly IMessageContext _messageContext;
@@ -597,7 +597,7 @@ Source generators discover lifecycle receptors and wire them automatically:
 ### Example Generated Code
 
 **Your Receptor**:
-```csharp
+```csharp{title="Example Generated Code" description="Your Receptor:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Example", "Generated"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class ProductMetricsReceptor : IReceptor<ProductCreatedEvent> {
   public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
@@ -608,7 +608,7 @@ public class ProductMetricsReceptor : IReceptor<ProductCreatedEvent> {
 ```
 
 **Generated Invocation** (simplified):
-```csharp
+```csharp{title="Example Generated Code (2)" description="Generated Invocation (simplified):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Example", "Generated"]}
 // LifecycleInvoker.g.cs
 public async ValueTask InvokeAtStageAsync(
     object message,
@@ -647,7 +647,7 @@ public async ValueTask InvokeAtStageAsync(
 
 For test scenarios, use runtime registration to dynamically add/remove receptors:
 
-```csharp
+```csharp{title="The `ILifecycleReceptorRegistry`" description="For test scenarios, use runtime registration to dynamically add/remove receptors:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "ILifecycleReceptorRegistry"]}
 public interface ILifecycleReceptorRegistry {
   /// <summary>Register a receptor to fire at a specific lifecycle stage</summary>
   void Register<TMessage>(object receptor, LifecycleStage stage)
@@ -670,7 +670,7 @@ public interface ILifecycleReceptorRegistry {
 
 Use runtime registration for test synchronization:
 
-```csharp
+```csharp{title="Test Pattern" description="Use runtime registration for test synchronization:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Test", "Pattern"]}
 [Test]
 public async Task CreateProduct_UpdatesPerspective_DeterministicallyAsync() {
   // Arrange
@@ -718,7 +718,7 @@ See [Lifecycle Synchronization](../../operations/testing/lifecycle-synchronizati
 
 The runtime registry uses **pattern matching** instead of reflection:
 
-```csharp
+```csharp{title="Pattern Matching (Not Reflection)" description="The runtime registry uses pattern matching instead of reflection:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Pattern", "Matching"]}
 // In DefaultLifecycleReceptorRegistry.cs
 private static Func<object, CancellationToken, ValueTask> _createHandler<TMessage>(object receptor)
     where TMessage : IMessage {
@@ -744,7 +744,7 @@ private static Func<object, CancellationToken, ValueTask> _createHandler<TMessag
 
 Registry stores **delegates** alongside receptors:
 
-```csharp
+```csharp{title="Delegate-Based Invocation" description="Registry stores delegates alongside receptors:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Delegate-Based", "Invocation"]}
 // Internal storage: (Receptor instance, Handler delegate)
 ConcurrentDictionary<
   (Type MessageType, LifecycleStage Stage),
@@ -792,7 +792,7 @@ Stage isolation guarantees added in v1.0.0
 
 A common mistake is expecting a `PostPerspectiveAsync` receptor to fire at `PrePerspectiveAsync`. This would cause the receptor to execute **before** the perspective processes the event - exactly the opposite of what you want.
 
-```csharp
+```csharp{title="Why This Matters" description="A common mistake is expecting a PostPerspectiveAsync receptor to fire at PrePerspectiveAsync." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Why", "This"]}
 // ❌ WRONG EXPECTATION
 // This receptor fires ONLY at PostPerspectiveAsync
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
@@ -827,7 +827,7 @@ PrePerspectiveAsync → PrePerspectiveInline → ApplyAsync() → FlushAsync()
 
 The source generator produces explicit stage checks:
 
-```csharp
+```csharp{title="Generated Code Verification" description="The source generator produces explicit stage checks:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Generated", "Code"]}
 // Generated in LifecycleInvoker.g.cs
 if (messageType == typeof(ProductCreatedEvent)
     && stage == LifecycleStage.PostPerspectiveAsync) {  // ← EXPLICIT stage check
@@ -847,7 +847,7 @@ If either doesn't match, the receptor is skipped.
 
 The runtime registry also enforces stage isolation:
 
-```csharp
+```csharp{title="Runtime Registry Isolation" description="The runtime registry also enforces stage isolation:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Runtime", "Registry"]}
 // Registration
 registry.Register<ProductCreatedEvent>(receptor, LifecycleStage.PostPerspectiveAsync);
 
@@ -866,7 +866,7 @@ var preHandlers = registry.GetHandlers(
 
 Use the test patterns below to verify your receptors fire at the correct stage:
 
-```csharp
+```csharp{title="Testing Stage Isolation" description="Use the test patterns below to verify your receptors fire at the correct stage:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Testing", "Stage"]}
 [Test]
 public async Task PostPerspectiveAsync_OnlyFiresAfterPerspective_VerifyDataFreshAsync() {
   // Arrange
@@ -916,7 +916,7 @@ internal sealed class DataVerifyingReceptor : IReceptor<ProductCreatedEvent> {
 
 Track metrics after specific stages:
 
-```csharp
+```csharp{title="Pattern 1: Metrics Collection" description="Track metrics after specific stages:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Pattern", "Metrics"]}
 [FireAt(LifecycleStage.PostOutboxAsync)]
 public class OutboxMetricsReceptor : IReceptor<IEvent> {
   private readonly IMetricsCollector _metrics;
@@ -937,7 +937,7 @@ public class OutboxMetricsReceptor : IReceptor<IEvent> {
 
 Log message flow through pipeline:
 
-```csharp
+```csharp{title="Pattern 2: Audit Logging" description="Log message flow through pipeline:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Pattern", "Audit"]}
 [FireAt(LifecycleStage.PreInboxInline)]
 [FireAt(LifecycleStage.PostInboxAsync)]
 public class InboxAuditReceptor : IReceptor<ICommand> {
@@ -964,7 +964,7 @@ public class InboxAuditReceptor : IReceptor<ICommand> {
 
 Wait for perspective processing to complete:
 
-```csharp
+```csharp{title="Pattern 3: Test Synchronization" description="Wait for perspective processing to complete:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Pattern", "Test"]}
 [FireAt(LifecycleStage.PostPerspectiveInline)]  // Blocking stage
 public class PerspectiveCompletionReceptor<TEvent> : IReceptor<TEvent>
   where TEvent : IEvent {
@@ -1004,7 +1004,7 @@ See [Lifecycle Synchronization](../../operations/testing/lifecycle-synchronizati
 
 Build custom search indices after perspective updates:
 
-```csharp
+```csharp{title="Pattern 4: Custom Indexing" description="Build custom search indices after perspective updates:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Pattern", "Custom"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class SearchIndexReceptor : IReceptor<ProductCreatedEvent> {
   private readonly ISearchIndexer _indexer;
@@ -1024,7 +1024,7 @@ public class SearchIndexReceptor : IReceptor<ProductCreatedEvent> {
 
 Invalidate caches when perspectives update:
 
-```csharp
+```csharp{title="Pattern 5: Cache Invalidation" description="Invalidate caches when perspectives update:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Pattern", "Cache"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class CacheInvalidationReceptor : IReceptor<IEvent> {
   private readonly IDistributedCache _cache;
@@ -1070,7 +1070,7 @@ Lifecycle receptors execute **synchronously in the message processing path**:
 ### Inline vs Async Stages
 
 **Inline stages block next step** - keep them extremely fast:
-```csharp
+```csharp{title="Inline vs Async Stages" description="Inline stages block next step - keep them extremely fast:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Inline", "Async"]}
 [FireAt(LifecycleStage.PostPerspectiveInline)]  // BLOCKING!
 public class FastCompletionReceptor : IReceptor<IEvent> {
   public ValueTask HandleAsync(IEvent evt, CancellationToken ct) {
@@ -1085,7 +1085,7 @@ public class FastCompletionReceptor : IReceptor<IEvent> {
 ```
 
 **Async stages run in parallel** - more flexible but still keep fast:
-```csharp
+```csharp{title="Inline vs Async Stages - AsyncMetricsReceptor" description="Async stages run in parallel - more flexible but still keep fast:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Inline", "Async"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]  // Non-blocking
 public class AsyncMetricsReceptor : IReceptor<IEvent> {
   public async ValueTask HandleAsync(IEvent evt, CancellationToken ct) {
@@ -1102,7 +1102,7 @@ public class AsyncMetricsReceptor : IReceptor<IEvent> {
 
 **Lifecycle receptor errors are logged but don't fail message processing**:
 
-```csharp
+```csharp{title="Exception Handling" description="Lifecycle receptor errors are logged but don't fail message processing:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Exception", "Handling"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class MetricsReceptor : IReceptor<IEvent> {
   public ValueTask HandleAsync(IEvent evt, CancellationToken ct) {
@@ -1118,7 +1118,7 @@ public class MetricsReceptor : IReceptor<IEvent> {
 ```
 
 **For critical operations**, use Inline stages to detect failures:
-```csharp
+```csharp{title="Exception Handling - CriticalReceptor" description="For critical operations, use Inline stages to detect failures:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Exception", "Handling"]}
 [FireAt(LifecycleStage.PostPerspectiveInline)]  // Blocking - errors propagate
 public class CriticalReceptor : IReceptor<IEvent> {
   public ValueTask HandleAsync(IEvent evt, CancellationToken ct) {
@@ -1155,7 +1155,7 @@ public class CriticalReceptor : IReceptor<IEvent> {
 ### Production (Compile-Time)
 
 **Step 1**: Apply `[FireAt]` to receptors:
-```csharp
+```csharp{title="Production (Compile-Time)" description="Step 1: Apply [FireAt] to receptors:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Production", "Compile-Time"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class MyMetricsReceptor : IReceptor<ProductCreatedEvent> {
   public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
@@ -1166,7 +1166,7 @@ public class MyMetricsReceptor : IReceptor<ProductCreatedEvent> {
 ```
 
 **Step 2**: Register Whizbang services:
-```csharp
+```csharp{title="Production (Compile-Time) (2)" description="Step 2: Register Whizbang services:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Production", "Compile-Time"]}
 // In Program.cs or Startup.cs
 services
   .AddWhizbang()
@@ -1179,12 +1179,12 @@ services
 ### Testing (Runtime)
 
 **Step 1**: Get registry from DI:
-```csharp
+```csharp{title="Testing (Runtime)" description="Step 1: Get registry from DI:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Testing", "Runtime"]}
 var registry = _host.Services.GetRequiredService<ILifecycleReceptorRegistry>();
 ```
 
 **Step 2**: Register receptor:
-```csharp
+```csharp{title="Testing (Runtime) (2)" description="Step 2: Register receptor:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Testing", "Runtime"]}
 var completionSource = new TaskCompletionSource<bool>();
 var receptor = new PerspectiveCompletionReceptor<ProductCreatedEvent>(completionSource);
 
@@ -1192,7 +1192,7 @@ registry.Register<ProductCreatedEvent>(receptor, LifecycleStage.PostPerspectiveI
 ```
 
 **Step 3**: Use and cleanup:
-```csharp
+```csharp{title="Testing (Runtime) (3)" description="Step 3: Use and cleanup:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Testing", "Runtime"]}
 try {
   await _dispatcher.SendAsync(command);
   await completionSource.Task.WaitAsync(TimeSpan.FromSeconds(15));
@@ -1202,7 +1202,7 @@ try {
 ```
 
 **Helper method available**:
-```csharp
+```csharp{title="Testing (Runtime) (4)" description="Helper method available:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Testing", "Runtime"]}
 // Extension method wraps registration/unregistration
 await _host.WaitForPerspectiveCompletionAsync<ProductCreatedEvent>(
   perspectiveName: "ProductCatalog",
@@ -1226,7 +1226,7 @@ The `DispatcherEventCascader` implementation:
 2. **Applies routing** based on wrapper type and `[DefaultRouting]` attributes
 3. **Dispatches** each message according to its routing configuration
 
-```csharp
+```csharp{title="How It Works - CreateOrderHandler" description="Demonstrates how It Works" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Works"]}
 // Receptor returns tuple with event - event is auto-cascaded
 public class CreateOrderHandler : IReceptor<CreateOrderCommand, (OrderResult, OrderCreatedEvent)> {
   public ValueTask<(OrderResult, OrderCreatedEvent)> HandleAsync(
@@ -1263,7 +1263,7 @@ Cascaded messages inherit security context from the source envelope:
 
 Control cascade routing explicitly:
 
-```csharp
+```csharp{title="Route Wrappers" description="Control cascade routing explicitly:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Route", "Wrappers"]}
 // Cascade to local receptors only
 return (result, Route.Local(@event));
 

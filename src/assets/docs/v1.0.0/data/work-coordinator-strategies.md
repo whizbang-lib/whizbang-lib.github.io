@@ -15,7 +15,7 @@ The work coordinator uses a **strategy pattern** to control when and how message
 
 All strategies are configured via `WorkCoordinatorOptions`:
 
-```csharp
+```csharp{title="Configuration" description="All strategies are configured via WorkCoordinatorOptions:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Configuration"]}
 services.Configure<WorkCoordinatorOptions>(options => {
   options.Strategy = WorkCoordinatorStrategy.Batch;
   options.BatchSize = 100;               // Batch: flush at this count
@@ -47,7 +47,7 @@ services.Configure<WorkCoordinatorOptions>(options => {
 
 Flushes on every `FlushAsync` call. No batching, no timers.
 
-```csharp
+```csharp{title="Immediate" description="Flushes on every FlushAsync call." category="Implementation" difficulty="BEGINNER" tags=["Data", "Immediate"]}
 services.Configure<WorkCoordinatorOptions>(o => {
   o.Strategy = WorkCoordinatorStrategy.Immediate;
 });
@@ -61,7 +61,7 @@ services.Configure<WorkCoordinatorOptions>(o => {
 
 Batches operations within a DI scope (e.g., HTTP request). Flushes on explicit `FlushAsync` or scope disposal.
 
-```csharp
+```csharp{title="Scoped (Default)" description="Batches operations within a DI scope (e." category="Implementation" difficulty="BEGINNER" tags=["Data", "Scoped", "Default"]}
 // Default - no configuration needed
 services.Configure<WorkCoordinatorOptions>(o => {
   o.Strategy = WorkCoordinatorStrategy.Scoped;
@@ -76,7 +76,7 @@ services.Configure<WorkCoordinatorOptions>(o => {
 
 Batches operations and flushes on a periodic timer. Registered as a singleton (timer persists across scopes).
 
-```csharp
+```csharp{title="Interval" description="Batches operations and flushes on a periodic timer." category="Implementation" difficulty="BEGINNER" tags=["Data", "Interval"]}
 services.Configure<WorkCoordinatorOptions>(o => {
   o.Strategy = WorkCoordinatorStrategy.Interval;
   o.IntervalMilliseconds = 100; // Flush every 100ms
@@ -94,7 +94,7 @@ Combines **count-based** and **debounce-based** triggers. Flushes when either th
 1. **Batch size reached**: When total queued messages (outbox + inbox) reaches `BatchSize`, flush fires immediately.
 2. **Debounce timer expires**: When no new messages arrive for `IntervalMilliseconds`, flush fires for the partial batch.
 
-```csharp
+```csharp{title="Batch" description="Demonstrates batch" category="Implementation" difficulty="BEGINNER" tags=["Data", "Batch"]}
 services.Configure<WorkCoordinatorOptions>(o => {
   o.Strategy = WorkCoordinatorStrategy.Batch;
   o.BatchSize = 100;             // Flush at 100 messages
@@ -123,6 +123,8 @@ services.Configure<WorkCoordinatorOptions>(o => {
 
 The source generator automatically registers strategies based on `WorkCoordinatorOptions.Strategy`. Timer-based strategies (Interval, Batch) are registered as **singletons** to preserve their background timers across scopes. Per-scope strategies (Scoped, Immediate) are created fresh per scope.
 
+Singleton strategies (Interval, Batch) require `IWorkChannelWriter` for outbox publishing. When `process_work_batch` returns outbox work, the strategy writes it to the channel so the `WorkCoordinatorPublisherWorker` can pick it up and publish to the transport. The generated registration template automatically resolves all dependencies — including `IWorkChannelWriter`, `WorkCoordinatorMetrics`, and `LifecycleMetrics` — from the DI container.
+
 The `WorkCoordinatorStrategyFactory` provides AOT-safe strategy creation using direct `new` calls (no reflection).
 
 ## FlushMode
@@ -136,7 +138,7 @@ All strategies support `FlushMode` on `FlushAsync`:
 
 For scenarios where you need explicit control over when messages are persisted — independent of the strategy's automatic triggers — inject `IWorkFlusher`:
 
-```csharp
+```csharp{title="Manual Flushing" description="For scenarios where you need explicit control over when messages are persisted — independent of the strategy's" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Manual", "Flushing"]}
 public class ImportService(IWorkFlusher flusher) {
   public async Task ImportBatchAsync(IEnumerable<Order> orders, CancellationToken ct) {
     foreach (var order in orders) {

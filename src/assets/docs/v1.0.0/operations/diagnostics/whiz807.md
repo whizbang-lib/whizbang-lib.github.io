@@ -38,7 +38,7 @@ When you see this diagnostic:
 
 ## Example: Physical Field Discovery
 
-```csharp
+```csharp{title="Example: Physical Field Discovery" description="Demonstrates example: Physical Field Discovery" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Physical"]}
 public record ProductDto {
   [StreamKey]
   public Guid ProductId { get; init; }
@@ -72,7 +72,7 @@ The diagnostic reports the storage mode:
 
 For the example above, the generator produces:
 
-```sql
+```sql{title="Generated Schema" description="For the example above, the generator produces:" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Generated", "Schema"]}
 CREATE TABLE product_perspectives (
   id UUID PRIMARY KEY,
   stream_key UUID NOT NULL,
@@ -101,13 +101,13 @@ Physical fields enable:
 
 The diagnostic appears in verbose build output:
 
-```bash
+```bash{title="View in Build Output" description="The diagnostic appears in verbose build output:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "View", "Build"]}
 dotnet build -v detailed
 ```
 
 ### Suppress (if too noisy)
 
-```xml
+```xml{title="Suppress (if too noisy)" description="Demonstrates suppress (if too noisy)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppress", "Too"]}
 <PropertyGroup>
   <NoWarn>$(NoWarn);WHIZ807</NoWarn>
 </PropertyGroup>
@@ -115,7 +115,7 @@ dotnet build -v detailed
 
 Or per-file:
 
-```csharp
+```csharp{title="Suppress (if too noisy) (2)" description="Or per-file:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppress", "Too"]}
 #pragma warning disable WHIZ807
 ```
 

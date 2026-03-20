@@ -30,7 +30,7 @@ This guide covers converting Wolverine message handlers to Whizbang Receptors.
 
 **Wolverine**:
 
-```csharp
+```csharp{title="Synchronous Handler" description="Demonstrates synchronous Handler" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Synchronous", "Handler"]}
 [WolverineHandler]
 public class OrderHandler {
     public OrderCreated Handle(CreateOrder command) {
@@ -42,7 +42,7 @@ public class OrderHandler {
 
 **Whizbang**:
 
-```csharp
+```csharp{title="Synchronous Handler - CreateOrderReceptor" description="Demonstrates synchronous Handler" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Synchronous", "Handler"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public ValueTask<OrderCreated> HandleAsync(
         CreateOrder message,
@@ -57,7 +57,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Wolverine**:
 
-```csharp
+```csharp{title="Asynchronous Handler" description="Demonstrates asynchronous Handler" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Asynchronous", "Handler"]}
 [WolverineHandler]
 public class OrderHandler {
     private readonly IOrderRepository _repository;
@@ -71,7 +71,7 @@ public class OrderHandler {
 
 **Whizbang**:
 
-```csharp
+```csharp{title="Asynchronous Handler - CreateOrderReceptor" description="Demonstrates asynchronous Handler" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Asynchronous", "Handler"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IOrderRepository _repository;
 
@@ -92,7 +92,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Wolverine**:
 
-```csharp
+```csharp{title="Void Handler (Side Effects Only)" description="Demonstrates void Handler (Side Effects Only)" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Void", "Handler", "Side"]}
 [WolverineHandler]
 public class NotificationHandler {
     public async Task Handle(SendEmail command, IEmailService emailService) {
@@ -103,7 +103,7 @@ public class NotificationHandler {
 
 **Whizbang**:
 
-```csharp
+```csharp{title="Void Handler (Side Effects Only) - SendEmailReceptor" description="Demonstrates void Handler (Side Effects Only)" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Void", "Handler", "Side"]}
 public class SendEmailReceptor : IReceptor<SendEmail> {
     private readonly IEmailService _emailService;
 
@@ -129,7 +129,7 @@ public class SendEmailReceptor : IReceptor<SendEmail> {
 
 **Wolverine**:
 
-```csharp
+```csharp{title="Cascading Messages (Tuple Returns)" description="Demonstrates cascading Messages (Tuple Returns)" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Cascading", "Messages", "Tuple"]}
 [WolverineHandler]
 public class OrderHandler {
     public (OrderCreated, SendOrderConfirmation) Handle(CreateOrder command) {
@@ -144,7 +144,7 @@ public class OrderHandler {
 
 **Whizbang** (use dispatcher for cascading):
 
-```csharp
+```csharp{title="Cascading Messages (Tuple Returns) - CreateOrderReceptor" description="Whizbang (use dispatcher for cascading):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Cascading", "Messages", "Tuple"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IDispatcher _dispatcher;
 
@@ -173,7 +173,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Wolverine** (with Marten):
 
-```csharp
+```csharp{title="Handler with Event Store" description="Wolverine (with Marten):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Handler", "Event", "Store"]}
 [WolverineHandler]
 public class OrderHandler {
     public async Task<OrderCreated> HandleAsync(
@@ -190,7 +190,7 @@ public class OrderHandler {
 
 **Whizbang**:
 
-```csharp
+```csharp{title="Handler with Event Store - CreateOrderReceptor" description="Demonstrates handler with Event Store" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Handler", "Event", "Store"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IEventStore _eventStore;
 
@@ -220,7 +220,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Wolverine** (one class, multiple handlers):
 
-```csharp
+```csharp{title="Multiple Handlers → Multiple Receptors" description="Wolverine (one class, multiple handlers):" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Multiple", "Handlers"]}
 [WolverineHandler]
 public class OrderHandlers {
     public OrderCreated Handle(CreateOrder command) { ... }
@@ -231,7 +231,7 @@ public class OrderHandlers {
 
 **Whizbang** (one receptor per message):
 
-```csharp
+```csharp{title="Multiple Handlers → Multiple Receptors - CreateOrderReceptor" description="Whizbang (one receptor per message):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Multiple", "Handlers"]}
 // Separate classes for each message type
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public ValueTask<OrderCreated> HandleAsync(CreateOrder message, CancellationToken ct) { ... }
@@ -252,7 +252,7 @@ public class CancelOrderReceptor : IReceptor<CancelOrder, OrderCancelled> {
 
 **Wolverine** (dependencies injected per method):
 
-```csharp
+```csharp{title="Wolverine Method Injection" description="Wolverine (dependencies injected per method):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Wolverine", "Method", "Injection"]}
 [WolverineHandler]
 public class OrderHandler {
     public async Task<OrderCreated> HandleAsync(
@@ -271,7 +271,7 @@ public class OrderHandler {
 
 **Whizbang** (standard DI via constructor):
 
-```csharp
+```csharp{title="Whizbang Constructor Injection" description="Whizbang (standard DI via constructor):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Whizbang", "Constructor", "Injection"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IOrderRepository _repository;
     private readonly ILogger<CreateOrderReceptor> _logger;
@@ -318,7 +318,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 The `whizbang-migrate` tool can automate handler migration:
 
-```bash
+```bash{title="Automated Migration" description="The whizbang-migrate tool can automate handler migration:" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Automated", "Migration"]}
 # Analyze handlers
 whizbang migrate analyze --project ./MyApp.sln --filter handlers
 

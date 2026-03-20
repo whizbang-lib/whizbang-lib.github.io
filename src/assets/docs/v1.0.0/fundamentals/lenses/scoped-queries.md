@@ -20,7 +20,7 @@ Scoped lens queries solve the challenge of using `ILensQuery<T>` from singleton 
 
 `ILensQuery<T>` is registered as **transient** and requires a scoped `DbContext`. When you need to query from a singleton service (like a background worker), you cannot inject `ILensQuery<T>` directly:
 
-```csharp
+```csharp{title="The Problem: Singleton vs Scoped Services" description="ILensQuery<T> is registered as transient and requires a scoped DbContext." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Problem:", "Singleton"]}
 // WRONG: Cannot inject transient ILensQuery into singleton
 public class OrderProcessor : BackgroundService {
   private readonly ILensQuery<Order> _lens; // This doesn't work!
@@ -35,7 +35,7 @@ public class OrderProcessor : BackgroundService {
 
 `IScopedLensQuery<T>` automatically creates a fresh service scope for each operation. It is safe to inject into singleton services:
 
-```csharp
+```csharp{title="Solution 1: IScopedLensQuery (Auto-Scoping)" description="IScopedLensQuery<T> automatically creates a fresh service scope for each operation." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Solution", "IScopedLensQuery"]}
 public class OrderProcessor : BackgroundService {
   private readonly IScopedLensQuery<Order> _lens;
 
@@ -65,7 +65,7 @@ public class OrderProcessor : BackgroundService {
 
 ### IScopedLensQuery Methods
 
-```csharp
+```csharp{title="IScopedLensQuery Methods" description="Demonstrates iScopedLensQuery Methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "IScopedLensQuery", "Methods"]}
 public interface IScopedLensQuery<TModel> where TModel : class {
   // Streaming results (scope disposed after enumeration)
   IAsyncEnumerable<PerspectiveRow<TModel>> QueryAsync(
@@ -90,12 +90,12 @@ public interface IScopedLensQuery<TModel> where TModel : class {
 ### Usage Patterns
 
 **Get by ID**:
-```csharp
+```csharp{title="Usage Patterns" description="Demonstrates usage Patterns" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Usage", "Patterns"]}
 var order = await _scopedLens.GetByIdAsync(orderId, ct);
 ```
 
 **Execute materialized query**:
-```csharp
+```csharp{title="Usage Patterns (2)" description="Execute materialized query:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Usage", "Patterns"]}
 var orders = await _scopedLens.ExecuteAsync(
     async (lens, token) => await lens.Query
         .Where(r => r.Data.CustomerId == customerId)
@@ -105,7 +105,7 @@ var orders = await _scopedLens.ExecuteAsync(
 ```
 
 **Stream results**:
-```csharp
+```csharp{title="Usage Patterns (3)" description="Stream results:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Usage", "Patterns"]}
 await foreach (var row in _scopedLens.QueryAsync(
     lens => lens.Query.Where(r => r.Data.Total > 100),
     ct)) {
@@ -115,7 +115,7 @@ await foreach (var row in _scopedLens.QueryAsync(
 ```
 
 **Projection queries**:
-```csharp
+```csharp{title="Usage Patterns (4)" description="Projection queries:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Usage", "Patterns"]}
 await foreach (var summary in _scopedLens.QueryAsync<OrderSummary>(
     lens => lens.Query.Select(r => new OrderSummary {
       Id = r.Id,
@@ -132,7 +132,7 @@ await foreach (var summary in _scopedLens.QueryAsync<OrderSummary>(
 
 When you need multiple queries to share a single scope (for performance or transactional consistency), use `ILensQueryFactory<T>`:
 
-```csharp
+```csharp{title="Solution 2: ILensQueryFactory (Batch Operations)" description="When you need multiple queries to share a single scope (for performance or transactional consistency), use" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Solution", "ILensQueryFactory"]}
 public class OrderReportService {
   private readonly ILensQueryFactory<Order> _factory;
 
@@ -174,7 +174,7 @@ public class OrderReportService {
 
 The `LensQueryScope<T>` returned by `CreateScoped()` MUST be disposed to release the service scope:
 
-```csharp
+```csharp{title="LensQueryScope Disposal" description="The LensQueryScope<T> returned by CreateScoped() MUST be disposed to release the service scope:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "LensQueryScope", "Disposal"]}
 // Correct: using statement ensures disposal
 using var scope = _factory.CreateScoped();
 var lens = scope.Value;
@@ -207,7 +207,7 @@ finally {
 
 Both scoped query types are registered automatically by the Whizbang source generator:
 
-```csharp
+```csharp{title="Registration" description="Both scoped query types are registered automatically by the Whizbang source generator:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"]}
 // Auto-generated registration
 services.AddSingleton<IScopedLensQuery<Order>, ScopedLensQuery<Order>>();
 services.AddSingleton<ILensQueryFactory<Order>, LensQueryFactory<Order>>();

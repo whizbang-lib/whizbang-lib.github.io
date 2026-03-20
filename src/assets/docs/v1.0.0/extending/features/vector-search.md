@@ -22,7 +22,7 @@ For comprehensive usage patterns, query methods, and examples, see the [Lens Vec
 
 Whizbang provides a **turnkey experience** for pgvector. When your perspective models use `[VectorField]` attributes, the source generator automatically creates an `Add{YourDbContext}()` extension method that handles all pgvector configuration:
 
-```csharp
+```csharp{title="Turnkey Setup" description="Whizbang provides a turnkey experience for pgvector." category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Turnkey", "Setup"]}
 // Single call configures everything:
 // - NpgsqlDataSource with UseVector()
 // - DbContext with UseVector()
@@ -84,7 +84,7 @@ public float[]?              detects attribute
 
 For a model like:
 
-```csharp
+```csharp{title="Generated Configuration" description="For a model like:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Generated", "Configuration"]}
 public class DocumentModel {
   public Guid Id { get; init; }
 
@@ -95,7 +95,7 @@ public class DocumentModel {
 
 The generator produces:
 
-```csharp
+```csharp{title="Generated Configuration (2)" description="The generator produces:" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "Generated", "Configuration"]}
 // In generated DbContext configuration
 public static void ConfigureWhizbang(ModelBuilder modelBuilder) {
   modelBuilder.HasPostgresExtension("vector");
@@ -133,7 +133,7 @@ public static IServiceCollection AddMyAppDbContext(
 
 When using `[VectorField]` attributes, you must add both pgvector packages:
 
-```xml
+```xml{title="Prerequisites" description="When using [VectorField] attributes, you must add both pgvector packages:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Prerequisites"]}
 <ItemGroup>
   <!-- Base package for NpgsqlDataSourceBuilder.UseVector() -->
   <PackageReference Include="Pgvector" Version="0.3.0" />
@@ -154,7 +154,7 @@ If you forget these packages, compiler diagnostics will guide you:
 
 Pass a callback to customize the NpgsqlDataSource:
 
-```csharp
+```csharp{title="Configure Data Source" description="Pass a callback to customize the NpgsqlDataSource:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Configure", "Data"]}
 builder.Services.AddMyAppDbContext(connectionString, dataSourceBuilder => {
   dataSourceBuilder.ConfigureJsonOptions(jsonOptions);
   dataSourceBuilder.EnableDynamicJson();
@@ -165,7 +165,7 @@ builder.Services.AddMyAppDbContext(connectionString, dataSourceBuilder => {
 
 Pass a callback to customize DbContext options:
 
-```csharp
+```csharp{title="Configure DbContext" description="Pass a callback to customize DbContext options:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Configure", "DbContext"]}
 builder.Services.AddMyAppDbContext(connectionString, configureDbContext: options => {
   options.EnableSensitiveDataLogging();
 });
@@ -175,7 +175,7 @@ builder.Services.AddMyAppDbContext(connectionString, configureDbContext: options
 
 If you prefer manual configuration over the turnkey approach:
 
-```csharp
+```csharp{title="Manual Configuration" description="If you prefer manual configuration over the turnkey approach:" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "Manual", "Configuration"]}
 // 1. Create data source with UseVector()
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 dataSourceBuilder.UseVector();

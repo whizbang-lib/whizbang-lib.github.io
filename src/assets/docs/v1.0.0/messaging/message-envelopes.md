@@ -61,7 +61,7 @@ Service C (PaymentWorker)
 
 ### Storing Envelope in Outbox
 
-```csharp
+```csharp{title="Storing Envelope in Outbox" description="Demonstrates storing Envelope in Outbox" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Storing", "Envelope", "Outbox"]}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {
@@ -122,7 +122,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 ### Azure Service Bus Integration
 
-```csharp
+```csharp{title="Azure Service Bus Integration" description="Demonstrates azure Service Bus Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Azure", "Service", "Bus"]}
 public class AzureServiceBusTransport : IMessageTransport {
     public async Task PublishAsync(
         string topic,
@@ -165,7 +165,7 @@ public class AzureServiceBusTransport : IMessageTransport {
 
 ### Inbox Deduplication + Hop Restoration
 
-```csharp
+```csharp{title="Inbox Deduplication + Hop Restoration" description="Demonstrates inbox Deduplication + Hop Restoration" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Inbox", "Deduplication", "Hop"]}
 public async Task SubscribeAsync(
     string topic,
     Func<MessageEnvelope, CancellationToken, Task> handler,
@@ -250,7 +250,7 @@ public async Task SubscribeAsync(
 
 ### InventoryWorker Example
 
-```csharp
+```csharp{title="InventoryWorker Example" description="Demonstrates inventoryWorker Example" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "InventoryWorker", "Example"]}
 public async Task ProcessOrderCreatedAsync(
     MessageEnvelope envelope,
     CancellationToken ct = default) {
@@ -324,7 +324,7 @@ public async Task ProcessOrderCreatedAsync(
 
 ### Find Complete Workflow
 
-```sql
+```sql{title="Find Complete Workflow" description="Demonstrates find Complete Workflow" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Find", "Complete", "Workflow"]}
 -- Find all messages in a workflow (all services)
 SELECT
     o.message_id,
@@ -348,7 +348,7 @@ msg-003    | PaymentProcessed   | payment   | 2024-12-12 10:00:02 | [API Gateway
 
 ### Visualize Hop Accumulation
 
-```csharp
+```csharp{title="Visualize Hop Accumulation" description="Demonstrates visualize Hop Accumulation" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Visualize", "Hop", "Accumulation"]}
 public void PrintHopAccumulation(Guid correlationId) {
     var messages = GetMessagesByCorrelation(correlationId);
 
@@ -389,7 +389,7 @@ PaymentProcessed (2024-12-12 10:00:02):
 
 ### Extracting Security from Hops
 
-```csharp
+```csharp{title="Extracting Security from Hops" description="Demonstrates extracting Security from Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Extracting", "Security", "Hops"]}
 public async Task<InventoryReserved> HandleAsync(
     MessageEnvelope envelope,
     CancellationToken ct = default) {
@@ -452,7 +452,7 @@ public async Task<InventoryReserved> HandleAsync(
 3. Hops not stored in outbox
 
 **Solution**:
-```csharp
+```csharp{title="Problem: Missing Hops" description="Demonstrates problem: Missing Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Problem:", "Missing", "Hops"]}
 // Verify hops are inherited
 var newEnvelope = MessageEnvelope.Create(
     /* ... */,
@@ -475,7 +475,7 @@ Debug.Assert(deserialized.Hops.Count == envelope.Hops.Count);
 3. Loop repeats forever
 
 **Solution**:
-```csharp
+```csharp{title="Problem: Circular Dependencies" description="Demonstrates problem: Circular Dependencies" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Problem:", "Circular", "Dependencies"]}
 // Detect circular dependency via hop count
 if (envelope.Hops.Count > 10) {
     _logger.LogError(
@@ -502,7 +502,7 @@ if (envelope.Hops.Count > 10) {
 
 ### Serialization Performance
 
-```csharp
+```csharp{title="Serialization Performance" description="Demonstrates serialization Performance" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Serialization", "Performance"]}
 // ✅ Efficient: Use JsonTypeInfo for AOT
 var json = JsonSerializer.Serialize(
     envelope,

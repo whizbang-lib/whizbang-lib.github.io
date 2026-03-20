@@ -30,7 +30,7 @@ Comprehensive **testing strategies** for receptors and perspectives using TUnit,
 
 **Whizbang uses modern .NET testing tools**:
 
-```xml
+```xml{title="Testing Stack" description="**Whizbang uses modern ." category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Stack"]}
 <ItemGroup>
   <PackageReference Include="TUnit" Version="1.0.0" />
   <PackageReference Include="TUnit.Assertions" Version="1.0.0" />
@@ -55,7 +55,7 @@ Comprehensive **testing strategies** for receptors and perspectives using TUnit,
 
 **CreateOrderReceptorTests.cs**:
 
-```csharp
+```csharp{title="Basic Receptor Test" description="**CreateOrderReceptorTests." category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Basic", "Receptor"]}
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -112,7 +112,7 @@ public class CreateOrderReceptorTests {
 
 ### Database Mocking
 
-```csharp
+```csharp{title="Database Mocking" description="Demonstrates database Mocking" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Database", "Mocking"]}
 [Test]
 public async Task HandleAsync_DatabaseFailure_ThrowsException() {
   // Arrange
@@ -131,7 +131,7 @@ public async Task HandleAsync_DatabaseFailure_ThrowsException() {
 
 ### Service Bus Mocking
 
-```csharp
+```csharp{title="Service Bus Mocking" description="Demonstrates service Bus Mocking" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Service", "Bus"]}
 [Test]
 public async Task HandleAsync_PublishesToServiceBus() {
   // Arrange
@@ -162,7 +162,7 @@ public async Task HandleAsync_PublishesToServiceBus() {
 
 **OrderTestData.cs**:
 
-```csharp
+```csharp{title="Test Data Generation with Bogus" description="**OrderTestData." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Data"]}
 using Bogus;
 
 public static class OrderTestData {
@@ -194,7 +194,7 @@ public static class OrderTestData {
 
 **Usage**:
 
-```csharp
+```csharp{title="Test Data Generation with Bogus (2)" description="Demonstrates test Data Generation with Bogus" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Data"]}
 [Test]
 public async Task HandleAsync_MultipleItems_CalculatesTotalCorrectly() {
   // Arrange
@@ -219,7 +219,7 @@ public async Task HandleAsync_MultipleItems_CalculatesTotalCorrectly() {
 
 **OrderSummaryPerspectiveTests.cs**:
 
-```csharp
+```csharp{title="Basic Perspective Test" description="**OrderSummaryPerspectiveTests." category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Basic", "Perspective"]}
 public class OrderSummaryPerspectiveTests {
   [Test]
   public async Task HandleAsync_OrderCreated_InsertsOrderSummary() {
@@ -291,7 +291,7 @@ public class OrderSummaryPerspectiveTests {
 
 **DatabaseFixture.cs**:
 
-```csharp
+```csharp{title="Test Fixtures" description="**DatabaseFixture." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Fixtures"]}
 public class DatabaseFixture : IAsyncLifetime {
   public IDbConnection Connection { get; private set; } = null!;
 
@@ -320,7 +320,7 @@ public class DatabaseFixture : IAsyncLifetime {
 
 **Usage**:
 
-```csharp
+```csharp{title="Test Fixtures - CreateOrderReceptorIntegrationTests" description="Demonstrates test Fixtures" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Fixtures"]}
 public class CreateOrderReceptorIntegrationTests : IClassFixture<DatabaseFixture> {
   private readonly DatabaseFixture _fixture;
 
@@ -355,7 +355,7 @@ public class CreateOrderReceptorIntegrationTests : IClassFixture<DatabaseFixture
 
 **PostgreSQL Container**:
 
-```csharp
+```csharp{title="Integration Testing with Testcontainers" description="PostgreSQL Container:" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Integration", "Testcontainers"]}
 using Testcontainers.PostgreSql;
 
 public class PostgresIntegrationTests : IAsyncLifetime {
@@ -406,7 +406,7 @@ public class PostgresIntegrationTests : IAsyncLifetime {
 
 **Azure Service Bus Container**:
 
-```csharp
+```csharp{title="Integration Testing with Testcontainers -" description="Azure Service Bus Container:" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Integration", "Testcontainers"]}
 using Testcontainers.Azurite;
 
 public class ServiceBusIntegrationTests : IAsyncLifetime {
@@ -461,7 +461,7 @@ public class ServiceBusIntegrationTests : IAsyncLifetime {
 
 **TUnit supports parameterized tests**:
 
-```csharp
+```csharp{title="Parameterized Tests" description="TUnit supports parameterized tests:" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Parameterized", "Tests"]}
 public class OrderValidationTests {
   [Test]
   [Arguments(0, "Quantity must be greater than zero")]
@@ -516,7 +516,7 @@ public class OrderValidationTests {
 
 ### 1. Use `await` in Assertions
 
-```csharp
+```csharp{title="Use `await` in Assertions" description="Demonstrates use `await` in Assertions" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Await", "Assertions"]}
 // ✅ GOOD - Await TUnit assertions
 await Assert.That(result).IsNotNull();
 await Assert.That(result.OrderId).IsEqualTo("order-123");
@@ -527,7 +527,7 @@ Assert.That(result).IsNotNull();  // Won't work in TUnit
 
 ### 2. Test Cancellation
 
-```csharp
+```csharp{title="Test Cancellation" description="Demonstrates test Cancellation" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Cancellation"]}
 [Test]
 public async Task HandleAsync_CancellationRequested_ThrowsOperationCanceledException() {
   // Arrange
@@ -545,7 +545,7 @@ public async Task HandleAsync_CancellationRequested_ThrowsOperationCanceledExcep
 
 ### 3. Test Timeout
 
-```csharp
+```csharp{title="Test Timeout" description="Demonstrates test Timeout" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Timeout"]}
 [Test]
 [Timeout(5000)]  // 5 seconds max
 public async Task HandleAsync_SlowOperation_CompletesWithinTimeout() {
@@ -569,7 +569,7 @@ public async Task HandleAsync_SlowOperation_CompletesWithinTimeout() {
 
 **PolicyTests.cs**:
 
-```csharp
+```csharp{title="Testing Policies" description="**PolicyTests." category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Policies"]}
 public class TenantIsolationPolicyTests {
   [Test]
   public async Task ApplyAsync_DifferentTenant_ThrowsUnauthorizedException() {
@@ -623,13 +623,13 @@ public class TenantIsolationPolicyTests {
 
 **Measure code coverage**:
 
-```bash
+```bash{title="Code Coverage" description="Measure code coverage:" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Code", "Coverage"]}
 dotnet test --collect:"XPlat Code Coverage"
 ```
 
 **Generate HTML report**:
 
-```bash
+```bash{title="Code Coverage (2)" description="Generate HTML report:" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Code", "Coverage"]}
 dotnet tool install -g dotnet-reportgenerator-globaltool
 
 reportgenerator \

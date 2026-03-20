@@ -56,7 +56,7 @@ The `ConfigurationUtilities` class provides static methods for reading MSBuild p
 
 Reads table name configuration from MSBuild properties:
 
-```csharp
+```csharp{title="GetTableNameConfig" description="Reads table name configuration from MSBuild properties:" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "GetTableNameConfig"]}
 using Whizbang.Generators.Shared.Utilities;
 
 public void Initialize(IncrementalGeneratorInitializationContext context) {
@@ -84,7 +84,7 @@ public void Initialize(IncrementalGeneratorInitializationContext context) {
 
 ### Configuration in .csproj
 
-```xml
+```xml{title="Configuration in .csproj" description="Demonstrates configuration in .csproj" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Configuration", ".csproj"]}
 <PropertyGroup>
   <!-- Disable suffix stripping entirely -->
   <WhizbangStripTableNameSuffixes>false</WhizbangStripTableNameSuffixes>
@@ -101,7 +101,7 @@ public void Initialize(IncrementalGeneratorInitializationContext context) {
 
 The `TableNameConfig` record holds the parsed configuration:
 
-```csharp
+```csharp{title="TableNameConfig" description="The TableNameConfig record holds the parsed configuration:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "TableNameConfig"]}
 public record TableNameConfig(
     bool StripSuffixes,
     string[] SuffixesToStrip
@@ -130,7 +130,7 @@ When `StripSuffixes` is enabled, perspective class names are transformed for dat
 | `AccountDetails` | `AccountDetails` | `account_details` |
 
 **Example**:
-```csharp
+```csharp{title="Table Name Suffix Stripping" description="Demonstrates table Name Suffix Stripping" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Table", "Name"]}
 // Perspective class
 public class OrderReadModel : IPerspectiveFor<Order, OrderCreated> {
     public Guid OrderId { get; set; }
@@ -147,7 +147,7 @@ public class OrderReadModel : IPerspectiveFor<Order, OrderCreated> {
 
 ### Pipeline Integration
 
-```csharp
+```csharp{title="Pipeline Integration" description="Demonstrates pipeline Integration" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pipeline", "Integration"]}
 [Generator]
 public class PerspectiveSchemaGenerator : IIncrementalGenerator {
     public void Initialize(IncrementalGeneratorInitializationContext context) {
@@ -193,7 +193,7 @@ public class PerspectiveSchemaGenerator : IIncrementalGenerator {
 
 For simpler scenarios, access configuration directly:
 
-```csharp
+```csharp{title="Direct Access" description="For simpler scenarios, access configuration directly:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Direct", "Access"]}
 var config = ConfigurationUtilities.GetTableNameConfig(
     context.AnalyzerConfigOptionsProvider.GlobalOptions
 );
@@ -209,7 +209,7 @@ if (config.StripSuffixes) {
 
 The `ParseSuffixList` method handles comma-separated suffix lists:
 
-```csharp
+```csharp{title="Suffix Parsing" description="The ParseSuffixList method handles comma-separated suffix lists:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Suffix", "Parsing"]}
 // Parse from MSBuild property
 var suffixes = ConfigurationUtilities.ParseSuffixList("ReadModel, Model, Dto");
 // Result: ["ReadModel", "Model", "Dto"]
@@ -254,7 +254,7 @@ var suffixes = ConfigurationUtilities.ParseSuffixList("");
 
 **Solution**: Ensure property is in a `<PropertyGroup>` (not `<ItemGroup>`):
 
-```xml
+```xml{title="Configuration Not Applied" description="Solution: Ensure property is in a <PropertyGroup> (not <ItemGroup>):" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Configuration", "Not"]}
 <!-- Correct -->
 <PropertyGroup>
   <WhizbangStripTableNameSuffixes>false</WhizbangStripTableNameSuffixes>
@@ -276,7 +276,7 @@ var suffixes = ConfigurationUtilities.ParseSuffixList("");
 
 **Solution**: Add suffix to list:
 
-```xml
+```xml{title="Suffix Not Stripped" description="Solution: Add suffix to list:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Suffix", "Not"]}
 <WhizbangTableNameSuffixesToStrip>ReadModel,Model,Projection,Dto,View,ViewModel</WhizbangTableNameSuffixesToStrip>
 ```
 

@@ -41,7 +41,7 @@ Whizbang uses PostgreSQL by default. Custom storage is for specialized scenarios
 
 ## IPerspectiveStore<TModel>
 
-```csharp
+```csharp{title="IPerspectiveStore<TModel>" description="Demonstrates iPerspectiveStore<TModel>" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "IPerspectiveStore<TModel>"]}
 public interface IPerspectiveStore<TModel> where TModel : class {
   Task UpsertAsync(
     string id,
@@ -57,7 +57,7 @@ public interface IPerspectiveStore<TModel> where TModel : class {
 
 ### Pattern 1: MongoDB Perspective Store
 
-```csharp
+```csharp{title="Pattern 1: MongoDB Perspective Store" description="Demonstrates pattern 1: MongoDB Perspective Store" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "MongoDB"]}
 using MongoDB.Driver;
 
 public class MongoPerspectiveStore<TModel> : IPerspectiveStore<TModel>
@@ -91,7 +91,7 @@ public class MongoPerspectiveStore<TModel> : IPerspectiveStore<TModel>
 
 ### Pattern 2: Elasticsearch Perspective Store
 
-```csharp
+```csharp{title="Pattern 2: Elasticsearch Perspective Store" description="Demonstrates pattern 2: Elasticsearch Perspective Store" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Elasticsearch"]}
 using Elastic.Clients.Elasticsearch;
 
 public class ElasticsearchPerspectiveStore<TModel> : IPerspectiveStore<TModel>
