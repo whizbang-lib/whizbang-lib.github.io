@@ -4,9 +4,12 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
 
+# This workflow only runs on pull_request events.
+# The if condition below guards against phantom push-triggered runs.
 jobs:
   validate-branch-direction:
     name: Validate Branch Direction
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
