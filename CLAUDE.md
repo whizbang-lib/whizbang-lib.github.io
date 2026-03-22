@@ -15,18 +15,18 @@ This is a documentation website for the **Whizbang .NET library** - built with A
 ## Essential Commands
 
 ```bash
-npm start      # Start dev server with HMR at http://localhost:4200
-npm run build  # Production build with output hashing
-npm run preview # Serve production build locally
+bun start      # Start dev server with HMR at http://localhost:4200
+bun run build  # Production build with output hashing
+bun run preview # Serve production build locally
 ```
 
-**IMPORTANT**: The development server (`npm start`) is **always running** during development sessions and automatically picks up live changes. **Never run `npm start`** during development sessions as it's already active.
+**IMPORTANT**: The development server (`bun start`) is **always running** during development sessions and automatically picks up live changes. **Never run `bun start`** during development sessions as it's already active.
 
 ---
 
 ## Build Process
 
-The `npm start` and `npm run build` commands automatically execute:
+The `bun start` and `bun run build` commands automatically execute:
 1. `node src/scripts/gen-docs-list.mjs` - Generates documentation listing
 2. `node src/scripts/gen-docs-index-versioned.mjs` - Creates version-aware docs index with metadata
 3. `./build-search-index.sh` - Builds search indices with version support
