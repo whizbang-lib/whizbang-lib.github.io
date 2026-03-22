@@ -33,7 +33,7 @@ Whizbang provides a complete foundation for building modern, scalable applicatio
 
 Every feature in Whizbang is built without runtime reflection:
 
-```csharp
+```csharp{title="Zero Reflection" description="Every feature in Whizbang is built without runtime reflection:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Zero", "Reflection"]}
 // Source generators discover this at compile time
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
@@ -59,7 +59,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 Whizbang enforces type safety at compile time:
 
-```csharp
+```csharp{title="Type-Safe Messaging" description="Whizbang enforces type safety at compile time:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Type-Safe", "Messaging"]}
 // Compiler knows CreateOrder → OrderCreated
 var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
 
@@ -75,7 +75,7 @@ Built around three core patterns:
 2. **Perspectives**: Event listeners that maintain read models
 3. **Lenses**: Query interfaces for optimized data access
 
-```csharp
+```csharp{title="Event-Driven Architecture" description="Demonstrates event-Driven Architecture" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Event-Driven", "Architecture"]}
 // Receptor: Receives command, produces event
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> { }
 
@@ -92,7 +92,7 @@ public class OrderLens : ILensQuery { }
 
 Central message router with three dispatch patterns:
 
-```csharp
+```csharp{title="Dispatcher" description="Central message router with three dispatch patterns:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Dispatcher"]}
 // SendAsync: Command dispatch with delivery receipt (can work over wire)
 var receipt = await dispatcher.SendAsync(new CreateOrder(/* ... */));
 
@@ -107,7 +107,7 @@ await dispatcher.PublishAsync(@event);
 
 Stateless message handlers:
 
-```csharp
+```csharp{title="Receptors" description="Stateless message handlers:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Receptors"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
         CreateOrder message,
@@ -134,7 +134,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 Event-driven read model updates:
 
-```csharp
+```csharp{title="Perspectives" description="Event-driven read model updates:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Perspectives"]}
 public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
     private readonly IDbConnectionFactory _db;
 
@@ -159,7 +159,7 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 
 Query-optimized read repositories:
 
-```csharp
+```csharp{title="Lenses" description="Query-optimized read repositories:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Lenses"]}
 public class OrderLens : ILensQuery {
     private readonly IDbConnectionFactory _db;
 
@@ -304,13 +304,13 @@ See [ECommerce Tutorial](../examples/ecommerce/overview.md) for complete walkthr
 1. [Installation](installation.md) - Set up your first project
 2. [Quick Start](quick-start.md) - Hello World with Receptors + Dispatcher
 3. [Project Structure](project-structure.md) - Organize your application
-4. [Core Concepts: Receptors](../core-concepts/receptors.md) - Understand message handling
-5. [Core Concepts: Dispatcher](../core-concepts/dispatcher.md) - Master message routing
+4. [Core Concepts: Receptors](../fundamentals/receptors/receptors.md) - Understand message handling
+5. [Core Concepts: Dispatcher](../fundamentals/dispatcher/dispatcher.md) - Master message routing
 
 ### Intermediate
 
-6. [Perspectives](../core-concepts/perspectives.md) - Build read models
-7. [Lenses](../core-concepts/lenses.md) - Query optimization
+6. [Perspectives](../fundamentals/perspectives/perspectives.md) - Build read models
+7. [Lenses](../fundamentals/lenses/lenses.md) - Query optimization
 8. [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable messaging
 9. [Inbox Pattern](../messaging/inbox-pattern.md) - Exactly-once processing
 10. [ECommerce Sample](../examples/ecommerce/overview.md) - Production patterns
@@ -318,7 +318,7 @@ See [ECommerce Tutorial](../examples/ecommerce/overview.md) for complete walkthr
 ### Advanced
 
 11. [Source Generators](../generators/receptor-discovery.md) - Understand code generation
-12. [Extensibility](../extensibility/overview.md) - Custom implementations
+12. [Extensibility](../extending/extensibility/overview.md) - Custom implementations
 13. [Performance Tuning](../performance/pooling-strategies.md) - Optimize for scale
 14. [Deployment](../deployment/aspire-production.md) - Production deployment
 

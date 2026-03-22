@@ -30,7 +30,7 @@ A minimal ASP.NET Core API that:
 
 ## Step 1: Create Project Structure
 
-```bash
+```bash{title="Step 1: Create Project Structure" description="Demonstrates step 1: Create Project Structure" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Step", "Create", "Project"]}
 # Create solution and project
 dotnet new sln -n QuickStartApp
 dotnet new webapi -n QuickStartApp.API
@@ -48,7 +48,7 @@ dotnet add package Whizbang.Generators
 Create a `Messages` folder and define your command and event:
 
 **Messages/CreateOrder.cs**:
-```csharp
+```csharp{title="Step 2: Define Your Messages" description="**Messages/CreateOrder." category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Step", "Define", "Your"]}
 namespace QuickStartApp.API.Messages;
 
 public record CreateOrder(
@@ -60,7 +60,7 @@ public record CreateOrder(
 ```
 
 **Messages/OrderCreated.cs**:
-```csharp
+```csharp{title="Step 2: Define Your Messages - OrderCreated" description="**Messages/OrderCreated." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Step", "Define", "Your"]}
 namespace QuickStartApp.API.Messages;
 
 public record OrderCreated(
@@ -85,7 +85,7 @@ public record OrderCreated(
 Receptors are **stateless message handlers** that implement business logic.
 
 **Receptors/CreateOrderReceptor.cs**:
-```csharp
+```csharp{title="Step 3: Create Your First Receptor" description="**Receptors/CreateOrderReceptor." category="Configuration" difficulty="ADVANCED" tags=["Getting-Started", "Step", "Create", "Your"]}
 using Whizbang.Core;
 using QuickStartApp.API.Messages;
 
@@ -149,7 +149,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 Configure dependency injection in **Program.cs**:
 
-```csharp
+```csharp{title="Step 4: Register Whizbang Services" description="Configure dependency injection in **Program." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Step", "Register", "Whizbang"]}
 using Whizbang.Core;
 using QuickStartApp.API.Messages;
 using QuickStartApp.API.Receptors;
@@ -191,7 +191,7 @@ app.Run();
 Create a minimal API endpoint to dispatch your command:
 
 **Endpoints/OrderEndpoints.cs**:
-```csharp
+```csharp{title="Step 5: Create API Endpoint" description="**Endpoints/OrderEndpoints." category="Configuration" difficulty="ADVANCED" tags=["Getting-Started", "Step", "Create", "API"]}
 using Microsoft.AspNetCore.Mvc;
 using Whizbang.Core;
 using QuickStartApp.API.Messages;
@@ -270,7 +270,7 @@ public record CreateOrderRequest(
 
 ### Start the Application
 
-```bash
+```bash{title="Start the Application" description="Demonstrates start the Application" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Start", "Application"]}
 dotnet run
 ```
 
@@ -285,7 +285,7 @@ info: Microsoft.Hosting.Lifetime[14]
 ### Test with curl
 
 **Valid request**:
-```bash
+```bash{title="Test with curl" description="Valid request:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Test", "Curl"]}
 curl -X POST https://localhost:7001/api/orders \
   -H "Content-Type: application/json" \
   -d '{
@@ -297,7 +297,7 @@ curl -X POST https://localhost:7001/api/orders \
 ```
 
 **Expected response** (201 Created):
-```json
+```json{title="Test with curl (2)" description="Expected response (201 Created):" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Test", "Curl"]}
 {
   "orderId": "018d8f8e-1234-7890-abcd-ef1234567890",
   "customerId": "550e8400-e29b-41d4-a716-446655440000",
@@ -310,7 +310,7 @@ curl -X POST https://localhost:7001/api/orders \
 ```
 
 **Invalid request** (negative quantity):
-```bash
+```bash{title="Test with curl (3)" description="Invalid request (negative quantity):" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Test", "Curl"]}
 curl -X POST https://localhost:7001/api/orders \
   -H "Content-Type: application/json" \
   -d '{
@@ -322,7 +322,7 @@ curl -X POST https://localhost:7001/api/orders \
 ```
 
 **Expected response** (400 Bad Request):
-```json
+```json{title="Test with curl (4)" description="Expected response (400 Bad Request):" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Test", "Curl"]}
 {
   "error": "Quantity must be greater than zero"
 }
@@ -376,7 +376,7 @@ Return 201 Created with OrderCreated response
 ### Add Source Generators (Auto-Discovery)
 
 Currently, you're registering receptors manually:
-```csharp
+```csharp{title="Add Source Generators (Auto-Discovery)" description="Currently, you're registering receptors manually:" category="Configuration" difficulty="ADVANCED" tags=["Getting-Started", "Add", "Source", "Generators"]}
 builder.Services.AddTransient<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
 ```
 
@@ -403,7 +403,7 @@ With **Whizbang.Generators**, receptors are discovered automatically:
 Perspectives listen to events and update read models:
 
 **Perspectives/OrderSummaryPerspective.cs**:
-```csharp
+```csharp{title="Add Perspectives (Read Models)" description="**Perspectives/OrderSummaryPerspective." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Add", "Perspectives", "Read"]}
 using Whizbang.Core;
 using QuickStartApp.API.Messages;
 
@@ -428,13 +428,13 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 ```
 
 Register perspective:
-```csharp
+```csharp{title="Add Perspectives (Read Models) (2)" description="Register perspective:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Add", "Perspectives", "Read"]}
 builder.Services.AddTransient<IPerspectiveOf<OrderCreated>, OrderSummaryPerspective>();
 // Or use AddDiscoveredPerspectives() with Whizbang.Generators
 ```
 
 Publish events after receptor completes:
-```csharp
+```csharp{title="Add Perspectives (Read Models) (3)" description="Publish events after receptor completes:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Add", "Perspectives", "Read"]}
 var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command, ct);
 
 // Publish event to all perspectives
@@ -444,12 +444,12 @@ await _dispatcher.PublishAsync(result, ct);
 ### Add Data Persistence
 
 Install Dapper + PostgreSQL:
-```bash
+```bash{title="Add Data Persistence" description="Install Dapper + PostgreSQL:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Add", "Data", "Persistence"]}
 dotnet add package Whizbang.Data.Dapper.Postgres
 ```
 
 Configure connection string in **appsettings.Development.json**:
-```json
+```json{title="Add Data Persistence (2)" description="Configure connection string in **appsettings." category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Add", "Data", "Persistence"]}
 {
   "ConnectionStrings": {
     "DefaultConnection": "Host=localhost;Database=quickstart;Username=postgres;Password=your_password"
@@ -458,14 +458,14 @@ Configure connection string in **appsettings.Development.json**:
 ```
 
 Register database:
-```csharp
+```csharp{title="Add Data Persistence (3)" description="Register database:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Add", "Data", "Persistence"]}
 builder.Services.AddWhizbangDapper(
     builder.Configuration.GetConnectionString("DefaultConnection")!
 );
 ```
 
 Use in receptor:
-```csharp
+```csharp{title="Add Data Persistence - CreateOrderReceptor" description="Use in receptor:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Add", "Data", "Persistence"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IDbConnectionFactory _db;
 
@@ -497,7 +497,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 ### Add Tests
 
 Install testing packages:
-```bash
+```bash{title="Add Tests" description="Install testing packages:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Add", "Tests"]}
 dotnet new tunit -n QuickStartApp.API.Tests
 cd QuickStartApp.API.Tests
 dotnet add package Whizbang.Testing
@@ -506,7 +506,7 @@ dotnet add reference ../QuickStartApp.API
 ```
 
 Test your receptor:
-```csharp
+```csharp{title="Add Tests - CreateOrderReceptorTests" description="Test your receptor:" category="Configuration" difficulty="ADVANCED" tags=["Getting-Started", "Add", "Tests"]}
 using TUnit.Assertions;
 using QuickStartApp.API.Messages;
 using QuickStartApp.API.Receptors;
@@ -559,7 +559,7 @@ public class CreateOrderReceptorTests {
 ```
 
 Run tests:
-```bash
+```bash{title="Add Tests (3)" description="Demonstrates add Tests" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Add", "Tests"]}
 dotnet test
 ```
 
@@ -578,7 +578,7 @@ See [ECommerce Tutorial](../examples/ecommerce/overview.md) for complete walkthr
 ## Common Patterns
 
 ### Pattern 1: Command → Event
-```csharp
+```csharp{title="Pattern 1: Command → Event" description="Demonstrates pattern 1: Command → Event" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Pattern", "Command", "Event"]}
 CreateOrder (command) → CreateOrderReceptor → OrderCreated (event)
 ```
 - Commands express **intent** (imperative: "create order")
@@ -586,7 +586,7 @@ CreateOrder (command) → CreateOrderReceptor → OrderCreated (event)
 - Receptors make **decisions** and return events
 
 ### Pattern 2: Event → Perspectives
-```csharp
+```csharp{title="Pattern 2: Event → Perspectives" description="Demonstrates pattern 2: Event → Perspectives" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Pattern", "Event", "Perspectives"]}
 OrderCreated (event) → OrderSummaryPerspective → Update read model
                      → InventoryPerspective → Update stock levels
                      → AnalyticsPerspective → Update dashboards
@@ -596,7 +596,7 @@ OrderCreated (event) → OrderSummaryPerspective → Update read model
 - Each perspective maintains its own optimized read model
 
 ### Pattern 3: Query via Lenses
-```csharp
+```csharp{title="Pattern 3: Query via Lenses" description="Demonstrates pattern 3: Query via Lenses" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Pattern", "Query", "Lenses"]}
 GET /api/orders/{id} → OrderLens → Query read model → Return DTO
 ```
 - Lenses are **query-optimized** repositories
@@ -667,10 +667,10 @@ GET /api/orders/{id} → OrderLens → Query read model → Return DTO
 ## Further Reading
 
 **Core Concepts**:
-- [Dispatcher Deep Dive](../core-concepts/dispatcher.md) - Three dispatch patterns explained
-- [Receptors Guide](../core-concepts/receptors.md) - Advanced receptor patterns
-- [Perspectives Guide](../core-concepts/perspectives.md) - Building read models
-- [Lenses Guide](../core-concepts/lenses.md) - Query optimization
+- [Dispatcher Deep Dive](../fundamentals/dispatcher/dispatcher.md) - Three dispatch patterns explained
+- [Receptors Guide](../fundamentals/receptors/receptors.md) - Advanced receptor patterns
+- [Perspectives Guide](../fundamentals/perspectives/perspectives.md) - Building read models
+- [Lenses Guide](../fundamentals/lenses/lenses.md) - Query optimization
 
 **Messaging Patterns**:
 - [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable cross-service messaging
@@ -680,7 +680,7 @@ GET /api/orders/{id} → OrderLens → Query read model → Return DTO
 **Advanced Topics**:
 - [Source Generators](../generators/receptor-discovery.md) - Auto-discovery internals
 - [Performance Tuning](../performance/pooling-strategies.md) - Optimize for scale
-- [Testing Strategies](../testing/receptor-testing.md) - Comprehensive testing guide
+- [Testing Strategies](../operations/testing/receptor-testing.md) - Comprehensive testing guide
 
 ---
 

@@ -3,7 +3,7 @@
     top: 0;
     left: 0;
     right: 0;
-    z-index: 1000;
+    z-index: 10000;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     
     // Force solid background in light mode
@@ -17,6 +17,11 @@
     color: #fff;
     border: none !important;
     border-radius: 0 !important;
+}
+
+.brand-accent-line {
+    height: 2px;
+    background: linear-gradient(90deg, #ff7c00, #ff0066, #7b3ff8);
 }
 
 // Ensure toolbar has solid background in light mode
@@ -55,12 +60,28 @@
     gap: 1rem;
 }
 
+// Static starfield for non-home pages (fixed, content scrolls past)
+.global-starfield {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: visible;
+}
+
 .main-content {
     padding-top: 70px;
     min-height: calc(100vh - 70px);
     // Ensure sticky positioning works
     overflow: visible;
     position: relative;
+}
+
+// Hide starfield for reduced motion
+@media (prefers-reduced-motion: reduce) {
+    .global-starfield {
+        display: none;
+    }
 }
 
 /* Ensure toolbar fills the header */

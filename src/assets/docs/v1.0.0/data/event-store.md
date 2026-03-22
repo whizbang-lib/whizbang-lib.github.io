@@ -48,7 +48,7 @@ Traditional State Storage:        Event Sourcing:
 
 ### Core Tables
 
-```sql
+```sql{title="Core Tables" description="Demonstrates core Tables" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Core", "Tables"]}
 -- Event stream (append-only)
 CREATE TABLE wh_events (
     event_id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),  -- Time-ordered
@@ -88,7 +88,7 @@ CREATE INDEX idx_events_global_sequence ON wh_events (global_sequence);
 
 ### Event Processing Tracking
 
-```sql
+```sql{title="Event Processing Tracking" description="Demonstrates event Processing Tracking" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Event", "Processing", "Tracking"]}
 -- Receptor processing (log-style tracking)
 CREATE TABLE wh_receptor_processing (
     event_id UUID NOT NULL,
@@ -138,7 +138,7 @@ CREATE INDEX idx_perspective_checkpoints_status ON wh_perspective_checkpoints (s
 
 The simplest way to append events is to pass just the stream ID and event. Whizbang automatically captures tracing context from the `IEnvelopeRegistry`:
 
-```csharp
+```csharp{title="Simple Event Storage (Recommended)" description="The simplest way to append events is to pass just the stream ID and event." category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Simple", "Event", "Storage"]}
 public class OrderReceptor(IEventStore eventStore) : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> ReceiveAsync(CreateOrder command, CancellationToken ct) {
         var orderId = Guid.CreateVersion7();
@@ -164,7 +164,7 @@ If no envelope is found (e.g., in tests without Dispatcher), a minimal envelope 
 
 For advanced scenarios where you need full control over the envelope:
 
-```csharp
+```csharp{title="Full Control with Envelope" description="For advanced scenarios where you need full control over the envelope:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Full", "Control", "Envelope"]}
 // Create explicit envelope with custom tracing
 var envelope = new MessageEnvelope<OrderCreated> {
     MessageId = MessageId.New(),
@@ -182,7 +182,7 @@ await eventStore.AppendAsync(orderId, envelope, ct);
 
 For reference, here's the underlying storage implementation:
 
-```csharp
+```csharp{title="Low-Level Event Storage (Implementation Detail)" description="For reference, here's the underlying storage implementation:" category="Implementation" difficulty="ADVANCED" tags=["Data", "Low-Level", "Event", "Storage"]}
 public class EventStore : IEventStore {
     private readonly IDbConnectionFactory _db;
 
@@ -232,7 +232,7 @@ public class EventStore : IEventStore {
 
 ### Optimistic Concurrency (Expected Version)
 
-```csharp
+```csharp{title="Optimistic Concurrency (Expected Version)" description="Demonstrates optimistic Concurrency (Expected Version)" category="Implementation" difficulty="ADVANCED" tags=["Data", "Optimistic", "Concurrency", "Expected"]}
 public async Task<Guid> AppendAsync(
     Guid streamId,
     string streamType,
@@ -306,7 +306,7 @@ public async Task<Guid> AppendAsync(
 
 ### Read Full Stream
 
-```csharp
+```csharp{title="Read Full Stream" description="Demonstrates read Full Stream" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Read", "Full", "Stream"]}
 public async Task<StoredEvent[]> ReadStreamAsync(
     Guid streamId,
     CancellationToken ct = default) {
@@ -332,7 +332,7 @@ public async Task<StoredEvent[]> ReadStreamAsync(
 
 ### Read Stream from Version
 
-```csharp
+```csharp{title="Read Stream from Version" description="Demonstrates read Stream from Version" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Read", "Stream", "Version"]}
 public async Task<StoredEvent[]> ReadStreamAsync(
     Guid streamId,
     long fromVersion,
@@ -357,7 +357,7 @@ public async Task<StoredEvent[]> ReadStreamAsync(
 
 ### Read All Events (Global Stream)
 
-```csharp
+```csharp{title="Read All Events (Global Stream)" description="Demonstrates read All Events (Global Stream)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Read", "All", "Events"]}
 public async Task<StoredEvent[]> ReadAllEventsAsync(
     long fromGlobalSequence,
     int limit = 1000,
@@ -386,7 +386,7 @@ public async Task<StoredEvent[]> ReadAllEventsAsync(
 
 ### Checkpoint-Based Replay
 
-```csharp
+```csharp{title="Checkpoint-Based Replay" description="Demonstrates checkpoint-Based Replay" category="Implementation" difficulty="ADVANCED" tags=["Data", "Checkpoint-Based", "Replay"]}
 public class PerspectiveRebuilder {
     private readonly IDbConnectionFactory _db;
     private readonly IServiceProvider _services;
@@ -459,7 +459,7 @@ public class PerspectiveRebuilder {
 
 ### Full Rebuild (Delete + Replay)
 
-```csharp
+```csharp{title="Full Rebuild (Delete + Replay)" description="Demonstrates full Rebuild (Delete + Replay)" category="Implementation" difficulty="ADVANCED" tags=["Data", "Full", "Rebuild", "Delete"]}
 public async Task FullRebuildPerspectiveAsync(
     string perspectiveName,
     CancellationToken ct = default) {
@@ -529,7 +529,7 @@ public async Task FullRebuildPerspectiveAsync(
 
 ### Snapshot Schema
 
-```sql
+```sql{title="Snapshot Schema" description="Demonstrates snapshot Schema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Snapshot", "Schema"]}
 CREATE TABLE wh_snapshots (
     stream_id UUID NOT NULL,
     snapshot_type VARCHAR(200) NOT NULL,  -- Aggregate type
@@ -545,7 +545,7 @@ CREATE INDEX idx_snapshots_stream_id ON wh_snapshots (stream_id, sequence_number
 
 ### Snapshot Creation
 
-```csharp
+```csharp{title="Snapshot Creation" description="Demonstrates snapshot Creation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Snapshot", "Creation"]}
 public async Task CreateSnapshotAsync(
     Guid streamId,
     string snapshotType,
@@ -576,7 +576,7 @@ public async Task CreateSnapshotAsync(
 
 ### Snapshot-Based Replay
 
-```csharp
+```csharp{title="Snapshot-Based Replay" description="Demonstrates snapshot-Based Replay" category="Implementation" difficulty="ADVANCED" tags=["Data", "Snapshot-Based", "Replay"]}
 public async Task<Order> RehydrateOrderAsync(
     Guid orderId,
     CancellationToken ct = default) {
@@ -640,7 +640,7 @@ public async Task<Order> RehydrateOrderAsync(
 
 ### Query State at Specific Time
 
-```csharp
+```csharp{title="Query State at Specific Time" description="Demonstrates query State at Specific Time" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Query", "State", "Specific"]}
 public async Task<Order> GetOrderAsOfAsync(
     Guid orderId,
     DateTimeOffset asOfTime,
@@ -674,7 +674,7 @@ public async Task<Order> GetOrderAsOfAsync(
 
 ### Perspective Projection at Specific Time
 
-```csharp
+```csharp{title="Perspective Projection at Specific Time" description="Demonstrates perspective Projection at Specific Time" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Perspective", "Projection", "Specific"]}
 public async Task RebuildPerspectiveAsOfAsync(
     string perspectiveName,
     DateTimeOffset asOfTime,
@@ -720,7 +720,7 @@ public async Task RebuildPerspectiveAsOfAsync(
 
 ### Problem: Event Schema Changes
 
-```csharp
+```csharp{title="Problem: Event Schema Changes" description="Demonstrates problem: Event Schema Changes" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Problem:", "Event", "Schema"]}
 // Version 1
 public record OrderCreatedV1(
     Guid OrderId,
@@ -739,7 +739,7 @@ public record OrderCreatedV2(
 
 ### Strategy 1: Upcasting
 
-```csharp
+```csharp{title="Strategy 1: Upcasting" description="Demonstrates strategy 1: Upcasting" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Strategy", "Upcasting"]}
 public class EventUpcast {
     public object Upcast(StoredEvent storedEvent) {
         return storedEvent.EventType switch {
@@ -764,7 +764,7 @@ public class EventUpcast {
 
 ### Strategy 2: Copy-and-Transform (Migration)
 
-```sql
+```sql{title="Strategy 2: Copy-and-Transform (Migration)" description="Demonstrates strategy 2: Copy-and-Transform (Migration)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Strategy", "Copy-and-Transform", "Migration"]}
 -- Add new event type with transformed data
 INSERT INTO wh_events (
     event_id, stream_id, stream_type, event_type, event_data, event_metadata, sequence_number, timestamp
@@ -791,7 +791,7 @@ WHERE event_type = 'OrderCreatedV1';
 
 ### Partitioning by Stream Type
 
-```sql
+```sql{title="Partitioning by Stream Type" description="Demonstrates partitioning by Stream Type" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Partitioning", "Stream", "Type"]}
 CREATE TABLE wh_events (
     event_id UUID PRIMARY KEY,
     stream_id UUID NOT NULL,
@@ -814,7 +814,7 @@ FOR VALUES IN ('Product');
 
 ### Partitioning by Time Range
 
-```sql
+```sql{title="Partitioning by Time Range" description="Demonstrates partitioning by Time Range" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Partitioning", "Time", "Range"]}
 CREATE TABLE wh_events (
     event_id UUID PRIMARY KEY,
     stream_id UUID NOT NULL,
@@ -834,7 +834,7 @@ FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
 
 ### Archiving Old Events
 
-```sql
+```sql{title="Archiving Old Events" description="Demonstrates archiving Old Events" category="Implementation" difficulty="BEGINNER" tags=["Data", "Archiving", "Old", "Events"]}
 -- Archive events older than 1 year
 INSERT INTO wh_events_archive
 SELECT * FROM wh_events
@@ -879,7 +879,7 @@ WHERE timestamp < NOW() - INTERVAL '1 year';
 
 ### Pattern 1: Event-Sourced Aggregate
 
-```csharp
+```csharp{title="Pattern 1: Event-Sourced Aggregate" description="Demonstrates pattern 1: Event-Sourced Aggregate" category="Implementation" difficulty="ADVANCED" tags=["Data", "Pattern", "Event-Sourced", "Aggregate"]}
 public class Order {
     public Guid Id { get; private set; }
     public string Status { get; private set; } = "Created";
@@ -925,7 +925,7 @@ public class Order {
 
 ### Pattern 2: Repository with Event Store
 
-```csharp
+```csharp{title="Pattern 2: Repository with Event Store" description="Demonstrates pattern 2: Repository with Event Store" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Repository", "Event"]}
 public class OrderRepository(IEventStore eventStore) {
     public async Task<Order> GetByIdAsync(Guid orderId, CancellationToken ct = default) {
         var events = await eventStore.ReadStreamAsync(orderId, ct);
@@ -957,12 +957,12 @@ public class OrderRepository(IEventStore eventStore) {
 ## Further Reading
 
 **Workers**:
-- [Perspective Worker](../workers/perspective-worker.md) - Checkpoint processing lifecycle and runtime behavior
-- [Execution Lifecycle](../workers/execution-lifecycle.md) - Startup/shutdown coordination
+- [Perspective Worker](../operations/workers/perspective-worker.md) - Checkpoint processing lifecycle and runtime behavior
+- [Execution Lifecycle](../operations/workers/execution-lifecycle.md) - Startup/shutdown coordination
 
 **Core Concepts**:
-- [Perspectives](../core-concepts/perspectives.md) - Event-driven read models
-- [Observability](../core-concepts/observability.md) - Message hops and tracing
+- [Perspectives](../fundamentals/perspectives/perspectives.md) - Event-driven read models
+- [Observability](../fundamentals/persistence/observability.md) - Message hops and tracing
 
 **Data Access**:
 - [Dapper Integration](dapper-integration.md) - Lightweight data access

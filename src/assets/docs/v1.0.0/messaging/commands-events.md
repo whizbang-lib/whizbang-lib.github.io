@@ -25,7 +25,7 @@ Commands express **intent** - a request to perform an action in the system.
 
 ### Definition
 
-```csharp
+```csharp{title="Definition" description="Demonstrates definition" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Definition"]}
 /// <summary>
 /// Marker interface for command messages
 /// </summary>
@@ -37,7 +37,7 @@ public interface ICommand {
 
 ### Example Commands
 
-```csharp
+```csharp{title="Example Commands" description="Demonstrates example Commands" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Example", "Commands"]}
 public record CreateOrder : ICommand {
   public required string CustomerId { get; init; }
   public required OrderItem[] Items { get; init; }
@@ -79,7 +79,7 @@ Events represent **facts** - things that have already happened in the system.
 
 ### Definition
 
-```csharp
+```csharp{title="Definition - for" description="Demonstrates definition" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Definition"]}
 /// <summary>
 /// Marker interface for event messages
 /// </summary>
@@ -91,7 +91,7 @@ public interface IEvent {
 
 ### Example Events
 
-```csharp
+```csharp{title="Example Events" description="Demonstrates example Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Example", "Events"]}
 public record OrderCreated : IEvent {
   public required Guid OrderId { get; init; }
   public required string CustomerId { get; init; }
@@ -129,7 +129,7 @@ public record InventoryUpdated : IEvent {
 
 Commands trigger business logic that results in events:
 
-```csharp
+```csharp{title="Command → Event Flow" description="Commands trigger business logic that results in events:" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Command", "Event", "Flow"]}
 // Command: Request to create an order
 public record CreateOrder : ICommand {
   public required string CustomerId { get; init; }
@@ -177,7 +177,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 Both commands and events are wrapped in `MessageEnvelope<T>` for routing and tracing:
 
-```csharp
+```csharp{title="Message Envelopes" description="Both commands and events are wrapped in MessageEnvelope<T> for routing and tracing:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Message", "Envelopes"]}
 // Dispatch a command
 var createOrder = new CreateOrder {
   CustomerId = "cust-123",
@@ -203,7 +203,7 @@ See [Message Envelopes](message-envelopes.md) for details.
 
 Events are the source of truth in event-sourced systems:
 
-```csharp
+```csharp{title="Event Sourcing" description="Events are the source of truth in event-sourced systems:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Event", "Sourcing"]}
 // Event store tracks all events for an aggregate
 public class Order {
   public Guid Id { get; private set; }
@@ -235,7 +235,7 @@ See [Event Store](../data/event-store.md) for details.
 
 Events drive perspectives - read models optimized for queries:
 
-```csharp
+```csharp{title="Perspectives (Read Models)" description="Events drive perspectives - read models optimized for queries:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Perspectives", "Read", "Models"]}
 // Perspective: Order summary read model
 public class OrderSummaryPerspective : IPerspectiveOf<OrderSummary> {
   public async Task<OrderSummary> ProjectAsync(
@@ -261,14 +261,14 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderSummary> {
 }
 ```
 
-See [Perspectives](../core-concepts/perspectives.md) for details.
+See [Perspectives](../fundamentals/perspectives/perspectives.md) for details.
 
 ## Best Practices
 
 ### Command Design
 
 **1. Use value objects for type safety**:
-```csharp
+```csharp{title="Command Design" description="Demonstrates command Design" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Command", "Design"]}
 // ✅ GOOD: Type-safe value objects
 public record CreateOrder : ICommand {
   public required CustomerId CustomerId { get; init; }
@@ -283,7 +283,7 @@ public record CreateOrder : ICommand {
 ```
 
 **2. Make commands self-contained**:
-```csharp
+```csharp{title="Command Design - CreateOrder" description="Demonstrates command Design" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Command", "Design"]}
 // ✅ GOOD: Everything needed to process the command
 public record CreateOrder : ICommand {
   public required string CustomerId { get; init; }
@@ -300,7 +300,7 @@ public record CreateOrder : ICommand {
 ```
 
 **3. Use records for immutability**:
-```csharp
+```csharp{title="Command Design - with" description="Demonstrates command Design" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Command", "Design"]}
 // ✅ GOOD: Immutable record with init-only properties
 public record CreateOrder : ICommand {
   public required string CustomerId { get; init; }
@@ -317,7 +317,7 @@ public class CreateOrder : ICommand {
 ### Event Design
 
 **1. Capture all relevant state**:
-```csharp
+```csharp{title="Event Design" description="Demonstrates event Design" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Event", "Design"]}
 // ✅ GOOD: Complete snapshot of what changed
 public record ProductPriceChanged : IEvent {
   public required string ProductId { get; init; }
@@ -336,7 +336,7 @@ public record ProductPriceChanged : IEvent {
 ```
 
 **2. Make events immutable and serializable**:
-```csharp
+```csharp{title="Event Design - OrderCreated" description="Demonstrates event Design" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Event", "Design"]}
 // ✅ GOOD: All properties init-only, no methods
 public record OrderCreated : IEvent {
   public required Guid OrderId { get; init; }
@@ -352,7 +352,7 @@ public record OrderCreated : IEvent {
 ```
 
 **3. Use UUIDv7 for time-ordered IDs**:
-```csharp
+```csharp{title="Event Design - OrderCreated" description="Demonstrates event Design" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Event", "Design"]}
 // ✅ GOOD: UUIDv7 for database-friendly, time-ordered IDs
 public record OrderCreated : IEvent {
   public required Guid OrderId { get; init; }  // Generated via Guid.CreateVersion7()
@@ -368,8 +368,8 @@ public record OrderCreated : IEvent {
 ## Related Topics
 
 - [Message Envelopes](message-envelopes.md) - How commands and events are wrapped for routing
-- [Receptors](../core-concepts/receptors.md) - How commands are handled
-- [Perspectives](../core-concepts/perspectives.md) - How events drive read models
+- [Receptors](../fundamentals/receptors/receptors.md) - How commands are handled
+- [Perspectives](../fundamentals/perspectives/perspectives.md) - How events drive read models
 - [Event Store](../data/event-store.md) - How events are persisted
 - [Inbox Pattern](inbox-pattern.md) - Guaranteed message delivery
 - [Outbox Pattern](outbox-pattern.md) - Transactional message publishing
