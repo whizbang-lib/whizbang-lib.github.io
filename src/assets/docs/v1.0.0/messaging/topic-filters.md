@@ -21,7 +21,7 @@ Topic filters allow you to declare which topics or queues your commands should b
 
 Use string literals for simple, ad-hoc topic assignment:
 
-```csharp
+```csharp{title="String-Based Filters" description="Use string literals for simple, ad-hoc topic assignment:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "String-Based", "Filters"]}
 using Whizbang.Core;
 
 namespace MyApp.Commands;
@@ -43,7 +43,7 @@ public record ProcessPaymentCommand : ICommand {
 
 For centralized, type-safe topic definitions, use enums with `[Description]` attributes:
 
-```csharp
+```csharp{title="Enum-Based Filters" description="For centralized, type-safe topic definitions, use enums with [Description] attributes:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Enum-Based", "Filters"]}
 using System.ComponentModel;
 using Whizbang.Core;
 
@@ -78,7 +78,7 @@ public record CreateOrderCommand : ICommand {
 
 Commands can have multiple topic filters for fan-out scenarios:
 
-```csharp
+```csharp{title="Multiple Filters" description="Commands can have multiple topic filters for fan-out scenarios:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Multiple", "Filters"]}
 // Publish to both primary and backup queues
 [TopicFilter("orders.primary")]
 [TopicFilter("orders.backup")]
@@ -99,7 +99,7 @@ public record CreateOrderCommand : ICommand {
 
 The `TopicFilterGenerator` source generator creates an AOT-compatible registry:
 
-```csharp
+```csharp{title="Generated Registry" description="The TopicFilterGenerator source generator creates an AOT-compatible registry:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Generated", "Registry"]}
 // Generated code (example)
 namespace MyApp.Generated;
 
@@ -127,7 +127,7 @@ public static class TopicFilterRegistry {
 
 Query topic filters at runtime for routing decisions:
 
-```csharp
+```csharp{title="Usage" description="Query topic filters at runtime for routing decisions:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Usage"]}
 // Get filters for a specific command type
 var filters = TopicFilterRegistry.GetTopicFilters<CreateOrderCommand>();
 // Returns: ["orders.created"]
@@ -141,7 +141,7 @@ var allFilters = TopicFilterRegistry.GetAllFilters();
 
 Create domain-specific attributes by inheriting from `TopicFilterAttribute`:
 
-```csharp
+```csharp{title="Custom Derived Attributes" description="Create domain-specific attributes by inheriting from TopicFilterAttribute:" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Custom", "Derived", "Attributes"]}
 using System.ComponentModel;
 using Whizbang.Core;
 
@@ -177,7 +177,7 @@ public record CreateOrderCommand : ICommand {
 
 ### 1. Use Enums for Centralized Configuration
 
-```csharp
+```csharp{title="Use Enums for Centralized Configuration" description="Demonstrates use Enums for Centralized Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Enums", "Centralized", "Configuration"]}
 // ✅ GOOD: Centralized, type-safe, refactor-friendly
 public enum Topics {
   [Description("orders.created")]
@@ -200,7 +200,7 @@ public record ProcessOrderCommand : ICommand { }
 
 ### 2. Use Description Attributes for Production Values
 
-```csharp
+```csharp{title="Use Description Attributes for Production Values" description="Demonstrates use Description Attributes for Production Values" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Description", "Attributes", "Production"]}
 // ✅ GOOD: Description defines actual topic name
 public enum Topics {
   [Description("prod.orders.v2.created")]  // Production topic name
@@ -215,7 +215,7 @@ public enum Topics {
 
 ### 3. Group Topics by Domain or Transport
 
-```csharp
+```csharp{title="Group Topics by Domain or Transport" description="Demonstrates group Topics by Domain or Transport" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Group", "Topics", "Domain"]}
 // ✅ GOOD: Organized by domain
 public enum OrderTopics {
   [Description("orders.created")]
@@ -246,7 +246,7 @@ public enum AllTopics {
 
 ### 4. Use Multiple Filters for Fan-Out
 
-```csharp
+```csharp{title="Use Multiple Filters for Fan-Out" description="Demonstrates use Multiple Filters for Fan-Out" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Multiple", "Filters", "Fan-Out"]}
 // ✅ GOOD: Multiple filters for legitimate fan-out
 [TopicFilter<Topics>(Topics.OrdersCreated)]
 [TopicFilter<Topics>(Topics.AnalyticsStream)]
@@ -261,7 +261,7 @@ public record CreateOrderCommand : ICommand { }
 
 ### 5. Validate Topics at Startup
 
-```csharp
+```csharp{title="Validate Topics at Startup" description="Demonstrates validate Topics at Startup" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Validate", "Topics", "Startup"]}
 // ✅ GOOD: Validate all topics exist in your message broker
 public static void ValidateTopics(IServiceProvider services) {
   var allFilters = TopicFilterRegistry.GetAllFilters();
@@ -283,7 +283,7 @@ public static void ValidateTopics(IServiceProvider services) {
 
 Topic filters integrate with Whizbang's transport abstraction:
 
-```csharp
+```csharp{title="Integration with Transports" description="Topic filters integrate with Whizbang's transport abstraction:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Integration", "Transports"]}
 // Query filters when publishing commands
 public async Task PublishCommandAsync<TCommand>(TCommand command)
     where TCommand : ICommand {
@@ -307,7 +307,7 @@ public async Task PublishCommandAsync<TCommand>(TCommand command)
 }
 ```
 
-See [Transports](../infrastructure/transports.md) for details on transport integration.
+See [Transports](./transports/transports.md) for details on transport integration.
 
 ## Diagnostics
 
@@ -349,7 +349,7 @@ Reports when no topic filters are found in the assembly.
 
 Using custom attributes for different transports:
 
-```csharp
+```csharp{title="Example: Multi-Transport Scenario" description="Using custom attributes for different transports:" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Example:", "Multi-Transport", "Scenario"]}
 // Azure Service Bus topics
 public enum ServiceBusTopics {
   [Description("prod-orders-v2")]
@@ -393,9 +393,9 @@ var allFilters = TopicFilterRegistry.GetTopicFilters<CreateOrderCommand>();
 
 ## Related Topics
 
-- [Source Generators](../source-generators/topic-filter-discovery.md) - How TopicFilterGenerator works
+- [Source Generators](../extending/source-generators/topic-filter-discovery.md) - How TopicFilterGenerator works
 - [Commands and Events](commands-events.md) - Core message types
-- [Transports](../infrastructure/transports.md) - Message transport abstraction
+- [Transports](./transports/transports.md) - Message transport abstraction
 - [Message Envelopes](message-envelopes.md) - Message routing and metadata
 
 ## Summary

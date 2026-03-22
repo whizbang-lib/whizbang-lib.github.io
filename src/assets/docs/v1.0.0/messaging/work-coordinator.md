@@ -49,7 +49,7 @@ The Work Coordinator solves a critical problem: **How do you atomically coordina
 
 ## IWorkCoordinator Interface
 
-```csharp
+```csharp{title="IWorkCoordinator Interface" description="Demonstrates iWorkCoordinator Interface" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "IWorkCoordinator", "Interface"]}
 public interface IWorkCoordinator {
     Task<WorkBatch> ProcessWorkBatchAsync(
         // Instance info
@@ -96,7 +96,7 @@ public interface IWorkCoordinator {
 ```
 
 **Returns**:
-```csharp
+```csharp{title="IWorkCoordinator Interface - WorkBatch" description="Demonstrates iWorkCoordinator Interface" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "IWorkCoordinator", "Interface"]}
 public record WorkBatch(
     OutboxMessage[] ClaimedOutboxMessages,
     InboxMessage[] ClaimedInboxMessages,
@@ -112,7 +112,7 @@ public record WorkBatch(
 
 **Pattern**: Submit **all changes** in one call, get **all results** atomically.
 
-```csharp
+```csharp{title="Atomic Batch Processing" description="Pattern: Submit all changes in one call, get all results atomically." category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Atomic", "Batch", "Processing"]}
 // Example: Order created, publish event, claim new work
 var batch = await _coordinator.ProcessWorkBatchAsync(
     instanceId: workerInstanceId,
@@ -169,7 +169,7 @@ var batch = await _coordinator.ProcessWorkBatchAsync(
 
 **Solution**: **Leasing** - workers "claim" messages for a time period.
 
-```sql
+```sql{title="Lease-Based Coordination" description="Solution: Leasing - workers 'claim' messages for a time period." category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Lease-Based", "Coordination"]}
 -- Worker A claims messages
 UPDATE wh_outbox
 SET
@@ -189,7 +189,7 @@ WHERE message_id IN (...)
 
 **Solution**: **Consistent hashing** via `partition_number`.
 
-```csharp
+```csharp{title="Partition-Based Distribution" description="Solution: Consistent hashing via partition_number." category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Partition-Based", "Distribution"]}
 // Each message gets a partition number (0-9999)
 var partitionNumber = Math.Abs(customerId.GetHashCode()) % 10000;
 
@@ -210,7 +210,7 @@ var partitionNumber = Math.Abs(customerId.GetHashCode()) % 10000;
 
 ### Instance Information
 
-```csharp
+```csharp{title="Instance Information" description="Demonstrates instance Information" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Instance", "Information"]}
 Guid instanceId,          // Unique ID for this worker instance
 string serviceName,       // Name of service ("OrderService")
 string hostName,          // Machine name (Environment.MachineName)
@@ -222,7 +222,7 @@ Dictionary<string, JsonElement>? metadata,  // Optional metadata
 
 ### Message Completions
 
-```csharp
+```csharp{title="Message Completions" description="Demonstrates message Completions" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Message", "Completions"]}
 MessageCompletion[] outboxCompletions,
 MessageCompletion[] inboxCompletions,
 
@@ -243,7 +243,7 @@ public enum MessageProcessingStatus {
 
 ### Message Failures
 
-```csharp
+```csharp{title="Message Failures" description="Demonstrates message Failures" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Message", "Failures"]}
 MessageFailure[] outboxFailures,
 MessageFailure[] inboxFailures,
 
@@ -259,7 +259,7 @@ public record MessageFailure(
 
 ### Event Store Tracking - Receptors
 
-```csharp
+```csharp{title="Event Store Tracking - Receptors" description="Demonstrates event Store Tracking - Receptors" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Event", "Store", "Tracking"]}
 ReceptorProcessingCompletion[] receptorCompletions,
 ReceptorProcessingFailure[] receptorFailures,
 
@@ -286,7 +286,7 @@ public record ReceptorProcessingFailure(
 
 ### Event Store Tracking - Perspectives
 
-```csharp
+```csharp{title="Event Store Tracking - Perspectives" description="Demonstrates event Store Tracking - Perspectives" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Event", "Store", "Tracking"]}
 PerspectiveCheckpointCompletion[] perspectiveCompletions,
 PerspectiveCheckpointFailure[] perspectiveFailures,
 
@@ -319,7 +319,7 @@ public record PerspectiveCheckpointFailure(
 
 ### New Messages
 
-```csharp
+```csharp{title="New Messages" description="Demonstrates new Messages" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "New", "Messages"]}
 OutboxMessage[] newOutboxMessages,
 InboxMessage[] newInboxMessages,
 
@@ -348,7 +348,7 @@ public record InboxMessage(
 
 ### Lease Renewals
 
-```csharp
+```csharp{title="Lease Renewals" description="Demonstrates lease Renewals" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Lease", "Renewals"]}
 Guid[] renewOutboxLeaseIds,
 Guid[] renewInboxLeaseIds,
 ```
@@ -357,7 +357,7 @@ Guid[] renewInboxLeaseIds,
 
 ### Configuration
 
-```csharp
+```csharp{title="Configuration" description="Demonstrates configuration" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Configuration"]}
 WorkBatchFlags flags = WorkBatchFlags.None,
 int partitionCount = 10000,
 int maxPartitionsPerInstance = 100,
@@ -381,7 +381,7 @@ int staleThresholdSeconds = 600,
 
 ### Pattern 1: Store Event in Outbox
 
-```csharp
+```csharp{title="Pattern 1: Store Event in Outbox" description="Demonstrates pattern 1: Store Event in Outbox" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Pattern", "Store", "Event"]}
 // Receptor creates event, stores in outbox
 await _coordinator.ProcessWorkBatchAsync(
     instanceId: instanceId,
@@ -418,7 +418,7 @@ await _coordinator.ProcessWorkBatchAsync(
 
 ### Pattern 2: Claim and Publish Outbox Messages
 
-```csharp
+```csharp{title="Pattern 2: Claim and Publish Outbox Messages" description="Demonstrates pattern 2: Claim and Publish Outbox Messages" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Pattern", "Claim", "Publish"]}
 // Background worker claims work
 var batch = await _coordinator.ProcessWorkBatchAsync(
     instanceId: workerInstanceId,
@@ -449,7 +449,7 @@ foreach (var msg in batch.ClaimedOutboxMessages) {
 
 ### Pattern 3: Report Completions After Publishing
 
-```csharp
+```csharp{title="Pattern 3: Report Completions After Publishing" description="Demonstrates pattern 3: Report Completions After Publishing" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Pattern", "Report", "Completions"]}
 var completions = new List<MessageCompletion>();
 
 foreach (var msg in batch.ClaimedOutboxMessages) {
@@ -487,7 +487,7 @@ await _coordinator.ProcessWorkBatchAsync(
 
 ### Pattern 4: Store in Inbox (Deduplication)
 
-```csharp
+```csharp{title="Pattern 4: Store in Inbox (Deduplication)" description="Demonstrates pattern 4: Store in Inbox (Deduplication)" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Pattern", "Store", "Inbox"]}
 // Worker receives message from Azure Service Bus
 try {
     // Store in inbox (atomic - prevents duplicate processing)
@@ -536,7 +536,7 @@ The Work Coordinator is implemented as a **PostgreSQL stored procedure** for opt
 
 ### Stored Procedure: `process_work_batch`
 
-```sql
+```sql{title="Stored Procedure: `process_work_batch`" description="Demonstrates stored Procedure: `process_work_batch`" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Stored", "Procedure:", "Process_work_batch"]}
 CREATE OR REPLACE FUNCTION process_work_batch(
     p_instance_id UUID,
     p_service_name VARCHAR(255),
@@ -643,7 +643,7 @@ $$;
 
 ### Key Metrics
 
-```csharp
+```csharp{title="Key Metrics" description="Demonstrates key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Key", "Metrics"]}
 public class WorkCoordinatorMetrics {
     public int OutboxStoredCount { get; set; }
     public int OutboxPublishedCount { get; set; }
@@ -671,12 +671,12 @@ public class WorkCoordinatorMetrics {
 ## Further Reading
 
 **Architecture**:
-- [Message Lifecycle & Architecture](../architecture/message-lifecycle.md) - **Complete flow with sequence diagrams** showing Commands, Events, Receptors, Perspectives, and all integration points
+- [Message Lifecycle & Architecture](../extending/internals/message-lifecycle.md) - **Complete flow with sequence diagrams** showing Commands, Events, Receptors, Perspectives, and all integration points
 
 **Core Concepts**:
-- [Dispatcher](../core-concepts/dispatcher.md) - Message routing
-- [Receptors](../core-concepts/receptors.md) - Message handlers and business logic
-- [Perspectives](../core-concepts/perspectives.md) - Event listeners for read models
+- [Dispatcher](../fundamentals/dispatcher/dispatcher.md) - Message routing
+- [Receptors](../fundamentals/receptors/receptors.md) - Message handlers and business logic
+- [Perspectives](../fundamentals/perspectives/perspectives.md) - Event listeners for read models
 
 **Messaging Patterns**:
 - [Outbox Pattern](outbox-pattern.md) - Reliable event publishing
@@ -687,9 +687,9 @@ public class WorkCoordinatorMetrics {
 - [Event Store](../data/event-store.md) - Event storage and replay
 
 **Workers**:
-- [Perspective Worker](../workers/perspective-worker.md) - Uses work coordinator for checkpoint-based processing
-- [Execution Lifecycle](../workers/execution-lifecycle.md) - Startup/shutdown coordination
-- [Database Readiness](../workers/database-readiness.md) - Dependency coordination
+- [Perspective Worker](../operations/workers/perspective-worker.md) - Uses work coordinator for checkpoint-based processing
+- [Execution Lifecycle](../operations/workers/execution-lifecycle.md) - Startup/shutdown coordination
+- [Database Readiness](../operations/workers/database-readiness.md) - Dependency coordination
 
 ---
 

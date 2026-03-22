@@ -50,6 +50,7 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
       <p-popover
         #searchOverlay
         styleClass="search-overlay"
+        [baseZIndex]="10001"
       >
         <!-- Auto-suggestions -->
         <div class="search-suggestions" *ngIf="suggestions.length > 0 && !searchResults.length && searchQuery.length > 0 && searchQuery.length < 3">

@@ -39,7 +39,7 @@ codeReferences:
 
 **Goal**: Minimize JOINs at query time by storing all data needed for a query in a single table.
 
-```sql
+```sql{title="Denormalization" description="Goal: Minimize JOINs at query time by storing all data needed for a query in a single table." category="Implementation" difficulty="BEGINNER" tags=["Data", "Denormalization"]}
 -- ❌ Normalized (requires JOINs)
 SELECT o.order_id, o.total, c.name, c.email
 FROM orders o
@@ -55,7 +55,7 @@ WHERE order_id = '...';
 
 **Start with queries, design schema to support them**:
 
-```sql
+```sql{title="Query-Driven Design" description="Start with queries, design schema to support them:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Query-Driven", "Design"]}
 -- Common queries drive schema design:
 -- 1. Get order by ID
 SELECT * FROM order_summaries WHERE order_id = ?;
@@ -89,7 +89,7 @@ Command → Write Model → Event → Perspective Update (async)
 
 **Use Case**: Simple read models with all data in columns.
 
-```sql
+```sql{title="Pattern 1: Flat Denormalized Table" description="Use Case: Simple read models with all data in columns." category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Flat", "Denormalized"]}
 CREATE TABLE order_summaries (
     order_id UUID PRIMARY KEY,
 
@@ -119,7 +119,7 @@ CREATE TABLE order_summaries (
 ```
 
 **Perspective Update**:
-```csharp
+```csharp{title="Pattern 1: Flat Denormalized Table - OrderSummaryPerspective" description="Perspective Update:" category="Implementation" difficulty="ADVANCED" tags=["Data", "Pattern", "Flat", "Denormalized"]}
 public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
     private readonly IDbConnectionFactory _db;
 
@@ -168,7 +168,7 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 
 **Use Case**: Complex nested data, evolving schemas, metadata.
 
-```sql
+```sql{title="Pattern 2: JSONB for Flexible Data" description="Use Case: Complex nested data, evolving schemas, metadata." category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "JSONB", "Flexible"]}
 CREATE TABLE product_catalog (
     product_id UUID PRIMARY KEY,
 
@@ -190,7 +190,7 @@ CREATE TABLE product_catalog (
 ```
 
 **Example JSONB Content**:
-```json
+```json{title="Pattern 2: JSONB for Flexible Data (2)" description="Example JSONB Content:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "JSONB", "Flexible"]}
 {
   "category": "Electronics",
   "subcategory": "Laptops",
@@ -209,7 +209,7 @@ CREATE TABLE product_catalog (
 ```
 
 **Query JSONB**:
-```sql
+```sql{title="Pattern 2: JSONB for Flexible Data (3)" description="Query JSONB:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "JSONB", "Flexible"]}
 -- Filter by category
 SELECT * FROM product_catalog
 WHERE metadata->>'category' = 'Electronics';
@@ -228,7 +228,7 @@ WHERE metadata->>'brand' ILIKE '%TechCorp%';
 ```
 
 **Perspective Update**:
-```csharp
+```csharp{title="Pattern 2: JSONB for Flexible Data (4)" description="Perspective Update:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "JSONB", "Flexible"]}
 public async Task UpdateAsync(ProductAdded @event, CancellationToken ct = default) {
     await using var conn = _db.CreateConnection();
 
@@ -269,7 +269,7 @@ public async Task UpdateAsync(ProductAdded @event, CancellationToken ct = defaul
 
 **Use Case**: Pre-computed aggregations for analytics dashboards.
 
-```sql
+```sql{title="Pattern 3: Aggregated Data" description="Use Case: Pre-computed aggregations for analytics dashboards." category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Aggregated"]}
 CREATE TABLE customer_statistics (
     customer_id UUID PRIMARY KEY,
 
@@ -291,7 +291,7 @@ CREATE TABLE customer_statistics (
 ```
 
 **Perspective Update** (incremental):
-```csharp
+```csharp{title="Pattern 3: Aggregated Data - CustomerStatisticsPerspective" description="Perspective Update (incremental):" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Aggregated"]}
 public class CustomerStatisticsPerspective : IPerspectiveOf<OrderCreated> {
     private readonly IDbConnectionFactory _db;
 
@@ -326,7 +326,7 @@ public class CustomerStatisticsPerspective : IPerspectiveOf<OrderCreated> {
 ```
 
 **Query**:
-```csharp
+```csharp{title="Pattern 3: Aggregated Data (3)" description="Demonstrates pattern 3: Aggregated Data" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Aggregated"]}
 public async Task<CustomerStatistics?> GetCustomerStatsAsync(
     Guid customerId,
     CancellationToken ct = default) {
@@ -347,7 +347,7 @@ public async Task<CustomerStatistics?> GetCustomerStatsAsync(
 
 **Use Case**: High-volume temporal data (metrics, logs, analytics).
 
-```sql
+```sql{title="Pattern 4: Time-Series Data" description="Use Case: High-volume temporal data (metrics, logs, analytics)." category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Time-Series"]}
 CREATE TABLE order_metrics (
     metric_id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),  -- Time-ordered
 
@@ -382,7 +382,7 @@ CREATE INDEX idx_order_metrics_2024_12_tenant_id ON order_metrics_2024_12 (tenan
 ```
 
 **Perspective Update**:
-```csharp
+```csharp{title="Pattern 4: Time-Series Data (2)" description="Perspective Update:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Time-Series"]}
 public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
     await using var conn = _db.CreateConnection();
 
@@ -410,7 +410,7 @@ public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = defaul
 ```
 
 **Query** (time-range with partition pruning):
-```sql
+```sql{title="Pattern 4: Time-Series Data (3)" description="Query (time-range with partition pruning):" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Time-Series"]}
 -- Query specific time range (PostgreSQL automatically prunes partitions)
 SELECT
     DATE(timestamp) AS date,
@@ -431,7 +431,7 @@ ORDER BY date;
 
 ### Primary Key
 
-```sql
+```sql{title="Primary Key" description="Demonstrates primary Key" category="Implementation" difficulty="BEGINNER" tags=["Data", "Primary", "Key"]}
 -- ✅ UUIDv7 (time-ordered, insert-friendly)
 order_id UUID PRIMARY KEY DEFAULT uuid_generate_v7()
 
@@ -441,7 +441,7 @@ order_id UUID PRIMARY KEY DEFAULT gen_random_uuid()
 
 ### Lookup Indexes
 
-```sql
+```sql{title="Lookup Indexes" description="Demonstrates lookup Indexes" category="Implementation" difficulty="BEGINNER" tags=["Data", "Lookup", "Indexes"]}
 -- Single-column indexes for common filters
 CREATE INDEX idx_customer_id ON order_summaries (customer_id);
 CREATE INDEX idx_status ON order_summaries (status);
@@ -455,7 +455,7 @@ CREATE INDEX idx_created_at_desc ON order_summaries (created_at DESC);
 
 ### JSONB Indexes
 
-```sql
+```sql{title="JSONB Indexes" description="Demonstrates jSONB Indexes" category="Implementation" difficulty="BEGINNER" tags=["Data", "JSONB", "Indexes"]}
 -- GIN index for JSONB queries
 CREATE INDEX idx_metadata_gin ON products USING GIN (metadata);
 
@@ -465,7 +465,7 @@ CREATE INDEX idx_metadata_category ON products ((metadata->>'category'));
 
 ### Partial Indexes
 
-```sql
+```sql{title="Partial Indexes" description="Demonstrates partial Indexes" category="Implementation" difficulty="BEGINNER" tags=["Data", "Partial", "Indexes"]}
 -- Index only active orders (saves space)
 CREATE INDEX idx_active_orders ON order_summaries (customer_id)
 WHERE status IN ('Created', 'Processing', 'Shipped');
@@ -477,7 +477,7 @@ WHERE created_at > NOW() - INTERVAL '90 days';
 
 ### Full-Text Search
 
-```sql
+```sql{title="Full-Text Search" description="Demonstrates full-Text Search" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Full-Text", "Search"]}
 -- Add tsvector column for full-text search
 ALTER TABLE order_summaries
 ADD COLUMN search_vector tsvector
@@ -500,7 +500,7 @@ WHERE search_vector @@ to_tsquery('english', 'john & doe');
 
 ### Pattern 1: Tenant Column + Row-Level Security
 
-```sql
+```sql{title="Pattern 1: Tenant Column + Row-Level Security" description="Demonstrates pattern 1: Tenant Column + Row-Level Security" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Tenant", "Column"]}
 CREATE TABLE order_summaries (
     order_id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -517,7 +517,7 @@ USING (tenant_id = current_setting('app.current_tenant_id')::UUID);
 ```
 
 **Application**:
-```csharp
+```csharp{title="Pattern 1: Tenant Column + Row-Level Security (2)" description="Application:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Tenant", "Column"]}
 public async Task<OrderSummary[]> GetOrdersAsync(
     Guid tenantId,
     CancellationToken ct = default) {
@@ -540,7 +540,7 @@ public async Task<OrderSummary[]> GetOrdersAsync(
 
 ### Pattern 2: Schema-Per-Tenant
 
-```sql
+```sql{title="Pattern 2: Schema-Per-Tenant" description="Demonstrates pattern 2: Schema-Per-Tenant" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Schema-Per-Tenant"]}
 -- Create schema per tenant
 CREATE SCHEMA tenant_abc123;
 CREATE SCHEMA tenant_def456;
@@ -558,7 +558,7 @@ CREATE TABLE tenant_def456.order_summaries (
 ```
 
 **Application**:
-```csharp
+```csharp{title="Pattern 2: Schema-Per-Tenant (2)" description="Application:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Schema-Per-Tenant"]}
 public async Task<OrderSummary[]> GetOrdersAsync(
     string tenantSchemaName,
     CancellationToken ct = default) {
@@ -583,7 +583,7 @@ public async Task<OrderSummary[]> GetOrdersAsync(
 
 **Materialized Views** are an alternative to perspectives for complex queries:
 
-```sql
+```sql{title="Materialized Views (Alternative to Perspectives)" description="Materialized Views are an alternative to perspectives for complex queries:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Materialized", "Views", "Alternative"]}
 -- Create materialized view
 CREATE MATERIALIZED VIEW order_daily_summary AS
 SELECT
@@ -623,7 +623,7 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY order_daily_summary;
 
 ### Strategy 1: Schema Migrations with EF Core
 
-```csharp
+```csharp{title="Strategy 1: Schema Migrations with EF Core" description="Demonstrates strategy 1: Schema Migrations with EF Core" category="Implementation" difficulty="ADVANCED" tags=["Data", "Strategy", "Schema", "Migrations"]}
 // Migration: Add order_summaries table
 public partial class AddOrderSummaries : Migration {
     protected override void Up(MigrationBuilder migrationBuilder) {
@@ -667,7 +667,7 @@ public partial class AddOrderSummaries : Migration {
 
 ### Strategy 2: SQL Scripts
 
-```sql
+```sql{title="Strategy 2: SQL Scripts" description="Demonstrates strategy 2: SQL Scripts" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Strategy", "SQL", "Scripts"]}
 -- migrations/001_create_order_summaries.sql
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -686,7 +686,7 @@ CREATE INDEX idx_order_summaries_created_at ON order_summaries (created_at DESC)
 ```
 
 **Apply with psql**:
-```bash
+```bash{title="Strategy 2: SQL Scripts (2)" description="Apply with psql:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Strategy", "SQL", "Scripts"]}
 psql -U postgres -d whizbang -f migrations/001_create_order_summaries.sql
 ```
 
@@ -722,7 +722,7 @@ psql -U postgres -d whizbang -f migrations/001_create_order_summaries.sql
 
 ### Query Analysis
 
-```sql
+```sql{title="Query Analysis" description="Demonstrates query Analysis" category="Implementation" difficulty="BEGINNER" tags=["Data", "Query", "Analysis"]}
 -- Analyze query performance
 EXPLAIN ANALYZE
 SELECT * FROM order_summaries
@@ -738,7 +738,7 @@ LIMIT 10;
 
 ### Index Usage Monitoring
 
-```sql
+```sql{title="Index Usage Monitoring" description="Demonstrates index Usage Monitoring" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Index", "Usage", "Monitoring"]}
 -- Find unused indexes
 SELECT
     schemaname,
@@ -753,7 +753,7 @@ ORDER BY schemaname, tablename;
 
 ### Table Bloat Monitoring
 
-```sql
+```sql{title="Table Bloat Monitoring" description="Demonstrates table Bloat Monitoring" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Table", "Bloat", "Monitoring"]}
 -- Check table bloat (dead rows)
 SELECT
     schemaname,
@@ -773,8 +773,8 @@ VACUUM ANALYZE order_summaries;
 ## Further Reading
 
 **Core Concepts**:
-- [Perspectives](../core-concepts/perspectives.md) - Event-driven read models
-- [Lenses](../core-concepts/lenses.md) - Query repositories
+- [Perspectives](../fundamentals/perspectives/perspectives.md) - Event-driven read models
+- [Lenses](../fundamentals/lenses/lenses.md) - Query repositories
 
 **Data Access**:
 - [Dapper Integration](dapper-integration.md) - Lightweight data access

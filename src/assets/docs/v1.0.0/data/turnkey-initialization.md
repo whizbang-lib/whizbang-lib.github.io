@@ -4,7 +4,7 @@ Whizbang provides a simple one-line initialization method that ensures your data
 
 ## Quick Start
 
-```csharp
+```csharp{title="Quick Start" description="Demonstrates quick Start" category="Implementation" difficulty="BEGINNER" tags=["Data", "Quick", "Start"]}
 var app = builder.Build();
 
 // Initialize Whizbang database BEFORE starting the app
@@ -28,7 +28,7 @@ await app.RunAsync();
 
 ### Before (Manual Initialization)
 
-```csharp
+```csharp{title="Before (Manual Initialization)" description="Demonstrates before (Manual Initialization)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Before", "Manual", "Initialization"]}
 // Error-prone: Must remember to do this for each DbContext
 // Risk: Code might run in the wrong order or be forgotten
 {
@@ -42,7 +42,7 @@ await app.RunAsync();
 
 ### After (Turnkey Initialization)
 
-```csharp
+```csharp{title="After (Turnkey Initialization)" description="Demonstrates after (Turnkey Initialization)" category="Implementation" difficulty="BEGINNER" tags=["Data", "After", "Turnkey", "Initialization"]}
 // Simple: One line initializes ALL registered DbContexts
 // Safe: Runs before app starts, preventing race conditions
 await app.EnsureWhizbangInitializedAsync();
@@ -63,7 +63,7 @@ This is AOT-compatible with no reflection - all registration happens via source-
 
 If your application has multiple Whizbang DbContexts, they are all initialized automatically:
 
-```csharp
+```csharp{title="Multiple DbContexts" description="If your application has multiple Whizbang DbContexts, they are all initialized automatically:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Multiple", "DbContexts"]}
 // Both DbContexts are initialized with one call
 builder.Services.AddWhizbang()
     .WithEFCore<OrderDbContext>()
@@ -94,6 +94,33 @@ info: Whizbang.Initialization[0]
 ## Idempotency
 
 All initialization operations are idempotent. It's safe to call `EnsureWhizbangInitializedAsync()` multiple times - existing tables and functions are not recreated.
+
+## Multi-Instance Initialization
+
+When deploying multiple instances (pods) of the same service, Whizbang coordinates database initialization using PostgreSQL advisory locks to prevent concurrent schema modifications.
+
+### How It Works
+
+1. **Advisory lock acquisition** — Each pod attempts to acquire a non-blocking advisory lock (`pg_try_advisory_lock`) based on the schema name. Only one pod can hold the lock at a time.
+2. **Randomized exponential backoff** — If the lock is held by another pod, the waiting pod retries with exponential backoff (100ms → 200ms → 400ms → ... capped at 20 seconds) plus random jitter. This prevents a thundering herd when many pods start simultaneously.
+3. **Schema initialization** — The pod that holds the lock runs all 7 initialization phases (tables, migrations, perspectives, constraints, associations, registry, maintenance).
+4. **Lock release** — After initialization completes (or fails), the lock is released so the next pod can proceed.
+5. **Retry indefinitely** — Pods retry forever until the lock is acquired. Only `CancellationToken` cancellation stops the retry loop.
+
+### Idempotency Guarantees
+
+All DDL operations are idempotent by design:
+
+- Table creation uses `CREATE TABLE IF NOT EXISTS`
+- Function creation uses `CREATE OR REPLACE FUNCTION`
+- Migrations are hash-tracked — unchanged migrations are skipped automatically
+- Constraints check for existing constraints before adding
+
+This means even if two pods manage to overlap (e.g., the first pod crashes mid-initialization), the second pod will safely complete all remaining work without duplicating what was already done.
+
+### Cancellation Safety
+
+The advisory lock unlock always uses `CancellationToken.None` to ensure the lock is released even if the original cancellation token has been cancelled. This prevents a cancelled pod from leaving a dangling lock that would block all other pods indefinitely.
 
 ## See Also
 

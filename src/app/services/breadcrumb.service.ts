@@ -4,6 +4,15 @@ import { Router } from '@angular/router';
 import { BreadcrumbItem } from '../components/breadcrumb.component';
 import { VersionService } from './version.service';
 
+interface NavTreeNode {
+  name: string;
+  title: string;
+  order: number;
+  icon?: string;
+  pages: { slug: string; title: string; order: number }[];
+  children: NavTreeNode[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -12,9 +21,11 @@ export class BreadcrumbService {
   private router = inject(Router);
   private versionService = inject(VersionService);
   private docsIndex: any[] = [];
+  private navTree: Record<string, NavTreeNode[]> = {};
 
   constructor() {
     this.loadDocsIndex();
+    this.loadNavTree();
   }
 
   private async loadDocsIndex() {
@@ -23,6 +34,14 @@ export class BreadcrumbService {
     } catch (error) {
       console.error('Failed to load docs index for breadcrumbs:', error);
       this.docsIndex = [];
+    }
+  }
+
+  private async loadNavTree() {
+    try {
+      this.navTree = await this.http.get<Record<string, NavTreeNode[]>>('assets/docs-nav-tree.json').toPromise() || {};
+    } catch (error) {
+      this.navTree = {};
     }
   }
 
@@ -103,62 +122,46 @@ export class BreadcrumbService {
     
     // Find the document in the index
     const docEntry = this.docsIndex.find(doc => doc.slug === docPath);
-    
-    if (docEntry) {
-      // Add category breadcrumb if it's different from the page title
-      if (docEntry.category && docEntry.title !== docEntry.category) {
-        // Check if there are other docs in this category to make it a meaningful link
-        const categoryDocs = this.docsIndex.filter(doc => doc.category === docEntry.category);
-        
-        if (categoryDocs.length > 1) {
-          // Find the main category page if it exists
-          const categoryMainPage = categoryDocs.find(doc => 
-            doc.title === docEntry.category || 
-            doc.slug.endsWith(`/${this.slugify(docEntry.category)}`) ||
-            doc.slug === this.slugify(docEntry.category)
-          );
 
-          if (categoryMainPage) {
-            breadcrumbs.push({
-              label: docEntry.category,
-              url: `/docs/${categoryMainPage.slug}`,
-              isActive: false
-            });
-          } else {
-            // No main category page, just show category without link
-            breadcrumbs.push({
-              label: docEntry.category,
-              isActive: false
-            });
-          }
-        }
-      }
+    // Build breadcrumbs from the folder path using the nav tree for titles
+    const startIndex = versionOrStateLabel ? 1 : 0; // Skip version/state part if already added
+    const remainingParts = pathParts.slice(startIndex);
+    const pageSlug = remainingParts[remainingParts.length - 1]; // Last part is the page
+    const folderParts = remainingParts.slice(0, -1); // Everything except last is folders
 
-      // Add the current page (always active, no link)
-      breadcrumbs.push({
-        label: docEntry.title,
-        isActive: true
-      });
-    } else {
-      // Fallback: generate breadcrumbs from URL structure
-      let currentPath = 'docs';
-      const startIndex = versionOrStateLabel ? 1 : 0; // Skip version/state part if already added
+    // Walk the nav tree to get folder titles
+    const versionOrState = pathParts[0];
+    let currentNodes = this.navTree[versionOrState] || [];
+    let currentPath = `docs/${versionOrState}`;
 
-      for (let i = startIndex; i < pathParts.length; i++) {
-        const part = pathParts[i];
-        currentPath += '/' + part;
-        const isLast = i === pathParts.length - 1;
+    for (const folderName of folderParts) {
+      currentPath += '/' + folderName;
+      const matchingNode = currentNodes.find(n => n.name === folderName);
 
-        // Convert slug to title (capitalize and replace hyphens)
-        const title = this.slugToTitle(part);
-
+      if (matchingNode) {
         breadcrumbs.push({
-          label: title,
-          url: isLast ? undefined : `/${currentPath}`,
-          isActive: isLast
+          label: matchingNode.title,
+          url: `/${currentPath}`,
+          isActive: false
         });
+        currentNodes = matchingNode.children;
+      } else {
+        // Fallback to humanized folder name
+        breadcrumbs.push({
+          label: this.slugToTitle(folderName),
+          url: `/${currentPath}`,
+          isActive: false
+        });
+        currentNodes = [];
       }
     }
+
+    // Add the current page (always active, no link)
+    const pageTitle = docEntry?.title || this.slugToTitle(pageSlug);
+    breadcrumbs.push({
+      label: pageTitle,
+      isActive: true
+    });
 
     return breadcrumbs;
   }

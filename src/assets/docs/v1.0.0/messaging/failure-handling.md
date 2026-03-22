@@ -10,7 +10,7 @@ Whizbang implements sophisticated failure handling mechanisms including exponent
 
 Messages track their processing state using bitwise flags in the `status` column:
 
-```csharp
+```csharp{title="Message Processing Status" description="Messages track their processing state using bitwise flags in the status column:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Message", "Processing", "Status"]}
 [Flags]
 public enum MessageProcessingStatus {
     Stored = 1,         // Bit 0: Message stored in database
@@ -28,7 +28,7 @@ public enum MessageProcessingStatus {
 
 ### Failure Classification
 
-```csharp
+```csharp{title="Failure Classification" description="Demonstrates failure Classification" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Failure", "Classification"]}
 public enum MessageFailureReason {
     Unknown = 99,                    // Default (not classified)
     TransportUnavailable = 1,        // Network/transport issues
@@ -139,7 +139,7 @@ When message M1 in stream S fails, what happens to messages M2, M3, M4 that come
 
 **Mechanism**: Completing a message with `Status = 0` clears its lease without changing status flags, allowing it to be reprocessed.
 
-```csharp
+```csharp{title="Status=0 Release Pattern" description="Mechanism: Completing a message with Status = 0 clears its lease without changing status flags, allowing it to be" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Status=0", "Release", "Pattern"]}
 // Release messages M2, M3 (let them be retried)
 await coordinator.ProcessWorkBatchAsync(
     // ...
@@ -247,7 +247,7 @@ M2, M3, M4: Other events (independent)
 
 ### Detection Criteria
 
-```sql
+```sql{title="Detection Criteria" description="Demonstrates detection Criteria" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Detection", "Criteria"]}
 -- Find potential poison messages
 SELECT message_id, destination, event_type, attempts, error,
        scheduled_for, created_at
@@ -261,7 +261,7 @@ ORDER BY attempts DESC, created_at ASC;
 ### Handling Strategies
 
 **1. Dead Letter Queue** (recommended):
-```csharp
+```csharp{title="Handling Strategies" description="Demonstrates handling Strategies" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Handling", "Strategies"]}
 // Move to dead letter queue after N attempts
 if (message.Attempts >= 10) {
     await MoveToDeadLetterQueueAsync(message);
@@ -292,7 +292,7 @@ if (message.Attempts >= 10) {
 
 When a message fails, it may have completed some steps before failing. The `CompletedStatus` field tracks what was accomplished.
 
-```csharp
+```csharp{title="CompletedStatus Field" description="When a message fails, it may have completed some steps before failing." category="Architecture" difficulty="BEGINNER" tags=["Messaging", "CompletedStatus", "Field"]}
 public record MessageFailure {
     public required Guid MessageId { get; init; }
     public required MessageProcessingStatus CompletedStatus { get; init; }
@@ -301,7 +301,7 @@ public record MessageFailure {
 ```
 
 **Example**:
-```csharp
+```csharp{title="CompletedStatus Field (2)" description="Demonstrates completedStatus Field" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "CompletedStatus", "Field"]}
 // Message M1: Store to DB ✅, Store to Event Store ✅, Publish to Transport ❌
 await coordinator.ProcessWorkBatchAsync(
     outboxFailures: [
@@ -320,7 +320,7 @@ await coordinator.ProcessWorkBatchAsync(
 
 ### SQL Update Logic
 
-```sql
+```sql{title="SQL Update Logic" description="Demonstrates sQL Update Logic" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "SQL", "Update", "Logic"]}
 UPDATE wh_outbox
 SET status = (status | v_failure.status_flags | 32768),  -- Add completed flags + Failed flag
     error = v_failure.error_message,
@@ -339,7 +339,7 @@ WHERE message_id = v_failure.msg_id;
 ### Key Metrics to Track
 
 **1. Retry Count Distribution**:
-```sql
+```sql{title="Key Metrics to Track" description="Demonstrates key Metrics to Track" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Key", "Metrics", "Track"]}
 SELECT attempts, COUNT(*) as message_count
 FROM wh_outbox
 WHERE (status & 32768) = 32768  -- Failed messages
@@ -348,7 +348,7 @@ ORDER BY attempts;
 ```
 
 **2. Failure Reasons**:
-```sql
+```sql{title="Key Metrics to Track (2)" description="Demonstrates key Metrics to Track" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Key", "Metrics", "Track"]}
 SELECT failure_reason, COUNT(*) as count
 FROM wh_outbox
 WHERE (status & 32768) = 32768
@@ -357,7 +357,7 @@ ORDER BY count DESC;
 ```
 
 **3. Scheduled Retry Backlog**:
-```sql
+```sql{title="Key Metrics to Track (3)" description="Demonstrates key Metrics to Track" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Key", "Metrics", "Track"]}
 SELECT COUNT(*) as scheduled_count,
        MIN(scheduled_for) as next_retry,
        MAX(scheduled_for) as latest_retry
@@ -367,7 +367,7 @@ WHERE scheduled_for IS NOT NULL
 ```
 
 **4. Poison Message Candidates**:
-```sql
+```sql{title="Key Metrics to Track (4)" description="Demonstrates key Metrics to Track" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Key", "Metrics", "Track"]}
 SELECT COUNT(*) as poison_candidates
 FROM wh_outbox
 WHERE attempts >= 10
@@ -389,7 +389,7 @@ WHERE attempts >= 10
 - Recommended: 10 attempts
 
 **Backoff Cap** (optional):
-```csharp
+```csharp{title="Retry Configuration" description="Backoff Cap (optional):" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Retry", "Configuration"]}
 // Cap exponential backoff at 1 hour
 var backoffSeconds = Math.Min(
     30 * Math.Pow(2, attempts),
@@ -499,7 +499,7 @@ See: `014_CreateProcessWorkBatchFunction.sql`
 
 See: `Whizbang.Core/Messaging/MessageFailure.cs`
 
-```csharp
+```csharp{title="C# Records" description="See: `Whizbang." category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Records"]}
 public record MessageFailure {
     public required Guid MessageId { get; init; }
     public required MessageProcessingStatus CompletedStatus { get; init; }

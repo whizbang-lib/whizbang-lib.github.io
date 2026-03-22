@@ -10,22 +10,60 @@ The versioning system implements a filesystem-based approach to documentation or
 
 ### Filesystem Structure
 
+The folder hierarchy IS the navigation tree. Each folder's `_folder.md` serves as its manifest.
+
 ```
 src/assets/docs/
-├── v1.0.0/                    # Released version directories
-│   ├── _folder.md             # Version metadata
-│   ├── getting-started.md
-│   ├── installation.md
-│   └── ...
-├── v1.1.0/                    # Newer released version
-├── v1.2.0/                    # Latest released version
-├── drafts/                    # Draft documentation (unreleased)
-│   ├── _folder.md             # State metadata
+├── v1.0.0/                          # Auto-discovered version (pattern: v*.*.*)
+│   ├── _folder.md                   # Version metadata (title, status, releaseDate)
+│   ├── README.md                    # Top-level page
+│   ├── getting-started/             # Folder = nav section
+│   │   ├── _folder.md              # Folder manifest (title, order, icon)
+│   │   ├── installation.md         # Page in section
+│   │   └── quick-start.md
+│   ├── components/                  # Folder with subfolders
+│   │   ├── _folder.md
+│   │   ├── dispatcher.md           # Page in components
+│   │   ├── transports/             # Subfolder = nested nav section
+│   │   │   ├── _folder.md
+│   │   │   ├── azure-service-bus.md
+│   │   │   └── rabbitmq.md
+│   │   └── workers/
+│   │       ├── _folder.md
+│   │       └── transport-consumer.md
+│   └── core-concepts/
+│       ├── _folder.md
+│       └── perspectives/            # Subfolder nests to any depth
+│           ├── _folder.md
+│           └── multi-stream.md
+├── v2.0.0/                          # Just create the folder to add a version
+│   └── _folder.md
+├── drafts/                          # Hardcoded state folder
+│   ├── _folder.md                   # State metadata (folderType: "state")
 │   └── new-feature.md
-├── proposals/                 # Feature proposals
-├── backlog/                   # Future feature documentation
-└── declined/                  # Declined feature documentation
+├── proposals/
+├── backlog/
+└── declined/
 ```
+
+### `_folder.md` format
+
+```yaml
+---
+title: "Display Name"     # Required: shown in sidebar and breadcrumbs
+order: 5                  # Optional: sort order (default 999)
+icon: "pi-box"            # Optional: PrimeNG icon class for sidebar
+---
+```
+
+### Generated outputs
+
+`gen-docs-index-versioned.mjs` produces three files (run in `prestart` and `prebuild`):
+- **`docs-index.json`** — flat index for v1.0.0 (backward compat for search, structured data)
+- **`docs-index-versioned.json`** — flat index with `category` field for all versions/states
+- **`docs-nav-tree.json`** — nested tree built from folder hierarchy for sidebar navigation
+
+The sidebar, breadcrumbs, and menu auto-expand all consume the nav tree. Search and SEO services use the flat indexes.
 
 ### Core Services
 

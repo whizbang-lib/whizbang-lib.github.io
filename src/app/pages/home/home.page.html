@@ -1,182 +1,268 @@
-<!-- Hero Section -->
-<section class="text-center mb-8 hero-section" #heroSection>
-    <div class="parallax-bg"></div>
-    <h1 class="text-6xl font-bold mb-4 animate-on-scroll slide-up float-animation">
-        Meet <img [src]="getMeetWhizbangPath()" alt="Whizbang" class="meet-whizbang-logo">
-    </h1>
-    <h2 class="text-2xl font-semibold mb-4 text-gradient animate-on-scroll slide-up" style="animation-delay: 0.2s;">Unified Event‑Sourced Data & Messaging Runtime for .NET</h2>
-    <p class="text-xl mb-6 max-w-4xl mx-auto animate-on-scroll fade-in" style="animation-delay: 0.4s;">One runtime. Any store. Every message. Collapse MartenDB, Wolverine, MassTransit, and MediatR into one cohesive platform with a single mental model.</p>
-    <div class="flex flex-wrap justify-content-center gap-3 mb-6 animate-on-scroll scale-in" style="animation-delay: 0.6s;">
-        <a pButton pRipple class="btn-gradient pulse-on-hover" routerLink="/docs/getting-started">Get Started</a>
-        <a pButton pRipple routerLink="/examples" class="p-button-outlined bounce-on-hover">View Examples</a>
-        <a pButton pRipple href="https://github.com/whizbang-lib/whizbang" target="_blank" class="p-button-text glow-on-hover">Visit GitHub →</a>
-    </div>
-</section>
+<!-- Scroll Progress Bar -->
+<div class="scroll-progress-bar" #progressBar></div>
 
-<!-- Why Choose Whizbang & Benefits Combined -->
-<section class="mb-8 animate-on-scroll fade-in-up benefits-section fast-parallax-header">
-    <div class="container-wrapper">
-        <h2 class="text-3xl font-semibold mb-6 text-center animate-on-scroll slide-up fast-parallax-header">Why Choose Whizbang?</h2>
-        <div class="grid">
-        <div class="col-12 md:col-4 animate-on-scroll slide-in-left" style="animation-delay: 0.1s;">
-            <div class="text-center p-4 parallax-element hover-lift">
-                <i class="pi pi-sitemap text-4xl text-primary mb-3 icon-bounce"></i>
-                <h3 class="text-xl font-semibold mb-2">Single Surface Area</h3>
-                <p class="text-surface-600 dark:text-surface-300">Aggregates, projections, commands, queries, and sagas share the same primitives.</p>
-            </div>
-        </div>
-        <div class="col-12 md:col-4 animate-on-scroll slide-in-up" style="animation-delay: 0.2s;">
-            <div class="text-center p-4 parallax-element hover-lift">
-                <i class="pi pi-database text-4xl text-primary mb-3 icon-bounce"></i>
-                <h3 class="text-xl font-semibold mb-2">Poly-Store Adapters</h3>
-                <p class="text-surface-600 dark:text-surface-300">Postgres, SQL Server, MySQL, Cosmos DB, and LiteFS/SQLite support out of the box.</p>
-            </div>
-        </div>
-        <div class="col-12 md:col-4 animate-on-scroll slide-in-right" style="animation-delay: 0.3s;">
-            <div class="text-center p-4 parallax-element hover-lift">
-                <i class="pi pi-eye text-4xl text-primary mb-3 icon-bounce"></i>
-                <h3 class="text-xl font-semibold mb-2">Observable by Default</h3>
-                <p class="text-surface-600 dark:text-surface-300">OpenTelemetry traces and live dashboard highlight issues before production.</p>
-            </div>
-        </div>
-    </div>
-    </div>
-</section>
+<!-- Fixed Scroll Indicator (clickable, advances to next section) -->
+<div class="scroll-indicator-fixed" #scrollIndicator>
+    <button class="scroll-indicator-btn" (click)="scrollToNextSection()" type="button">
+        <span class="scroll-text">Scroll to explore</span>
+        <i class="pi pi-chevron-down scroll-chevron"></i>
+    </button>
+</div>
 
-<!-- Quick Start Code Sample -->
-<section class="mb-8 code-sample-section">
-    <div class="container-wrapper">
-        <h3 class="text-2xl font-semibold mb-4 text-center animate-on-scroll slide-up">Five-Minute Start</h3>
-        <wb-enhanced-code-v2 
-            [code]="quickStartCode" 
-            [options]="{ language: 'csharp', showLineNumbers: true, copyable: true }">
-        </wb-enhanced-code-v2>
-        <div class="mt-4 text-center">
-            <p class="mb-3 font-semibold">Run locally:</p>
-            <wb-enhanced-code-v2 
-                [code]="cliCommands" 
-                [options]="{ language: 'bash', copyable: true }">
-            </wb-enhanced-code-v2>
+<!-- Rocket Container (stars are injected into sections via JS) -->
+<div class="starfield-container" #starfield></div>
+
+<!-- Ambient Background Orbs -->
+<div class="ambient-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+</div>
+
+<!-- Section 1: Hero (pinned) -->
+<div class="section-wrapper hero-wrapper" #heroWrapper>
+    <section class="pinned-section hero-section">
+        <div class="hero-bg-orbs">
+            <div class="hero-orb hero-orb-1"></div>
+            <div class="hero-orb hero-orb-2"></div>
+            <div class="hero-orb hero-orb-3"></div>
         </div>
-    </div>
-</section>
-
-<!-- Core Capabilities - Sticky Section -->
-<section class="capabilities-section sticky-capabilities">
-    <div class="container-wrapper">
-        <h3 class="text-2xl font-semibold mb-6 text-center">Core Capabilities</h3>
-        <div class="grid mb-8">
-            <div class="col-12 md:col-6">
-                <div class="surface-card p-4 border-round h-full">
-                    <h4 class="text-lg font-semibold mb-2">Poly-Store Document + Event Store</h4>
-                    <p class="text-surface-600 dark:text-surface-300 mb-3">JSONB for Postgres + native JSON columns on SQL Server/MySQL, plus a binary codec for LiteFS.</p>
-                </div>
-            </div>
-            <div class="col-12 md:col-6">
-                <div class="surface-card p-4 border-round h-full">
-                    <h4 class="text-lg font-semibold mb-2">Unified Messaging Pipeline</h4>
-                    <p class="text-surface-600 dark:text-surface-300 mb-3">Inline → durable → batched modes are toggleable. Built-in outbox/inbox, delayed delivery, sagas.</p>
-                </div>
-            </div>
-            <div class="col-12 md:col-6">
-                <div class="surface-card p-4 border-round h-full">
-                    <h4 class="text-lg font-semibold mb-2">Handlers = Functions</h4>
-                    <p class="text-surface-600 dark:text-surface-300 mb-3">Plain C# methods return results or new messages. Mark a handler as <code>pure</code> and the compiler forbids hidden side effects.</p>
-                </div>
-            </div>
-            <div class="col-12 md:col-6">
-                <div class="surface-card p-4 border-round h-full">
-                    <h4 class="text-lg font-semibold mb-2">Cloud-Native Superpowers</h4>
-                    <p class="text-surface-600 dark:text-surface-300 mb-3">Kubernetes Operator for auto-scaling projections by lag, partition-aware consumers, and seamless multi-region DR.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Spacer to allow capabilities to stick before use cases arrive -->
-<div class="capabilities-spacer"></div>
-
-<!-- Horizontal Slide Container - Prevents Overflow -->
-<div class="horizontal-slide-container">
-    <!-- Use Cases - Sticky Section that gets pushed by Roadmap -->
-    <section class="use-cases-section flying-use-cases">
-        <div class="container-wrapper">
-            <h3 class="text-2xl font-semibold mb-6 text-center">Typical Use Cases</h3>
-            <div class="grid">
-                <div class="col-12 md:col-6 lg:col-3">
-                    <div class="text-center p-4">
-                        <i class="pi pi-sparkles text-3xl text-primary mb-3"></i>
-                        <h4 class="font-semibold mb-2">Green-field SaaS</h4>
-                        <p class="text-surface-600 dark:text-surface-300 text-sm">Teams adopting CQRS + event sourcing without Postgres lock-in.</p>
-                    </div>
-                </div>
-                <div class="col-12 md:col-6 lg:col-3">
-                    <div class="text-center p-4">
-                        <i class="pi pi-objects-column text-3xl text-primary mb-3"></i>
-                        <h4 class="font-semibold mb-2">Legacy Decomposition</h4>
-                        <p class="text-surface-600 dark:text-surface-300 text-sm">Services need a shared event backbone & document store.</p>
-                    </div>
-                </div>
-                <div class="col-12 md:col-6 lg:col-3">
-                    <div class="text-center p-4">
-                        <i class="pi pi-wifi text-3xl text-primary mb-3"></i>
-                        <h4 class="font-semibold mb-2">Edge & Offline-First</h4>
-                        <p class="text-surface-600 dark:text-surface-300 text-sm">Apps that sync LiteFS event streams to the cloud on reconnect.</p>
-                    </div>
-                </div>
-                <div class="col-12 md:col-6 lg:col-3">
-                    <div class="text-center p-4">
-                        <i class="pi pi-shield text-3xl text-primary mb-3"></i>
-                        <h4 class="font-semibold mb-2">Regulated Industries</h4>
-                        <p class="text-surface-600 dark:text-surface-300 text-sm">Column-level encryption, audit log streams, and data-retention SLAs.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Roadmap - Section that pushes Use Cases -->
-    <section class="roadmap-section">
-        <div class="container-wrapper">
-            <div class="p-6 border-round">
-                <h3 class="text-2xl font-semibold mb-6 text-center">Roadmap</h3>
-                <div class="grid">
-                    <div class="col-12 md:col-4">
-                        <div class="text-center p-4">
-                            <h4 class="font-semibold text-primary mb-2">Q3 2025</h4>
-                            <p class="text-sm">Public Beta • Postgres + Kafka + Operator</p>
-                        </div>
-                    </div>
-                    <div class="col-12 md:col-4">
-                        <div class="text-center p-4">
-                            <h4 class="font-semibold text-primary mb-2">Q4 2025</h4>
-                            <p class="text-sm">General Availability • SQL Server/MySQL adapters • Cloud dashboard SaaS</p>
-                        </div>
-                    </div>
-                    <div class="col-12 md:col-4">
-                        <div class="text-center p-4">
-                            <h4 class="font-semibold text-primary mb-2">2026</h4>
-                            <p class="text-sm">Multi-region DR • Cosmos DB adapter • No-code projection designer</p>
-                        </div>
-                    </div>
-                </div>
+        <div class="hero-content">
+            <h1 class="hero-wordmark">
+                Meet <img [src]="getMeetWhizbangPath()" alt="Whizbang" class="wordmark-logo">
+            </h1>
+            <p class="hero-tagline">One Runtime. Any Store. Every Message.</p>
+            <p class="hero-subtitle">The unified event-sourced data &amp; messaging runtime for .NET</p>
+            <div class="hero-cta">
+                <a pButton pRipple class="btn-gradient" routerLink="/docs/getting-started">Get Started</a>
+                <a pButton pRipple routerLink="/examples" class="p-button-outlined btn-outlined-brand">View Examples</a>
+                <a pButton pRipple href="https://github.com/whizbang-lib/whizbang" target="_blank" class="p-button-text btn-text-brand">GitHub &rarr;</a>
             </div>
         </div>
     </section>
 </div>
 
-<!-- Spacer to create scroll distance for horizontal slide animation -->
-<div class="horizontal-slide-spacer"></div>
+<!-- Section 2: Differentiators (pinned, one-at-a-time) -->
+<div class="section-wrapper diff-wrapper" #diffWrapper>
+    <section class="pinned-section diff-section">
+        <div class="diff-bg-glow"></div>
 
-<!-- Call to Action -->
-<section class="text-center cta-section">
-    <h3 class="text-2xl font-semibold mb-4">Ready to Build the Future?</h3>
-    <p class="text-lg mb-6 max-w-2xl mx-auto">Join the early-access program, star the repo, and share feedback in the open RFC discussions. Let's build a pit of success for event-sourced, message-driven systems—together.</p>
-    <div class="flex flex-wrap justify-content-center gap-3">
-        <a pButton pRipple class="btn-gradient" routerLink="/docs/getting-started">Join Early Access</a>
-        <a pButton pRipple href="https://github.com/whizbang-lib/whizbang" target="_blank" class="p-button-outlined">Star on GitHub</a>
-        <a pButton pRipple routerLink="/docs" class="p-button-text">Read the Docs</a>
+        <div class="diff-item" #diffItem0>
+            <div class="diff-icon"><i class="pi pi-bolt"></i></div>
+            <h2 class="diff-headline">Zero Reflection. Pure Compile-Time.</h2>
+            <p class="diff-body">All handler discovery happens at compile time via source generators. No reflection. Ever. Native AOT from day one &mdash; 13x faster startup, 5x smaller footprint.</p>
+            <a routerLink="/docs/v1.0.0/advanced-topics/native-aot" class="diff-link">Learn about AOT &rarr;</a>
+        </div>
+
+        <div class="diff-item" #diffItem1>
+            <div class="diff-icon"><i class="pi pi-sitemap"></i></div>
+            <h2 class="diff-headline">One Surface Area</h2>
+            <p class="diff-body">Aggregates, projections, commands, queries, and sagas share the same primitives. Learn once, apply everywhere.</p>
+            <a routerLink="/docs/v1.0.0/core-concepts/receptors" class="diff-link">Explore Receptors &rarr;</a>
+        </div>
+
+        <div class="diff-item" #diffItem2>
+            <div class="diff-icon"><i class="pi pi-shield"></i></div>
+            <h2 class="diff-headline">Type-Safe at Compile Time</h2>
+            <p class="diff-body">The compiler enforces message &rarr; response mapping. Strongly-typed IDs via UUIDv7 prevent mixing up OrderId with CustomerId.</p>
+            <a routerLink="/docs/v1.0.0/core-concepts/dispatcher" class="diff-link">See the Dispatcher &rarr;</a>
+        </div>
+    </section>
+</div>
+
+<!-- Section 3: Code Showcase (pinned, typewriter reveal) -->
+<div class="section-wrapper code-wrapper" #codeWrapper>
+    <section class="pinned-section code-section">
+        <div class="code-showcase">
+            <h2 class="code-headline">Ship in Five Minutes</h2>
+            <div class="code-part" #codePart0>
+                <span class="code-part-label">Commands &amp; Events</span>
+                <wb-enhanced-code-v2
+                    [code]="codePartCommands"
+                    [options]="{ language: 'csharp', showLineNumbers: true, copyable: true }">
+                </wb-enhanced-code-v2>
+            </div>
+
+            <div class="code-part" #codePart1>
+                <span class="code-part-label">Receptor (Handler)</span>
+                <wb-enhanced-code-v2
+                    [code]="codePartReceptor"
+                    [options]="{ language: 'csharp', showLineNumbers: true, copyable: true }">
+                </wb-enhanced-code-v2>
+            </div>
+
+            <div class="code-part" #codePart2>
+                <span class="code-part-label">Perspective (Projection)</span>
+                <wb-enhanced-code-v2
+                    [code]="codePartPerspective"
+                    [options]="{ language: 'csharp', showLineNumbers: true, copyable: true }">
+                </wb-enhanced-code-v2>
+            </div>
+
+            <div class="cli-section">
+                <span class="code-part-label">CLI Tools</span>
+                <wb-enhanced-code-v2
+                    [code]="cliCommands"
+                    [options]="{ language: 'bash', showLineNumbers: true, copyable: true }">
+                </wb-enhanced-code-v2>
+                <a routerLink="/docs/v1.0.0/getting-started/quick-start" class="tutorial-link">Follow the full tutorial &rarr;</a>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Section 4: Capabilities (staggered grid reveal) -->
+<section class="capabilities-section">
+    <div class="capabilities-inner">
+        <div class="cap-card reveal-on-scroll">
+            <div class="cap-card-glow"></div>
+            <div class="cap-card-content">
+                <i class="pi pi-database cap-icon"></i>
+                <h3 class="cap-title">Poly-Store Event &amp; Document Store</h3>
+                <p class="cap-body">PostgreSQL JSONB, SQL Server, MySQL, Cosmos DB, and LiteFS/SQLite. Switch stores without changing application code.</p>
+                <a routerLink="/docs/v1.0.0/core-concepts/event-store-query" class="cap-link">Explore stores &rarr;</a>
+            </div>
+        </div>
+
+        <div class="cap-card reveal-on-scroll">
+            <div class="cap-card-glow"></div>
+            <div class="cap-card-content">
+                <i class="pi pi-arrows-h cap-icon"></i>
+                <h3 class="cap-title">Unified Messaging Pipeline</h3>
+                <p class="cap-body">Inline, durable, and batched dispatch modes. Built-in outbox/inbox, delayed delivery, and distributed sagas.</p>
+                <a routerLink="/docs/v1.0.0/core-concepts/dispatcher" class="cap-link">See dispatch modes &rarr;</a>
+            </div>
+        </div>
+
+        <div class="cap-card reveal-on-scroll">
+            <div class="cap-card-glow"></div>
+            <div class="cap-card-content">
+                <i class="pi pi-replay cap-icon"></i>
+                <h3 class="cap-title">Pure Function Perspectives</h3>
+                <p class="cap-body">Projections are deterministic pure functions. Replay any event stream and get identical results. No hidden side effects.</p>
+                <a routerLink="/docs/v1.0.0/core-concepts/perspectives" class="cap-link">Learn perspectives &rarr;</a>
+            </div>
+        </div>
+
+        <div class="cap-card reveal-on-scroll">
+            <div class="cap-card-glow"></div>
+            <div class="cap-card-content">
+                <i class="pi pi-chart-line cap-icon"></i>
+                <h3 class="cap-title">Observable by Default</h3>
+                <p class="cap-body">OpenTelemetry traces, correlation IDs, causation chains, and a live diagnostics dashboard &mdash; <code>dotnet whiz diag</code>.</p>
+                <a routerLink="/docs/v1.0.0/diagnostics/observability" class="cap-link">View diagnostics &rarr;</a>
+            </div>
+        </div>
     </div>
-    <p class="mt-12 text-surface-500 dark:text-surface-400">Made with 🧙 by the Whizbang core team.</p>
 </section>
+
+<!-- Section 5: Use Cases + Roadmap (pinned, horizontal slide) -->
+<div class="section-wrapper slide-wrapper" #slideWrapper>
+    <section class="pinned-section slide-section">
+        <div class="use-cases-panel">
+            <h2 class="slide-headline">Typical Use Cases</h2>
+            <div class="use-case-grid">
+                <div class="use-case-card">
+                    <i class="pi pi-sparkles use-case-icon"></i>
+                    <h4 class="use-case-title">Green-field SaaS</h4>
+                    <p class="use-case-body">CQRS + event sourcing without vendor lock-in.</p>
+                    <a routerLink="/docs/v1.0.0/getting-started" class="use-case-link">Get started &rarr;</a>
+                </div>
+                <div class="use-case-card">
+                    <i class="pi pi-objects-column use-case-icon"></i>
+                    <h4 class="use-case-title">Legacy Decomposition</h4>
+                    <p class="use-case-body">Shared event backbone + document store for service extraction.</p>
+                    <a routerLink="/docs/v1.0.0/migration-guide" class="use-case-link">Migration guide &rarr;</a>
+                </div>
+                <div class="use-case-card">
+                    <i class="pi pi-wifi use-case-icon"></i>
+                    <h4 class="use-case-title">Edge &amp; Offline-First</h4>
+                    <p class="use-case-body">LiteFS event streams sync to cloud on reconnect.</p>
+                    <a routerLink="/docs/v1.0.0/data-access" class="use-case-link">Data access &rarr;</a>
+                </div>
+                <div class="use-case-card">
+                    <i class="pi pi-shield use-case-icon"></i>
+                    <h4 class="use-case-title">Regulated Industries</h4>
+                    <p class="use-case-body">Column-level encryption, audit streams, retention SLAs.</p>
+                    <a routerLink="/docs/v1.0.0/advanced-topics" class="use-case-link">Advanced topics &rarr;</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="roadmap-slide">
+            <h2 class="slide-headline">Roadmap</h2>
+            <div class="roadmap-timeline">
+                <div class="roadmap-connector"></div>
+                <div class="roadmap-item">
+                    <div class="roadmap-marker"></div>
+                    <h4 class="roadmap-quarter">Q3 2025</h4>
+                    <p class="roadmap-desc">Public Beta &bull; Postgres + Kafka + Kubernetes Operator</p>
+                </div>
+                <div class="roadmap-item">
+                    <div class="roadmap-marker"></div>
+                    <h4 class="roadmap-quarter">Q4 2025</h4>
+                    <p class="roadmap-desc">GA &bull; SQL Server/MySQL &bull; Cloud Dashboard SaaS</p>
+                </div>
+                <div class="roadmap-item">
+                    <div class="roadmap-marker"></div>
+                    <h4 class="roadmap-quarter">2026</h4>
+                    <p class="roadmap-desc">Multi-region DR &bull; Cosmos DB adapter &bull; No-code projection designer</p>
+                </div>
+            </div>
+            <a routerLink="/roadmap" class="roadmap-link">View full roadmap &rarr;</a>
+        </div>
+    </section>
+</div>
+
+<!-- Sections 6+7: IDE & CTA crossfade (shared pinned wrapper) -->
+<div class="section-wrapper crossfade-wrapper" #crossfadeWrapper>
+    <section class="pinned-section crossfade-section">
+        <!-- IDE panel (fades out) -->
+        <div class="ide-panel">
+            <div class="ide-inner">
+                <h2 class="ide-headline">Your IDE Knows Everything</h2>
+
+                <div class="ide-card">
+                    <div class="ide-card-glow"></div>
+                    <div class="ide-card-content">
+                        <i class="pi pi-eye ide-icon"></i>
+                        <h3 class="ide-title">CodeLens on Every Handler</h3>
+                        <p class="ide-body">See handler count, perspectives affected, and last execution timing &mdash; inline in your editor.</p>
+                    </div>
+                </div>
+
+                <div class="ide-card">
+                    <div class="ide-card-glow"></div>
+                    <div class="ide-card-content">
+                        <i class="pi pi-exclamation-triangle ide-icon"></i>
+                        <h3 class="ide-title">Compile-Time Analyzers</h3>
+                        <p class="ide-body">Warnings with quick-fixes before you run. Catch missing handlers, invalid message routes, and more.</p>
+                    </div>
+                </div>
+
+                <div class="ide-card">
+                    <div class="ide-card-glow"></div>
+                    <div class="ide-card-content">
+                        <i class="pi pi-share-alt ide-icon"></i>
+                        <h3 class="ide-title">Message Flow Visualization</h3>
+                        <p class="ide-body">Trace any message from dispatch through handlers to perspectives. Inline, in real-time.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA panel (fades in) -->
+        <div class="cta-panel">
+            <div class="cta-content">
+                <h2 class="cta-headline">Build the Future of .NET</h2>
+                <p class="cta-subtitle">Join the early-access program, star the repo, and shape the RFC discussions.</p>
+                <div class="cta-buttons">
+                    <a pButton pRipple class="btn-gradient" routerLink="/docs/getting-started">Get Started</a>
+                    <a pButton pRipple href="https://github.com/whizbang-lib/whizbang" target="_blank" class="p-button-outlined btn-outlined-brand">Star on GitHub</a>
+                    <a pButton pRipple routerLink="/docs" class="p-button-text btn-text-brand">Read the Docs</a>
+                </div>
+                <p class="cta-footer">Made with care by the Whizbang core team.</p>
+            </div>
+        </div>
+    </section>
+</div>

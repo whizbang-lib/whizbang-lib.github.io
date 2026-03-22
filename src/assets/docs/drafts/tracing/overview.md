@@ -322,9 +322,9 @@ This makes it easy to identify when perspective sync is contributing to latency.
 
 ## Further Reading
 
-- [Verbosity Levels](verbosity-levels.md) - Detail levels explained
+- [Verbosity Levels](../operations/observability/verbosity-levels.md) - Detail levels explained
 - [Trace Components](components.md) - Component filtering
-- [Trace Attributes](attributes.md) - `[TraceHandler]` and `[TraceMessage]`
+- [Trace Attributes](../operations/observability/tracing-attributes.md) - `[TraceHandler]` and `[TraceMessage]`
 - [Configuration](configuration.md) - Runtime configuration
 - [Custom Outputs](custom-outputs.md) - Create custom trace destinations
 

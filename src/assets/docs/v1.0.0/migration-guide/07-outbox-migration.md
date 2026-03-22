@@ -37,7 +37,7 @@ This guarantees **at-least-once delivery** even if the message broker is tempora
 
 ## Wolverine Outbox Configuration
 
-```csharp
+```csharp{title="Wolverine Outbox Configuration" description="Demonstrates wolverine Outbox Configuration" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Wolverine", "Outbox", "Configuration"]}
 // Wolverine: Explicit outbox configuration
 builder.Host.UseWolverine(opts => {
     opts.UseRabbitMq(connectionString)
@@ -58,7 +58,7 @@ builder.Host.UseWolverine(opts => {
 
 Whizbang's outbox is **built-in and always enabled**. Configure the work coordinator for your needs:
 
-```csharp
+```csharp{title="Whizbang Outbox Configuration" description="Whizbang's outbox is built-in and always enabled." category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Whizbang", "Outbox", "Configuration"]}
 builder.Services.AddWhizbang(options => {
     options.UsePostgres(connectionString);
 });
@@ -79,7 +79,7 @@ builder.Services.AddHostedService<WorkCoordinatorPublisherWorker>();
 
 ### Wolverine Flow
 
-```csharp
+```csharp{title="Wolverine Flow" description="Demonstrates wolverine Flow" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Wolverine", "Flow"]}
 // Wolverine: Messages queued to outbox automatically
 [WolverineHandler]
 public async Task<OrderCreated> Handle(
@@ -102,7 +102,7 @@ public async Task<OrderCreated> Handle(
 
 ### Whizbang Flow
 
-```csharp
+```csharp{title="Whizbang Flow" description="Demonstrates whizbang Flow" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Whizbang", "Flow"]}
 // Whizbang: Outbox is implicit via dispatcher
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IEventStore _eventStore;
@@ -132,7 +132,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### Wolverine Inbox
 
-```csharp
+```csharp{title="Wolverine Inbox" description="Demonstrates wolverine Inbox" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Wolverine", "Inbox"]}
 // Wolverine: Inbox for idempotent processing
 opts.Policies.UseDurableInbox();
 
@@ -142,7 +142,7 @@ opts.Policies.UseDurableInbox();
 
 ### Whizbang Inbox
 
-```csharp
+```csharp{title="Whizbang Inbox" description="Demonstrates whizbang Inbox" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Whizbang", "Inbox"]}
 // Whizbang: Built-in inbox deduplication
 builder.Services.AddWhizbang(options => {
     options.EnableInboxDeduplication(
@@ -160,7 +160,7 @@ builder.Services.AddWhizbang(options => {
 
 Polls the outbox at regular intervals:
 
-```csharp
+```csharp{title="Interval Strategy (Default)" description="Polls the outbox at regular intervals:" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Interval", "Strategy", "Default"]}
 builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
     new IntervalWorkCoordinatorStrategy(
         pollInterval: TimeSpan.FromMilliseconds(100)));
@@ -170,7 +170,7 @@ builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
 
 Uses database notifications for immediate processing:
 
-```csharp
+```csharp{title="Notification Strategy" description="Uses database notifications for immediate processing:" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Notification", "Strategy"]}
 builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
     new NotificationWorkCoordinatorStrategy(
         connectionString,
@@ -181,7 +181,7 @@ builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
 
 Combines notification with interval fallback:
 
-```csharp
+```csharp{title="Hybrid Strategy" description="Combines notification with interval fallback:" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Hybrid", "Strategy"]}
 builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
     new HybridWorkCoordinatorStrategy(
         notificationChannel: "outbox_notify",
@@ -192,7 +192,7 @@ builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
 
 ### Wolverine Error Policies
 
-```csharp
+```csharp{title="Wolverine Error Policies" description="Demonstrates wolverine Error Policies" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Wolverine", "Error", "Policies"]}
 opts.Handlers.OnAnyException()
     .RetryWithCooldown(
         TimeSpan.FromSeconds(1),
@@ -203,7 +203,7 @@ opts.Handlers.OnAnyException()
 
 ### Whizbang Retry Configuration
 
-```csharp
+```csharp{title="Whizbang Retry Configuration" description="Demonstrates whizbang Retry Configuration" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Whizbang", "Retry", "Configuration"]}
 builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
     new IntervalWorkCoordinatorStrategy(
         pollInterval: TimeSpan.FromMilliseconds(100),
@@ -221,14 +221,14 @@ builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
 
 ### Wolverine Dead Letter
 
-```csharp
+```csharp{title="Wolverine Dead Letter" description="Demonstrates wolverine Dead Letter" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Wolverine", "Dead", "Letter"]}
 // Wolverine moves failed messages to error queue
 // Access via IMessageStore.Inbox.DeadLetterEnvelopes
 ```
 
 ### Whizbang Dead Letter
 
-```csharp
+```csharp{title="Whizbang Dead Letter" description="Demonstrates whizbang Dead Letter" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Whizbang", "Dead", "Letter"]}
 // Failed messages moved to whizbang.dead_letters table
 // Query via:
 var deadLetters = await _dbContext.DeadLetters
@@ -243,7 +243,7 @@ await _workCoordinator.ReplayDeadLetterAsync(deadLetterId, ct);
 
 ### Wolverine Tables
 
-```sql
+```sql{title="Wolverine Tables" description="Demonstrates wolverine Tables" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Wolverine", "Tables"]}
 -- Wolverine outbox tables
 CREATE TABLE wolverine_outgoing_envelopes (...);
 CREATE TABLE wolverine_incoming_envelopes (...);
@@ -251,7 +251,7 @@ CREATE TABLE wolverine_incoming_envelopes (...);
 
 ### Whizbang Tables
 
-```sql
+```sql{title="Whizbang Tables" description="Demonstrates whizbang Tables" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Whizbang", "Tables"]}
 -- Whizbang outbox tables
 CREATE TABLE whizbang.outbox (
     id uuid PRIMARY KEY,
@@ -283,7 +283,7 @@ CREATE TABLE whizbang.dead_letters (
 
 ### Ensuring Atomicity
 
-```csharp
+```csharp{title="Ensuring Atomicity" description="Demonstrates ensuring Atomicity" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Ensuring", "Atomicity"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IEventStore _eventStore;
     private readonly IOutbox _outbox;

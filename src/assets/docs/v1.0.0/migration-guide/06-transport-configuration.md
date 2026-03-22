@@ -26,7 +26,7 @@ This guide covers configuring message transports in Whizbang, including environm
 
 ### Recommended Pattern: Runtime Configuration
 
-```csharp
+```csharp{title="Recommended Pattern: Runtime Configuration" description="Demonstrates recommended Pattern: Runtime Configuration" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Recommended", "Pattern:", "Runtime"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Core Whizbang setup
@@ -66,7 +66,7 @@ if (useRabbitMQ) {
 
 **appsettings.Development.json**:
 
-```json
+```json{title="Configuration Files" description="**appsettings." category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Configuration", "Files"]}
 {
   "UseRabbitMQ": true,
   "ConnectionStrings": {
@@ -83,7 +83,7 @@ if (useRabbitMQ) {
 
 **appsettings.Production.json**:
 
-```json
+```json{title="Configuration Files (2)" description="**appsettings." category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Configuration", "Files"]}
 {
   "UseRabbitMQ": false,
   "ConnectionStrings": {
@@ -101,14 +101,14 @@ if (useRabbitMQ) {
 
 ### Basic Setup
 
-```csharp
+```csharp{title="Basic Setup" description="Demonstrates basic Setup" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Basic", "Setup"]}
 builder.Services.AddRabbitMQTransport(
     builder.Configuration.GetConnectionString("rabbitmq")!);
 ```
 
 ### Advanced Configuration
 
-```csharp
+```csharp{title="Advanced Configuration" description="Demonstrates advanced Configuration" category="Reference" difficulty="ADVANCED" tags=["Migration-Guide", "Advanced", "Configuration"]}
 builder.Services.AddRabbitMQTransport(
     builder.Configuration.GetConnectionString("rabbitmq")!,
     options => {
@@ -142,7 +142,7 @@ builder.Services.AddHealthChecks()
 
 ### Aspire Integration
 
-```csharp
+```csharp{title="Aspire Integration" description="Demonstrates aspire Integration" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Aspire", "Integration"]}
 // In AppHost project
 var rabbitmq = builder.AddRabbitMQ("rabbitmq")
     .WithManagementPlugin();
@@ -151,7 +151,7 @@ var api = builder.AddProject<Projects.MyApp_API>("api")
     .WithReference(rabbitmq);
 ```
 
-```csharp
+```csharp{title="Aspire Integration (2)" description="Demonstrates aspire Integration" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Aspire", "Integration"]}
 // In API project
 builder.AddRabbitMQClient("rabbitmq");
 builder.Services.AddRabbitMQTransport(options => {
@@ -163,14 +163,14 @@ builder.Services.AddRabbitMQTransport(options => {
 
 ### Basic Setup
 
-```csharp
+```csharp{title="Basic Setup (2)" description="Demonstrates basic Setup" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Basic", "Setup"]}
 builder.Services.AddAzureServiceBusTransport(
     builder.Configuration.GetConnectionString("servicebus")!);
 ```
 
 ### Advanced Configuration
 
-```csharp
+```csharp{title="Advanced Configuration (2)" description="Demonstrates advanced Configuration" category="Reference" difficulty="ADVANCED" tags=["Migration-Guide", "Advanced", "Configuration"]}
 builder.Services.AddAzureServiceBusTransport(
     builder.Configuration.GetConnectionString("servicebus")!,
     options => {
@@ -208,7 +208,7 @@ builder.Services.AddHealthChecks()
 
 ### Managed Identity Authentication
 
-```csharp
+```csharp{title="Managed Identity Authentication" description="Demonstrates managed Identity Authentication" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Managed", "Identity", "Authentication"]}
 builder.Services.AddAzureServiceBusTransport(options => {
     options.FullyQualifiedNamespace = "myapp.servicebus.windows.net";
     options.Credential = new DefaultAzureCredential();
@@ -220,7 +220,7 @@ builder.Services.AddAzureServiceBusTransport(options => {
 
 ### Wolverine RabbitMQ
 
-```csharp
+```csharp{title="Wolverine RabbitMQ" description="Demonstrates wolverine RabbitMQ" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Wolverine", "RabbitMQ"]}
 // Wolverine
 builder.Host.UseWolverine(opts => {
     opts.UseRabbitMq("amqp://guest:guest@localhost:5672")
@@ -229,7 +229,7 @@ builder.Host.UseWolverine(opts => {
 });
 ```
 
-```csharp
+```csharp{title="Wolverine RabbitMQ (2)" description="Demonstrates wolverine RabbitMQ" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Wolverine", "RabbitMQ"]}
 // Whizbang
 builder.Services.AddRabbitMQTransport(
     "amqp://guest:guest@localhost:5672",
@@ -241,7 +241,7 @@ builder.Services.AddRabbitMQTransport(
 
 ### Wolverine Azure Service Bus
 
-```csharp
+```csharp{title="Wolverine Azure Service Bus" description="Demonstrates wolverine Azure Service Bus" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Wolverine", "Azure", "Service"]}
 // Wolverine
 builder.Host.UseWolverine(opts => {
     opts.UseAzureServiceBus(connectionString)
@@ -250,7 +250,7 @@ builder.Host.UseWolverine(opts => {
 });
 ```
 
-```csharp
+```csharp{title="Wolverine Azure Service Bus (2)" description="Demonstrates wolverine Azure Service Bus" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Wolverine", "Azure", "Service"]}
 // Whizbang
 builder.Services.AddAzureServiceBusTransport(
     connectionString,
@@ -263,7 +263,7 @@ builder.Services.AddAzureServiceBusTransport(
 
 ### Topic-Based Routing
 
-```csharp
+```csharp{title="Topic-Based Routing" description="Demonstrates topic-Based Routing" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Topic-Based", "Routing"]}
 builder.Services.AddWhizbang(options => {
     options.ConfigureRouting(routing => {
         // Route by message type
@@ -278,7 +278,7 @@ builder.Services.AddWhizbang(options => {
 
 ### Subscription Configuration
 
-```csharp
+```csharp{title="Subscription Configuration" description="Demonstrates subscription Configuration" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Subscription", "Configuration"]}
 builder.Services.AddWhizbang(options => {
     options.ConfigureSubscriptions(subs => {
         // Subscribe to specific topics
@@ -296,7 +296,7 @@ builder.Services.AddWhizbang(options => {
 
 ### In-Memory Transport for Tests
 
-```csharp
+```csharp{title="In-Memory Transport for Tests" description="Demonstrates in-Memory Transport for Tests" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "In-Memory", "Transport", "Tests"]}
 public class TestFixture {
     public ServiceProvider BuildTestServices() {
         var services = new ServiceCollection();
@@ -315,7 +315,7 @@ public class TestFixture {
 
 ### Integration Test with TestContainers
 
-```csharp
+```csharp{title="Integration Test with TestContainers" description="Demonstrates integration Test with TestContainers" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Integration", "Test", "TestContainers"]}
 public class IntegrationTestFixture : IAsyncLifetime {
     private RabbitMqContainer _rabbitMq = null!;
 

@@ -300,8 +300,8 @@ options.Tracing.Components = TraceComponents.Handlers;
 
 ## Further Reading
 
-- [Trace Verbosity](verbosity-levels.md) - Control detail level
-- [Trace Attributes](attributes.md) - `[TraceHandler]` and `[TraceMessage]`
+- [Trace Verbosity](../operations/observability/verbosity-levels.md) - Control detail level
+- [Trace Attributes](../operations/observability/tracing-attributes.md) - `[TraceHandler]` and `[TraceMessage]`
 - [Tracing Configuration](configuration.md) - Full configuration options
 
 ---
