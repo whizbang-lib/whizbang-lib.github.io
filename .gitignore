@@ -55,3 +55,7 @@ src/assets/search-index.json
 src/assets/enhanced-search-index.json
 src/assets/docs-list.json
 src/assets/sitemap.xml
+
+# RTD build output
+rtd/_build/
+site/

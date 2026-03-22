@@ -1,0 +1,9 @@
+services:
+  mkdocs:
+    build:
+      context: .
+    volumes:
+      - ..:/docs
+    ports:
+      - "8000:8000"
+    command: sh -c "python rtd/build.py && mkdocs serve -a 0.0.0.0:8000"
