@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+  notify-success:
+    name: Notify Success
+    needs: [ build ]
+    if: success() && github.event_name == 'push'
+    uses: ./.github/workflows/notify-build-status.yml
+    with:
+      status: success
+      run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    secrets:
+      PUSHOVER_API_TOKEN: ${{ secrets.PUSHOVER_API_TOKEN }}
+      PUSHOVER_USER_KEY_1: ${{ secrets.PUSHOVER_USER_KEY_1 }}
+      PUSHOVER_USER_KEY_2: ${{ secrets.PUSHOVER_USER_KEY_2 }}
+      PUSHOVER_USER_KEY_3: ${{ secrets.PUSHOVER_USER_KEY_3 }}
+      PUSHOVER_USER_KEY_4: ${{ secrets.PUSHOVER_USER_KEY_4 }}
+      PUSHOVER_USER_KEY_5: ${{ secrets.PUSHOVER_USER_KEY_5 }}
+      PUSHOVER_USER_KEY_6: ${{ secrets.PUSHOVER_USER_KEY_6 }}
+      PUSHOVER_USER_KEY_7: ${{ secrets.PUSHOVER_USER_KEY_7 }}
+      PUSHOVER_USER_KEY_8: ${{ secrets.PUSHOVER_USER_KEY_8 }}
+      PUSHOVER_USER_KEY_9: ${{ secrets.PUSHOVER_USER_KEY_9 }}
+      PUSHOVER_USER_KEY_10: ${{ secrets.PUSHOVER_USER_KEY_10 }}
+
+  notify-failure:
+    name: Notify Failure
+    needs: [ build ]
+    if: failure()
+    uses: ./.github/workflows/notify-build-status.yml
+    with:
+      status: failure
+      run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    secrets:
+      PUSHOVER_API_TOKEN: ${{ secrets.PUSHOVER_API_TOKEN }}
+      PUSHOVER_USER_KEY_1: ${{ secrets.PUSHOVER_USER_KEY_1 }}
+      PUSHOVER_USER_KEY_2: ${{ secrets.PUSHOVER_USER_KEY_2 }}
+      PUSHOVER_USER_KEY_3: ${{ secrets.PUSHOVER_USER_KEY_3 }}
+      PUSHOVER_USER_KEY_4: ${{ secrets.PUSHOVER_USER_KEY_4 }}
+      PUSHOVER_USER_KEY_5: ${{ secrets.PUSHOVER_USER_KEY_5 }}
+      PUSHOVER_USER_KEY_6: ${{ secrets.PUSHOVER_USER_KEY_6 }}
+      PUSHOVER_USER_KEY_7: ${{ secrets.PUSHOVER_USER_KEY_7 }}
+      PUSHOVER_USER_KEY_8: ${{ secrets.PUSHOVER_USER_KEY_8 }}
+      PUSHOVER_USER_KEY_9: ${{ secrets.PUSHOVER_USER_KEY_9 }}
+      PUSHOVER_USER_KEY_10: ${{ secrets.PUSHOVER_USER_KEY_10 }}
