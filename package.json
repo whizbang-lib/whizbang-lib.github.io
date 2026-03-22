@@ -21,7 +21,7 @@
     "@angular/core": "~20.0.1",
     "@angular/forms": "~20.0.1",
     "@angular/platform-browser": "~20.0.1",
-    "@angular/platform-browser-dynamic": "~20.0.1",
+    "@angular/platform-browser-dynamic": "~21.2.5",
     "@angular/router": "~20.0.1",
     "@angular/youtube-player": "^20.0.2",
     "@primeng/themes": "^19.1.3",
