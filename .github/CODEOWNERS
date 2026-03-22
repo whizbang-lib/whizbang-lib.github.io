@@ -1,0 +1,11 @@
+# CODEOWNERS - Require approval for all changes
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything
+* @philcarbone
+
+# Critical files - require explicit approval
+.github/ @philcarbone
+angular.json @philcarbone
+package.json @philcarbone
+bun.lock @philcarbone
