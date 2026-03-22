@@ -37,7 +37,7 @@
     "prism-themes": "^1.9.0",
     "prismjs": "^1.30.0",
     "rxjs": "~7.8.2",
-    "shiki": "^3.6.0",
+    "shiki": "^4.0.2",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
@@ -45,7 +45,7 @@
     "@angular/cli": "~20.0.1",
     "@angular/compiler-cli": "~20.0.1",
     "@tailwindcss/postcss": "^4.1.10",
-    "@types/node": "^22.15.30",
+    "@types/node": "^25.5.0",
     "@xenova/transformers": "^2.17.2",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.5",
