@@ -33,7 +33,7 @@ CALLOUT_OPEN_RE = re.compile(
 )
 CALLOUT_CLOSE_RE = re.compile(r"^:::\s*$")
 CODE_FENCE_RE = re.compile(r"^(`{3,})")
-CODE_META_RE = re.compile(r"^(```\w+)\{[^}]+\}")
+CODE_META_RE = re.compile(r"^(```\w+)\{.+\}$", re.MULTILINE)
 
 
 def clean_and_copy():
