@@ -77,7 +77,7 @@ jobs:
           user-key-8: ${{ secrets.PUSHOVER_USER_KEY_8 }}
           user-key-9: ${{ secrets.PUSHOVER_USER_KEY_9 }}
           user-key-10: ${{ secrets.PUSHOVER_USER_KEY_10 }}
-          title: 'Docs Site Deployed'
+          title: '[DOCS] Site Deployed'
           message: 'GitHub Pages deployment complete'
           status: deployed
           url: 'https://whizbang-lib.github.io'
@@ -109,7 +109,7 @@ jobs:
           user-key-8: ${{ secrets.PUSHOVER_USER_KEY_8 }}
           user-key-9: ${{ secrets.PUSHOVER_USER_KEY_9 }}
           user-key-10: ${{ secrets.PUSHOVER_USER_KEY_10 }}
-          title: 'Docs Deploy FAILED'
+          title: '[DOCS] Deploy FAILED'
           message: 'GitHub Pages deployment failed'
           status: deploy-failed
           url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
