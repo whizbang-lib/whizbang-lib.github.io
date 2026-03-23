@@ -4,20 +4,26 @@ version: 1.0.0
 category: Core Concepts
 order: 9
 description: >-
-  Complete reference for all 20 lifecycle stages in Whizbang message processing
+  Complete reference for all lifecycle stages in Whizbang message processing
   pipeline - timing, guarantees, and use cases
-tags: 'lifecycle, stages, hooks, message-processing, timing'
+tags: 'lifecycle, stages, hooks, message-processing, timing, coordinator'
 codeReferences:
   - src/Whizbang.Core/Messaging/LifecycleStage.cs
   - src/Whizbang.Core/Messaging/IReceptorInvoker.cs
   - src/Whizbang.Core/Messaging/IReceptorRegistry.cs
+  - src/Whizbang.Core/Lifecycle/ILifecycleCoordinator.cs
+  - src/Whizbang.Core/Lifecycle/ILifecycleTracking.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
 ---
 
 # Lifecycle Stages
 
-Whizbang provides **20 lifecycle stages** where custom logic can execute during message processing. Lifecycle stages enable observability, metrics collection, test synchronization, and custom side effects without modifying core framework code.
+Whizbang provides lifecycle stages where custom logic can execute during message processing. Lifecycle stages enable observability, metrics collection, test synchronization, and custom side effects without modifying core framework code.
+
+:::updated
+The [Lifecycle Coordinator](lifecycle-coordinator.md) now manages all stage transitions, guaranteeing each stage fires **exactly once per event**. Tags fire at every stage as lifecycle observers.
+:::
 
 ## Core Concept
 
@@ -462,6 +468,91 @@ See [Lifecycle Synchronization](../../operations/testing/lifecycle-synchronizati
 
 ---
 
+### PostLifecycle Stages (2 stages)
+
+:::new
+PostLifecycle stages are the **final stages** in an event's lifecycle, managed by the [Lifecycle Coordinator](lifecycle-coordinator.md).
+:::
+
+#### `PostLifecycleAsync`
+
+**Timing**: After ALL processing completes for this event — all perspectives have processed it, or inbox processing is done (for events without perspectives), or local dispatch is complete.
+
+**Use Cases**:
+- Final notifications (SignalR, email, push) — guaranteed to fire exactly once per event
+- Cross-perspective aggregation
+- Analytics and reporting
+- Cleanup operations
+
+**Guarantees**:
+- **Fires exactly once per event** — managed by [Lifecycle Coordinator](lifecycle-coordinator.md)
+- Non-blocking — does not delay next batch
+- For `Route.Both()` events, fires only after ALL paths complete ([WhenAll pattern](lifecycle-coordinator.md#whenall))
+- Fired by whichever worker is the **last to act** on the event:
+
+| Scenario | Who fires PostLifecycle |
+|----------|----------------------|
+| Local dispatch | Dispatcher |
+| Distributed, no perspectives | TransportConsumer |
+| Distributed, with perspectives | PerspectiveWorker |
+| `Route.Both()` | Last path to complete (WhenAll) |
+
+**Example**:
+```csharp{title="`PostLifecycleAsync`" description="Final notification after all processing completes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PostLifecycleAsync"]}
+[FireAt(LifecycleStage.PostLifecycleAsync)]
+public class OrderNotificationReceptor : IReceptor<OrderPlacedEvent> {
+  private readonly INotificationService _notifications;
+
+  public async ValueTask HandleAsync(OrderPlacedEvent evt, CancellationToken ct) {
+    // Safe to send notification — all perspectives have processed the event
+    // This fires exactly once, regardless of how many perspectives exist
+    await _notifications.SendAsync($"Order {evt.OrderId} confirmed", ct);
+  }
+}
+```
+
+#### `PostLifecycleInline`
+
+**Timing**: Same as `PostLifecycleAsync` but **blocking** — the worker waits for completion.
+
+**Use Cases**:
+- Critical final processing that must complete before the batch ends
+- Guaranteed-delivery notifications
+- Test synchronization for end-of-lifecycle events
+
+**Guarantees**:
+- **Fires exactly once per event** — managed by Lifecycle Coordinator
+- **Blocking** — worker waits for all handlers to complete
+- Same "last worker to act" semantics as `PostLifecycleAsync`
+
+---
+
+### Pipeline Overview
+
+Each worker processes a specific **segment** of the lifecycle. `PostLifecycle` fires at the end of whichever worker is the last to act on the event:
+
+```
+Dispatcher                    OutboxWorker              TransportConsumer         PerspectiveWorker
+─────────────────────────    ─────────────────────    ─────────────────────    ─────────────────────
+ENTRY: dispatch               ENTRY: load from DB      ENTRY: receive            ENTRY: load from DB
+  ┌─ LocalImmediateAsync       ┌─ PreOutboxAsync        ┌─ PreInboxAsync          ┌─ PrePerspectiveAsync
+  ├─ LocalImmediateInline      ├─ PreOutboxInline       ├─ PreInboxInline         ├─ PrePerspectiveInline
+  ├─ PostLifecycleAsync†       ├─ PostOutboxAsync       ├─ PostInboxAsync         ├─ PostPerspectiveAsync
+  └─ PostLifecycleInline†      ├─ PostOutboxInline      ├─ PostInboxInline        ├─ PostPerspectiveInline
+EXIT: done / WhenAll          ├─ PostLifecycleAsync‡   ├─ PostLifecycleAsync*    ├─ PostLifecycleAsync**
+                              └─ PostLifecycleInline‡   └─ PostLifecycleInline*   └─ PostLifecycleInline**
+                             EXIT: transport / WhenAll  EXIT: done / WhenAll      EXIT: done / WhenAll
+
+† fires if this is the only processing path (Route.Local), OR via WhenAll
+‡ fires if no further processing (event leaves service), OR via WhenAll
+* fires for events WITHOUT perspectives, OR via WhenAll
+** fires AFTER ALL perspectives complete, OR via WhenAll
+```
+
+See [Lifecycle Coordinator](lifecycle-coordinator.md) for details on entry/exit points, WhenAll, and tracking.
+
+---
+
 ## Lifecycle Stage Timing Diagram
 
 ```mermaid
@@ -595,26 +686,30 @@ See [Lifecycle Receptors](lifecycle-receptors.md) for API details.
 | `PreInbox*` / `PostInbox*` | `ServiceBusConsumerWorker.cs` | Around `ProcessInboxWorkAsync()` |
 | `PrePerspective*` | `PerspectiveRunnerTemplate.cs` | Before event processing loop |
 | `PostPerspective*` | `PerspectiveRunnerTemplate.cs` | During event processing loop (after `Apply()`, before checkpoint save) |
+| `PostLifecycle*` | `PerspectiveWorker.cs`, `TransportConsumerWorker.cs`, `Dispatcher.cs` | After all processing completes — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
 
 ---
 
 ## Related Topics
 
-- [Lifecycle Receptors API](lifecycle-receptors.md) - Using `[FireAt]` and `ILifecycleContext`
-- [Receptors Guide](receptors.md) - Core receptor concepts
+- [Lifecycle Coordinator](lifecycle-coordinator.md) - Centralized stage management, WhenAll pattern, tracking
+- [Lifecycle Receptors API](../receptors/lifecycle-receptors.md) - Using `[FireAt]` and `ILifecycleContext`
 - [Testing: Lifecycle Synchronization](../../operations/testing/lifecycle-synchronization.md) - Test patterns with lifecycle hooks
 - [PerspectiveWorker](../../operations/workers/perspective-worker.md) - Perspective processing worker
-- [Work Coordination](../../operations/workers/work-coordination.md) - Distributed work coordination
+- [Work Coordination](../../messaging/work-coordination.md) - Distributed work coordination
 
 ---
 
 ## Summary
 
-- **20 lifecycle stages** across 6 phases (Immediate, LocalImmediate, Distribute, Outbox, Inbox, Perspective)
+- **Lifecycle stages** across 7 phases (Immediate, LocalImmediate, Distribute, Outbox, Inbox, Perspective, PostLifecycle)
 - **Two mutually exclusive paths**: Local (mediator) and Distributed (outbox/inbox)
 - **Default stages** for receptors without `[FireAt]`:
   - **Local path**: `LocalImmediateInline`
   - **Distributed path**: `PreOutboxInline` (sender) + `PostInboxInline` (receiver)
+- **PostLifecycle** fires exactly once per event at the end of whichever worker is last to act
+- **Lifecycle Coordinator** guarantees each stage fires once per event — no duplicate firings
+- **Tags fire at ALL stages** as lifecycle observers
 - **Inline stages** block next step - use for critical operations
 - **Async stages** run in parallel - use for metrics and logging
 - **`PostPerspectiveInline`** is critical for test synchronization
