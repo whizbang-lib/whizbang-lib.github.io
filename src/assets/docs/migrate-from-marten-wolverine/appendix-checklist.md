@@ -175,6 +175,6 @@ whizbang migrate rollback <checkpoint-id>
 ## Getting Help
 
 - [Migration Guide Index](./README.md)
-- [Whizbang Documentation](../v0.1.0/)
+- Whizbang Documentation
 - [GitHub Issues](https://github.com/whizbang-lib/whizbang/issues)
 - [Discord Community](https://discord.gg/whizbang)

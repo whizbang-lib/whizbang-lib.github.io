@@ -649,7 +649,7 @@ try {
 }
 ```
 
-See [Lifecycle Receptors](lifecycle-receptors.md) for API details.
+See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 
 ---
 

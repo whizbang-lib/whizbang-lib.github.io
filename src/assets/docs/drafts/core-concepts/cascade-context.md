@@ -505,16 +505,16 @@ if (initiating is not null) {
 ## Further Reading
 
 **Related Concepts**:
-- [Message Context](../fundamentals/messages/message-context.md) - MessageId, CorrelationId, CausationId
-- [Security Context Propagation](../fundamentals/security/security-context-propagation.md) - Multi-tenant security
-- [Observability](../fundamentals/persistence/observability.md) - MessageEnvelope and hops
-- [Scope Context](scope-context.md) - IScopeContext and authorization
+- [Message Context](../../v1.0.0/fundamentals/messages/message-context.md) - MessageId, CorrelationId, CausationId
+- [Security Context Propagation](../../v1.0.0/fundamentals/security/security-context-propagation.md) - Multi-tenant security
+- [Observability](../../v1.0.0/fundamentals/persistence/observability.md) - MessageEnvelope and hops
+- Scope Context - IScopeContext and authorization
 
 **API Reference**:
-- [CascadeContext](../../api/cascade-context.md)
-- [CascadeContextFactory](../../api/cascade-context-factory.md)
-- [ICascadeContextEnricher](../../api/cascade-context-enricher.md)
-- [IScopeContextAccessor](../../api/scope-context-accessor.md)
+- [CascadeContext](cascade-context.md)
+- CascadeContextFactory
+- ICascadeContextEnricher
+- IScopeContextAccessor
 
 **Test Coverage**:
 - `MessageContextInitiatingContextTests.cs` - InitiatingContext prioritization tests

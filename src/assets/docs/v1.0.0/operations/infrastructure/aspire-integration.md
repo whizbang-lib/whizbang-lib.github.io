@@ -600,8 +600,8 @@ app.Run();
 - [Policies](policies.md) - Policy-based routing
 
 **Messaging**:
-- [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable event publishing
-- [Inbox Pattern](../messaging/inbox-pattern.md) - Exactly-once processing
+- [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable event publishing
+- [Inbox Pattern](../../messaging/inbox-pattern.md) - Exactly-once processing
 
 **External Resources**:
 - [.NET Aspire Documentation](https://learn.microsoft.com/en-us/dotnet/aspire/)

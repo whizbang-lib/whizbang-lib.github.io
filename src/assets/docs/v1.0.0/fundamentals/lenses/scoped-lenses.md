@@ -19,7 +19,7 @@ codeReferences:
 
 # Scoped Lenses
 
-**Scoped Lenses** combine the query capabilities of [Lenses](./lenses.md) with the data isolation features of the [Scoping System](./scoping.md). They automatically apply tenant, user, organization, and principal-based filters to your queries without manual WHERE clauses.
+**Scoped Lenses** combine the query capabilities of [Lenses](./lenses.md) with the data isolation features of the [Scoping System](../../apis/graphql/scoping.md). They automatically apply tenant, user, organization, and principal-based filters to your queries without manual WHERE clauses.
 
 ## Overview
 
@@ -596,9 +596,9 @@ public class CustomLens<TModel> : ILensQuery<TModel>, IFilterableLens {
 ## Related Documentation
 
 - [Lenses](./lenses.md) - Base lens concepts and query patterns
-- [Scoping](./scoping.md) - Scope filters, PerspectiveScope, and ScopeFilterBuilder
-- [Security](./security.md) - Permissions, roles, and access control
-- [System Events](./system-events.md) - AccessDenied and other security events
+- [Scoping](../../apis/graphql/scoping.md) - Scope filters, PerspectiveScope, and ScopeFilterBuilder
+- [Security](../security/security.md) - Permissions, roles, and access control
+- [System Events](../events/system-events.md) - AccessDenied and other security events
 
 ---
 

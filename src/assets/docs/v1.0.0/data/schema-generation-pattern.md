@@ -644,7 +644,7 @@ internal static class MySqlTypeMapper {
 - [Database Schema Framework](../extending/extensibility/database-schema-framework.md) - Complete framework overview
 
 **Source Generators**:
-- [Perspective Schema Generator](../extending/source-generators/perspective-schema-generator.md) - Auto-generate perspective tables
+- Perspective Schema Generator - Auto-generate perspective tables
 
 **Messaging**:
 - [Outbox Pattern](../messaging/outbox-pattern.md) - Transactional messaging schema

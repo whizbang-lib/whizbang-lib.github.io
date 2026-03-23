@@ -284,8 +284,8 @@ Before calling `AddTransportConsumer()`:
 
 ## Related Documentation
 
-- [Routing](./routing.md) - Namespace-based routing configuration
-- [Inbox/Outbox](./inbox-outbox.md) - Message persistence and delivery guarantees
-- [Workers](./workers.md) - Background processing workers
+- [Routing](../../fundamentals/dispatcher/routing.md) - Namespace-based routing configuration
+- Inbox/Outbox - Message persistence and delivery guarantees
+- Workers - Background processing workers
 - [RabbitMQ Transport](./rabbitmq.md) - RabbitMQ transport configuration
 - [Azure Service Bus Transport](./azure-service-bus.md) - Azure Service Bus transport configuration

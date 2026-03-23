@@ -599,7 +599,7 @@ public void ProcessEvent<TModel, TMessage>(TModel model, TMessage message)
 
 ## See Also
 
-- [PerspectiveAssociationInfo](/v1.0.0/core-concepts/perspectives/association-info) - Association record with delegates
-- [Perspectives](/v1.0.0/core-concepts/perspectives) - Overview of perspective system
-- [Message Associations](/v1.0.0/core-concepts/perspectives#message-associations) - String-based discovery
-- [AOT Compatibility](/v1.0.0/advanced-topics/aot-compatibility) - Native AOT support
+- [PerspectiveAssociationInfo](association-info.md) - Association record with delegates
+- [Perspectives](perspectives.md) - Overview of perspective system
+- [Message Associations](perspectives.md#message-associations) - String-based discovery
+- AOT Compatibility - Native AOT support

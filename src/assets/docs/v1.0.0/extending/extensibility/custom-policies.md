@@ -786,8 +786,8 @@ public class CachedPolicyEngineTests {
 - [Message Context](../../fundamentals/messages/message-context.md) - Envelope metadata
 
 **Advanced**:
-- [Multi-Tenancy](../advanced/multi-tenancy.md) - Tenant isolation patterns
-- [Performance Tuning](../advanced/performance-tuning.md) - Optimization strategies
+- [Multi-Tenancy](../../fundamentals/security/multi-tenancy.md) - Tenant isolation patterns
+- [Performance Tuning](../../operations/deployment/performance-tuning.md) - Optimization strategies
 
 ---
 

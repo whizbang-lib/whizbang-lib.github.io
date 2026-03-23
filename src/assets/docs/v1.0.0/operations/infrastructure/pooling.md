@@ -560,7 +560,7 @@ if (concurrentMessages > poolSize) {
 - [Health Checks](health-checks.md) - Monitoring pool health
 
 **Performance**:
-- [Performance Tuning](../advanced/performance-tuning.md) - GC optimization strategies
+- [Performance Tuning](../deployment/performance-tuning.md) - GC optimization strategies
 
 **External Resources**:
 - [.NET Memory Management](https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/)

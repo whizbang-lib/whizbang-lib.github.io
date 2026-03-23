@@ -740,11 +740,11 @@ await transport.PublishAsync(orderCreatedEnvelope, destination);
 - [Azure Service Bus Transport](azure-service-bus.md) - Distributed messaging for production
 
 **Messaging Patterns**:
-- [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable event publishing (not needed for in-memory)
-- [Inbox Pattern](../messaging/inbox-pattern.md) - Exactly-once processing (not needed for in-memory)
+- [Outbox Pattern](../outbox-pattern.md) - Reliable event publishing (not needed for in-memory)
+- [Inbox Pattern](../inbox-pattern.md) - Exactly-once processing (not needed for in-memory)
 
 **Testing**:
-- [Testing Receptors](../advanced/testing-receptors.md) - Unit testing message handlers
+- [Testing Receptors](../../operations/testing/testing-receptors.md) - Unit testing message handlers
 
 **Extensibility**:
 - [Custom Transports](../../extending/extensibility/custom-transports.md) - Implementing custom transports

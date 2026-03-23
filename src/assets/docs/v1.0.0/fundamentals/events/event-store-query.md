@@ -176,5 +176,5 @@ The table schema is:
 ## Related Topics
 
 - [Event Store](event-store.md) - Event persistence and append operations
-- [Scoped Lenses](scoped-lenses.md) - Scope filtering patterns
-- [Multi-Tenancy](multi-tenancy.md) - Tenant isolation strategies
+- [Scoped Lenses](../lenses/scoped-lenses.md) - Scope filtering patterns
+- [Multi-Tenancy](../security/multi-tenancy.md) - Tenant isolation strategies

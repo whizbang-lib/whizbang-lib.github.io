@@ -119,7 +119,7 @@ services.AddWhizbang()
 
 ## Related Documentation
 
-- [EF Core Integration](/data/efcore-integration)
-- [Event Store](/core-concepts/event-store)
-- [Perspectives](/core-concepts/perspectives)
-- [Vector Search](/lenses/vector-search)
+- [EF Core Integration](efcore-integration.md)
+- [Event Store](event-store.md)
+- [Perspectives](../fundamentals/perspectives/perspectives.md)
+- [Vector Search](../fundamentals/lenses/vector-search.md)

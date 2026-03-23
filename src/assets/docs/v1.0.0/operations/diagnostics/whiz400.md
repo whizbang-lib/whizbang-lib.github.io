@@ -148,5 +148,5 @@ The analyzer and runtime validation are both AOT-compatible:
 
 ## See Also
 
-- [Multi-Model Queries](/docs/lenses/multi-model-queries) - Using multi-generic ILensQuery for LINQ joins
-- [Lens Query Factory](/docs/lenses/lens-query-factory) - DbContext sharing patterns
+- [Multi-Model Queries](../../fundamentals/lenses/multi-model-queries.md) - Using multi-generic ILensQuery for LINQ joins
+- [Lens Query Factory](../../fundamentals/lenses/lens-query-factory.md) - DbContext sharing patterns

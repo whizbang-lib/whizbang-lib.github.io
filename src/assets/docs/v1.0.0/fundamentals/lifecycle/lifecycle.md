@@ -374,7 +374,7 @@ await dispatcher.SendAsync(new RebuildPerspectiveCommand(
 ));
 ```
 
-See [Perspectives](perspectives.md#rebuild) for details.
+See [Perspectives](../perspectives/perspectives.md#rebuild) for details.
 
 ### ClearCacheCommand
 Clear cached data across all services:
@@ -400,10 +400,10 @@ See [Observability: Diagnostics](../../operations/observability/diagnostics.md#s
 
 ## See Also
 
-- [System Commands](routing.md#system-commands) - System command routing
-- [Workers](../../operations/workers/workers.md) - Worker lifecycle management
-- [Perspectives](perspectives.md) - Perspective processing
-- [Inbox/Outbox](../patterns/inbox-outbox.md) - Message queuing behavior
+- [System Commands](../dispatcher/routing.md#system-commands) - System command routing
+- Workers - Worker lifecycle management
+- [Perspectives](../perspectives/perspectives.md) - Perspective processing
+- Inbox/Outbox - Message queuing behavior
 
 ---
 

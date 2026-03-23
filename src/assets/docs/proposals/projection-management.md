@@ -485,4 +485,4 @@ public static class ProjectionConfigurationExtensions {
 
 - [**Event Store & Projections**](./event-store-projections.md) - Core storage architecture
 - [**Multi-Tenancy**](./multi-tenancy.md) - Tenant-aware projection management
-- [**Performance Optimization**](./performance-optimization.md) - Scaling projection processing
+- **Performance Optimization** - Scaling projection processing

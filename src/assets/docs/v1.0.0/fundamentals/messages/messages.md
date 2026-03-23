@@ -214,7 +214,7 @@ var envelope = MessageEnvelope.Create(
 );
 ```
 
-See [Message Envelopes](../messaging/message-envelopes.md) for details.
+See [Message Envelopes](../../messaging/message-envelopes.md) for details.
 
 ## Best Practices
 
@@ -267,10 +267,10 @@ public record ProductPriceChanged : IEvent {
 
 ## Related Documentation
 
-- [Commands and Events](../messaging/commands-events.md) - Detailed command/event patterns
-- [Message Envelopes](../messaging/message-envelopes.md) - Envelope structure
-- [Receptors](receptors.md) - Message handlers
-- [Dispatcher](dispatcher.md) - Message routing
+- [Commands and Events](../../messaging/commands-events.md) - Detailed command/event patterns
+- [Message Envelopes](../../messaging/message-envelopes.md) - Envelope structure
+- [Receptors](../receptors/receptors.md) - Message handlers
+- [Dispatcher](../dispatcher/dispatcher.md) - Message routing
 
 ---
 
