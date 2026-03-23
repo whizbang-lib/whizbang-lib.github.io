@@ -240,9 +240,9 @@ var elapsed = _timeProvider.GetUtcNow() - start;
 
 ## Related Documentation
 
-- [Message Context](message-context.md) - Timestamps in message envelopes
-- [Observability](observability.md) - Timing metrics and tracing
-- [Testing Strategy](/v1.0.0/testing/testing-strategy) - Testing with time providers
+- [Message Context](../messages/message-context.md) - Timestamps in message envelopes
+- [Observability](../persistence/observability.md) - Timing metrics and tracing
+- [Testing Strategy](../../learn/tutorial/testing-strategy.md) - Testing with time providers
 
 ---
 

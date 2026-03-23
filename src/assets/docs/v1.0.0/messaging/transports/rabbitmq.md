@@ -611,7 +611,7 @@ services.AddWhizbang()
 - Provisioning happens before subscriptions are created
 - Multiple service instances can provision concurrently (race-safe)
 
-📖 See [Domain Topic Provisioning](/core-concepts/routing#domain-topic-provisioning) for full details.
+📖 See [Domain Topic Provisioning](../../fundamentals/dispatcher/routing.md#domain-topic-provisioning) for full details.
 
 ### Connection Retry Options {#connection-retry}
 
@@ -1307,12 +1307,12 @@ rabbitmqadmin list queues name messages
 
 ## Related Topics
 
-- [Transports Overview](/components/transports) - Compare transport implementations
-- [Azure Service Bus Transport](/transports/azure-service-bus) - Alternative transport with strict ordering
-- [In-Memory Transport](/transports/in-memory) - Testing and development
-- [Custom Transports](/extensibility/custom-transports) - Implement your own transport
-- [Lifecycle Hooks](/core-concepts/lifecycle) - Pre/post processing for messages
-- [Observability](/core-concepts/observability) - OpenTelemetry tracing
+- [Transports Overview](transports.md) - Compare transport implementations
+- [Azure Service Bus Transport](azure-service-bus.md) - Alternative transport with strict ordering
+- [In-Memory Transport](in-memory.md) - Testing and development
+- [Custom Transports](../../extending/extensibility/custom-transports.md) - Implement your own transport
+- [Lifecycle Hooks](../../fundamentals/lifecycle/lifecycle.md) - Pre/post processing for messages
+- [Observability](../../fundamentals/persistence/observability.md) - OpenTelemetry tracing
 
 ---
 

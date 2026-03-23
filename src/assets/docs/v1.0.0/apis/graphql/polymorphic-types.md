@@ -284,4 +284,4 @@ builder.Services.AddGraphQLServer()
 
 - [GraphQL Setup](setup.md) - HotChocolate configuration
 - [Lens Integration](lens-integration.md) - Exposing lenses via GraphQL
-- [JSON Serialization](../../fundamentals/messages/json-serialization.md) - AOT-compatible serialization
+- JSON Serialization - AOT-compatible serialization

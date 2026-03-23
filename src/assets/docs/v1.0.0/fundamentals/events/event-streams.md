@@ -278,7 +278,7 @@ public record TenantOrderCreated : IEvent {
 - [Events](events.md) - Event definition and EventId
 - [Stream ID](stream-id.md) - IHasStreamId and auto-generation
 - [Event Store](event-store.md) - Event persistence
-- [Perspectives](perspectives.md) - Read model projections
+- [Perspectives](../perspectives/perspectives.md) - Read model projections
 
 ---
 

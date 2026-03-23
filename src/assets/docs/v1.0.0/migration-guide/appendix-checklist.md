@@ -275,4 +275,4 @@ whizbang migrate status
 
 ---
 
-*Need help? See [Troubleshooting](appendix-troubleshooting.md) or open an issue on GitHub.*
+*Need help? See Troubleshooting or open an issue on GitHub.*

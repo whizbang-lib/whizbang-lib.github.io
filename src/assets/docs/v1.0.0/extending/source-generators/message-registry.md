@@ -757,7 +757,7 @@ public class ExternalEventPerspective : IPerspectiveOf<SharedMessages.CustomerCr
 - [Perspectives](../../fundamentals/perspectives/perspectives.md) - Event-driven read models
 
 **Tools**:
-- [VSCode Extension](../tools/vscode-extension.md) - IDE integration features
+- VSCode Extension - IDE integration features
 
 ---
 

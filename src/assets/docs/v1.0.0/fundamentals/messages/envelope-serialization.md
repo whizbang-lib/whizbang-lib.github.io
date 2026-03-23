@@ -271,9 +271,9 @@ try {
 
 ## Related Documentation
 
-- [Message Envelopes](../messaging/message-envelopes.md) - Envelope structure
+- [Message Envelopes](../../messaging/message-envelopes.md) - Envelope structure
 - [Envelope Registry](envelope-registry.md) - Envelope lookup
-- [AOT Requirements](/v1.0.0/advanced-topics/native-aot) - AOT compatibility
+- [AOT Requirements](../../operations/deployment/native-aot.md) - AOT compatibility
 
 ---
 

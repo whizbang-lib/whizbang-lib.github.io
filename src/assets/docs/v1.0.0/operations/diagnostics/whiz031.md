@@ -176,10 +176,10 @@ However, this is rare. Most domain events belong to a single aggregate.
 ## Related Diagnostics
 
 - **[WHIZ030](whiz030.md)** - Event type missing `[StreamKey]` attribute
-- **[WHIZ009](whiz009.md)** - Warning for IEvent implementations missing `[StreamKey]` (general case)
+- **WHIZ009** - Warning for IEvent implementations missing `[StreamKey]` (general case)
 
 ## See Also
 
 - [StreamKey Attribute](../../extending/attributes/streamkey.md) - Detailed attribute documentation
 - [Perspectives](../../fundamentals/perspectives/perspectives.md) - Pure function perspectives with StreamKey
-- [Event Sourcing](../../fundamentals/events/event-sourcing.md) - Understanding aggregates and streams
+- Event Sourcing - Understanding aggregates and streams

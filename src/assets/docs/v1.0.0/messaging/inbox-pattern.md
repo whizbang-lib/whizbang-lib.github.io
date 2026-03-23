@@ -703,7 +703,7 @@ public async Task InventoryWorker_DuplicateMessage_ProcessesOnceAsync() {
 - [Message Envelopes](message-envelopes.md) - Hop-based observability
 
 **Examples**:
-- [ECommerce: Inventory Worker](../examples/ecommerce/inventory-worker.md) - Real-world inbox usage
+- ECommerce: Inventory Worker - Real-world inbox usage
 
 ---
 

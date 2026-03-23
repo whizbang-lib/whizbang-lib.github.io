@@ -898,6 +898,6 @@ public interface ICustomerScoped : ITenantScoped {
 ## Related Documentation
 
 - [Scoping](./scoping.md) - Scope system overview
-- [System Events](./system-events.md) - Audit and monitoring events
+- [System Events](../events/system-events.md) - Audit and monitoring events
 - [Implementing Multi-Tenancy](./implementing-multi-tenancy.md) - End-to-end guide
 - [Security Best Practices](../../operations/deployment/security.md) - Authentication, authorization, encryption

@@ -335,11 +335,11 @@ public class OrderSummaryPerspective : IPerspective<OrderSummary> {
 
 ## Related Documentation
 
-- [Messages](messages.md) - IMessage base interface
+- [Messages](../messages/messages.md) - IMessage base interface
 - [Event Streams](event-streams.md) - Stream organization
 - [Stream ID](stream-id.md) - Stream identification
-- [Commands and Events](../messaging/commands-events.md) - Detailed patterns
-- [Perspectives](perspectives.md) - Event projections
+- [Commands and Events](../../messaging/commands-events.md) - Detailed patterns
+- [Perspectives](../perspectives/perspectives.md) - Event projections
 
 ---
 

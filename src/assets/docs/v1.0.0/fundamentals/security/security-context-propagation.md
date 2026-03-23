@@ -502,8 +502,8 @@ This ensures `UserContextManager` is populated **before** any receptor code runs
 - [Message Security](./message-security.md) - Security context establishment for messages
 - [Security](./security.md) - Permissions, roles, and access control
 - [Scoping](./scoping.md) - Multi-tenancy and data isolation
-- [Scoped Lenses](./scoped-lenses.md) - Automatic scope-based filtering
-- [System Events](./system-events.md) - Audit events and monitoring
+- [Scoped Lenses](../lenses/scoped-lenses.md) - Automatic scope-based filtering
+- [System Events](../events/system-events.md) - Audit events and monitoring
 
 ---
 

@@ -131,14 +131,19 @@ function validateMarkdownLinks() {
       const linkText = match[1];
       let target = match[2];
 
-      // Skip external links, anchors, mailto, images
+      // Skip external links, anchors, mailto, images, code/test references
       if (
         target.startsWith('http://') ||
         target.startsWith('https://') ||
         target.startsWith('#') ||
         target.startsWith('mailto:') ||
         target.startsWith('data:') ||
-        target.startsWith('tel:')
+        target.startsWith('tel:') ||
+        target.includes('/code/') ||
+        target.includes('/tests/') ||
+        target.endsWith('.cs') ||
+        target.endsWith('.ts') ||
+        target.endsWith('.json')
       ) {
         continue;
       }

@@ -445,5 +445,5 @@ See the [PerspectiveScope](#perspective-scope) section at the top of this docume
 ## Related Documentation
 
 - [Security](./security.md) - Permissions, roles, and access control
-- [Scoped Lenses](./scoped-lenses.md) - Automatic scope-based filtering
-- [System Events](./system-events.md) - Audit and monitoring events
+- [Scoped Lenses](../lenses/scoped-lenses.md) - Automatic scope-based filtering
+- [System Events](../events/system-events.md) - Audit and monitoring events

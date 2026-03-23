@@ -609,17 +609,17 @@ ORDER BY created_at;
 ## Further Reading
 
 **Core Concepts**:
-- [Message Context](message-context.md) - MessageId, CorrelationId, CausationId
-- [Dispatcher](dispatcher.md) - How messages flow through the system
-- [Receptors](receptors.md) - Message handlers
+- [Message Context](../messages/message-context.md) - MessageId, CorrelationId, CausationId
+- [Dispatcher](../dispatcher/dispatcher.md) - How messages flow through the system
+- [Receptors](../receptors/receptors.md) - Message handlers
 
 **Messaging Patterns**:
-- [Message Envelopes](../messaging/message-envelopes.md) - Deep dive into hop architecture
-- [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable messaging with hops
-- [Event Store](../data/event-store.md) - Storing hops with events
+- [Message Envelopes](../../messaging/message-envelopes.md) - Deep dive into hop architecture
+- [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable messaging with hops
+- [Event Store](../../data/event-store.md) - Storing hops with events
 
 **Infrastructure**:
-- [Logging & Telemetry](../../operations/observability/observability-setup.md) - Application Insights integration
+- Logging & Telemetry - Application Insights integration
 - [Policy Engine](../../operations/infrastructure/policies.md) - Policy decision trails
 
 ---
