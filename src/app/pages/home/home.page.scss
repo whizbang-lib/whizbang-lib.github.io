@@ -161,21 +161,51 @@
 }
 
 @keyframes orbFloat1 {
-    0%, 100% { transform: translate(0, 0); }
-    33% { transform: translate(40px, 60px); }
-    66% { transform: translate(-30px, 30px); }
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    33% {
+        transform: translate(40px, 60px);
+    }
+
+    66% {
+        transform: translate(-30px, 30px);
+    }
 }
 
 @keyframes orbFloat2 {
-    0%, 100% { transform: translate(0, 0); }
-    33% { transform: translate(-50px, -40px); }
-    66% { transform: translate(30px, -60px); }
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    33% {
+        transform: translate(-50px, -40px);
+    }
+
+    66% {
+        transform: translate(30px, -60px);
+    }
 }
 
 @keyframes orbFloat3 {
-    0%, 100% { transform: translate(0, 0); }
-    33% { transform: translate(60px, -30px); }
-    66% { transform: translate(-40px, 50px); }
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    33% {
+        transform: translate(60px, -30px);
+    }
+
+    66% {
+        transform: translate(-40px, 50px);
+    }
 }
 
 // --- Section Wrapper (generic) ---
@@ -266,18 +296,39 @@
 }
 
 @keyframes heroOrb1 {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(30px, -20px) scale(1.1); }
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    50% {
+        transform: translate(30px, -20px) scale(1.1);
+    }
 }
 
 @keyframes heroOrb2 {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(-40px, 30px) scale(1.15); }
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    50% {
+        transform: translate(-40px, 30px) scale(1.15);
+    }
 }
 
 @keyframes heroOrb3 {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(20px, -40px) scale(1.05); }
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    50% {
+        transform: translate(20px, -40px) scale(1.05);
+    }
 }
 
 .hero-content {
@@ -302,9 +353,10 @@
 }
 
 .wordmark-logo {
-    height: 0.85em;
+    height: 1em;
     display: inline-block;
     vertical-align: baseline;
+    margin-top: 0.25em;
 }
 
 .hero-tagline {
@@ -357,6 +409,7 @@
         .scroll-chevron {
             transform: translateY(4px);
         }
+
         .scroll-text {
             opacity: 1;
         }
@@ -377,8 +430,15 @@
 }
 
 @keyframes chevronBounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(8px); }
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(8px);
+    }
 }
 
 // ============================================================
@@ -560,13 +620,24 @@
     opacity: 0;
     transform: translateY(40px) scale(0.95);
     transition: opacity 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
-                transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
-                box-shadow 0.4s ease;
+        transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.4s ease;
 
-    &:nth-child(1) { transition-delay: 0s; }
-    &:nth-child(2) { transition-delay: 0.12s; }
-    &:nth-child(3) { transition-delay: 0.24s; }
-    &:nth-child(4) { transition-delay: 0.36s; }
+    &:nth-child(1) {
+        transition-delay: 0s;
+    }
+
+    &:nth-child(2) {
+        transition-delay: 0.12s;
+    }
+
+    &:nth-child(3) {
+        transition-delay: 0.24s;
+    }
+
+    &:nth-child(4) {
+        transition-delay: 0.36s;
+    }
 
     &.revealed {
         opacity: 1;
@@ -652,6 +723,7 @@
 }
 
 :host-context(:root:not([data-theme="dark"])) {
+
     .use-cases-panel,
     .roadmap-slide {
         background: rgba(241, 243, 249, 0.9);
@@ -1051,35 +1123,46 @@
     // Ambient orbs — bold in light mode
     .orb-1 {
         background: radial-gradient(circle, rgba(255, 124, 0, 0.35) 0%, rgba(255, 124, 0, 0.08) 50%, transparent 70%);
-        width: 700px; height: 700px;
+        width: 700px;
+        height: 700px;
     }
+
     .orb-2 {
         background: radial-gradient(circle, rgba(255, 0, 102, 0.28) 0%, rgba(255, 0, 102, 0.06) 50%, transparent 70%);
-        width: 600px; height: 600px;
+        width: 600px;
+        height: 600px;
     }
+
     .orb-3 {
         background: radial-gradient(circle, rgba(123, 63, 248, 0.3) 0%, rgba(123, 63, 248, 0.07) 50%, transparent 70%);
-        width: 800px; height: 800px;
+        width: 800px;
+        height: 800px;
     }
 
     // Hero orbs — large warm glows
     .hero-orb-1 {
         background: radial-gradient(circle, rgba(255, 124, 0, 0.3) 0%, rgba(255, 124, 0, 0.06) 50%, transparent 70%);
-        width: 600px; height: 600px;
+        width: 600px;
+        height: 600px;
     }
+
     .hero-orb-2 {
         background: radial-gradient(circle, rgba(255, 0, 102, 0.25) 0%, rgba(255, 0, 102, 0.05) 50%, transparent 70%);
-        width: 500px; height: 500px;
+        width: 500px;
+        height: 500px;
     }
+
     .hero-orb-3 {
         background: radial-gradient(circle, rgba(123, 63, 248, 0.28) 0%, rgba(123, 63, 248, 0.06) 50%, transparent 70%);
-        width: 700px; height: 700px;
+        width: 700px;
+        height: 700px;
     }
 
     // Gradient card borders pop more in light mode
     .cap-card {
         background: linear-gradient(135deg, rgba(255, 124, 0, 0.3), rgba(123, 63, 248, 0.3));
     }
+
     .ide-card {
         background: linear-gradient(135deg, rgba(255, 0, 102, 0.3), rgba(123, 63, 248, 0.3));
     }
@@ -1170,10 +1253,21 @@
     }
 
     // Reduce scroll distances on mobile for less scrolling
-    .hero-wrapper { height: 140vh; }
-    .diff-wrapper { height: 200vh; }
-    .code-wrapper { height: 190vh; }
-    .slide-wrapper { height: 170vh; }
+    .hero-wrapper {
+        height: 140vh;
+    }
+
+    .diff-wrapper {
+        height: 200vh;
+    }
+
+    .code-wrapper {
+        height: 190vh;
+    }
+
+    .slide-wrapper {
+        height: 170vh;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1209,10 +1303,21 @@
     }
 
     // Further reduce scroll distances
-    .hero-wrapper { height: 130vh; }
-    .diff-wrapper { height: 180vh; }
-    .code-wrapper { height: 170vh; }
-    .slide-wrapper { height: 160vh; }
+    .hero-wrapper {
+        height: 130vh;
+    }
+
+    .diff-wrapper {
+        height: 180vh;
+    }
+
+    .code-wrapper {
+        height: 170vh;
+    }
+
+    .slide-wrapper {
+        height: 160vh;
+    }
 }
 
 // ============================================================
@@ -1220,6 +1325,7 @@
 // ============================================================
 
 @media (prefers-reduced-motion: reduce) {
+
     .orb,
     .hero-orb,
     .scroll-chevron {
