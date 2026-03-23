@@ -1,0 +1,160 @@
+name: Start Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - major      # Force major version bump (x.0.0)
+          - minor      # Force minor version bump (0.x.0)
+          - patch      # Force patch version bump (0.0.x)
+          - manual     # Use manually specified version
+      manual_version:
+        description: 'Manual version (only used when release_type is "manual", e.g., 1.2.3 or 1.2.3-beta.1)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-release-pr:
+    name: Create Release PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calculate Version
+        id: version
+        env:
+          INPUT_RELEASE_TYPE: ${{ inputs.release_type }}
+          INPUT_MANUAL_VERSION: ${{ inputs.manual_version }}
+        run: |
+          if [ "$INPUT_RELEASE_TYPE" = "manual" ]; then
+            MANUAL_VER="$INPUT_MANUAL_VERSION"
+            if [ -z "$MANUAL_VER" ]; then
+              echo "::error::Manual version is required when release_type is 'manual'"
+              exit 1
+            fi
+            if ! echo "$MANUAL_VER" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
+              echo "::error::Invalid version format. Expected: x.y.z or x.y.z-prerelease"
+              exit 1
+            fi
+            SEMVER="$MANUAL_VER"
+          else
+            CURRENT=$(node -p "require('./package.json').version")
+            echo "Current version: $CURRENT"
+
+            IFS='.' read -r MAJOR MINOR PATCH <<< "${CURRENT%%-*}"
+
+            case "$INPUT_RELEASE_TYPE" in
+              major)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+                ;;
+              minor)
+                MINOR=$((MINOR + 1))
+                PATCH=0
+                ;;
+              patch)
+                PATCH=$((PATCH + 1))
+                ;;
+            esac
+
+            SEMVER="${MAJOR}.${MINOR}.${PATCH}"
+          fi
+
+          echo "semver=$SEMVER" >> "$GITHUB_OUTPUT"
+          echo "branch=release/v$SEMVER" >> "$GITHUB_OUTPUT"
+          echo "Calculated version: $SEMVER"
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create Release Branch
+        run: |
+          BRANCH="${{ steps.version.outputs.branch }}"
+          git checkout -b "$BRANCH"
+
+      - name: Update Version in package.json
+        env:
+          VERSION: ${{ steps.version.outputs.semver }}
+        run: |
+          echo "Updating version to: $VERSION"
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '$VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          echo "Updated package.json version:"
+          node -p "require('./package.json').version"
+
+      - name: Commit and Push
+        env:
+          VERSION: ${{ steps.version.outputs.semver }}
+          BRANCH: ${{ steps.version.outputs.branch }}
+        run: |
+          git add package.json
+          git commit -m "chore(release): bump version to $VERSION"
+          git push origin "$BRANCH"
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.semver }}
+          BRANCH: ${{ steps.version.outputs.branch }}
+        run: |
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore(release): v$VERSION" \
+            --label "release" \
+            --body "$(cat <<EOF
+          ## Release v$VERSION
+
+          This PR prepares the release of version **v$VERSION** of the documentation site.
+
+          ### Release Checklist
+          - [ ] All CI checks pass
+          - [ ] Version number is correct
+          - [ ] Documentation content reviewed
+
+          ### After Merge
+          When this PR is merged to \`main\`, the release workflow will:
+          1. Create git tag \`v$VERSION\`
+          2. Create GitHub Release with auto-generated notes
+          3. Deploy to GitHub Pages
+          4. Sync \`main\` back into \`develop\`
+
+          ---
+          *This PR was automatically created by the Start Release workflow.*
+          EOF
+          )"
+
+      - name: Summary
+        env:
+          VERSION: ${{ steps.version.outputs.semver }}
+          BRANCH: ${{ steps.version.outputs.branch }}
+        run: |
+          echo "## Release PR Created" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Version**: v$VERSION" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Branch**: $BRANCH" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **PR**: Created and ready for review" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Once the PR is approved and merged, the site will be automatically deployed." >> "$GITHUB_STEP_SUMMARY"
