@@ -584,7 +584,7 @@ for (int i = 0; i < 10000; i++) {
 
 ## See Also
 
-- [TypeQualification](/v1.0.0/core-concepts/type-qualification) - Type name formatting flags
-- [TypeFormatter](/v1.0.0/core-concepts/type-formatting) - Format types for matching
-- [MatchStrictness](/v1.0.0/core-concepts/fuzzy-matching) - Fuzzy matching control
-- [Perspectives](/v1.0.0/core-concepts/perspectives) - Message associations using TypeMatcher
+- [TypeQualification](type-qualification.md) - Type name formatting flags
+- [TypeFormatter](type-formatting.md) - Format types for matching
+- [MatchStrictness](fuzzy-matching.md) - Fuzzy matching control
+- [Perspectives](../perspectives/perspectives.md) - Message associations using TypeMatcher

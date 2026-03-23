@@ -276,6 +276,6 @@ _logger.Debug(
 
 ## See Also
 
-- [Work Coordination](/docs/v1.0.0/messaging/work-coordination) - Batch processing and coordination
-- [Outbox Pattern](/docs/v1.0.0/messaging/outbox-pattern) - Reliable event publishing
-- [Perspective Registry](/docs/v1.0.0/fundamentals/perspectives/registry) - Perspective metadata
+- [Work Coordination](../../messaging/work-coordination.md) - Batch processing and coordination
+- [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable event publishing
+- [Perspective Registry](registry.md) - Perspective metadata

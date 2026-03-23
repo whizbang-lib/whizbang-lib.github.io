@@ -225,6 +225,6 @@ services.AddSingleton<ILensQueryFactory<Order>, LensQueryFactory<Order>>();
 
 ## See Also
 
-- [Lens Query Factory](/docs/lenses/lens-query-factory) - DbContext sharing for parallel resolvers
-- [Temporal Queries](/docs/lenses/temporal-query) - Time-travel and history queries
-- [Raw SQL Access](/docs/lenses/raw-sql) - Direct SQL execution
+- [Lens Query Factory](lens-query-factory.md) - DbContext sharing for parallel resolvers
+- [Temporal Queries](temporal-query.md) - Time-travel and history queries
+- [Raw SQL Access](raw-sql.md) - Direct SQL execution

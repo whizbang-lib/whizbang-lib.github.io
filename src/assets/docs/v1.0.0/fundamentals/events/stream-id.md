@@ -248,14 +248,14 @@ await foreach (var envelope in eventStore.ReadPolymorphicAsync(
 
 ## Stream ID Extraction
 
-For advanced scenarios, see [Delivery Receipts](delivery-receipts.md) for how Whizbang extracts stream IDs from messages using source-generated extractors.
+For advanced scenarios, see [Delivery Receipts](../messages/delivery-receipts.md) for how Whizbang extracts stream IDs from messages using source-generated extractors.
 
 ## Related Documentation
 
 - [Events](events.md) - Event definition and EventId
 - [Event Streams](event-streams.md) - Stream organization
-- [Delivery Receipts](delivery-receipts.md) - Stream ID extraction
-- [WhizbangIds](whizbang-ids.md) - Strongly-typed ID values
+- [Delivery Receipts](../messages/delivery-receipts.md) - Stream ID extraction
+- [WhizbangIds](../identity/whizbang-ids.md) - Strongly-typed ID values
 
 ---
 

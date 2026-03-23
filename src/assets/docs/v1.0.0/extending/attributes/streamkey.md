@@ -356,4 +356,4 @@ This generated code:
 - [PerspectiveRunner Architecture](../../fundamentals/perspectives/perspectives.md#perspectiverunner-architecture) - How runners use StreamKey
 - [WHIZ030 Diagnostic](../../operations/diagnostics/whiz030.md) - Missing StreamKey error
 - [WHIZ031 Diagnostic](../../operations/diagnostics/whiz031.md) - Multiple StreamKey error
-- [Event Sourcing](../../fundamentals/events/event-sourcing.md) - Understanding aggregates and streams
+- Event Sourcing - Understanding aggregates and streams

@@ -1158,7 +1158,7 @@ public async Task UpdateOrderStatusAsync(Guid orderId, string newStatus) {
 - [Event Store](event-store.md) - Event storage and replay
 
 **Examples**:
-- [ECommerce: Order Service](../examples/ecommerce/order-service.md) - EF Core in practice
+- ECommerce: Order Service - EF Core in practice
 
 ---
 

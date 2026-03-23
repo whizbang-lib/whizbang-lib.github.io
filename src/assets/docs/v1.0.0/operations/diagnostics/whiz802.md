@@ -116,7 +116,7 @@ public float[]? TestEmbedding { get; init; }
 ## Related Diagnostics
 
 - [WHIZ070](whiz070.md) - Missing Pgvector.EntityFrameworkCore package
-- [WHIZ801](whiz801.md) - VectorField on invalid type (must be `float[]`)
+- WHIZ801 - VectorField on invalid type (must be `float[]`)
 - [WHIZ807](whiz807.md) - Physical fields discovered (info)
 
 ## See Also

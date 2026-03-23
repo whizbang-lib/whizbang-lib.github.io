@@ -22,7 +22,7 @@ This roadmap outlines the complete implementation plan for Whizbang, a unified e
 
 ## Version Overview
 
-### 🚀 [v0.1.0 - Foundation](../v0.1.0/README.md)
+### 🚀 [v0.1.0 - Foundation](README.md)
 **Status**: Planning  
 **Goal**: Minimal working implementation of EVERY major component
 - All core interfaces and abstractions
@@ -32,7 +32,7 @@ This roadmap outlines the complete implementation plan for Whizbang, a unified e
 - Complete testing framework with TUnit and Bogus
 - In-memory implementations for all components
 
-### 📈 [v0.2.0 - Event-Driven Enhancement](../v0.2.0/README.md)
+### 📈 [v0.2.0 - Event-Driven Enhancement](README.md)
 **Status**: Planning  
 **Goal**: Deepen event-driven capabilities
 - Enhanced receptors with validation
@@ -41,7 +41,7 @@ This roadmap outlines the complete implementation plan for Whizbang, a unified e
 - Advanced lens query methods
 - Policy engine enhancements
 
-### 💾 [v0.3.0 - Event Sourcing](../v0.3.0/README.md)
+### 💾 [v0.3.0 - Event Sourcing](README.md)
 **Status**: Planning  
 **Goal**: Add stateful capabilities
 - Stateful receptors
@@ -50,7 +50,7 @@ This roadmap outlines the complete implementation plan for Whizbang, a unified e
 - Projections and snapshots
 - Optimistic concurrency
 
-### 🗄️ [v0.4.0 - Real Persistence](../v0.4.0/README.md)
+### 🗄️ [v0.4.0 - Real Persistence](README.md)
 **Status**: Planning  
 **Goal**: Production-ready persistence
 - PostgreSQL driver with JSONB
@@ -59,7 +59,7 @@ This roadmap outlines the complete implementation plan for Whizbang, a unified e
 - Schema migrations
 - Multi-tenancy support
 
-### 📡 [v0.5.0 - Distributed Systems](../v0.5.0/README.md)
+### 📡 [v0.5.0 - Distributed Systems](README.md)
 **Status**: Planning  
 **Goal**: Enable distributed messaging
 - Kafka transport
@@ -125,7 +125,7 @@ This roadmap outlines the complete implementation plan for Whizbang, a unified e
 
 1. **[Read the Philosophy](philosophy.md)** - Understand our core principles
 2. **[Review the Architecture](architecture.md)** - See how components fit together
-3. **[Start with v0.1.0](../v0.1.0/README.md)** - Begin with the foundation
+3. **[Start with v0.1.0](README.md)** - Begin with the foundation
 4. **[Check Success Metrics](success-metrics.md)** - Understand how we measure progress
 
 ## Contributing
@@ -139,16 +139,16 @@ This roadmap is a living document. Each version's documentation contains:
 ## Navigation
 
 ### By Version
-- [v0.1.0 - Foundation](../v0.1.0/README.md)
-- [v0.2.0 - Event-Driven](../v0.2.0/README.md)
-- [v0.3.0 - Event Sourcing](../v0.3.0/README.md)
-- [v0.4.0 - Persistence](../v0.4.0/README.md)
-- [v0.5.0 - Distributed](../v0.5.0/README.md)
+- [v0.1.0 - Foundation](README.md)
+- [v0.2.0 - Event-Driven](README.md)
+- [v0.3.0 - Event Sourcing](README.md)
+- [v0.4.0 - Persistence](README.md)
+- [v0.5.0 - Distributed](README.md)
 - [Future Versions](../future/README.md)
 
 ### By Topic
 - [Core Philosophy](philosophy.md)
 - [Architecture Overview](architecture.md)
 - [Success Metrics](success-metrics.md)
-- [Testing Strategy](../v0.1.0/testing/README.md)
-- [Developer Experience](../v0.1.0/developer-experience/README.md)
+- [Testing Strategy](README.md)
+- [Developer Experience](README.md)

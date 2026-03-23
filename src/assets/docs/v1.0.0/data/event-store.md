@@ -974,7 +974,7 @@ public class OrderRepository(IEventStore eventStore) {
 - [Work Coordinator](../messaging/work-coordinator.md) - Atomic batch processing
 
 **Examples**:
-- [ECommerce: Event Sourcing](../examples/ecommerce/event-sourcing.md) - Real-world event store usage
+- ECommerce: Event Sourcing - Real-world event store usage
 
 ---
 

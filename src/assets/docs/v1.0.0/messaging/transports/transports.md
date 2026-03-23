@@ -505,13 +505,13 @@ services.AddWhizbangTransports(options => {
 
 ## Related Documentation
 
-- [Dispatcher](dispatcher.md) - How messages are routed
-- [Receptors](receptors.md) - Message handlers
-- [Testing](../../operations/testing/foundation.md) - Testing with transports
-- [Feature Evolution](../../roadmap/FEATURE-EVOLUTION.md) - How transports evolve
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - How messages are routed
+- [Receptors](../../fundamentals/receptors/receptors.md) - Message handlers
+- Testing - Testing with transports
+- [Feature Evolution](../../../roadmap/FEATURE-EVOLUTION.md) - How transports evolve
 
 ## Next Steps
 
-- See [v0.2.0 HTTP Transport](../../v0.2.0/enhancements/transports.md) for REST APIs
-- See [v0.3.0 Message Queues](../../v0.3.0/features/transports.md) for async messaging
-- Review [Examples](../examples/messaging-patterns.md) for transport patterns
+- See [v0.2.0 HTTP Transport](transports.md) for REST APIs
+- See [v0.3.0 Message Queues](transports.md) for async messaging
+- Review Examples for transport patterns

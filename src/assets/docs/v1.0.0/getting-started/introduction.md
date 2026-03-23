@@ -267,7 +267,7 @@ Whizbang includes a complete **12-project production sample** demonstrating:
 - `ECommerce.NotificationWorker` - Cross-cutting notifications
 - `ECommerce.UI` - Angular 20 application
 
-See [ECommerce Tutorial](../examples/ecommerce/overview.md) for complete walkthrough.
+See [ECommerce Tutorial](../../drafts/metrics/overview.md) for complete walkthrough.
 
 ## When to Use Whizbang
 
@@ -313,14 +313,14 @@ See [ECommerce Tutorial](../examples/ecommerce/overview.md) for complete walkthr
 7. [Lenses](../fundamentals/lenses/lenses.md) - Query optimization
 8. [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable messaging
 9. [Inbox Pattern](../messaging/inbox-pattern.md) - Exactly-once processing
-10. [ECommerce Sample](../examples/ecommerce/overview.md) - Production patterns
+10. [ECommerce Sample](../../drafts/metrics/overview.md) - Production patterns
 
 ### Advanced
 
-11. [Source Generators](../generators/receptor-discovery.md) - Understand code generation
-12. [Extensibility](../extending/extensibility/overview.md) - Custom implementations
-13. [Performance Tuning](../performance/pooling-strategies.md) - Optimize for scale
-14. [Deployment](../deployment/aspire-production.md) - Production deployment
+11. [Source Generators](../extending/source-generators/receptor-discovery.md) - Understand code generation
+12. [Extensibility](../../drafts/metrics/overview.md) - Custom implementations
+13. Performance Tuning - Optimize for scale
+14. Deployment - Production deployment
 
 ## Next Steps
 
@@ -330,7 +330,7 @@ Ready to get started?
 
 → **[Quick Start Tutorial](quick-start.md)** - Build a working app in 10 minutes
 
-→ **[ECommerce Sample](../examples/ecommerce/overview.md)** - Explore a production-ready example
+→ **[ECommerce Sample](../../drafts/metrics/overview.md)** - Explore a production-ready example
 
 ## Community & Support
 

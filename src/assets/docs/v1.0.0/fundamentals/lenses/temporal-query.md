@@ -314,6 +314,6 @@ The main difference is that Whizbang's temporal perspectives are explicit (you d
 
 ## See Also
 
-- [Lens Queries](/docs/core-concepts/lenses) - Standard lens queries
-- [Perspectives](/docs/components/perspectives) - How perspectives maintain read models
-- [Event Store](/docs/data/event-store) - Source events for temporal data
+- [Lens Queries](lenses.md) - Standard lens queries
+- [Perspectives](../perspectives/perspectives.md) - How perspectives maintain read models
+- [Event Store](../../data/event-store.md) - Source events for temporal data

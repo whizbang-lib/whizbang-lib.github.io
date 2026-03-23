@@ -58,8 +58,8 @@ When using `[VectorField]` attributes on your perspective models, you must add b
 
 If you forget these packages, compiler diagnostics will guide you:
 
-- **[WHIZ070](/docs/v0.1.0/diagnostics/whiz070)** - Missing `Pgvector.EntityFrameworkCore` package
-- **[WHIZ071](/docs/v0.1.0/diagnostics/whiz071)** - Missing `Pgvector` package
+- **[WHIZ070](../../operations/diagnostics/whiz070.md)** - Missing `Pgvector.EntityFrameworkCore` package
+- **[WHIZ071](../../operations/diagnostics/whiz071.md)** - Missing `Pgvector` package
 
 ## Defining Vector Fields
 
@@ -316,7 +316,7 @@ Note: The generated `ConfigureWhizbang()` method automatically includes `HasPost
 
 ## See Also
 
-- [Perspective Models](/docs/perspectives/overview)
-- [VectorFieldAttribute Reference](/api/VectorFieldAttribute)
-- [WHIZ070: Missing Pgvector.EntityFrameworkCore](/docs/v0.1.0/diagnostics/whiz070)
-- [WHIZ071: Missing Pgvector Package](/docs/v0.1.0/diagnostics/whiz071)
+- Perspective Models
+- VectorFieldAttribute Reference
+- [WHIZ070: Missing Pgvector.EntityFrameworkCore](../../operations/diagnostics/whiz070.md)
+- [WHIZ071: Missing Pgvector Package](../../operations/diagnostics/whiz071.md)

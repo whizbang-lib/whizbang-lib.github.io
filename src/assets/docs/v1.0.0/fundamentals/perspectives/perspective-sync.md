@@ -271,7 +271,7 @@ internal static void InitializeSyncEventTypeRegistry() {
 - Multiple perspectives can track the same event type
 - Thread-safe concurrent registration
 
-For more details, see the [Source Generators](../../source-generators/index.md) documentation.
+For more details, see the [Source Generators](../../apis/graphql/index.md) documentation.
 
 ### Event Tracker Implementation {#tracker-implementation}
 
@@ -1333,4 +1333,4 @@ The key insight is tracking "what did I emit" vs "what has been processed" and b
 - **[Event Completion Awaiter](event-completion.md)** - Wait for ALL perspectives (RPC completion)
 - **Source Code**: [SyncFilter.cs](../../../code/Whizbang.Core/Perspectives/Sync/SyncFilter.cs)
 - **Tests**: [SyncFilterBuilderTests.cs](../../../tests/Whizbang.Core.Tests/Perspectives/Sync/)
-- **Concepts**: [Perspectives](../perspectives.md) | [Lenses](../lenses.md)
+- **Concepts**: [Perspectives](perspectives.md) | [Lenses](../lenses/lenses.md)

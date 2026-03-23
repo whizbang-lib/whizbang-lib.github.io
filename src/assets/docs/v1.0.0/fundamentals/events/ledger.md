@@ -403,14 +403,14 @@ public interface IEventStore : ILedger {
 
 ## Related Documentation
 
-- [Receptors](receptors.md) - Where events come from
-- [Dispatcher](dispatcher.md) - How events reach the ledger
-- [Perspectives](perspectives.md) - How events update views
-- [Testing](../../operations/testing/foundation.md) - Testing with the ledger
-- [Feature Evolution](../../roadmap/FEATURE-EVOLUTION.md) - How the ledger evolves
+- [Receptors](../receptors/receptors.md) - Where events come from
+- [Dispatcher](../dispatcher/dispatcher.md) - How events reach the ledger
+- [Perspectives](../perspectives/perspectives.md) - How events update views
+- Testing - Testing with the ledger
+- [Feature Evolution](../../../roadmap/FEATURE-EVOLUTION.md) - How the ledger evolves
 
 ## Next Steps
 
-- See [v0.2.0 Persistence](../../v0.2.0/enhancements/ledger.md) for file-based storage
-- See [v0.3.0 Event Sourcing](../../v0.3.0/features/ledger.md) for full ES/CQRS
-- Review [Examples](../examples/event-patterns.md) for event design patterns
+- See [v0.2.0 Persistence](ledger.md) for file-based storage
+- See [v0.3.0 Event Sourcing](ledger.md) for full ES/CQRS
+- Review Examples for event design patterns

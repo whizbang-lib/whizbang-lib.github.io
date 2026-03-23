@@ -460,7 +460,7 @@ var streamKey = AggregateIdExtractors.ExtractAggregateId(@event, @event.GetType(
 - [Observability](../../fundamentals/persistence/observability.md) - Distributed tracing with hops
 
 **Data Access**:
-- [Event Store](../data/event-store.md) - Event sourcing and stream storage
+- [Event Store](../../data/event-store.md) - Event sourcing and stream storage
 
 **Infrastructure**:
 - [Policies](../../operations/infrastructure/policies.md) - Policy-based routing and decisions
