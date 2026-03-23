@@ -923,7 +923,7 @@ var workBatch = await workCoordinator.ProcessWorkBatchAsync(
 - Completions are persisted **atomically** with new work claims
 - Prevents data loss even if worker crashes mid-poll
 
-See [Work Coordinator](../messaging/work-coordinator.md) for full details on atomic batch processing.
+See [Work Coordinator](../../messaging/work-coordinator.md) for full details on atomic batch processing.
 
 ---
 
@@ -1193,12 +1193,12 @@ ORDER BY service_name;
 - [Perspective Discovery](../../extending/source-generators/perspective-discovery.md) - Compile-time discovery
 
 **Messaging**:
-- [Work Coordinator](../messaging/work-coordinator.md) - Atomic batch processing
-- [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable event publishing
+- [Work Coordinator](../../messaging/work-coordinator.md) - Atomic batch processing
+- [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable event publishing
 
 **Data Access**:
-- [Event Store](../data/event-store.md) - Event sourcing and replay
-- [Perspectives Storage](../data/perspectives-storage.md) - Read model schema design
+- [Event Store](../../data/event-store.md) - Event sourcing and replay
+- [Perspectives Storage](../../data/perspectives-storage.md) - Read model schema design
 
 **Extensibility**:
 - [Custom Perspectives](../../extending/extensibility/custom-perspectives.md) - Advanced perspective patterns

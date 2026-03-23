@@ -606,11 +606,11 @@ public class ProductIdJsonConverter : JsonConverter<ProductId> {
 - [Message Context](../../fundamentals/messages/message-context.md) - MessageId, CorrelationId, CausationId
 
 **Messaging**:
-- [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable event publishing
-- [Inbox Pattern](../messaging/inbox-pattern.md) - Exactly-once processing
+- [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable event publishing
+- [Inbox Pattern](../../messaging/inbox-pattern.md) - Exactly-once processing
 
 **Advanced**:
-- [Native AOT Deployment](../advanced/native-aot.md) - Full AOT deployment guide
+- [Native AOT Deployment](../../operations/deployment/native-aot.md) - Full AOT deployment guide
 
 ---
 

@@ -683,7 +683,7 @@ public async Task WorkCoordinatorPublisher_PublishesFromOutboxAsync() {
 - [Message Envelopes](message-envelopes.md) - Hop-based observability
 
 **Examples**:
-- [ECommerce: Order Service](../examples/ecommerce/order-service.md) - Real-world outbox usage
+- ECommerce: Order Service - Real-world outbox usage
 
 ---
 

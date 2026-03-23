@@ -370,7 +370,7 @@ Sync Receptor Flow:
 
 **Precedence**: If both `IReceptor` and `ISyncReceptor` exist for the same message type, the async `IReceptor` takes precedence to avoid breaking existing behavior.
 
-See [Receptors: ISyncReceptor Interface](receptors.md#isyncreceptor-interface) for when to use sync vs async receptors.
+See [Receptors: ISyncReceptor Interface](../receptors/receptors.md#isyncreceptor-interface) for when to use sync vs async receptors.
 
 ### Performance Optimization
 
@@ -846,7 +846,7 @@ var receipts = await _dispatcher.SendManyAsync(commands);
 | No | Yes | Outbox only (receipt: Accepted) |
 | No | No | Throws `InvalidOperationException` |
 
-**Source**: [`src/Whizbang.Core/Dispatcher.cs`](src/Whizbang.Core/Dispatcher.cs) · **Tests**: [`tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs`](tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs)
+**Source**: `src/Whizbang.Core/Dispatcher.cs` · **Tests**: `tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs`
 
 ### PublishManyAsync
 
@@ -883,7 +883,7 @@ var receipts = await _dispatcher.PublishManyAsync(events);
 // Events route to event topics (not command destinations)
 ```
 
-**Source**: [`src/Whizbang.Core/Dispatcher.cs`](src/Whizbang.Core/Dispatcher.cs) · **Tests**: [`tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs`](tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs)
+**Source**: `src/Whizbang.Core/Dispatcher.cs` · **Tests**: `tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs`
 
 ### LocalSendManyAsync
 
@@ -927,7 +927,7 @@ var receipts = await _dispatcher.LocalSendManyAsync(commands);
 | `LocalInvokeAsync` | Yes | No | In-process RPC |
 | `LocalSendManyAsync` | Yes | No | Batch: local only |
 
-**Source**: [`src/Whizbang.Core/Dispatcher.cs`](src/Whizbang.Core/Dispatcher.cs) · **Tests**: [`tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs`](tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs)
+**Source**: `src/Whizbang.Core/Dispatcher.cs` · **Tests**: `tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs`
 
 ---
 
@@ -1743,7 +1743,7 @@ foreach (var msg in batch.ClaimedOutboxMessages) {
 }
 ```
 
-See [Outbox Pattern](../messaging/outbox-pattern.md) for details.
+See [Outbox Pattern](../../messaging/outbox-pattern.md) for details.
 
 ### Inbox Pattern
 
@@ -1771,7 +1771,7 @@ await _coordinator.ProcessWorkBatchAsync(
 );
 ```
 
-See [Inbox Pattern](../messaging/inbox-pattern.md) for details.
+See [Inbox Pattern](../../messaging/inbox-pattern.md) for details.
 
 ---
 
@@ -1820,17 +1820,17 @@ public class OrderEndpointsTests {
 ## Further Reading
 
 **Core Concepts**:
-- [Receptors](receptors.md) - Message handlers that dispatcher invokes
-- [Perspectives](perspectives.md) - Event listeners for read models
-- [Message Context](message-context.md) - Correlation and causation tracking
+- [Receptors](../receptors/receptors.md) - Message handlers that dispatcher invokes
+- [Perspectives](../perspectives/perspectives.md) - Event listeners for read models
+- [Message Context](../messages/message-context.md) - Correlation and causation tracking
 
 **Messaging Patterns**:
-- [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable event publishing
-- [Inbox Pattern](../messaging/inbox-pattern.md) - Exactly-once processing
-- [Work Coordination](../messaging/work-coordinator.md) - Distributed work coordination
+- [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable event publishing
+- [Inbox Pattern](../../messaging/inbox-pattern.md) - Exactly-once processing
+- [Work Coordination](../../messaging/work-coordinator.md) - Distributed work coordination
 
 **Examples**:
-- [ECommerce: Order Service](../examples/ecommerce/order-service.md) - Real-world dispatcher usage
+- ECommerce: Order Service - Real-world dispatcher usage
 
 ---
 

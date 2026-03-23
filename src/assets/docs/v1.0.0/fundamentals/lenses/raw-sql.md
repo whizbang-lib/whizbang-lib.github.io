@@ -128,5 +128,5 @@ var searchResults = await lensQuery.ExecuteSqlAsync<Document, SearchResult>(
 
 ## See Also
 
-- [Lens Queries](/docs/lenses/overview)
-- [PostgreSQL Extensions](/docs/data/postgres)
+- Lens Queries
+- [PostgreSQL Extensions](../../data/postgres.md)

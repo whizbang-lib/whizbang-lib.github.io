@@ -659,7 +659,7 @@ public async Task<OrderStatistics> GetOrderStatisticsAsync(
 - [Event Store](event-store.md) - Event storage and replay
 
 **Examples**:
-- [ECommerce: BFF Perspectives](../examples/ecommerce/bff-pattern.md) - Real-world Dapper usage
+- ECommerce: BFF Perspectives - Real-world Dapper usage
 
 ---
 

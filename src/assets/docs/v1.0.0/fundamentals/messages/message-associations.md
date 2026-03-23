@@ -297,9 +297,9 @@ CREATE INDEX idx_message_associations_target_lookup
 
 ## Related Documentation
 
-- [Perspectives](perspectives.md) - Read model projections
-- [Receptors](receptors.md) - Message handlers
-- [Database Schema](/v1.0.0/extensibility/database-schema-framework) - Schema definitions
+- [Perspectives](../perspectives/perspectives.md) - Read model projections
+- [Receptors](../receptors/receptors.md) - Message handlers
+- [Database Schema](../../extending/extensibility/database-schema-framework.md) - Schema definitions
 
 ---
 

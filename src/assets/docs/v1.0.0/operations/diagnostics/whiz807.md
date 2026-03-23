@@ -121,13 +121,13 @@ Or per-file:
 
 ## Related Diagnostics
 
-- [WHIZ801](whiz801.md) - VectorField on invalid type
+- WHIZ801 - VectorField on invalid type
 - [WHIZ802](whiz802.md) - VectorField invalid dimensions
-- [WHIZ803](whiz803.md) - PhysicalField on complex type (may not benefit)
-- [WHIZ805](whiz805.md) - Split mode with no physical fields
+- WHIZ803 - PhysicalField on complex type (may not benefit)
+- WHIZ805 - Split mode with no physical fields
 
 ## See Also
 
 - [Physical Fields](../../fundamentals/perspectives/physical-fields.md) - Physical field documentation
 - [Vector Search](../../extending/features/vector-search.md) - Vector field usage
-- [Perspective Storage](../../fundamentals/perspectives/storage.md) - Storage mode options
+- Perspective Storage - Storage mode options

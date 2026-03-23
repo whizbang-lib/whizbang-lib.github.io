@@ -701,15 +701,15 @@ $$ LANGUAGE plpgsql;
 - [Perspectives Guide](../../fundamentals/perspectives/perspectives.md) - Event listeners for read models
 
 **Messaging Patterns**:
-- [Work Coordinator](../messaging/work-coordinator.md) - Atomic batch processing
-- [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable event publishing
-- [Inbox Pattern](../messaging/inbox-pattern.md) - Exactly-once processing
+- [Work Coordinator](../../messaging/work-coordinator.md) - Atomic batch processing
+- [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable event publishing
+- [Inbox Pattern](../../messaging/inbox-pattern.md) - Exactly-once processing
 
 **Components**:
-- [Ordered Stream Processor](../../operations/workers/ordered-stream-processor.md) - Stream-based ordering guarantees
+- Ordered Stream Processor - Stream-based ordering guarantees
 
 **Examples**:
-- [ECommerce: Order Service](../examples/ecommerce/order-service.md) - Real-world implementation
+- ECommerce: Order Service - Real-world implementation
 
 ---
 

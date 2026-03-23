@@ -205,6 +205,6 @@ var result = await query.Query<Order>().ToListAsync();
 
 ## See Also
 
-- [WHIZ400 Diagnostic](/docs/diagnostics/whiz400) - Invalid type argument errors
-- [Lens Query Factory](/docs/lenses/lens-query-factory) - DbContext sharing for parallel resolvers
-- [Scoped Queries](/docs/lenses/scoped-queries) - Auto-scoping for singleton services
+- [WHIZ400 Diagnostic](../../operations/diagnostics/whiz400.md) - Invalid type argument errors
+- [Lens Query Factory](lens-query-factory.md) - DbContext sharing for parallel resolvers
+- [Scoped Queries](scoped-queries.md) - Auto-scoping for singleton services

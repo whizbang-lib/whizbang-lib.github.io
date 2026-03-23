@@ -573,7 +573,7 @@ The complete ECommerce sample demonstrates:
 - **Angular 20 UI** with NgRx state management
 - **Integration testing** with TUnit
 
-See [ECommerce Tutorial](../examples/ecommerce/overview.md) for complete walkthrough.
+See [ECommerce Tutorial](../../drafts/metrics/overview.md) for complete walkthrough.
 
 ## Common Patterns
 
@@ -678,9 +678,9 @@ GET /api/orders/{id} → OrderLens → Query read model → Return DTO
 - [Work Coordination](../messaging/work-coordinator.md) - Distributed work coordination
 
 **Advanced Topics**:
-- [Source Generators](../generators/receptor-discovery.md) - Auto-discovery internals
-- [Performance Tuning](../performance/pooling-strategies.md) - Optimize for scale
-- [Testing Strategies](../operations/testing/receptor-testing.md) - Comprehensive testing guide
+- [Source Generators](../extending/source-generators/receptor-discovery.md) - Auto-discovery internals
+- Performance Tuning - Optimize for scale
+- Testing Strategies - Comprehensive testing guide
 
 ---
 

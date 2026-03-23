@@ -884,11 +884,11 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 - [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Message routing and execution
 
 **Messaging**:
-- [Work Coordinator](../messaging/work-coordinator.md) - Atomic batch processing
-- [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable event publishing
+- [Work Coordinator](../../messaging/work-coordinator.md) - Atomic batch processing
+- [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable event publishing
 
 **Testing**:
-- [Testing Guide](../testing/foundation.md) - Testing lifecycle hooks
+- Testing Guide - Testing lifecycle hooks
 
 ---
 

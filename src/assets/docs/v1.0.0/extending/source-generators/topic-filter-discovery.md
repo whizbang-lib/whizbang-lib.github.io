@@ -595,8 +595,8 @@ public record CreateOrderCommand : ICommand { }
 - [JSON Contexts](json-contexts.md) - AOT-compatible JSON serialization
 
 **Messaging**:
-- [Topic Filters](../messaging/topic-filters.md) - User guide for topic filters
-- [Commands and Events](../messaging/commands-events.md) - Core message types
+- [Topic Filters](../../messaging/topic-filters.md) - User guide for topic filters
+- [Commands and Events](../../messaging/commands-events.md) - Core message types
 - [Transports](../../messaging/transports/transports.md) - Message transport abstraction
 
 ---

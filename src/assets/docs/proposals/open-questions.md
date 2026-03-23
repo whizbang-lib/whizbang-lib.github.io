@@ -148,8 +148,8 @@ Focus on:
 - [**Deployment & Operations**](./deployment-operations.md) - Production deployment and operational patterns
 
 ### Foundation Documents
-- [**Philosophy**](../architecture-design/philosophy.md) - Core principles and design philosophy
-- [**Architecture**](../architecture-design/architecture.md) - Overall system architecture
+- [**Philosophy**](../philosophy.md) - Core principles and design philosophy
+- [**Architecture**](../roadmap/architecture.md) - Overall system architecture
 
 ---
 

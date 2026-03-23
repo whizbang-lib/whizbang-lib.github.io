@@ -990,8 +990,8 @@ public class StreamingReceptorTests {
 - [Custom Transports](custom-transports.md) - Custom messaging implementations
 
 **Advanced**:
-- [Performance Tuning](../advanced/performance-tuning.md) - Optimization strategies
-- [Testing Receptors](../advanced/testing-receptors.md) - Comprehensive testing guide
+- [Performance Tuning](../../operations/deployment/performance-tuning.md) - Optimization strategies
+- [Testing Receptors](../../operations/testing/testing-receptors.md) - Comprehensive testing guide
 
 ---
 

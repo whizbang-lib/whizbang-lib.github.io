@@ -455,7 +455,7 @@ var formatted = TypeFormatter.FormatType(type, TypeQualification.FullyQualifiedW
 
 ## See Also
 
-- [TypeQualification](/v1.0.0/core-concepts/type-qualification) - Flag enum controlling formatting
-- [MatchStrictness](/v1.0.0/core-concepts/fuzzy-matching) - Fuzzy matching with formatted types
-- [TypeMatcher](/v1.0.0/core-concepts/type-matching) - Matching formatted type strings
-- [Perspectives](/v1.0.0/core-concepts/perspectives) - Message associations using formatted types
+- [TypeQualification](type-qualification.md) - Flag enum controlling formatting
+- [MatchStrictness](fuzzy-matching.md) - Fuzzy matching with formatted types
+- [TypeMatcher](type-matching.md) - Matching formatted type strings
+- [Perspectives](../perspectives/perspectives.md) - Message associations using formatted types

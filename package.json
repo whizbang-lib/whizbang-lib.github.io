@@ -11,7 +11,8 @@
     "build": "ng build --configuration production --output-hashing=all",
     "preview": "ng serve --configuration production",
     "postinstall": "bun x ng analytics off || true",
-    "migrate-docs": "node src/scripts/migrate-docs-version.mjs"
+    "migrate-docs": "node src/scripts/migrate-docs-version.mjs",
+    "validate-links": "node src/scripts/validate-links.mjs"
   },
   "private": true,
   "dependencies": {

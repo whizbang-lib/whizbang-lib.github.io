@@ -1222,6 +1222,6 @@ var orderRepo = new Repository<Order, OrderId>(orderIdProvider);
 
 ## See Also
 
-- [Message Context](/v1.0.0/core-concepts/message-context) - How IDs flow through message processing
-- [Observability](/v1.0.0/core-concepts/observability) - Correlation and causation tracking
-- [Testing Strategy](/v1.0.0/testing/testing-strategy) - Testing with WhizbangIds
+- [Message Context](../messages/message-context.md) - How IDs flow through message processing
+- [Observability](../persistence/observability.md) - Correlation and causation tracking
+- [Testing Strategy](../../learn/tutorial/testing-strategy.md) - Testing with WhizbangIds

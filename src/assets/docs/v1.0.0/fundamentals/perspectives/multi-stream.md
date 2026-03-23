@@ -658,8 +658,8 @@ public class CustomerStatisticsPerspectiveTests {
 ## Further Reading
 
 **Core Concepts**:
-- [Perspectives](../perspectives.md) - Single-stream perspectives (IPerspectiveFor)
-- [Lenses](../lenses.md) - Query interfaces for read models
+- [Perspectives](perspectives.md) - Single-stream perspectives (IPerspectiveFor)
+- [Lenses](../lenses/lenses.md) - Query interfaces for read models
 - [StreamKey Attribute](../../extending/attributes/streamkey.md) - Stream identification
 
 **Source Generators**:

@@ -336,10 +336,10 @@ public class ImportUsersReceptor : BaseBatchReceptor<ImportUsers, UsersImported>
 
 ## Related Documentation
 
-- [Event Store](./event-store) - Core event storage interface
-- [Receptors](./receptors) - Message handlers that produce events
-- [Work Coordinator](../messaging/work-coordinator) - Background processing for outbox
-- [Outbox Pattern](../messaging/outbox-pattern) - Reliable event publishing details
+- [Event Store](../../data/event-store.md) - Core event storage interface
+- [Receptors](../receptors/receptors.md) - Message handlers that produce events
+- [Work Coordinator](../../messaging/work-coordinator.md) - Background processing for outbox
+- [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable event publishing details
 
 ---
 

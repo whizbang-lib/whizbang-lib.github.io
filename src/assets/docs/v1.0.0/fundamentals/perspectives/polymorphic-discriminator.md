@@ -191,6 +191,6 @@ public enum FieldType {
 
 ## See Also
 
-- [Polymorphic Types](/docs/v1.0.0/fundamentals/perspectives/polymorphic-types) - Analyzer for polymorphic detection
-- [Physical Fields](/docs/v1.0.0/fundamentals/perspectives/physical-fields) - Physical column storage
-- [EF Core JSON Configuration](/docs/v1.0.0/data/efcore-json-configuration) - JSON polymorphic serialization
+- [Polymorphic Types](polymorphic-types.md) - Analyzer for polymorphic detection
+- [Physical Fields](physical-fields.md) - Physical column storage
+- [EF Core JSON Configuration](../../data/efcore-json-configuration.md) - JSON polymorphic serialization

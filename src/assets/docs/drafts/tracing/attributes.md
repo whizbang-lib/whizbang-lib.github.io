@@ -206,7 +206,7 @@ See [Tracing Configuration](configuration.md) for details.
 
 ## Further Reading
 
-- [Trace Verbosity](../operations/observability/verbosity-levels.md) - Detail levels explained
+- [Trace Verbosity](verbosity-levels.md) - Detail levels explained
 - [Trace Components](components.md) - Component filtering
 - [Tracing Configuration](configuration.md) - Runtime configuration
 - [Tracing Overview](overview.md) - Getting started

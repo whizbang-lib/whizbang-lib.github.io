@@ -644,4 +644,4 @@ public class TenantOnboardingService {
 
 - [**Event Store & Projections**](./event-store-projections.md) - Storage architecture with tenant isolation
 - [**Domain Ownership**](./domain-ownership.md) - How domain ownership works with tenants
-- [**Performance Optimization**](./performance-optimization.md) - Scaling multi-tenant systems
+- **Performance Optimization** - Scaling multi-tenant systems

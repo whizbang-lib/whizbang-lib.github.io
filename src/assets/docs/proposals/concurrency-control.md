@@ -421,4 +421,4 @@ services.AddWhizbang(options => {
 
 - [**Event Store & Projections**](./event-store-projections.md) - Storage architecture
 - [**Domain Ownership**](./domain-ownership.md) - Command routing and ownership
-- [**Performance Optimization**](./performance-optimization.md) - Scaling strategies
+- **Performance Optimization** - Scaling strategies
