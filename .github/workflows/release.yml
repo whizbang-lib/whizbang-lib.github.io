@@ -1,0 +1,393 @@
+name: Release
+
+on:
+  # Trigger when a release PR is merged to main
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+  # Keep manual trigger for dry runs
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Exact version to release (e.g., 1.2.3). Leave empty for dry run.'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run (calculate version only, no tag or release)'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  id-token: write
+  pages: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # ============================================================================
+  # Check Release Conditions
+  # ============================================================================
+
+  check-release:
+    name: Check Release Conditions
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - name: Check if release should proceed
+        id: check
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$EVENT_NAME" == "workflow_dispatch" ]; then
+            if [ "$DRY_RUN" == "true" ]; then
+              echo "Manual trigger - dry run mode"
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              echo "version=" >> "$GITHUB_OUTPUT"
+            else
+              echo "Manual trigger - release mode"
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+              echo "version=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
+            fi
+          elif [ "$PR_MERGED" == "true" ]; then
+            if [[ "$PR_TITLE" =~ ^chore\(release\):\ v([0-9]+\.[0-9]+\.[0-9]+.*) ]]; then
+              VERSION="${BASH_REMATCH[1]}"
+              echo "Release PR merged - version: $VERSION"
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+              echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            else
+              echo "PR merged but not a release PR"
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              echo "version=" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "PR not merged, skipping"
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ============================================================================
+  # Version Display (dry run only)
+  # ============================================================================
+
+  version:
+    name: Display Version Info
+    needs: check-release
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read Current Version
+        id: current
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Display Version Info
+        env:
+          CURRENT_VERSION: ${{ steps.current.outputs.version }}
+          INPUT_VERSION: ${{ inputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          echo "## Version Information" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Property | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Current Version | \`$CURRENT_VERSION\` |" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$INPUT_VERSION" ]; then
+            echo "| Release Version | \`$INPUT_VERSION\` |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "| Dry Run | $DRY_RUN |" >> "$GITHUB_STEP_SUMMARY"
+
+  # ============================================================================
+  # Approval Flow
+  # ============================================================================
+
+  notify-approval-needed:
+    name: Notify Approval Needed
+    needs: check-release
+    if: needs.check-release.outputs.should_release == 'true' && vars.PUSHOVER_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions/notify-pushover
+
+      - name: Send Approval Notification
+        uses: ./.github/actions/notify-pushover
+        with:
+          api-token: ${{ secrets.PUSHOVER_API_TOKEN }}
+          user-key-1: ${{ secrets.PUSHOVER_USER_KEY_1 }}
+          user-key-2: ${{ secrets.PUSHOVER_USER_KEY_2 }}
+          user-key-3: ${{ secrets.PUSHOVER_USER_KEY_3 }}
+          user-key-4: ${{ secrets.PUSHOVER_USER_KEY_4 }}
+          user-key-5: ${{ secrets.PUSHOVER_USER_KEY_5 }}
+          user-key-6: ${{ secrets.PUSHOVER_USER_KEY_6 }}
+          user-key-7: ${{ secrets.PUSHOVER_USER_KEY_7 }}
+          user-key-8: ${{ secrets.PUSHOVER_USER_KEY_8 }}
+          user-key-9: ${{ secrets.PUSHOVER_USER_KEY_9 }}
+          user-key-10: ${{ secrets.PUSHOVER_USER_KEY_10 }}
+          title: "[DOCS] 🔑 Release v${{ needs.check-release.outputs.version }} needs approval"
+          message: "Release v${{ needs.check-release.outputs.version }} is ready for approval"
+          status: approval-needed
+          url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          url-title: "Approve Release"
+
+  approve:
+    name: Approve Release
+    needs: check-release
+    if: needs.check-release.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    environment: docs-release
+    steps:
+      - name: Release approved
+        env:
+          VERSION: ${{ needs.check-release.outputs.version }}
+        run: echo "Release v$VERSION approved"
+
+  # ============================================================================
+  # Release - Create tag and GitHub Release
+  # ============================================================================
+
+  release:
+    name: Create Release
+    needs: [check-release, approve]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Check if version already exists
+        env:
+          RELEASE_VERSION: ${{ needs.check-release.outputs.version }}
+        run: |
+          TAG="v$RELEASE_VERSION"
+          if git tag -l "$TAG" | grep -q "$TAG"; then
+            echo "::error::Tag $TAG already exists locally"
+            exit 1
+          fi
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
+            echo "::error::Tag $TAG already exists on remote. Version $RELEASE_VERSION has already been released."
+            exit 1
+          fi
+          echo "Version $RELEASE_VERSION is available for release"
+
+      - name: Create and Push Tag
+        env:
+          RELEASE_VERSION: ${{ needs.check-release.outputs.version }}
+        run: |
+          TAG="v$RELEASE_VERSION"
+          echo "Creating tag: $TAG"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.check-release.outputs.version }}
+          name: Release v${{ needs.check-release.outputs.version }}
+          generate_release_notes: true
+          prerelease: false
+          draft: false
+
+  # ============================================================================
+  # Build and Deploy to GitHub Pages
+  # ============================================================================
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: [check-release, release]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.check-release.outputs.version }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist/whizbang-site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ============================================================================
+  # Sync main back to develop
+  # ============================================================================
+
+  sync-develop:
+    name: Sync Main to Develop
+    needs: [check-release, deploy]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create sync PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ needs.check-release.outputs.version }}
+        run: |
+          echo "Creating PR to sync main -> develop after v$RELEASE_VERSION release"
+
+          DIFF=$(gh api repos/${{ github.repository }}/compare/develop...main --jq '.total_commits')
+          if [ "$DIFF" = "0" ]; then
+            echo "No differences between main and develop. Skipping sync."
+            exit 0
+          fi
+
+          gh pr create \
+            --base develop \
+            --head main \
+            --title "chore: sync main into develop after v$RELEASE_VERSION release" \
+            --body "Automated sync of \`main\` into \`develop\` after v$RELEASE_VERSION release.
+
+          This ensures develop has the version bump commit from the release." \
+            --label "automated" || echo "::warning::PR may already exist"
+
+  # ============================================================================
+  # Notifications
+  # ============================================================================
+
+  notify-release-success:
+    name: Notify Release Success
+    needs: [check-release, deploy]
+    if: >-
+      needs.check-release.outputs.should_release == 'true' &&
+      needs.deploy.result == 'success' &&
+      vars.PUSHOVER_ENABLED == 'true'
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions/notify-pushover
+
+      - name: Send Notification
+        uses: ./.github/actions/notify-pushover
+        with:
+          api-token: ${{ secrets.PUSHOVER_API_TOKEN }}
+          user-key-1: ${{ secrets.PUSHOVER_USER_KEY_1 }}
+          user-key-2: ${{ secrets.PUSHOVER_USER_KEY_2 }}
+          user-key-3: ${{ secrets.PUSHOVER_USER_KEY_3 }}
+          user-key-4: ${{ secrets.PUSHOVER_USER_KEY_4 }}
+          user-key-5: ${{ secrets.PUSHOVER_USER_KEY_5 }}
+          user-key-6: ${{ secrets.PUSHOVER_USER_KEY_6 }}
+          user-key-7: ${{ secrets.PUSHOVER_USER_KEY_7 }}
+          user-key-8: ${{ secrets.PUSHOVER_USER_KEY_8 }}
+          user-key-9: ${{ secrets.PUSHOVER_USER_KEY_9 }}
+          user-key-10: ${{ secrets.PUSHOVER_USER_KEY_10 }}
+          title: "[DOCS] ✅ v${{ needs.check-release.outputs.version }} Released"
+          message: "Docs site v${{ needs.check-release.outputs.version }} deployed to GitHub Pages"
+          status: deployed
+          url: "https://whizbang-lib.github.io"
+          url-title: "View Site"
+
+  notify-release-failed:
+    name: Notify Release Failed
+    needs: [check-release, release, deploy]
+    if: >-
+      always() &&
+      needs.check-release.outputs.should_release == 'true' &&
+      (needs.release.result == 'failure' || needs.deploy.result == 'failure') &&
+      vars.PUSHOVER_ENABLED == 'true'
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions/notify-pushover
+
+      - name: Determine failed job
+        id: failed
+        env:
+          RELEASE_RESULT: ${{ needs.release.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+        run: |
+          if [ "$RELEASE_RESULT" == "failure" ]; then
+            echo "job=tag creation" >> "$GITHUB_OUTPUT"
+          elif [ "$DEPLOY_RESULT" == "failure" ]; then
+            echo "job=GitHub Pages deploy" >> "$GITHUB_OUTPUT"
+          else
+            echo "job=unknown" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send Notification
+        uses: ./.github/actions/notify-pushover
+        with:
+          api-token: ${{ secrets.PUSHOVER_API_TOKEN }}
+          user-key-1: ${{ secrets.PUSHOVER_USER_KEY_1 }}
+          user-key-2: ${{ secrets.PUSHOVER_USER_KEY_2 }}
+          user-key-3: ${{ secrets.PUSHOVER_USER_KEY_3 }}
+          user-key-4: ${{ secrets.PUSHOVER_USER_KEY_4 }}
+          user-key-5: ${{ secrets.PUSHOVER_USER_KEY_5 }}
+          user-key-6: ${{ secrets.PUSHOVER_USER_KEY_6 }}
+          user-key-7: ${{ secrets.PUSHOVER_USER_KEY_7 }}
+          user-key-8: ${{ secrets.PUSHOVER_USER_KEY_8 }}
+          user-key-9: ${{ secrets.PUSHOVER_USER_KEY_9 }}
+          user-key-10: ${{ secrets.PUSHOVER_USER_KEY_10 }}
+          title: "[DOCS] ❌ Release v${{ needs.check-release.outputs.version }} Failed"
+          message: "Release failed at: ${{ steps.failed.outputs.job }}"
+          status: deploy-failed
+          url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          url-title: "View Workflow"
