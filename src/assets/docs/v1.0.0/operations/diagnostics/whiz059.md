@@ -145,11 +145,11 @@ public Guid CreateId() => Guid.NewGuid();
 ## Related Diagnostics
 
 - **[WHIZ058](whiz058.md)** - GUID call intercepted (the inverse - when interception happens)
-- **[WHIZ055](whiz055.md)** - Warning for `Guid.NewGuid()` usage
-- **[WHIZ056](whiz056.md)** - Warning for `Guid.CreateVersion7()` usage
+- **WHIZ055** - Warning for `Guid.NewGuid()` usage
+- **WHIZ056** - Warning for `Guid.CreateVersion7()` usage
 
 ## See Also
 
 - [WhizbangIds](../../fundamentals/identity/whizbang-ids.md) - TrackedGuid and strongly-typed IDs
 - [TrackedGuid Interception](../../fundamentals/identity/whizbang-ids.md#trackedguid-interception-opt-in) - Full interception documentation
-- [SuppressGuidInterceptionAttribute](../../extending/attributes/suppressguidinterception.md) - Attribute documentation
+- SuppressGuidInterceptionAttribute - Attribute documentation

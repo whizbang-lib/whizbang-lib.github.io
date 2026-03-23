@@ -113,7 +113,7 @@ Without a `[StreamKey]`, the perspective runner cannot:
 ## Related Diagnostics
 
 - **[WHIZ031](whiz031.md)** - Event type has multiple `[StreamKey]` attributes
-- **[WHIZ009](whiz009.md)** - Warning for IEvent implementations missing `[StreamKey]` (general case)
+- **WHIZ009** - Warning for IEvent implementations missing `[StreamKey]` (general case)
 
 ## See Also
 

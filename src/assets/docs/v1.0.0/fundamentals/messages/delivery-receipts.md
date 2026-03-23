@@ -300,10 +300,10 @@ public async Task ProcessWithIdempotencyAsync(DeliveryReceipt receipt) {
 
 ## Related Documentation
 
-- [Stream ID](stream-id.md) - IHasStreamId interface
-- [Event Streams](event-streams.md) - Stream organization
-- [Dispatcher](dispatcher.md) - SendAsync method
-- [Assembly Registry](assembly-registry.md) - Multi-assembly registration
+- [Stream ID](../events/stream-id.md) - IHasStreamId interface
+- [Event Streams](../events/event-streams.md) - Stream organization
+- [Dispatcher](../dispatcher/dispatcher.md) - SendAsync method
+- [Assembly Registry](../identity/assembly-registry.md) - Multi-assembly registration
 
 ---
 

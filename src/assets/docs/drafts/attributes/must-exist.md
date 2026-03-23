@@ -240,10 +240,10 @@ When migrating from Marten projections, the Whizbang migration tool will:
 1. Identify Apply methods with non-nullable first parameters
 2. Suggest adding `[MustExist]` attribute
 
-See [Automated Migration](../migration-guide/automated-migration.md) for details.
+See Automated Migration for details.
 
 ## See Also
 
-- [Perspectives](../fundamentals/perspectives/perspectives.md) - Understanding perspectives and Apply methods
-- [StreamKey Attribute](./streamkey.md) - Identifying stream keys for event ordering
-- [Automated Migration](../migration-guide/automated-migration.md) - Migrating from Marten/Wolverine
+- [Perspectives](../../v1.0.0/fundamentals/perspectives/perspectives.md) - Understanding perspectives and Apply methods
+- [StreamKey Attribute](../../v1.0.0/extending/attributes/streamkey.md) - Identifying stream keys for event ordering
+- Automated Migration - Migrating from Marten/Wolverine

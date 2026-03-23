@@ -104,8 +104,8 @@ TrackedGuid interception provides:
 ## Related Diagnostics
 
 - **[WHIZ059](whiz059.md)** - Interception suppressed (when `[SuppressGuidInterception]` is used)
-- **[WHIZ055](whiz055.md)** - Warning for `Guid.NewGuid()` usage (analyzer, separate from interception)
-- **[WHIZ056](whiz056.md)** - Warning for `Guid.CreateVersion7()` usage (analyzer)
+- **WHIZ055** - Warning for `Guid.NewGuid()` usage (analyzer, separate from interception)
+- **WHIZ056** - Warning for `Guid.CreateVersion7()` usage (analyzer)
 
 ## See Also
 

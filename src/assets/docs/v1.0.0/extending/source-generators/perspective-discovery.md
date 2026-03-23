@@ -735,11 +735,11 @@ public abstract class BasePerspective : IPerspectiveOf<OrderCreated> {
 - [Lenses](../../fundamentals/lenses/lenses.md) - Query-optimized repositories
 
 **Data Access**:
-- [Perspectives Storage](../data/perspectives-storage.md) - Read model schema design
-- [Event Store](../data/event-store.md) - Event sourcing and replay
+- [Perspectives Storage](../../data/perspectives-storage.md) - Read model schema design
+- [Event Store](../../data/event-store.md) - Event sourcing and replay
 
 **Messaging**:
-- [Work Coordinator](../messaging/work-coordinator.md) - Atomic batch processing
+- [Work Coordinator](../../messaging/work-coordinator.md) - Atomic batch processing
 
 **Workers**:
 - [Perspective Worker](../../operations/workers/perspective-worker.md) - Checkpoint processing lifecycle and runtime behavior

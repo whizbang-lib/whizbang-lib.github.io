@@ -1635,8 +1635,8 @@ Full Native AOT support:
 
 ## See Also
 
-- [Lifecycle Stages](./lifecycle-stages) - When tags are processed in the pipeline
-- [Dispatcher](./dispatcher) - Message dispatch and routing
+- [Lifecycle Stages](../lifecycle/lifecycle-stages.md) - When tags are processed in the pipeline
+- [Dispatcher](../dispatcher/dispatcher.md) - Message dispatch and routing
 - [WhizbangCoreOptions](../../operations/configuration/whizbang-options) - Configuration reference
-- [Observability](./observability) - Integrating with OpenTelemetry
-- [Assembly Registry](./assembly-registry) - Multi-assembly pattern used by tag registry
+- [Observability](../persistence/observability.md) - Integrating with OpenTelemetry
+- [Assembly Registry](../identity/assembly-registry.md) - Multi-assembly pattern used by tag registry

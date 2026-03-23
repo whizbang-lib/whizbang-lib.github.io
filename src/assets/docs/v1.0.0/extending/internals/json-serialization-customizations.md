@@ -175,6 +175,6 @@ This ensures `System.Nullable`1[EnumType]` is always available without tracking 
 
 ## See Also
 
-- [Message JSON Context](../../fundamentals/messages/json-serialization) - Generated JSON context overview
-- [Source Generators](../source-generators/overview) - How generators create type info
-- [AOT Compatibility](../../operations/deployment/aot-compatibility) - Native AOT requirements
+- Message JSON Context - Generated JSON context overview
+- Source Generators - How generators create type info
+- AOT Compatibility - Native AOT requirements

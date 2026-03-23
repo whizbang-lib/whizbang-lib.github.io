@@ -201,6 +201,6 @@ _dispatcher.RunAs(identity).ForAllTenants().SendAsync(cmd)
 
 ## Related Topics
 
-- [Security Context Propagation](/core-concepts/security-context-propagation) - End-to-end context flow
-- [Message Security](/core-concepts/message-security) - Security context establishment
-- [Multi-Tenancy](/core-concepts/multi-tenancy) - Tenant isolation patterns
+- [Security Context Propagation](security-context-propagation.md) - End-to-end context flow
+- [Message Security](message-security.md) - Security context establishment
+- [Multi-Tenancy](multi-tenancy.md) - Tenant isolation patterns

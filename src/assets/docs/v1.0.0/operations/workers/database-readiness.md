@@ -740,14 +740,14 @@ public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
 - [Execution Lifecycle](execution-lifecycle.md) - Startup/shutdown coordination
 
 **Infrastructure**:
-- [PostgreSQL Setup](../infrastructure/postgresql-setup.md) - Database initialization
-- [Migrations](../data/migrations.md) - Schema management
+- PostgreSQL Setup - Database initialization
+- [Migrations](../infrastructure/migrations.md) - Schema management
 
 **Testing**:
-- [Integration Testing](../testing/integration.md) - Testing database integration
+- Integration Testing - Testing database integration
 
 **Monitoring**:
-- [Health Checks](../monitoring/health-checks.md) - Application health monitoring
+- [Health Checks](../infrastructure/health-checks.md) - Application health monitoring
 
 ---
 

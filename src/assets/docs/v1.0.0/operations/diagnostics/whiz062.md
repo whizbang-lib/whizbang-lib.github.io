@@ -127,12 +127,12 @@ Or in your `.csproj`:
 
 ## Related Diagnostics
 
-- [WHIZ060](whiz060.md) - Property uses `object` type
-- [WHIZ061](whiz061.md) - Property uses `dynamic` type
-- [WHIZ063](whiz063.md) - Nested type contains non-serializable property
+- WHIZ060 - Property uses `object` type
+- WHIZ061 - Property uses `dynamic` type
+- WHIZ063 - Nested type contains non-serializable property
 - [Serializable Property Analyzer](serializable-property-analyzer.md) - Analyzer overview
 
 ## See Also
 
-- [AOT Compatibility](../deployment/aot-compatibility.md) - AOT design principles
+- AOT Compatibility - AOT design principles
 - [Messages](../../fundamentals/messages/messages.md) - ICommand and IEvent documentation

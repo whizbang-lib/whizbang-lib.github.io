@@ -951,17 +951,17 @@ public class TimeravelPerspectiveTests {
 **Core Concepts**:
 - [Perspectives Guide](../../fundamentals/perspectives/perspectives.md) - Basic perspective usage
 - [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Publishing events
-- [Event Store](../data/event-store.md) - Event storage patterns
+- [Event Store](../../data/event-store.md) - Event storage patterns
 
 **Extensibility**:
 - [Custom Receptors](custom-receptors.md) - Advanced receptor patterns
 - [Custom Storage](custom-storage.md) - Storage backend implementations
 
 **Data Access**:
-- [Perspectives Storage](../data/perspectives-storage.md) - Schema design
+- [Perspectives Storage](../../data/perspectives-storage.md) - Schema design
 
 **Messaging**:
-- [Work Coordinator](../messaging/work-coordinator.md) - Atomic batch processing and checkpoint tracking
+- [Work Coordinator](../../messaging/work-coordinator.md) - Atomic batch processing and checkpoint tracking
 
 ---
 

@@ -525,13 +525,13 @@ services.AddWhizbang(options => {
 ## Further Reading
 
 **Core Concepts**:
-- [System Events](system-events.md) - Full system events documentation
-- [Perspectives](perspectives.md) - How perspectives work
+- [System Events](../events/system-events.md) - Full system events documentation
+- [Perspectives](../perspectives/perspectives.md) - How perspectives work
 
 **Implementation**:
-- [Perspective Store](../data/perspective-store.md) - Storage patterns
+- Perspective Store - Storage patterns
 - [Scoped Lenses](../lenses/scoped-lenses.md) - Multi-tenant queries
-- [Tag Hooks](../messaging/tag-hooks.md) - Real-time event processing
+- Tag Hooks - Real-time event processing
 
 ---
 

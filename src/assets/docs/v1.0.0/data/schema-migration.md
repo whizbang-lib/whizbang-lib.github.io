@@ -14,7 +14,7 @@ await dbContext.EnsureWhizbangDatabaseInitializedAsync();
 This single call:
 1. Creates infrastructure tables (`wh_inbox`, `wh_outbox`, `wh_event_store`, etc.)
 2. Creates perspective tables for all discovered perspectives
-3. Registers perspectives in the [perspective registry](/docs/v1.0.0/fundamentals/perspectives/registry)
+3. Registers perspectives in the [perspective registry](../fundamentals/perspectives/registry.md)
 4. Detects and logs any schema drift
 
 ## Schema Drift Detection
@@ -115,7 +115,7 @@ WHERE data->>'email' IS NULL;
 
 ## Automatic Table Renaming
 
-When you rename a perspective class or change its [table naming](/docs/v1.0.0/fundamentals/perspectives/table-naming) configuration, Whizbang automatically renames the table:
+When you rename a perspective class or change its [table naming](../fundamentals/perspectives/table-naming.md) configuration, Whizbang automatically renames the table:
 
 ### How It Works
 
@@ -324,6 +324,6 @@ For zero-downtime migrations:
 
 ## See Also
 
-- [Perspective Registry](/docs/v1.0.0/fundamentals/perspectives/registry) - CLR type tracking
-- [Table Naming](/docs/v1.0.0/fundamentals/perspectives/table-naming) - Naming conventions
-- [EF Core JSON Configuration](/docs/v1.0.0/data/efcore-json-configuration) - JSON column setup
+- [Perspective Registry](../fundamentals/perspectives/registry.md) - CLR type tracking
+- [Table Naming](../fundamentals/perspectives/table-naming.md) - Naming conventions
+- [EF Core JSON Configuration](efcore-json-configuration.md) - JSON column setup

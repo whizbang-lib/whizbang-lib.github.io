@@ -1349,7 +1349,7 @@ logger.LogInformation(
 
 ## Related Documentation
 
-- [Transport Consumer](./transport-consumer.md) - Auto-generated transport subscriptions
-- [System Events](./system-events.md) - System-level event auditing
-- [Security](./security.md) - Permissions and access control
-- [Scoping](./scoping.md) - Multi-tenancy and data isolation
+- [Transport Consumer](../../messaging/transports/transport-consumer.md) - Auto-generated transport subscriptions
+- [System Events](../events/system-events.md) - System-level event auditing
+- [Security](../security/security.md) - Permissions and access control
+- [Scoping](../../apis/graphql/scoping.md) - Multi-tenancy and data isolation

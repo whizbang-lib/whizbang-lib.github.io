@@ -735,9 +735,9 @@ await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand("OrderPerspective
 
 #### Automatic Migration Rebuilds
 
-When a perspective schema changes destructively (column type changed or removed), the [migration tracking system](infrastructure/migrations) automatically queues a background rebuild. The `PerspectiveMigrationWorker` processes these on startup.
+When a perspective schema changes destructively (column type changed or removed), the [migration tracking system](../../operations/infrastructure/migrations.md) automatically queues a background rebuild. The `PerspectiveMigrationWorker` processes these on startup.
 
-For detailed rebuild operations, modes, system events, and status tracking, see the **[Perspective Rebuild guide](perspectives/rebuild)**.
+For detailed rebuild operations, modes, system events, and status tracking, see the **[Perspective Rebuild guide](rebuild.md)**.
 
 ---
 
@@ -840,9 +840,9 @@ public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {
 ## Further Reading
 
 **Core Concepts**:
-- [Dispatcher](dispatcher.md) - How to publish events
-- [Lenses](lenses.md) - Query interfaces for read models
-- [Receptors](receptors.md) - Command handlers that produce events
+- [Dispatcher](../dispatcher/dispatcher.md) - How to publish events
+- [Lenses](../lenses/lenses.md) - Query interfaces for read models
+- [Receptors](../receptors/receptors.md) - Command handlers that produce events
 - [StreamKey Attribute](../../extending/attributes/streamkey.md) - Stream identification
 
 **Source Generators**:
@@ -850,9 +850,9 @@ public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {
 - [Diagnostics (WHIZ030/WHIZ031)](../../operations/diagnostics/whiz030.md) - StreamKey validation
 
 **Data Access**:
-- [IPerspectiveStore](../data/perspective-store.md) - Persistence abstraction
-- [Perspective Storage](../data/perspectives-storage.md) - Schema design patterns
-- [EF Core Integration](../data/efcore-integration.md) - Using EF Core for read models
+- IPerspectiveStore - Persistence abstraction
+- [Perspective Storage](../../data/perspectives-storage.md) - Schema design patterns
+- [EF Core Integration](../../data/efcore-integration.md) - Using EF Core for read models
 
 **Workers**:
 - [Perspective Worker](../../operations/workers/perspective-worker.md) - Checkpoint processing lifecycle and runtime behavior
@@ -860,8 +860,8 @@ public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {
 - [Database Readiness](../../operations/workers/database-readiness.md) - Dependency coordination
 
 **Examples**:
-- [ECommerce: BFF Pattern](../examples/ecommerce/bff-pattern.md) - Real-world perspectives
-- [ECommerce: Product Catalog](../examples/ecommerce/product-catalog.md) - Complete example
+- ECommerce: BFF Pattern - Real-world perspectives
+- ECommerce: Product Catalog - Complete example
 
 ---
 

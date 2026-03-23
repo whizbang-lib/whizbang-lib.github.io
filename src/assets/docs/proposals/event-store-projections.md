@@ -380,4 +380,4 @@ services.AddWhizbang(options => {
 
 - [**Concurrency Control**](./concurrency-control.md) - How concurrency is managed
 - [**Multi-Tenancy**](./multi-tenancy.md) - Tenant isolation strategies
-- [**Performance Optimization**](./performance-optimization.md) - Scaling and tuning
+- **Performance Optimization** - Scaling and tuning

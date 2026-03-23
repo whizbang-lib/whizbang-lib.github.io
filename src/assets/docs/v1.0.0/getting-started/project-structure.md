@@ -878,8 +878,8 @@ public async Task HandleAsync_ValidOrder_ReturnsOrderCancelledAsync() {
 - [Work Coordination](../messaging/work-coordinator.md)
 
 **Examples**:
-- [ECommerce Sample Overview](../examples/ecommerce/overview.md)
-- [BFF Pattern](../examples/ecommerce/bff-pattern.md)
+- [ECommerce Sample Overview](../../drafts/metrics/overview.md)
+- BFF Pattern
 
 ---
 

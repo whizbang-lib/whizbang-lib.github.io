@@ -378,7 +378,7 @@ var formatted = TypeFormatter.FormatType(type, TypeQualification.NamespaceQualif
 
 ## See Also
 
-- [TypeFormatter](/v1.0.0/core-concepts/type-formatting) - Formatting types according to qualification
-- [MatchStrictness](/v1.0.0/core-concepts/fuzzy-matching) - Fuzzy matching with type qualification
-- [TypeMatcher](/v1.0.0/core-concepts/type-matching) - Type matching utilities
-- [Perspectives](/v1.0.0/core-concepts/perspectives) - Using type qualification in message associations
+- [TypeFormatter](type-formatting.md) - Formatting types according to qualification
+- [MatchStrictness](fuzzy-matching.md) - Fuzzy matching with type qualification
+- [TypeMatcher](type-matching.md) - Type matching utilities
+- [Perspectives](../perspectives/perspectives.md) - Using type qualification in message associations

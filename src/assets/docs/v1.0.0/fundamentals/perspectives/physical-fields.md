@@ -218,6 +218,6 @@ ORDER BY sku;
 
 ## See Also
 
-- [Vector Fields](/docs/v1.0.0/fundamentals/perspectives/vector-fields) - Vector similarity search with pgvector
-- [Perspective Registry](/docs/v1.0.0/fundamentals/perspectives/registry) - Table tracking and renaming
-- [Polymorphic Discriminator](/docs/v1.0.0/fundamentals/perspectives/polymorphic-discriminator) - Efficient polymorphic queries
+- [Vector Fields](vector-fields.md) - Vector similarity search with pgvector
+- [Perspective Registry](registry.md) - Table tracking and renaming
+- [Polymorphic Discriminator](polymorphic-discriminator.md) - Efficient polymorphic queries

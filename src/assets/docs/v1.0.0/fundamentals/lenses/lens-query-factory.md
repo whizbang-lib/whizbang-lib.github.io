@@ -312,8 +312,8 @@ This enables transient `ILensQuery<T>` registration:
 
 ## See Also
 
-- [Scoped Queries](/docs/lenses/scoped-queries) - Auto-scoping for singleton services
-- [Temporal Queries](/docs/lenses/temporal-query) - Time-travel and history queries
-- [Raw SQL Access](/docs/lenses/raw-sql) - Direct SQL execution
-- [Vector Search](/docs/lenses/vector-search) - Similarity search
-- [Perspectives](/docs/components/perspectives) - How read models are maintained
+- [Scoped Queries](scoped-queries.md) - Auto-scoping for singleton services
+- [Temporal Queries](temporal-query.md) - Time-travel and history queries
+- [Raw SQL Access](raw-sql.md) - Direct SQL execution
+- [Vector Search](vector-search.md) - Similarity search
+- [Perspectives](../perspectives/perspectives.md) - How read models are maintained

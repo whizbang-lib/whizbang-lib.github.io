@@ -155,5 +155,5 @@ This enables queries like "what did we know about this order on January 15th?"
 
 ## See Also
 
-- [Standard Perspectives](/docs/perspectives/overview)
-- [ITemporalLensQuery Reference](/api/ITemporalLensQuery)
+- Standard Perspectives
+- ITemporalLensQuery Reference

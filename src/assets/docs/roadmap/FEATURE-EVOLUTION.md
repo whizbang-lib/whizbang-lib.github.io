@@ -26,75 +26,75 @@ This matrix tracks how each Whizbang feature evolves across versions, showing cl
 ### Dispatcher
 | Version | Status | Key Features | Breaking Changes | Documentation |
 |---------|--------|--------------|------------------|---------------|
-| v0.1.0 | :::new **New** | • In-memory routing<br/>• Source-generated dispatch tables<br/>• Basic pipeline | - | [View →](../v0.1.0/components/dispatcher.md) |
-| v0.2.0 | :::updated **Enhanced** | • Parallel dispatch<br/>• Batch operations<br/>• Enhanced context | None | [View →](../v0.2.0/enhancements/dispatcher.md) |
-| v0.3.0 | :::updated **Enhanced** | • Event store integration<br/>• Replay support | None | [View →](../v0.3.0/features/dispatcher.md) |
-| v0.4.0 | :::updated **Enhanced** | • Database persistence<br/>• Transaction support | None | [View →](../v0.4.0/drivers/dispatcher.md) |
-| v0.5.0 | :::updated{type="major"} **Major** | • Distributed routing<br/>• Saga coordination | None | [View →](../v0.5.0/messaging/dispatcher.md) |
+| v0.1.0 | :::new **New** | • In-memory routing<br/>• Source-generated dispatch tables<br/>• Basic pipeline | - | [View →](../v1.0.0/fundamentals/dispatcher/dispatcher.md) |
+| v0.2.0 | :::updated **Enhanced** | • Parallel dispatch<br/>• Batch operations<br/>• Enhanced context | None | [View →](../v1.0.0/fundamentals/dispatcher/dispatcher.md) |
+| v0.3.0 | :::updated **Enhanced** | • Event store integration<br/>• Replay support | None | [View →](../v1.0.0/fundamentals/dispatcher/dispatcher.md) |
+| v0.4.0 | :::updated **Enhanced** | • Database persistence<br/>• Transaction support | None | [View →](../v1.0.0/fundamentals/dispatcher/dispatcher.md) |
+| v0.5.0 | :::updated{type="major"} **Major** | • Distributed routing<br/>• Saga coordination | None | [View →](../v1.0.0/fundamentals/dispatcher/dispatcher.md) |
 
 ### Receptors
 | Version | Status | Key Features | Breaking Changes | Documentation |
 |---------|--------|--------------|------------------|---------------|
-| v0.1.0 | :::new **New** | • Stateless receptors<br/>• Basic interface<br/>• Command handling | - | [View →](../v0.1.0/components/receptors.md) |
-| v0.2.0 | :::updated **Enhanced** | • Validation attributes<br/>• Parameter injection<br/>• Async support | None | [View →](../v0.2.0/enhancements/receptors.md) |
-| v0.3.0 | :::updated{type="major"} **Major** | • Stateful receptors<br/>• Event sourcing<br/>• State hydration | None | [View →](../v0.3.0/features/stateful-receptors.md) |
+| v0.1.0 | :::new **New** | • Stateless receptors<br/>• Basic interface<br/>• Command handling | - | [View →](../v1.0.0/fundamentals/receptors/receptors.md) |
+| v0.2.0 | :::updated **Enhanced** | • Validation attributes<br/>• Parameter injection<br/>• Async support | None | [View →](../v1.0.0/fundamentals/receptors/receptors.md) |
+| v0.3.0 | :::updated{type="major"} **Major** | • Stateful receptors<br/>• Event sourcing<br/>• State hydration | None | View → |
 | v0.4.0 | - | No changes | - | - |
-| v0.5.0 | :::updated **Enhanced** | • Distributed execution<br/>• Remote receptors | None | [View →](../v0.5.0/messaging/receptors.md) |
+| v0.5.0 | :::updated **Enhanced** | • Distributed execution<br/>• Remote receptors | None | [View →](../v1.0.0/fundamentals/receptors/receptors.md) |
 
 ### Perspectives
 | Version | Status | Key Features | Breaking Changes | Documentation |
 |---------|--------|--------------|------------------|---------------|
-| v0.1.0 | :::new **New** | • Event handling<br/>• In-memory updates<br/>• Basic interface | - | [View →](../v0.1.0/components/perspectives.md) |
-| v0.2.0 | :::updated **Enhanced** | • Batch updates<br/>• Parallel execution<br/>• Error handling | None | [View →](../v0.2.0/enhancements/perspectives.md) |
-| v0.3.0 | :::updated{type="major"} **Major** | • Projection support<br/>• Rebuild capability<br/>• Checkpoints | None | [View →](../v0.3.0/features/projections.md) |
-| v0.4.0 | :::updated **Enhanced** | • Database backing<br/>• Optimized queries | None | [View →](../v0.4.0/drivers/perspectives.md) |
-| v0.5.0 | :::updated **Enhanced** | • Distributed perspectives<br/>• Partitioned processing | None | [View →](../v0.5.0/messaging/perspectives.md) |
+| v0.1.0 | :::new **New** | • Event handling<br/>• In-memory updates<br/>• Basic interface | - | [View →](../v1.0.0/fundamentals/perspectives/perspectives.md) |
+| v0.2.0 | :::updated **Enhanced** | • Batch updates<br/>• Parallel execution<br/>• Error handling | None | [View →](../v1.0.0/fundamentals/perspectives/perspectives.md) |
+| v0.3.0 | :::updated{type="major"} **Major** | • Projection support<br/>• Rebuild capability<br/>• Checkpoints | None | [View →](../projections.md) |
+| v0.4.0 | :::updated **Enhanced** | • Database backing<br/>• Optimized queries | None | [View →](../v1.0.0/fundamentals/perspectives/perspectives.md) |
+| v0.5.0 | :::updated **Enhanced** | • Distributed perspectives<br/>• Partitioned processing | None | [View →](../v1.0.0/fundamentals/perspectives/perspectives.md) |
 
 ### Lenses
 | Version | Status | Key Features | Breaking Changes | Documentation |
 |---------|--------|--------------|------------------|---------------|
-| v0.1.0 | :::new **New** | • Query interface<br/>• Focus, View, Glimpse<br/>• In-memory queries | - | [View →](../v0.1.0/components/lenses.md) |
-| v0.2.0 | :::updated **Enhanced** | • Pagination<br/>• Async enumeration<br/>• Query optimization | None | [View →](../v0.2.0/enhancements/lenses.md) |
-| v0.3.0 | :::updated **Enhanced** | • Projection queries<br/>• Time-travel queries | None | [View →](../v0.3.0/features/lenses.md) |
-| v0.4.0 | :::updated{type="major"} **Major** | • SQL generation<br/>• Index usage<br/>• Query caching | None | [View →](../v0.4.0/drivers/lenses.md) |
-| v0.5.0 | :::updated **Enhanced** | • Distributed queries<br/>• Federated lenses | None | [View →](../v0.5.0/messaging/lenses.md) |
+| v0.1.0 | :::new **New** | • Query interface<br/>• Focus, View, Glimpse<br/>• In-memory queries | - | [View →](../v1.0.0/fundamentals/lenses/lenses.md) |
+| v0.2.0 | :::updated **Enhanced** | • Pagination<br/>• Async enumeration<br/>• Query optimization | None | [View →](../v1.0.0/fundamentals/lenses/lenses.md) |
+| v0.3.0 | :::updated **Enhanced** | • Projection queries<br/>• Time-travel queries | None | [View →](../v1.0.0/fundamentals/lenses/lenses.md) |
+| v0.4.0 | :::updated{type="major"} **Major** | • SQL generation<br/>• Index usage<br/>• Query caching | None | [View →](../v1.0.0/fundamentals/lenses/lenses.md) |
+| v0.5.0 | :::updated **Enhanced** | • Distributed queries<br/>• Federated lenses | None | [View →](../v1.0.0/fundamentals/lenses/lenses.md) |
 
 ### Policy Engine
 | Version | Status | Key Features | Breaking Changes | Documentation |
 |---------|--------|--------------|------------------|---------------|
-| v0.1.0 | :::new **New** | • Retry<br/>• Timeout<br/>• Cache<br/>• CircuitBreaker | - | [View →](../v0.1.0/components/policy-engine.md) |
-| v0.2.0 | :::updated **Enhanced** | • Bulkhead<br/>• Rate limiting<br/>• Policy composition | None | [View →](../v0.2.0/enhancements/policies.md) |
-| v0.3.0 | :::updated **Enhanced** | • Stateful policies<br/>• Policy persistence | None | [View →](../v0.3.0/features/policies.md) |
+| v0.1.0 | :::new **New** | • Retry<br/>• Timeout<br/>• Cache<br/>• CircuitBreaker | - | [View →](../proposals/policy-engine.md) |
+| v0.2.0 | :::updated **Enhanced** | • Bulkhead<br/>• Rate limiting<br/>• Policy composition | None | [View →](../v1.0.0/operations/infrastructure/policies.md) |
+| v0.3.0 | :::updated **Enhanced** | • Stateful policies<br/>• Policy persistence | None | [View →](../v1.0.0/operations/infrastructure/policies.md) |
 | v0.4.0 | - | No changes | - | - |
-| v0.5.0 | :::updated **Enhanced** | • Distributed policies<br/>• Policy synchronization | None | [View →](../v0.5.0/messaging/policies.md) |
-| v0.6.0 | :::planned **Planned** | • Authorization<br/>• Audit policies<br/>• Compliance policies | None | [View →](../future/v0.6.0-production.md) |
+| v0.5.0 | :::updated **Enhanced** | • Distributed policies<br/>• Policy synchronization | None | [View →](../v1.0.0/operations/infrastructure/policies.md) |
+| v0.6.0 | :::planned **Planned** | • Authorization<br/>• Audit policies<br/>• Compliance policies | None | View → |
 
 ### Ledger (Event Store)
 | Version | Status | Key Features | Breaking Changes | Documentation |
 |---------|--------|--------------|------------------|---------------|
-| v0.1.0 | :::new **New** | • Event store interface<br/>• In-memory storage<br/>• Basic streams | - | [View →](../v0.1.0/components/ledger.md) |
-| v0.2.0 | :::updated **Enhanced** | • Event metadata<br/>• Stream categories | None | [View →](../v0.2.0/enhancements/ledger.md) |
-| v0.3.0 | :::updated{type="major"} **Major** | • Snapshots<br/>• Projections<br/>• Event versioning | None | [View →](../v0.3.0/features/event-store.md) |
-| v0.4.0 | :::updated{type="major"} **Major** | • Database persistence<br/>• JSONB storage<br/>• Indexes | None | [View →](../v0.4.0/drivers/event-store.md) |
-| v0.5.0 | :::updated **Enhanced** | • Distributed streams<br/>• Partitioning | None | [View →](../v0.5.0/messaging/event-store.md) |
+| v0.1.0 | :::new **New** | • Event store interface<br/>• In-memory storage<br/>• Basic streams | - | [View →](../v1.0.0/fundamentals/events/ledger.md) |
+| v0.2.0 | :::updated **Enhanced** | • Event metadata<br/>• Stream categories | None | [View →](../v1.0.0/fundamentals/events/ledger.md) |
+| v0.3.0 | :::updated{type="major"} **Major** | • Snapshots<br/>• Projections<br/>• Event versioning | None | [View →](../v1.0.0/data/event-store.md) |
+| v0.4.0 | :::updated{type="major"} **Major** | • Database persistence<br/>• JSONB storage<br/>• Indexes | None | [View →](../v1.0.0/data/event-store.md) |
+| v0.5.0 | :::updated **Enhanced** | • Distributed streams<br/>• Partitioning | None | [View →](../v1.0.0/data/event-store.md) |
 
 ### Drivers
 | Version | Status | Key Features | Breaking Changes | Documentation |
 |---------|--------|--------------|------------------|---------------|
-| v0.1.0 | :::new **New** | • Driver interface<br/>• In-memory driver | - | [View →](../v0.1.0/components/drivers.md) |
+| v0.1.0 | :::new **New** | • Driver interface<br/>• In-memory driver | - | [View →](../v1.0.0/data/drivers.md) |
 | v0.2.0 | - | No changes | - | - |
-| v0.3.0 | :::updated **Enhanced** | • Transaction support<br/>• Batch operations | None | [View →](../v0.3.0/features/drivers.md) |
-| v0.4.0 | :::updated{type="major"} **Major** | • PostgreSQL driver<br/>• SQL Server driver<br/>• SQLite driver | None | [View →](../v0.4.0/drivers/README.md) |
-| v0.5.0 | :::updated **Enhanced** | • Connection pooling<br/>• Failover support | None | [View →](../v0.5.0/messaging/drivers.md) |
+| v0.3.0 | :::updated **Enhanced** | • Transaction support<br/>• Batch operations | None | [View →](../v1.0.0/data/drivers.md) |
+| v0.4.0 | :::updated{type="major"} **Major** | • PostgreSQL driver<br/>• SQL Server driver<br/>• SQLite driver | None | [View →](README.md) |
+| v0.5.0 | :::updated **Enhanced** | • Connection pooling<br/>• Failover support | None | [View →](../v1.0.0/data/drivers.md) |
 
 ### Transports
 | Version | Status | Key Features | Breaking Changes | Documentation |
 |---------|--------|--------------|------------------|---------------|
-| v0.1.0 | :::new **New** | • Transport interface<br/>• In-memory transport | - | [View →](../v0.1.0/components/transports.md) |
+| v0.1.0 | :::new **New** | • Transport interface<br/>• In-memory transport | - | [View →](../v1.0.0/messaging/transports/transports.md) |
 | v0.2.0 | - | No changes | - | - |
 | v0.3.0 | - | No changes | - | - |
-| v0.4.0 | :::updated **Enhanced** | • Outbox pattern prep | None | [View →](../v0.4.0/drivers/transports.md) |
-| v0.5.0 | :::updated{type="major"} **Major** | • Kafka transport<br/>• RabbitMQ transport<br/>• Azure Service Bus | None | [View →](../v0.5.0/messaging/README.md) |
+| v0.4.0 | :::updated **Enhanced** | • Outbox pattern prep | None | [View →](../v1.0.0/messaging/transports/transports.md) |
+| v0.5.0 | :::updated{type="major"} **Major** | • Kafka transport<br/>• RabbitMQ transport<br/>• Azure Service Bus | None | [View →](README.md) |
 
 ## Developer Experience Evolution
 
@@ -130,10 +130,10 @@ This matrix tracks how each Whizbang feature evolves across versions, showing cl
 ### Version Upgrade Paths
 | From → To | Complexity | Breaking Changes | Migration Guide |
 |-----------|------------|------------------|-----------------|
-| v0.1.0 → v0.2.0 | ⭐ Easy | None | [Guide →](../v0.2.0/migration-guide.md) |
-| v0.2.0 → v0.3.0 | ⭐⭐ Moderate | None | [Guide →](../v0.3.0/migration-guide.md) |
-| v0.3.0 → v0.4.0 | ⭐⭐ Moderate | None | [Guide →](../v0.4.0/migration-guide.md) |
-| v0.4.0 → v0.5.0 | ⭐⭐⭐ Complex | None | [Guide →](../v0.5.0/migration-guide.md) |
+| v0.1.0 → v0.2.0 | ⭐ Easy | None | Guide → |
+| v0.2.0 → v0.3.0 | ⭐⭐ Moderate | None | Guide → |
+| v0.3.0 → v0.4.0 | ⭐⭐ Moderate | None | Guide → |
+| v0.4.0 → v0.5.0 | ⭐⭐⭐ Complex | None | Guide → |
 
 ## Feature Adoption Timeline
 
@@ -176,6 +176,6 @@ gantt
 ## Navigation
 
 - [Back to Roadmap](README.md)
-- [v0.1.0 Documentation](../v0.1.0/README.md)
+- [v0.1.0 Documentation](README.md)
 - [Success Metrics](success-metrics.md)
 - [Session Context](SESSION-CONTEXT.md)

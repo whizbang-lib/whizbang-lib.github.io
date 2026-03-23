@@ -277,9 +277,9 @@ public void Registry_WithMultiplePriorities_OrdersByPriorityAsync() {
 
 ## Related Documentation
 
-- [Delivery Receipts](delivery-receipts.md) - StreamIdExtractorRegistry usage
-- [AOT Requirements](/v1.0.0/advanced-topics/native-aot) - AOT compatibility patterns
-- [Source Generators](/v1.0.0/components/source-generators) - Generated registration code
+- [Delivery Receipts](../messages/delivery-receipts.md) - StreamIdExtractorRegistry usage
+- [AOT Requirements](../../operations/deployment/native-aot.md) - AOT compatibility patterns
+- Source Generators - Generated registration code
 
 ---
 

@@ -246,9 +246,9 @@ public sealed class EnvelopeRegistry : IEnvelopeRegistry {
 
 ## Related Documentation
 
-- [Message Envelopes](../messaging/message-envelopes.md) - Envelope structure
+- [Message Envelopes](../../messaging/message-envelopes.md) - Envelope structure
 - [Envelope Serialization](envelope-serialization.md) - Serializing envelopes
-- [Observability](observability.md) - Message tracing
+- [Observability](../persistence/observability.md) - Message tracing
 - [Message Context](message-context.md) - Correlation and causation
 
 ---

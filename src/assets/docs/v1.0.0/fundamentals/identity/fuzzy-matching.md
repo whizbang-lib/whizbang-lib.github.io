@@ -557,7 +557,7 @@ bool match = TypeMatcher.Matches(
 
 ## See Also
 
-- [TypeQualification](/v1.0.0/core-concepts/type-qualification) - Formatting types for matching
-- [TypeFormatter](/v1.0.0/core-concepts/type-formatting) - Formatting Type objects to strings
-- [TypeMatcher](/v1.0.0/core-concepts/type-matching) - Type matching with MatchStrictness
-- [Perspectives](/v1.0.0/core-concepts/perspectives) - Message associations using fuzzy matching
+- [TypeQualification](type-qualification.md) - Formatting types for matching
+- [TypeFormatter](type-formatting.md) - Formatting Type objects to strings
+- [TypeMatcher](type-matching.md) - Type matching with MatchStrictness
+- [Perspectives](../perspectives/perspectives.md) - Message associations using fuzzy matching

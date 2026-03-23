@@ -44,18 +44,18 @@ Version 1.0.0 is the foundation release of Whizbang, establishing a **complete s
 - **[Transports](./messaging/transports/transports.md)** - Message broker abstraction
 
 ### Developer Experience
-- **[Source Generators](developer-experience/source-generators.md)** - Zero-reflection handler discovery
-- **[Analyzers](developer-experience/analyzers.md)** - Compile-time validation
-- **[IDE Tools](developer-experience/ide-tools.md)** - CodeLens-style references
-- **[Traceability](developer-experience/traceability.md)** - Message flow visualization
-- **[Debugging](developer-experience/codelens.md)** - Time-travel debugging foundation
+- **Source Generators** - Zero-reflection handler discovery
+- **Analyzers** - Compile-time validation
+- **IDE Tools** - CodeLens-style references
+- **Traceability** - Message flow visualization
+- **Debugging** - Time-travel debugging foundation
 
 ### Testing Foundation
-- **[Testing Strategy](./operations/testing/foundation.md)** - Overall testing approach
-- **[TUnit Integration](./operations/testing/tunit.md)** - Modern test framework
-- **[Bogus Scenarios](./operations/testing/bogus.md)** - Realistic data generation
-- **[Behavior Specs](./operations/testing/behavior-specs.md)** - BDD-style testing
-- **[Test Doubles](./operations/testing/test-doubles.md)** - In-memory mocking
+- **Testing Strategy** - Overall testing approach
+- **TUnit Integration** - Modern test framework
+- **Bogus Scenarios** - Realistic data generation
+- **Behavior Specs** - BDD-style testing
+- **Test Doubles** - In-memory mocking
 
 ## Quick Start
 
@@ -221,7 +221,7 @@ Version 0.2.0 enhances existing components without breaking changes:
 - Lenses add pagination
 - Policies become composable
 
-See [v0.2.0 Migration Guide](../v0.2.0/migration-guide.md)
+See v0.2.0 Migration Guide
 
 ## Known Limitations
 
@@ -237,9 +237,9 @@ These limitations are addressed in subsequent versions while maintaining backwar
 ## Examples
 
 ### Complete Examples
-- **[Basic Receptor](examples/basic-receptor.md)** - Simple command handling
-- **[Policy Usage](examples/policy-usage.md)** - Applying policies to handlers
-- **[Test Scenario](examples/test-scenario.md)** - Testing with Bogus
+- **Basic Receptor** - Simple command handling
+- **Policy Usage** - Applying policies to handlers
+- **Test Scenario** - Testing with Bogus
 
 ## Component Documentation
 
@@ -254,20 +254,20 @@ These limitations are addressed in subsequent versions while maintaining backwar
 - [Transports](./messaging/transports/transports.md)
 
 ### Developer Experience
-- [Source Generators](developer-experience/source-generators.md)
-- [Analyzers](developer-experience/analyzers.md)
-- [IDE Tools](developer-experience/ide-tools.md)
-- [Traceability](developer-experience/traceability.md)
+- Source Generators
+- Analyzers
+- IDE Tools
+- Traceability
 
 ### Testing
-- [Testing Foundation](./operations/testing/foundation.md)
-- [TUnit Integration](./operations/testing/tunit.md)
-- [Bogus Scenarios](./operations/testing/bogus.md)
-- [Behavior Specs](./operations/testing/behavior-specs.md)
+- Testing Foundation
+- TUnit Integration
+- Bogus Scenarios
+- Behavior Specs
 
 ## Feedback
 
 This is the foundation release - your feedback shapes the future:
 - Report issues: https://github.com/whizbang-lib/whizbang/issues
 - Join discussions: https://github.com/whizbang-lib/whizbang/discussions
-- Contribute: See [Contributing Guide](../contributing.md)
+- Contribute: See Contributing Guide

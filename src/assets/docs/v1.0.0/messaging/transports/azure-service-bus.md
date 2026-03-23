@@ -1116,9 +1116,9 @@ await foreach (var message in dlqReceiver.ReceiveMessagesAsync()) {
 - [In-Memory Transport](in-memory.md) - Local testing and development
 
 **Messaging Patterns**:
-- [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable cross-service events
-- [Inbox Pattern](../messaging/inbox-pattern.md) - Exactly-once processing
-- [Work Coordination](../messaging/work-coordination.md) - Lease-based message processing
+- [Outbox Pattern](../outbox-pattern.md) - Reliable cross-service events
+- [Inbox Pattern](../inbox-pattern.md) - Exactly-once processing
+- [Work Coordination](../work-coordination.md) - Lease-based message processing
 
 **Source Generators**:
 - [JSON Contexts](../../extending/source-generators/json-contexts.md) - AOT-compatible JSON serialization
