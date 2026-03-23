@@ -1277,17 +1277,17 @@ return (result, Route.Both(@event));
 return (result, Route.None(@event));
 ```
 
-See [Automatic Message Cascade](dispatcher.md#automatic-message-cascade) for complete routing patterns.
+See [Automatic Message Cascade](../dispatcher/dispatcher.md#automatic-message-cascade) for complete routing patterns.
 
 ---
 
 ## Related Topics
 
-- [Lifecycle Stages](lifecycle-stages.md) - All 18 stages with timing diagrams
+- [Lifecycle Stages](../lifecycle/lifecycle-stages.md) - All 18 stages with timing diagrams
 - [Receptors Guide](receptors.md) - Core receptor concepts and patterns
 - [Testing: Lifecycle Synchronization](../../operations/testing/lifecycle-synchronization.md) - Deterministic test patterns
-- [Source Generators](../advanced/source-generators.md) - How lifecycle receptors are discovered
-- [AOT Compatibility](../deployment/aot-compatibility.md) - Zero-reflection design
+- Source Generators - How lifecycle receptors are discovered
+- AOT Compatibility - Zero-reflection design
 
 ---
 

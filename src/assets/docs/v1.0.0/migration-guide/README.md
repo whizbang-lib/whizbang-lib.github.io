@@ -68,7 +68,7 @@ whizbang migrate apply --mode auto
 
 The tool uses **git worktrees** for safe, isolated migrations with automatic rollback on failure.
 
-See the [Migration Tool Documentation](../tools/whizbang-migrate.md) for details.
+See the Migration Tool Documentation for details.
 
 ## Key Architectural Differences
 
@@ -117,7 +117,7 @@ Whizbang's `IDispatcher` provides three distinct patterns:
 
 ## Getting Help
 
-- **[Troubleshooting](appendix-troubleshooting.md)** - Common migration issues
+- **Troubleshooting** - Common migration issues
 - **[GitHub Issues](https://github.com/whizbang-lib/whizbang/issues)** - Report problems
 - **[Discussions](https://github.com/whizbang-lib/whizbang/discussions)** - Ask questions
 

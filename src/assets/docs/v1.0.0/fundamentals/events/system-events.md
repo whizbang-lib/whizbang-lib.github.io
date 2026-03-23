@@ -1091,9 +1091,9 @@ public class AuditService {
 
 ## Related Documentation
 
-- **[Audit Logging](audit-logging.md)** - Compliance-ready audit logging using system events
-- **[Message Security](message-security.md)** - Security context and permissions
-- **[Perspectives](../features/perspectives.md)** - Consuming system events with perspectives
+- **[Audit Logging](../security/audit-logging.md)** - Compliance-ready audit logging using system events
+- **[Message Security](../security/message-security.md)** - Security context and permissions
+- **[Perspectives](../perspectives/perspectives.md)** - Consuming system events with perspectives
 - **[Event Store](event-store.md)** - Storage infrastructure for system events
 - **[Event Streams](event-streams.md)** - Stream concepts and conventions
 

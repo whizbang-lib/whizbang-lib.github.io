@@ -415,8 +415,8 @@ public record OrderShipped(
 
 ## See Also
 
-- [StreamId Attribute](./streamid) - Stream identification for event sourcing
-- [Message Envelope](../core-concepts/message-envelope) - Understanding envelope metadata
-- [Lifecycle Stages](../fundamentals/lifecycle/lifecycle-stages) - When timestamps are populated
-- [Security Context](../core-concepts/security-context) - How security context flows
-- [Source Generators](../extending/source-generators/overview) - How auto-populate discovery works
+- [StreamId Attribute](../../v1.0.0/extending/attributes/streamid.md) - Stream identification for event sourcing
+- Message Envelope - Understanding envelope metadata
+- [Lifecycle Stages](../../v1.0.0/fundamentals/lifecycle/lifecycle-stages.md) - When timestamps are populated
+- Security Context - How security context flows
+- [Source Generators](../metrics/overview.md) - How auto-populate discovery works

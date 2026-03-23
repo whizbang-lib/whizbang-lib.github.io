@@ -119,7 +119,7 @@ Subscribe via standard receptors for logging, alerting, or dashboards.
 
 When the migration system detects a **destructive schema change** (column type changed or removed), it records the perspective with status 4 (`MigratingInBackground`). The `PerspectiveMigrationWorker` background service picks this up on startup and automatically triggers a blue-green rebuild.
 
-See [Migration Tracking](infrastructure/migrations) for details.
+See [Migration Tracking](../../operations/infrastructure/migrations.md) for details.
 
 ## PerspectiveStatusModel
 

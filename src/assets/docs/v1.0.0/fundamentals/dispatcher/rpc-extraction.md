@@ -293,5 +293,5 @@ RPC extraction is fully AOT-compatible:
 ## Related Documentation
 
 - [Dispatcher](dispatcher.md) - Core dispatch mechanics
-- [Receptors](receptors.md) - Handler implementation
-- [Message Routing](../messaging/routing.md) - Routing configuration
+- [Receptors](../receptors/receptors.md) - Handler implementation
+- [Message Routing](routing.md) - Routing configuration

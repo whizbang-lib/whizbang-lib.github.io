@@ -16,7 +16,7 @@ tags: 'vector, pgvector, embeddings, similarity, AI, ML'
 
 Whizbang provides built-in support for pgvector similarity searches, enabling semantic search, embeddings, and AI/ML workloads with PostgreSQL. The integration is designed for zero-friction setup with automatic configuration.
 
-For comprehensive usage patterns, query methods, and examples, see the [Lens Vector Search Guide](/docs/v1.0.0/fundamentals/lenses/vector-search).
+For comprehensive usage patterns, query methods, and examples, see the [Lens Vector Search Guide](../../fundamentals/lenses/vector-search.md).
 
 ## Turnkey Setup {#turnkey-setup}
 
@@ -145,8 +145,8 @@ When using `[VectorField]` attributes, you must add both pgvector packages:
 
 If you forget these packages, compiler diagnostics will guide you:
 
-- **[WHIZ070](/docs/v1.0.0/operations/diagnostics/whiz070)** - Missing `Pgvector.EntityFrameworkCore` package
-- **[WHIZ071](/docs/v1.0.0/operations/diagnostics/whiz071)** - Missing `Pgvector` package
+- **[WHIZ070](../../operations/diagnostics/whiz070.md)** - Missing `Pgvector.EntityFrameworkCore` package
+- **[WHIZ071](../../operations/diagnostics/whiz071.md)** - Missing `Pgvector` package
 
 ## Customization
 
@@ -200,8 +200,8 @@ Note: The generated `ConfigureWhizbang()` method automatically includes `HasPost
 
 ## See Also
 
-- [Lens Vector Search Guide](/docs/v1.0.0/fundamentals/lenses/vector-search) - Complete usage patterns and query methods
-- [VectorFieldAttribute Reference](/api/VectorFieldAttribute) - Attribute documentation
-- [WHIZ070: Missing Pgvector.EntityFrameworkCore](/docs/v1.0.0/operations/diagnostics/whiz070)
-- [WHIZ071: Missing Pgvector Package](/docs/v1.0.0/operations/diagnostics/whiz071)
-- [EF Core Integration](/docs/v1.0.0/data/efcore-integration) - Database setup
+- [Lens Vector Search Guide](../../fundamentals/lenses/vector-search.md) - Complete usage patterns and query methods
+- VectorFieldAttribute Reference - Attribute documentation
+- [WHIZ070: Missing Pgvector.EntityFrameworkCore](../../operations/diagnostics/whiz070.md)
+- [WHIZ071: Missing Pgvector Package](../../operations/diagnostics/whiz071.md)
+- [EF Core Integration](../../data/efcore-integration.md) - Database setup

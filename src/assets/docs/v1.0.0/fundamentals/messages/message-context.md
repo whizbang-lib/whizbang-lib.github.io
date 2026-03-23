@@ -600,16 +600,16 @@ public class HttpClientWithCorrelation {
 ## Further Reading
 
 **Core Concepts**:
-- [Observability](observability.md) - MessageEnvelope and hops for distributed tracing
-- [Dispatcher](dispatcher.md) - How messages are routed
-- [Receptors](receptors.md) - Message handlers
+- [Observability](../persistence/observability.md) - MessageEnvelope and hops for distributed tracing
+- [Dispatcher](../dispatcher/dispatcher.md) - How messages are routed
+- [Receptors](../receptors/receptors.md) - Message handlers
 
 **Messaging Patterns**:
-- [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable messaging with context
-- [Message Envelopes](../messaging/message-envelopes.md) - Hop-based observability
+- [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable messaging with context
+- [Message Envelopes](../../messaging/message-envelopes.md) - Hop-based observability
 
 **Infrastructure**:
-- [Logging & Telemetry](../../operations/observability/observability-setup.md) - Application Insights integration
+- Logging & Telemetry - Application Insights integration
 
 ---
 

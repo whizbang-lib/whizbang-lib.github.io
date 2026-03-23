@@ -669,7 +669,7 @@ policyEngine.AddPolicy(
 - [Aggregate IDs](../../extending/source-generators/aggregate-ids.md) - Zero-reflection aggregate ID extraction
 
 **Advanced**:
-- [Multi-Tenancy](../advanced/multi-tenancy.md) - Tenant isolation patterns
+- [Multi-Tenancy](../../fundamentals/security/multi-tenancy.md) - Tenant isolation patterns
 
 ---
 

@@ -868,8 +868,8 @@ public class KafkaTransportIntegrationTests {
 - [In-Memory](../../messaging/transports/in-memory.md) - Testing transport
 
 **Messaging**:
-- [Outbox Pattern](../messaging/outbox-pattern.md) - Reliable event publishing
-- [Work Coordination](../messaging/work-coordination.md) - Lease-based processing
+- [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable event publishing
+- [Work Coordination](../../messaging/work-coordination.md) - Lease-based processing
 
 **Source Generators**:
 - [JSON Contexts](../source-generators/json-contexts.md) - AOT-compatible serialization

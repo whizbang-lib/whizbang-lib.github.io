@@ -122,7 +122,7 @@ public class RedisWorkCoordinator : IWorkCoordinator {
 ## Further Reading
 
 **Messaging**:
-- [Work Coordination](../messaging/work-coordination.md) - PostgreSQL work coordination
+- [Work Coordination](../../messaging/work-coordination.md) - PostgreSQL work coordination
 
 ---
 

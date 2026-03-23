@@ -1026,5 +1026,5 @@ The message security system is fully AOT-compatible:
 
 - [Security System](./security.md) - Permissions, roles, and scope context
 - [Scoping](./scoping.md) - PerspectiveScope and multi-tenancy
-- [System Events](./system-events.md) - Audit events
-- [Transport Consumer](./transport-consumer.md) - Message processing workers
+- [System Events](../events/system-events.md) - Audit events
+- [Transport Consumer](../../messaging/transports/transport-consumer.md) - Message processing workers

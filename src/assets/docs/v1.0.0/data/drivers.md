@@ -445,13 +445,13 @@ services.AddWhizbangDrivers(options => {
 
 ## Related Documentation
 
-- [Perspectives](perspectives.md) - Using drivers for write models
-- [Lenses](lenses.md) - Using drivers for read models
-- [Testing](../operations/testing/foundation.md) - Testing with in-memory driver
+- [Perspectives](../fundamentals/perspectives/perspectives.md) - Using drivers for write models
+- [Lenses](../fundamentals/lenses/lenses.md) - Using drivers for read models
+- Testing - Testing with in-memory driver
 - [Feature Evolution](../../roadmap/FEATURE-EVOLUTION.md) - How drivers evolve
 
 ## Next Steps
 
-- See [v0.2.0 File Storage](../../v0.2.0/enhancements/drivers.md) for persistence
-- See [v0.4.0 Databases](../../v0.4.0/database/drivers.md) for SQL/NoSQL support
-- Review [Examples](../examples/storage-patterns.md) for driver patterns
+- See [v0.2.0 File Storage](drivers.md) for persistence
+- See [v0.4.0 Databases](drivers.md) for SQL/NoSQL support
+- Review Examples for driver patterns

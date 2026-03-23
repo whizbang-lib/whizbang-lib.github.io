@@ -25,7 +25,7 @@ codeReferences:
 **The Whizbang.Data.Schema framework** provides a database-agnostic abstraction layer for defining infrastructure tables. This enables library developers to implement database drivers for PostgreSQL, SQLite, SQL Server, and custom databases while maintaining a single canonical schema definition.
 
 :::note
-This documentation is for **library developers** implementing database drivers. For application developers using Whizbang, see [PostgreSQL Data](../data/postgres-data.md) or [SQLite Data](../data/sqlite-data.md).
+This documentation is for **library developers** implementing database drivers. For application developers using Whizbang, see PostgreSQL Data or SQLite Data.
 :::
 
 ---
@@ -761,17 +761,17 @@ public class PostgresSchemaGeneratorTests {
 ## Further Reading
 
 **Data Access**:
-- [PostgreSQL Data](../data/postgres-data.md) - PostgreSQL implementation
-- [SQLite Data](../data/sqlite-data.md) - SQLite implementation
-- [Event Store](../data/event-store.md) - Event sourcing tables
+- PostgreSQL Data - PostgreSQL implementation
+- SQLite Data - SQLite implementation
+- [Event Store](../../data/event-store.md) - Event sourcing tables
 
 **Extensibility**:
 - [Custom Storage](custom-storage.md) - Custom perspective stores
 - [Custom Work Coordinators](custom-work-coordinators.md) - Work coordination
 
 **Infrastructure**:
-- [Outbox Pattern](../messaging/outbox-pattern.md) - Transactional outbox
-- [Work Coordination](../messaging/work-coordination.md) - Lease-based processing
+- [Outbox Pattern](../../messaging/outbox-pattern.md) - Transactional outbox
+- [Work Coordination](../../messaging/work-coordination.md) - Lease-based processing
 
 ---
 

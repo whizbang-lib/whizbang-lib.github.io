@@ -402,14 +402,14 @@ public class SecureReceptor { }
 
 ## Related Documentation
 
-- [Receptors](receptors.md) - Applying policies to receptors
-- [Perspectives](perspectives.md) - Applying policies to perspectives
-- [Dispatcher](dispatcher.md) - How policies are executed
-- [Testing](../testing/foundation.md) - Testing with policies
-- [Feature Evolution](../../roadmap/FEATURE-EVOLUTION.md) - How policies evolve
+- [Receptors](../../fundamentals/receptors/receptors.md) - Applying policies to receptors
+- [Perspectives](../../fundamentals/perspectives/perspectives.md) - Applying policies to perspectives
+- [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - How policies are executed
+- Testing - Testing with policies
+- [Feature Evolution](../../../roadmap/FEATURE-EVOLUTION.md) - How policies evolve
 
 ## Next Steps
 
-- See [v0.2.0 Enhancements](../../v0.2.0/enhancements/policies.md) for composition and new policies
-- See [v0.6.0 Production](../../future/v0.6.0-production.md) for security policies
-- Review [Examples](../examples/resilient-patterns.md) for policy patterns
+- See [v0.2.0 Enhancements](policies.md) for composition and new policies
+- See v0.6.0 Production for security policies
+- Review Examples for policy patterns

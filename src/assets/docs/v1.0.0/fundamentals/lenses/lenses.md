@@ -807,17 +807,17 @@ public class OrderQueries {
 ## Further Reading
 
 **Core Concepts**:
-- [Perspectives](perspectives.md) - Event listeners that maintain read models
-- [Dispatcher](dispatcher.md) - How to invoke receptors and publish events
-- [Receptors](receptors.md) - Command handlers that produce events
+- [Perspectives](../perspectives/perspectives.md) - Event listeners that maintain read models
+- [Dispatcher](../dispatcher/dispatcher.md) - How to invoke receptors and publish events
+- [Receptors](../receptors/receptors.md) - Command handlers that produce events
 
 **Data Access**:
-- [Dapper Integration](../data/dapper-integration.md) - Lightweight data access
-- [EF Core Integration](../data/efcore-integration.md) - Full-featured ORM
-- [Perspective Storage](../data/perspectives-storage.md) - Schema design patterns
+- [Dapper Integration](../../data/dapper-integration.md) - Lightweight data access
+- [EF Core Integration](../../data/efcore-integration.md) - Full-featured ORM
+- [Perspective Storage](../../data/perspectives-storage.md) - Schema design patterns
 
 **Examples**:
-- [ECommerce: BFF Pattern](../examples/ecommerce/bff-pattern.md) - Real-world lens usage
+- ECommerce: BFF Pattern - Real-world lens usage
 
 ---
 

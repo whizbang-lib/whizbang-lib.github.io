@@ -718,8 +718,8 @@ internal record CreateOrder(Guid CustomerId, OrderItem[] Items);
 - [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Message routing patterns
 
 **Advanced**:
-- [Performance: Local Invoke](../advanced/local-invoke.md) - Sub-20ns dispatch
-- [Testing: Receptor Testing](../advanced/receptor-testing.md) - Unit testing receptors
+- Performance: Local Invoke - Sub-20ns dispatch
+- Testing: Receptor Testing - Unit testing receptors
 
 ---
 

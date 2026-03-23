@@ -29,10 +29,10 @@ This analyzer runs during compilation and checks:
 
 | ID | Severity | Description |
 |---|---|---|
-| [WHIZ060](whiz060.md) | Error | Property uses non-serializable type `object` |
-| [WHIZ061](whiz061.md) | Error | Property uses non-serializable type `dynamic` |
+| WHIZ060 | Error | Property uses non-serializable type `object` |
+| WHIZ061 | Error | Property uses non-serializable type `dynamic` |
 | [WHIZ062](whiz062.md) | Error | Property uses non-serializable interface type |
-| [WHIZ063](whiz063.md) | Error | Nested type contains non-serializable property |
+| WHIZ063 | Error | Nested type contains non-serializable property |
 
 ## Why This Matters
 
@@ -121,13 +121,13 @@ In your `.csproj`:
 
 ## Related Diagnostics
 
-- [WHIZ060](whiz060.md) - Property uses `object` type
-- [WHIZ061](whiz061.md) - Property uses `dynamic` type
+- WHIZ060 - Property uses `object` type
+- WHIZ061 - Property uses `dynamic` type
 - [WHIZ062](whiz062.md) - Property uses non-generic interface
-- [WHIZ063](whiz063.md) - Nested type contains non-serializable property
+- WHIZ063 - Nested type contains non-serializable property
 
 ## See Also
 
-- [AOT Compatibility](../deployment/aot-compatibility.md) - AOT design principles
+- AOT Compatibility - AOT design principles
 - [Messages](../../fundamentals/messages/messages.md) - ICommand and IEvent documentation
-- [Source Generators](../../extending/source-generators/overview.md) - How Whizbang uses source generation
+- [Source Generators](../../../drafts/metrics/overview.md) - How Whizbang uses source generation

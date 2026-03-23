@@ -670,7 +670,7 @@ public class CachedPostgresHealthCheck : PostgresHealthCheck {
 - [Azure Service Bus Transport](../../messaging/transports/azure-service-bus.md) - Transport health checks
 
 **Data Access**:
-- [Dapper + PostgreSQL](../data/dapper-postgres.md) - Database health checks
+- Dapper + PostgreSQL - Database health checks
 
 **External Resources**:
 - [ASP.NET Core Health Checks](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks)

@@ -786,7 +786,7 @@ VACUUM ANALYZE order_summaries;
 - [Inbox Pattern](../messaging/inbox-pattern.md) - Exactly-once processing
 
 **Examples**:
-- [ECommerce: BFF Perspectives](../examples/ecommerce/bff-pattern.md) - Real-world perspective design
+- ECommerce: BFF Perspectives - Real-world perspective design
 
 ---
 
