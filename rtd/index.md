@@ -8,7 +8,7 @@ description: >-
 # Whizbang Documentation
 
 !!! tip "Looking for the full experience?"
-    Visit **[whizbang-lib.github.io](https://whizbang-lib.github.io/)** for interactive code samples,
+    Visit **[whizba.ng](https://whizba.ng/)** for interactive code samples,
     syntax highlighting, diagrams, and the complete branded documentation experience.
 
 ---
@@ -33,4 +33,4 @@ event-sourced applications with **zero reflection** and **native AOT compatibili
 ---
 
 *This documentation is automatically generated from the same source as
-[whizbang-lib.github.io](https://whizbang-lib.github.io/).*
+[whizba.ng](https://whizba.ng/).*
