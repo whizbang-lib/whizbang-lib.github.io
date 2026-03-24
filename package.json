@@ -5,7 +5,7 @@
     "ng": "ng",
     "prestart": "node src/scripts/gen-docs-list.mjs && node src/scripts/gen-docs-index.mjs && node src/scripts/gen-docs-index-versioned.mjs && node src/scripts/gen-sitemap.mjs && ./build-search-index.sh",
     "start": "ng serve --hmr --configuration development",
-    "prebuild": "node src/scripts/gen-docs-list.mjs && node src/scripts/gen-docs-index.mjs && node src/scripts/gen-docs-index-versioned.mjs && node src/scripts/gen-sitemap.mjs && node src/scripts/gen-static-docs.mjs && ./build-search-index.sh",
+    "prebuild": "node src/scripts/gen-docs-list.mjs && node src/scripts/gen-docs-index.mjs && node src/scripts/gen-docs-index-versioned.mjs && node src/scripts/gen-sitemap.mjs && node src/scripts/gen-static-docs.mjs && node src/scripts/generate-vscode-feed.mjs && ./build-search-index.sh",
     "gen-static-docs": "node src/scripts/gen-static-docs.mjs",
     "search-index": "./build-search-index.sh",
     "build": "ng build --configuration production --output-hashing=all",
