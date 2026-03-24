@@ -55,6 +55,7 @@ src/assets/search-index.json
 src/assets/enhanced-search-index.json
 src/assets/docs-list.json
 src/assets/sitemap.xml
+src/assets/vscode-feed.json
 
 # RTD build output
 rtd/_build/
