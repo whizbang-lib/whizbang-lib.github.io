@@ -1,0 +1,3613 @@
+{
+  "totalPublicTypes": 1060,
+  "documented": 546,
+  "undocumented": 514,
+  "coveragePct": 52,
+  "byKind": {
+    "class": 353,
+    "enum": 37,
+    "interface": 43,
+    "record": 76,
+    "struct": 5
+  },
+  "undocumentedTypes": [
+    {
+      "symbol": "TopicAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Attributes/TopicAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DiagnosticType",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Commands/System/SystemCommands.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangOptions",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Configuration/WhizbangOptions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GuidOrderingSeverity",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Configuration/WhizbangOptions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IDbConnectionFactory",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Data/IDbConnectionFactory.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IDbExecutor",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Data/IDbExecutor.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IJsonbPersistenceAdapter",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Data/IJsonbPersistenceAdapter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "JsonbPersistenceModel",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Data/IJsonbPersistenceAdapter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MigrationScript",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Data/IMigrationProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MigrationStep",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Data/IMigrationProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MigrationAction",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Data/IMigrationProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MigrationPlan",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Data/IMigrationProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "JsonbSizeValidator",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Data/JsonbSizeValidator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Routed",
+      "kind": "struct",
+      "file": "src/Whizbang.Core/Dispatch/Routed.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MigrationBatchItemResult",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Events/System/SystemEvents.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MigrationStatus",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Events/System/SystemEvents.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MigrationStrategy",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Events/System/SystemEvents.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MigrationFailureReason",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Events/System/SystemEvents.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ParallelExecutor",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Execution/ParallelExecutor.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SerialExecutor",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Execution/SerialExecutor.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DiagnosticCategory",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Generated/DiagnosticCategory.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DiagnosticEntry",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Generated/DiagnosticEntry.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InfrastructureJsonContext",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Generated/InfrastructureJsonContext.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangDiagnostics",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Generated/WhizbangDiagnostics.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangJsonContextInitializer",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Generated/WhizbangJsonContextInitializer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SubscriptionHealthCheck",
+      "kind": "class",
+      "file": "src/Whizbang.Core/HealthChecks/SubscriptionHealthCheck.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DeliveryStatus",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/IDeliveryReceipt.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DeliveryReceipt",
+      "kind": "class",
+      "file": "src/Whizbang.Core/IDeliveryReceipt.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IEvent",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/IEvent.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveModel",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/IPerspectiveModel.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IWhizbangDiscoveryDiagnostics",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/IWhizbangDiscoveryDiagnostics.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IWhizbangIdFactory",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/IWhizbangIdFactory.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IWhizbangIdProvider",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/IWhizbangIdProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IWhizbangIdProvider",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/IWhizbangIdProviderGeneric.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "LensQueryScope",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Lenses/ILensQueryFactory.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ITemporalLensQuery",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Lenses/ITemporalLensQuery.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveMetadata",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Lenses/PerspectiveMetadata.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveRow",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Lenses/PerspectiveRow.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopeExtension",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Lenses/PerspectiveScope.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopeDefinition",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Lenses/ScopeDefinition.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopeFilter",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Lenses/ScopeFilter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopedLensFactory",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Lenses/ScopedLensFactory.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IFilterableLens",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Lenses/ScopedLensFactory.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TemporalPerspectiveRow",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Lenses/TemporalPerspectiveRow.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "VectorSearchResult",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Lenses/VectorSearchResult.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ActiveStreamRecord",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/ActiveStreamRecord.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "AppendAndWaitEventStoreDecorator",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/AppendAndWaitEventStoreDecorator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DefaultDatabaseReadinessCheck",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/DefaultDatabaseReadinessCheck.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DispatchUnitOfWork",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EventStoreRecord",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/EventStoreRecord.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EventTypeMatchingHelper",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/EventTypeMatchingHelper.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IDatabaseReadinessCheck",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Messaging/IDatabaseReadinessCheck.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IEventStore",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Messaging/IEventStore.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IEventTypeProvider",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Messaging/IEventTypeProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IMessageQueue",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Messaging/IMessageQueue.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "QueuedMessage",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IMessageQueue.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveChannelWriter",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Messaging/IPerspectiveChannelWriter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IRequestResponseStore",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Messaging/IRequestResponseStore.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EventStoreQueryScope",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/IScopedEventStoreQuery.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IUnitOfWorkStrategy",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IWorkBatchCoordinator",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Messaging/IWorkBatchCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IWorkChannelWriter",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Messaging/IWorkChannelWriter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ProcessWorkBatchRequest",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IWorkCoordinator",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveCursorInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WorkBatch",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "OutboxMessage",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InboxMessage",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageCompletion",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageFailure",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "FailedMessage",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IHasMessageIdAndStatus",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "OutboxWork",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InboxWork",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ReceptorProcessingCompletion",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ReceptorProcessingFailure",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveCursorCompletion",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveCursorFailure",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveWork",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveEventCompletion",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WorkCoordinatorExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IWorkCoordinatorStrategy",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ImmediateUnitOfWorkStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ImmediateWorkCoordinatorStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/ImmediateWorkCoordinatorStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InMemoryEventStore",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/InMemoryEventStore.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InMemoryRequestResponseStore",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/InMemoryRequestResponseStore.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InboxMessageData",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/InboxMessageData.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InboxRecord",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/InboxRecord.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IntervalUnitOfWorkStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IntervalWorkCoordinatorStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/IntervalWorkCoordinatorStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "JsonLifecycleMessageDeserializer",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/JsonLifecycleMessageDeserializer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "LifecycleInvocationHelper",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/LifecycleInvocationHelper.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "LifecycleStage",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageDeduplicationRecord",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/MessageDeduplicationRecord.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageFailureReason",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Messaging/MessageFailureReason.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageScope",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/MessageScope.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "NonDisposingStrategyAdapter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/NonDisposingStrategyAdapter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "OrderedStreamProcessor",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/OrderedStreamProcessor.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "OrderedStreamProcessorOptions",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/OrderedStreamProcessor.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "OutboxMessageData",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/OutboxMessageData.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "OutboxRecord",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/OutboxRecord.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveChannelWriter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/PerspectiveChannelWriter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveCursorRecord",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/PerspectiveCursorRecord.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveProcessingStatus",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Messaging/PerspectiveProcessingStatus.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ProcessingModeAccessor",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/ProcessingModeAccessor.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ProcessingUnitOfWork",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/ProcessingUnitOfWork.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ReceptorProcessingRecord",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/ReceptorProcessingRecord.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ReceptorProcessingStatus",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Messaging/ReceptorProcessingStatus.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopedUnitOfWorkStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopedWorkCoordinatorDependencies",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/ScopedWorkCoordinatorStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopedWorkCoordinatorStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/ScopedWorkCoordinatorStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SecurityContextEventStoreDecorator",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/SecurityContextEventStoreDecorator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ServiceInstanceMetadata",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/ServiceInstanceMetadata.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ServiceInstanceRecord",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/ServiceInstanceRecord.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SyncTrackingEventStoreDecorator",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/SyncTrackingEventStoreDecorator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WorkBatchCoordinator",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/WorkBatchCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WorkChannelWriter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/WorkChannelWriter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WorkBatchFlags",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Messaging/WorkCoordinatorEnums.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageProcessingStatus",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Messaging/WorkCoordinatorEnums.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WorkCoordinatorStrategyFactory",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Messaging/WorkCoordinatorStrategyFactory.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CallerInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Observability/CallerInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CascadeContextFactory",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Observability/CascadeContextFactory.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EnvelopeMetadata",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Observability/EnvelopeMetadata.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EnvelopeRegistry",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Observability/EnvelopeRegistry.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IServiceInstanceProvider",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Observability/IServiceInstanceProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InMemoryTraceStore",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Observability/InMemoryTraceStore.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "HopType",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Observability/MessageHop.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageHopConverter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Observability/MessageHop.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageTrace",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Observability/MessageTrace.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageTracing",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Observability/MessageTracing.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SecurityContext",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Observability/SecurityContext.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ServiceInstanceInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Observability/ServiceInstanceInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ServiceInstanceInfoConverter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Observability/ServiceInstanceInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ServiceInstanceProvider",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Observability/ServiceInstanceProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangActivitySource",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Observability/WhizbangActivitySource.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangMetrics",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Observability/WhizbangMetrics.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "HashPartitionRouter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Partitioning/HashPartitionRouter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPartitionRouter",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Partitioning/IPartitionRouter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ApplyResult",
+      "kind": "struct",
+      "file": "src/Whizbang.Core/Perspectives/ApplyResult.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IDriverOptions",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IDriverOptions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "RebuildResult",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "RebuildStatus",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "RebuildMode",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveRunner",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveRunner.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveRunnerRegistry",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveRunnerRegistry.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveRegistrationInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveRunnerRegistry.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveStore",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveStore.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ITemporalPerspectiveStore",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/ITemporalPerspectiveStore.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ModelAction",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Perspectives/ModelAction.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MustExistAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Perspectives/MustExistAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveRunnerCallbackRegistry",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Perspectives/PerspectiveRunnerCallbackRegistry.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveStorageAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PhysicalFieldAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PolymorphicDiscriminatorAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Perspectives/PolymorphicDiscriminatorAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SuppressVectorPackageCheckAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Perspectives/SuppressVectorPackageCheckAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EventCompletionAwaiter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Perspectives/Sync/EventCompletionAwaiter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SyncContextAccessor",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Perspectives/Sync/ISyncContextAccessor.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveState",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Perspectives/System/PerspectiveStatusModel.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TemporalActionType",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Perspectives/TemporalActionType.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "VectorFieldAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Perspectives/VectorFieldAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangPerspectiveAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Perspectives/WhizbangPerspectiveAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangPerspectiveBuilder",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Perspectives/WhizbangPerspectiveBuilder.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PipelineBehavior",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Pipeline/IPipelineBehavior.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPolicyEngine",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Policies/IPolicyEngine.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PolicyConfiguration",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Policies/PolicyConfiguration.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PolicyDecision",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Policies/PolicyDecisionTrail.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PolicyEngine",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Policies/PolicyEngine.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ExecutionState",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Pooling/ExecutionState.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ExecutionStatePool",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Pooling/ExecutionStatePool.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PolicyContextPool",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Pooling/PolicyContextPool.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PooledSourcePool",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Pooling/PooledSourcePool.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PooledValueTaskSource",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Pooling/PooledValueTaskSource.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PublishContext",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/PublishContext.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ReceptorNotFoundException",
+      "kind": "class",
+      "file": "src/Whizbang.Core/ReceptorNotFoundException.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SubscriptionState",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Resilience/SubscriptionState.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CompositeTopicRoutingStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Routing/CompositeTopicRoutingStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ConfigurationTopicRegistry",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Routing/ConfigurationTopicRegistry.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DomainTopicInboxStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Routing/DomainTopicInboxStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DomainTopicOutboxStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Routing/DomainTopicOutboxStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EventSubscriptionDiscoveryExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Routing/EventSubscriptionDiscovery.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ITopicRegistry",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Routing/ITopicRegistry.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ITopicRoutingStrategy",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Routing/ITopicRoutingStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "NamespaceRoutingStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Routing/NamespaceRoutingStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PassthroughRoutingStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Routing/PassthroughRoutingStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PoolSuffixRoutingStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Routing/PoolSuffixRoutingStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InboxRoutingOptionsBuilder",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Routing/RoutingOptions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "OutboxRoutingOptionsBuilder",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Routing/RoutingOptions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SharedTopicInboxStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Routing/SharedTopicInboxStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SharedTopicOutboxStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Routing/SharedTopicOutboxStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TransportSubscriptionBuilderExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Routing/TransportSubscriptionBuilder.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ITenantScoped",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Scoping/IScopedInterfaces.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "FieldPermissionAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Security/Attributes/FieldPermissionAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "RequirePermissionAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Security/Attributes/RequirePermissionAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopedAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Security/Attributes/ScopedAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DefaultMessageSecurityContextProvider",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Security/DefaultMessageSecurityContextProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageContextAccessor",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Security/IMessageContextAccessor.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IMessageSecurityContextProvider",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Security/IMessageSecurityContextProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IScopeContextAccessor",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Security/IScopeContextAccessor.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ISecurityContextCallback",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Security/ISecurityContextCallback.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ISecurityContextExtractor",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Security/ISecurityContextExtractor.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ImmutableScopeContext",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Security/ImmutableScopeContext.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageSecurityOptions",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Security/MessageSecurityOptions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopeContextAccessor",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Security/ScopeContextAccessor.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopeProp",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Security/ScopeDelta.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CollectionChanges",
+      "kind": "struct",
+      "file": "src/Whizbang.Core/Security/ScopeDelta.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopeDelta",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Security/ScopeDelta.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopePropJsonConverter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Security/ScopePropJsonConverter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SecurityOptions",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Security/SecurityOptions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ISequenceProvider",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Sequencing/ISequenceProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InMemorySequenceProvider",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Sequencing/InMemorySequenceProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "JsonContextRegistry",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Serialization/JsonContextRegistry.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "JsonTypeInfoResolverExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Serialization/JsonTypeInfoResolverExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ServiceRegistrationCallbacks",
+      "kind": "class",
+      "file": "src/Whizbang.Core/ServiceRegistrationCallbacks.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "StreamIdResolver",
+      "kind": "class",
+      "file": "src/Whizbang.Core/StreamIdResolver.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SuppressGuidInterceptionAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SuppressGuidOrderingValidationAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/SuppressGuidOrderingValidationAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopeEntry",
+      "kind": "class",
+      "file": "src/Whizbang.Core/SystemEvents/Audit/AuditEventModel.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "AuditingEventStoreDecorator",
+      "kind": "class",
+      "file": "src/Whizbang.Core/SystemEvents/AuditingEventStoreDecorator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CommandAuditPipelineBehavior",
+      "kind": "class",
+      "file": "src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "NullSystemEventEmitter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/SystemEvents/NullSystemEventEmitter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "AccessDenialReason",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/SystemEvents/Security/AccessDenied.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PermissionChangeType",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/SystemEvents/Security/PermissionChanged.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SystemEventEmitter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/SystemEvents/SystemEventEmitter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SystemEventTransportFilter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/SystemEvents/SystemEventTransportFilter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TagHookRegistration",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Tags/TagHookRegistration.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TopicFilterAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/TopicFilterAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TopicFilterAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/TopicFilterAttribute{TEnum}.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "HandlerStatus",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Tracing/HandlerStatus.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ITracer",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Tracing/ITracer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangTraceAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Tracing/WhizbangTraceAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "AspireConfigurationGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Transports/AzureServiceBus/AspireConfigurationGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ServiceBusInfrastructureOptions",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Transports/AzureServiceBus/ServiceBusInfrastructureOptions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TopicRequirement",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Transports/AzureServiceBus/TopicRequirement.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DispatcherTransportBridge",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Transports/DispatcherTransportBridge.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SubscriptionDisconnectedEventArgs",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Transports/ISubscription.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InMemorySerializer",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Transports/InMemorySerializer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InProcessTransport",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Transports/InProcessTransport.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "JsonMessageSerializer",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Transports/JsonMessageSerializer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageIdConverter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Transports/JsonMessageSerializer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CorrelationIdConverter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Transports/JsonMessageSerializer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "NamespacePattern",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Transports/NamespacePattern.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PublishTarget",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Transports/PublishTarget.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SubscriptionTarget",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Transports/SubscriptionTarget.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TransportAutoDiscovery",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Transports/TransportAutoDiscovery.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TransportCapabilities",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Transports/TransportCapabilities.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TransportDestination",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Transports/TransportDestination.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TransportManager",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Transports/TransportManager.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TransportType",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Transports/TransportType.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TypeNameFormatter",
+      "kind": "class",
+      "file": "src/Whizbang.Core/TypeNameFormatter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Uuid7IdProvider",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Uuid7IdProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GuidOrderingException",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Validation/GuidOrderingException.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GuidOrderingValidator",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Validation/GuidOrderingValidator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangBuilder",
+      "kind": "class",
+      "file": "src/Whizbang.Core/WhizbangBuilder.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangIdAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Core/WhizbangIdAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangIdProvider",
+      "kind": "class",
+      "file": "src/Whizbang.Core/WhizbangIdProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CompletionStatus",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Workers/CompletionStatus.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CompletionTracker",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Workers/CompletionTracker.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DefaultTransportReadinessCheck",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Workers/DefaultTransportReadinessCheck.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IMessagePublishStrategy",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Workers/IMessagePublishStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessagePublishResult",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Workers/IMessagePublishStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PendingMigrationRebuild",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveWorkerOptions",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ServiceBusConsumerOptions",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TopicSubscription",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TrackedCompletion",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Workers/TrackedCompletion.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TransportPublishStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Workers/TransportPublishStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WorkCoordinatorPublisherWorker",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WorkCoordinatorPublisherOptions",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WorkerRetryOptions",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Workers/WorkerRetryOptions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DapperDbExecutor",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Custom/DapperDbExecutor.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DapperEventStoreBase",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Custom/DapperEventStoreBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DapperRequestResponseStoreBase",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Custom/DapperRequestResponseStoreBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DapperSequenceProviderBase",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Custom/DapperSequenceProviderBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TrackedGuidHandler",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Custom/TrackedGuidHandler.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DapperPostgresEventStore",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DapperPostgresMessageQueue",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresMessageQueue.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DapperPostgresRequestResponseStore",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresRequestResponseStore.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DapperPostgresSequenceProvider",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresSequenceProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DapperWorkCoordinator",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EventEnvelopeJsonbAdapter",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Postgres/EventEnvelopeJsonbAdapter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PostgresConnectionFactory",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Postgres/PostgresConnectionFactory.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PostgresHealthCheck",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Postgres/PostgresHealthCheck.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PostgresSchemaInitializer",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DapperSqliteEventStore",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Sqlite/DapperSqliteEventStore.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DapperSqliteRequestResponseStore",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Sqlite/DapperSqliteRequestResponseStore.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DapperSqliteSequenceProvider",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Sqlite/DapperSqliteSequenceProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SqliteSchemaBuilder",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Sqlite/Schema/SqliteSchemaBuilder.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SqliteTypeMapper",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Sqlite/Schema/SqliteTypeMapper.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SqliteConnectionFactory",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Sqlite/SqliteConnectionFactory.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SqliteDateTimeOffsetHandler",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Sqlite/SqliteDateTimeOffsetHandler.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SqliteGuidHandler",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Dapper.Sqlite/SqliteGuidHandler.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangDbContextAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Custom/WhizbangDbContextAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "BaseUpsertStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangModelBuilderExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/Configuration/WhizbangModelBuilderExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EFCoreDriverSelector",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreDriverSelector.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EFCoreEventStore",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EFCoreExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EFCoreFilterableEventStoreQuery",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableEventStoreQuery.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EFCoreInfrastructureRegistration",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreInfrastructureRegistration.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EFCorePostgresPerspectiveStore",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/EFCorePostgresPerspectiveStore.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EFCoreWorkCoordinator",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IDbUpsertStrategy",
+      "kind": "interface",
+      "file": "src/Whizbang.Data.EFCore.Postgres/IDbUpsertStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InMemoryDriverExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/InMemoryDriverExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InMemoryUpsertStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/InMemoryUpsertStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "LensQueryConnectionExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/LensQueryConnectionExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ModelRegistrationRegistry",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/ModelRegistrationRegistry.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ModelTypeInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Data.EFCore.Postgres/ModelTypeInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PolymorphicQueryExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/PolymorphicQueryExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PostgresDriverExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PostgresUpsertStrategy",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/PostgresUpsertStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PrincipalFilterExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/PrincipalFilterExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangDbContextOptionsBuilderExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopedDbContextFactory",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/ScopedDbContextFactory.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EFCoreJsonContext",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/Serialization/EFCoreJsonContext.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TrackedGuidConverter",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TrackedGuidModelBuilderExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "VectorSearchExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres/VectorSearchExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EFCorePerspectiveAssociationGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveAssociationGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EFCorePerspectiveConfigurationGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveConfigurationGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EFCoreServiceRegistrationGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PostgresLimits",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres.Generators/Limits/PostgresLimits.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveModelDictionaryAnalyzer",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres.Generators/PerspectiveModelDictionaryAnalyzer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "__DBCONTEXT_CLASS__SchemaExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangModelBuilderExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres.Generators/Templates/EFCoreConfigurationTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Diagnostics",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres.Generators/Templates/EFCoreConfigurationTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EFCorePerspectiveAssociationExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres.Generators/Templates/EFCorePerspectiveAssociationsTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EFCoreSnippets",
+      "kind": "class",
+      "file": "src/Whizbang.Data.EFCore.Postgres.Generators/Templates/Snippets/EFCoreSnippets.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PostgresArrayHelper",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Postgres/PostgresArrayHelper.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PostgresDatabaseReadinessCheck",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Postgres/PostgresDatabaseReadinessCheck.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PostgresJsonHelper",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Postgres/PostgresJsonHelper.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PostgresMigrationProvider",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Postgres/PostgresMigrationProvider.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ColumnDefinition",
+      "kind": "record",
+      "file": "src/Whizbang.Data.Schema/ColumnDefinition.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DefaultValue",
+      "kind": "record",
+      "file": "src/Whizbang.Data.Schema/DefaultValue.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "FunctionDefault",
+      "kind": "record",
+      "file": "src/Whizbang.Data.Schema/DefaultValue.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IntegerDefault",
+      "kind": "record",
+      "file": "src/Whizbang.Data.Schema/DefaultValue.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "StringDefault",
+      "kind": "record",
+      "file": "src/Whizbang.Data.Schema/DefaultValue.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "BooleanDefault",
+      "kind": "record",
+      "file": "src/Whizbang.Data.Schema/DefaultValue.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "NullDefault",
+      "kind": "record",
+      "file": "src/Whizbang.Data.Schema/DefaultValue.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DefaultValueFunction",
+      "kind": "enum",
+      "file": "src/Whizbang.Data.Schema/DefaultValueFunction.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IndexDefinition",
+      "kind": "record",
+      "file": "src/Whizbang.Data.Schema/IndexDefinition.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PostgresSchemaBuilder",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/PostgresSchemaBuilder.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PostgresTypeMapper",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/PostgresTypeMapper.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SchemaConfiguration",
+      "kind": "record",
+      "file": "src/Whizbang.Data.Schema/SchemaConfiguration.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ActiveStreamsSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/ActiveStreamsSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/ActiveStreamsSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EventStoreSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/EventStoreSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/EventStoreSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InboxSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/InboxSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/InboxSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/MessageAssociationsSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageDeduplicationSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/MessageDeduplicationSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/MessageDeduplicationSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "OutboxSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/OutboxSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/OutboxSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PartitionAssignmentsSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/PartitionAssignmentsSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveCursorsSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/PerspectiveCursorsSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/PerspectiveCursorsSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveEventsSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/PerspectiveEventsSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/PerspectiveEventsSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/PerspectiveRegistrySchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/PerspectiveSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CommonColumns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/PerspectiveSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveSnapshotsSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/PerspectiveSnapshotsSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/PerspectiveSnapshotsSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ReceptorProcessingSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/ReceptorProcessingSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/ReceptorProcessingSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "RequestResponseSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/RequestResponseSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/RequestResponseSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SequencesSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/SequencesSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/SequencesSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ServiceInstancesSchema",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/ServiceInstancesSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "Columns",
+      "kind": "class",
+      "file": "src/Whizbang.Data.Schema/Schemas/ServiceInstancesSchema.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SequenceDefinition",
+      "kind": "record",
+      "file": "src/Whizbang.Data.Schema/SequenceDefinition.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TableDefinition",
+      "kind": "record",
+      "file": "src/Whizbang.Data.Schema/TableDefinition.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "UniqueConstraintDefinition",
+      "kind": "record",
+      "file": "src/Whizbang.Data.Schema/UniqueConstraintDefinition.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangDataType",
+      "kind": "enum",
+      "file": "src/Whizbang.Data.Schema/WhizbangDataType.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DiagnosticDescriptors",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/DiagnosticDescriptors.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DictionaryTypeInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Generators/DictionaryTypeInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GuidInterceptionInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Generators/GuidInterceptionInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SuppressedGuidInterceptionInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Generators/GuidInterceptionInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GuidInterceptorGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/GuidInterceptorGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IReadOnlyListTypeInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Generators/IReadOnlyListTypeInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ListTypeInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Generators/ListTypeInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageJsonContextGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageRegistryGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/MessageRegistryGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PathResolver",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/PathResolver.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveDiscoveryGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveInvokerGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/PerspectiveInvokerGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveModelArrayAnalyzer",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/PerspectiveModelArrayAnalyzer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectivePurityAnalyzer",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/PerspectivePurityAnalyzer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveRunnerGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/PerspectiveRunnerGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveRunnerRegistryGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/PerspectiveRunnerRegistryGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveSchemaGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/PerspectiveSchemaGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GeneratorFieldStorageMode",
+      "kind": "enum",
+      "file": "src/Whizbang.Generators/PerspectiveSchemaGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ReceptorDiscoveryGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SyncAttributeInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Generators/ReceptorInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "RoslynGuards",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/RoslynGuards.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopedLensFactoryGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/ScopedLensFactoryGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ServiceRegistrationGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/ServiceRegistrationGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "StreamIdGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/StreamIdGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "StreamIdInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Generators/StreamIdInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EventWithoutStreamIdInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Generators/StreamIdInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CommandStreamIdInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Generators/StreamIdInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DispatcherRegistrations",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/DispatcherRegistrationsTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageJsonContextInitializer",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/MessageJsonContextInitializerTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageAssociation",
+      "kind": "record",
+      "file": "src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveRegistrationExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "__MESSAGE_TYPE__",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/Placeholders/PlaceholderTypes.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "__RESPONSE_TYPE__",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/Placeholders/PlaceholderTypes.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "__RECEPTOR_INTERFACE__",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/Placeholders/PlaceholderTypes.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "__RECEPTOR_INTERFACE__",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/Placeholders/PlaceholderTypes.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "__SYNC_RECEPTOR_INTERFACE__",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/Placeholders/PlaceholderTypes.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "__SYNC_RECEPTOR_INTERFACE__",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/Placeholders/PlaceholderTypes.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "__RECEPTOR_CLASS__",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/Placeholders/PlaceholderTypes.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "__PERSPECTIVE_INTERFACE__",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/Placeholders/PlaceholderTypes.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "__PERSPECTIVE_CLASS__",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/Placeholders/PlaceholderTypes.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "__EVENT_TYPE__",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/Placeholders/PlaceholderTypes.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "LifecycleStage",
+      "kind": "enum",
+      "file": "src/Whizbang.Generators/Templates/Placeholders/PlaceholderTypes.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CancellationToken",
+      "kind": "struct",
+      "file": "src/Whizbang.Generators/Templates/Placeholders/PlaceholderTypes.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ReceptorDiscoveryDiagnostics",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/ReceptorDiscoveryDiagnosticsTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DispatcherSnippets",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/Snippets/DispatcherSnippets.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "StreamIdSnippets",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/Snippets/StreamIdSnippets.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "StreamIdExtractorRegistrations",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/StreamIdExtractorsTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangIdJsonContext",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/WhizbangIdJsonContextTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangIdProviderRegistration",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/WhizbangIdProviderRegistrationTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "__TYPE_NAME__Provider",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/WhizbangIdProviderTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangJsonContext",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/WhizbangJsonContextFacadeTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageJsonContext",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/Templates/WhizbangJsonContextTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TopicRegistryGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/TopicRegistryGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangIdGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Generators/WhizbangIdGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DiscoverySource",
+      "kind": "enum",
+      "file": "src/Whizbang.Generators/WhizbangIdInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangIdInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Generators/WhizbangIdInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IDbProviderLimits",
+      "kind": "interface",
+      "file": "src/Whizbang.Generators.Shared/Limits/IDbProviderLimits.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "DbContextInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Generators.Shared/Models/DbContextInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Generators.Shared/Models/PerspectiveInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GeneratorVectorDistanceMetric",
+      "kind": "enum",
+      "file": "src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GeneratorVectorIndexType",
+      "kind": "enum",
+      "file": "src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IdentifierValidation",
+      "kind": "class",
+      "file": "src/Whizbang.Generators.Shared/Utilities/IdentifierValidation.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SchemaHashUtilities",
+      "kind": "class",
+      "file": "src/Whizbang.Generators.Shared/Utilities/SchemaHashUtilities.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ColumnSchema",
+      "kind": "record",
+      "file": "src/Whizbang.Generators.Shared/Utilities/SchemaHashUtilities.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IndexSchema",
+      "kind": "record",
+      "file": "src/Whizbang.Generators.Shared/Utilities/SchemaHashUtilities.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveTableSchema",
+      "kind": "record",
+      "file": "src/Whizbang.Generators.Shared/Utilities/SchemaHashUtilities.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TemplateUtilities",
+      "kind": "class",
+      "file": "src/Whizbang.Generators.Shared/Utilities/TemplateUtilities.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TypeNameUtilities",
+      "kind": "class",
+      "file": "src/Whizbang.Generators.Shared/Utilities/TypeNameUtilities.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ServiceBusReadinessCheck",
+      "kind": "class",
+      "file": "src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusReadinessCheck.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ServiceBusSubscriptionExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "AspireExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Hosting.RabbitMQ/AspireExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SignalRTagExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.SignalR/DependencyInjection/SignalRTagExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SignalRNotificationHook",
+      "kind": "class",
+      "file": "src/Whizbang.SignalR/Hooks/SignalRNotificationHook.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "NotificationMessage",
+      "kind": "record",
+      "file": "src/Whizbang.SignalR/Hooks/SignalRNotificationHook.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "AsyncTestHelpers",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Async/AsyncTestHelpers.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "AssertionException",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Async/AsyncTestHelpers.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SharedPostgresContainer",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Containers/SharedPostgresContainer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SharedRabbitMqContainer",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Containers/SharedRabbitMqContainer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ContractTestJsonContext",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Contracts/ContractTestJsonContext.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TestEvent",
+      "kind": "record",
+      "file": "src/Whizbang.Testing/Contracts/EventStoreContractTests.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "EventStoreContractTests",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Contracts/EventStoreContractTests.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TestResponse",
+      "kind": "record",
+      "file": "src/Whizbang.Testing/Contracts/RequestResponseStoreContractTests.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "RequestResponseStoreContractTests",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Contracts/RequestResponseStoreContractTests.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SequenceProviderContractTests",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Contracts/SequenceProviderContractTests.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CountingPerspectiveReceptor",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Lifecycle/CountingPerspectiveReceptor.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "LifecycleStageAwaiter",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Lifecycle/LifecycleStageAwaiter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "LifecycleAwaiter",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Lifecycle/LifecycleStageAwaiter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MultiHostPerspectiveAwaiter",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Lifecycle/MultiHostPerspectiveAwaiter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveAwaiter",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Lifecycle/MultiHostPerspectiveAwaiter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PerspectiveCompletionWaiter",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Lifecycle/PerspectiveCompletionWaiter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CapturedSpan",
+      "kind": "record",
+      "file": "src/Whizbang.Testing/Observability/CapturedSpan.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CapturedSpanEvent",
+      "kind": "record",
+      "file": "src/Whizbang.Testing/Observability/CapturedSpan.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "InMemorySpanCollector",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Observability/InMemorySpanCollector.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TraceAssertionExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Observability/TraceAssertionExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TraceSnapshotComparer",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Observability/TraceSnapshotComparer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TraceComparison",
+      "kind": "record",
+      "file": "src/Whizbang.Testing/Observability/TraceSnapshotComparer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TraceDifference",
+      "kind": "record",
+      "file": "src/Whizbang.Testing/Observability/TraceSnapshotComparer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TraceDifferenceKind",
+      "kind": "enum",
+      "file": "src/Whizbang.Testing/Observability/TraceSnapshotComparer.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TraceTree",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Observability/TraceTree.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TraceAssertionException",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Observability/TraceTree.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageAwaiter",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Transport/MessageAwaiter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MessageIdAwaiter",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Transport/MessageAwaiter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CountingMessageAwaiter",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Transport/MessageAwaiter.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SubscriptionWarmup",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Transport/SubscriptionWarmup.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "SignalAwaiter",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Transport/SubscriptionWarmup.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TransportTestHarness",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Transport/TransportTestHarness.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "TransportTestHarness",
+      "kind": "class",
+      "file": "src/Whizbang.Testing/Transport/TransportTestHarness.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "AzureServiceBusHealthCheck",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusHealthCheck.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "AzureServiceBusSubscription",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusSubscription.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "AzureServiceBusTransport",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ServiceBusReadinessCheck",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.AzureServiceBus/ServiceBusReadinessCheck.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "RestLensAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.FastEndpoints/Attributes/RestLensAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "LensEndpointBase",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.FastEndpoints/Endpoints/LensEndpointBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "RestMutationEndpointBase",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.FastEndpoints/Endpoints/RestMutationEndpointBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "LensResponse",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.FastEndpoints/Models/LensResponse.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "RestLensEndpointGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.FastEndpoints.Generators/RestLensEndpointGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "RestMutationEndpointGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.FastEndpoints.Generators/RestMutationEndpointGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangRestLensDiagnostics",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.FastEndpoints.Generators/Templates/RestLensEndpointTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangRestMutationDiagnostics",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.FastEndpoints.Generators/Templates/RestMutationEndpointTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GraphQLLensAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GraphQLLensScope",
+      "kind": "enum",
+      "file": "src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensScope.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangGraphQLOptions",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate/Configuration/WhizbangGraphQLOptions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangFilterConvention",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate/Conventions/WhizbangFilterConvention.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangSortConvention",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate/Conventions/WhizbangSortConvention.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "HotChocolateWhizbangExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ScopeMiddlewareExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate/Middleware/ScopeMiddlewareExtensions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangScopeMiddleware",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangScopeOptions",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GraphQLMutationBase",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate/Mutations/GraphQLMutationBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GraphQLLensTypeGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate.Generators/GraphQLLensTypeGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GraphQLMutationTypeGenerator",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate.Generators/GraphQLMutationTypeGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangLensQueryTypeExtension",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate.Generators/Templates/GraphQLLensQueryTypeTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangLensRegistrationExtensions",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate.Generators/Templates/GraphQLLensQueryTypeTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangGraphQLDiagnostics",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate.Generators/Templates/GraphQLLensQueryTypeTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WhizbangGraphQLMutationDiagnostics",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.HotChocolate.Generators/Templates/GraphQLMutationTypeTemplate.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "CommandEndpointAttribute",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.Mutations/Attributes/CommandEndpointAttribute.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "MutationEndpointBase",
+      "kind": "class",
+      "file": "src/Whizbang.Transports.Mutations/Base/MutationEndpointBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "PooledChannel",
+      "kind": "struct",
+      "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQChannelPool.cs",
+      "hasDocs": false,
+      "docsPath": null
+    }
+  ]
+}

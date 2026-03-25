@@ -1,0 +1,5578 @@
+{
+  "totalPages": 243,
+  "pagesWithGaps": 243,
+  "fieldCoverage": {
+    "title": {
+      "present": 213,
+      "missing": 30,
+      "pct": 88
+    },
+    "version": {
+      "present": 164,
+      "missing": 79,
+      "pct": 67
+    },
+    "category": {
+      "present": 174,
+      "missing": 69,
+      "pct": 72
+    },
+    "order": {
+      "present": 190,
+      "missing": 53,
+      "pct": 78
+    },
+    "description": {
+      "present": 170,
+      "missing": 73,
+      "pct": 70
+    },
+    "tags": {
+      "present": 167,
+      "missing": 76,
+      "pct": 69
+    },
+    "codeReferences": {
+      "present": 116,
+      "missing": 127,
+      "pct": 48
+    },
+    "slug": {
+      "present": 0,
+      "missing": 243,
+      "pct": 0
+    }
+  },
+  "pages": [
+    {
+      "file": "src/assets/docs/v1.0.0/README.md",
+      "presentFields": [
+        "title",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "version",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Version 0.1.0 - Foundation Release",
+        "category": "Implementation",
+        "order": "1",
+        "description": "The foundation release of Whizbang establishing all core components with comprehensive testing and IDE support",
+        "tags": "v0.1.0, foundation, implementation"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/_folder.md",
+      "presentFields": [
+        "title",
+        "description"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "order",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Version 0.1.0 - Foundation",
+        "description": "The foundation release establishing all core components with in-memory implementations",
+        "releaseDate": "TBD",
+        "status": "planning"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "APIs & Integrations",
+        "order": "6"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/graphql/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "GraphQL",
+        "order": "2"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/graphql/index.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/graphql/lens-integration.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/graphql/polymorphic-types.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Polymorphic Types",
+        "version": "1.0.0",
+        "category": "GraphQL",
+        "order": "6",
+        "description": "Register polymorphic type hierarchies with HotChocolate GraphQL - automatic discovery from JsonDerivedType attributes",
+        "tags": "graphql, polymorphic, interfaces, json, hotchocolate, inheritance",
+        "codeReferences": "src/Whizbang.Transports.HotChocolate/Extensions/PolymorphicTypeExtensions.cs",
+        "testReferences": "tests/Whizbang.Transports.HotChocolate.Tests/Unit/PolymorphicTypeExtensionsTests.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/graphql/scoping.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/graphql/setup.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/graphql/sorting.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/mutations/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Mutations",
+        "order": "3"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/mutations/custom-request-dto.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Custom Request DTOs",
+        "version": "1.0.0",
+        "category": "Mutations",
+        "order": "2",
+        "description": "Map custom request DTOs to commands for transport-specific input handling",
+        "tags": "mutations, dto, mapping, requests, commands",
+        "codeReferences": "src/Whizbang.Transports.Mutations/Base/MutationEndpointBase.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/mutations/hooks.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Mutation Hooks",
+        "version": "1.0.0",
+        "category": "Mutations",
+        "order": "1",
+        "description": "Pre/post execution hooks for mutation endpoints - validation, logging, notifications, and error handling",
+        "tags": "mutations, hooks, lifecycle, validation, error-handling",
+        "codeReferences": "src/Whizbang.Transports.Mutations/Base/MutationEndpointBase.cs, src/Whizbang.Transports.Mutations/Base/IMutationContext.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/rest/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "REST",
+        "order": "1"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/rest/filtering.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "REST Filtering",
+        "version": "1.0.0",
+        "category": "REST",
+        "order": "2",
+        "description": "Query parameter filtering, sorting, and paging for REST lens endpoints - standard URL patterns for data retrieval",
+        "tags": "rest, filtering, sorting, paging, query-parameters, lensrequest",
+        "codeReferences": "src/Whizbang.Transports.FastEndpoints/Models/LensRequest.cs, src/Whizbang.Transports.FastEndpoints/Endpoints/LensEndpointBase.cs, src/Whizbang.Transports.FastEndpoints/Attributes/RestLensAttribute.cs",
+        "testReferences": "tests/Whizbang.Transports.FastEndpoints.Tests/Unit/LensRequestTests.cs, tests/Whizbang.Transports.FastEndpoints.Tests/Unit/LensEndpointBaseTests.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/rest/mutations.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "REST Mutations",
+        "version": "1.0.0",
+        "category": "REST",
+        "order": "3",
+        "description": "Command endpoints for REST APIs - generated FastEndpoints with customizable hooks for validation, logging, and error handling",
+        "tags": "rest, mutations, commands, fastendpoints, validation, hooks",
+        "codeReferences": "src/Whizbang.Transports.FastEndpoints/Endpoints/RestMutationEndpointBase.cs, src/Whizbang.Transports.Mutations/MutationEndpointBase.cs",
+        "testReferences": "tests/Whizbang.Transports.FastEndpoints.Tests/Unit/RestMutationEndpointBaseTests.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/rest/setup.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "REST API Setup",
+        "version": "1.0.0",
+        "category": "REST",
+        "order": "1",
+        "description": "Configure Whizbang REST endpoints with FastEndpoints - automatic endpoint generation for lenses and mutations",
+        "tags": "rest, fastendpoints, api, setup, lens, mutations",
+        "codeReferences": "src/Whizbang.Transports.FastEndpoints/Extensions/FastEndpointsWhizbangExtensions.cs, src/Whizbang.Transports.FastEndpoints/Endpoints/LensEndpointBase.cs, src/Whizbang.Transports.FastEndpoints/Endpoints/RestMutationEndpointBase.cs",
+        "testReferences": "tests/Whizbang.Transports.FastEndpoints.Tests/Unit/ServiceRegistrationTests.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/signalr/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "SignalR",
+        "order": "4"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/signalr/notification-hooks.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "SignalR Notification Hooks",
+        "version": "1.0.0",
+        "category": "SignalR",
+        "order": "1",
+        "description": "Push real-time notifications via SignalR using Whizbang's message tag system - automatic group routing with placeholder support",
+        "tags": "signalr, notifications, tags, hooks, real-time, groups",
+        "codeReferences": "src/Whizbang.SignalR/Hooks/SignalRNotificationHook.cs, src/Whizbang.Core/Attributes/NotificationTagAttribute.cs, src/Whizbang.Core/Tags/IMessageTagHook.cs",
+        "testReferences": "tests/Whizbang.SignalR.Tests/Hooks/SignalRNotificationHookTests.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/signalr/signalr.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "SignalR Integration",
+        "version": "1.0.0",
+        "category": "Integrations",
+        "order": "1",
+        "description": "Real-time push notifications with ASP.NET Core SignalR - AOT-compatible polymorphic JSON serialization for Whizbang message types",
+        "tags": "signalr, real-time, notifications, websockets, aot, json-serialization",
+        "codeReferences": "src/Whizbang.SignalR/DependencyInjection/SignalRServiceCollectionExtensions.cs, src/Whizbang.SignalR/Hooks/SignalRNotificationHook.cs",
+        "testReferences": "tests/Whizbang.SignalR.Tests/DependencyInjection/SignalRServiceCollectionExtensionsTests.cs, tests/Whizbang.SignalR.Tests/Hooks/SignalRNotificationHookTests.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Data",
+        "order": "5"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/caching.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Caching",
+        "version": "1.0.0",
+        "category": "Components",
+        "order": "8",
+        "description": "Distributed caching with cache invalidation commands and automatic coordination",
+        "tags": "caching, distributed-cache, cache-invalidation, redis",
+        "codeReferences": "src/Whizbang.Core/Commands/ClearCacheCommand.cs, src/Whizbang.Core/Caching/ICacheService.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/dapper-integration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Dapper Integration",
+        "version": "1.0.0",
+        "category": "Data Access",
+        "order": "1",
+        "description": "Lightweight, high-performance data access with Dapper for Whizbang perspectives and lenses - simple SQL, minimal overhead",
+        "tags": "dapper, data-access, postgresql, sql, micro-orm",
+        "codeReferences": "src/Whizbang.Data.Dapper.Postgres/IDbConnectionFactory.cs, src/Whizbang.Data.Dapper.Postgres/PostgresConnectionFactory.cs, samples/ECommerce/ECommerce.BFF.API/Perspectives/OrderSummaryPerspective.cs, samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/drivers.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Drivers Component",
+        "version": "1.0.0",
+        "category": "Components",
+        "order": "8",
+        "description": "Basic in-memory storage driver for development and testing",
+        "tags": "drivers, storage, in-memory, abstraction, v0.1.0"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-integration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "EF Core Integration",
+        "version": "1.0.0",
+        "category": "Data Access",
+        "order": "2",
+        "description": "Full-featured ORM with EF Core 10 for complex domain models - JSONB support, UUIDv7, migrations, and advanced querying",
+        "tags": "ef-core, entity-framework, postgresql, orm, jsonb, uuidv7",
+        "codeReferences": "src/Whizbang.Data.EFCore.Postgres/WhizbangDbContext.cs, samples/ECommerce/ECommerce.Domain/Infrastructure/ECommerceDbContext.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-json-configuration.md",
+      "presentFields": [
+        "title",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "version",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "EF Core 10 JSON Configuration",
+        "category": "Data",
+        "order": "10",
+        "description": "Configuring EF Core 10 with custom JSON converters for JSONB columns",
+        "tags": "efcore, json, jsonb, postgresql, npgsql, converters"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/event-store.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Event Store",
+        "version": "1.0.0",
+        "category": "Data Access",
+        "order": "4",
+        "description": "Event sourcing and stream storage - event streams, replay, checkpoints, snapshots, and temporal queries",
+        "tags": "event-sourcing, event-store, streams, replay, checkpoints, snapshots, postgresql",
+        "codeReferences": "src/Whizbang.Core/EventStore/IEventStore.cs, src/Whizbang.Core/Coordination/IWorkCoordinator.cs, src/Whizbang.Data.Postgres/Schema/event_store.sql"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/perspectives-storage.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspectives Storage",
+        "version": "1.0.0",
+        "category": "Data Access",
+        "order": "3",
+        "description": "Read model schema design for perspectives - denormalization strategies, JSONB columns, indexing, and high-volume partitioning",
+        "tags": "perspectives, read-models, schema-design, denormalization, postgresql, jsonb, partitioning",
+        "codeReferences": "samples/ECommerce/ECommerce.BFF.API/Perspectives/OrderSummaryPerspective.cs, samples/ECommerce/ECommerce.BFF.API/Infrastructure/Migrations/"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/postgres.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "PostgreSQL Data Provider",
+        "version": "1.0.0",
+        "category": "Components",
+        "order": "1",
+        "description": "PostgreSQL data provider for Whizbang applications",
+        "tags": "data, postgres, postgresql, database"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/schema-generation-pattern.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Schema Generation Pattern",
+        "version": "1.0.0",
+        "category": "Data Access",
+        "order": "6",
+        "description": "Database-agnostic schema definitions with ISchemaBuilder for Postgres, SQLite, and custom database engines",
+        "tags": "schema-generation, database, postgres, sqlite, ddl, ef-core, dapper, aot",
+        "codeReferences": "src/Whizbang.Data.Schema/ISchemaBuilder.cs, src/Whizbang.Data.Schema/PostgresSchemaBuilder.cs, src/Whizbang.Data.Schema/TableDefinition.cs, src/Whizbang.Data.Schema/Schemas/InboxSchema.cs, src/Whizbang.Data.Schema/Schemas/OutboxSchema.cs, src/Whizbang.Data.Schema/Schemas/EventStoreSchema.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/schema-migration.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/turnkey-initialization.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/work-coordinator-strategies.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Extending Whizbang",
+        "order": "8"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Attributes",
+        "order": "2"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/generatestreamid.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "GenerateStreamId Attribute",
+        "version": "1.0.0",
+        "category": "Attributes",
+        "order": "3",
+        "description": "Marks an event type or property for automatic StreamId generation at dispatch time, replacing the blunt AutoGenerateStreamIds option with per-event-type control",
+        "tags": "attributes, streamid, event-sourcing, source-generator, auto-generation",
+        "codeReferences": "src/Whizbang.Core/GenerateStreamIdAttribute.cs, src/Whizbang.Generators/StreamIdGenerator.cs, src/Whizbang.Core/Validation/StreamIdGuard.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/streamid.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "StreamId Attribute",
+        "version": "1.0.0",
+        "category": "Attributes",
+        "order": "2",
+        "description": "Marks a property or parameter as the stream identifier for event sourcing, enabling zero-reflection stream ID extraction at compile time",
+        "tags": "attributes, streamid, event-sourcing, source-generator, aggregates",
+        "codeReferences": "src/Whizbang.Core/StreamIdAttribute.cs, src/Whizbang.Generators/StreamIdGenerator.cs, src/Whizbang.Core/StreamIdResolver.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/streamkey.md",
+      "presentFields": [
+        "title",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "version",
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "StreamKey Attribute",
+        "description": "Marks a property as the stream key for event sourcing and perspective event ordering",
+        "category": "Attributes",
+        "tags": "attributes, streamkey, perspectives, event-sourcing, source-generator"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Extensibility",
+        "order": "1"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-dispatchers.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Custom Dispatchers",
+        "version": "1.0.0",
+        "category": "Extensibility",
+        "order": "9",
+        "description": "Implement custom dispatcher patterns - mediator, event sourcing, multi-tenant routing",
+        "tags": "dispatcher, mediator, routing, event-sourcing",
+        "codeReferences": "src/Whizbang.Core/Dispatcher/IDispatcher.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-health-checks.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Custom Health Checks",
+        "version": "1.0.0",
+        "category": "Extensibility",
+        "order": "6",
+        "description": "Implement custom health checks for transports, databases, external APIs, and custom services",
+        "tags": "health-checks, monitoring, kubernetes, readiness, liveness",
+        "codeReferences": "src/Whizbang.Core/Workers/ITransportReadinessCheck.cs, src/Whizbang.Core/Workers/DefaultTransportReadinessCheck.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-id-generators.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Custom ID Generators",
+        "version": "1.0.0",
+        "category": "Extensibility",
+        "order": "8",
+        "description": "Implement custom ID generation strategies - Snowflake IDs, ULID, CUID, or custom schemes",
+        "tags": "id-generation, uuidv7, snowflake, ulid, cuid",
+        "codeReferences": "src/Whizbang.Core/ValueObjects/MessageId.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-perspectives.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Custom Perspectives",
+        "version": "1.0.0",
+        "category": "Extensibility",
+        "order": "3",
+        "description": "Advanced perspective patterns - time-travel, snapshots, caching, batching, and custom storage backends",
+        "tags": "perspectives, read-models, custom-storage, time-travel, snapshots, caching",
+        "codeReferences": "src/Whizbang.Core/IPerspectiveOf.cs, src/Whizbang.Core/Perspectives/IPerspectiveStore.cs, src/Whizbang.Core/Messaging/PerspectiveCheckpointRecord.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-policies.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Custom Policies",
+        "version": "1.0.0",
+        "category": "Extensibility",
+        "order": "5",
+        "description": "Advanced policy patterns - weighted policies, dynamic registration, async evaluation, caching, and A/B testing",
+        "tags": "policies, custom-policy-engine, weighted-policies, async-policies, policy-caching",
+        "codeReferences": "src/Whizbang.Core/Policies/IPolicyEngine.cs, src/Whizbang.Core/Policies/PolicyEngine.cs, src/Whizbang.Core/Policies/PolicyConfiguration.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-receptors.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Custom Receptors",
+        "version": "1.0.0",
+        "category": "Extensibility",
+        "order": "2",
+        "description": "Advanced receptor customization patterns - streaming, lifecycle hooks, base classes, and performance optimization",
+        "tags": "receptors, custom-handlers, streaming, lifecycle, base-classes",
+        "codeReferences": "src/Whizbang.Core/IReceptor.cs, >-"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-serializers.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Custom Serializers",
+        "version": "1.0.0",
+        "category": "Extensibility",
+        "order": "7",
+        "description": "Implement custom serializers for Protobuf, MessagePack, or custom binary formats - AOT-compatible patterns",
+        "tags": "serialization, protobuf, messagepack, aot, json",
+        "codeReferences": "src/Whizbang.Core/Serialization/JsonContextRegistry.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-storage.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Custom Storage",
+        "version": "1.0.0",
+        "category": "Extensibility",
+        "order": "10",
+        "description": "Implement custom storage backends - Redis, MongoDB, Elasticsearch, Cassandra, or custom databases",
+        "tags": "storage, iperspectivestore, custom-backends, redis, mongodb",
+        "codeReferences": "src/Whizbang.Core/Perspectives/IPerspectiveStore.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-transports.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Custom Transports",
+        "version": "1.0.0",
+        "category": "Extensibility",
+        "order": "4",
+        "description": "Implement custom transports for HTTP, gRPC, Kafka, RabbitMQ, or any messaging system - AOT-compatible patterns",
+        "tags": "transports, itransport, custom-implementations, http, grpc, kafka, rabbitmq, serialization",
+        "codeReferences": "src/Whizbang.Core/Transports/ITransport.cs, src/Whizbang.Core/Transports/TransportCapabilities.cs, src/Whizbang.Core/Transports/InProcessTransport.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-work-coordinators.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Custom Work Coordinators",
+        "version": "1.0.0",
+        "category": "Extensibility",
+        "order": "11",
+        "description": "Implement custom work coordination strategies - distributed locks, Redis queues, or custom lease management",
+        "tags": "work-coordination, iworkcoordinator, distributed-locks, redis-queues",
+        "codeReferences": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/database-schema-framework.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Database Schema Framework",
+        "version": "1.0.0",
+        "category": "Extensibility",
+        "order": "11",
+        "description": "Implement database drivers using the Whizbang.Data.Schema framework - database-agnostic table and column definitions for PostgreSQL, SQLite, SQL Server, and custom databases",
+        "tags": "schema, database, drivers, postgresql, sqlite, sqlserver, table-definition, column-definition, whizbang-data-type",
+        "codeReferences": "src/Whizbang.Data.Schema/TableDefinition.cs, src/Whizbang.Data.Schema/ColumnDefinition.cs, src/Whizbang.Data.Schema/IndexDefinition.cs, src/Whizbang.Data.Schema/WhizbangDataType.cs, src/Whizbang.Data.Schema/DefaultValue.cs, src/Whizbang.Data.Schema/DefaultValueFunction.cs, src/Whizbang.Data.Schema/SchemaConfiguration.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/hooks-and-middleware.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Hooks and Middleware",
+        "version": "1.0.0",
+        "category": "Extensibility",
+        "order": "1",
+        "description": "Pipeline behaviors for cross-cutting concerns - logging, validation, retry, caching, and custom pre/post processing",
+        "tags": "extensibility, pipeline-behavior, middleware, hooks, cross-cutting-concerns, aop",
+        "codeReferences": "src/Whizbang.Core/Pipeline/IPipelineBehavior.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/plugin-architecture.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Plugin Architecture",
+        "version": "1.0.0",
+        "category": "Extensibility",
+        "order": "12",
+        "description": "Design plugin systems - dynamic assembly loading, hot-reload, and extension points",
+        "tags": "plugins, dynamic-loading, hot-reload, extensibility"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/features/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Features",
+        "order": "5"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/features/debugger-aware-clock.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Debugger-Aware Clock",
+        "version": "1.0.0",
+        "category": "Features",
+        "order": "1",
+        "description": "Timeout handling that respects debugging sessions and breakpoints",
+        "tags": "debugger, clock, timeout, stopwatch, diagnostics"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/features/vector-search.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Vector Search",
+        "version": "1.0.0",
+        "category": "Features",
+        "order": "2",
+        "description": "pgvector similarity search with automatic configuration",
+        "tags": "vector, pgvector, embeddings, similarity, AI, ML"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/internals/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Internals",
+        "order": "4"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/internals/json-serialization-customizations.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "JSON Serialization Customizations",
+        "version": "1.0.0",
+        "category": "Internals",
+        "order": "1",
+        "description": "Custom JSON converters and type handling for AOT-compatible serialization, including database-specific edge cases and array type discovery",
+        "tags": "json, serialization, aot, converters, postgresql, datetime",
+        "codeReferences": "src/Whizbang.Core/Serialization/LenientDateTimeOffsetConverter.cs, src/Whizbang.Generators/ArrayTypeInfo.cs, src/Whizbang.Generators/MessageJsonContextGenerator.cs, src/Whizbang.Generators/Templates/Snippets/JsonContextSnippets.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Message Lifecycle & Architecture",
+        "version": "1.0.0",
+        "category": "Architecture",
+        "order": "1",
+        "description": "Complete guide to message flow through Whizbang - Commands, Events, Work Coordinator, and all the hooks between Dispatcher, Receptors, Perspectives, and Outbox/Inbox",
+        "tags": "architecture, message-lifecycle, command-flow, event-flow, work-coordinator, sequence-diagrams",
+        "codeReferences": "src/Whizbang.Core/Dispatcher.cs, src/Whizbang.Core/IDispatcher.cs, src/Whizbang.Core/Messaging/IWorkCoordinator.cs, src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs, src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs, src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs, src/Whizbang.Core/Streams/OrderedStreamProcessor.cs, src/Whizbang.Data.Postgres/Messaging/DapperWorkCoordinator.cs, src/Whizbang.Data.EFCore.Postgres/Messaging/EFCoreWorkCoordinator.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Source Generators",
+        "order": "3"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/aggregate-ids.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Aggregate IDs",
+        "version": "1.0.0",
+        "category": "Source Generators",
+        "order": "4",
+        "description": "Zero-reflection aggregate ID extraction for PolicyContext - compile-time discovery of [AggregateId] marked properties",
+        "tags": "source-generators, aggregate-ids, policy-context, zero-reflection, compile-time, uuidv7",
+        "codeReferences": "src/Whizbang.Generators/AggregateIdGenerator.cs, src/Whizbang.Core/Policies/PolicyContext.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/attribute-utilities.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Attribute Utilities",
+        "version": "1.0.0",
+        "category": "Source Generators",
+        "order": "10",
+        "description": "Shared utilities for extracting attribute values in Roslyn source generators - supports named arguments, constructor arguments, and mixed syntax",
+        "tags": "source-generators, attributes, roslyn, aot, compile-time, utilities",
+        "codeReferences": "src/Whizbang.Generators.Shared/Utilities/AttributeUtilities.cs, src/Whizbang.Generators/MessageTagDiscoveryGenerator.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/configuration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Configuration",
+        "version": "1.0.0",
+        "category": "Source Generators",
+        "order": "8",
+        "description": "MSBuild property configuration for source generators - table naming, suffix stripping, and other compile-time options",
+        "tags": "source-generators, configuration, msbuild, table-naming, suffix-stripping, compile-time",
+        "codeReferences": "src/Whizbang.Generators.Shared/Utilities/ConfigurationUtilities.cs, src/Whizbang.Generators.Shared/Models/TableNameConfig.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/json-contexts.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "JSON Contexts",
+        "version": "1.0.0",
+        "category": "Source Generators",
+        "order": "5",
+        "description": "AOT-compatible JSON serialization with compile-time JsonSerializerContext generation - zero reflection for Native AOT",
+        "tags": "source-generators, json, serialization, aot, native-aot, system-text-json, zero-reflection",
+        "codeReferences": "src/Whizbang.Generators/MessageJsonContextGenerator.cs, src/Whizbang.Core/Serialization/WhizbangJsonContext.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/message-registry.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Message Registry",
+        "version": "1.0.0",
+        "category": "Source Generators",
+        "order": "3",
+        "description": "VSCode extension integration via compile-time message registry - navigate from messages to handlers with IDE tooling",
+        "tags": "source-generators, vscode, tooling, message-registry, code-navigation, ide-integration",
+        "codeReferences": "src/Whizbang.Generators/MessageRegistryGenerator.cs, tools/vscode-extension/src/staticAnalysis/messageRegistry.ts"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/perspective-discovery.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspective Discovery",
+        "version": "1.0.0",
+        "category": "Source Generators",
+        "order": "2",
+        "description": "Compile-time perspective discovery for event-driven read models - zero reflection registration and Event Store integration",
+        "tags": "source-generators, perspectives, read-models, events, roslyn, compile-time, zero-reflection",
+        "codeReferences": "src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs, src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/polymorphic-serialization.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Polymorphic Serialization",
+        "version": "1.0.0",
+        "category": "Source Generators",
+        "order": "6",
+        "description": "Automatic polymorphic JSON serialization without explicit [JsonPolymorphic] attributes - type discriminators generated at compile-time for base classes and interfaces",
+        "tags": "source-generators, json, serialization, polymorphic, inheritance, aot, native-aot, type-discriminator",
+        "codeReferences": "src/Whizbang.Generators/MessageJsonContextGenerator.cs, src/Whizbang.Generators/InheritanceInfo.cs, src/Whizbang.Generators/PolymorphicTypeInfo.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/receptor-discovery.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Receptor Discovery",
+        "version": "1.0.0",
+        "category": "Source Generators",
+        "order": "1",
+        "description": "Compile-time receptor discovery with Roslyn source generators - zero reflection, AOT-compatible message routing",
+        "tags": "source-generators, receptors, roslyn, compile-time, zero-reflection, aot",
+        "codeReferences": "src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs, src/Whizbang.Generators/Templates/DispatcherTemplate.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/topic-filter-discovery.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Topic Filter Discovery",
+        "version": "1.0.0",
+        "category": "Source Generators",
+        "order": "6",
+        "description": "Compile-time topic filter discovery with Roslyn source generators - type-safe, zero-reflection message routing configuration",
+        "tags": "source-generators, topic-filters, roslyn, compile-time, zero-reflection, aot, routing",
+        "codeReferences": "src/Whizbang.Generators/TopicFilterGenerator.cs, src/Whizbang.Core/TopicFilterAttribute.cs, src/Whizbang.Core/TopicFilterAttribute{TEnum}.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Fundamentals",
+        "order": "3"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Dispatcher",
+        "order": "2"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Dispatcher Deep Dive",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "1",
+        "description": "Master the Whizbang Dispatcher - three dispatch patterns (SendAsync, LocalInvokeAsync, PublishAsync) for commands, queries, and events",
+        "tags": "dispatcher, messaging, commands, events, patterns",
+        "codeReferences": "src/Whizbang.Core/IDispatcher.cs, src/Whizbang.Core/Dispatcher.cs, samples/ECommerce/ECommerce.BFF.API/Endpoints/OrderEndpoints.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/rpc-extraction.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "RPC Response Extraction",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "18",
+        "description": "RPC response extraction, discriminated unions, and RoutedNone in Whizbang receptors.",
+        "tags": "rpc, extraction, discriminated-unions, routed-none",
+        "codeReferences": "src/Whizbang.Core/Dispatch/Route.cs, src/Whizbang.Core/Dispatch/Routed.cs, src/Whizbang.Core/Internal/ResponseExtractor.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Events",
+        "order": "1"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/event-store-query.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Event Store Query",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "10",
+        "description": "Query raw events in the event store with full LINQ support and automatic scope filtering",
+        "tags": "events, query, linq, ef-core, multi-tenancy",
+        "codeReferences": "src/Whizbang.Core/Messaging/IEventStoreQuery.cs, src/Whizbang.Core/Messaging/IFilterableEventStoreQuery.cs, src/Whizbang.Core/Messaging/IScopedEventStoreQuery.cs, src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableEventStoreQuery.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/event-store.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/event-streams.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Event Streams",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "13",
+        "description": "Event streams and StreamId value object for organizing events by aggregate in Whizbang.",
+        "tags": "event-streams, stream-id, event-sourcing, aggregates",
+        "codeReferences": "src/Whizbang.Core/ValueObjects/StreamId.cs, src/Whizbang.Core/Messaging/IEventStore.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/events.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Events",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "11",
+        "description": "Event definition, EventId value object, and event design patterns in Whizbang.",
+        "tags": "events, event-sourcing, eventid, immutability",
+        "codeReferences": "src/Whizbang.Core/IEvent.cs, src/Whizbang.Core/ValueObjects/EventId.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Ledger Component",
+        "version": "1.0.0",
+        "category": "Components",
+        "order": "7",
+        "description": "In-memory event store with basic append and read operations",
+        "tags": "ledger, event-store, events, in-memory, v0.1.0"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/stream-id.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Stream ID",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "12",
+        "description": "IHasStreamId interface and automatic stream ID generation for event streams in Whizbang.",
+        "tags": "stream-id, events, event-sourcing, auto-generation",
+        "codeReferences": "src/Whizbang.Core/IHasStreamId.cs, src/Whizbang.Core/ValueObjects/StreamId.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "System Events",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "8",
+        "description": "Internal events emitted by Whizbang for observability, auditing, and diagnostics - isolated from domain events in dedicated system stream",
+        "tags": "system-events, audit, monitoring, observability, diagnostics, security, compliance",
+        "codeReferences": "src/Whizbang.Core/SystemEvents/ISystemEvent.cs, src/Whizbang.Core/SystemEvents/SystemEventEmitter.cs, src/Whizbang.Core/SystemEvents/ISystemEventEmitter.cs, src/Whizbang.Core/SystemEvents/SystemEventOptions.cs, src/Whizbang.Core/SystemEvents/SystemEventTransportFilter.cs, src/Whizbang.Core/SystemEvents/SystemEventStream.cs, src/Whizbang.Core/SystemEvents/EventAudited.cs, src/Whizbang.Core/SystemEvents/CommandAudited.cs, src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs, src/Whizbang.Core/SystemEvents/AuditingEventStoreDecorator.cs, src/Whizbang.Core/SystemEvents/Security/ScopeContextEstablished.cs, src/Whizbang.Core/SystemEvents/Security/PermissionChanged.cs, src/Whizbang.Core/SystemEvents/Security/AccessGranted.cs, src/Whizbang.Core/SystemEvents/Security/AccessDenied.cs, tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterTests.cs, tests/Whizbang.Core.Tests/SystemEvents/SystemEventTransportFilterTests.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/identity/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Identity & Types",
+        "order": "8"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/identity/assembly-registry.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Assembly Registry",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "25",
+        "description": "AssemblyRegistry for multi-assembly contribution registration in Whizbang.",
+        "tags": "assembly-registry, multi-assembly, module-initializer, aot",
+        "codeReferences": "src/Whizbang.Core/Registry/AssemblyRegistry.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/identity/fuzzy-matching.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/identity/time-provider.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Time Provider",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "30",
+        "description": "ITimeProvider and SystemTimeProvider for testable time operations in Whizbang applications.",
+        "tags": "time, testing, dependency-injection, aot",
+        "codeReferences": "src/Whizbang.Core/ITimeProvider.cs, src/Whizbang.Core/SystemTimeProvider.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/identity/type-formatting.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/identity/type-matching.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/identity/type-qualification.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/identity/whizbang-ids.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lenses/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Lenses",
+        "order": "6"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lenses/lens-query-factory.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Lens Query Factory",
+        "version": "1.0.0",
+        "category": "Lenses",
+        "order": "2",
+        "description": "Thread-safe DbContext management for parallel GraphQL resolvers and cross-model joins",
+        "tags": "lenses, factory, dbcontext, thread-safety, graphql, hotchocolate",
+        "codeReferences": "src/Whizbang.Core/Lenses/ILensQueryFactory.cs, src/Whizbang.Core/Lenses/FactoryOwnedLensQuery.cs, src/Whizbang.Data.EFCore.Postgres/ScopedDbContextFactory.cs, src/Whizbang.Data.EFCore.Postgres/EFCoreLensQueryFactory.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lenses/lenses.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Lenses Guide",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "4",
+        "description": "Master Whizbang Lenses - query-optimized repositories for fast, efficient access to read models maintained by Perspectives",
+        "tags": "lenses, queries, read-models, repositories, cqrs",
+        "codeReferences": "src/Whizbang.Core/ILensQuery.cs, samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs, samples/ECommerce/ECommerce.BFF.API/Lenses/InventoryLens.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lenses/multi-model-queries.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Multi-Model Queries",
+        "version": "1.0.0",
+        "category": "Lenses",
+        "order": "4",
+        "description": "LINQ joins across multiple perspective types using ILensQuery<T1, T2, ...> with shared DbContext",
+        "tags": "lenses, multi-model, joins, linq, graphql, hotchocolate",
+        "codeReferences": "src/Whizbang.Core/Lenses/ILensQuery.cs, src/Whizbang.Data.EFCore.Postgres/EFCorePostgresLensQuery.cs, src/Whizbang.Data.EFCore.Postgres/EFCoreInfrastructureRegistration.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lenses/raw-sql.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lenses/scoped-lenses.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Scoped Lenses",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "5",
+        "description": "Scoped lens queries and factories for tenant-isolated, user-scoped, and permission-based data access with automatic WHERE clause generation",
+        "tags": "lenses, scoping, multi-tenancy, security, queries, cqrs",
+        "codeReferences": "src/Whizbang.Core/Lenses/IScopedLensFactory.cs, src/Whizbang.Core/Lenses/ScopedLensFactory.cs, src/Whizbang.Core/Lenses/ScopedLensQuery.cs, src/Whizbang.Core/Lenses/ScopeDefinition.cs, src/Whizbang.Core/Lenses/LensOptions.cs, src/Whizbang.Core/Lenses/FilterMode.cs, src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableLensQuery.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lenses/scoped-queries.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Scoped Lens Queries",
+        "version": "1.0.0",
+        "category": "Lenses",
+        "order": "3",
+        "description": "Auto-scoping lens queries for singleton services, background workers, and batch operations",
+        "tags": "lenses, scoped, singleton, background-worker, batch",
+        "codeReferences": "src/Whizbang.Core/Lenses/IScopedLensQuery.cs, src/Whizbang.Core/Lenses/ScopedLensQuery.cs, src/Whizbang.Core/Lenses/LensQueryFactory.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lenses/temporal-query.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Temporal Lens Queries",
+        "version": "1.0.0",
+        "category": "Lenses",
+        "order": "4",
+        "description": "Time-travel queries, history tracking, and activity feeds for temporal (append-only) perspectives",
+        "tags": "lenses, temporal, history, time-travel, activity-feed, audit",
+        "codeReferences": "src/Whizbang.Core/Lenses/ITemporalLensQuery.cs, src/Whizbang.Core/Lenses/TemporalPerspectiveRow.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lenses/vector-search.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Lifecycle",
+        "order": "7"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-coordinator.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Lifecycle Coordinator",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "11",
+        "description": "Centralized lifecycle management for event processing - guarantees each stage fires exactly once per event, tracks live events, and coordinates multi-path completion via the WhenAll pattern",
+        "tags": "lifecycle, coordinator, tracking, PostLifecycle, WhenAll, pipeline",
+        "codeReferences": "src/Whizbang.Core/Lifecycle/ILifecycleCoordinator.cs, src/Whizbang.Core/Lifecycle/LifecycleCoordinator.cs, src/Whizbang.Core/Lifecycle/ILifecycleTracking.cs, src/Whizbang.Core/Lifecycle/LifecycleTrackingState.cs, src/Whizbang.Core/Lifecycle/DebugAwareStopwatch.cs, src/Whizbang.Core/Lifecycle/StageRecord.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Lifecycle Stages",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "9",
+        "description": "Complete reference for all lifecycle stages in Whizbang message processing pipeline - timing, guarantees, and use cases",
+        "tags": "lifecycle, stages, hooks, message-processing, timing, coordinator",
+        "codeReferences": "src/Whizbang.Core/Messaging/LifecycleStage.cs, src/Whizbang.Core/Messaging/IReceptorInvoker.cs, src/Whizbang.Core/Messaging/IReceptorRegistry.cs, src/Whizbang.Core/Lifecycle/ILifecycleCoordinator.cs, src/Whizbang.Core/Lifecycle/ILifecycleTracking.cs, src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Lifecycle Management",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "25",
+        "description": "System lifecycle management commands - pause/resume processing for coordinated maintenance operations",
+        "tags": "lifecycle, system-commands, maintenance, pause, resume",
+        "codeReferences": "src/Whizbang.Core/Commands/System/SystemCommands.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Messages",
+        "order": "3"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/delivery-receipts.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Delivery Receipts",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "20",
+        "description": "Delivery receipts, stream ID extraction, and message tracking in Whizbang.",
+        "tags": "delivery-receipts, stream-id, extraction, tracking, aot",
+        "codeReferences": "src/Whizbang.Core/IDeliveryReceipt.cs, src/Whizbang.Core/IStreamIdExtractor.cs, src/Whizbang.Core/StreamIdExtractor.cs, src/Whizbang.Core/Registry/StreamIdExtractorRegistry.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/envelope-registry.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Envelope Registry",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "22",
+        "description": "IEnvelopeRegistry for tracking message envelopes by payload reference in Whizbang.",
+        "tags": "envelope, registry, message-tracking, observability",
+        "codeReferences": "src/Whizbang.Core/Observability/IEnvelopeRegistry.cs, src/Whizbang.Core/Observability/EnvelopeRegistry.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/envelope-serialization.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Envelope Serialization",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "23",
+        "description": "EnvelopeSerializer and SerializedEnvelope for AOT-compatible envelope serialization in Whizbang.",
+        "tags": "envelope, serialization, aot, json",
+        "codeReferences": "src/Whizbang.Core/Messaging/EnvelopeSerializer.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-associations.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Message Associations",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "24",
+        "description": "MessageAssociationRecord and MessageAssociationsSchema for tracking message-to-consumer mappings in Whizbang.",
+        "tags": "message-associations, perspectives, receptors, discovery",
+        "codeReferences": "src/Whizbang.Core/Messaging/MessageAssociationRecord.cs, src/Whizbang.Data.Schema/Schemas/MessageAssociationsSchema.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Message Context & Tracing",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "5",
+        "description": "Track message flow across distributed systems with MessageId, CorrelationId, and CausationId - automatic distributed tracing built into Whizbang",
+        "tags": "message-context, correlation, causation, distributed-tracing, observability",
+        "codeReferences": "src/Whizbang.Core/ValueObjects/MessageId.cs, src/Whizbang.Core/ValueObjects/CorrelationId.cs, src/Whizbang.Core/ValueObjects/CausationId.cs, src/Whizbang.Core/Observability/MessageEnvelope.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Message Tags",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "10",
+        "description": "Declarative cross-cutting concerns via message tag attributes and hooks - notifications, telemetry, metrics, and audit logging without polluting business logic",
+        "tags": "tags, attributes, hooks, notifications, telemetry, metrics, cross-cutting",
+        "codeReferences": "src/Whizbang.Core/Tags/MessageTagProcessor.cs, src/Whizbang.Core/Tags/IMessageTagProcessor.cs, src/Whizbang.Core/Tags/MessageTagRegistry.cs, src/Whizbang.Core/Tags/IMessageTagRegistry.cs, src/Whizbang.Core/Tags/MessageTagRegistration.cs, src/Whizbang.Core/Tags/TagOptions.cs, src/Whizbang.Core/Tags/TagContext.cs, src/Whizbang.Core/Tags/IMessageTagHook.cs, src/Whizbang.Core/Tags/IMessageTagHookDispatcher.cs, src/Whizbang.Core/Tags/MessageTagHookDispatcherRegistry.cs, src/Whizbang.Core/Attributes/MessageTagAttribute.cs, src/Whizbang.Core/Attributes/NotificationTagAttribute.cs, src/Whizbang.Core/Attributes/TelemetryTagAttribute.cs, src/Whizbang.Core/Attributes/MetricTagAttribute.cs, src/Whizbang.Generators/MessageTagDiscoveryGenerator.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/messages.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Messages",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "5",
+        "description": "IMessage interface - the base marker interface for all message types in Whizbang.",
+        "tags": "messages, commands, events, queries, marker-interface",
+        "codeReferences": "src/Whizbang.Core/IMessage.cs, src/Whizbang.Core/ICommand.cs, src/Whizbang.Core/IEvent.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Persistence",
+        "order": "10"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Observability & Message Hops",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "6",
+        "description": "Understand Whizbang's hop-based observability architecture - MessageEnvelope and MessageHop for distributed tracing and debugging",
+        "tags": "observability, message-hops, distributed-tracing, debugging, telemetry",
+        "codeReferences": "src/Whizbang.Core/Observability/MessageEnvelope.cs, src/Whizbang.Core/Observability/MessageHop.cs, src/Whizbang.Core/Policies/PolicyDecisionTrail.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/persistence.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Persistence",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "12",
+        "description": "Configure how events are persisted by receptors using persistence modes and per-receptor strategies for optimal throughput, consistency, and reliability.",
+        "tags": "persistence, event-sourcing, batching, outbox, configuration",
+        "codeReferences": "src/Whizbang.Core/Persistence/PersistenceMode.cs, src/Whizbang.Core/Attributes/PersistenceStrategyAttribute.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspectives",
+        "order": "5"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/association-info.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category"
+      ],
+      "missingFields": [
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "PerspectiveAssociationInfo",
+        "version": "1.0.0",
+        "category": "Perspectives"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/association-metadata.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspective Association Info",
+        "version": "1.0.0",
+        "category": "Perspectives",
+        "order": "4",
+        "description": "Type metadata linking perspectives to their models and tracked types for source generator discovery",
+        "tags": "perspectives, association, metadata, source-generators, registration",
+        "codeReferences": "src/Whizbang.Core/Perspectives/PerspectiveAssociationInfo.cs, src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/event-completion.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Event Completion Awaiter",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "5",
+        "description": "Wait for events to be fully processed by ALL perspectives before returning from RPC calls - ensures complete processing before response",
+        "tags": "perspectives, synchronization, event-completion, rpc, waiting, local-invoke, dispatch-options, all-perspectives",
+        "codeReferences": "src/Whizbang.Core/Perspectives/Sync/IEventCompletionAwaiter.cs, src/Whizbang.Core/Perspectives/Sync/EventCompletionAwaiter.cs, src/Whizbang.Core/Perspectives/Sync/ISyncEventTracker.cs, src/Whizbang.Core/Perspectives/Sync/SyncEventTracker.cs, src/Whizbang.Core/Dispatch/DispatchOptions.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/multi-stream.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Multi-Stream Perspectives",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "1",
+        "description": "IGlobalPerspectiveFor pattern for aggregating events across multiple streams using partition keys - inspired by Marten's MultiStreamProjection",
+        "tags": "perspectives, multi-stream, global-perspectives, partition-key, cross-stream, aggregation, read-models, marten",
+        "codeReferences": "src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspective Synchronization",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "4",
+        "description": "Read-your-writes consistency for perspectives - wait for perspective updates before querying to ensure handlers see their own changes",
+        "tags": "perspectives, synchronization, read-your-writes, consistency, lenses, sync, awaiter, debugger-aware",
+        "codeReferences": "src/Whizbang.Core/Perspectives/Sync/SyncFilter.cs, src/Whizbang.Core/Perspectives/Sync/IPerspectiveSyncAwaiter.cs, src/Whizbang.Core/Perspectives/Sync/PerspectiveSyncAwaiter.cs, src/Whizbang.Core/Perspectives/Sync/PerspectiveSyncOptions.cs, src/Whizbang.Core/Perspectives/Sync/SyncInquiry.cs, src/Whizbang.Core/Perspectives/Sync/SyncInquiryResult.cs, src/Whizbang.Core/Perspectives/Sync/IScopedEventTracker.cs, src/Whizbang.Core/Perspectives/Sync/ISyncEventTracker.cs, src/Whizbang.Core/Perspectives/Sync/SyncEventTracker.cs, src/Whizbang.Core/Perspectives/Sync/ITrackedEventTypeRegistry.cs, src/Whizbang.Core/Perspectives/Sync/TrackedEventTypeRegistry.cs, src/Whizbang.Core/Perspectives/Sync/IEventCompletionAwaiter.cs, src/Whizbang.Core/Perspectives/Sync/EventCompletionAwaiter.cs, src/Whizbang.Core/Lenses/ISyncAwareLensQuery.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspectives Guide",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "3",
+        "description": "Master Whizbang Perspectives - pure function event handlers that maintain eventually consistent read models optimized for queries",
+        "tags": "perspectives, read-models, cqrs, eventual-consistency, event-driven, pure-functions, streamkey",
+        "codeReferences": "src/Whizbang.Core/Perspectives/IPerspectiveFor.cs, src/Whizbang.Core/StreamKeyAttribute.cs, >-"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/physical-fields.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category"
+      ],
+      "missingFields": [
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Physical Fields",
+        "version": "1.0.0",
+        "category": "Perspectives"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/polymorphic-discriminator.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category"
+      ],
+      "missingFields": [
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Polymorphic Discriminator",
+        "version": "1.0.0",
+        "category": "Perspectives"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/polymorphic-types.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category"
+      ],
+      "missingFields": [
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Polymorphic Types in Perspectives",
+        "version": "1.0.0",
+        "category": "Perspectives"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/rebuild.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspective Rebuild",
+        "version": "1.0.0",
+        "category": "Perspectives",
+        "order": "10",
+        "description": "Rebuild perspective read models using blue-green, in-place, or stream-level replay modes with progress tracking and cancellation",
+        "tags": "perspectives, rebuild, blue-green, event-replay, migration, read-models, operational",
+        "codeReferences": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs, src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs, src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs, src/Whizbang.Core/Commands/System/SystemCommands.cs, src/Whizbang.Core/Events/System/SystemEvents.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/registry.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/sync.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category"
+      ],
+      "missingFields": [
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspective Sync",
+        "version": "1.0.0",
+        "category": "Perspectives"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/table-naming.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/temporal.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/typed-associations.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/vector-fields.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category"
+      ],
+      "missingFields": [
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Vector Fields",
+        "version": "1.0.0",
+        "category": "Perspectives"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Receptors",
+        "order": "4"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Lifecycle Receptors",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "10",
+        "description": "Complete API reference for lifecycle receptors - [FireAt] attribute, ILifecycleContext injection, compile-time vs runtime registration, and AOT-compatible patterns",
+        "tags": "lifecycle, receptors, FireAt, attributes, ILifecycleContext, AOT, source-generators",
+        "codeReferences": "src/Whizbang.Core/Messaging/FireAtAttribute.cs, src/Whizbang.Core/Messaging/ILifecycleContext.cs, src/Whizbang.Core/Messaging/ILifecycleReceptorRegistry.cs, src/Whizbang.Core/Messaging/IReceptorInvoker.cs, src/Whizbang.Core/Messaging/IReceptorRegistry.cs, src/Whizbang.Core/Messaging/ReceptorInvoker.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Receptors Guide",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "2",
+        "description": "Master Whizbang Receptors - stateless message handlers that encapsulate business logic, validation, and decision-making",
+        "tags": "receptors, message-handlers, business-logic, validation",
+        "codeReferences": "src/Whizbang.Core/IReceptor.cs, src/Whizbang.Core/ISyncReceptor.cs, >-"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Security",
+        "order": "9"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/audit-logging.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Audit Logging",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "7",
+        "description": "Implement compliance-ready audit logging using Whizbang's System Events - capture who changed what, when, and why",
+        "tags": "audit, compliance, logging, system-events, perspectives, security, gdpr, sox",
+        "codeReferences": "src/Whizbang.Core/SystemEvents/ISystemEvent.cs, src/Whizbang.Core/SystemEvents/EventAudited.cs, src/Whizbang.Core/SystemEvents/CommandAudited.cs, src/Whizbang.Core/SystemEvents/SystemEventStreams.cs, src/Whizbang.Core/Audit/AuditLogEntry.cs, src/Whizbang.Core/Audit/CommandAuditEntry.cs, src/Whizbang.Core/Audit/AuditLevel.cs, src/Whizbang.Core/Attributes/AuditEventAttribute.cs, tests/Whizbang.Core.Tests/SystemEvents/EventAuditedTests.cs, tests/Whizbang.Core.Tests/SystemEvents/CommandAuditedTests.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/implementing-multi-tenancy.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/message-security.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/multi-tenancy.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Multi-Tenancy Patterns",
+        "version": "1.0.0",
+        "category": "Advanced Topics",
+        "order": "4",
+        "description": "Multi-tenancy architecture patterns - database-per-tenant, schema-per-tenant, row-level security",
+        "tags": "multi-tenancy, saas, database-per-tenant, row-level-security, isolation"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/scope-propagation.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Scope Propagation",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "8",
+        "description": "Delta-based scope propagation across message hops with explicit tenant strategy enforcement for system and impersonation operations.",
+        "tags": "security, scope, tenant, multi-tenancy, system-operations, impersonation, delta, wire-format"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/scoping.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "description"
+      ],
+      "missingFields": [
+        "order",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Scoping",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "description": "Multi-tenancy and data isolation through composable scope filters, enabling tenant, user, organization, and principal-based access patterns."
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/security-context-propagation.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Security Context Propagation",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "7",
+        "description": "End-to-end security context flow across service boundaries, from HTTP requests through message processing, with automatic propagation and audit trails.",
+        "tags": "security, message-security, scoping, distributed-systems, audit, context-propagation"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/security.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Security",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "6",
+        "description": "Comprehensive security system for Whizbang applications - permissions, roles, scope context, security principals, row-level and column-level security, data masking, and EF Core integration for principal-based filtering.",
+        "tags": "security, permissions, roles, rbac, abac, scope-context, principals, row-level-security, column-level-security, masking"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/getting-started/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Getting Started",
+        "order": "1"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/getting-started/installation.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Installation Guide",
+        "version": "1.0.0",
+        "category": "Getting Started",
+        "order": "2",
+        "description": "Install Whizbang and set up your first project with NuGet packages, project templates, and IDE configuration",
+        "tags": "installation, setup, nuget, project-templates",
+        "codeReferences": "Directory.Build.props, Directory.Packages.props"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/getting-started/introduction.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Introduction to Whizbang",
+        "version": "1.0.0",
+        "category": "Getting Started",
+        "order": "1",
+        "description": "Learn about Whizbang - a zero-reflection, AOT-compatible .NET library for building event-driven, CQRS, and event-sourced applications",
+        "tags": "introduction, overview, philosophy, getting-started",
+        "codeReferences": "src/Whizbang.Core/IDispatcher.cs, src/Whizbang.Core/IReceptor.cs, src/Whizbang.Core/IPerspectiveOf.cs, README.md"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/getting-started/project-structure.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Project Structure Guide",
+        "version": "1.0.0",
+        "category": "Getting Started",
+        "order": "4",
+        "description": "Organize your Whizbang application with recommended project structures, separation of concerns, and multi-service architectures",
+        "tags": "project-structure, architecture, organization, best-practices",
+        "codeReferences": "samples/ECommerce/, samples/ECommerce/ECommerce.Messages/, samples/ECommerce/ECommerce.OrderService.API/, samples/ECommerce/ECommerce.BFF.API/"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/getting-started/quick-start.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Quick Start Tutorial",
+        "version": "1.0.0",
+        "category": "Getting Started",
+        "order": "3",
+        "description": "Build your first Whizbang application in 10 minutes - create messages, receptors, and dispatch commands with complete working examples",
+        "tags": "quick-start, tutorial, beginner, hello-world",
+        "codeReferences": "samples/ECommerce/ECommerce.Messages/Commands/CreateOrder.cs, >-"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Learn",
+        "order": "2"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/examples/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Examples",
+        "order": "2"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/examples/event-sourcing-cqrs.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Event Sourcing & CQRS",
+        "version": "1.0.0",
+        "category": "Customization Examples",
+        "order": "2",
+        "description": "Implement full event sourcing with CQRS - event store, snapshots, temporal queries, and projections",
+        "tags": "event-sourcing, cqrs, event-store, snapshots, temporal-queries"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/examples/microservices-orchestration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Microservices Orchestration",
+        "version": "1.0.0",
+        "category": "Customization Examples",
+        "order": "3",
+        "description": "Implement saga orchestration patterns - distributed workflows, compensation, and process managers",
+        "tags": "sagas, orchestration, process-managers, distributed-workflows, compensation"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/examples/multi-tenant-saas.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Multi-Tenant SaaS",
+        "version": "1.0.0",
+        "category": "Customization Examples",
+        "order": "1",
+        "description": "Build multi-tenant SaaS applications with tenant isolation, per-tenant databases, and cross-tenant analytics",
+        "tags": "multi-tenancy, saas, tenant-isolation, database-per-tenant"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/examples/real-time-analytics.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Real-Time Analytics",
+        "version": "1.0.0",
+        "category": "Customization Examples",
+        "order": "4",
+        "description": "Build real-time analytics dashboards - streaming metrics, SignalR updates, and live KPIs",
+        "tags": "real-time, analytics, signalr, streaming, dashboards, websockets"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Tutorial",
+        "order": "1"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/analytics-service.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Analytics Service",
+        "version": "1.0.0",
+        "category": "Tutorial",
+        "order": "8",
+        "description": "Build the Analytics Worker - real-time analytics, time-series perspectives, and reporting dashboards",
+        "tags": "tutorial, analytics-service, perspectives, time-series, reporting, dashboards"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/customer-service.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Customer Service (BFF)",
+        "version": "1.0.0",
+        "category": "Tutorial",
+        "order": "7",
+        "description": "Build the Customer Service BFF - perspectives, read models, CQRS query side, and GraphQL API",
+        "tags": "tutorial, customer-service, bff, perspectives, cqrs, read-models"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/deployment.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Deployment",
+        "version": "1.0.0",
+        "category": "Tutorial",
+        "order": "10",
+        "description": "Deploy to production - Azure Kubernetes Service, CI/CD pipelines, monitoring, and scaling",
+        "tags": "tutorial, deployment, kubernetes, azure, cicd, monitoring"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/inventory-service.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Inventory Service",
+        "version": "1.0.0",
+        "category": "Tutorial",
+        "order": "3",
+        "description": "Build the Inventory Worker - event subscription, stock reservations, compensation, and perspectives",
+        "tags": "tutorial, inventory-service, event-driven, perspectives, compensation"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/notification-service.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Notification Service",
+        "version": "1.0.0",
+        "category": "Tutorial",
+        "order": "5",
+        "description": "Build the Notification Worker - email/SMS notifications, template rendering, and delivery tracking",
+        "tags": "tutorial, notification-service, email, sms, event-driven"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/order-management.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Order Management Service",
+        "version": "1.0.0",
+        "category": "Tutorial",
+        "order": "2",
+        "description": "Build the Order Service - HTTP API, command handling, event publishing, and PostgreSQL persistence",
+        "tags": "tutorial, order-service, commands, events, http-api"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/payment-processing.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Payment Processing Service",
+        "version": "1.0.0",
+        "category": "Tutorial",
+        "order": "4",
+        "description": "Build the Payment Worker - payment gateway integration, distributed transactions, and compensation",
+        "tags": "tutorial, payment-service, distributed-transactions, saga-pattern, compensation"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/shipping-service.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Shipping Service",
+        "version": "1.0.0",
+        "category": "Tutorial",
+        "order": "6",
+        "description": "Build the Shipping Worker - carrier API integration, shipment creation, tracking, and status updates",
+        "tags": "tutorial, shipping-service, carrier-api, tracking, event-driven"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/testing-strategy.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Testing Strategy",
+        "version": "1.0.0",
+        "category": "Tutorial",
+        "order": "9",
+        "description": "Comprehensive testing strategy - unit tests, integration tests, e2e tests, mocks, and fixtures",
+        "tags": "tutorial, testing, unit-tests, integration-tests, e2e-tests, tunit"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/tutorial-overview.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "ECommerce Tutorial Overview",
+        "version": "1.0.0",
+        "category": "Tutorial",
+        "order": "1",
+        "description": "Build a complete e-commerce system with Whizbang - microservices, event sourcing, CQRS, and distributed messaging",
+        "tags": "tutorial, ecommerce, microservices, event-sourcing, cqrs, distributed-systems"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Messaging",
+        "order": "4"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/commands-events.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/failure-handling.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/idempotency-patterns.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/inbox-pattern.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Inbox Pattern",
+        "version": "1.0.0",
+        "category": "Messaging",
+        "order": "2",
+        "description": "Achieve exactly-once message processing with the Inbox Pattern - automatic deduplication and idempotent message handling",
+        "tags": "inbox, exactly-once, deduplication, idempotency, message-processing",
+        "codeReferences": "src/Whizbang.Core/WorkCoordination/IWorkCoordinator.cs, src/Whizbang.Data.Postgres/WorkCoordination/PostgresWorkCoordinator.cs, samples/ECommerce/ECommerce.InventoryWorker/Workers/InventoryWorker.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/message-envelopes.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Message Envelopes Deep Dive",
+        "version": "1.0.0",
+        "category": "Messaging",
+        "order": "4",
+        "description": "Deep dive into Message Envelopes - hop-based distributed tracing across Outbox, Inbox, and message transports",
+        "tags": "message-envelopes, distributed-tracing, observability, cross-service, azure-service-bus",
+        "codeReferences": "src/Whizbang.Core/Observability/MessageEnvelope.cs, src/Whizbang.Core/Observability/MessageHop.cs, src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/outbox-pattern.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Outbox Pattern",
+        "version": "1.0.0",
+        "category": "Messaging",
+        "order": "1",
+        "description": "Implement reliable cross-service event publishing with the Outbox Pattern - guaranteed delivery without distributed transactions",
+        "tags": "outbox, reliable-messaging, transactional-outbox, event-publishing, distributed-systems",
+        "codeReferences": "src/Whizbang.Core/WorkCoordination/IWorkCoordinator.cs, src/Whizbang.Data.Postgres/WorkCoordination/PostgresWorkCoordinator.cs, >-"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/topic-filters.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Transports",
+        "order": "10"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Azure Service Bus Transport",
+        "version": "1.0.0",
+        "category": "Transports",
+        "order": "1",
+        "description": "Reliable cross-service messaging with Azure Service Bus topics and subscriptions - AOT-compatible with correlation filters",
+        "tags": "transports, azure-service-bus, messaging, topics, subscriptions, correlation-filters, aspire, aot",
+        "codeReferences": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs, src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs, src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs, src/Whizbang.Transports.AzureServiceBus/AzureServiceBusConnectionRetry.cs, src/Whizbang.Transports.AzureServiceBus/ServiceBusSubscriptionNameHelper.cs, src/Whizbang.Transports.AzureServiceBus/IServiceBusAdminClient.cs, src/Whizbang.Transports.AzureServiceBus/ServiceBusAdminClientWrapper.cs, src/Whizbang.Transports.AzureServiceBus/ServiceBusInfrastructureProvisioner.cs, src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs",
+        "testReferences": ">-"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/in-memory.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "In-Memory Transport",
+        "version": "1.0.0",
+        "category": "Transports",
+        "order": "2",
+        "description": "Synchronous in-process message delivery for testing and single-process scenarios - zero external dependencies",
+        "tags": "transports, in-memory, testing, in-process, synchronous, pub-sub, request-response",
+        "codeReferences": "src/Whizbang.Core/Transports/InProcessTransport.cs, tests/Whizbang.Transports.Tests/InProcessTransportTests.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "RabbitMQ Transport",
+        "version": "1.0.0",
+        "category": "Transports",
+        "order": "2",
+        "description": "Distributed event-driven messaging with RabbitMQ topic exchanges - AOT-compatible with channel pooling and dead-letter queue support",
+        "tags": "transports, rabbitmq, messaging, topic-exchange, dead-letter-queue, channel-pool, aot, testcontainers",
+        "codeReferences": "src/Whizbang.Transports.RabbitMQ/RabbitMQTransport.cs, src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs, src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs, src/Whizbang.Transports.RabbitMQ/RabbitMQChannelPool.cs, src/Whizbang.Transports.RabbitMQ/RabbitMQConnectionRetry.cs",
+        "testReferences": "tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQTransportTests.cs, tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQChannelPoolTests.cs, tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQConnectionRetryTests.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/transport-consumer.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "order",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Transport Consumer",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "description": "Configure transport message consumption with auto-generated subscriptions, subscription resilience, and connection recovery support",
+        "tags": "transport, consumer, subscriptions, resilience, messaging",
+        "codeReferences": "src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs, src/Whizbang.Core/Workers/TransportConsumerWorker.cs, src/Whizbang.Core/Resilience/SubscriptionResilienceOptions.cs, src/Whizbang.Core/Resilience/SubscriptionState.cs, src/Whizbang.Core/Resilience/SubscriptionRetryHelper.cs, src/Whizbang.Core/Transports/ITransportWithRecovery.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Transports Component",
+        "version": "1.0.0",
+        "category": "Components",
+        "order": "9",
+        "description": "Basic in-process message transport for local development",
+        "tags": "transports, messaging, in-process, communication, v0.1.0"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
+      "presentFields": [],
+      "missingFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {}
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/work-coordinator.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Work Coordinator",
+        "version": "1.0.0",
+        "category": "Messaging",
+        "order": "3",
+        "description": "Master the Work Coordinator - atomic batch processing for Outbox, Inbox, and event store tracking with lease-based coordination",
+        "tags": "work-coordinator, atomic-operations, batch-processing, distributed-coordination, lease-management",
+        "codeReferences": "src/Whizbang.Core/WorkCoordination/IWorkCoordinator.cs, src/Whizbang.Data.Postgres/WorkCoordination/PostgresWorkCoordinator.cs, src/Whizbang.Data.Postgres/WorkCoordination/process_work_batch.sql"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/migration-guide/01-concept-mapping.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Concept Mapping",
+        "version": "1.0.0",
+        "category": "Migration Guide",
+        "order": "2",
+        "description": "How Marten/Wolverine concepts translate to Whizbang equivalents",
+        "tags": "migration, marten, wolverine, concepts, mapping",
+        "codeReferences": "src/Whizbang.Core/IReceptor.cs, src/Whizbang.Core/IDispatcher.cs, src/Whizbang.Core/Perspectives/IPerspectiveFor.cs, src/Whizbang.Core/Messaging/IEventStore.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/migration-guide/02-project-setup.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Project Setup",
+        "version": "1.0.0",
+        "category": "Migration Guide",
+        "order": "3",
+        "description": "NuGet packages and initial configuration for migrating to Whizbang",
+        "tags": "migration, nuget, packages, configuration, setup",
+        "codeReferences": "samples/ECommerce/ECommerce.OrderService.API/Program.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/migration-guide/03-handler-migration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Handler Migration",
+        "version": "1.0.0",
+        "category": "Migration Guide",
+        "order": "4",
+        "description": "Converting Wolverine handlers to Whizbang Receptors",
+        "tags": "migration, handlers, receptors, wolverine, conversion",
+        "codeReferences": "src/Whizbang.Core/IReceptor.cs, src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/migration-guide/04-projection-migration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Projection Migration",
+        "version": "1.0.0",
+        "category": "Migration Guide",
+        "order": "5",
+        "description": "Converting Marten projections to Whizbang Perspectives",
+        "tags": "migration, projections, perspectives, marten, read-models",
+        "codeReferences": "src/Whizbang.Core/Perspectives/IPerspectiveFor.cs, src/Whizbang.Core/Perspectives/IPerspectiveStore.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/migration-guide/05-event-store-migration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Event Store Migration",
+        "version": "1.0.0",
+        "category": "Migration Guide",
+        "order": "6",
+        "description": "Migrating from Marten's event store to Whizbang's IEventStore",
+        "tags": "migration, event-store, marten, events, streams",
+        "codeReferences": "src/Whizbang.Core/Messaging/IEventStore.cs, src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/migration-guide/06-transport-configuration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Transport Configuration",
+        "version": "1.0.0",
+        "category": "Migration Guide",
+        "order": "7",
+        "description": "Configuring RabbitMQ and Azure Service Bus transports for Whizbang",
+        "tags": "migration, transport, rabbitmq, azure-service-bus, messaging",
+        "codeReferences": "src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs, src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/migration-guide/07-outbox-migration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Outbox Migration",
+        "version": "1.0.0",
+        "category": "Migration Guide",
+        "order": "8",
+        "description": "Migrating from Wolverine's durable outbox to Whizbang's built-in outbox pattern",
+        "tags": "migration, outbox, inbox, durability, messaging",
+        "codeReferences": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/migration-guide/08-testing-migration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Testing Migration",
+        "version": "1.0.0",
+        "category": "Migration Guide",
+        "order": "9",
+        "description": "Updating test infrastructure when migrating to Whizbang",
+        "tags": "migration, testing, tunit, mocks, integration-tests",
+        "codeReferences": "src/Whizbang.Testing/InMemoryEventStore.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/migration-guide/README.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Migration Guide Overview",
+        "version": "1.0.0",
+        "category": "Migration Guide",
+        "order": "1",
+        "description": "Overview of migrating from Marten/Wolverine and other frameworks to Whizbang",
+        "tags": "migration, marten, wolverine, upgrade, conversion",
+        "codeReferences": "tools/Whizbang.Migrate/Core/MigrationEngine.cs, src/Whizbang.Core/IReceptor.cs, src/Whizbang.Core/Perspectives/IPerspectiveFor.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/migration-guide/_folder.md",
+      "presentFields": [
+        "title",
+        "order",
+        "description"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Migration Guide",
+        "description": "Guides for migrating from other frameworks to Whizbang",
+        "order": "15"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/migration-guide/appendix-checklist.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Migration Checklist",
+        "version": "1.0.0",
+        "category": "Migration Guide",
+        "order": "10",
+        "description": "Complete checklist for migrating from Marten/Wolverine to Whizbang",
+        "tags": "migration, checklist, verification, validation"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Operations & Configuration",
+        "order": "7"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Configuration",
+        "order": "1"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/all-services.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "AddAllWhizbangServices",
+        "version": "1.0.0",
+        "category": "DI",
+        "order": "5",
+        "description": "Register all discovered Perspective and Lens implementations with a single method call",
+        "tags": "di, dependency-injection, service-registration, convenience",
+        "codeReferences": "src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/lens-services.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "AddLensServices",
+        "version": "1.0.0",
+        "category": "DI",
+        "order": "4",
+        "description": "Register all discovered Lens implementations with the DI container",
+        "tags": "di, dependency-injection, lenses, service-registration, queries",
+        "codeReferences": "src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/perspective-services.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "AddPerspectiveServices",
+        "version": "1.0.0",
+        "category": "DI",
+        "order": "3",
+        "description": "Register all discovered Perspective implementations with the DI container",
+        "tags": "di, dependency-injection, perspectives, service-registration",
+        "codeReferences": "src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/service-registration-options.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "ServiceRegistrationOptions",
+        "version": "1.0.0",
+        "category": "DI",
+        "order": "1",
+        "description": "Configuration options for Whizbang service registration behavior, including self-registration settings",
+        "tags": "di, dependency-injection, service-registration, options, configuration",
+        "codeReferences": "src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/service-registration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "ServiceRegistrationExtensions",
+        "version": "1.0.0",
+        "category": "DI",
+        "order": "2",
+        "description": "Source-generated extension methods for registering Whizbang Perspectives and Lenses with the DI container",
+        "tags": "di, dependency-injection, service-registration, extension-methods, source-generator",
+        "codeReferences": "src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/whizbang-options.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WhizbangCoreOptions",
+        "version": "1.0.0",
+        "category": "Configuration",
+        "order": "1",
+        "description": "Complete reference for WhizbangCoreOptions - configure tag processing, hooks, and core Whizbang behavior",
+        "tags": "configuration, options, tags, hooks, addwhizbang",
+        "codeReferences": "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs, src/Whizbang.Core/Tags/TagOptions.cs, src/Whizbang.Core/ServiceCollectionExtensions.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/deployment/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Deployment & Scaling",
+        "order": "7"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/deployment/deployment-strategies.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Deployment Strategies",
+        "version": "1.0.0",
+        "category": "Advanced Topics",
+        "order": "7",
+        "description": "Deployment patterns - blue-green, canary, rolling updates, feature flags, and rollback strategies",
+        "tags": "deployment, blue-green, canary, rolling-update, feature-flags, kubernetes"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/deployment/monitoring.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Monitoring & Observability",
+        "version": "1.0.0",
+        "category": "Advanced Topics",
+        "order": "6",
+        "description": "Application monitoring - Application Insights, Prometheus, distributed tracing, metrics, and dashboards",
+        "tags": "monitoring, observability, application-insights, prometheus, tracing, metrics"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/deployment/native-aot.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Native AOT",
+        "version": "1.0.0",
+        "category": "Advanced Topics",
+        "order": "3",
+        "description": "Deploy with Native AOT - zero reflection, trim-safe code, and AOT-compatible patterns",
+        "tags": "native-aot, aot, reflection, trim-safe, deployment"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/deployment/performance-tuning.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Performance Tuning",
+        "version": "1.0.0",
+        "category": "Advanced Topics",
+        "order": "1",
+        "description": "Optimize Whizbang performance - zero-allocation patterns, pooling, batching, and profiling",
+        "tags": "performance, optimization, profiling, zero-allocation, pooling"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/deployment/scaling.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Scaling Patterns",
+        "version": "1.0.0",
+        "category": "Advanced Topics",
+        "order": "8",
+        "description": "Horizontal scaling - autoscaling, partitioning, load balancing, and performance under load",
+        "tags": "scaling, horizontal-scaling, partitioning, load-balancing, autoscaling, performance"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/deployment/security.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Security Best Practices",
+        "version": "1.0.0",
+        "category": "Advanced Topics",
+        "order": "5",
+        "description": "Security guidelines - authentication, authorization, encryption, secrets management, OWASP Top 10",
+        "tags": "security, authentication, authorization, encryption, owasp, secrets"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/deployment/troubleshooting.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Troubleshooting Guide",
+        "version": "1.0.0",
+        "category": "Advanced Topics",
+        "order": "9",
+        "description": "Common issues, debugging techniques, diagnostic tools, and solutions",
+        "tags": "troubleshooting, debugging, diagnostics, common-issues, solutions"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Diagnostics",
+        "order": "6"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/serializable-property-analyzer.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Serializable Property Analyzer",
+        "description": "Roslyn analyzer that detects non-serializable properties on ICommand/IEvent types for AOT compatibility",
+        "version": "1.0.0",
+        "category": "Diagnostics",
+        "tags": "diagnostics, analyzer, serialization, aot, source-generator"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz030.md",
+      "presentFields": [
+        "title",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "version",
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ030: Perspective Event Missing StreamKey",
+        "description": "Event type used in perspective must have exactly one property marked with [StreamKey] attribute",
+        "category": "Diagnostics",
+        "severity": "Error",
+        "tags": "diagnostics, perspectives, streamkey, source-generator"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz031.md",
+      "presentFields": [
+        "title",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "version",
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ031: Multiple StreamKey Attributes",
+        "description": "Event type has multiple properties marked with [StreamKey] - only one is allowed",
+        "category": "Diagnostics",
+        "severity": "Error",
+        "tags": "diagnostics, perspectives, streamkey, source-generator"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz058.md",
+      "presentFields": [
+        "title",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "version",
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ058: GUID Call Intercepted",
+        "description": "Informational diagnostic indicating a GUID creation call has been intercepted and wrapped with TrackedGuid",
+        "category": "Diagnostics",
+        "severity": "Info",
+        "tags": "diagnostics, guid, interception, source-generator, trackedguid"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz059.md",
+      "presentFields": [
+        "title",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "version",
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ059: GUID Interception Suppressed",
+        "description": "Informational diagnostic indicating a GUID creation call was not intercepted due to suppression",
+        "category": "Diagnostics",
+        "severity": "Info",
+        "tags": "diagnostics, guid, interception, source-generator, suppression"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz062.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ062: Property Uses Non-Serializable Interface Type",
+        "description": "Error diagnostic when a message property uses a non-generic interface type that cannot be serialized for AOT",
+        "version": "1.0.0",
+        "category": "Diagnostics",
+        "severity": "Error",
+        "tags": "diagnostics, serialization, interface, aot, source-generator"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz070.md",
+      "presentFields": [
+        "title",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "version",
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ070: Missing Pgvector.EntityFrameworkCore Package",
+        "description": "Error diagnostic when a perspective model uses [VectorField] but the required Pgvector.EntityFrameworkCore package is not referenced",
+        "category": "Diagnostics",
+        "severity": "Error",
+        "tags": "diagnostics, vector, pgvector, efcore, package-reference"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz071.md",
+      "presentFields": [
+        "title",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "version",
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ071: Missing Pgvector Package",
+        "description": "Error diagnostic when a perspective model uses [VectorField] but the required base Pgvector package is not referenced",
+        "category": "Diagnostics",
+        "severity": "Error",
+        "tags": "diagnostics, vector, pgvector, npgsql, package-reference"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz080.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ080: Multiple Handlers for RPC Message",
+        "description": "Warning diagnostic when multiple handlers are registered for a message type that returns a response (RPC pattern)",
+        "version": "1.0.0",
+        "category": "Diagnostics",
+        "severity": "Warning",
+        "tags": "diagnostics, rpc, receptor, handler, source-generator"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz090.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ090: MessageTag Parameter Naming",
+        "description": "Error diagnostic when a constructor parameter in a MessageTagAttribute subclass does not match any property name (case-insensitive)",
+        "version": "1.0.0",
+        "category": "Diagnostics",
+        "severity": "Error",
+        "tags": "diagnostics, message-tags, attributes, source-generator, naming-convention"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz400.md",
+      "presentFields": [
+        "title",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "version",
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ400: Invalid Type Argument for ILensQuery",
+        "description": "Error diagnostic when Query<T>() or GetByIdAsync<T>() is called with an invalid type argument on multi-generic ILensQuery",
+        "category": "Diagnostics",
+        "severity": "Error",
+        "tags": "diagnostics, lenses, multi-model, type-safety, analyzer"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz802.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ802: VectorField Invalid Dimensions",
+        "description": "Error diagnostic when a [VectorField] attribute has invalid dimensions value",
+        "version": "1.0.0",
+        "category": "Diagnostics",
+        "severity": "Error",
+        "tags": "diagnostics, vector, physical-field, perspectives, source-generator"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz807.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "order",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ807: Physical Fields Discovered",
+        "description": "Informational diagnostic when physical fields are discovered on a perspective model",
+        "version": "1.0.0",
+        "category": "Diagnostics",
+        "severity": "Info",
+        "tags": "diagnostics, physical-field, vector-field, perspectives, source-generator"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Infrastructure",
+        "order": "3"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/aspire-integration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": ".NET Aspire Integration",
+        "version": "1.0.0",
+        "category": "Infrastructure",
+        "order": "1",
+        "description": "Cloud-native orchestration for Whizbang applications with .NET Aspire - automatic infrastructure provisioning and service discovery",
+        "tags": "aspire, cloud-native, orchestration, service-bus, emulator, infrastructure, distributed-applications",
+        "codeReferences": "src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs, src/Whizbang.Core/Transports/AzureServiceBus/AspireConfigurationGenerator.cs, src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusReadinessCheck.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/health-checks.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Health Checks",
+        "version": "1.0.0",
+        "category": "Infrastructure",
+        "order": "2",
+        "description": "Application health monitoring with built-in health checks for transports, databases, and custom components",
+        "tags": "health-checks, monitoring, readiness, liveness, aspire-dashboard, observability",
+        "codeReferences": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusHealthCheck.cs, src/Whizbang.Data.Dapper.Postgres/PostgresHealthCheck.cs, src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusReadinessCheck.cs, src/Whizbang.Core/Transports/ITransportReadinessCheck.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/migrations.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Migration Tracking",
+        "version": "1.0.0",
+        "category": "Infrastructure",
+        "order": "5",
+        "description": "Hash-based migration tracking with per-perspective change detection, blue-green table swaps, preview/rollback, and version auditing",
+        "tags": "migrations, schema, hash-tracking, blue-green, rollback, preview, database, ddl, perspective-tracking",
+        "codeReferences": "src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs, src/Whizbang.Core/Data/IMigrationProvider.cs, src/Whizbang.Data.Postgres/Migrations/000_MigrationTracking.sql, src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Policy-Based Routing",
+        "version": "1.0.0",
+        "category": "Infrastructure",
+        "order": "4",
+        "description": "Dynamic message routing and configuration via predicate-based policies - multi-tenancy, environment-based routing, and execution strategies",
+        "tags": "policies, routing, multi-tenancy, execution-strategy, policy-engine, decision-trail",
+        "codeReferences": "src/Whizbang.Core/Policies/PolicyEngine.cs, src/Whizbang.Core/Policies/PolicyContext.cs, src/Whizbang.Core/Policies/PolicyDecisionTrail.cs, src/Whizbang.Core/Policies/PolicyConfiguration.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Policy Engine Component",
+        "version": "1.0.0",
+        "category": "Components",
+        "order": "6",
+        "description": "Cross-cutting concerns as composable policies - retry, timeout, cache, and circuit breaker",
+        "tags": "policies, cross-cutting, resilience, caching, v0.1.0"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/pooling.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Object Pooling",
+        "version": "1.0.0",
+        "category": "Infrastructure",
+        "order": "3",
+        "description": "Zero-allocation object pooling for high-performance message processing - reduce heap pressure and GC overhead",
+        "tags": "pooling, performance, allocations, gc, policy-context, object-reuse",
+        "codeReferences": "src/Whizbang.Core/Pooling/PolicyContextPool.cs, src/Whizbang.Core/Pooling/ExecutionState.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Observability",
+        "order": "2"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/diagnostics.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Diagnostics",
+        "version": "1.0.0",
+        "category": "Observability",
+        "order": "3",
+        "description": "System diagnostics and health monitoring for Whizbang applications using the DiagnosticsCommand for collecting health, resource, and pipeline status",
+        "tags": "diagnostics, health-check, monitoring, system-commands, observability",
+        "codeReferences": "src/Whizbang.Core/Commands/System/SystemCommands.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/logging-categories.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Logging Categories",
+        "version": "1.0.0",
+        "category": "Observability",
+        "order": "4",
+        "description": "Configure log levels for Whizbang's internal logging categories to control console output verbosity in development and production environments",
+        "tags": "logging, log levels, categories, appsettings, observability, configuration, ILogger",
+        "codeReferences": "src/Whizbang.Core/Dispatcher.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Core/Workers/TransportConsumerWorker.cs, src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs, src/Whizbang.Core/Tags/MessageTagProcessor.cs, src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/opentelemetry-integration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "OpenTelemetry Integration",
+        "version": "1.0.0",
+        "category": "Observability",
+        "order": "2",
+        "description": "Integrate Whizbang with OpenTelemetry for distributed tracing and metrics via message tag hooks - automatic span and metric emission for tagged messages",
+        "tags": "opentelemetry, tracing, metrics, observability, telemetry, tags",
+        "codeReferences": "src/Whizbang.Observability/Hooks/OpenTelemetrySpanHook.cs, src/Whizbang.Observability/Hooks/OpenTelemetryMetricHook.cs, src/Whizbang.Observability/DependencyInjection/ObservabilityTagExtensions.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/tracing.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Tracing",
+        "version": "1.0.0",
+        "category": "Observability",
+        "order": "1",
+        "description": "Configure Whizbang's distributed tracing for handler invocations, message processing, and performance monitoring via OpenTelemetry and structured logging",
+        "tags": "tracing, opentelemetry, observability, diagnostics, performance, telemetry",
+        "codeReferences": "src/Whizbang.Core/Tracing/TracingOptions.cs, src/Whizbang.Core/Tracing/Tracer.cs, src/Whizbang.Core/Tracing/TraceComponents.cs, src/Whizbang.Core/Tracing/TraceVerbosity.cs, src/Whizbang.Core/Tracing/ITracer.cs, src/Whizbang.Core/Tracing/WhizbangTraceAttribute.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/verbosity-levels.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Trace Verbosity Levels",
+        "version": "1.0.0",
+        "category": "Tracing",
+        "order": "1",
+        "description": "Hierarchical verbosity levels for controlling trace output detail, from minimal error-only tracing to full debug output with payloads and timing",
+        "tags": "tracing, verbosity, observability, diagnostics, configuration",
+        "codeReferences": "src/Whizbang.Core/Tracing/TraceVerbosity.cs, src/Whizbang.Core/Tracing/TracingOptions.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/testing/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Testing",
+        "order": "5"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/testing/lifecycle-synchronization.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Lifecycle Synchronization",
+        "version": "1.0.0",
+        "category": "Testing",
+        "order": "3",
+        "description": "Deterministic test synchronization using lifecycle receptors - eliminate race conditions in integration tests with PostPerspectiveInline stage",
+        "tags": "testing, integration-tests, lifecycle, synchronization, race-conditions, PostPerspectiveInline",
+        "codeReferences": ">-"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/testing/testing-receptors.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Testing Receptors & Perspectives",
+        "version": "1.0.0",
+        "category": "Advanced Topics",
+        "order": "2",
+        "description": "Unit testing patterns for receptors and perspectives - mocking, fixtures, and test strategies",
+        "tags": "testing, unit-tests, mocking, tunit, fixtures"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Workers",
+        "order": "4"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/database-readiness.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Database Readiness",
+        "version": "1.0.0",
+        "category": "Workers",
+        "order": "3",
+        "description": "Database dependency coordination - IDatabaseReadinessCheck pattern, startup coordination, retry logic, and caching strategies",
+        "tags": "database-readiness, dependency-coordination, startup, retry-logic, health-checks",
+        "codeReferences": "src/Whizbang.Core/Messaging/IDatabaseReadinessCheck.cs, src/Whizbang.Data.Postgres/PostgresDatabaseReadinessCheck.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/execution-lifecycle.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Execution Lifecycle",
+        "version": "1.0.0",
+        "category": "Workers",
+        "order": "2",
+        "description": "Application startup and shutdown coordination - IExecutionStrategy lifecycle hooks, graceful shutdown with work draining, and worker coordination",
+        "tags": "execution-lifecycle, startup, shutdown, graceful-shutdown, work-draining, lifecycle-hooks",
+        "codeReferences": "src/Whizbang.Core/Execution/IExecutionStrategy.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Core/Messaging/IDatabaseReadinessCheck.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspective Worker",
+        "version": "1.0.0",
+        "category": "Workers",
+        "order": "1",
+        "description": "Background worker for processing perspective checkpoints - automatic checkpoint creation, polling workflow, error tracking, and startup coordination",
+        "tags": "perspective-worker, checkpoints, background-worker, lease-based-coordination, error-tracking",
+        "codeReferences": "src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Core/Messaging/IWorkCoordinator.cs, >-"
+      }
+    }
+  ]
+}

@@ -1,0 +1,302 @@
+{
+  "session": "2A",
+  "section": "fundamentals/lifecycle",
+  "auditDate": "2026-03-25",
+  "pagesAudited": [
+    "fundamentals/lifecycle/_folder.md",
+    "fundamentals/lifecycle/lifecycle.md",
+    "fundamentals/lifecycle/lifecycle-coordinator.md",
+    "fundamentals/lifecycle/lifecycle-stages.md"
+  ],
+  "libraryFilesRead": [
+    "src/Whizbang.Core/Lifecycle/ILifecycleCoordinator.cs",
+    "src/Whizbang.Core/Lifecycle/LifecycleCoordinator.cs",
+    "src/Whizbang.Core/Lifecycle/ILifecycleTracking.cs",
+    "src/Whizbang.Core/Lifecycle/LifecycleTrackingState.cs",
+    "src/Whizbang.Core/Lifecycle/DebugAwareStopwatch.cs",
+    "src/Whizbang.Core/Lifecycle/StageRecord.cs",
+    "src/Whizbang.Core/Lifecycle/ILifecycleTrackingContext.cs",
+    "src/Whizbang.Core/Lifecycle/ILifecyclePerspectiveStageContext.cs",
+    "src/Whizbang.Core/Messaging/LifecycleStage.cs",
+    "src/Whizbang.Core/Commands/System/SystemCommands.cs",
+    "src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs"
+  ],
+  "tasks": [
+    {
+      "id": "2A-001",
+      "type": "docs-update",
+      "priority": "P0",
+      "page": "fundamentals/lifecycle/lifecycle-stages.md",
+      "dimension": "incomplete-docs",
+      "summary": "Stage count wrong: docs say '20 stages' but enum has 25 values",
+      "details": "lifecycle-stages.md header says 'All 20 Lifecycle Stages' but LifecycleStage enum has 25 values. Missing from docs: AfterReceptorCompletion (-1), PostAllPerspectivesAsync, PostAllPerspectivesInline, and the Distribute stages may have wrong count. The PostAllPerspectives stages ARE mentioned in lifecycle-coordinator.md but not in lifecycle-stages.md's stage reference. Need to reconcile the count and add missing stage descriptions.",
+      "sourceFiles": ["src/Whizbang.Core/Messaging/LifecycleStage.cs"],
+      "effort": "M"
+    },
+    {
+      "id": "2A-002",
+      "type": "docs-update",
+      "priority": "P0",
+      "page": "fundamentals/lifecycle/lifecycle-stages.md",
+      "dimension": "incomplete-docs",
+      "summary": "PostAllPerspectivesAsync/Inline stages not documented in stages reference",
+      "details": "LifecycleStage enum has PostAllPerspectivesAsync and PostAllPerspectivesInline values. These are described conceptually in lifecycle-coordinator.md under 'Perspective WhenAll' but are NOT listed in lifecycle-stages.md which is the authoritative stage reference. They need their own section between PostPerspective and PostLifecycle stages with timing, use cases, guarantees, and examples.",
+      "sourceFiles": ["src/Whizbang.Core/Messaging/LifecycleStage.cs:22-23"],
+      "effort": "M"
+    },
+    {
+      "id": "2A-003",
+      "type": "docs-update",
+      "priority": "P0",
+      "page": "fundamentals/lifecycle/lifecycle-stages.md",
+      "dimension": "incomplete-docs",
+      "summary": "AfterReceptorCompletion stage (-1) not documented",
+      "details": "LifecycleStage.AfterReceptorCompletion = -1 exists in the enum with comment 'Special value: fires after receptor completes in Dispatcher'. This special stage is not mentioned anywhere in the docs. Need to document what it does, when it fires, and whether users should use it.",
+      "sourceFiles": ["src/Whizbang.Core/Messaging/LifecycleStage.cs:1"],
+      "effort": "S"
+    },
+    {
+      "id": "2A-004",
+      "type": "new-content",
+      "priority": "P1",
+      "page": "fundamentals/lifecycle/lifecycle-coordinator.md",
+      "dimension": "incomplete-docs",
+      "summary": "ILifecycleTrackingContext interface not documented",
+      "details": "ILifecycleTrackingContext extends ILifecycleContext and provides rich per-event context: StageElapsed, TotalElapsed, ServiceInstance, BatchSize, StageHistory, IsCancelled, CancellationReason, Cancel(), OnStage(). This is a significant public API that users interact with in lifecycle receptors. Needs its own section in lifecycle-coordinator.md or a dedicated page.",
+      "sourceFiles": ["src/Whizbang.Core/Lifecycle/ILifecycleTrackingContext.cs"],
+      "effort": "M"
+    },
+    {
+      "id": "2A-005",
+      "type": "new-content",
+      "priority": "P1",
+      "page": "fundamentals/lifecycle/lifecycle-coordinator.md",
+      "dimension": "incomplete-docs",
+      "summary": "ILifecyclePerspectiveStageContext interface not documented",
+      "details": "ILifecyclePerspectiveStageContext provides perspective-specific lifecycle context: Lifecycle, PerspectiveNames, StreamId, LastProcessedEventId, PerspectiveType. Not mentioned in any docs. Users need this when writing perspective-stage lifecycle receptors.",
+      "sourceFiles": ["src/Whizbang.Core/Lifecycle/ILifecyclePerspectiveStageContext.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2A-006",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "fundamentals/lifecycle/lifecycle.md",
+      "dimension": "incomplete-docs",
+      "summary": "RebuildPerspectiveCommand signature outdated — shows 2 params, code has 5",
+      "details": "Docs show: RebuildPerspectiveCommand(string perspectiveName, long? FromEventId). Code shows: RebuildPerspectiveCommand(string[]? PerspectiveNames = null, RebuildMode Mode = BlueGreen, Guid[]? IncludeStreamIds = null, Guid[]? ExcludeStreamIds = null, long? FromEventId = null). The parameter changed from a single string to string[], and 3 new params (Mode, Include/ExcludeStreamIds) were added.",
+      "sourceFiles": ["src/Whizbang.Core/Commands/System/SystemCommands.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2A-007",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "fundamentals/lifecycle/lifecycle.md",
+      "dimension": "incomplete-docs",
+      "summary": "CancelPerspectiveRebuildCommand not documented",
+      "details": "SystemCommands.cs has CancelPerspectiveRebuildCommand(string PerspectiveName) : ICommand with <docs> tag pointing to perspectives#rebuild. Not mentioned in lifecycle.md's 'Related System Commands' section.",
+      "sourceFiles": ["src/Whizbang.Core/Commands/System/SystemCommands.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2A-008",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "fundamentals/lifecycle/lifecycle.md",
+      "dimension": "incomplete-docs",
+      "summary": "DiagnosticType enum values not documented",
+      "details": "lifecycle.md shows DiagnosticsCommand with DiagnosticType.Full but doesn't list all enum values: HealthCheck, ResourceMetrics, PipelineStatus, PerspectiveStatus, Full. Should document what each diagnostic type returns.",
+      "sourceFiles": ["src/Whizbang.Core/Commands/System/SystemCommands.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2A-009",
+      "type": "code-sample-fix",
+      "priority": "P0",
+      "page": "fundamentals/lifecycle/lifecycle.md",
+      "dimension": "code-samples-current",
+      "summary": "Test code sample uses Task.Delay — violates testing standards",
+      "details": "The 'Test Pause/Resume Behavior' code sample at line 276 uses 'await Task.Delay(1000)' and 'await Task.Delay(2000)' for synchronization. This violates the project's strict no-timing-tests policy (use TaskCompletionSource/SemaphoreSlim instead). The sample should use lifecycle hooks for deterministic synchronization, which is what the lifecycle docs teach.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2A-010",
+      "type": "code-sample-fix",
+      "priority": "P1",
+      "page": "fundamentals/lifecycle/lifecycle.md",
+      "dimension": "code-samples-current",
+      "summary": "IProcessingStateMonitor in health check example may not exist",
+      "details": "The 'Implement Health Checks' code sample references IProcessingStateMonitor.IsPaused and IProcessingStateMonitor.PauseReason. Need to verify this interface exists in the library. If not, the example is aspirational and should be marked as such or replaced with actual API.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2A-011",
+      "type": "code-sample-fix",
+      "priority": "P1",
+      "page": "fundamentals/lifecycle/lifecycle.md",
+      "dimension": "code-samples-current",
+      "summary": "IWorkerCoordinator in implementation example may not exist",
+      "details": "The 'Service-Specific Handlers' code sample references IWorkerCoordinator.PauseAllAsync() and ResumeAllAsync(). Need to verify this interface exists. If not, the example is aspirational.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2A-012",
+      "type": "code-sample-fix",
+      "priority": "P2",
+      "page": "fundamentals/lifecycle/lifecycle.md",
+      "dimension": "code-samples-current",
+      "summary": "Graceful shutdown example uses Task.Delay",
+      "details": "The 'Graceful Shutdown' code sample has 'await Task.Delay(2000)' with comment 'Give time for command to propagate'. While this is application code not a test, it's still a questionable pattern. Should show a deterministic approach.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2A-013",
+      "type": "frontmatter",
+      "priority": "P2",
+      "page": "fundamentals/lifecycle/_folder.md",
+      "dimension": "page-frontmatter",
+      "summary": "_folder.md missing version, category, description, tags, codeReferences",
+      "details": "The folder metadata file only has title and order. Should add: version: 1.0.0, category: 'Core Concepts', description with synonyms, tags with synonyms (lifecycle management, event lifecycle, processing pipeline, message lifecycle, hooks, stages).",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2A-014",
+      "type": "frontmatter",
+      "priority": "P2",
+      "page": "fundamentals/lifecycle/lifecycle.md",
+      "dimension": "page-frontmatter",
+      "summary": "Tags should include more synonyms for search",
+      "details": "Current tags: 'lifecycle, system-commands, maintenance, pause, resume'. Should add: 'graceful shutdown, coordinated deployment, distributed pause, message processing control, worker pause, emergency stop, system lifecycle'.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2A-015",
+      "type": "frontmatter",
+      "priority": "P2",
+      "page": "fundamentals/lifecycle/lifecycle-coordinator.md",
+      "dimension": "page-frontmatter",
+      "summary": "Tags should include more synonyms for search",
+      "details": "Current tags: 'lifecycle, coordinator, tracking, PostLifecycle, WhenAll, pipeline'. Should add: 'event tracking, stage management, exactly-once, completion signaling, multi-path coordination, batch processing, game loop, perspective completion, stale cleanup'.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2A-016",
+      "type": "frontmatter",
+      "priority": "P2",
+      "page": "fundamentals/lifecycle/lifecycle-stages.md",
+      "dimension": "page-frontmatter",
+      "summary": "Tags should include more synonyms for search",
+      "details": "Current tags: 'lifecycle, stages, hooks, message-processing, timing, coordinator'. Should add: 'FireAt attribute, lifecycle receptors, inline vs async, blocking vs non-blocking, test synchronization, PostPerspectiveInline, PostLifecycleAsync, ImmediateAsync, outbox hooks, inbox hooks'.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2A-017",
+      "type": "diagram-fix",
+      "priority": "P1",
+      "page": "fundamentals/lifecycle/lifecycle-stages.md",
+      "dimension": "diagram-clarity",
+      "summary": "Pipeline diagram missing PostAllPerspectives stages",
+      "details": "The ASCII pipeline overview at line 534 shows PerspectiveWorker stages as PrePerspective → PostPerspective → PostLifecycle but is missing PostAllPerspectivesAsync/Inline between PostPerspective and PostLifecycle. The coordinator doc has the same issue at line 39.",
+      "sourceFiles": ["src/Whizbang.Core/Messaging/LifecycleStage.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2A-018",
+      "type": "diagram-fix",
+      "priority": "P2",
+      "page": "fundamentals/lifecycle/lifecycle-stages.md",
+      "dimension": "diagram-needs",
+      "summary": "Mermaid sequence diagram should show PostAllPerspectives",
+      "details": "The Mermaid sequence diagram at line 558 doesn't show PostAllPerspectives in the flow. After 'PostPerspectiveInline' and before the coordinator ReportCompletion, there should be PostAllPerspectives stages.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2A-019",
+      "type": "redundancy",
+      "priority": "P2",
+      "page": "fundamentals/lifecycle/lifecycle-coordinator.md",
+      "dimension": "redundancy",
+      "summary": "Pipeline diagram duplicated between lifecycle-coordinator.md and lifecycle-stages.md",
+      "details": "The exact same ASCII pipeline overview appears in both files (lifecycle-coordinator.md line 39 and lifecycle-stages.md line 534). Should live in one place and cross-reference from the other.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2A-020",
+      "type": "new-content",
+      "priority": "P2",
+      "page": "fundamentals/lifecycle/lifecycle-coordinator.md",
+      "dimension": "persona-gaps",
+      "summary": "No contributor docs for lifecycle coordinator internals",
+      "details": "The extending/ section has no page about the lifecycle coordinator's internal design (ConcurrentDictionary tracking, WhenAll state machines, debounce cleanup algorithm). Contributors modifying the coordinator would benefit from a contributor-facing page in extending/internals/.",
+      "sourceFiles": ["src/Whizbang.Core/Lifecycle/LifecycleCoordinator.cs"],
+      "effort": "L"
+    },
+    {
+      "id": "2A-021",
+      "type": "link-fix",
+      "priority": "P2",
+      "page": "fundamentals/lifecycle/lifecycle.md",
+      "dimension": "code-tests-docs-links",
+      "summary": "lifecycle.md codeReferences only lists SystemCommands.cs — should include lifecycle coordinator files",
+      "details": "lifecycle.md references PauseProcessingCommand and ResumeProcessingCommand which live in SystemCommands.cs (correctly listed), but also references RebuildPerspectiveCommand, ClearCacheCommand, DiagnosticsCommand. Should cross-reference to the relevant pages rather than duplicating signatures. Also, the page covers system lifecycle concepts that relate to the coordinator — consider adding a codeReference to ILifecycleCoordinator.cs.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2A-022",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "fundamentals/lifecycle/lifecycle-coordinator.md",
+      "dimension": "incomplete-docs",
+      "summary": "Observability metrics table may be incomplete — verify all 10 metrics match code",
+      "details": "The docs list 10 metrics but the code has 10 OpenTelemetry instruments. Need to verify the metric names match exactly. Code has METER_NAME = 'Whizbang.LifecycleCoordinator'. Docs table at line 200 should be cross-checked. Also docs say 'active_tracked_events' but code property is 'ActiveTrackedEvents' — need to verify the actual OTel instrument name strings.",
+      "sourceFiles": ["src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2A-023",
+      "type": "code-sample-fix",
+      "priority": "P2",
+      "page": "fundamentals/lifecycle/lifecycle-stages.md",
+      "dimension": "code-sample-frontmatter",
+      "summary": "Several code samples have auto-generated/poor metadata",
+      "details": "Multiple code samples have description fields that just duplicate the title (e.g., description='Demonstrates `ImmediateAsync`') or have meaningless tags (e.g., tags=['Fundamentals', 'Lifecycle', '**Default']). The tags array contains markdown formatting artifacts. All 15+ code samples in this file need metadata review for meaningful descriptions and clean tags.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2A-024",
+      "type": "code-sample-fix",
+      "priority": "P2",
+      "page": "fundamentals/lifecycle/lifecycle.md",
+      "dimension": "code-sample-frontmatter",
+      "summary": "Code sample metadata has auto-generated/poor descriptions and tags",
+      "details": "Multiple code samples have tags like ['Fundamentals', 'Lifecycle', 'Always', 'Provide'] which are meaningless word splits from the title. Descriptions duplicate titles. All 14+ code samples need metadata review for meaningful descriptions, proper tags, and testFile/testMethod links where applicable.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2A-025",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "fundamentals/lifecycle/lifecycle-stages.md",
+      "dimension": "incomplete-docs",
+      "summary": "Distribute stages marked 'Planned' in enum comments but documented as current",
+      "details": "LifecycleStage.cs comments on PreDistributeAsync/Inline, DistributeAsync, PostDistributeAsync/Inline say 'Planned:' prefix. But lifecycle-stages.md documents them as current features. Need to clarify if these are implemented or planned, and update docs/code accordingly.",
+      "sourceFiles": ["src/Whizbang.Core/Messaging/LifecycleStage.cs:5-9"],
+      "effort": "S"
+    }
+  ],
+  "sectionSummary": "The lifecycle section has 3 well-structured pages with good conceptual coverage. The biggest issues are: (1) LifecycleStage enum count mismatch (docs say 20, code has 25), (2) two undocumented public interfaces (ILifecycleTrackingContext, ILifecyclePerspectiveStageContext), (3) RebuildPerspectiveCommand signature drift, (4) test code sample using Task.Delay (policy violation), (5) pipeline diagrams missing PostAllPerspectives stages. The lifecycle-coordinator.md page is the strongest — it accurately describes the coordinator's design. Code sample metadata quality is poor across all 3 pages with auto-generated descriptions and garbage tags."
+}

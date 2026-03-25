@@ -1,0 +1,333 @@
+{
+  "session": "2C",
+  "section": "fundamentals/perspectives",
+  "auditDate": "2026-03-25",
+  "pagesAudited": [
+    "fundamentals/perspectives/_folder.md",
+    "fundamentals/perspectives/perspectives.md",
+    "fundamentals/perspectives/multi-stream.md",
+    "fundamentals/perspectives/temporal.md",
+    "fundamentals/perspectives/rebuild.md",
+    "fundamentals/perspectives/perspective-sync.md",
+    "fundamentals/perspectives/event-completion.md",
+    "fundamentals/perspectives/sync.md",
+    "fundamentals/perspectives/physical-fields.md",
+    "fundamentals/perspectives/vector-fields.md",
+    "fundamentals/perspectives/polymorphic-discriminator.md",
+    "fundamentals/perspectives/polymorphic-types.md",
+    "fundamentals/perspectives/association-info.md",
+    "fundamentals/perspectives/association-metadata.md",
+    "fundamentals/perspectives/typed-associations.md",
+    "fundamentals/perspectives/registry.md",
+    "fundamentals/perspectives/table-naming.md"
+  ],
+  "libraryFilesRead": [
+    "src/Whizbang.Core/Perspectives/IPerspectiveFor.cs",
+    "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+    "src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs",
+    "src/Whizbang.Core/Perspectives/ITemporalPerspectiveFor.cs",
+    "src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs",
+    "src/Whizbang.Core/Perspectives/ApplyResult.cs",
+    "src/Whizbang.Core/Perspectives/ModelAction.cs",
+    "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
+    "src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs",
+    "src/Whizbang.Core/Perspectives/IPerspectiveRunnerRegistry.cs",
+    "src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs",
+    "src/Whizbang.Core/Perspectives/VectorFieldAttribute.cs",
+    "src/Whizbang.Core/Perspectives/PolymorphicDiscriminatorAttribute.cs",
+    "src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs",
+    "src/Whizbang.Core/Perspectives/FieldStorageMode.cs",
+    "src/Whizbang.Core/Perspectives/Sync/ (32 files)"
+  ],
+  "tasks": [
+    {
+      "id": "2C-001",
+      "type": "new-content",
+      "priority": "P0",
+      "page": "fundamentals/perspectives/",
+      "dimension": "incomplete-docs",
+      "summary": "3 pages referenced by <docs> tags don't exist: stream-locking, snapshots, perspectives-with-actions",
+      "details": "Code has <docs> tags pointing to: (1) fundamentals/perspectives/stream-locking — IPerspectiveStreamLocker, DapperPerspectiveStreamLocker, PerspectiveStreamLockOptions, (2) fundamentals/perspectives/snapshots — IPerspectiveSnapshotStore, DapperPerspectiveSnapshotStore, PerspectiveSnapshotOptions, (3) fundamentals/perspectives/perspectives-with-actions — IPerspectiveWithActionsFor. These are 3 entirely new pages that need to be created.",
+      "sourceFiles": [
+        "src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs",
+        "src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs"
+      ],
+      "effort": "L"
+    },
+    {
+      "id": "2C-002",
+      "type": "new-content",
+      "priority": "P0",
+      "page": "fundamentals/perspectives/perspectives-with-actions.md",
+      "dimension": "incomplete-docs",
+      "summary": "IPerspectiveWithActionsFor (deletion support) not documented anywhere",
+      "details": "IPerspectiveWithActionsFor<TModel, TEvent> returns ApplyResult<TModel> which supports Delete/Purge actions via ModelAction enum. This is a key feature for perspectives that need to soft-delete or hard-delete rows. Related types: ApplyResult<T> (struct with None/Delete/Purge/Update factory methods + implicit conversions), ModelAction enum (None/Delete/Purge). Code has 10 event variants.",
+      "sourceFiles": [
+        "src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs",
+        "src/Whizbang.Core/Perspectives/ApplyResult.cs",
+        "src/Whizbang.Core/Perspectives/ModelAction.cs"
+      ],
+      "effort": "M"
+    },
+    {
+      "id": "2C-003",
+      "type": "new-content",
+      "priority": "P1",
+      "page": "fundamentals/perspectives/snapshots.md",
+      "dimension": "incomplete-docs",
+      "summary": "Snapshot support (IPerspectiveSnapshotStore) not documented",
+      "details": "IPerspectiveSnapshotStore has CreateSnapshotAsync, GetLatestSnapshotAsync, GetLatestSnapshotBeforeAsync, HasAnySnapshotAsync, PruneOldSnapshotsAsync, DeleteAllSnapshotsAsync. Used for efficient rewind after late-arriving events. IPerspectiveRunner has RewindAndRunAsync and BootstrapSnapshotAsync methods. Commit 04de3793 added this infrastructure.",
+      "sourceFiles": ["src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs"],
+      "effort": "M"
+    },
+    {
+      "id": "2C-004",
+      "type": "new-content",
+      "priority": "P1",
+      "page": "fundamentals/perspectives/stream-locking.md",
+      "dimension": "incomplete-docs",
+      "summary": "Stream locking (IPerspectiveStreamLocker) not documented",
+      "details": "IPerspectiveStreamLocker and related types have <docs> tags pointing to fundamentals/perspectives/stream-locking but the page doesn't exist. Need to create documentation for stream-level locking during perspective processing.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2C-005",
+      "type": "docs-update",
+      "priority": "P0",
+      "page": "fundamentals/perspectives/perspectives.md",
+      "dimension": "incomplete-docs",
+      "summary": "IPerspectiveBase marker interface not documented (recent refactor)",
+      "details": "Commit 3a49ff39 added IPerspectiveBase<TModel, TEvent1...TEvent20> as a unified marker interface for generator scanning. All perspective variants now inherit from it. This is a recent architectural change that affects generator development. At minimum needs mention in perspectives.md; contributor docs in extending/ should explain the hierarchy.",
+      "sourceFiles": ["src/Whizbang.Core/Perspectives/IPerspectiveBase.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2C-006",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "fundamentals/perspectives/perspectives.md",
+      "dimension": "incomplete-docs",
+      "summary": "IPerspectiveFor constraint shown as 'notnull' — verify actual constraint is 'class'",
+      "details": "Docs show 'where TModel : notnull' but library code has 'where TModel : class'. These have different semantics (class excludes value types). Need to verify and update docs to match. Same check needed for TEvent constraint.",
+      "sourceFiles": ["src/Whizbang.Core/Perspectives/IPerspectiveFor.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2C-007",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "fundamentals/perspectives/physical-fields.md",
+      "dimension": "incomplete-docs",
+      "summary": "PerspectiveStorageAttribute and FieldStorageMode not fully documented",
+      "details": "Physical fields page covers [PhysicalField] attribute but may not fully document [PerspectiveStorage(FieldStorageMode.Split)] which controls whether physical fields are indexed copies (Extracted) or replace JSONB content (Split). FieldStorageMode enum: JsonOnly, Extracted, Split — each has different storage semantics. Need to verify coverage.",
+      "sourceFiles": [
+        "src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs",
+        "src/Whizbang.Core/Perspectives/FieldStorageMode.cs"
+      ],
+      "effort": "S"
+    },
+    {
+      "id": "2C-008",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "fundamentals/perspectives/temporal.md",
+      "dimension": "incomplete-docs",
+      "summary": "TemporalActionType enum may not be documented",
+      "details": "TemporalActionType enum (Insert=0, Update=1, Delete=2) exists in code with <docs> tag to fundamentals/perspectives/temporal. Need to verify the temporal.md page covers this enum and how temporal perspectives can specify action types.",
+      "sourceFiles": ["src/Whizbang.Core/Perspectives/TemporalActionType.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2C-009",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "fundamentals/perspectives/multi-stream.md",
+      "dimension": "incomplete-docs",
+      "summary": "IGlobalPerspectiveFor limited to 3 event variants — not mentioned in docs",
+      "details": "Code has only 3 event variants for IGlobalPerspectiveFor (vs 20 for IPerspectiveFor, 10 for temporal/actions). Code comment says future expansion planned. Docs should mention this limitation and workarounds.",
+      "sourceFiles": ["src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2C-010",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "fundamentals/perspectives/perspective-sync.md",
+      "dimension": "incomplete-docs",
+      "summary": "AwaitPerspectiveSyncAttribute not fully documented — missing SyncFireBehavior",
+      "details": "AwaitPerspectiveSyncAttribute has: PerspectiveType, EventTypes, TimeoutMs, FireBehavior (SyncFireBehavior enum). SyncFireBehavior has 3 values: FireOnSuccess (throw on timeout), FireAlways (check SyncContext), FireOnEachEvent (future streaming). Need to verify the perspective-sync.md covers all these properties.",
+      "sourceFiles": [
+        "src/Whizbang.Core/Perspectives/Sync/AwaitPerspectiveSyncAttribute.cs",
+        "src/Whizbang.Core/Perspectives/Sync/SyncFireBehavior.cs"
+      ],
+      "effort": "S"
+    },
+    {
+      "id": "2C-011",
+      "type": "docs-update",
+      "priority": "P2",
+      "page": "fundamentals/perspectives/perspective-sync.md",
+      "dimension": "incomplete-docs",
+      "summary": "SyncFilter fluent API may not be fully documented",
+      "details": "SyncFilter has static entry points: ForStream(Guid), ForEventTypes<T>(), CurrentScope(). Builder chains to SyncFilterNode. Need to verify all filter options are documented with examples.",
+      "sourceFiles": ["src/Whizbang.Core/Perspectives/Sync/SyncFilter.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2C-012",
+      "type": "redundancy",
+      "priority": "P2",
+      "page": "fundamentals/perspectives/association-info.md + association-metadata.md",
+      "dimension": "redundancy",
+      "summary": "Two pages cover PerspectiveAssociationInfo — potential overlap",
+      "details": "association-info.md and association-metadata.md both document PerspectiveAssociationInfo. One focuses on strongly-typed associations with delegates, the other on metadata linking. Should be consolidated or clearly differentiated with cross-links.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2C-013",
+      "type": "redundancy",
+      "priority": "P2",
+      "page": "fundamentals/perspectives/perspective-sync.md + sync.md",
+      "dimension": "redundancy",
+      "summary": "Two pages cover perspective sync — potential overlap",
+      "details": "perspective-sync.md and sync.md both cover perspective synchronization. perspective-sync.md has full frontmatter and appears comprehensive. sync.md has minimal frontmatter. Need to verify these are differentiated (one may be user-dev, other contributor) or consolidate.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2C-014",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "fundamentals/perspectives/registry.md",
+      "dimension": "page-frontmatter",
+      "summary": "registry.md missing ALL frontmatter — no title, version, category, order, description, tags, codeReferences",
+      "details": "Page starts directly with '# Perspective Registry' with no YAML frontmatter block at all. This means it won't appear correctly in nav, search, or versioning.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2C-015",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "fundamentals/perspectives/table-naming.md",
+      "dimension": "page-frontmatter",
+      "summary": "table-naming.md missing ALL frontmatter",
+      "details": "Same as registry.md — no frontmatter block at all. Needs title, version, category, order, description, tags, codeReferences.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2C-016",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "fundamentals/perspectives/temporal.md",
+      "dimension": "page-frontmatter",
+      "summary": "temporal.md missing ALL frontmatter",
+      "details": "No frontmatter block. Needs title, version, category, order, description, tags, codeReferences (should reference ITemporalPerspectiveFor.cs, TemporalActionType.cs).",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2C-017",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "fundamentals/perspectives/typed-associations.md",
+      "dimension": "page-frontmatter",
+      "summary": "typed-associations.md missing ALL frontmatter",
+      "details": "No frontmatter block. Needs all fields.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2C-018",
+      "type": "frontmatter",
+      "priority": "P2",
+      "page": "fundamentals/perspectives/physical-fields.md",
+      "dimension": "page-frontmatter",
+      "summary": "physical-fields.md missing order, description, tags, codeReferences",
+      "details": "Has title and version/category but missing navigational and search fields. codeReferences should point to PhysicalFieldAttribute.cs, PerspectiveStorageAttribute.cs, FieldStorageMode.cs. Tags should include: 'physical columns, database indexing, JSONB, extracted fields, split storage, B-tree index'.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2C-019",
+      "type": "frontmatter",
+      "priority": "P2",
+      "page": "fundamentals/perspectives/vector-fields.md",
+      "dimension": "page-frontmatter",
+      "summary": "vector-fields.md missing order, description, tags, codeReferences",
+      "details": "Has title/version/category. Missing: codeReferences to VectorFieldAttribute.cs, VectorDistanceMetric.cs, VectorIndexType.cs. Tags should include: 'pgvector, embeddings, similarity search, cosine distance, HNSW, IVFFlat, vector search, ML embeddings'.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2C-020",
+      "type": "frontmatter",
+      "priority": "P2",
+      "page": "fundamentals/perspectives/polymorphic-discriminator.md",
+      "dimension": "page-frontmatter",
+      "summary": "polymorphic-discriminator.md missing order, description, tags, codeReferences",
+      "details": "Has title/version/category. Missing codeReferences to PolymorphicDiscriminatorAttribute.cs. Tags should include: 'polymorphic, discriminator, JsonPolymorphic, type hierarchy, indexed column, type filter'.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2C-021",
+      "type": "code-sample-fix",
+      "priority": "P2",
+      "page": "fundamentals/perspectives/perspectives.md",
+      "dimension": "code-sample-frontmatter",
+      "summary": "Code samples have auto-generated poor metadata",
+      "details": "All code samples in perspectives.md have description='Demonstrates X' pattern and garbage tags. Same issue found across all perspectives pages. Affects ~30+ code samples total across the section.",
+      "sourceFiles": [],
+      "effort": "L"
+    },
+    {
+      "id": "2C-022",
+      "type": "docs-update",
+      "priority": "P2",
+      "page": "fundamentals/perspectives/perspectives.md",
+      "dimension": "incomplete-docs",
+      "summary": "MustExistAttribute not documented in perspectives section",
+      "details": "MustExistAttribute<docs> tag points to extending/attributes/must-exist. Need to verify that page exists and cross-link from perspectives.md. The attribute causes the generator to insert a null-check before Apply — throws if model is null on an update event.",
+      "sourceFiles": ["src/Whizbang.Core/Perspectives/MustExistAttribute.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2C-023",
+      "type": "docs-update",
+      "priority": "P2",
+      "page": "fundamentals/perspectives/perspectives.md",
+      "dimension": "incomplete-docs",
+      "summary": "WhizbangPerspectiveAttribute (multi-context routing) may not be documented",
+      "details": "WhizbangPerspectiveAttribute(params string[] keys) routes perspectives to specific DbContexts by key. Need to verify this is covered in perspectives.md or in the configuration docs.",
+      "sourceFiles": ["src/Whizbang.Core/Perspectives/WhizbangPerspectiveAttribute.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2C-024",
+      "type": "docs-update",
+      "priority": "P2",
+      "page": "fundamentals/perspectives/perspectives.md",
+      "dimension": "incomplete-docs",
+      "summary": "PerspectiveRunnerCallbackRegistry (AOT module initializer pattern) not documented",
+      "details": "PerspectiveRunnerCallbackRegistry.RegisterCallback/InvokeRegistration enables AOT-compatible DI registration from multiple assemblies. This is an advanced topic but important for multi-assembly deployments.",
+      "sourceFiles": ["src/Whizbang.Core/Perspectives/PerspectiveRunnerCallbackRegistry.cs"],
+      "effort": "S"
+    },
+    {
+      "id": "2C-025",
+      "type": "persona-gaps",
+      "priority": "P2",
+      "page": "fundamentals/perspectives/",
+      "dimension": "persona-gaps",
+      "summary": "IPerspectiveBase refactor needs contributor documentation",
+      "details": "The IPerspectiveBase marker interface hierarchy (commit 3a49ff39) affects all 7 generators. Contributors need to understand: why it exists, how the inheritance chain works (IPerspectiveFor → IPerspectiveBase<TModel, TEvents>), and which generators check WithActionsFor compatibility. Should be in extending/internals/ or extending/source-generators/.",
+      "sourceFiles": ["src/Whizbang.Core/Perspectives/IPerspectiveBase.cs"],
+      "effort": "M"
+    }
+  ],
+  "sectionSummary": "The perspectives section has 16 content pages covering a large feature surface. The biggest issues are: (1) 3 pages referenced by <docs> tags don't exist (stream-locking, snapshots, perspectives-with-actions), (2) IPerspectiveWithActionsFor with ApplyResult<T>/ModelAction (deletion support) is entirely undocumented, (3) 4 pages have NO frontmatter at all (registry, table-naming, temporal, typed-associations), (4) 7 more pages have partial frontmatter gaps, (5) IPerspectiveBase marker interface (recent refactor) not documented. The existing pages are generally well-written with good conceptual coverage. The rebuild.md page correctly shows the updated RebuildPerspectiveCommand signature (unlike lifecycle.md and routing.md). The sync infrastructure (32 files) is covered by perspective-sync.md and event-completion.md but there may be overlap with sync.md. Code sample metadata is universally poor across all pages."
+}
