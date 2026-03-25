@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-03-25T12:35:25.017Z",
+  "docsRoot": "src/assets/docs/v1.0.0",
+  "libraryPath": "/Users/philcarbone/src/whizbang/whizbang",
+  "highlights": {
+    "totalPages": 243,
+    "pagesWithFrontmatterGaps": 243,
+    "totalCodeSamples": 3118,
+    "codeSamplesWithoutMetadata": 139,
+    "undocumentedPublicTypes": 514,
+    "brokenCodeDocsLinks": 49,
+    "totalMermaidDiagrams": 39,
+    "unclosedCallouts": 0,
+    "searchChunksWithMarkdownLeaks": 523,
+    "potentiallyStalePages": 288,
+    "brokenInternalLinks": 4,
+    "personaCoverageGaps": 15
+  },
+  "reports": [
+    "frontmatter-gaps.json",
+    "code-samples-inventory.json",
+    "undocumented-public-types.json",
+    "broken-code-docs-links.json",
+    "mermaid-inventory.json",
+    "callout-inventory.json",
+    "search-index-quality.json",
+    "stale-docs-candidates.json",
+    "cross-link-map.json",
+    "persona-coverage.json"
+  ]
+}

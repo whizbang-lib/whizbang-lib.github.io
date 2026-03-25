@@ -1,0 +1,579 @@
+{
+  "totalDocuments": 305,
+  "totalChunksWithIssues": 523,
+  "issuesByPattern": {
+    "table-syntax": 418,
+    "callout-syntax": 107,
+    "code-metadata": 37,
+    "component-tag": 1,
+    "markdown-header": 6
+  },
+  "sampleIssues": [
+    {
+      "document": "drafts/attributes/auto-populate",
+      "chunkId": "drafts/attributes/auto-populate-chunk-0",
+      "preview": "Auto-Populate Attributes\nAuto-populate attributes automatically set message property values from envelope context at specific points in the message lifecycle This enables tracking timestamps, security",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/attributes/auto-populate",
+      "chunkId": "drafts/attributes/auto-populate-chunk-1",
+      "preview": "persisted to outbox | | DeliveredAt | Inbox receive | When message arrives from transport | Example `csharp{title=\"Timestamp Attributes\" description=\"Track message timing through lifecycle\" category=\"",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/attributes/auto-populate",
+      "chunkId": "drafts/attributes/auto-populate-chunk-2",
+      "preview": "Guid ProductId, int QuantityChange, string Reason, // Audit fields populated automatically [property: PopulateFromContext(ContextKind UserId)] string AdjustedBy = null, [property: PopulateFromContext(",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/attributes/auto-populate",
+      "chunkId": "drafts/attributes/auto-populate-chunk-3",
+      "preview": "Amount, // Full service context for debugging [property: PopulateFromService(ServiceKind ServiceName)] string ServiceName = null, [property: PopulateFromService(ServiceKind InstanceId)] Guid InstanceI",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/attributes/auto-populate",
+      "chunkId": "drafts/attributes/auto-populate-chunk-4",
+      "preview": "null ) : IEvent; public record PaymentReceived( [property: StreamId] Guid PaymentId, Guid CartId, [property: PopulateFromIdentifier(IdentifierKind CorrelationId)] Guid CheckoutWorkflowId = null, [prop",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/attributes/auto-populate",
+      "chunkId": "drafts/attributes/auto-populate-chunk-5",
+      "preview": "in envelope, not message\" category=\"Reference\" difficulty=\"INTERMEDIATE\" tags=[\"Envelope\", \"Metadata\"]} // Values stored in MessageHop Metadata with __autopop__ prefix envelope Hops[^1] Metadata[\"__au",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/attributes/must-exist",
+      "chunkId": "drafts/attributes/must-exist-chunk-0",
+      "preview": "MustExist Attribute\nThe [MustExist] attribute marks a perspective Apply method as requiring the model to already exist When applied, the generated runner code includes a null check before calling the ",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/attributes/must-exist",
+      "chunkId": "drafts/attributes/must-exist-chunk-1",
+      "preview": "OrderView Apply(OrderView current, OrderShipped @event) { return current with { Status = \"Shipped\", ShippedAt = @event ShippedAt }; } } ` Parameter Nullability Use the nullable annotation to signal in",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/core-concepts/cascade-context",
+      "chunkId": "drafts/core-concepts/cascade-context-chunk-0",
+      "preview": "Cascade Context\nCascadeContext provides unified context propagation for message flows in Whizbang It encapsulates the essential data that should cascade from parent to child messages: CorrelationId, C",
+      "leaks": [
+        {
+          "pattern": "callout-syntax",
+          "desc": "Raw callout syntax (:::)"
+        },
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/core-concepts/cascade-context",
+      "chunkId": "drafts/core-concepts/cascade-context-chunk-2",
+      "preview": "message SB->>HOP: Extract SecurityContext HOP->>MC_B: Create IMessageContext<br/>(SOURCE restored) MC_B->>SB: Set as InitiatingContext Note over SB: SB has full context<br/>as if request started here ",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/core-concepts/cascade-context",
+      "chunkId": "drafts/core-concepts/cascade-context-chunk-3",
+      "preview": "as the source of truth The Solution: CascadeContext CascadeContext is a sealed record that captures context to propagate: `csharp public sealed record CascadeContext { public required CorrelationId Co",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/core-concepts/cascade-context",
+      "chunkId": "drafts/core-concepts/cascade-context-chunk-5",
+      "preview": "}); ` Metadata is immutable - WithMetadata returns a new instance --- Integration with Dispatcher The Dispatcher automatically uses CascadeContextFactory for methods without explicit context: `csharp ",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/core-concepts/cascade-context",
+      "chunkId": "drafts/core-concepts/cascade-context-chunk-6",
+      "preview": "GetCausationId() MessageId New(), UserId = securityContext UserId, TenantId = securityContext TenantId }; // CRITICAL: Set InitiatingContext BEFORE any processing scopeContextAccessor InitiatingContex",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/metrics/components",
+      "chunkId": "drafts/metrics/components-chunk-1",
+      "preview": "Security = 1 << 10, // 1024 /// <summary>Background worker operations </summary> Workers = 1 << 11, // 2048 /// <summary>Error and exception tracking </summary> Errors = 1 << 12, // 4096 /// <summary>",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/metrics/components",
+      "chunkId": "drafts/metrics/components-chunk-2",
+      "preview": "latency Use when: Monitoring reliable delivery and backpressure Inbox (32) Tracks inbound messaging: Messages received Pending count Batch sizes Processing time Duplicate detection Use when: Monitorin",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/metrics/components",
+      "chunkId": "drafts/metrics/components-chunk-3",
+      "preview": "= MetricComponents EventStore | MetricComponents Perspectives; ` Worker Health Monitor background processing: `csharp options Metrics Components = MetricComponents Workers | MetricComponents Errors; `",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/metrics/configuration",
+      "chunkId": "drafts/metrics/configuration-chunk-0",
+      "preview": "Metrics Configuration\nMetricsOptions provides runtime configuration for the Whizbang metrics system Configure which components emit metrics, control tag cardinality, and customize histogram buckets Qu",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/metrics/configuration",
+      "chunkId": "drafts/metrics/configuration-chunk-2",
+      "preview": "Default buckets optimized for typical handler durations options Metrics DurationBuckets = [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000]; // Custom buckets for fast operations options Metr",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/metrics/handlers",
+      "chunkId": "drafts/metrics/handlers-chunk-0",
+      "preview": "Handler Metrics\nHandlerMetrics provides instrumentation for tracking handler invocations, execution duration, and outcomes It integrates with OpenTelemetry-compatible observability backends IHandlerMe",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/metrics/handlers",
+      "chunkId": "drafts/metrics/handlers-chunk-1",
+      "preview": "| Total handler invocations | | whizbang handler successes | Counter | Successful completions | | whizbang handler failures | Counter | Failed executions | | whizbang handler early_returns | Counter |",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/metrics/handlers",
+      "chunkId": "drafts/metrics/handlers-chunk-3",
+      "preview": "Aspire Handler metrics appear in the Aspire dashboard automatically: `csharp var builder = DistributedApplication CreateBuilder(args); builder AddOpenTelemetry() WithMetricsExporter(); ` Grafana Dashb",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/metrics/overview",
+      "chunkId": "drafts/metrics/overview-chunk-0",
+      "preview": "Metrics Overview\nWhizbangMetrics provides a comprehensive set of OpenTelemetry-compatible metrics instruments for monitoring your event-driven applications All metrics are exposed through the standard",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/metrics/overview",
+      "chunkId": "drafts/metrics/overview-chunk-1",
+      "preview": "See Metric Components for details --- Metric Instruments Whizbang provides 44 metric instruments across all components: Handler Metrics | Metric | Type | Description | |--------|------|-------------| ",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/metrics/overview",
+      "chunkId": "drafts/metrics/overview-chunk-2",
+      "preview": "Histogram | Batch sizes | | whizbang outbox delivery_latency | Histogram | Time to delivery | Inbox Metrics | Metric | Type | Description | |--------|------|-------------| | whizbang inbox received | ",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/metrics/overview",
+      "chunkId": "drafts/metrics/overview-chunk-3",
+      "preview": "Counter | Worker loop iterations | | whizbang worker idle_time | Histogram | Time spent idle | | whizbang worker active | UpDownCounter | Active workers | | whizbang worker errors | Counter | Worker e",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/test-error-display",
+      "chunkId": "drafts/test-error-display-chunk-0",
+      "preview": "Test Error Display\nThis is a test page to verify that our front-matter error display is working.\nCode with Front-Matter (Should be fine)\n`csharp{\ntitle: \"Good Example\"\ndescription: \"This has proper fr",
+      "leaks": [
+        {
+          "pattern": "code-metadata",
+          "desc": "Code block metadata ({title:)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/tracing/attributes",
+      "chunkId": "drafts/tracing/attributes-chunk-1",
+      "preview": "{ // Handler logic - full payload and timing traced } } ` Tracing Messages (Planned) `csharp // Trace all handlers that receive this event [WhizbangTrace] public sealed record ReseedSystemEvent : Even",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/tracing/attributes",
+      "chunkId": "drafts/tracing/attributes-chunk-2",
+      "preview": "Payment* handlers traced (config) ` --- OpenTelemetry Tags Explicit traces include special OTel tags: | Tag | Value | |-----|-------| | whizbang trace explicit | true | | whizbang handler name | Fully",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/tracing/components",
+      "chunkId": "drafts/tracing/components-chunk-0",
+      "preview": "Trace Components\nTraceComponents is a flags enum that controls which parts of the system generate trace output Use it to focus on specific areas during debugging without being overwhelmed by unrelated",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/tracing/components",
+      "chunkId": "drafts/tracing/components-chunk-2",
+      "preview": "start Handler completion (duration, result) Use when: Debugging handler selection or execution Lifecycle (128) Traces lifecycle stages: PreExecute phase Execute phase PostExecute phase Stage transitio",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/tracing/configuration",
+      "chunkId": "drafts/tracing/configuration-chunk-0",
+      "preview": "Tracing Configuration\nTracingOptions provides runtime configuration for the tracing system Configure via appsettings json with live reload support via IOptionsMonitor<TracingOptions> Core Concept\nTrac",
+      "leaks": [
+        {
+          "pattern": "callout-syntax",
+          "desc": "Raw callout syntax (:::)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/tracing/configuration",
+      "chunkId": "drafts/tracing/configuration-chunk-1",
+      "preview": "if a trace at the specified verbosity level should be emitted /// </summary> public bool ShouldTrace(TraceVerbosity requiredVerbosity) { return Verbosity = TraceVerbosity Off && Verbosity >= requiredV",
+      "leaks": [
+        {
+          "pattern": "callout-syntax",
+          "desc": "Raw callout syntax (:::)"
+        },
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/tracing/overview",
+      "chunkId": "drafts/tracing/overview-chunk-0",
+      "preview": "Tracing Overview\nWhizbang provides comprehensive distributed tracing across the entire message lifecycle Traces flow from HTTP requests through handlers to perspectives, giving complete visibility int",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/tracing/overview",
+      "chunkId": "drafts/tracing/overview-chunk-1",
+      "preview": "message | | Config: TracedHandlers | Runtime | Target specific handlers by name | | Config: TracedMessages | Runtime | Target specific messages by name | | Config: Verbosity | Runtime | Global baselin",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/tracing/overview",
+      "chunkId": "drafts/tracing/overview-chunk-2",
+      "preview": "trace source | attribute or config | | whizbang handler | Handler name | | whizbang message_type | Message type name | | whizbang duration_ms | Duration in milliseconds | | whizbang status | Completio",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/tracing/overview",
+      "chunkId": "drafts/tracing/overview-chunk-3",
+      "preview": "last non-null TraceParent from message hops Spans are parented correctly: Child spans are linked to the original request trace, even across process boundaries Code Implementation `csharp // Extract pa",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/tracing/overview",
+      "chunkId": "drafts/tracing/overview-chunk-4",
+      "preview": "| whizbang perspective event_types | Event types with counts (e g , \"OrderCreated:3, OrderUpdated:2\") | This gives you visibility into event processing without the overhead of per-event spans --- Pers",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/tracing/verbosity-levels",
+      "chunkId": "drafts/tracing/verbosity-levels-chunk-2",
+      "preview": "Detail Use in: Local development only `json { \"Whizbang\": { \"Tracing\": { \"Verbosity\": \"Debug\" } } } ` What's traced (includes Verbose): Full message payloads (serialized JSON) Timing breakdown per ope",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "enhanced-csharp-examples",
+      "chunkId": "enhanced-csharp-examples-chunk-0",
+      "preview": "Enhanced CCode Examples 2\nThis document demonstrates the enhanced Ccode viewing capabilities with rich metadata, interactive features, and professional styling Basic API Controller Example\n`csharp{\nti",
+      "leaks": [
+        {
+          "pattern": "code-metadata",
+          "desc": "Code block metadata ({title:)"
+        }
+      ]
+    },
+    {
+      "document": "enhanced-csharp-examples",
+      "chunkId": "enhanced-csharp-examples-chunk-1",
+      "preview": "= user Id, Name = user Name, Email = user Email, CreatedAt = user CreatedAt }); } [HttpPost] public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserRequest request) { if ( ModelState",
+      "leaks": [
+        {
+          "pattern": "code-metadata",
+          "desc": "Code block metadata ({title:)"
+        }
+      ]
+    },
+    {
+      "document": "enhanced-csharp-examples",
+      "chunkId": "enhanced-csharp-examples-chunk-2",
+      "preview": "UserRoles { get; set; } = new List<UserRole>(); public virtual ICollection<UserProfile> UserProfiles { get; set; } = new List<UserProfile>(); } public class UserDto { public int Id { get; set; } publi",
+      "leaks": [
+        {
+          "pattern": "code-metadata",
+          "desc": "Code block metadata ({title:)"
+        }
+      ]
+    },
+    {
+      "document": "enhanced-csharp-examples",
+      "chunkId": "enhanced-csharp-examples-chunk-4",
+      "preview": "throw; // Re-throw business logic exceptions } catch (Exception ex) { _logger LogError(ex, \"Error occurred while creating user with email: {Email}\", request Email); throw new ServiceException(\"Failed ",
+      "leaks": [
+        {
+          "pattern": "code-metadata",
+          "desc": "Code block metadata ({title:)"
+        }
+      ]
+    },
+    {
+      "document": "enhanced-csharp-examples",
+      "chunkId": "enhanced-csharp-examples-chunk-5",
+      "preview": "tokenHandler = new JwtSecurityTokenHandler(); var key = Encoding ASCII GetBytes(_jwtSettings SecretKey); var validationParameters = new TokenValidationParameters { ValidateIssuerSigningKey = true, Iss",
+      "leaks": [
+        {
+          "pattern": "code-metadata",
+          "desc": "Code block metadata ({title:)"
+        }
+      ]
+    },
+    {
+      "document": "getting-started",
+      "chunkId": "getting-started-chunk-0",
+      "preview": "Getting Started\nInstall Whizbang:\n`bash\nnpm i @whizbang/runtime\n`\n<wb-video id=\"dQw4w9WgXcQ\"></wb-video>\n<wb-example id=\"hello-world\"></wb-example>",
+      "leaks": [
+        {
+          "pattern": "component-tag",
+          "desc": "Angular component tag (<wb-)"
+        }
+      ]
+    },
+    {
+      "document": "migrate-from-marten-wolverine/01-concept-mapping",
+      "chunkId": "migrate-from-marten-wolverine/01-concept-mapping-chunk-0",
+      "preview": "Migrate from Marten/Wolverine: Concept Mapping\nThis document maps core concepts between Marten/Wolverine and Whizbang Core Concept Translations\n| Marten/Wolverine | Whizbang | Key Differences |\n|-----",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "migrate-from-marten-wolverine/01-concept-mapping",
+      "chunkId": "migrate-from-marten-wolverine/01-concept-mapping-chunk-6",
+      "preview": "public (OrderCreatedResult, OrderCreated) Receive(CreateOrderCommand command) { // TrackedGuid NewMedo() is virtually collision-free // - Time-based component ensures temporal ordering // - 62 bits of",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "migrate-from-marten-wolverine/03-handler-migration",
+      "chunkId": "migrate-from-marten-wolverine/03-handler-migration-chunk-0",
+      "preview": "Migrate from Marten/Wolverine: Handler Migration\nThis guide covers migrating Wolverine handlers to Whizbang Receptors Overview\n| Wolverine | Whizbang |\n|-----------|----------|\n| IHandle<TMessage> | I",
+      "leaks": [
+        {
+          "pattern": "callout-syntax",
+          "desc": "Raw callout syntax (:::)"
+        },
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
+    {
+      "document": "migrate-from-marten-wolverine/03-handler-migration",
+      "chunkId": "migrate-from-marten-wolverine/03-handler-migration-chunk-1",
+      "preview": "for simple event publishing ::: :::note[Sync vs Async Receptors] Handlers can be migrated to either async (IReceptor<T, TResult>) or sync (ISyncReceptor<T, TResult>) receptors Use sync receptors when ",
+      "leaks": [
+        {
+          "pattern": "callout-syntax",
+          "desc": "Raw callout syntax (:::)"
+        }
+      ]
+    },
+    {
+      "document": "migrate-from-marten-wolverine/03-handler-migration",
+      "chunkId": "migrate-from-marten-wolverine/03-handler-migration-chunk-2",
+      "preview": "public class CreateOrderReceptor : IReceptor<CreateOrderCommand, (OrderCreatedResult, OrderCreated)> { public ValueTask<(OrderCreatedResult, OrderCreated)> HandleAsync( CreateOrderCommand command, Can",
+      "leaks": [
+        {
+          "pattern": "callout-syntax",
+          "desc": "Raw callout syntax (:::)"
+        }
+      ]
+    },
+    {
+      "document": "migrate-from-marten-wolverine/03-handler-migration",
+      "chunkId": "migrate-from-marten-wolverine/03-handler-migration-chunk-3",
+      "preview": "_logger; public LoggingReceptor(ILogger<LoggingReceptor> logger) { _logger = logger; } public ValueTask<Unit> HandleAsync(OrderCreated @event, CancellationToken ct) { _logger LogInformation(\"Order {Or",
+      "leaks": [
+        {
+          "pattern": "callout-syntax",
+          "desc": "Raw callout syntax (:::)"
+        },
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    }
+  ]
+}
