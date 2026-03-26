@@ -113,7 +113,7 @@ The `LifecycleStage` enum contains 25 values total: 24 true lifecycle stages plu
 - Errors propagate to caller
 
 **Example**:
-```csharp{title="`ImmediateAsync`" description="Demonstrates `ImmediateAsync`" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ImmediateAsync"]}
+```csharp{title="`ImmediateAsync`" description="ImmediateAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ImmediateAsync"]}
 [FireAt(LifecycleStage.ImmediateAsync)]
 public class CommandMetricsReceptor : IReceptor<ICommand> {
     private readonly IMetricsCollector _metrics;
@@ -150,7 +150,7 @@ LocalImmediate stages are new in v1.0.0 and enable in-memory mediator-style mess
 - Errors propagate to caller
 
 **Example**:
-```csharp{title="`LocalImmediateInline` ⭐ **Default Stage for Local Path**" description="Demonstrates `LocalImmediateInline` ⭐ **Default Stage for Local Path**" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "LocalImmediateInline", "**Default"]}
+```csharp{title="`LocalImmediateInline` ⭐ **Default Stage for Local Path**" description="LocalImmediateInline` " category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "LocalImmediateInline", "**Default"]}
 // Receptor WITHOUT [FireAt] fires here when dispatched locally!
 public class CreateTenantCommandHandler : IReceptor<CreateTenantCommand, TenantCreatedEvent> {
     public async ValueTask<TenantCreatedEvent> HandleAsync(CreateTenantCommand cmd, CancellationToken ct) {
@@ -181,7 +181,7 @@ await dispatcher.DispatchAsync(new CreateTenantCommand("Acme"), local: true);
 - Errors logged but don't affect caller
 
 **Example**:
-```csharp{title="`LocalImmediateAsync`" description="Demonstrates `LocalImmediateAsync`" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "LocalImmediateAsync"]}
+```csharp{title="`LocalImmediateAsync`" description="LocalImmediateAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "LocalImmediateAsync"]}
 [FireAt(LifecycleStage.LocalImmediateAsync)]
 public class LocalDispatchLogger : IReceptor<ICommand> {
     public ValueTask HandleAsync(ICommand cmd, CancellationToken ct) {
@@ -429,7 +429,7 @@ Perspective lifecycle stages are new in v1.0.0 and enable deterministic test syn
 **Hook Location**: Generated perspective runner (from `PerspectiveRunnerTemplate.cs`) during event processing loop, after `Apply()` and before checkpoint save
 
 **Example**:
-```csharp{title="`PostPerspectiveAsync`" description="Demonstrates `PostPerspectiveAsync`" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PostPerspectiveAsync"]}
+```csharp{title="`PostPerspectiveAsync`" description="PostPerspectiveAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PostPerspectiveAsync"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class PerspectiveMetricsReceptor : IReceptor<IEvent> {
     private readonly IMetricsCollector _metrics;

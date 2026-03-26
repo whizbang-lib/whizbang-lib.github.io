@@ -114,7 +114,7 @@ public class MetricsHub : Hub {
 
 **Program.cs registration**:
 
-```csharp{title="SignalR Hub (2)" description="Demonstrates signalR Hub" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalR", "Hub"]}
+```csharp{title="SignalR Hub (2)" description="SignalR Hub" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalR", "Hub"]}
 builder.Services.AddSignalR();
 
 app.MapHub<MetricsHub>("/hubs/metrics");
@@ -314,7 +314,7 @@ new MetricsDashboard();
 
 **HTML**:
 
-```html{title="Client-Side (TypeScript) (2)" description="Demonstrates client-Side (TypeScript)" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Client-Side", "TypeScript"]}
+```html{title="Client-Side (TypeScript) (2)" description="Client-Side (TypeScript)" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Client-Side", "TypeScript"]}
 <!DOCTYPE html>
 <html>
 <head>

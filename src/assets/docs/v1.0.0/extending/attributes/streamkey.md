@@ -22,13 +22,13 @@ The `[StreamKey]` attribute marks a property as the stream key for event sourcin
 
 ## Namespace
 
-```csharp{title="Namespace" description="Demonstrates namespace" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Namespace"]}
+```csharp{title="Namespace" description="Namespace" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Namespace"]}
 using Whizbang.Core;
 ```
 
 ## Syntax
 
-```csharp{title="Syntax" description="Demonstrates syntax" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Syntax"]}
+```csharp{title="Syntax" description="Syntax" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Syntax"]}
 [StreamKey]
 public Guid PropertyName { get; init; }
 ```
@@ -53,7 +53,7 @@ The `[StreamKey]` attribute serves two critical purposes:
 
 ## Basic Example
 
-```csharp{title="Basic Example" description="Demonstrates basic Example" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Basic", "Example"]}
+```csharp{title="Basic Example" description="Basic Example" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Basic", "Example"]}
 public record ProductCreatedEvent : IEvent {
   [StreamKey]  // Identifies which product this event belongs to
   public Guid ProductId { get; init; }
@@ -253,7 +253,7 @@ See [WHIZ031 Diagnostic](../../operations/diagnostics/whiz031.md) for details.
 
 ### ✅ DO: Use on Aggregate ID
 
-```csharp{title="✅ DO: Use on Aggregate ID" description="Demonstrates ✅ DO: Use on Aggregate ID" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "DO:", "Aggregate"]}
+```csharp{title="✅ DO: Use on Aggregate ID" description="✅ DO: Use on Aggregate ID" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "DO:", "Aggregate"]}
 public record ProductCreatedEvent : IEvent {
   [StreamKey]  // Primary aggregate identifier
   public Guid ProductId { get; init; }
@@ -263,7 +263,7 @@ public record ProductCreatedEvent : IEvent {
 
 ### ✅ DO: Match Event and Model StreamKeys
 
-```csharp{title="✅ DO: Match Event and Model StreamKeys" description="Demonstrates ✅ DO: Match Event and Model StreamKeys" category="Reference" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "DO:", "Match"]}
+```csharp{title="✅ DO: Match Event and Model StreamKeys" description="✅ DO: Match Event and Model StreamKeys" category="Reference" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "DO:", "Match"]}
 // Event
 public record ProductEvent : IEvent {
   [StreamKey]
@@ -279,7 +279,7 @@ public record ProductDto {
 
 ### ✅ DO: Use UUID7 for Time-Ordered IDs
 
-```csharp{title="✅ DO: Use UUID7 for Time-Ordered IDs" description="Demonstrates ✅ DO: Use UUID7 for Time-Ordered IDs" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "DO:", "UUID7"]}
+```csharp{title="✅ DO: Use UUID7 for Time-Ordered IDs" description="✅ DO: Use UUID7 for Time-Ordered IDs" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "DO:", "UUID7"]}
 public record OrderCreatedEvent : IEvent {
   [AggregateId]  // Can combine attributes
   [StreamKey]
@@ -289,7 +289,7 @@ public record OrderCreatedEvent : IEvent {
 
 ### ❌ DON'T: Use on Multiple Properties
 
-```csharp{title="❌ DON'T: Use on Multiple Properties" description="Demonstrates ❌ DON'T: Use on Multiple Properties" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "DON'T:", "Multiple"]}
+```csharp{title="❌ DON'T: Use on Multiple Properties" description="❌ DON'T: Use on Multiple Properties" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "DON'T:", "Multiple"]}
 // ❌ WRONG - Multiple [StreamKey]
 public record Event : IEvent {
   [StreamKey]
@@ -302,7 +302,7 @@ public record Event : IEvent {
 
 ### ❌ DON'T: Use on Non-Aggregate Properties
 
-```csharp{title="❌ DON'T: Use on Non-Aggregate Properties" description="Demonstrates ❌ DON'T: Use on Non-Aggregate Properties" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "DON'T:", "Non-Aggregate"]}
+```csharp{title="❌ DON'T: Use on Non-Aggregate Properties" description="❌ DON'T: Use on Non-Aggregate Properties" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "DON'T:", "Non-Aggregate"]}
 // ❌ WRONG - CreatedAt is not an aggregate identifier
 public record ProductEvent : IEvent {
   public Guid ProductId { get; init; }

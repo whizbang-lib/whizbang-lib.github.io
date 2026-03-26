@@ -30,7 +30,7 @@ The `PauseProcessingCommand` and `ResumeProcessingCommand` enable coordinated pa
 Pauses message processing across all services. Useful for coordinated maintenance operations where you need to ensure no messages are being processed.
 
 **Signature**:
-```csharp{title="PauseProcessingCommand" description="Demonstrates pauseProcessingCommand" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PauseProcessingCommand"]}
+```csharp{title="PauseProcessingCommand" description="PauseProcessingCommand" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PauseProcessingCommand"]}
 public record PauseProcessingCommand(
     int? DurationSeconds = null,
     string? Reason = null
@@ -79,7 +79,7 @@ await dispatcher.SendAsync(new ResumeProcessingCommand(
 Resumes message processing across all services after a pause.
 
 **Signature**:
-```csharp{title="ResumeProcessingCommand" description="Demonstrates resumeProcessingCommand" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ResumeProcessingCommand"]}
+```csharp{title="ResumeProcessingCommand" description="ResumeProcessingCommand" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ResumeProcessingCommand"]}
 public record ResumeProcessingCommand(
     string? Reason = null
 ) : ICommand;

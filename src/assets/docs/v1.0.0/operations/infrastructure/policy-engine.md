@@ -46,7 +46,7 @@ Think of policies as aspects that modify how your components execute without cha
 The basic policy interface for wrapping execution:
 :::
 
-```csharp{title="Core Interface (v1.0.0)" description=":::new The basic policy interface for wrapping execution: :::" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Core", "Interface"]}
+```csharp{title="Core Interface (v1.0.0)" description="Core Interface (v1.0.0)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Core", "Interface"]}
 public interface IPolicyOf<T> {
     Task<TResult> Execute<TResult>(
         Func<Task<TResult>> operation,
@@ -63,7 +63,7 @@ public interface IPolicyOf<T> {
 Automatically retry failed operations with configurable backoff strategies:
 :::
 
-```csharp{title="Retry Policy" description=":::new Automatically retry failed operations with configurable backoff strategies: :::" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Retry", "Policy"]}
+```csharp{title="Retry Policy" description="Retry Policy" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Retry", "Policy"]}
 // Basic retry with fixed delay
 [Retry(3)]
 public class PaymentReceptor : IReceptor<ProcessPayment, PaymentProcessed> {
@@ -88,7 +88,7 @@ public class InventoryReceptor : IReceptor<ReserveStock> {
 
 #### Configuration Options
 
-```csharp{title="Configuration Options" description="Demonstrates configuration Options" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Configuration", "Options"]}
+```csharp{title="Configuration Options" description="Configuration Options" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Configuration", "Options"]}
 [Retry(
     MaxAttempts = 3,
     BackoffStrategy = BackoffStrategy.Exponential,
@@ -105,7 +105,7 @@ public class InventoryReceptor : IReceptor<ReserveStock> {
 Prevent operations from running indefinitely:
 :::
 
-```csharp{title="Timeout Policy" description=":::new Prevent operations from running indefinitely: :::" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Timeout", "Policy"]}
+```csharp{title="Timeout Policy" description="Timeout Policy" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Timeout", "Policy"]}
 // Simple timeout
 [Timeout(5000)]  // 5 seconds
 public class DatabaseReceptor : IReceptor<QueryData> {
@@ -128,7 +128,7 @@ public class CriticalReceptor : IReceptor<CriticalCommand> {
 Cache results to avoid redundant processing:
 :::
 
-```csharp{title="Cache Policy" description=":::new Cache results to avoid redundant processing: :::" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Cache", "Policy"]}
+```csharp{title="Cache Policy" description="Cache Policy" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Cache", "Policy"]}
 // Cache for 5 minutes
 [Cache(Duration = 300)]  // seconds
 public class ProductLens : IProductLens {
@@ -157,7 +157,7 @@ public class OrderHistoryReceptor : IReceptor<GetOrderHistory> {
 Prevent cascading failures by breaking the circuit after repeated failures:
 :::
 
-```csharp{title="Circuit Breaker Policy" description=":::new Prevent cascading failures by breaking the circuit after repeated failures: :::" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Circuit", "Breaker"]}
+```csharp{title="Circuit Breaker Policy" description="Circuit Breaker Policy" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Circuit", "Breaker"]}
 // Basic circuit breaker
 [CircuitBreaker(
     FailureThreshold = 0.5,  // 50% failure rate
@@ -193,7 +193,7 @@ stateDiagram-v2
 The simplest way to apply policies is via attributes:
 :::
 
-```csharp{title="Via Attributes" description=":::new The simplest way to apply policies is via attributes: :::" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Attributes"]}
+```csharp{title="Via Attributes" description="Via Attributes" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Attributes"]}
 [Retry(3)]
 [Timeout(5000)]
 [Cache(300)]
@@ -224,7 +224,7 @@ Policies execute in a specific order (innermost to outermost):
 Create custom policies for specific needs:
 :::
 
-```csharp{title="Custom Policies" description=":::new Create custom policies for specific needs: :::" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Custom", "Policies"]}
+```csharp{title="Custom Policies" description="Custom Policies" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Custom", "Policies"]}
 [WhizbangPolicy]
 public class LoggingPolicy : IPolicyOf<IReceptor> {
     private readonly ILogger _logger;
@@ -259,7 +259,7 @@ public class AuditedReceptor : IReceptor<AuditedCommand> { }
 Policies are woven at compile time for zero overhead:
 :::
 
-```csharp{title="Source Generation" description=":::new Policies are woven at compile time for zero overhead: :::" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Source", "Generation"]}
+```csharp{title="Source Generation" description="Source Generation" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Source", "Generation"]}
 // Generated by Whizbang.Generators
 public static class PolicyWeaver {
     public static OrderReceptor WrapWithPolicies(OrderReceptor receptor) {
@@ -276,7 +276,7 @@ public static class PolicyWeaver {
 
 ## Testing with Policies
 
-```csharp{title="Testing with Policies" description="Demonstrates testing with Policies" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Testing", "Policies"]}
+```csharp{title="Testing with Policies" description="Testing with Policies" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Testing", "Policies"]}
 [Test]
 public class PolicyTests {
     [Test]
@@ -326,7 +326,7 @@ public class PolicyTests {
 
 ## IDE Features
 
-```csharp{title="IDE Features" description="Demonstrates iDE Features" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "IDE", "Features"]}
+```csharp{title="IDE Features" description="IDE Features" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "IDE", "Features"]}
 // IDE shows: "Policies: Retry(3), Timeout(5s), Cache(5m)"
 [Retry(3)][Timeout(5000)][Cache(300)]
 public class PolicyReceptor : IReceptor<Command> { }
@@ -368,7 +368,7 @@ These limitations are addressed in future versions:
 v0.2.0 adds composition and new policy types:
 :::
 
-```csharp{title="To v0.2.0 (Enhanced Policies)" description=":::planned v0." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "V0.2.0", "Enhanced"]}
+```csharp{title="To v0.2.0 (Enhanced Policies)" description="To v0.2.0 (Enhanced Policies)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "V0.2.0", "Enhanced"]}
 // v0.2.0 - Policy composition
 [PolicySet("Resilient")]
 public class OrderReceptor { }
@@ -388,7 +388,7 @@ services.AddPolicySet("Resilient", policies => {
 v0.6.0 adds security and compliance policies:
 :::
 
-```csharp{title="To v0.6.0 (Security Policies)" description=":::planned v0." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "V0.6.0", "Security"]}
+```csharp{title="To v0.6.0 (Security Policies)" description="To v0.6.0 (Security Policies)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "V0.6.0", "Security"]}
 // v0.6.0 - Security policies
 [Authorize(Roles = "Admin")]
 [Audit(Level = AuditLevel.Full)]

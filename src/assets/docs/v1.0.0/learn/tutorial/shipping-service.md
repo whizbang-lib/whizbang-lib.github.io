@@ -781,7 +781,7 @@ public record FedExTrackingWebhook(
 
 ### 1. Create Order (Full End-to-End)
 
-```bash{title="Create Order (Full End-to-End)" description="Demonstrates create Order (Full End-to-End)" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
+```bash{title="Create Order (Full End-to-End)" description="Create Order (Full End-to-End)" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{ ... }'
@@ -798,7 +798,7 @@ Aspire Dashboard:
 
 ### 3. Verify Shipment
 
-```sql{title="Verify Shipment" description="Demonstrates verify Shipment" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Shipment"]}
+```sql{title="Verify Shipment" description="Verify Shipment" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Shipment"]}
 SELECT * FROM shipments WHERE order_id = '<order-id>';
 ```
 

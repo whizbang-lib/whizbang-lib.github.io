@@ -29,7 +29,7 @@ MatchStrictness is a flag enum that controls how type names are compared during 
 
 ### Basic Fuzzy Matching
 
-```csharp{title="Basic Fuzzy Matching" description="Demonstrates basic Fuzzy Matching" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Fuzzy"]}
+```csharp{title="Basic Fuzzy Matching" description="Basic Fuzzy Matching" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Fuzzy"]}
 using Whizbang.Core;
 
 var fullType = "ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts, Version=1.0.0";
@@ -54,7 +54,7 @@ bool caseMatch = TypeMatcher.Matches(
 
 ### Combining Multiple Flags
 
-```csharp{title="Combining Multiple Flags" description="Demonstrates combining Multiple Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Combining", "Multiple"]}
+```csharp{title="Combining Multiple Flags" description="Combining Multiple Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Combining", "Multiple"]}
 // Ignore both case AND version
 var strictness = MatchStrictness.IgnoreCase | MatchStrictness.IgnoreVersion;
 
@@ -186,7 +186,7 @@ bool match2 = TypeMatcher.Matches(type1, type3, MatchStrictness.IgnoreNamespace)
 
 ### Preset Examples
 
-```csharp{title="Preset Examples" description="Demonstrates preset Examples" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "Preset", "Examples"]}
+```csharp{title="Preset Examples" description="Preset Examples" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "Preset", "Examples"]}
 // Exact preset (default)
 bool exact = TypeMatcher.Matches(
     "MyApp.OrderCreated",
@@ -366,7 +366,7 @@ public string? FindHandler(string eventType, List<MessageRouteConfig> routes) {
 
 ### Checking Flags
 
-```csharp{title="Checking Flags" description="Demonstrates checking Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Checking", "Flags"]}
+```csharp{title="Checking Flags" description="Checking Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Checking", "Flags"]}
 var strictness = MatchStrictness.IgnoreCase | MatchStrictness.IgnoreVersion;
 
 // Check if a flag is set
@@ -383,7 +383,7 @@ bool hasIgnoreCaseAlt = (strictness & MatchStrictness.IgnoreCase) == MatchStrict
 
 ### Adding and Removing Flags
 
-```csharp{title="Adding and Removing Flags" description="Demonstrates adding and Removing Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Adding", "Removing"]}
+```csharp{title="Adding and Removing Flags" description="Adding and Removing Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Adding", "Removing"]}
 var strictness = MatchStrictness.IgnoreVersion;
 
 // Add a flag
@@ -401,7 +401,7 @@ strictness ^= MatchStrictness.IgnoreAssembly;
 
 ### Building Strictness Dynamically
 
-```csharp{title="Building Strictness Dynamically" description="Demonstrates building Strictness Dynamically" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Building", "Strictness"]}
+```csharp{title="Building Strictness Dynamically" description="Building Strictness Dynamically" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Building", "Strictness"]}
 public MatchStrictness BuildStrictness(
     bool ignoreCase,
     bool ignoreVersion,
@@ -496,7 +496,7 @@ public enum MatchStrictness {
 
 ### Usage with TypeMatcher
 
-```csharp{title="Usage with TypeMatcher" description="Demonstrates usage with TypeMatcher" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Usage", "TypeMatcher"]}
+```csharp{title="Usage with TypeMatcher" description="Usage with TypeMatcher" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Usage", "TypeMatcher"]}
 // Match two type strings with strictness
 bool match = TypeMatcher.Matches(
     string typeString1,
@@ -524,7 +524,7 @@ bool simple = TypeMatcher.Matches("MyApp.MyType", "MyType", MatchStrictness.Simp
 
 ### ❌ Confusing Exact with None
 
-```csharp{title="❌ Confusing Exact with None" description="Demonstrates ❌ Confusing Exact with None" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Confusing", "Exact"]}
+```csharp{title="❌ Confusing Exact with None" description="❌ Confusing Exact with None" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Confusing", "Exact"]}
 // ❌ WRONG: Assuming None means no matching
 bool match = TypeMatcher.Matches(type1, type2, MatchStrictness.None);
 // Actually: Exact match (None = 0 = Exact)
@@ -535,7 +535,7 @@ bool match = TypeMatcher.Matches(type1, type2, MatchStrictness.Exact);
 
 ### ❌ Over-Permissive Matching
 
-```csharp{title="❌ Over-Permissive Matching" description="Demonstrates ❌ Over-Permissive Matching" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Over-Permissive", "Matching"]}
+```csharp{title="❌ Over-Permissive Matching" description="❌ Over-Permissive Matching" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Over-Permissive", "Matching"]}
 // ❌ WRONG: Too permissive for security-sensitive code
 var strictness = MatchStrictness.SimpleNameCaseInsensitive;
 if (TypeMatcher.Matches(userProvidedType, "AdminCommand", strictness)) {
@@ -551,7 +551,7 @@ if (TypeMatcher.Matches(userProvidedType, expectedType, strictness)) {
 
 ### ❌ Forgetting Version Implications
 
-```csharp{title="❌ Forgetting Version Implications" description="Demonstrates ❌ Forgetting Version Implications" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Forgetting", "Version"]}
+```csharp{title="❌ Forgetting Version Implications" description="❌ Forgetting Version Implications" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Forgetting", "Version"]}
 // ❌ WRONG: Exact match breaks with version changes
 bool match = TypeMatcher.Matches(
     "MyType, MyAssembly, Version=1.0.0",

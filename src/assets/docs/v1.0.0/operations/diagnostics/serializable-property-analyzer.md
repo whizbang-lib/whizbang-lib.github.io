@@ -52,7 +52,7 @@ Using these types in messages causes runtime serialization failures in AOT-compi
 
 ### Valid (AOT-Compatible)
 
-```csharp{title="Valid (AOT-Compatible)" description="Demonstrates valid (AOT-Compatible)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Valid", "AOT-Compatible"]}
+```csharp{title="Valid (AOT-Compatible)" description="Valid (AOT-Compatible)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Valid", "AOT-Compatible"]}
 public record CreateOrderCommand : ICommand {
   public Guid OrderId { get; init; }
   public string CustomerName { get; init; } = string.Empty;
@@ -64,7 +64,7 @@ public record CreateOrderCommand : ICommand {
 
 ### Invalid (Causes Diagnostics)
 
-```csharp{title="Invalid (Causes Diagnostics)" description="Demonstrates invalid (Causes Diagnostics)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Invalid", "Causes"]}
+```csharp{title="Invalid (Causes Diagnostics)" description="Invalid (Causes Diagnostics)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "C#", "Invalid", "Causes"]}
 public record BadCommand : ICommand {
   public object Payload { get; init; }          // WHIZ060
   public dynamic Data { get; init; }            // WHIZ061
@@ -107,7 +107,7 @@ The analyzer is enabled by default. To suppress specific diagnostics:
 
 ### Per-Property Suppression
 
-```csharp{title="Per-Property Suppression" description="Demonstrates per-Property Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Per-Property", "Suppression"]}
+```csharp{title="Per-Property Suppression" description="Per-Property Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Per-Property", "Suppression"]}
 #pragma warning disable WHIZ060
 public object LegacyData { get; init; }
 #pragma warning restore WHIZ060
@@ -117,7 +117,7 @@ public object LegacyData { get; init; }
 
 In your `.csproj`:
 
-```xml{title="Project-Wide Suppression" description="Demonstrates project-Wide Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Wide", "Suppression"]}
+```xml{title="Project-Wide Suppression" description="Project-Wide Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Wide", "Suppression"]}
 <PropertyGroup>
   <NoWarn>$(NoWarn);WHIZ060;WHIZ061;WHIZ062;WHIZ063</NoWarn>
 </PropertyGroup>

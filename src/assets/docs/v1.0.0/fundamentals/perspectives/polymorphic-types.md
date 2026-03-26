@@ -34,7 +34,7 @@ The analyzer finds perspective models containing properties that are:
 
 ### Example Warning
 
-```csharp{title="Example Warning" description="Demonstrates example Warning" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Example", "Warning"]}
+```csharp{title="Example Warning" description="Example Warning" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Example", "Warning"]}
 public record FormModel {
     public Guid FormId { get; init; }
 

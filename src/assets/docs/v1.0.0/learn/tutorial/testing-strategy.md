@@ -578,7 +578,7 @@ public static class OrderFixture {
 
 **Usage**:
 
-```csharp{title="Test Fixtures (2)" description="Demonstrates test Fixtures" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Test", "Fixtures"]}
+```csharp{title="Test Fixtures (2)" description="Test Fixtures" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Test", "Fixtures"]}
 [Test]
 public async Task SomeTest_WithRandomData_WorksCorrectlyAsync() {
   // Arrange
@@ -660,7 +660,7 @@ public class MockPaymentGateway : IPaymentGateway {
 
 ### Running Tests with Coverage
 
-```bash{title="Running Tests with Coverage" description="Demonstrates running Tests with Coverage" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Running", "Tests"]}
+```bash{title="Running Tests with Coverage" description="Running Tests with Coverage" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Running", "Tests"]}
 cd ECommerce.OrderService.Tests
 dotnet run -- --coverage --coverage-output-format cobertura --coverage-output coverage.xml
 ```

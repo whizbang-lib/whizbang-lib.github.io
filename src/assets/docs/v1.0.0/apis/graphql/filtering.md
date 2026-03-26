@@ -288,7 +288,7 @@ query GetOrders($status: String!, $minAmount: Decimal!) {
 ```
 
 Variables:
-```json{title="Filtering with Variables" description="Demonstrates filtering with Variables" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Filtering", "Variables"]}
+```json{title="Filtering with Variables" description="Filtering with Variables" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Filtering", "Variables"]}
 {
   "status": "Completed",
   "minAmount": 100.00

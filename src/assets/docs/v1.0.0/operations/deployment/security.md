@@ -58,7 +58,7 @@ Comprehensive **security guide** for Whizbang applications - authentication, aut
 
 **Program.cs**:
 
-```csharp{title="JWT with RS256 (2)" description="Demonstrates jWT with RS256" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "JWT", "RS256"]}
+```csharp{title="JWT with RS256 (2)" description="JWT with RS256" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "JWT", "RS256"]}
 builder.Services
   .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
   .AddJwtBearer(options => {
@@ -80,7 +80,7 @@ app.UseAuthorization();
 
 ### Require Authentication on Endpoints
 
-```csharp{title="Require Authentication on Endpoints" description="Demonstrates require Authentication on Endpoints" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Require", "Authentication"]}
+```csharp{title="Require Authentication on Endpoints" description="Require Authentication on Endpoints" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Require", "Authentication"]}
 app.MapPost("/orders", async (
   CreateOrder command,
   IDispatcher dispatcher,
@@ -100,7 +100,7 @@ app.MapPost("/orders", async (
 
 **Program.cs**:
 
-```csharp{title="Policy-Based Authorization" description="Demonstrates policy-Based Authorization" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Policy-Based", "Authorization"]}
+```csharp{title="Policy-Based Authorization" description="Policy-Based Authorization" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Policy-Based", "Authorization"]}
 builder.Services.AddAuthorizationBuilder()
   .AddPolicy("CreateOrder", policy => policy
     .RequireAuthenticatedUser()
@@ -115,7 +115,7 @@ builder.Services.AddAuthorizationBuilder()
 
 **Usage**:
 
-```csharp{title="Policy-Based Authorization (2)" description="Demonstrates policy-Based Authorization" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Policy-Based", "Authorization"]}
+```csharp{title="Policy-Based Authorization (2)" description="Policy-Based Authorization" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Policy-Based", "Authorization"]}
 app.MapPost("/orders", async (
   CreateOrder command,
   IDispatcher dispatcher,
@@ -179,7 +179,7 @@ builder.Services.AddSingleton<IAuthorizationHandler, OrderAuthorizationHandler>(
 
 **Usage**:
 
-```csharp{title="Resource-Based Authorization (3)" description="Demonstrates resource-Based Authorization" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Resource-Based", "Authorization"]}
+```csharp{title="Resource-Based Authorization (3)" description="Resource-Based Authorization" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Resource-Based", "Authorization"]}
 app.MapDelete("/orders/{orderId}", async (
   string orderId,
   IDbConnection db,
@@ -304,7 +304,7 @@ public class AesDataEncryptionService : IDataEncryptionService {
 
 **Usage**:
 
-```csharp{title="AES-256 Encryption (At Rest) (2)" description="Demonstrates aES-256 Encryption (At Rest)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "AES-256", "Encryption"]}
+```csharp{title="AES-256 Encryption (At Rest) (2)" description="AES-256 Encryption (At Rest)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "AES-256", "Encryption"]}
 public async Task<PaymentProcessed> HandleAsync(
   ProcessPayment command,
   CancellationToken ct = default
@@ -338,7 +338,7 @@ public async Task<PaymentProcessed> HandleAsync(
 
 **Program.cs**:
 
-```csharp{title="Azure Key Vault" description="Demonstrates azure Key Vault" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Key"]}
+```csharp{title="Azure Key Vault" description="Azure Key Vault" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Key"]}
 var keyVaultUri = new Uri(builder.Configuration["KeyVault:VaultUri"]);
 
 builder.Configuration.AddAzureKeyVault(
@@ -369,7 +369,7 @@ az keyvault secret set \
 
 **Usage**:
 
-```csharp{title="Azure Key Vault (3)" description="Demonstrates azure Key Vault" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Key"]}
+```csharp{title="Azure Key Vault (3)" description="Azure Key Vault" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Key"]}
 // Automatically resolved from Key Vault
 var connectionString = builder.Configuration["Database:ConnectionString"];
 var serviceBusConnectionString = builder.Configuration["AzureServiceBus:ConnectionString"];
@@ -686,7 +686,7 @@ app.Use(async (context, next) => {
 
 **Program.cs**:
 
-```csharp{title="Rate Limiting" description="Demonstrates rate Limiting" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Rate", "Limiting"]}
+```csharp{title="Rate Limiting" description="Rate Limiting" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Rate", "Limiting"]}
 builder.Services.AddRateLimiter(options => {
   options.AddFixedWindowLimiter("api", limiter => {
     limiter.PermitLimit = 100;
@@ -701,7 +701,7 @@ app.UseRateLimiter();
 
 **Usage**:
 
-```csharp{title="Rate Limiting (2)" description="Demonstrates rate Limiting" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Rate", "Limiting"]}
+```csharp{title="Rate Limiting (2)" description="Rate Limiting" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Rate", "Limiting"]}
 app.MapPost("/orders", async (
   CreateOrder command,
   IDispatcher dispatcher,

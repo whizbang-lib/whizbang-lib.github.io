@@ -27,7 +27,7 @@ This guide walks through implementing multi-tenancy in a Whizbang application, f
 
 First, configure the security system with roles and permission extraction.
 
-```csharp{title="Step 1: Configure Security Options" description="First, configure the security system with roles and permission extraction." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Configure"]}
+```csharp{title="Step 1: Configure Security Options" description="First, configure the security system with roles and permission extraction." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Configure"]}
 // Program.cs
 builder.Services.AddSingleton(new SecurityOptions()
   // Define roles with permissions

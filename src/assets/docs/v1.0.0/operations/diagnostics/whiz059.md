@@ -39,7 +39,7 @@ Common reasons to suppress GUID interception:
 
 ### 1. Test Fixtures
 
-```csharp{title="Test Fixtures" description="Demonstrates test Fixtures" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Test", "Fixtures"]}
+```csharp{title="Test Fixtures" description="Test Fixtures" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Test", "Fixtures"]}
 using Whizbang.Core;
 
 [SuppressGuidInterception]
@@ -55,7 +55,7 @@ public static class TestData {
 
 ### 2. Integration with External Systems
 
-```csharp{title="Integration with External Systems" description="Demonstrates integration with External Systems" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Integration", "External"]}
+```csharp{title="Integration with External Systems" description="Integration with External Systems" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Integration", "External"]}
 public class ExternalApiClient {
   [SuppressGuidInterception]
   public Guid CreateExternalRequestId() {
@@ -67,7 +67,7 @@ public class ExternalApiClient {
 
 ### 3. Performance-Critical Paths
 
-```csharp{title="Performance-Critical Paths" description="Demonstrates performance-Critical Paths" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Performance-Critical", "Paths"]}
+```csharp{title="Performance-Critical Paths" description="Performance-Critical Paths" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Performance-Critical", "Paths"]}
 public class HighThroughputProcessor {
   [SuppressGuidInterception]
   public Guid CreateTransientId() {
@@ -79,7 +79,7 @@ public class HighThroughputProcessor {
 
 ### 4. Legacy Code Migration
 
-```csharp{title="Legacy Code Migration" description="Demonstrates legacy Code Migration" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Legacy", "Code"]}
+```csharp{title="Legacy Code Migration" description="Legacy Code Migration" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Legacy", "Code"]}
 [SuppressGuidInterception]
 public class LegacyService {
   // Gradual migration - suppress for now
@@ -93,7 +93,7 @@ The `[SuppressGuidInterception]` attribute can be applied at different scopes:
 
 ### Method Scope
 
-```csharp{title="Method Scope" description="Demonstrates method Scope" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Method", "Scope"]}
+```csharp{title="Method Scope" description="Method Scope" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Method", "Scope"]}
 public class MyService {
   [SuppressGuidInterception]
   public Guid CreateRawGuid() {
@@ -108,7 +108,7 @@ public class MyService {
 
 ### Class Scope
 
-```csharp{title="Class Scope" description="Demonstrates class Scope" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Class", "Scope"]}
+```csharp{title="Class Scope" description="Class Scope" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Class", "Scope"]}
 [SuppressGuidInterception]
 public class TestFixtures {
   public Guid Id1 => Guid.NewGuid();  // Suppressed
@@ -118,7 +118,7 @@ public class TestFixtures {
 
 ### Assembly Scope
 
-```csharp{title="Assembly Scope" description="Demonstrates assembly Scope" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Assembly", "Scope"]}
+```csharp{title="Assembly Scope" description="Assembly Scope" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Assembly", "Scope"]}
 // In AssemblyInfo.cs or any file
 [assembly: SuppressGuidInterception]
 // All GUID calls in this assembly are suppressed
@@ -130,7 +130,7 @@ If you don't want to see WHIZ059 diagnostics:
 
 ### Project-Level
 
-```xml{title="Project-Level" description="Demonstrates project-Level" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Level"]}
+```xml{title="Project-Level" description="Project-Level" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Level"]}
 <PropertyGroup>
   <NoWarn>$(NoWarn);WHIZ059</NoWarn>
 </PropertyGroup>
@@ -138,7 +138,7 @@ If you don't want to see WHIZ059 diagnostics:
 
 ### Code-Level
 
-```csharp{title="Code-Level" description="Demonstrates code-Level" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Code-Level"]}
+```csharp{title="Code-Level" description="Code-Level" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Code-Level"]}
 #pragma warning disable WHIZ059
 [SuppressGuidInterception]
 public Guid CreateId() => Guid.NewGuid();

@@ -40,7 +40,7 @@ A Perspective is analogous to a **viewpoint** or **lens through which you see da
 All perspective variants (`IPerspectiveFor`, `IPerspectiveWithActionsFor`, `ITemporalPerspectiveFor`, `IGlobalPerspectiveFor`) now inherit from `IPerspectiveBase<TModel>`, a unified marker interface used by source generators for perspective discovery. You do not implement `IPerspectiveBase` directly -- use the specific perspective interfaces below.
 :::
 
-```csharp{title="IPerspectiveFor Interface" description="Demonstrates iPerspectiveFor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveFor", "Interface"]}
+```csharp{title="IPerspectiveFor Interface" description="IPerspectiveFor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveFor", "Interface"]}
 namespace Whizbang.Core.Perspectives;
 
 public interface IPerspectiveFor<TModel, TEvent>
@@ -116,7 +116,7 @@ The `[StreamKey]` attribute marks the property that identifies the stream/aggreg
 - **Model types**: Identifies which stream the model represents
 
 **Example**:
-```csharp{title="StreamKey Attribute" description="Demonstrates streamKey Attribute" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "StreamKey", "Attribute"]}
+```csharp{title="StreamKey Attribute" description="StreamKey Attribute" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "StreamKey", "Attribute"]}
 using Whizbang.Core;
 
 // Event with StreamKey
@@ -155,7 +155,7 @@ public record ProductDto {
 
 ## Basic Example
 
-```csharp{title="Basic Example" description="Demonstrates basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Basic", "Example"]}
+```csharp{title="Basic Example" description="Basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Basic", "Example"]}
 using Whizbang.Core;
 using Whizbang.Core.Perspectives;
 
@@ -433,7 +433,7 @@ public class ProductCatalogPerspective :
 
 One event can update **multiple read models**:
 
-```csharp{title="Multiple Perspectives per Event" description="One event can update multiple read models:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Multiple", "Per"]}
+```csharp{title="Multiple Perspectives per Event" description="One event can update multiple read models:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "C#", "Multiple"]}
 // Event published once
 public record OrderCreatedEvent : IEvent {
     [StreamKey]
@@ -577,7 +577,7 @@ Each read model has its own **perspective** and **table schema** optimized for i
 ### Registration
 
 **Manual**:
-```csharp{title="Registration" description="Demonstrates registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registration"]}
+```csharp{title="Registration" description="Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registration"]}
 // Register perspective (transient recommended)
 builder.Services.AddTransient<ProductCatalogPerspective>();
 
@@ -615,7 +615,7 @@ builder.Services.AddScoped<IPerspectiveStore<ProductDto>, PostgresPerspectiveSto
 
 ### Unit Tests (Pure Functions)
 
-```csharp{title="Unit Tests (Pure Functions)" description="Demonstrates unit Tests (Pure Functions)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Unit", "Tests"]}
+```csharp{title="Unit Tests (Pure Functions)" description="Unit Tests (Pure Functions)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Unit", "Tests"]}
 public class ProductCatalogPerspectiveTests {
     [Test]
     public async Task Apply_ProductCreatedEvent_CreatesNewModelAsync() {

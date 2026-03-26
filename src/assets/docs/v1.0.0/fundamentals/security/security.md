@@ -202,7 +202,7 @@ public interface IScopeContext {
 
 ### Creating Scope Context
 
-```csharp{title="Creating Scope Context" description="Demonstrates creating Scope Context" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Creating", "Scope"]}
+```csharp{title="Creating Scope Context" description="Creating Scope Context" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Creating", "Scope"]}
 var context = new ScopeContext {
   Scope = new PerspectiveScope {
     TenantId = "tenant-123",
@@ -340,7 +340,7 @@ public class RolePermissionExtractor : IPermissionExtractor {
 
 ### Registering Extractors
 
-```csharp{title="Registering Extractors" description="Demonstrates registering Extractors" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Registering", "Extractors"]}
+```csharp{title="Registering Extractors" description="Registering Extractors" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Registering", "Extractors"]}
 services.AddSingleton<IPermissionExtractor>(sp => {
   var options = sp.GetRequiredService<SecurityOptions>();
   return new CompositePermissionExtractor(
@@ -356,7 +356,7 @@ services.AddSingleton<IPermissionExtractor>(sp => {
 
 ### Composable Scope Filters
 
-```csharp{title="Composable Scope Filters" description="Demonstrates composable Scope Filters" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Composable", "Scope"]}
+```csharp{title="Composable Scope Filters" description="Composable Scope Filters" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Composable", "Scope"]}
 [Flags]
 public enum ScopeFilter {
   None = 0,           // No filtering (admin access)
@@ -392,7 +392,7 @@ var lens = factory.GetMyOrSharedLens<IOrderLens>();
 
 ### Convenience Methods
 
-```csharp{title="Convenience Methods" description="Demonstrates convenience Methods" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Convenience", "Methods"]}
+```csharp{title="Convenience Methods" description="Convenience Methods" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Convenience", "Methods"]}
 // No filtering (admin)
 factory.GetGlobalLens<IOrderLens>();
 
@@ -482,7 +482,7 @@ var orders = await dbContext.Orders
 
 ### Principal Filter Example
 
-```csharp{title="Principal Filter Example" description="Demonstrates principal Filter Example" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Principal", "Filter"]}
+```csharp{title="Principal Filter Example" description="Principal Filter Example" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Principal", "Filter"]}
 public class OrderRepository {
   private readonly OrderDbContext _dbContext;
   private readonly IScopeContextAccessor _scopeAccessor;
@@ -705,7 +705,7 @@ public static class DataMasker {
 
 ### Using Masking with Column Security
 
-```csharp{title="Using Masking with Column Security" description="Demonstrates using Masking with Column Security" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Using", "Masking"]}
+```csharp{title="Using Masking with Column Security" description="Using Masking with Column Security" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Using", "Masking"]}
 public class CustomerDto {
   public required string CustomerId { get; init; }
   public required string Name { get; init; }
@@ -834,7 +834,7 @@ public enum AccessDenialReason {
 
 ### Exception Handling
 
-```csharp{title="Exception Handling" description="Demonstrates exception Handling" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Exception", "Handling"]}
+```csharp{title="Exception Handling" description="Exception Handling" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Exception", "Handling"]}
 try {
   var lens = factory.GetLens<IOrderLens>(
     ScopeFilter.Tenant,
@@ -855,7 +855,7 @@ try {
 
 ### Registering Security Services
 
-```csharp{title="Registering Security Services" description="Demonstrates registering Security Services" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Registering", "Services"]}
+```csharp{title="Registering Security Services" description="Registering Security Services" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "C#", "Registering", "Services"]}
 services.AddSingleton<IScopeContextAccessor, ScopeContextAccessor>();
 services.AddSingleton<ISystemEventEmitter, SystemEventEmitter>();
 services.AddSingleton<LensOptions>();
@@ -872,7 +872,7 @@ services.AddSingleton(new SecurityOptions()
 
 ### Extracting from JWT Claims
 
-```csharp{title="Extracting from JWT Claims" description="Demonstrates extracting from JWT Claims" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Extracting", "JWT"]}
+```csharp{title="Extracting from JWT Claims" description="Extracting from JWT Claims" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Extracting", "JWT"]}
 var options = new SecurityOptions()
   .ExtractPermissionsFromClaim("permissions")  // "orders:read, orders:write"
   .ExtractRolesFromClaim("roles")              // "Admin, Support"

@@ -42,7 +42,7 @@ Whizbang uses UUIDv7 by default for time-ordered, database-friendly IDs. Custom 
 
 ### Pattern 1: Twitter Snowflake
 
-```csharp{title="Pattern 1: Twitter Snowflake" description="Demonstrates pattern 1: Twitter Snowflake" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Twitter"]}
+```csharp{title="Pattern 1: Twitter Snowflake" description="Pattern 1: Twitter Snowflake" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Twitter"]}
 public class SnowflakeIdGenerator {
   private readonly long _epoch = 1_640_995_200_000L;  // Jan 1, 2022
   private readonly long _machineId;
@@ -95,7 +95,7 @@ public class SnowflakeIdGenerator {
 ```
 
 **Usage**:
-```csharp{title="Pattern 1: Twitter Snowflake (2)" description="Demonstrates pattern 1: Twitter Snowflake" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Twitter"]}
+```csharp{title="Pattern 1: Twitter Snowflake (2)" description="Pattern 1: Twitter Snowflake" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Twitter"]}
 var generator = new SnowflakeIdGenerator(machineId: 42);
 var id = generator.NextId();  // 64-bit time-ordered ID
 ```
@@ -106,7 +106,7 @@ var id = generator.NextId();  // 64-bit time-ordered ID
 
 ### Pattern 2: Universally Unique Lexicographically Sortable ID
 
-```csharp{title="Pattern 2: Universally Unique Lexicographically Sortable ID" description="Demonstrates pattern 2: Universally Unique Lexicographically Sortable ID" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Universally"]}
+```csharp{title="Pattern 2: Universally Unique Lexicographically Sortable ID" description="Pattern 2: Universally Unique Lexicographically Sortable ID" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Universally"]}
 using Ulid;
 
 public class UlidGenerator {
@@ -121,7 +121,7 @@ public class UlidGenerator {
 ```
 
 **Usage**:
-```csharp{title="Pattern 2: Universally Unique Lexicographically Sortable ID" description="Demonstrates pattern 2: Universally Unique Lexicographically Sortable ID" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Universally"]}
+```csharp{title="Pattern 2: Universally Unique Lexicographically Sortable ID" description="Pattern 2: Universally Unique Lexicographically Sortable ID" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Universally"]}
 var id = UlidGenerator.NewId();  // "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 ```
 

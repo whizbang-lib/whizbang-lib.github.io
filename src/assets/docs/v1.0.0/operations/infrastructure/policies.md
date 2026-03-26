@@ -113,7 +113,7 @@ builder.Services.AddSingleton<IPolicyEngine, PolicyEngine>();
 ```
 
 **Usage**:
-```csharp{title="PolicyEngine (2)" description="Demonstrates policyEngine" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "PolicyEngine"]}
+```csharp{title="PolicyEngine (2)" description="PolicyEngine" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "PolicyEngine"]}
 var policyEngine = new PolicyEngine();
 
 // Add policies (evaluated in order)
@@ -177,7 +177,7 @@ var orderId = context.GetAggregateId();  // Requires [AggregateId] attribute
 ```
 
 **Pooling**:
-```csharp{title="PolicyContext (3)" description="Demonstrates policyContext" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "PolicyContext"]}
+```csharp{title="PolicyContext (3)" description="PolicyContext" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "PolicyContext"]}
 // Rent from pool
 var context = PolicyContextPool.Rent(message, envelope, services, "production");
 
@@ -195,7 +195,7 @@ try {
 **Purpose**: Records all policy decisions for debugging and time-travel.
 
 **Usage**:
-```csharp{title="PolicyDecisionTrail" description="Demonstrates policyDecisionTrail" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "PolicyDecisionTrail"]}
+```csharp{title="PolicyDecisionTrail" description="PolicyDecisionTrail" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "PolicyDecisionTrail"]}
 // Automatic recording by PolicyEngine
 context.Trail.RecordDecision(
   policyName: "TenantRouting",
@@ -267,7 +267,7 @@ configure: config => config
 
 ### 1. Multi-Tenant Routing
 
-```csharp{title="Multi-Tenant Routing" description="Demonstrates multi-Tenant Routing" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Multi-Tenant", "Routing"]}
+```csharp{title="Multi-Tenant Routing" description="Multi-Tenant Routing" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Multi-Tenant", "Routing"]}
 policyEngine.AddPolicy(
   name: "TenantARouting",
   predicate: context =>
@@ -297,7 +297,7 @@ policyEngine.AddPolicy(
 
 ### 2. Environment-Based Routing
 
-```csharp{title="Environment-Based Routing" description="Demonstrates environment-Based Routing" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Environment-Based", "Routing"]}
+```csharp{title="Environment-Based Routing" description="Environment-Based Routing" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Environment-Based", "Routing"]}
 policyEngine.AddPolicy(
   name: "ProductionRouting",
   predicate: context => context.Environment == "production",
@@ -325,7 +325,7 @@ policyEngine.AddPolicy(
 
 ### 3. Aggregate-Based Partitioning
 
-```csharp{title="Aggregate-Based Partitioning" description="Demonstrates aggregate-Based Partitioning" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Aggregate-Based", "Partitioning"]}
+```csharp{title="Aggregate-Based Partitioning" description="Aggregate-Based Partitioning" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Aggregate-Based", "Partitioning"]}
 policyEngine.AddPolicy(
   name: "OrderPartitioning",
   predicate: context => context.MatchesAggregate<Order>(),
@@ -347,7 +347,7 @@ policyEngine.AddPolicy(
 
 ### 4. Message Type-Based Execution
 
-```csharp{title="Message Type-Based Execution" description="Demonstrates message Type-Based Execution" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Message", "Type-Based"]}
+```csharp{title="Message Type-Based Execution" description="Message Type-Based Execution" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Message", "Type-Based"]}
 policyEngine.AddPolicy(
   name: "BulkImportExecutionStrategy",
   predicate: context => context.MessageType.Name.Contains("BulkImport"),
@@ -366,7 +366,7 @@ policyEngine.AddPolicy(
 
 ### 5. Tag-Based Routing
 
-```csharp{title="Tag-Based Routing" description="Demonstrates tag-Based Routing" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Tag-Based", "Routing"]}
+```csharp{title="Tag-Based Routing" description="Tag-Based Routing" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Tag-Based", "Routing"]}
 policyEngine.AddPolicy(
   name: "HighPriorityRouting",
   predicate: context => context.HasTag("high-priority"),
@@ -390,7 +390,7 @@ policyEngine.AddPolicy(
 
 ### Composite Policies
 
-```csharp{title="Composite Policies" description="Demonstrates composite Policies" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Composite", "Policies"]}
+```csharp{title="Composite Policies" description="Composite Policies" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Composite", "Policies"]}
 policyEngine.AddPolicy(
   name: "HighValueOrderRouting",
   predicate: context => {
@@ -410,7 +410,7 @@ policyEngine.AddPolicy(
 
 ### Service-Injected Policies
 
-```csharp{title="Service-Injected Policies" description="Demonstrates service-Injected Policies" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Service-Injected", "Policies"]}
+```csharp{title="Service-Injected Policies" description="Service-Injected Policies" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Service-Injected", "Policies"]}
 policyEngine.AddPolicy(
   name: "FeatureFlagRouting",
   predicate: context => {
@@ -427,7 +427,7 @@ policyEngine.AddPolicy(
 
 ### Time-Based Policies
 
-```csharp{title="Time-Based Policies" description="Demonstrates time-Based Policies" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Time-Based", "Policies"]}
+```csharp{title="Time-Based Policies" description="Time-Based Policies" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Time-Based", "Policies"]}
 policyEngine.AddPolicy(
   name: "PeakHoursRouting",
   predicate: context => {
@@ -454,7 +454,7 @@ policyEngine.AddPolicy(
 
 ### Unit Testing Predicates
 
-```csharp{title="Unit Testing Predicates" description="Demonstrates unit Testing Predicates" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Unit", "Testing"]}
+```csharp{title="Unit Testing Predicates" description="Unit Testing Predicates" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Unit", "Testing"]}
 [Test]
 public async Task TenantARouting_WithTenantA_MatchesAsync() {
   // Arrange
@@ -486,7 +486,7 @@ public async Task TenantARouting_WithTenantA_MatchesAsync() {
 
 ### Testing Policy Order
 
-```csharp{title="Testing Policy Order" description="Demonstrates testing Policy Order" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Testing", "Policy"]}
+```csharp{title="Testing Policy Order" description="Testing Policy Order" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Testing", "Policy"]}
 [Test]
 public async Task PolicyEngine_FirstMatchWins_SkipsSubsequentPoliciesAsync() {
   // Arrange
@@ -519,7 +519,7 @@ public async Task PolicyEngine_FirstMatchWins_SkipsSubsequentPoliciesAsync() {
 
 ### Testing PolicyDecisionTrail
 
-```csharp{title="Testing PolicyDecisionTrail" description="Demonstrates testing PolicyDecisionTrail" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Testing", "PolicyDecisionTrail"]}
+```csharp{title="Testing PolicyDecisionTrail" description="Testing PolicyDecisionTrail" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Testing", "PolicyDecisionTrail"]}
 [Test]
 public async Task PolicyEngine_RecordsDecisionTrail_ForAllPoliciesAsync() {
   // Arrange
@@ -580,7 +580,7 @@ public async Task PolicyEngine_RecordsDecisionTrail_ForAllPoliciesAsync() {
 **Cause**: No policies registered or all predicates return `false`.
 
 **Solution**:
-```csharp{title="Problem: No Policy Matches, Null Configuration" description="Demonstrates problem: No Policy Matches, Null Configuration" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Policy"]}
+```csharp{title="Problem: No Policy Matches, Null Configuration" description="Problem: No Policy Matches, Null Configuration" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Policy"]}
 // Add fallback policy
 policyEngine.AddPolicy(
   name: "DefaultPolicy",
@@ -609,7 +609,7 @@ if (config is null) {
 **Cause**: Policy order incorrect (fallback registered before specific policies).
 
 **Solution**:
-```csharp{title="Problem: Wrong Policy Matched" description="Demonstrates problem: Wrong Policy Matched" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Problem:", "Wrong"]}
+```csharp{title="Problem: Wrong Policy Matched" description="Problem: Wrong Policy Matched" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Problem:", "Wrong"]}
 // ❌ WRONG: Fallback first (always matches)
 policyEngine.AddPolicy("Fallback", ctx => true, config => config.PublishToServiceBus("default"));
 policyEngine.AddPolicy("Specific", ctx => ctx.HasTag("high-priority"), config => config.PublishToServiceBus("priority"));
@@ -626,7 +626,7 @@ policyEngine.AddPolicy("Fallback", ctx => true, config => config.PublishToServic
 **Cause**: Exception thrown in predicate.
 
 **Solution**:
-```csharp{title="Problem: Predicate Throws Exception" description="Demonstrates problem: Predicate Throws Exception" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Predicate"]}
+```csharp{title="Problem: Predicate Throws Exception" description="Problem: Predicate Throws Exception" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Predicate"]}
 // Predicate exception is caught and logged
 policyEngine.AddPolicy(
   name: "FaultyPolicy",

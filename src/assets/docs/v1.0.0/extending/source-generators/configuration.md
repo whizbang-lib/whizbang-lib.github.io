@@ -84,7 +84,7 @@ public void Initialize(IncrementalGeneratorInitializationContext context) {
 
 ### Configuration in .csproj
 
-```xml{title="Configuration in .csproj" description="Demonstrates configuration in .csproj" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Configuration", ".csproj"]}
+```xml{title="Configuration in .csproj" description="Configuration in .csproj" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Configuration", ".csproj"]}
 <PropertyGroup>
   <!-- Disable suffix stripping entirely -->
   <WhizbangStripTableNameSuffixes>false</WhizbangStripTableNameSuffixes>
@@ -130,7 +130,7 @@ When `StripSuffixes` is enabled, perspective class names are transformed for dat
 | `AccountDetails` | `AccountDetails` | `account_details` |
 
 **Example**:
-```csharp{title="Table Name Suffix Stripping" description="Demonstrates table Name Suffix Stripping" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Table", "Name"]}
+```csharp{title="Table Name Suffix Stripping" description="Table Name Suffix Stripping" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Table", "Name"]}
 // Perspective class
 public class OrderReadModel : IPerspectiveFor<Order, OrderCreated> {
     public Guid OrderId { get; set; }
@@ -147,7 +147,7 @@ public class OrderReadModel : IPerspectiveFor<Order, OrderCreated> {
 
 ### Pipeline Integration
 
-```csharp{title="Pipeline Integration" description="Demonstrates pipeline Integration" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pipeline", "Integration"]}
+```csharp{title="Pipeline Integration" description="Pipeline Integration" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pipeline", "Integration"]}
 [Generator]
 public class PerspectiveSchemaGenerator : IIncrementalGenerator {
     public void Initialize(IncrementalGeneratorInitializationContext context) {

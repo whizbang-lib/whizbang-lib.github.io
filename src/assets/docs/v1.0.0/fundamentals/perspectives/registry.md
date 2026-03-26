@@ -65,7 +65,7 @@ When Whizbang creates perspective tables, it registers metadata about each persp
 
 ### Registry Table Schema
 
-```sql{title="Registry Table Schema" description="Demonstrates registry Table Schema" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Registry", "Table"]}
+```sql{title="Registry Table Schema" description="Registry Table Schema" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Registry", "Table"]}
 CREATE TABLE wh_perspective_registry (
   id UUID PRIMARY KEY,
   clr_type_name VARCHAR(500) NOT NULL,    -- "MyApp.OrderProjection, MyApp"
@@ -92,7 +92,7 @@ When your application starts, the reconciliation function compares registered pe
 
 ### Example Output
 
-```csharp{title="Example Output" description="Demonstrates example Output" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Example", "Output"]}
+```csharp{title="Example Output" description="Example Output" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Example", "Output"]}
 // Startup logs show reconciliation results
 [INF] Perspective registry reconciliation complete:
 [INF]   - inserted: MyApp.NewOrderProjection -> wh_per_new_order
@@ -119,7 +119,7 @@ When drift is detected, Whizbang logs a warning. You can then:
 2. **Recreate the table** if the changes are breaking
 3. **Ignore** if the changes are backward-compatible
 
-```csharp{title="Handling Drift" description="Demonstrates handling Drift" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Handling", "Drift"]}
+```csharp{title="Handling Drift" description="Handling Drift" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Handling", "Drift"]}
 // Configure drift handling behavior
 services.AddWhizbang(options => {
   options.Perspectives.OnSchemaDrift = SchemaDriftBehavior.LogWarning;
@@ -133,7 +133,7 @@ When you rename a perspective class or change its table name, the registry autom
 
 ### Before
 
-```csharp{title="Before" description="Demonstrates before" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Before"]}
+```csharp{title="Before" description="Before" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Before"]}
 [Perspective("customer_dto")]  // Old name
 public class CustomerDto : IPerspectiveFor<CustomerData, CustomerCreatedEvent> {
   // ...
@@ -142,7 +142,7 @@ public class CustomerDto : IPerspectiveFor<CustomerData, CustomerCreatedEvent> {
 
 ### After
 
-```csharp{title="After" description="Demonstrates after" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "After"]}
+```csharp{title="After" description="After" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "After"]}
 [Perspective("customer")]  // New name (or rely on suffix stripping)
 public class CustomerDto : IPerspectiveFor<CustomerData, CustomerCreatedEvent> {
   // ...

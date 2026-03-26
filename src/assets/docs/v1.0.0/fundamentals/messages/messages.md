@@ -26,7 +26,7 @@ Messages are the **data carriers** in Whizbang applications. They represent:
 
 ## IMessage Interface {#imessage}
 
-```csharp{title="IMessage Interface" description="Demonstrates iMessage Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IMessage", "Interface"]}
+```csharp{title="IMessage Interface" description="IMessage Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IMessage", "Interface"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -107,7 +107,7 @@ public record OrderCancelled : IEvent {
 
 ### Use Records for Immutability
 
-```csharp{title="Use Records for Immutability" description="Demonstrates use Records for Immutability" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Records", "Immutability"]}
+```csharp{title="Use Records for Immutability" description="Use Records for Immutability" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Records", "Immutability"]}
 // ✅ GOOD: Immutable record with init-only properties
 public record CreateOrder : ICommand {
   public required Guid CustomerId { get; init; }
@@ -123,7 +123,7 @@ public class CreateOrder : ICommand {
 
 ### Make Messages Self-Contained
 
-```csharp{title="Make Messages Self-Contained" description="Demonstrates make Messages Self-Contained" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Make", "Self-Contained"]}
+```csharp{title="Make Messages Self-Contained" description="Make Messages Self-Contained" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Make", "Self-Contained"]}
 // ✅ GOOD: All data needed to process the command
 public record CreateOrder : ICommand {
   public required Guid CustomerId { get; init; }
@@ -141,7 +141,7 @@ public record CreateOrder : ICommand {
 
 ### Use Value Objects for Type Safety
 
-```csharp{title="Use Value Objects for Type Safety" description="Demonstrates use Value Objects for Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Value", "Objects"]}
+```csharp{title="Use Value Objects for Type Safety" description="Use Value Objects for Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Value", "Objects"]}
 // ✅ GOOD: Type-safe value objects
 public record CreateOrder : ICommand {
   public required CustomerId CustomerId { get; init; }  // Strongly-typed

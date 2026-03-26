@@ -31,7 +31,7 @@ The Event Store Query feature provides `IQueryable<EventStoreRecord>` access to 
 
 ### Scoped Access (Web APIs, Receptors)
 
-```csharp{title="Scoped Access (Web APIs, Receptors)" description="Demonstrates scoped Access (Web APIs, Receptors)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Scoped", "Access"]}
+```csharp{title="Scoped Access (Web APIs, Receptors)" description="Scoped Access (Web APIs, Receptors)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Scoped", "Access"]}
 public class EventsController : ControllerBase {
   private readonly IScopedLensFactory _lensFactory;
 
@@ -65,7 +65,7 @@ public class EventsController : ControllerBase {
 
 ### Global Access (Admin Operations)
 
-```csharp{title="Global Access (Admin Operations)" description="Demonstrates global Access (Admin Operations)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Global", "Access"]}
+```csharp{title="Global Access (Admin Operations)" description="Global Access (Admin Operations)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Global", "Access"]}
 // Global access requires explicit permission
 var globalQuery = _lensFactory.GetEventStoreQuery(
     ScopeFilter.None,
@@ -77,7 +77,7 @@ var allEvents = _lensFactory.GetGlobalEventStoreQuery();
 
 ### Singleton Services (Background Workers)
 
-```csharp{title="Singleton Services (Background Workers)" description="Demonstrates singleton Services (Background Workers)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Singleton", "Services"]}
+```csharp{title="Singleton Services (Background Workers)" description="Singleton Services (Background Workers)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Singleton", "Services"]}
 public class EventAnalyzerWorker : BackgroundService {
   private readonly IScopedEventStoreQuery _scopedQuery;
 
@@ -98,7 +98,7 @@ public class EventAnalyzerWorker : BackgroundService {
 
 ### Batch Operations (Manual Scope Control)
 
-```csharp{title="Batch Operations (Manual Scope Control)" description="Demonstrates batch Operations (Manual Scope Control)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Batch", "Operations"]}
+```csharp{title="Batch Operations (Manual Scope Control)" description="Batch Operations (Manual Scope Control)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Batch", "Operations"]}
 var factory = serviceProvider.GetRequiredService<IEventStoreQueryFactory>();
 
 using var scope = factory.CreateScoped();

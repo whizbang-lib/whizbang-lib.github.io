@@ -197,7 +197,7 @@ Both classes self-register via `[ModuleInitializer]` at assembly load time -- no
 
 Population happens at three distinct points in the message lifecycle:
 
-```csharp{title="Lifecycle Phases" description="The three phases where auto-populate values are set" category="Extending" difficulty="INTERMEDIATE" tags=["auto-populate", "lifecycle", "phases"]}
+```csharp{title="Lifecycle Phases" description="The three phases where auto-populate values are set" category="Extending" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "C#", "Lifecycle", "Phases"]}
 // Phase 1: Sent -- when dispatcher.SendAsync/PublishAsync is called
 // Populates: TimestampKind.SentAt, all ServiceKind, all ContextKind, all IdentifierKind
 

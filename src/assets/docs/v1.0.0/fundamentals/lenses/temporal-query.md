@@ -41,7 +41,7 @@ Temporal Perspective (INSERT):
 
 ## ITemporalLensQuery Interface
 
-```csharp{title="ITemporalLensQuery Interface" description="Demonstrates iTemporalLensQuery Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "ITemporalLensQuery", "Interface"]}
+```csharp{title="ITemporalLensQuery Interface" description="ITemporalLensQuery Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "ITemporalLensQuery", "Interface"]}
 public interface ITemporalLensQuery<TModel> : ILensQuery where TModel : class {
   // Full history
   IQueryable<TemporalPerspectiveRow<TModel>> TemporalAll();

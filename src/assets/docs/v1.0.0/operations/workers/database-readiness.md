@@ -461,7 +461,7 @@ builder.Services.Configure<DatabaseReadinessOptions>(options => {
 ## Health Checks Integration
 
 **ASP.NET Core Health Checks**:
-```csharp{title="Health Checks Integration" description="Demonstrates health Checks Integration" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Health", "Checks"]}
+```csharp{title="Health Checks Integration" description="Health Checks Integration" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Health", "Checks"]}
 public class DatabaseReadinessHealthCheck : IHealthCheck {
   private readonly IDatabaseReadinessCheck _readinessCheck;
 
@@ -572,7 +572,7 @@ if (!isReady) {
 
 ### Testing Readiness Check
 
-```csharp{title="Testing Readiness Check" description="Demonstrates testing Readiness Check" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "Readiness"]}
+```csharp{title="Testing Readiness Check" description="Testing Readiness Check" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "Readiness"]}
 [Test]
 public async Task IsReadyAsync_WithRunningDatabase_ReturnsTrueAsync() {
   // Arrange
@@ -600,7 +600,7 @@ public async Task IsReadyAsync_WithMissingTables_ReturnsFalseAsync() {
 
 ### Testing Worker Integration
 
-```csharp{title="Testing Worker Integration" description="Demonstrates testing Worker Integration" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "Worker"]}
+```csharp{title="Testing Worker Integration" description="Testing Worker Integration" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "Worker"]}
 [Test]
 public async Task Worker_DatabaseNotReady_SkipsProcessingAsync() {
   // Arrange
@@ -665,7 +665,7 @@ public async Task Worker_DatabaseNotReady_SkipsProcessingAsync() {
 4. Database server not started
 
 **Solution**:
-```bash{title="Problem: Worker Keeps Reporting 'Database Not Ready'" description="Demonstrates problem: Worker Keeps Reporting 'Database Not Ready'" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Worker"]}
+```bash{title="Problem: Worker Keeps Reporting 'Database Not Ready'" description="Problem: Worker Keeps Reporting 'Database Not Ready'" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Worker"]}
 # Check if database is accessible
 psql -h localhost -U postgres -d whizbang -c "SELECT 1;"
 

@@ -31,7 +31,7 @@ The `ClearCacheCommand` enables coordinated cache invalidation across distribute
 
 ### Usage
 
-```csharp{title="Usage" description="Demonstrates usage" category="Implementation" difficulty="BEGINNER" tags=["Data", "Usage"]}
+```csharp{title="Usage" description="Usage" category="Implementation" difficulty="BEGINNER" tags=["Data", "Usage"]}
 using Whizbang.Core.Commands;
 
 // Clear specific cache keys
@@ -45,7 +45,7 @@ await dispatcher.PublishAsync(command);
 
 ### Command Structure
 
-```csharp{title="Command Structure" description="Demonstrates command Structure" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Command", "Structure"]}
+```csharp{title="Command Structure" description="Command Structure" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Command", "Structure"]}
 namespace Whizbang.Core.Commands;
 
 /// <summary>
@@ -78,7 +78,7 @@ public record ClearCacheCommand : ICommand {
 
 #### Clear Specific Keys
 
-```csharp{title="Clear Specific Keys" description="Demonstrates clear Specific Keys" category="Implementation" difficulty="BEGINNER" tags=["Data", "Clear", "Specific", "Keys"]}
+```csharp{title="Clear Specific Keys" description="Clear Specific Keys" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "Specific", "Keys"]}
 // Clear exact keys
 await dispatcher.PublishAsync(new ClearCacheCommand {
   Keys = new[] { "user:123", "user:456" }
@@ -87,7 +87,7 @@ await dispatcher.PublishAsync(new ClearCacheCommand {
 
 #### Clear by Pattern
 
-```csharp{title="Clear by Pattern" description="Demonstrates clear by Pattern" category="Implementation" difficulty="BEGINNER" tags=["Data", "Clear", "Pattern"]}
+```csharp{title="Clear by Pattern" description="Clear by Pattern" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "Pattern"]}
 // Clear all keys matching pattern
 await dispatcher.PublishAsync(new ClearCacheCommand {
   Pattern = "product:*"
@@ -96,7 +96,7 @@ await dispatcher.PublishAsync(new ClearCacheCommand {
 
 #### Clear by Region
 
-```csharp{title="Clear by Region" description="Demonstrates clear by Region" category="Implementation" difficulty="BEGINNER" tags=["Data", "Clear", "Region"]}
+```csharp{title="Clear by Region" description="Clear by Region" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "Region"]}
 // Clear all keys in a region
 await dispatcher.PublishAsync(new ClearCacheCommand {
   Region = "ProductCatalog"
@@ -105,7 +105,7 @@ await dispatcher.PublishAsync(new ClearCacheCommand {
 
 #### Clear All
 
-```csharp{title="Clear All" description="Demonstrates clear All" category="Implementation" difficulty="BEGINNER" tags=["Data", "Clear", "All"]}
+```csharp{title="Clear All" description="Clear All" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "All"]}
 // Clear entire cache
 await dispatcher.PublishAsync(new ClearCacheCommand());
 ```
@@ -114,7 +114,7 @@ await dispatcher.PublishAsync(new ClearCacheCommand());
 
 Handle cache clearing in your service:
 
-```csharp{title="Implementing a Cache Receptor" description="Handle cache clearing in your service:" category="Implementation" difficulty="ADVANCED" tags=["Data", "Implementing", "Cache", "Receptor"]}
+```csharp{title="Implementing a Cache Receptor" description="Handle cache clearing in your service:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Implementing", "Cache", "Receptor"]}
 using Whizbang.Core;
 using Whizbang.Core.Commands;
 
@@ -175,7 +175,7 @@ public record CacheCleared : IEvent {
 
 Standard interface for cache implementations:
 
-```csharp{title="ICacheService Interface" description="Standard interface for cache implementations:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "ICacheService", "Interface"]}
+```csharp{title="ICacheService Interface" description="Standard interface for cache implementations:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "ICacheService", "Interface"]}
 namespace Whizbang.Core.Caching;
 
 public interface ICacheService {
@@ -200,7 +200,7 @@ public interface ICacheService {
 
 Using Redis as distributed cache:
 
-```csharp{title="Distributed Cache Example" description="Using Redis as distributed cache:" category="Implementation" difficulty="ADVANCED" tags=["Data", "Distributed", "Cache", "Example"]}
+```csharp{title="Distributed Cache Example" description="Using Redis as distributed cache:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Distributed", "Cache"]}
 using StackExchange.Redis;
 using Whizbang.Core.Caching;
 
@@ -272,7 +272,7 @@ public class RedisCacheService : ICacheService {
 
 ## Registration
 
-```csharp{title="Registration" description="Demonstrates registration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Registration"]}
+```csharp{title="Registration" description="Registration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Registration"]}
 // Program.cs
 using StackExchange.Redis;
 
@@ -327,7 +327,7 @@ public class UpdateProductReceptor : IReceptor<UpdateProduct, (ProductUpdated, C
 
 ### Cache-Aside Pattern
 
-```csharp{title="Cache-Aside Pattern" description="Demonstrates cache-Aside Pattern" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Cache-Aside", "Pattern"]}
+```csharp{title="Cache-Aside Pattern" description="Cache-Aside Pattern" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Cache-Aside", "Pattern"]}
 public class GetProductReceptor : IReceptor<GetProduct, ProductDto> {
   private readonly ICacheService _cache;
   private readonly IProductLens _lens;

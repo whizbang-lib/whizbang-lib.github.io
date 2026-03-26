@@ -95,7 +95,7 @@ Publisher                                      Subscriber
 
 ### 1. Register Transport (Built-In)
 
-```csharp{title="Register Transport (Built-In)" description="Demonstrates register Transport (Built-In)" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Register", "Transport"]}
+```csharp{title="Register Transport (Built-In)" description="Register Transport (Built-In)" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Register", "Transport"]}
 using Whizbang.Core.Transports;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -111,7 +111,7 @@ app.Run();
 
 ### 2. Initialization
 
-```csharp{title="Initialization" description="Demonstrates initialization" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Initialization"]}
+```csharp{title="Initialization" description="Initialization" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Initialization"]}
 var transport = new InProcessTransport();
 await transport.InitializeAsync();  // Returns immediately (idempotent)
 
@@ -125,7 +125,7 @@ Console.WriteLine(transport.IsInitialized);  // True
 
 ### Publish/Subscribe
 
-```csharp{title="Publish/Subscribe" description="Demonstrates publish/Subscribe" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Publish", "Subscribe"]}
+```csharp{title="Publish/Subscribe" description="Publish/Subscribe" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Publish", "Subscribe"]}
 using Whizbang.Core.Transports;
 
 var transport = new InProcessTransport();
@@ -158,7 +158,7 @@ await transport.PublishAsync(
 
 ### Multiple Subscribers
 
-```csharp{title="Multiple Subscribers" description="Demonstrates multiple Subscribers" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Multiple", "Subscribers"]}
+```csharp{title="Multiple Subscribers" description="Multiple Subscribers" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Multiple", "Subscribers"]}
 // Multiple subscribers receive the same message
 await transport.SubscribeAsync(
   handler: async (envelope, ct) => {
@@ -182,7 +182,7 @@ await transport.PublishAsync(envelope, new TransportDestination("orders"));
 
 ### Request/Response Pattern
 
-```csharp{title="Request/Response Pattern" description="Demonstrates request/Response Pattern" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Request", "Response"]}
+```csharp{title="Request/Response Pattern" description="Request/Response Pattern" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Request", "Response"]}
 // Setup responder
 await transport.SubscribeAsync(
   handler: async (requestEnvelope, ct) => {
@@ -234,7 +234,7 @@ Console.WriteLine($"Order created: {responseEnvelope.Payload}");
 
 ### Pause and Resume
 
-```csharp{title="Pause and Resume" description="Demonstrates pause and Resume" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Pause", "Resume"]}
+```csharp{title="Pause and Resume" description="Pause and Resume" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Pause", "Resume"]}
 var subscription = await transport.SubscribeAsync(
   handler: async (envelope, ct) => {
     await ProcessAsync(envelope);
@@ -262,7 +262,7 @@ await transport.PublishAsync(envelope, destination);  // Handler invoked
 
 ### Dispose
 
-```csharp{title="Dispose" description="Demonstrates dispose" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Dispose"]}
+```csharp{title="Dispose" description="Dispose" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Dispose"]}
 // Remove subscription entirely
 subscription.Dispose();
 
@@ -298,7 +298,7 @@ TransportCapabilities.Reliable            // ✅ Direct invocation (no network f
 
 ### Concurrent Publishes
 
-```csharp{title="Concurrent Publishes" description="Demonstrates concurrent Publishes" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Concurrent", "Publishes"]}
+```csharp{title="Concurrent Publishes" description="Concurrent Publishes" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Concurrent", "Publishes"]}
 var transport = new InProcessTransport();
 var destination = new TransportDestination("orders");
 
@@ -323,7 +323,7 @@ await Task.WhenAll(tasks);  // Thread-safe - all handlers invoked
 
 ### Concurrent Subscriptions
 
-```csharp{title="Concurrent Subscriptions" description="Demonstrates concurrent Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Concurrent", "Subscriptions"]}
+```csharp{title="Concurrent Subscriptions" description="Concurrent Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Concurrent", "Subscriptions"]}
 // Subscribe concurrently from multiple threads
 var subscribeTasks = Enumerable.Range(0, 50)
   .Select(i => transport.SubscribeAsync(
@@ -351,7 +351,7 @@ await transport.PublishAsync(envelope, new TransportDestination("orders"));
 
 ### Handler Exceptions
 
-```csharp{title="Handler Exceptions" description="Demonstrates handler Exceptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Handler", "Exceptions"]}
+```csharp{title="Handler Exceptions" description="Handler Exceptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Handler", "Exceptions"]}
 await transport.SubscribeAsync(
   handler: async (envelope, ct) => {
     throw new InvalidOperationException("Handler failed!");
@@ -374,7 +374,7 @@ try {
 
 ### Cancellation
 
-```csharp{title="Cancellation" description="Demonstrates cancellation" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Cancellation"]}
+```csharp{title="Cancellation" description="Cancellation" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Cancellation"]}
 var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
 try {
@@ -435,7 +435,7 @@ try {
 
 ### Unit Testing Receptors
 
-```csharp{title="Unit Testing Receptors" description="Demonstrates unit Testing Receptors" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Unit", "Testing"]}
+```csharp{title="Unit Testing Receptors" description="Unit Testing Receptors" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Unit", "Testing"]}
 [Test]
 public async Task OrderReceptor_CreateOrder_PublishesOrderCreatedAsync() {
   // Arrange
@@ -464,7 +464,7 @@ public async Task OrderReceptor_CreateOrder_PublishesOrderCreatedAsync() {
 
 ### Testing Message Flows
 
-```csharp{title="Testing Message Flows" description="Demonstrates testing Message Flows" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Testing", "Message"]}
+```csharp{title="Testing Message Flows" description="Testing Message Flows" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Testing", "Message"]}
 [Test]
 public async Task OrderFlow_CreateAndShip_FullMessageChainAsync() {
   // Arrange
@@ -498,7 +498,7 @@ public async Task OrderFlow_CreateAndShip_FullMessageChainAsync() {
 
 ### Testing with IDispatcher
 
-```csharp{title="Testing with IDispatcher" description="Demonstrates testing with IDispatcher" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Testing", "IDispatcher"]}
+```csharp{title="Testing with IDispatcher" description="Testing with IDispatcher" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Testing", "IDispatcher"]}
 [Test]
 public async Task MessageFlow_ViaDispatcher_RoutesToCorrectReceptorAsync() {
   // Arrange
@@ -567,7 +567,7 @@ public async Task MessageFlow_ViaDispatcher_RoutesToCorrectReceptorAsync() {
 
 **Solution**:
 
-```csharp{title="Problem: Handler Not Invoked" description="Demonstrates problem: Handler Not Invoked" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Problem:", "Handler"]}
+```csharp{title="Problem: Handler Not Invoked" description="Problem: Handler Not Invoked" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Problem:", "Handler"]}
 // Verify destination addresses match EXACTLY
 var publishDest = new TransportDestination("orders");
 var subscribeDest = new TransportDestination("orders");
@@ -588,7 +588,7 @@ await subscription.ResumeAsync();
 
 **Solution**:
 
-```csharp{title="Problem: SendAsync Hangs Forever" description="Demonstrates problem: SendAsync Hangs Forever" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "SendAsync"]}
+```csharp{title="Problem: SendAsync Hangs Forever" description="Problem: SendAsync Hangs Forever" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "SendAsync"]}
 // Always use timeout with SendAsync
 var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
@@ -612,7 +612,7 @@ try {
 
 **Solution**:
 
-```csharp{title="Problem: Memory Leak with Subscriptions" description="Demonstrates problem: Memory Leak with Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "Memory"]}
+```csharp{title="Problem: Memory Leak with Subscriptions" description="Problem: Memory Leak with Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "Memory"]}
 // Always dispose subscriptions
 var subscription = await transport.SubscribeAsync(handler, destination);
 
@@ -655,7 +655,7 @@ await transport.PublishAsync(envelope3, destination);
 
 ### Conditional Handler Execution
 
-```csharp{title="Conditional Handler Execution" description="Demonstrates conditional Handler Execution" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Conditional", "Handler"]}
+```csharp{title="Conditional Handler Execution" description="Conditional Handler Execution" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Conditional", "Handler"]}
 await transport.SubscribeAsync(
   handler: async (envelope, ct) => {
     // Skip processing based on metadata
@@ -672,7 +672,7 @@ await transport.SubscribeAsync(
 
 ### Circuit Breaker Pattern
 
-```csharp{title="Circuit Breaker Pattern" description="Demonstrates circuit Breaker Pattern" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Circuit", "Breaker"]}
+```csharp{title="Circuit Breaker Pattern" description="Circuit Breaker Pattern" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Circuit", "Breaker"]}
 int failureCount = 0;
 const int maxFailures = 3;
 
@@ -707,7 +707,7 @@ var subscription = await transport.SubscribeAsync(
 
 ### Fan-Out Pattern
 
-```csharp{title="Fan-Out Pattern" description="Demonstrates fan-Out Pattern" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Fan-Out", "Pattern"]}
+```csharp{title="Fan-Out Pattern" description="Fan-Out Pattern" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Fan-Out", "Pattern"]}
 // Single publisher, multiple subscribers (fan-out)
 var transport = new InProcessTransport();
 var destination = new TransportDestination("order-created");

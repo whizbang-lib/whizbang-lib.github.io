@@ -610,7 +610,7 @@ app.Run();
 
 ### 1. Create Order (Full Flow)
 
-```bash{title="Create Order (Full Flow)" description="Demonstrates create Order (Full Flow)" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
+```bash{title="Create Order (Full Flow)" description="Create Order (Full Flow)" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{ ... }'
@@ -620,13 +620,13 @@ Wait for events to propagate through system (~10 seconds).
 
 ### 2. Query Customer Activity
 
-```bash{title="Query Customer Activity" description="Demonstrates query Customer Activity" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Customer"]}
+```bash{title="Query Customer Activity" description="Query Customer Activity" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Customer"]}
 curl http://localhost:5001/api/customers/cust-123
 ```
 
 **Response**:
 
-```json{title="Query Customer Activity (2)" description="Demonstrates query Customer Activity" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Customer"]}
+```json{title="Query Customer Activity (2)" description="Query Customer Activity" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Customer"]}
 {
   "customerId": "cust-123",
   "totalOrders": 1,
@@ -639,13 +639,13 @@ curl http://localhost:5001/api/customers/cust-123
 
 ### 3. Query Customer Orders
 
-```bash{title="Query Customer Orders" description="Demonstrates query Customer Orders" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Customer"]}
+```bash{title="Query Customer Orders" description="Query Customer Orders" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Customer"]}
 curl http://localhost:5001/api/customers/cust-123/orders
 ```
 
 **Response**:
 
-```json{title="Query Customer Orders (2)" description="Demonstrates query Customer Orders" category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Query", "Customer"]}
+```json{title="Query Customer Orders (2)" description="Query Customer Orders" category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Query", "Customer"]}
 [
   {
     "orderId": "order-abc123",
@@ -678,7 +678,7 @@ curl http://localhost:5001/api/customers/cust-123/orders
 
 ### 4. Query Single Order
 
-```bash{title="Query Single Order" description="Demonstrates query Single Order" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Single"]}
+```bash{title="Query Single Order" description="Query Single Order" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Single"]}
 curl http://localhost:5001/api/orders/order-abc123
 ```
 
@@ -725,7 +725,7 @@ curl http://localhost:5001/api/orders/order-abc123
 
 ### Event-Driven Read Models
 
-```csharp{title="Event-Driven Read Models" description="Demonstrates event-Driven Read Models" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Event-Driven", "Read"]}
+```csharp{title="Event-Driven Read Models" description="Event-Driven Read Models" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Event-Driven", "Read"]}
 // Single perspective updates from multiple events
 public class OrderSummaryPerspective :
   IPerspectiveOf<OrderCreated>,       // Sets initial state
@@ -780,7 +780,7 @@ public class OrderSummaryPerspective :
 
 ### Unit Test - Perspective
 
-```csharp{title="Unit Test - Perspective" description="Demonstrates unit Test - Perspective" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Perspective" description="Unit Test - Perspective" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task OrderSummaryPerspective_OrderCreated_CreatesOrderSummaryAsync() {
   // Arrange

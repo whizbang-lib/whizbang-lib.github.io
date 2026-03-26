@@ -19,7 +19,7 @@ The `[GraphQLLens]` attribute marks lens interfaces for GraphQL exposure, enabli
 
 ## Basic Usage
 
-```csharp{title="Basic Usage" description="Demonstrates basic Usage" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Basic", "Usage"]}
+```csharp{title="Basic Usage" description="Basic Usage" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Basic", "Usage"]}
 [GraphQLLens(QueryName = "orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 ```

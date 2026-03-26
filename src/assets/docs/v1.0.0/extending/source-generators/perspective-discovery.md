@@ -37,7 +37,7 @@ The **PerspectiveDiscoveryGenerator** discovers all `IPerspectiveOf<TEvent>` imp
 
 ### Traditional Approach (Direct Updates)
 
-```csharp{title="Traditional Approach (Direct Updates)" description="Demonstrates traditional Approach (Direct Updates)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Traditional", "Approach"]}
+```csharp{title="Traditional Approach (Direct Updates)" description="Traditional Approach (Direct Updates)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Traditional", "Approach"]}
 // ❌ Tight coupling between command and query models
 public class OrderService {
     public async Task<OrderCreated> CreateOrderAsync(CreateOrder command) {
@@ -63,7 +63,7 @@ public class OrderService {
 
 ### Whizbang Approach (Event-Driven)
 
-```csharp{title="Whizbang Approach (Event-Driven)" description="Demonstrates whizbang Approach (Event-Driven)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Whizbang", "Approach"]}
+```csharp{title="Whizbang Approach (Event-Driven)" description="Whizbang Approach (Event-Driven)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Whizbang", "Approach"]}
 // ✅ Decoupled: Command handler publishes event, perspective updates read model
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(CreateOrder message, CancellationToken ct) {
@@ -189,7 +189,7 @@ public static class PerspectiveRegistrations {
 
 ### Registration in Program.cs
 
-```csharp{title="Registration in Program.cs" description="Demonstrates registration in Program.cs" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Registration", "Program.cs"]}
+```csharp{title="Registration in Program.cs" description="Registration in Program.cs" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Registration", "Program.cs"]}
 // Program.cs
 using MyApp.Generated;
 
@@ -213,7 +213,7 @@ app.Run();
 
 ### Pattern 1: Single Event Handler
 
-```csharp{title="Pattern 1: Single Event Handler" description="Demonstrates pattern 1: Single Event Handler" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Single"]}
+```csharp{title="Pattern 1: Single Event Handler" description="Pattern 1: Single Event Handler" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Single"]}
 public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
     private readonly IDbConnectionFactory _db;
 
@@ -244,7 +244,7 @@ services.AddScoped<IPerspectiveOf<OrderCreated>, OrderSummaryPerspective>();
 
 ### Pattern 2: Multiple Event Handlers
 
-```csharp{title="Pattern 2: Multiple Event Handlers" description="Demonstrates pattern 2: Multiple Event Handlers" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Multiple"]}
+```csharp{title="Pattern 2: Multiple Event Handlers" description="Pattern 2: Multiple Event Handlers" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Multiple"]}
 public class OrderSummaryPerspective :
     IPerspectiveOf<OrderCreated>,
     IPerspectiveOf<OrderShipped>,
@@ -300,7 +300,7 @@ services.AddScoped<IPerspectiveOf<OrderCancelled>, OrderSummaryPerspective>();
 
 ### Pattern 3: Aggregated Statistics
 
-```csharp{title="Pattern 3: Aggregated Statistics" description="Demonstrates pattern 3: Aggregated Statistics" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Aggregated"]}
+```csharp{title="Pattern 3: Aggregated Statistics" description="Pattern 3: Aggregated Statistics" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Aggregated"]}
 public class CustomerStatisticsPerspective :
     IPerspectiveOf<OrderCreated>,
     IPerspectiveOf<OrderShipped> {
@@ -404,7 +404,7 @@ order-abc-123                       | InventoryPerspective       | event-001    
 
 ### Full Rebuild
 
-```csharp{title="Full Rebuild" description="Demonstrates full Rebuild" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Full", "Rebuild"]}
+```csharp{title="Full Rebuild" description="Full Rebuild" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Full", "Rebuild"]}
 public class PerspectiveRebuilder {
     private readonly IEventStore _eventStore;
     private readonly IServiceProvider _services;
@@ -479,7 +479,7 @@ Subsequent compilation (no changes):
 
 ### Syntactic Filtering
 
-```csharp{title="Syntactic Filtering" description="Demonstrates syntactic Filtering" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Syntactic", "Filtering"]}
+```csharp{title="Syntactic Filtering" description="Syntactic Filtering" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Syntactic", "Filtering"]}
 // Fast syntactic check (no semantic model access)
 predicate: static (node, _) => node is ClassDeclarationSyntax { BaseList.Types.Count: > 0 },
 
@@ -609,7 +609,7 @@ services.AddScoped(perspectiveType, implementationType);
 
 ### Native AOT Verification
 
-```xml{title="Native AOT Verification" description="Demonstrates native AOT Verification" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Native", "AOT"]}
+```xml{title="Native AOT Verification" description="Native AOT Verification" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Native", "AOT"]}
 <PropertyGroup>
   <PublishAot>true</PublishAot>
 </PropertyGroup>
@@ -662,7 +662,7 @@ Generating native code
 3. Event type mismatch (spelling, namespace)
 
 **Solution**:
-```csharp{title="Problem: Perspective Not Invoked" description="Demonstrates problem: Perspective Not Invoked" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Perspective"]}
+```csharp{title="Problem: Perspective Not Invoked" description="Problem: Perspective Not Invoked" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Perspective"]}
 // ✅ Correct interface implementation
 public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
     public async Task UpdateAsync(OrderCreated @event, CancellationToken ct) {
@@ -708,7 +708,7 @@ await _coordinator.ProcessWorkBatchAsync(
 2. Perspectives are abstract classes (can't be instantiated)
 
 **Solution**:
-```csharp{title="Problem: Generator Doesn't Find Perspectives" description="Demonstrates problem: Generator Doesn't Find Perspectives" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Problem:", "Generator"]}
+```csharp{title="Problem: Generator Doesn't Find Perspectives" description="Problem: Generator Doesn't Find Perspectives" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Problem:", "Generator"]}
 // ✅ Concrete class
 public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
     // Implementation

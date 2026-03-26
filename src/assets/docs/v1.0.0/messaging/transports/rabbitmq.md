@@ -211,7 +211,7 @@ Subscriber (Fulfillment Service)
 
 ### Dependencies
 
-```xml{title="Dependencies" description="Demonstrates dependencies" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Dependencies"]}
+```xml{title="Dependencies" description="Dependencies" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Dependencies"]}
 <ItemGroup>
   <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
   <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
@@ -279,7 +279,7 @@ dotnet workload list | grep aspire  # Should show aspire workload
 ### Running with RabbitMQ
 
 **1. Build with RabbitMQ Transport**:
-```bash{title="Running with RabbitMQ" description="Demonstrates running with RabbitMQ" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Running", "RabbitMQ"]}
+```bash{title="Running with RabbitMQ" description="Running with RabbitMQ" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Running", "RabbitMQ"]}
 cd samples/ECommerce
 
 # Build all projects with RabbitMQ transport
@@ -287,7 +287,7 @@ dotnet build /p:TransportProvider=RabbitMQ
 ```
 
 **2. Start Aspire AppHost**:
-```bash{title="Running with RabbitMQ" description="Demonstrates running with RabbitMQ" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Running", "RabbitMQ"]}
+```bash{title="Running with RabbitMQ" description="Running with RabbitMQ" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Running", "RabbitMQ"]}
 cd ECommerce.AppHost
 
 # Run with RabbitMQ (Aspire dashboard at https://localhost:17036)
@@ -304,7 +304,7 @@ dotnet run /p:TransportProvider=RabbitMQ
 - ✅ Provides **Aspire Dashboard** for observability
 
 **3. Access Services**:
-```bash{title="Running with RabbitMQ" description="Demonstrates running with RabbitMQ" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Running", "RabbitMQ"]}
+```bash{title="Running with RabbitMQ" description="Running with RabbitMQ" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Running", "RabbitMQ"]}
 # Aspire Dashboard
 https://localhost:17036
 
@@ -330,7 +330,7 @@ http://localhost:<bff-port>/graphql
 - Navigate to **Connections** tab → See all microservice connections
 
 **5. Stop All Services**:
-```bash{title="Running with RabbitMQ" description="Demonstrates running with RabbitMQ" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Running", "RabbitMQ"]}
+```bash{title="Running with RabbitMQ" description="Running with RabbitMQ" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Running", "RabbitMQ"]}
 # Ctrl+C in terminal running AppHost
 # Containers persist by default (ContainerLifetime.Persistent)
 
@@ -344,7 +344,7 @@ docker rm rabbitmq postgres pgadmin
 ### Running with Azure Service Bus Emulator
 
 **1. Build with Azure Service Bus Transport**:
-```bash{title="Running with Azure Service Bus Emulator" description="Demonstrates running with Azure Service Bus Emulator" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Running", "Azure"]}
+```bash{title="Running with Azure Service Bus Emulator" description="Running with Azure Service Bus Emulator" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Running", "Azure"]}
 cd samples/ECommerce
 
 # Build with Azure Service Bus (default)
@@ -355,7 +355,7 @@ dotnet build /p:TransportProvider=AzureServiceBus
 ```
 
 **2. Start Aspire AppHost**:
-```bash{title="Running with Azure Service Bus Emulator" description="Demonstrates running with Azure Service Bus Emulator" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Running", "Azure"]}
+```bash{title="Running with Azure Service Bus Emulator" description="Running with Azure Service Bus Emulator" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Running", "Azure"]}
 cd ECommerce.AppHost
 
 # Run with Azure Service Bus (Aspire dashboard at https://localhost:17036)
@@ -372,7 +372,7 @@ dotnet run
 - ✅ Provides **Aspire Dashboard** for observability
 
 **3. Access Services** (same as RabbitMQ except no Management UI):
-```bash{title="Running with Azure Service Bus Emulator" description="Demonstrates running with Azure Service Bus Emulator" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Running", "Azure"]}
+```bash{title="Running with Azure Service Bus Emulator" description="Running with Azure Service Bus Emulator" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Running", "Azure"]}
 # Aspire Dashboard
 https://localhost:17036
 
@@ -407,7 +407,7 @@ The ECommerce sample includes **dedicated integration test projects** for each t
 #### RabbitMQ Integration Tests
 
 **1. Start RabbitMQ Container**:
-```bash{title="RabbitMQ Integration Tests" description="Demonstrates rabbitMQ Integration Tests" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "RabbitMQ", "Integration"]}
+```bash{title="RabbitMQ Integration Tests" description="RabbitMQ Integration Tests" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "RabbitMQ", "Integration"]}
 docker run -d \
   --name rabbitmq \
   -p 5672:5672 \
@@ -416,7 +416,7 @@ docker run -d \
 ```
 
 **2. Run Tests**:
-```bash{title="RabbitMQ Integration Tests (2)" description="Demonstrates rabbitMQ Integration Tests" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "RabbitMQ", "Integration"]}
+```bash{title="RabbitMQ Integration Tests (2)" description="RabbitMQ Integration Tests" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "RabbitMQ", "Integration"]}
 cd samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests
 
 # Run all 48 lifecycle tests (sequential execution)
@@ -439,7 +439,7 @@ dotnet run -- --treenode-filter "/*/*/*/RestockInventory_FromZeroStock_Increases
 #### Azure Service Bus Integration Tests
 
 **1. Start Service Bus Emulator**:
-```bash{title="Azure Service Bus Integration Tests" description="Demonstrates azure Service Bus Integration Tests" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Azure", "Service"]}
+```bash{title="Azure Service Bus Integration Tests" description="Azure Service Bus Integration Tests" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Azure", "Service"]}
 docker run -d \
   --name servicebus-emulator \
   -p 5672:5672 \
@@ -448,7 +448,7 @@ docker run -d \
 ```
 
 **2. Run Tests**:
-```bash{title="Azure Service Bus Integration Tests (2)" description="Demonstrates azure Service Bus Integration Tests" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Azure", "Service"]}
+```bash{title="Azure Service Bus Integration Tests (2)" description="Azure Service Bus Integration Tests" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Azure", "Service"]}
 cd samples/ECommerce/tests/ECommerce.Integration.Tests
 
 # Run all 48 lifecycle tests (sequential execution)
@@ -480,7 +480,7 @@ dotnet run -- --treenode-filter "/*/*/*/SeedProducts_CreatesProducts_AndPerspect
 
 #### AppHost won't start
 
-```bash{title="AppHost won't start" description="Demonstrates appHost won't start" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "AppHost", "Won't"]}
+```bash{title="AppHost won't start" description="AppHost won't start" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "AppHost", "Won't"]}
 # Ensure Aspire workload is installed
 dotnet workload install aspire
 
@@ -495,7 +495,7 @@ dotnet build /p:TransportProvider=RabbitMQ  # or AzureServiceBus
 
 #### RabbitMQ container fails to start
 
-```bash{title="RabbitMQ container fails to start" description="Demonstrates rabbitMQ container fails to start" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "RabbitMQ", "Container"]}
+```bash{title="RabbitMQ container fails to start" description="RabbitMQ container fails to start" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "RabbitMQ", "Container"]}
 # Check port conflicts
 lsof -i :5672
 lsof -i :15672
@@ -510,7 +510,7 @@ docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4-management
 
 #### Azure Service Bus Emulator not ready
 
-```bash{title="Azure Service Bus Emulator not ready" description="Demonstrates azure Service Bus Emulator not ready" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Azure", "Service"]}
+```bash{title="Azure Service Bus Emulator not ready" description="Azure Service Bus Emulator not ready" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Azure", "Service"]}
 # Check emulator logs
 docker logs servicebus-emulator
 
@@ -519,7 +519,7 @@ docker logs servicebus-emulator
 
 #### Integration tests timeout
 
-```bash{title="Integration tests timeout" description="Demonstrates integration tests timeout" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Integration", "Tests"]}
+```bash{title="Integration tests timeout" description="Integration tests timeout" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Integration", "Tests"]}
 # Ensure emulator is running
 docker ps | grep rabbitmq  # or servicebus-emulator
 
@@ -532,7 +532,7 @@ docker restart rabbitmq
 
 #### Wrong transport used at runtime
 
-```bash{title="Wrong transport used at runtime" description="Demonstrates wrong transport used at runtime" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Wrong", "Transport"]}
+```bash{title="Wrong transport used at runtime" description="Wrong transport used at runtime" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Wrong", "Transport"]}
 # Verify build used correct transport
 cd samples/ECommerce
 dotnet clean
@@ -548,7 +548,7 @@ grep -r "RABBITMQ\|AZURESERVICEBUS" ECommerce.InventoryWorker/.whizbang-generate
 
 ### Basic Setup
 
-```csharp{title="Basic Setup" description="Demonstrates basic Setup" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Basic", "Setup"]}
+```csharp{title="Basic Setup" description="Basic Setup" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Basic", "Setup"]}
 using Whizbang.Transports.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -709,7 +709,7 @@ amqps://username:password@hostname:port/virtualhost  # TLS
 
 ### Publishing Messages
 
-```csharp{title="Publishing Messages" description="Demonstrates publishing Messages" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Publishing", "Messages"]}
+```csharp{title="Publishing Messages" description="Publishing Messages" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Publishing", "Messages"]}
 public class ProductService {
     private readonly ITransport _transport;
     private readonly ILogger<ProductService> _logger;
@@ -749,7 +749,7 @@ public class ProductService {
 
 ### Subscribing to Messages
 
-```csharp{title="Subscribing to Messages" description="Demonstrates subscribing to Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Subscribing", "Messages"]}
+```csharp{title="Subscribing to Messages" description="Subscribing to Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Subscribing", "Messages"]}
 public class InventoryWorker : BackgroundService {
     private readonly ITransport _transport;
     private readonly ILogger<InventoryWorker> _logger;
@@ -801,7 +801,7 @@ public class InventoryWorker : BackgroundService {
 
 ### Custom Routing Patterns
 
-```csharp{title="Custom Routing Patterns" description="Demonstrates custom Routing Patterns" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Custom", "Routing"]}
+```csharp{title="Custom Routing Patterns" description="Custom Routing Patterns" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Custom", "Routing"]}
 // Subscribe to specific event types
 var destination = new TransportDestination(
     Address: "products",
@@ -832,7 +832,7 @@ var destination = new TransportDestination(
 
 ### Pause and Resume Subscriptions
 
-```csharp{title="Pause and Resume Subscriptions" description="Demonstrates pause and Resume Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Pause", "Resume"]}
+```csharp{title="Pause and Resume Subscriptions" description="Pause and Resume Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Pause", "Resume"]}
 public class OrderProcessor {
     private ISubscription? _subscription;
 
@@ -913,7 +913,7 @@ When `AutoDeclareDeadLetterExchange = true` (default), the transport automatical
 
 ### Inspecting Failed Messages
 
-```bash{title="Inspecting Failed Messages" description="Demonstrates inspecting Failed Messages" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Inspecting", "Failed"]}
+```bash{title="Inspecting Failed Messages" description="Inspecting Failed Messages" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Inspecting", "Failed"]}
 # List messages in DLQ
 rabbitmqadmin get queue=orders-queue.dlq count=10
 
@@ -927,7 +927,7 @@ rabbitmqadmin get queue=orders-queue.dlq requeue=true
 
 ### ASP.NET Core Health Checks
 
-```csharp{title="ASP.NET Core Health Checks" description="Demonstrates aSP.NET Core Health Checks" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "ASP.NET", "Core"]}
+```csharp{title="ASP.NET Core Health Checks" description="ASP.NET Core Health Checks" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "ASP.NET", "Core"]}
 using Whizbang.Transports.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -958,7 +958,7 @@ app.Run();
 
 ### Custom Readiness Checks
 
-```csharp{title="Custom Readiness Checks" description="Demonstrates custom Readiness Checks" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Custom", "Readiness"]}
+```csharp{title="Custom Readiness Checks" description="Custom Readiness Checks" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Custom", "Readiness"]}
 public class RabbitMQReadinessCheck : ITransportReadinessCheck {
     private readonly IConnection _connection;
 
@@ -978,7 +978,7 @@ public class RabbitMQReadinessCheck : ITransportReadinessCheck {
 
 ### Unit Testing with Test Doubles
 
-```csharp{title="Unit Testing with Test Doubles" description="Demonstrates unit Testing with Test Doubles" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Unit", "Testing"]}
+```csharp{title="Unit Testing with Test Doubles" description="Unit Testing with Test Doubles" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Unit", "Testing"]}
 using Whizbang.Transports.RabbitMQ;
 using Whizbang.Transports.RabbitMQ.Tests;
 
@@ -1015,7 +1015,7 @@ public class ProductServiceTests {
 
 ### Integration Testing with TestContainers
 
-```csharp{title="Integration Testing with TestContainers" description="Demonstrates integration Testing with TestContainers" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Integration", "Testing"]}
+```csharp{title="Integration Testing with TestContainers" description="Integration Testing with TestContainers" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Integration", "Testing"]}
 using Testcontainers.RabbitMQ;
 
 [NotInParallel]  // RabbitMQ container isolation
@@ -1216,7 +1216,7 @@ The RabbitMQ transport supports the following `TransportCapabilities`:
 3. Firewall blocking port 5672
 
 **Solution**:
-```bash{title="Connection Refused" description="Demonstrates connection Refused" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Connection", "Refused"]}
+```bash{title="Connection Refused" description="Connection Refused" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Connection", "Refused"]}
 # Check RabbitMQ is running
 docker ps | grep rabbitmq
 
@@ -1234,7 +1234,7 @@ docker logs <rabbitmq-container>
 **Cause**: All channels rented, none returned (likely exception in `using` block)
 
 **Solution**:
-```csharp{title="Channel Pool Exhaustion" description="Demonstrates channel Pool Exhaustion" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Channel", "Pool"]}
+```csharp{title="Channel Pool Exhaustion" description="Channel Pool Exhaustion" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Channel", "Pool"]}
 // Ensure channel returns on exception
 try {
     using (var channel = await pool.RentChannelAsync()) {
@@ -1256,7 +1256,7 @@ try {
 3. Queue not declared
 
 **Diagnosis**:
-```bash{title="Messages Not Routed" description="Demonstrates messages Not Routed" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Messages", "Not"]}
+```bash{title="Messages Not Routed" description="Messages Not Routed" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Messages", "Not"]}
 # Check exchange exists
 rabbitmqadmin list exchanges name type
 

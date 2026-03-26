@@ -35,7 +35,7 @@ Remove these packages from your `.csproj` files:
 
 Add the Whizbang packages from NuGet.org:
 
-```xml{title="Add Whizbang Packages" description="Add the Whizbang packages from NuGet." category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Add", "Whizbang", "Packages"]}
+```xml{title="Add Whizbang Packages" description="Add the Whizbang packages from NuGet." category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "Xml", "Add", "Whizbang", "Packages"]}
 <ItemGroup>
   <!-- Core Whizbang -->
   <PackageReference Include="Whizbang.Core" Version="0.1.0" />
@@ -65,7 +65,7 @@ Add the Whizbang packages from NuGet.org:
 
 **Before (Marten/Wolverine)**:
 
-```csharp{title="Program.cs Migration" description="Before (Marten/Wolverine):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Program.cs", "Migration"]}
+```csharp{title="Program.cs Migration" description="Before (Marten/Wolverine):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Program.cs", "Migration"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Marten configuration
@@ -89,7 +89,7 @@ var app = builder.Build();
 
 **After (Whizbang)**:
 
-```csharp{title="Program.cs Migration (2)" description="After (Whizbang):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Program.cs", "Migration"]}
+```csharp{title="Program.cs Migration (2)" description="After (Whizbang):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Program.cs", "Migration"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Whizbang configuration
@@ -127,7 +127,7 @@ var app = builder.Build();
 
 **appsettings.Development.json** (for local Aspire development):
 
-```json{title="AppSettings Configuration" description="**appsettings." category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "AppSettings", "Configuration"]}
+```json{title="AppSettings Configuration" description="**appsettings." category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "Json", "AppSettings", "Configuration"]}
 {
   "UseRabbitMQ": true,
   "ConnectionStrings": {
@@ -139,7 +139,7 @@ var app = builder.Build();
 
 **appsettings.Production.json** (for Azure deployment):
 
-```json{title="AppSettings Configuration (2)" description="**appsettings." category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "AppSettings", "Configuration"]}
+```json{title="AppSettings Configuration (2)" description="**appsettings." category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "Json", "AppSettings", "Configuration"]}
 {
   "UseRabbitMQ": false,
   "ConnectionStrings": {
@@ -155,7 +155,7 @@ var app = builder.Build();
 
 Whizbang uses a different database schema than Marten. Initialize it on startup:
 
-```csharp{title="Initialize Whizbang Schema" description="Whizbang uses a different database schema than Marten." category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Initialize", "Whizbang", "Schema"]}
+```csharp{title="Initialize Whizbang Schema" description="Whizbang uses a different database schema than Marten." category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Initialize", "Whizbang", "Schema"]}
 var app = builder.Build();
 
 // Initialize Whizbang schema
@@ -182,7 +182,7 @@ app.Run();
 
 Update your using statements:
 
-```csharp{title="Namespace Changes" description="Update your using statements:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Namespace", "Changes"]}
+```csharp{title="Namespace Changes" description="Update your using statements:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Namespace", "Changes"]}
 // Remove
 using Marten;
 using Marten.Events;
@@ -202,7 +202,7 @@ using Whizbang.Core.Perspectives;
 
 **Before**:
 
-```csharp{title="Service Registration" description="Demonstrates service Registration" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Service", "Registration"]}
+```csharp{title="Service Registration" description="Service Registration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Service", "Registration"]}
 // Marten session injection
 public class OrderService {
     private readonly IDocumentSession _session;
@@ -215,7 +215,7 @@ public class OrderService {
 
 **After**:
 
-```csharp{title="Service Registration - OrderService" description="Demonstrates service Registration" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Service", "Registration"]}
+```csharp{title="Service Registration - OrderService" description="Service Registration - OrderService" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Service", "Registration", "OrderService"]}
 // Whizbang direct injection
 public class OrderService {
     private readonly IEventStore _eventStore;

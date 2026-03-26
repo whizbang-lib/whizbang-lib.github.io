@@ -172,7 +172,7 @@ All scope-related types use abbreviated JSON property names for minimal wire siz
 
 ### Wire Format Examples
 
-```json{title="Wire Format Examples" description="Demonstrates wire Format Examples" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Wire", "Format"]}
+```json{title="Wire Format Examples" description="Wire Format Examples" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Wire", "Format"]}
 // Change TenantId only:
 {"v":{"Sc":{"t":"new-tenant"}}}
 

@@ -152,14 +152,14 @@ When you rename a perspective class, the [perspective registry](registry.md) aut
 
 ### Before
 
-```csharp{title="Before" description="Demonstrates before" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Before"]}
+```csharp{title="Before" description="Before" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Before"]}
 public class CustomerDataProjection : IPerspectiveFor<CustomerData, CustomerEvent> { }
 // Table: wh_per_customer_data
 ```
 
 ### After
 
-```csharp{title="After" description="Demonstrates after" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "After"]}
+```csharp{title="After" description="After" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "After"]}
 public class CustomerProjection : IPerspectiveFor<CustomerData, CustomerEvent> { }
 // Table: wh_per_customer
 ```

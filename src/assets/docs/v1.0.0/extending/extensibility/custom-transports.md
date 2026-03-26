@@ -53,7 +53,7 @@ For built-in transports, see [Azure Service Bus](../../messaging/transports/azur
 
 ### ITransport Interface
 
-```csharp{title="ITransport Interface" description="Demonstrates iTransport Interface" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "ITransport", "Interface"]}
+```csharp{title="ITransport Interface" description="ITransport Interface" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "ITransport", "Interface"]}
 namespace Whizbang.Core.Transports;
 
 public interface ITransport {
@@ -106,7 +106,7 @@ public interface ITransport {
 
 ### Transport Capabilities
 
-```csharp{title="Transport Capabilities" description="Demonstrates transport Capabilities" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Transport", "Capabilities"]}
+```csharp{title="Transport Capabilities" description="Transport Capabilities" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Transport", "Capabilities"]}
 [Flags]
 public enum TransportCapabilities {
   None = 0,
@@ -249,7 +249,7 @@ builder.Services.AddSingleton<ITransport, HttpTransport>();
 ```
 
 **Usage**:
-```csharp{title="Pattern 1: HTTP Client Transport (3)" description="Demonstrates pattern 1: HTTP Client Transport" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "HTTP"]}
+```csharp{title="Pattern 1: HTTP Client Transport (3)" description="Pattern 1: HTTP Client Transport" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "HTTP"]}
 var request = MessageEnvelope.Create(
   messageId: MessageId.New(),
   correlationId: CorrelationId.New(),
@@ -612,7 +612,7 @@ builder.Services.AddSingleton<ITransport>(sp =>
 
 ### Pattern 4: Transport with Health Checks
 
-```csharp{title="Pattern 4: Transport with Health Checks" description="Demonstrates pattern 4: Transport with Health Checks" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Transport"]}
+```csharp{title="Pattern 4: Transport with Health Checks" description="Pattern 4: Transport with Health Checks" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Transport"]}
 using Whizbang.Core.Transports;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -657,7 +657,7 @@ builder.Services.AddHealthChecks()
 
 ### Pattern 5: Batching Transport (High Throughput)
 
-```csharp{title="Pattern 5: Batching Transport (High Throughput)" description="Demonstrates pattern 5: Batching Transport (High Throughput)" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Batching"]}
+```csharp{title="Pattern 5: Batching Transport (High Throughput)" description="Pattern 5: Batching Transport (High Throughput)" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Batching"]}
 using Whizbang.Core.Transports;
 using System.Threading.Channels;
 
@@ -734,7 +734,7 @@ public class BatchingTransport : ITransport {
 ```
 
 **Usage**:
-```csharp{title="Pattern 5: Batching Transport (High Throughput) (2)" description="Demonstrates pattern 5: Batching Transport (High Throughput)" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Batching"]}
+```csharp{title="Pattern 5: Batching Transport (High Throughput) (2)" description="Pattern 5: Batching Transport (High Throughput)" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Batching"]}
 // Wrap existing transport with batching
 var kafkaTransport = new KafkaTransport(...);
 var batchingTransport = new BatchingTransport(kafkaTransport);
@@ -753,7 +753,7 @@ builder.Services.AddSingleton<ITransport>(batchingTransport);
 
 ### Testing Initialization
 
-```csharp{title="Testing Initialization" description="Demonstrates testing Initialization" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Initialization"]}
+```csharp{title="Testing Initialization" description="Testing Initialization" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Initialization"]}
 public class KafkaTransportTests {
   [Test]
   public async Task InitializeAsync_ValidBroker_SucceedsAsync() {
@@ -792,7 +792,7 @@ public class KafkaTransportTests {
 
 ### Testing Publish/Subscribe
 
-```csharp{title="Testing Publish/Subscribe" description="Demonstrates testing Publish/Subscribe" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Publish"]}
+```csharp{title="Testing Publish/Subscribe" description="Testing Publish/Subscribe" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Publish"]}
 public class KafkaTransportIntegrationTests {
   [Test]
   public async Task PublishAndSubscribe_MessageReceivedAsync() {

@@ -28,7 +28,7 @@ Use custom request DTOs when:
 
 ### Step 1: Define the Request DTO
 
-```csharp{title="Step 1: Define the Request DTO" description="Demonstrates step 1: Define the Request DTO" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Mutations", "Step", "Define"]}
+```csharp{title="Step 1: Define the Request DTO" description="Step 1: Define the Request DTO" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Mutations", "Step", "Define"]}
 // Request DTO - what the API receives
 public record CreateOrderRequest(
     string CustomerEmail,           // User provides email, not ID
@@ -43,7 +43,7 @@ public record OrderItemInput(
 
 ### Step 2: Define the Command
 
-```csharp{title="Step 2: Define the Command" description="Demonstrates step 2: Define the Command" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Mutations", "Step", "Define"]}
+```csharp{title="Step 2: Define the Command" description="Step 2: Define the Command" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Mutations", "Step", "Define"]}
 // Command - what the domain processes
 public record CreateOrderCommand(
     Guid CustomerId,                // Domain uses ID
@@ -59,7 +59,7 @@ public record OrderItem(
 
 ### Step 3: Configure the Endpoint
 
-```csharp{title="Step 3: Configure the Endpoint" description="Demonstrates step 3: Configure the Endpoint" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "Step", "Configure"]}
+```csharp{title="Step 3: Configure the Endpoint" description="Step 3: Configure the Endpoint" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "Step", "Configure"]}
 [CommandEndpoint<CreateOrderCommand, OrderResult>(
     RestRoute = "/api/orders",
     GraphQLMutation = "createOrder",
@@ -121,7 +121,7 @@ public partial class CreateOrderEndpoint {
 ## The MapRequestToCommandAsync Method {#execution}
 
 **Signature**:
-```csharp{title="The MapRequestToCommandAsync Method" description="Demonstrates the MapRequestToCommandAsync Method" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "MapRequestToCommandAsync", "Method"]}
+```csharp{title="The MapRequestToCommandAsync Method" description="The MapRequestToCommandAsync Method" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "MapRequestToCommandAsync", "Method"]}
 protected virtual ValueTask<TCommand> MapRequestToCommandAsync<TRequest>(
     TRequest request,
     CancellationToken ct) where TRequest : notnull
@@ -346,7 +346,7 @@ protected override async ValueTask OnErrorAsync(...) {
 
 ## Complete Example
 
-```csharp{title="Complete Example" description="Demonstrates complete Example" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Complete", "Example"]}
+```csharp{title="Complete Example" description="Complete Example" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Complete", "Example"]}
 // Request DTO
 public record TransferFundsRequest(
     string FromAccountNumber,

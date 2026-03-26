@@ -468,7 +468,7 @@ az deployment group create \
 
 **.github/workflows/deploy.yaml**:
 
-```yaml{title="Step 4: CI/CD Pipeline (GitHub Actions)" description="Demonstrates step 4: CI/CD Pipeline (GitHub Actions)" category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Pipeline"]}
+```yaml{title="Step 4: CI/CD Pipeline (GitHub Actions)" description="Step 4: CI/CD Pipeline (GitHub Actions)" category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Pipeline"]}
 name: Build and Deploy
 
 on:
@@ -580,7 +580,7 @@ jobs:
 
 **Program.cs**:
 
-```csharp{title="Application Insights Integration" description="Demonstrates application Insights Integration" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Application", "Insights"]}
+```csharp{title="Application Insights Integration" description="Application Insights Integration" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Application", "Insights"]}
 builder.Services.AddApplicationInsightsTelemetry(options => {
   options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
 });

@@ -49,7 +49,7 @@ Deploy Whizbang applications with **Native AOT (Ahead-of-Time compilation)** for
 
 **Publish**:
 
-```bash{title="Enabling Native AOT (2)" description="Demonstrates enabling Native AOT" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Enabling", "Native"]}
+```bash{title="Enabling Native AOT (2)" description="Enabling Native AOT" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Enabling", "Native"]}
 dotnet publish -c Release -r linux-x64
 ```
 
@@ -142,7 +142,7 @@ public static class JsonContextRegistry {
 
 **Usage**:
 
-```csharp{title="JSON Serialization (AOT-Compatible) (2)" description="Demonstrates jSON Serialization (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "JSON", "Serialization"]}
+```csharp{title="JSON Serialization (AOT-Compatible) (2)" description="JSON Serialization (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "JSON", "Serialization"]}
 // ✅ GOOD - AOT-compatible
 var options = JsonContextRegistry.CreateOptions();
 var json = JsonSerializer.Serialize(order, options);
@@ -190,7 +190,7 @@ IL2026: Using member 'System.Type.GetType(string)' which has 'RequiresUnreferenc
 
 **Fix**:
 
-```csharp{title="Trim Warnings (2)" description="Demonstrates trim Warnings" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Trim", "Warnings"]}
+```csharp{title="Trim Warnings (2)" description="Trim Warnings" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Trim", "Warnings"]}
 // ❌ BAD
 var type = Type.GetType("MyNamespace.MyClass");
 
@@ -206,7 +206,7 @@ Use constructor injection with explicit registrations:
 
 **Program.cs**:
 
-```csharp{title="Dependency Injection (AOT-Compatible)" description="Demonstrates dependency Injection (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dependency", "Injection"]}
+```csharp{title="Dependency Injection (AOT-Compatible)" description="Dependency Injection (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dependency", "Injection"]}
 // ✅ GOOD - Explicit registration (AOT-compatible)
 builder.Services.AddSingleton<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
 builder.Services.AddSingleton<IReceptor<UpdateOrder, OrderUpdated>, UpdateOrderReceptor>();
@@ -266,7 +266,7 @@ public partial class OrderDbContextModel : RuntimeModel {
 
 **Usage**:
 
-```csharp{title="Entity Framework Core (AOT-Compatible) - OrderDbContext" description="Demonstrates entity Framework Core (AOT-Compatible)" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Entity", "Framework"]}
+```csharp{title="Entity Framework Core (AOT-Compatible) - OrderDbContext" description="Entity Framework Core (AOT-Compatible) - OrderDbContext" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Entity", "Framework"]}
 public class OrderDbContext : DbContext {
   protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
     optionsBuilder
@@ -284,7 +284,7 @@ Dapper works with AOT, but avoid dynamic SQL:
 
 **✅ GOOD**:
 
-```csharp{title="Dapper (AOT-Compatible)" description="Demonstrates dapper (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dapper", "AOT-Compatible"]}
+```csharp{title="Dapper (AOT-Compatible)" description="Dapper (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dapper", "AOT-Compatible"]}
 var orders = await connection.QueryAsync<OrderRow>(
   """
   SELECT order_id, customer_id, total_amount
@@ -297,7 +297,7 @@ var orders = await connection.QueryAsync<OrderRow>(
 
 **❌ BAD**:
 
-```csharp{title="Dapper (AOT-Compatible) (2)" description="Demonstrates dapper (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dapper", "AOT-Compatible"]}
+```csharp{title="Dapper (AOT-Compatible) (2)" description="Dapper (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dapper", "AOT-Compatible"]}
 var orders = await connection.QueryAsync(  // Dynamic type
   "SELECT * FROM orders WHERE customer_id = @CustomerId",
   new { CustomerId = "cust-123" }
@@ -312,7 +312,7 @@ Azure Service Bus SDK is AOT-compatible in .NET 10:
 
 **Program.cs**:
 
-```csharp{title="Azure Service Bus (AOT-Compatible)" description="Demonstrates azure Service Bus (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Service"]}
+```csharp{title="Azure Service Bus (AOT-Compatible)" description="Azure Service Bus (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Service"]}
 builder.Services.AddSingleton<ServiceBusClient>(sp => {
   var connectionString = builder.Configuration["AzureServiceBus:ConnectionString"];
   return new ServiceBusClient(connectionString);
@@ -330,7 +330,7 @@ builder.Services.AddSingleton<ServiceBusSender>(sp => {
 
 ### 1. Compile with AOT
 
-```bash{title="Compile with AOT" description="Demonstrates compile with AOT" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Compile", "AOT"]}
+```bash{title="Compile with AOT" description="Compile with AOT" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Compile", "AOT"]}
 dotnet publish -c Release -r linux-x64
 ```
 
@@ -338,7 +338,7 @@ If compilation succeeds, your code is AOT-compatible.
 
 ### 2. Run Trim Analysis
 
-```bash{title="Run Trim Analysis" description="Demonstrates run Trim Analysis" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Run", "Trim"]}
+```bash{title="Run Trim Analysis" description="Run Trim Analysis" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Run", "Trim"]}
 dotnet publish -c Release -r linux-x64 -p:EnableTrimAnalyzer=true
 ```
 
@@ -346,7 +346,7 @@ Review warnings in build output.
 
 ### 3. Validate at Runtime
 
-```bash{title="Validate at Runtime" description="Demonstrates validate at Runtime" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Validate", "Runtime"]}
+```bash{title="Validate at Runtime" description="Validate at Runtime" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Validate", "Runtime"]}
 ./bin/Release/net10.0/linux-x64/publish/ECommerce.OrderService.API
 ```
 

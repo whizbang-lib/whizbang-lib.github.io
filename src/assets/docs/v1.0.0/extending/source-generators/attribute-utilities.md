@@ -109,7 +109,7 @@ public static string? GetStringValue(
 
 **Example**:
 
-```csharp{title="GetStringValue (2)" description="Demonstrates getStringValue" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetStringValue"]}
+```csharp{title="GetStringValue (2)" description="GetStringValue" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetStringValue"]}
 // Named argument
 [NotificationTag(Tag = "orders")]
 var tag = AttributeUtilities.GetStringValue(attr, "Tag");  // "orders"
@@ -138,7 +138,7 @@ public static bool GetBoolValue(
 
 **Example**:
 
-```csharp{title="GetBoolValue (2)" description="Demonstrates getBoolValue" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetBoolValue"]}
+```csharp{title="GetBoolValue (2)" description="GetBoolValue" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetBoolValue"]}
 // Named argument
 [NotificationTag(IncludeEvent = true)]
 var include = AttributeUtilities.GetBoolValue(attr, "IncludeEvent", false);  // true
@@ -167,7 +167,7 @@ public static int GetIntValue(
 
 **Example**:
 
-```csharp{title="GetIntValue (2)" description="Demonstrates getIntValue" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetIntValue"]}
+```csharp{title="GetIntValue (2)" description="GetIntValue" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetIntValue"]}
 // Named argument
 [RetryPolicy(MaxAttempts = 5)]
 var attempts = AttributeUtilities.GetIntValue(attr, "MaxAttempts", 3);  // 5
@@ -195,7 +195,7 @@ public static string[]? GetStringArrayValue(
 
 **Example**:
 
-```csharp{title="GetStringArrayValue (2)" description="Demonstrates getStringArrayValue" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetStringArrayValue"]}
+```csharp{title="GetStringArrayValue (2)" description="GetStringArrayValue" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetStringArrayValue"]}
 // Named argument
 [NotificationTag(Properties = new[] { "OrderId", "CustomerId" })]
 var props = AttributeUtilities.GetStringArrayValue(attr, "Properties");
@@ -218,7 +218,7 @@ var props = AttributeUtilities.GetStringArrayValue(attr, "Properties");
 
 ### MessageTagDiscoveryGenerator Example
 
-```csharp{title="MessageTagDiscoveryGenerator Example" description="Demonstrates messageTagDiscoveryGenerator Example" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "MessageTagDiscoveryGenerator", "Example"]}
+```csharp{title="MessageTagDiscoveryGenerator Example" description="MessageTagDiscoveryGenerator Example" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "MessageTagDiscoveryGenerator", "Example"]}
 private static MessageTagInfo? _extractTagInfo(
     GeneratorSyntaxContext context,
     CancellationToken ct) {
@@ -269,7 +269,7 @@ When creating custom attributes that inherit from Whizbang base attributes, you 
 
 ### Named-Only Pattern
 
-```csharp{title="Named-Only Pattern" description="Demonstrates named-Only Pattern" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Named-Only", "Pattern"]}
+```csharp{title="Named-Only Pattern" description="Named-Only Pattern" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Named-Only", "Pattern"]}
 // Attribute with required init properties (C# 11+)
 public class NotificationTagAttribute : MessageTagAttribute {
   public required string Tag { get; init; }
@@ -283,7 +283,7 @@ public record OrderCreated(Guid OrderId);
 
 ### Constructor Pattern
 
-```csharp{title="Constructor Pattern" description="Demonstrates constructor Pattern" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Constructor", "Pattern"]}
+```csharp{title="Constructor Pattern" description="Constructor Pattern" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Constructor", "Pattern"]}
 // Attribute with constructor parameter
 public class TenantTagAttribute : MessageTagAttribute {
   public TenantTagAttribute(string tag) {
@@ -298,7 +298,7 @@ public record TenantCreated(Guid TenantId);
 
 ### Mixed Pattern
 
-```csharp{title="Mixed Pattern" description="Demonstrates mixed Pattern" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Mixed", "Pattern"]}
+```csharp{title="Mixed Pattern" description="Mixed Pattern" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Mixed", "Pattern"]}
 // Attribute with constructor + optional named arguments
 public class DomainTagAttribute : MessageTagAttribute {
   public DomainTagAttribute(string tag) {

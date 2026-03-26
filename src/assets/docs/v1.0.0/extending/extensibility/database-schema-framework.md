@@ -55,7 +55,7 @@ This documentation is for **library developers** implementing database drivers. 
 
 ### Core Types
 
-```csharp{title="Core Types" description="Demonstrates core Types" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Core", "Types"]}
+```csharp{title="Core Types" description="Core Types" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Core", "Types"]}
 namespace Whizbang.Data.Schema;
 
 // Complete table definition
@@ -446,7 +446,7 @@ public static class PostgresSchemaGenerator {
 ```
 
 **Usage**:
-```csharp{title="Pattern 3: Generating CREATE TABLE for PostgreSQL (2)" description="Demonstrates pattern 3: Generating CREATE TABLE for PostgreSQL" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Generating"]}
+```csharp{title="Pattern 3: Generating CREATE TABLE for PostgreSQL (2)" description="Pattern 3: Generating CREATE TABLE for PostgreSQL" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Generating"]}
 var createTableSql = PostgresSchemaGenerator.GenerateCreateTable(
   OutboxSchema.Table,
   prefix: "wh_"
@@ -623,7 +623,7 @@ public interface ISchemaGenerator {
 ```
 
 **Usage**:
-```csharp{title="Pattern 5: Using SchemaConfiguration (2)" description="Demonstrates pattern 5: Using SchemaConfiguration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Using"]}
+```csharp{title="Pattern 5: Using SchemaConfiguration (2)" description="Pattern 5: Using SchemaConfiguration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Using"]}
 var config = new SchemaConfiguration { Prefix = "prod_" };
 var postgresGenerator = new PostgresSchemaGenerator();
 
@@ -639,7 +639,7 @@ var fullSchemaSql = config.GenerateFullSchema(postgresGenerator);
 
 ### Testing Table Generation
 
-```csharp{title="Testing Table Generation" description="Demonstrates testing Table Generation" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Table"]}
+```csharp{title="Testing Table Generation" description="Testing Table Generation" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Table"]}
 using TUnit.Assertions;
 using TUnit.Core;
 using Whizbang.Data.Schema;

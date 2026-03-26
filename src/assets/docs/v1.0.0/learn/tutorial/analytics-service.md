@@ -575,7 +575,7 @@ app.Run();
 
 ### 1. Create Orders (Generate Data)
 
-```bash{title="Create Orders (Generate Data)" description="Demonstrates create Orders (Generate Data)" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Orders"]}
+```bash{title="Create Orders (Generate Data)" description="Create Orders (Generate Data)" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Orders"]}
 # Create 10 orders
 for i in {1..10}; do
   curl -X POST http://localhost:5000/api/orders \
@@ -587,13 +587,13 @@ done
 
 ### 2. Query Daily Sales
 
-```bash{title="Query Daily Sales" description="Demonstrates query Daily Sales" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Daily"]}
+```bash{title="Query Daily Sales" description="Query Daily Sales" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Daily"]}
 curl "http://localhost:5002/api/analytics/sales/daily?startDate=2024-12-01&endDate=2024-12-31"
 ```
 
 **Response**:
 
-```json{title="Query Daily Sales (2)" description="Demonstrates query Daily Sales" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Query", "Daily"]}
+```json{title="Query Daily Sales (2)" description="Query Daily Sales" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Query", "Daily"]}
 [
   {
     "date": "2024-12-12",
@@ -608,13 +608,13 @@ curl "http://localhost:5002/api/analytics/sales/daily?startDate=2024-12-01&endDa
 
 ### 3. Query Hourly Sales
 
-```bash{title="Query Hourly Sales" description="Demonstrates query Hourly Sales" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Hourly"]}
+```bash{title="Query Hourly Sales" description="Query Hourly Sales" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Hourly"]}
 curl "http://localhost:5002/api/analytics/sales/hourly?date=2024-12-12"
 ```
 
 **Response**:
 
-```json{title="Query Hourly Sales (2)" description="Demonstrates query Hourly Sales" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Hourly"]}
+```json{title="Query Hourly Sales (2)" description="Query Hourly Sales" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Hourly"]}
 [
   { "hour": "2024-12-12T10:00:00Z", "totalOrders": 3, "totalRevenue": 119.94 },
   { "hour": "2024-12-12T11:00:00Z", "totalOrders": 5, "totalRevenue": 199.90 },
@@ -624,13 +624,13 @@ curl "http://localhost:5002/api/analytics/sales/hourly?date=2024-12-12"
 
 ### 4. Query Top Products
 
-```bash{title="Query Top Products" description="Demonstrates query Top Products" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Top"]}
+```bash{title="Query Top Products" description="Query Top Products" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Top"]}
 curl "http://localhost:5002/api/analytics/products/top?limit=5"
 ```
 
 **Response**:
 
-```json{title="Query Top Products (2)" description="Demonstrates query Top Products" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Query", "Top"]}
+```json{title="Query Top Products (2)" description="Query Top Products" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Query", "Top"]}
 [
   {
     "productId": "prod-456",
@@ -655,7 +655,7 @@ curl "http://localhost:5002/api/analytics/products/top?limit=5"
 
 ### Time-Series Perspectives
 
-```csharp{title="Time-Series Perspectives" description="Demonstrates time-Series Perspectives" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Time-Series", "Perspectives"]}
+```csharp{title="Time-Series Perspectives" description="Time-Series Perspectives" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Time-Series", "Perspectives"]}
 // Truncate timestamp to hour for hourly aggregation
 var hour = new DateTime(
   @event.CreatedAt.Year,
@@ -678,7 +678,7 @@ ON CONFLICT (hour) DO UPDATE SET
 
 ### Partitioned Tables
 
-```sql{title="Partitioned Tables" description="Demonstrates partitioned Tables" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Partitioned", "Tables"]}
+```sql{title="Partitioned Tables" description="Partitioned Tables" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Partitioned", "Tables"]}
 CREATE TABLE daily_sales_analytics (...)
 PARTITION BY RANGE (date);
 
@@ -723,7 +723,7 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY monthly_sales_summary;
 
 ### Unit Test - Daily Sales Perspective
 
-```csharp{title="Unit Test - Daily Sales Perspective" description="Demonstrates unit Test - Daily Sales Perspective" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Daily Sales Perspective" description="Unit Test - Daily Sales Perspective" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task DailySalesPerspective_OrderCreated_UpdatesDailySalesAsync() {
   // Arrange

@@ -28,7 +28,7 @@ This enables receptors to return multiple values (via tuples) while callers rece
 
 ## Example
 
-```csharp{title="Example" description="Demonstrates example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example"]}
+```csharp{title="Example" description="Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example"]}
 // Command
 public record CreateOrder(Guid OrderId, decimal Amount);
 
@@ -63,7 +63,7 @@ public class CreateOrderReceptor
 
 ### Caller Side
 
-```csharp{title="Caller Side" description="Demonstrates caller Side" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Caller", "Side"]}
+```csharp{title="Caller Side" description="Caller Side" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Caller", "Side"]}
 // RPC call - OrderConfirmation returned to caller
 var confirmation = await dispatcher.LocalInvokeAsync<OrderConfirmation>(
     new CreateOrder(Guid.NewGuid(), 99.99m));
@@ -108,7 +108,7 @@ return (Route.Local(confirmation), inventory);
 
 ### Tuples (2-8 elements)
 
-```csharp{title="Tuples (2-8 elements)" description="Demonstrates tuples (2-8 elements)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Tuples", "2-8"]}
+```csharp{title="Tuples (2-8 elements)" description="Tuples (2-8 elements)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Tuples", "2-8"]}
 // 2-tuple
 IReceptor<Cmd, (Response, Event)>
 
@@ -118,14 +118,14 @@ IReceptor<Cmd, (Response, Event1, Event2)>
 
 ### Mixed with Routing
 
-```csharp{title="Mixed with Routing" description="Demonstrates mixed with Routing" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Mixed", "Routing"]}
+```csharp{title="Mixed with Routing" description="Mixed with Routing" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Mixed", "Routing"]}
 // Explicit routing on cascaded events
 IReceptor<Cmd, (Response, Routed<CacheInvalidated>)>
 ```
 
 ### Interface-Based Extraction
 
-```csharp{title="Interface-Based Extraction" description="Demonstrates interface-Based Extraction" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Interface-Based", "Extraction"]}
+```csharp{title="Interface-Based Extraction" description="Interface-Based Extraction" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Interface-Based", "Extraction"]}
 // Extract by interface
 var evt = await dispatcher.LocalInvokeAsync<IEvent>(command);
 // Returns first IEvent found in tuple
@@ -139,7 +139,7 @@ Discriminated unions enable receptors to return multiple possible outcomes in a 
 
 `Route.None()` explicitly marks a tuple position as "no value":
 
-```csharp{title="Using Route.None()" description="Demonstrates using Route.None()" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Using", "Route.None"]}
+```csharp{title="Using Route.None()" description="Using Route.None()" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Using", "Route.None"]}
 // Receptor returning success OR failure
 public class ProcessPaymentReceptor
     : IReceptor<ProcessPayment, (PaymentSucceeded?, PaymentFailed?)> {
@@ -189,7 +189,7 @@ return (success: Route.None(), failure: new PaymentFailed(...));
 
 `Route.None()` returns a `RoutedNone` struct:
 
-```csharp{title="RoutedNone Type" description="Demonstrates routedNone Type" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "RoutedNone", "Type"]}
+```csharp{title="RoutedNone Type" description="RoutedNone Type" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "RoutedNone", "Type"]}
 /// <summary>
 /// Represents an explicitly empty value in a discriminated union tuple.
 /// </summary>

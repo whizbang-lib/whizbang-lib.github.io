@@ -61,7 +61,7 @@ public sealed record SyncInquiry {
 
 ### Creating a Sync Inquiry
 
-```csharp{title="Creating a Sync Inquiry" description="Demonstrates creating a Sync Inquiry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Creating", "Sync"]}
+```csharp{title="Creating a Sync Inquiry" description="Creating a Sync Inquiry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Creating", "Sync"]}
 // Check if specific events have been processed
 var inquiry = new SyncInquiry {
     StreamId = orderId,
@@ -111,7 +111,7 @@ public sealed record SyncInquiryResult {
 
 ### Checking Sync Status
 
-```csharp{title="Checking Sync Status" description="Demonstrates checking Sync Status" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Checking", "Sync"]}
+```csharp{title="Checking Sync Status" description="Checking Sync Status" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Checking", "Sync"]}
 var result = await workCoordinator.CheckSyncAsync(inquiry);
 
 if (result.IsFullySynced) {
@@ -172,7 +172,7 @@ var order = await lens.GetAsync<OrderPerspective>(orderId);
 
 ### With Event Tracking
 
-```csharp{title="With Event Tracking" description="Demonstrates with Event Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Event", "Tracking"]}
+```csharp{title="With Event Tracking" description="With Event Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Event", "Tracking"]}
 // Track events during command handling
 using var tracker = scopedEventTracker.BeginTracking();
 
@@ -205,7 +205,7 @@ This queries the outbox to find events that haven't been processed yet, enabling
 
 ### Read-Your-Writes Consistency
 
-```csharp{title="Read-Your-Writes Consistency" description="Demonstrates read-Your-Writes Consistency" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Read-Your-Writes", "Consistency"]}
+```csharp{title="Read-Your-Writes Consistency" description="Read-Your-Writes Consistency" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Read-Your-Writes", "Consistency"]}
 public async Task<OrderDto> CreateOrderAsync(CreateOrderRequest request) {
     using var tracker = _eventTracker.BeginTracking();
 
@@ -227,7 +227,7 @@ public async Task<OrderDto> CreateOrderAsync(CreateOrderRequest request) {
 
 ### Timeout Handling
 
-```csharp{title="Timeout Handling" description="Demonstrates timeout Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Timeout", "Handling"]}
+```csharp{title="Timeout Handling" description="Timeout Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Timeout", "Handling"]}
 try {
     await syncAwaiter.WaitForPerspectiveAsync<OrderPerspective>(
         orderId,
@@ -244,7 +244,7 @@ catch (TimeoutException) {
 
 ### Conditional Sync
 
-```csharp{title="Conditional Sync" description="Demonstrates conditional Sync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Conditional", "Sync"]}
+```csharp{title="Conditional Sync" description="Conditional Sync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Conditional", "Sync"]}
 // Only sync for specific operations
 if (request.RequiresFreshData) {
     await syncAwaiter.WaitForPerspectiveAsync<OrderPerspective>(orderId);

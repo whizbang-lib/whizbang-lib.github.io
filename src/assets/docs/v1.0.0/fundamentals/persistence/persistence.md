@@ -30,7 +30,7 @@ Whizbang addresses these needs through configurable persistence modes that can b
 
 The `PersistenceMode` enum defines three built-in strategies:
 
-```csharp{title="Persistence Modes" description="The PersistenceMode enum defines three built-in strategies:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Modes"]}
+```csharp{title="Persistence Modes" description="The PersistenceMode enum defines three built-in strategies:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "C#", "Modes"]}
 public enum PersistenceMode {
   Immediate = 0,  // Default - commit after each append
   Batched = 1,    // Buffer and commit on flush/threshold
@@ -125,7 +125,7 @@ Use the `[PersistenceStrategy]` attribute to configure persistence behavior per-
 
 ### Using Built-in Modes
 
-```csharp{title="Using Built-in Modes" description="Demonstrates using Built-in Modes" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Using", "Built-in"]}
+```csharp{title="Using Built-in Modes" description="Using Built-in Modes" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Using", "Built-in"]}
 using Whizbang.Core.Attributes;
 using Whizbang.Core.Persistence;
 

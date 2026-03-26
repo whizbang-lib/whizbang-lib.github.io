@@ -354,7 +354,7 @@ public class SchemaPerTenantDbConnectionFactory : ITenantDbConnectionFactory {
 
 ### Tenant Onboarding (Schema)
 
-```csharp{title="Tenant Onboarding (Schema)" description="Demonstrates tenant Onboarding (Schema)" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Onboarding"]}
+```csharp{title="Tenant Onboarding (Schema)" description="Tenant Onboarding (Schema)" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Onboarding"]}
 public async Task<TenantCreated> HandleAsync(
   CreateTenant command,
   CancellationToken ct = default
@@ -396,7 +396,7 @@ public async Task<TenantCreated> HandleAsync(
 
 ### PostgreSQL RLS Setup
 
-```sql{title="PostgreSQL RLS Setup" description="Demonstrates postgreSQL RLS Setup" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "PostgreSQL", "RLS"]}
+```sql{title="PostgreSQL RLS Setup" description="PostgreSQL RLS Setup" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "PostgreSQL", "RLS"]}
 -- Enable RLS on table
 CREATE TABLE orders (
   order_id UUID PRIMARY KEY,
@@ -469,7 +469,7 @@ var orders = await connection.QueryAsync<OrderRow>(
 
 ### Schema
 
-```sql{title="Schema" description="Demonstrates schema" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Schema"]}
+```sql{title="Schema" description="Schema" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Schema"]}
 CREATE TABLE orders (
   order_id UUID PRIMARY KEY,
   tenant_id TEXT NOT NULL,  -- Discriminator column
@@ -586,7 +586,7 @@ public class CrossTenantAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
 
 ### Analytics Queries
 
-```csharp{title="Analytics Queries" description="Demonstrates analytics Queries" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Analytics", "Queries"]}
+```csharp{title="Analytics Queries" description="Analytics Queries" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Analytics", "Queries"]}
 // Query across all tenants
 var metrics = await _analyticsDb.QueryAsync<TenantMetrics>(
   """

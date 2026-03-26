@@ -39,7 +39,7 @@ System.InvalidOperationException: No handler registered for CreateOrder
 
 ### Diagnosis
 
-```csharp{title="Diagnosis" description="Demonstrates diagnosis" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Diagnosis"]}
+```csharp{title="Diagnosis" description="Diagnosis" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Diagnosis"]}
 // Check DI container
 var dispatcher = serviceProvider.GetService<IDispatcher>();
 var receptor = serviceProvider.GetService<IReceptor<CreateOrder, OrderCreated>>();
@@ -53,14 +53,14 @@ if (receptor is null) {
 
 **Problem**:
 
-```csharp{title="Solution 1: Missing DI Registration" description="Demonstrates solution 1: Missing DI Registration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Missing"]}
+```csharp{title="Solution 1: Missing DI Registration" description="Solution 1: Missing DI Registration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Missing"]}
 // ❌ Receptor not registered
 builder.Services.AddSingleton<IDispatcher, GeneratedDispatcher>();
 ```
 
 **Fix**:
 
-```csharp{title="Solution 1: Missing DI Registration (2)" description="Demonstrates solution 1: Missing DI Registration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Missing"]}
+```csharp{title="Solution 1: Missing DI Registration (2)" description="Solution 1: Missing DI Registration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Missing"]}
 // ✅ Register receptor
 builder.Services.AddSingleton<IDispatcher, GeneratedDispatcher>();
 builder.Services.AddSingleton<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
@@ -85,7 +85,7 @@ Events not reaching subscribers (no errors in logs).
 
 ### Diagnosis
 
-```sql{title="Diagnosis (2)" description="Demonstrates diagnosis" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Diagnosis"]}
+```sql{title="Diagnosis (2)" description="Diagnosis (2)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Diagnosis"]}
 -- Check outbox backlog
 SELECT COUNT(*) FROM outbox WHERE processed_at IS NULL;
 
@@ -98,7 +98,7 @@ SELECT COUNT(*) FROM outbox WHERE processed_at IS NULL;
 
 **Fix**:
 
-```csharp{title="Solution 1: Outbox Worker Not Running" description="Demonstrates solution 1: Outbox Worker Not Running" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Outbox"]}
+```csharp{title="Solution 1: Outbox Worker Not Running" description="Solution 1: Outbox Worker Not Running" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Outbox"]}
 builder.Services.AddHostedService<OutboxWorker>();
 ```
 
@@ -106,7 +106,7 @@ builder.Services.AddHostedService<OutboxWorker>();
 
 **Problem**:
 
-```csharp{title="Solution 2: Database Transaction Not Committed" description="Demonstrates solution 2: Database Transaction Not Committed" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Database"]}
+```csharp{title="Solution 2: Database Transaction Not Committed" description="Solution 2: Database Transaction Not Committed" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Database"]}
 // ❌ Transaction never committed
 await using var tx = await _db.BeginTransactionAsync(ct);
 
@@ -118,7 +118,7 @@ await _db.ExecuteAsync("INSERT INTO outbox (...)", transaction: tx);
 
 **Fix**:
 
-```csharp{title="Solution 2: Database Transaction Not Committed (2)" description="Demonstrates solution 2: Database Transaction Not Committed" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Solution", "Database"]}
+```csharp{title="Solution 2: Database Transaction Not Committed (2)" description="Solution 2: Database Transaction Not Committed" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Solution", "Database"]}
 // ✅ Always commit transaction
 await using var tx = await _db.BeginTransactionAsync(ct);
 
@@ -139,7 +139,7 @@ try {
 
 **Diagnosis**:
 
-```bash{title="Solution 3: Service Bus Connection String Wrong" description="Demonstrates solution 3: Service Bus Connection String Wrong" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Service"]}
+```bash{title="Solution 3: Service Bus Connection String Wrong" description="Solution 3: Service Bus Connection String Wrong" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Service"]}
 # Test Service Bus connection
 curl -X POST https://myservicebus.servicebus.windows.net/orders/messages \
   -H "Authorization: SharedAccessSignature ..." \
@@ -148,7 +148,7 @@ curl -X POST https://myservicebus.servicebus.windows.net/orders/messages \
 
 **Fix**:
 
-```json{title="Solution 3: Service Bus Connection String Wrong" description="Demonstrates solution 3: Service Bus Connection String Wrong" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Service"]}
+```json{title="Solution 3: Service Bus Connection String Wrong" description="Solution 3: Service Bus Connection String Wrong" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Service"]}
 {
   "AzureServiceBus": {
     "ConnectionString": "Endpoint=sb://myservicebus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=***"
@@ -166,7 +166,7 @@ Message handled twice (duplicate database inserts).
 
 ### Diagnosis
 
-```sql{title="Diagnosis (3)" description="Demonstrates diagnosis" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Diagnosis"]}
+```sql{title="Diagnosis (3)" description="Diagnosis (3)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Diagnosis"]}
 -- Check inbox for duplicate messages
 SELECT message_id, COUNT(*) AS count
 FROM inbox
@@ -269,7 +269,7 @@ LIMIT 10;
 
 **Diagnosis**:
 
-```sql{title="Solution 1: Missing Index" description="Demonstrates solution 1: Missing Index" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Missing"]}
+```sql{title="Solution 1: Missing Index" description="Solution 1: Missing Index" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Missing"]}
 EXPLAIN ANALYZE
 SELECT * FROM orders WHERE customer_id = 'cust-123';
 
@@ -294,7 +294,7 @@ CREATE INDEX idx_orders_customer_id ON orders(customer_id);
 
 **Problem**:
 
-```csharp{title="Solution 2: N+1 Query Problem" description="Demonstrates solution 2: N+1 Query Problem" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "N+1"]}
+```csharp{title="Solution 2: N+1 Query Problem" description="Solution 2: N+1 Query Problem" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "N+1"]}
 // ❌ N+1 queries (1 for orders, N for items)
 var orders = await _db.QueryAsync<OrderRow>("SELECT * FROM orders WHERE customer_id = @CustomerId");
 
@@ -359,7 +359,7 @@ dotnet-gcdump report gcdump_20250101_123456
 
 **Problem**:
 
-```csharp{title="Solution 1: Unclosed Connections" description="Demonstrates solution 1: Unclosed Connections" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Unclosed"]}
+```csharp{title="Solution 1: Unclosed Connections" description="Solution 1: Unclosed Connections" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Unclosed"]}
 // ❌ Connection not disposed
 var connection = new NpgsqlConnection(connectionString);
 await connection.OpenAsync();
@@ -371,7 +371,7 @@ await connection.OpenAsync();
 
 **Fix**:
 
-```csharp{title="Solution 1: Unclosed Connections (2)" description="Demonstrates solution 1: Unclosed Connections" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Unclosed"]}
+```csharp{title="Solution 1: Unclosed Connections (2)" description="Solution 1: Unclosed Connections" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Solution", "Unclosed"]}
 // ✅ Use await using
 await using var connection = new NpgsqlConnection(connectionString);
 await connection.OpenAsync();
@@ -385,7 +385,7 @@ await connection.OpenAsync();
 
 **Problem**:
 
-```csharp{title="Solution 2: Event Handler Not Unsubscribed" description="Demonstrates solution 2: Event Handler Not Unsubscribed" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Solution", "Event"]}
+```csharp{title="Solution 2: Event Handler Not Unsubscribed" description="Solution 2: Event Handler Not Unsubscribed" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Solution", "Event"]}
 // ❌ Event handler keeps object alive
 public class OrderProcessor {
   public OrderProcessor(IEventBus eventBus) {
@@ -400,7 +400,7 @@ public class OrderProcessor {
 
 **Fix**:
 
-```csharp{title="Solution 2: Event Handler Not Unsubscribed - OrderProcessor" description="Demonstrates solution 2: Event Handler Not Unsubscribed" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Solution", "Event"]}
+```csharp{title="Solution 2: Event Handler Not Unsubscribed - OrderProcessor" description="Solution 2: Event Handler Not Unsubscribed - OrderProcessor" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Solution", "Event"]}
 // ✅ Unsubscribe when disposed
 public class OrderProcessor : IDisposable {
   private readonly IEventBus _eventBus;
@@ -438,7 +438,7 @@ public class OrderProcessor : IDisposable {
 
 ### 2. Use Correlation IDs
 
-```csharp{title="Use Correlation IDs" description="Demonstrates use Correlation IDs" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Correlation", "IDs"]}
+```csharp{title="Use Correlation IDs" description="Use Correlation IDs" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Correlation", "IDs"]}
 public class CorrelationIdMiddleware {
   private readonly RequestDelegate _next;
 
@@ -469,7 +469,7 @@ traces
 
 **Program.cs**:
 
-```csharp{title="SQL Query Logging" description="Demonstrates sQL Query Logging" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "SQL", "Query"]}
+```csharp{title="SQL Query Logging" description="SQL Query Logging" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "SQL", "Query"]}
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Information);
 ```
 
@@ -502,7 +502,7 @@ dependencies
 
 ### 1. dotnet-counters (Live Metrics)
 
-```bash{title="dotnet-counters (Live Metrics)" description="Demonstrates dotnet-counters (Live Metrics)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Dotnet-counters", "Live"]}
+```bash{title="dotnet-counters (Live Metrics)" description="dotnet-counters (Live Metrics)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Dotnet-counters", "Live"]}
 # Monitor live counters
 dotnet-counters monitor --process-id 1234
 
@@ -519,7 +519,7 @@ dotnet-counters monitor --process-id 1234
 
 ### 2. dotnet-trace (Performance Profiling)
 
-```bash{title="dotnet-trace (Performance Profiling)" description="Demonstrates dotnet-trace (Performance Profiling)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dotnet-trace", "Performance"]}
+```bash{title="dotnet-trace (Performance Profiling)" description="dotnet-trace (Performance Profiling)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dotnet-trace", "Performance"]}
 # Collect trace
 dotnet-trace collect --process-id 1234 --profile cpu-sampling
 
@@ -531,7 +531,7 @@ dotnet-trace convert trace.nettrace --format speedscope
 
 ### 3. dotnet-dump (Memory Analysis)
 
-```bash{title="dotnet-dump (Memory Analysis)" description="Demonstrates dotnet-dump (Memory Analysis)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dotnet-dump", "Memory"]}
+```bash{title="dotnet-dump (Memory Analysis)" description="dotnet-dump (Memory Analysis)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dotnet-dump", "Memory"]}
 # Capture memory dump
 dotnet-dump collect --process-id 1234
 
@@ -546,7 +546,7 @@ dotnet-dump analyze dump_20250101_123456
 
 ### 4. kubectl logs (Kubernetes)
 
-```bash{title="kubectl logs (Kubernetes)" description="Demonstrates kubectl logs (Kubernetes)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Kubectl", "Logs"]}
+```bash{title="kubectl logs (Kubernetes)" description="kubectl logs (Kubernetes)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Kubectl", "Logs"]}
 # View logs
 kubectl logs order-service-abc123
 
@@ -562,7 +562,7 @@ kubectl logs order-service-abc123 --previous
 
 ### 5. kubectl exec (Shell Access)
 
-```bash{title="kubectl exec (Shell Access)" description="Demonstrates kubectl exec (Shell Access)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Kubectl", "Exec"]}
+```bash{title="kubectl exec (Shell Access)" description="kubectl exec (Shell Access)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Kubectl", "Exec"]}
 # Execute command in pod
 kubectl exec order-service-abc123 -- ps aux
 
@@ -597,7 +597,7 @@ public class CreateOrderBenchmark {
 
 **Run**:
 
-```bash{title="BenchmarkDotNet (2)" description="Demonstrates benchmarkDotNet" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "BenchmarkDotNet"]}
+```bash{title="BenchmarkDotNet (2)" description="BenchmarkDotNet" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "BenchmarkDotNet"]}
 dotnet run -c Release --project Benchmarks
 
 # Output:
@@ -608,7 +608,7 @@ dotnet run -c Release --project Benchmarks
 
 ### PerfView (Windows)
 
-```bash{title="PerfView (Windows)" description="Demonstrates perfView (Windows)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "PerfView", "Windows"]}
+```bash{title="PerfView (Windows)" description="PerfView (Windows)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "PerfView", "Windows"]}
 # Collect CPU samples
 PerfView.exe collect /MaxCollectSec:30 /Zip:true
 
@@ -622,7 +622,7 @@ PerfView.exe trace.etl
 
 ### Check Health Endpoint
 
-```bash{title="Check Health Endpoint" description="Demonstrates check Health Endpoint" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Check", "Health"]}
+```bash{title="Check Health Endpoint" description="Check Health Endpoint" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Check", "Health"]}
 curl https://order-service.myapp.com/health
 
 # Output:
@@ -637,7 +637,7 @@ curl https://order-service.myapp.com/health
 
 ### Custom Health Check
 
-```csharp{title="Custom Health Check" description="Demonstrates custom Health Check" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Custom", "Health"]}
+```csharp{title="Custom Health Check" description="Custom Health Check" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Custom", "Health"]}
 public class OutboxHealthCheck : IHealthCheck {
   public async Task<HealthCheckResult> CheckHealthAsync(
     HealthCheckContext context,
