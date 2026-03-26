@@ -1,3 +1,17 @@
+---
+title: "Failure Handling"
+version: 1.0.0
+category: "Messaging"
+order: 6
+description: >-
+  Sophisticated failure handling in Whizbang messaging including exponential
+  backoff retry scheduling, stream-based failure cascades, poison message
+  detection, and bitwise message processing status tracking.
+tags: 'failure-handling, retry, exponential-backoff, poison-messages, error-recovery, stream-cascade, resilience'
+codeReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs
+---
+
 # Failure Handling
 
 ## Overview

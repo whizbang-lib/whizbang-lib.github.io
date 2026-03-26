@@ -1,3 +1,20 @@
+---
+title: GraphQL Sorting
+version: 1.0.0
+category: GraphQL
+order: 5
+description: >-
+  HotChocolate sorting capabilities for PerspectiveRow data using the order
+  argument. Covers ascending and descending sort directions, multi-field
+  sorting, and OrderBy stripping for optimized database queries.
+tags: 'graphql, sorting, order-by, hotchocolate, ascending, descending'
+codeReferences:
+  - src/Whizbang.Transports.HotChocolate/Conventions/WhizbangSortConvention.cs
+  - src/Whizbang.Transports.HotChocolate/QueryTranslation/OrderByStrippingExpressionVisitor.cs
+  - src/Whizbang.Transports.HotChocolate/Middleware/UseOrderByStrippingAttribute.cs
+  - src/Whizbang.Transports.HotChocolate/Middleware/OrderByStrippingMiddleware.cs
+---
+
 # GraphQL Sorting
 
 Whizbang's HotChocolate integration provides flexible sorting capabilities for `PerspectiveRow<T>` data.

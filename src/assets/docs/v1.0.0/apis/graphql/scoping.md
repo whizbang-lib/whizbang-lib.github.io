@@ -1,3 +1,18 @@
+---
+title: GraphQL Scoping
+version: 1.0.0
+category: GraphQL
+order: 7
+description: >-
+  Scope middleware for automatic multi-tenancy and security filtering in GraphQL
+  queries. Extracts tenant and user context from JWT claims and headers via
+  IScopeContextAccessor for transparent lens query filtering.
+tags: 'graphql, scoping, multi-tenancy, security, middleware, jwt, scope-context'
+codeReferences:
+  - src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
+  - src/Whizbang.Transports.HotChocolate/Middleware/ScopeMiddlewareExtensions.cs
+---
+
 # GraphQL Scoping
 
 Whizbang's scope middleware provides automatic multi-tenancy and security filtering for GraphQL queries, ensuring users only see data they're authorized to access.

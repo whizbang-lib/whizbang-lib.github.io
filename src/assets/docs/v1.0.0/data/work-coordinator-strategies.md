@@ -1,3 +1,21 @@
+---
+title: Work Coordinator Strategies
+version: 1.0.0
+category: Data Access
+order: 8
+description: >-
+  Strategy pattern for controlling message flush behavior from in-memory queues
+  to the database. Covers Immediate, Scoped, Interval, and Batch strategies
+  with trade-offs between latency, throughput, and database load.
+tags: 'work-coordinator, flush-strategy, batch, scoped, interval, process-work-batch'
+codeReferences:
+  - src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs
+  - src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs
+  - src/Whizbang.Core/Messaging/WorkCoordinatorStrategyFactory.cs
+  - src/Whizbang.Core/Messaging/IWorkFlusher.cs
+  - src/Whizbang.Hosting.AspNet/WhizbangFlushMiddleware.cs
+---
+
 # Work Coordinator Strategies
 
 The work coordinator uses a **strategy pattern** to control when and how messages are flushed from in-memory queues to the database via `process_work_batch`. Each strategy makes different trade-offs between latency, throughput, and database load.

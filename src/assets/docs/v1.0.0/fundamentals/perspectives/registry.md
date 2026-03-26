@@ -1,3 +1,17 @@
+---
+title: "Perspective Registry"
+version: 1.0.0
+category: "Perspectives"
+order: 6
+description: >-
+  The perspective registry is a system table that tracks the mapping between C# perspective types
+  and their database tables. Enables automatic schema management, drift detection via SHA-256
+  hashing, and safe table renaming across deployments.
+tags: 'perspective-registry, schema-management, drift-detection, table-mapping, perspectives'
+codeReferences:
+  - src/Whizbang.Data.Schema/Schemas/PerspectiveRegistrySchema.cs
+---
+
 # Perspective Registry
 
 The perspective registry is a system table that tracks the mapping between your C# perspective types and their corresponding database tables. It enables automatic schema management, drift detection, and safe table renaming across deployments.

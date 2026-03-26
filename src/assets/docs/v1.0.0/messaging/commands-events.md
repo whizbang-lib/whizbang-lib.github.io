@@ -1,3 +1,19 @@
+---
+title: "Commands and Events"
+version: 1.0.0
+category: "Messaging"
+order: 5
+description: >-
+  Core message types in Whizbang representing intent (commands) and facts
+  (events). Covers ICommand, IEvent, and IQuery marker interfaces, naming
+  conventions, and message envelope integration.
+tags: 'commands, events, queries, messaging, ICommand, IEvent, CQRS, message-types'
+codeReferences:
+  - src/Whizbang.Core/ICommand.cs
+  - src/Whizbang.Core/IEvent.cs
+  - src/Whizbang.Core/IQuery.cs
+---
+
 # Commands and Events
 
 Commands and Events are the core message types in Whizbang, representing intent (commands) and facts (events) in your domain.

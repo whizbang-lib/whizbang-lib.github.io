@@ -1,3 +1,18 @@
+---
+title: GraphQL Setup
+version: 1.0.0
+category: GraphQL
+order: 2
+description: >-
+  Installation and configuration guide for Whizbang's HotChocolate GraphQL
+  integration. Covers package installation, minimal setup, scope middleware
+  configuration, and advanced GraphQL options.
+tags: 'graphql, setup, installation, configuration, hotchocolate, asp-net'
+codeReferences:
+  - src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangExtensions.cs
+  - src/Whizbang.Transports.HotChocolate/Configuration/WhizbangGraphQLOptions.cs
+---
+
 # GraphQL Setup
 
 This guide covers installation and configuration of Whizbang's HotChocolate GraphQL integration.

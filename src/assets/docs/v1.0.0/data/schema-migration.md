@@ -1,3 +1,17 @@
+---
+title: Schema Migration
+version: 1.0.0
+category: Data Access
+order: 7
+description: >-
+  Automatic schema management for perspective tables with built-in drift
+  detection, safe rename operations, and SHA-256 hash comparison across
+  deployments.
+tags: 'schema-migration, drift-detection, database-schema, perspectives, ddl, sha256'
+codeReferences:
+  - src/Whizbang.Generators.Shared/Utilities/SchemaHashUtilities.cs
+---
+
 # Schema Migration
 
 Whizbang provides automatic schema management for perspective tables, with built-in drift detection and safe rename operations. This page covers how Whizbang handles schema changes across deployments.

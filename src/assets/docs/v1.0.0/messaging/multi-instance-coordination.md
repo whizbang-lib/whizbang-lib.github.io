@@ -1,3 +1,17 @@
+---
+title: "Multi-Instance Coordination"
+version: 1.0.0
+category: "Messaging"
+order: 8
+description: >-
+  Reliable, ordered message processing across multiple service instances using
+  lease-based coordination, partition reassignment, stale instance cleanup,
+  and cross-instance stream ordering guarantees.
+tags: 'multi-instance, coordination, lease-management, partitioning, distributed-processing, stream-ordering, scaling'
+codeReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs
+---
+
 # Multi-Instance Coordination
 
 ## Overview

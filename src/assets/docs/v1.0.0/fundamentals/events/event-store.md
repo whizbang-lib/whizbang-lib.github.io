@@ -1,3 +1,18 @@
+---
+title: "Event Store"
+version: 1.0.0
+category: "Core Concepts"
+order: 9
+description: >-
+  The IEventStore interface provides append-only event storage for event sourcing in Whizbang.
+  Supports stream-based storage with automatic sequence numbering, polymorphic reads,
+  and synchronous verification via AppendAndWaitAsync.
+tags: 'event-store, event-sourcing, append-only, streams, IEventStore, persistence'
+codeReferences:
+  - src/Whizbang.Core/Messaging/IEventStore.cs
+  - src/Whizbang.Core/Messaging/AppendAndWaitEventStoreDecorator.cs
+---
+
 # Event Store
 
 The `IEventStore` interface provides append-only event storage for event sourcing patterns. It supports stream-based storage with automatic sequence numbering, polymorphic reads, and synchronous verification via `AppendAndWaitAsync`.

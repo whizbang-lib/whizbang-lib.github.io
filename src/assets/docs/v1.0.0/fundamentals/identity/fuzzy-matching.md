@@ -1,3 +1,17 @@
+---
+title: "MatchStrictness: Fuzzy Type Matching Control"
+version: 1.0.0
+category: "Core Concepts"
+order: 26
+description: >-
+  MatchStrictness is a flag enum that controls how type names are compared during fuzzy matching.
+  Enables flexible type matching by ignoring case, version, assembly, or namespace components
+  with combinable flags and composite presets for common scenarios.
+tags: 'fuzzy-matching, match-strictness, type-matching, flags, type-comparison, identity'
+codeReferences:
+  - src/Whizbang.Core/MatchStrictness.cs
+---
+
 # MatchStrictness: Fuzzy Type Matching Control
 
 MatchStrictness is a flag enum that controls how type names are compared during fuzzy matching. It enables flexible type matching by allowing you to ignore case, version, assembly, or namespace components.

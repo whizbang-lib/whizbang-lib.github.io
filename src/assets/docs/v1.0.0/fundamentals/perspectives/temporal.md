@@ -1,3 +1,19 @@
+---
+title: "Temporal Perspectives"
+version: 1.0.0
+category: "Perspectives"
+order: 8
+description: >-
+  Temporal perspectives create append-only logs where each event creates a new row rather than
+  updating existing rows. Ideal for activity feeds, audit logs, and full history tracking
+  using the ITemporalPerspectiveFor interface.
+tags: 'temporal-perspectives, append-only, audit-log, activity-feed, history, ITemporalPerspectiveFor'
+codeReferences:
+  - src/Whizbang.Core/Perspectives/ITemporalPerspectiveFor.cs
+  - src/Whizbang.Core/Perspectives/ITemporalPerspectiveStore.cs
+  - src/Whizbang.Core/Perspectives/TemporalActionType.cs
+---
+
 # Temporal Perspectives
 
 Temporal perspectives create append-only logs where each event creates a NEW row rather than updating existing rows. This pattern is ideal for activity feeds, audit logs, and full history tracking.
