@@ -133,43 +133,13 @@ CREATE INDEX idx_outbox_correlation ON wh_outbox(correlation_id);
 ```csharp{title="IWorkCoordinator Interface" description="Demonstrates iWorkCoordinator Interface" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "IWorkCoordinator", "Interface"]}
 public interface IWorkCoordinator {
     Task<WorkBatch> ProcessWorkBatchAsync(
-        Guid instanceId,
-        string serviceName,
-        string hostName,
-        int processId,
-        Dictionary<string, JsonElement>? metadata,
-
-        // Completions and failures
-        MessageCompletion[] outboxCompletions,
-        MessageFailure[] outboxFailures,
-        MessageCompletion[] inboxCompletions,
-        MessageFailure[] inboxFailures,
-
-        // Event store tracking
-        ReceptorProcessingCompletion[] receptorCompletions,
-        ReceptorProcessingFailure[] receptorFailures,
-        PerspectiveCheckpointCompletion[] perspectiveCompletions,
-        PerspectiveCheckpointFailure[] perspectiveFailures,
-
-        // New work to store
-        OutboxMessage[] newOutboxMessages,
-        InboxMessage[] newInboxMessages,
-
-        // Lease renewals
-        Guid[] renewOutboxLeaseIds,
-        Guid[] renewInboxLeaseIds,
-
-        // Configuration
-        WorkBatchFlags flags = WorkBatchFlags.None,
-        int partitionCount = 10000,
-        int maxPartitionsPerInstance = 100,
-        int leaseSeconds = 300,
-        int staleThresholdSeconds = 600,
-
+        ProcessWorkBatchRequest request,
         CancellationToken cancellationToken = default
     );
 }
 ```
+
+The `ProcessWorkBatchRequest` parameter object groups all work batch data (completions, failures, new messages, lease renewals, configuration). See [Work Coordinator](work-coordinator.md) for the full API reference.
 
 **Key Method**: `ProcessWorkBatchAsync` handles **atomic operations**:
 1. Delete completed messages
@@ -439,8 +409,7 @@ RETURNING *;
     "PollingIntervalMilliseconds": 1000,
     "LeaseSeconds": 300,
     "StaleThresholdSeconds": 600,
-    "PartitionCount": 10000,
-    "MaxPartitionsPerInstance": 100
+    "PartitionCount": 10000
   }
 }
 ```
@@ -450,7 +419,6 @@ RETURNING *;
 - `LeaseSeconds`: How long a lease lasts (300s = 5 minutes)
 - `StaleThresholdSeconds`: When to consider a lease stale (600s = 10 minutes)
 - `PartitionCount`: Total partitions for consistent hashing (10,000)
-- `MaxPartitionsPerInstance`: Max partitions per worker (100)
 
 ---
 

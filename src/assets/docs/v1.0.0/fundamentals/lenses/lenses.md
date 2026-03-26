@@ -8,7 +8,7 @@ description: >-
   access to read models maintained by Perspectives
 tags: 'lenses, queries, read-models, repositories, cqrs'
 codeReferences:
-  - src/Whizbang.Core/ILensQuery.cs
+  - src/Whizbang.Core/Lenses/ILensQuery.cs
   - samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs
   - samples/ECommerce/ECommerce.BFF.API/Lenses/InventoryLens.cs
 ---
@@ -25,22 +25,35 @@ A Lens is a **focused view** for querying specific read models:
 - **Optimized for specific use cases** (customer orders, inventory levels, analytics)
 - **Read-only** (no write operations)
 
-## ILensQuery Interface
+## ILensQuery Interfaces
 
-```csharp{title="ILensQuery Interface" description="Demonstrates iLensQuery Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "ILensQuery", "Interface"]}
-namespace Whizbang.Core;
+The lens system provides a non-generic marker and a generic typed interface for querying perspective read models:
 
-public interface ILensQuery {
-    // Marker interface - no required methods
-    // Implement query methods specific to your read model
+```csharp{title="ILensQuery Interfaces" description="Non-generic marker and typed single-model lens query interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "ILensQuery", "Interface"]}
+namespace Whizbang.Core.Lenses;
+
+// Non-generic marker interface
+public interface ILensQuery;
+
+// Typed single-model lens query (scoped lifetime, read-only)
+public interface ILensQuery<TModel> : ILensQuery where TModel : class {
+    // Fluent Scope API
+    IScopedLensAccess<TModel> Scope(QueryScope scope);
+    IScopedLensAccess<TModel> ScopeOverride(QueryScope scope, ScopeFilterOverride overrideValues);
+    IScopedLensAccess<TModel> DefaultScope { get; }
 }
 ```
 
+Multi-model variants (`ILensQuery<T1, T2>` through `ILensQuery<T1, ..., T10>`) support querying across multiple read model types with a shared DbContext, implementing `IAsyncDisposable` and `IDisposable`.
+
 **Key Characteristics**:
-- **Marker interface**: Identifies lens implementations
-- **No prescribed methods**: Define queries specific to your use case
+- **Marker interface**: `ILensQuery` (non-generic) identifies lens implementations
+- **Scope API**: Use `Scope()`, `ScopeOverride()`, or `DefaultScope` for scoped queries
+- **Multi-model support**: Up to 10 model types per lens for complex multi-table joins
 - **Read-only**: Never mutates data
-- **Async**: All methods return `Task<T>` or `ValueTask<T>`
+- **Async**: Query methods return `Task<T>` or `ValueTask<T>`
+
+For simple Dapper-based lenses that don't use EF Core, implement `ILensQuery` directly and define custom query methods specific to your read model:
 
 ---
 

@@ -8,10 +8,12 @@ description: >-
   and CausationId - automatic distributed tracing built into Whizbang
 tags: 'message-context, correlation, causation, distributed-tracing, observability'
 codeReferences:
+  - src/Whizbang.Core/IMessageContext.cs
   - src/Whizbang.Core/ValueObjects/MessageId.cs
   - src/Whizbang.Core/ValueObjects/CorrelationId.cs
   - src/Whizbang.Core/ValueObjects/CausationId.cs
   - src/Whizbang.Core/Observability/MessageEnvelope.cs
+  - src/Whizbang.Core/Observability/ICallerInfo.cs
 ---
 
 # Message Context & Tracing
@@ -597,12 +599,68 @@ public class HttpClientWithCorrelation {
 
 ---
 
+## IMessageContext Interface {#imessagecontext}
+
+The `IMessageContext` interface provides all context and metadata for a message flowing through the system:
+
+```csharp{title="IMessageContext Interface" description="Full IMessageContext interface with all properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IMessageContext"]}
+public interface IMessageContext {
+  MessageId MessageId { get; }
+  CorrelationId CorrelationId { get; }
+  MessageId CausationId { get; }
+  DateTimeOffset Timestamp { get; }
+  string? UserId { get; }
+  string? TenantId { get; }
+  IReadOnlyDictionary<string, object> Metadata { get; }
+  IScopeContext? ScopeContext { get; }
+  ICallerInfo? CallerInfo { get; }
+}
+```
+
+### ScopeContext {#scope-context}
+
+The `ScopeContext` property carries rich authorization context (Roles, Permissions, SecurityPrincipals, Claims) that the message **owns**.
+
+**Important**: The ScopeContext is **owned by the message**, not read from ambient `AsyncLocal`. When a message context is created, it captures the current scope context. `AsyncLocal` then reads **from** the initiating message context's ScopeContext, not the other way around.
+
+```csharp{title="ScopeContext Ownership" description="ScopeContext is owned by the message, not AsyncLocal" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ScopeContext"]}
+// In lifecycle receptors, use ScopeContext from the message context
+// because the original HTTP context is unavailable
+public class OrderLifecycleReceptor : ILifecycleReceptor<OrderCreatedEvent> {
+  public async ValueTask PostPerspectiveAsync(
+      OrderCreatedEvent evt,
+      IMessageContext context,
+      CancellationToken ct) {
+    // Use context.ScopeContext for authorization
+    var tenantId = context.TenantId;  // From message, not HTTP
+    var scope = context.ScopeContext;  // Roles, permissions carried by message
+  }
+}
+```
+
+### CallerInfo {#caller-info}
+
+The `CallerInfo` property captures the caller's source location at dispatch time using `[CallerMemberName]`, `[CallerFilePath]`, and `[CallerLineNumber]`. This enables click-to-navigate in IDEs like VSCode.
+
+```csharp{title="CallerInfo Interface" description="Captures source location at dispatch time" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CallerInfo"]}
+public interface ICallerInfo {
+  string CallerMemberName { get; }  // Method name that dispatched the message
+  string CallerFilePath { get; }    // Source file path
+  int CallerLineNumber { get; }     // Line number in source file
+}
+```
+
+`CallerInfo` is `null` when caller info is unavailable (e.g., `MessageContext.New()` or test contexts).
+
+---
+
 ## Further Reading
 
 **Core Concepts**:
 - [Observability](../persistence/observability.md) - MessageEnvelope and hops for distributed tracing
 - [Dispatcher](../dispatcher/dispatcher.md) - How messages are routed
 - [Receptors](../receptors/receptors.md) - Message handlers
+- [Cascade Context](cascade-context.md) - ScopeContext propagation
 
 **Messaging Patterns**:
 - [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable messaging with context

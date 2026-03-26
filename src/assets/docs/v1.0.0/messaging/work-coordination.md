@@ -10,6 +10,7 @@ description: >-
 tags: 'work-coordination, lease-based, partitioning, consistent-hashing, stream-ordering, distributed-systems, process-work-batch'
 codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs
   - src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs
 ---
 
@@ -18,6 +19,8 @@ codeReferences:
 ## Overview
 
 Work coordination is the foundation of Whizbang's distributed message processing architecture. It ensures reliable, ordered, and efficient message processing across multiple service instances through lease-based coordination, partition-based distribution, and stream ordering guarantees.
+
+> **This page covers concepts and architecture.** For the `IWorkCoordinator` API reference (interface, parameters, usage patterns), see [Work Coordinator](work-coordinator.md).
 
 ## Core Concepts
 
@@ -277,26 +280,20 @@ Partition ownership is stable across instance scaling:
 ### Lease Configuration
 
 ```csharp{title="Lease Configuration" description="Demonstrates lease Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Lease", "Configuration"]}
-await coordinator.ProcessWorkBatchAsync(
-    instanceId,
-    serviceName,
-    hostName,
-    processId,
-    metadata,
-    // ... other parameters
-    leaseSeconds: 300,  // 5 minutes (default)
-    staleThresholdSeconds: 600  // 10 minutes (default)
-);
+var request = new ProcessWorkBatchRequest {
+    // ... other properties
+    LeaseSeconds = 300,  // 5 minutes (default)
+    StaleThresholdSeconds = 600  // 10 minutes (default)
+};
 ```
 
 ### Partition Configuration
 
 ```csharp{title="Partition Configuration" description="Demonstrates partition Configuration" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Partition", "Configuration"]}
-await coordinator.ProcessWorkBatchAsync(
-    // ... other parameters
-    partitionCount: 10000,  // Total partitions (default)
-    maxPartitionsPerInstance: null  // NULL = unlimited, or set explicit limit
-);
+var request = new ProcessWorkBatchRequest {
+    // ... other properties
+    PartitionCount = 10_000,  // Total partitions (default)
+};
 ```
 
 ### Testing Configuration
@@ -304,11 +301,11 @@ await coordinator.ProcessWorkBatchAsync(
 For fast tests, use short lease and stale times:
 
 ```csharp{title="Testing Configuration" description="For fast tests, use short lease and stale times:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Testing", "Configuration"]}
-await coordinator.ProcessWorkBatchAsync(
-    // ... other parameters
-    leaseSeconds: 2,  // 2 seconds for fast tests
-    staleThresholdSeconds: 10  // 10 seconds for fast tests
-);
+var request = new ProcessWorkBatchRequest {
+    // ... other properties
+    LeaseSeconds = 2,  // 2 seconds for fast tests
+    StaleThresholdSeconds = 10  // 10 seconds for fast tests
+};
 ```
 
 ## Performance Characteristics
@@ -347,39 +344,15 @@ Horizontal scaling through partition distribution:
 ### C# Interface
 
 ```csharp{title="C# Interface" description="Demonstrates c# Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Interface"]}
-public interface IWorkCoordinator<TDbContext> where TDbContext : DbContext {
+public interface IWorkCoordinator {
     Task<WorkBatch> ProcessWorkBatchAsync(
-        Guid instanceId,
-        string serviceName,
-        string hostName,
-        int processId,
-        Dictionary<string, JsonElement>? metadata,
-
-        MessageCompletion[] outboxCompletions,
-        MessageFailure[] outboxFailures,
-        MessageCompletion[] inboxCompletions,
-        MessageFailure[] inboxFailures,
-
-        ReceptorProcessingCompletion[] receptorCompletions,
-        ReceptorProcessingFailure[] receptorFailures,
-        PerspectiveCheckpointCompletion[] perspectiveCompletions,
-        PerspectiveCheckpointFailure[] perspectiveFailures,
-
-        OutboxMessage[] newOutboxMessages,
-        InboxMessage[] newInboxMessages,
-
-        Guid[] renewOutboxLeaseIds,
-        Guid[] renewInboxLeaseIds,
-
-        WorkBatchFlags flags = WorkBatchFlags.None,
-        int partitionCount = 10000,
-        int? maxPartitionsPerInstance = null,
-        int leaseSeconds = 300,
-        int staleThresholdSeconds = 600,
+        ProcessWorkBatchRequest request,
         CancellationToken cancellationToken = default
     );
 }
 ```
+
+For the full `ProcessWorkBatchRequest` parameter object, see [Work Coordinator](work-coordinator.md#processworkbatchrequest).
 
 ### PostgreSQL Implementation
 
@@ -448,8 +421,8 @@ Higher partition counts enable finer-grained distribution:
 
 **Check:**
 - Instance is actually stale (heartbeat > threshold)
-- Partition ownership (`wh_partition_assignments`)
-- Active instance count (should redistribute partitions)
+- Active instance count in `wh_service_instances` (algorithmic redistribution)
+- Hash-based distribution formula: `hashtext(stream_id::TEXT) % active_instance_count`
 
 ### Out-of-Order Processing
 
