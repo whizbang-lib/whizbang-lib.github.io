@@ -1,3 +1,17 @@
+---
+title: GraphQL Integration
+version: 1.0.0
+category: GraphQL
+order: 1
+description: >-
+  Overview of Whizbang's HotChocolate GraphQL integration for Lenses with
+  automatic query generation, filtering, sorting, paging, projection, and
+  scope-aware multi-tenancy. Fully AOT compatible via source generators.
+tags: 'graphql, hotchocolate, lenses, aot, query-generation, paging, projection'
+codeReferences:
+  - src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangExtensions.cs
+---
+
 # GraphQL Integration
 
 Whizbang provides seamless HotChocolate GraphQL integration for Lenses, enabling powerful filtering, sorting, paging, and projection capabilities with full AOT compatibility.

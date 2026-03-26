@@ -1,3 +1,18 @@
+---
+title: Lens Integration
+version: 1.0.0
+category: GraphQL
+order: 3
+description: >-
+  The GraphQLLens attribute for marking lens interfaces for GraphQL exposure
+  with automatic query generation. Covers attribute properties, GraphQLLensScope
+  options, and configurable filtering, sorting, and paging.
+tags: 'graphql, lens, graphql-lens-attribute, scope, query-generation, hotchocolate'
+codeReferences:
+  - src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensAttribute.cs
+  - src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensScope.cs
+---
+
 # Lens Integration
 
 The `[GraphQLLens]` attribute marks lens interfaces for GraphQL exposure, enabling automatic query generation with configurable filtering, sorting, and paging.

@@ -1,3 +1,20 @@
+---
+title: Turnkey Database Initialization
+version: 1.0.0
+category: Data Access
+order: 5
+description: >-
+  One-line database initialization that creates infrastructure tables,
+  perspective tables, indexes, PostgreSQL extensions, and functions before
+  application startup to prevent race conditions.
+tags: 'turnkey-initialization, database-setup, startup, ef-core, postgresql, schema-creation'
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres/DbContextInitializationRegistry.cs
+  - src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
+  - src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs
+  - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs
+---
+
 # Turnkey Database Initialization
 
 Whizbang provides a simple one-line initialization method that ensures your database schema is ready before your application starts. This prevents race conditions where background services might try to query the database before tables or extensions (like pgvector) are created.

@@ -1,3 +1,18 @@
+---
+title: "Work Coordination"
+version: 1.0.0
+category: "Messaging"
+order: 10
+description: >-
+  Foundation of Whizbang's distributed message processing architecture
+  covering lease-based coordination, virtual partition distribution via
+  consistent hashing, stream ordering guarantees, and orphaned work recovery.
+tags: 'work-coordination, lease-based, partitioning, consistent-hashing, stream-ordering, distributed-systems, process-work-batch'
+codeReferences:
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs
+---
+
 # Work Coordination
 
 ## Overview

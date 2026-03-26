@@ -1,3 +1,18 @@
+---
+title: "Topic Filters"
+version: 1.0.0
+category: "Messaging"
+order: 9
+description: >-
+  Type-safe, compile-time routing configuration for commands using
+  TopicFilterAttribute. Supports string literals, strongly-typed enums,
+  multiple topics per command, and AOT-compatible source generation.
+tags: 'topic-filters, routing, attributes, source-generation, AOT, message-routing, compile-time'
+codeReferences:
+  - src/Whizbang.Core/TopicFilterAttribute.cs
+  - src/Whizbang.Core/TopicFilterAttribute{TEnum}.cs
+---
+
 # Topic Filters
 
 Topic Filters provide type-safe, compile-time routing configuration for commands in message-based architectures. They enable declarative topic assignment using attributes with support for both string literals and strongly-typed enums.

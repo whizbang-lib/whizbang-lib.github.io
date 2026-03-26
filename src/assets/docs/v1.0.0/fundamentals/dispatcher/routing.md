@@ -1,3 +1,21 @@
+---
+title: "Namespace-Based Routing"
+version: 1.0.0
+category: "Core Concepts"
+order: 2
+description: >-
+  Namespace-based routing in Whizbang determines how commands and events flow between services.
+  Commands use a shared inbox topic with namespace filtering, while events publish to namespace-specific
+  topics for pub/sub distribution with automatic subscription discovery.
+tags: 'routing, namespace-routing, message-routing, inbox, topics, pub-sub'
+codeReferences:
+  - src/Whizbang.Core/Routing/RoutingOptions.cs
+  - src/Whizbang.Core/Routing/NamespaceRoutingStrategy.cs
+  - src/Whizbang.Core/Routing/SharedTopicInboxStrategy.cs
+  - src/Whizbang.Core/Routing/EventSubscriptionDiscovery.cs
+  - src/Whizbang.Core/Routing/MessageKindAttribute.cs
+---
+
 # Namespace-Based Routing
 
 Whizbang uses namespace-based routing to determine where messages flow. Commands and events follow distinct routing patterns optimized for their specific use cases.

@@ -1,3 +1,18 @@
+---
+title: "Perspective Table Naming"
+version: 1.0.0
+category: "Perspectives"
+order: 7
+description: >-
+  Whizbang automatically generates database table names for perspectives using configurable
+  naming conventions. Strips common suffixes like Projection, Model, and Dto by default,
+  and supports MSBuild properties for customizing suffix stripping behavior.
+tags: 'table-naming, naming-conventions, snake-case, suffix-stripping, perspectives, schema'
+codeReferences:
+  - src/Whizbang.Generators.Shared/Utilities/NamingConventionUtilities.cs
+  - src/Whizbang.Generators.Shared/Models/TableNameConfig.cs
+---
+
 # Perspective Table Naming
 
 Whizbang automatically generates database table names for your perspectives using configurable naming conventions. By default, common suffixes like `Projection`, `Model`, and `Dto` are stripped to create cleaner, shorter table names.

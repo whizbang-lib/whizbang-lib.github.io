@@ -1,3 +1,17 @@
+---
+title: GraphQL Filtering
+version: 1.0.0
+category: GraphQL
+order: 4
+description: >-
+  HotChocolate filtering capabilities for PerspectiveRow data using standard
+  where arguments. Covers string, numeric, date, boolean, and composite filter
+  operators with JSONB-aware querying.
+tags: 'graphql, filtering, where, hotchocolate, operators, query'
+codeReferences:
+  - src/Whizbang.Transports.HotChocolate/Conventions/WhizbangFilterConvention.cs
+---
+
 # GraphQL Filtering
 
 Whizbang's HotChocolate integration provides powerful filtering capabilities for `PerspectiveRow<T>` data using the standard HotChocolate filtering syntax.

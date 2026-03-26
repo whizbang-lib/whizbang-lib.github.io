@@ -1,3 +1,17 @@
+---
+title: "TypeFormatter: Type Name Formatting Utility"
+version: 1.0.0
+category: "Core Concepts"
+order: 27
+description: >-
+  TypeFormatter is a static utility that formats .NET Type objects into string representations
+  using TypeQualification flags. Handles namespace, assembly, version, and culture formatting
+  with culture-invariant output and full AOT compatibility.
+tags: 'type-formatter, type-formatting, type-names, aot, identity, source-generators'
+codeReferences:
+  - src/Whizbang.Core/TypeFormatter.cs
+---
+
 # TypeFormatter: Type Name Formatting Utility
 
 TypeFormatter is a static utility class that formats .NET Type objects into string representations according to TypeQualification flags. It handles namespace, assembly, version, culture, and public key token formatting with culture-invariant output.

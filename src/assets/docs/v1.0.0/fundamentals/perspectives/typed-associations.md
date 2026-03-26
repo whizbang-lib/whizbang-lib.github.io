@@ -1,3 +1,17 @@
+---
+title: "GetPerspectiveAssociations: Strongly-Typed Perspective Queries"
+version: 1.0.0
+category: "Perspectives"
+order: 9
+description: >-
+  GetPerspectiveAssociations is a source-generated method returning strongly-typed perspective
+  associations filtered by model and event type. Provides compile-time type safety and
+  AOT-compatible delegate access to perspective Apply methods.
+tags: 'typed-associations, perspective-associations, source-generated, type-safety, aot, delegates'
+codeReferences:
+  - src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs
+---
+
 # GetPerspectiveAssociations: Strongly-Typed Perspective Queries
 
 GetPerspectiveAssociations is a source-generated method that returns strongly-typed perspective associations filtered by model and event type. It provides compile-time type safety and AOT-compatible delegate access to perspective Apply methods.

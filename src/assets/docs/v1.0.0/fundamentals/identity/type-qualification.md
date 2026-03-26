@@ -1,3 +1,17 @@
+---
+title: "TypeQualification: Type Name Formatting Control"
+version: 1.0.0
+category: "Core Concepts"
+order: 29
+description: >-
+  TypeQualification is a flag enum that controls how .NET type names are formatted in generated code.
+  Provides fine-grained control over namespace, assembly, version, and other type name components
+  with composite presets for common scenarios.
+tags: 'type-qualification, type-formatting, flags, source-generators, identity, aot'
+codeReferences:
+  - src/Whizbang.Core/TypeQualification.cs
+---
+
 # TypeQualification: Type Name Formatting Control
 
 TypeQualification is a flag enum that controls how .NET type names are formatted in generated code. It enables fine-grained control over namespace, assembly, version, and other type name components.

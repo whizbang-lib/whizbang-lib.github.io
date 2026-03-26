@@ -1,3 +1,25 @@
+---
+title: "Message Security Context Propagation"
+version: 1.0.0
+category: "Core Concepts"
+order: 10
+description: >-
+  Automatic security context establishment for incoming messages in distributed
+  systems. Covers security extractors, scope context population, transport
+  metadata, and audit event emission for compliance.
+tags: 'message-security, security-context, extractors, distributed-security, scope-context, transport-metadata, audit'
+codeReferences:
+  - src/Whizbang.Core/Security/IMessageSecurityContextProvider.cs
+  - src/Whizbang.Core/Security/DefaultMessageSecurityContextProvider.cs
+  - src/Whizbang.Core/Security/ISecurityContextExtractor.cs
+  - src/Whizbang.Core/Security/Extractors/MessageHopSecurityExtractor.cs
+  - src/Whizbang.Core/Security/MessageSecurityOptions.cs
+  - src/Whizbang.Core/Security/SecurityContextHelper.cs
+  - src/Whizbang.Core/Security/IMessageContextAccessor.cs
+  - src/Whizbang.Core/Security/MessageSecurityServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs
+---
+
 # Message Security Context Propagation
 
 Whizbang provides automatic security context establishment for incoming messages, ensuring that security identity flows across service boundaries in distributed systems.

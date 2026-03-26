@@ -1,3 +1,18 @@
+---
+title: "Vector Similarity Search"
+version: 1.0.0
+category: "Lenses"
+order: 7
+description: >-
+  Whizbang supports pgvector similarity queries for semantic search, embeddings, and AI/ML workloads.
+  Provides turnkey setup with automatic NpgsqlDataSource and DbContext configuration when perspectives
+  use VectorField attributes, plus cosine, L2, and inner product distance functions.
+tags: 'vector-search, pgvector, similarity-search, embeddings, semantic-search, ai-ml'
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres/VectorSearchExtensions.cs
+  - src/Whizbang.Core/Lenses/VectorSearchResult.cs
+---
+
 # Vector Similarity Search
 
 Whizbang supports pgvector similarity queries for semantic search, embeddings, and AI/ML workloads.

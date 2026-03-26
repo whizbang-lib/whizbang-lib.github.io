@@ -1,3 +1,21 @@
+---
+title: "WhizbangIds: Strongly-Typed Identity Values"
+version: 1.0.0
+category: "Core Concepts"
+order: 24
+description: >-
+  Whizbang uses strongly-typed identity values based on UUIDv7 for all identifiers.
+  Provides compile-time type safety, prevents ID mixing, and enables AOT-compatible
+  dependency injection with source-generated value types and TrackedGuid metadata.
+tags: 'whizbang-ids, identity, uuidv7, tracked-guid, type-safety, value-objects'
+codeReferences:
+  - src/Whizbang.Core/IWhizbangId.cs
+  - src/Whizbang.Core/ValueObjects/WhizbangId.cs
+  - src/Whizbang.Core/ValueObjects/TrackedGuid.cs
+  - src/Whizbang.Core/ValueObjects/GuidMetadata.cs
+  - src/Whizbang.Core/WhizbangIdProviderRegistry.cs
+---
+
 # WhizbangIds: Strongly-Typed Identity Values
 
 Whizbang uses strongly-typed identity values based on UUIDv7 for all identifiers. This provides type safety, prevents ID mixing mistakes, and enables AOT-compatible dependency injection.

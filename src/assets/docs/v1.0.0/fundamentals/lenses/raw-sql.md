@@ -1,3 +1,17 @@
+---
+title: "Raw SQL and Connection Access"
+version: 1.0.0
+category: "Lenses"
+order: 6
+description: >-
+  Escape hatches for raw SQL execution and direct database connection access in Whizbang lenses.
+  Covers ExecuteSqlAsync with SQL injection protection, direct DbConnection access for bulk
+  operations, and Npgsql binary import for high-performance data loading.
+tags: 'raw-sql, sql, connection-access, bulk-operations, npgsql, lenses'
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres/LensQueryConnectionExtensions.cs
+---
+
 # Raw SQL and Connection Access
 
 For advanced scenarios where LINQ extensions are insufficient, Whizbang provides escape hatches for raw SQL execution and direct database connection access.

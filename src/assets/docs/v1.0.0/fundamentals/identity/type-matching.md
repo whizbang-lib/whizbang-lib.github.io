@@ -1,3 +1,17 @@
+---
+title: "TypeMatcher: Type Name Matching Utilities"
+version: 1.0.0
+category: "Core Concepts"
+order: 28
+description: >-
+  TypeMatcher provides flexible type name matching with fuzzy matching via MatchStrictness flags
+  and regex pattern matching. Implements a sequential transformation pipeline for type string
+  comparisons with null-safe handling.
+tags: 'type-matcher, type-matching, fuzzy-matching, regex, identity, type-comparison'
+codeReferences:
+  - src/Whizbang.Core/TypeMatcher.cs
+---
+
 # TypeMatcher: Type Name Matching Utilities
 
 TypeMatcher is a static utility class that provides flexible type name matching with support for fuzzy matching via MatchStrictness flags and regex pattern matching. It handles the transformation pipeline for type string comparisons.

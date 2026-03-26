@@ -1,3 +1,17 @@
+---
+title: "Idempotency Patterns"
+version: 1.0.0
+category: "Messaging"
+order: 7
+description: >-
+  Idempotency strategies for inbox and outbox message processing in Whizbang.
+  Covers exactly-once processing via deduplication tables, at-least-once
+  delivery guarantees, and transactional boundary patterns.
+tags: 'idempotency, exactly-once, deduplication, at-least-once, inbox, outbox, message-processing'
+codeReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs
+---
+
 # Idempotency Patterns
 
 ## Overview
