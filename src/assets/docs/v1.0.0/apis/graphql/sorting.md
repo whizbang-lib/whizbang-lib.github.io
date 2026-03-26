@@ -24,7 +24,7 @@ Whizbang's HotChocolate integration provides flexible sorting capabilities for `
 
 Sort results using the `order` argument:
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   orders(order: { data: { customerName: ASC } }) {
     nodes {
@@ -42,7 +42,7 @@ Sort results using the `order` argument:
 - `ASC` - Ascending (A-Z, 0-9, oldest first)
 - `DESC` - Descending (Z-A, 9-0, newest first)
 
-```graphql
+```graphql{title="# Ascending" description="# Ascending" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 # Ascending
 order: { data: { createdAt: ASC } }
 
@@ -54,7 +54,7 @@ order: { data: { createdAt: DESC } }
 
 Sort by any property in your read model:
 
-```graphql
+```graphql{title="# By string" description="# By string" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 # By string
 {
   products(order: { data: { name: ASC } }) {
@@ -81,7 +81,7 @@ Sort by any property in your read model:
 
 Sort by multiple columns using an array:
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   orders(order: [
     { data: { status: ASC } }
@@ -104,7 +104,7 @@ This sorts by status ascending first, then by total amount descending within eac
 
 Sort by `PerspectiveRow` system fields:
 
-```graphql
+```graphql{title="# By ID" description="# By ID" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 # By ID
 {
   orders(order: { id: ASC }) {
@@ -138,7 +138,7 @@ Sort by `PerspectiveRow` system fields:
 
 When metadata is exposed:
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   orders(order: { metadata: { timestamp: DESC } }) {
     nodes {
@@ -155,7 +155,7 @@ When metadata is exposed:
 
 Sort and filter work together:
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   orders(
     where: { data: { status: { eq: "Completed" } } }
@@ -179,7 +179,7 @@ Sort and filter work together:
 
 Always combine sorting with paging for consistent results:
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   orders(
     order: { createdAt: DESC }
@@ -203,7 +203,7 @@ Always combine sorting with paging for consistent results:
 
 Use GraphQL variables for dynamic sorting:
 
-```graphql
+```graphql{title="query GetProducts($sortField: ProductSortInput!)" description="query GetProducts($sortField: ProductSortInput!)" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 query GetProducts($sortField: ProductSortInput!) {
   products(order: [$sortField]) {
     nodes {
@@ -299,7 +299,7 @@ public IQueryable<T> GetData()
 
 A typical dashboard query combining filter, sort, and paging:
 
-```graphql
+```graphql{title="query RecentOrders($tenantId: String!, $status: String)" description="query RecentOrders($tenantId: String!, $status: String)" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 query RecentOrders($tenantId: String!, $status: String) {
   orders(
     where: {

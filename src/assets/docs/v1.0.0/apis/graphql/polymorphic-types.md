@@ -94,7 +94,7 @@ builder.Services.AddGraphQLServer()
 
 The registration generates:
 
-```graphql
+```graphql{title="AbstractFieldSettings" description="AbstractFieldSettings" category="Apis" difficulty="ADVANCED" tags=["Apis", "Graphql", "GRAPHQL"]}
 interface AbstractFieldSettings {
   label: String!
   required: Boolean!
@@ -128,7 +128,7 @@ type DateFieldSettings implements AbstractFieldSettings {
 
 ### Fragment Spread
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   formFields {
     nodes {
@@ -157,7 +157,7 @@ type DateFieldSettings implements AbstractFieldSettings {
 
 ### Inline Fragments
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   formFields {
     nodes {
@@ -231,7 +231,7 @@ public class Query {
 
 ### GraphQL Query
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   userNotificationSettings(userId: "...") {
     __typename

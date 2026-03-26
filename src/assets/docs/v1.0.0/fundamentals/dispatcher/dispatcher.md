@@ -949,7 +949,7 @@ var receipts = await _dispatcher.SendManyAsync(commands);
 :::
 
 **Signatures**:
-```csharp
+```csharp{title="Signatures" description="Signatures" category="Fundamentals" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "C#"]}
 // Generic (AOT-compatible, preserves type information)
 Task<IEnumerable<IDeliveryReceipt>> PublishManyAsync<TEvent>(
     IEnumerable<TEvent> events) where TEvent : notnull;
@@ -962,7 +962,7 @@ Task<IEnumerable<IDeliveryReceipt>> PublishManyAsync(
 **Returns**: `IDeliveryReceipt` per event — `Delivered` for locally-handled events, `Accepted` for outbox-only events.
 
 **Example**:
-```csharp
+```csharp{title="Example" description="Example" category="Fundamentals" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "C#"]}
 // Batch publish events — single scope, single flush
 var events = new[] {
     new OrderCreatedEvent(orderId1),
