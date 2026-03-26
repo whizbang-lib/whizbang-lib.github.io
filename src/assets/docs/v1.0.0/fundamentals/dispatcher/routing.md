@@ -157,10 +157,18 @@ All services automatically subscribe to system commands for framework-level oper
 ```csharp{title="System Commands" description="All services automatically subscribe to system commands for framework-level operations:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "System", "Commands"]}
 namespace Whizbang.Core.Commands.System;
 
-// Rebuild a perspective across all services
+// Rebuild one or more perspectives across all services
 public record RebuildPerspectiveCommand(
-    string PerspectiveName,
+    string[]? PerspectiveNames = null,
+    RebuildMode Mode = RebuildMode.BlueGreen,
+    Guid[]? IncludeStreamIds = null,
+    Guid[]? ExcludeStreamIds = null,
     long? FromEventId = null
+) : ICommand;
+
+// Cancel an in-progress perspective rebuild
+public record CancelPerspectiveRebuildCommand(
+    string PerspectiveName
 ) : ICommand;
 
 // Clear cached data
@@ -190,8 +198,12 @@ public record ResumeProcessingCommand(
 ### Sending System Commands
 
 ```csharp{title="Sending System Commands" description="Demonstrates sending System Commands" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Sending", "System"]}
-// Rebuild a perspective across all services
-await dispatcher.SendAsync(new RebuildPerspectiveCommand("OrderSummary"));
+// Rebuild a specific perspective across all services
+await dispatcher.SendAsync(new RebuildPerspectiveCommand(
+    PerspectiveNames: ["OrderSummary"]));
+
+// Cancel an in-progress rebuild
+await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand("OrderSummary"));
 
 // Clear all caches
 await dispatcher.SendAsync(new ClearCacheCommand());

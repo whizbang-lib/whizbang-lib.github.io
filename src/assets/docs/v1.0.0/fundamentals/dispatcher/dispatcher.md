@@ -21,13 +21,13 @@ The **Dispatcher** is Whizbang's central message router. It provides three disti
 
 | Pattern | Use Case | Return Type | Performance | Distribution |
 |---------|----------|-------------|-------------|--------------|
-| `SendAsync` | Commands with delivery tracking | `DeliveryReceipt` | ~100μs | Local or Remote |
-| `LocalInvokeAsync` | In-process queries/commands | `TResponse` | < 20ns | Local only |
-| `LocalInvokeAndSyncAsync` | Commands with perspective sync | `TResponse` / `SyncResult` | Varies | Local only |
-| `PublishAsync` | Event broadcasting | `void` | ~50μs | Local or Remote |
-| `SendManyAsync` | Batch commands (local + outbox) | `IEnumerable<DeliveryReceipt>` | Optimized | Local + Remote |
-| `PublishManyAsync` | Batch event publishing | `IEnumerable<DeliveryReceipt>` | Optimized | Local + Remote |
-| `LocalSendManyAsync` | Batch local-only dispatch | `IEnumerable<DeliveryReceipt>` | ~20ns/msg | Local only |
+| `SendAsync` | Commands with delivery tracking | `IDeliveryReceipt` | ~100μs | Local or Remote |
+| `LocalInvokeAsync` | In-process queries/commands | `TResult` | < 20ns | Local only |
+| `LocalInvokeAndSyncAsync` | Commands with perspective sync | `TResult` / `SyncResult` | Varies | Local only |
+| `PublishAsync` | Event broadcasting | `IDeliveryReceipt` | ~50μs | Local or Remote |
+| `SendManyAsync` | Batch commands (local + outbox) | `IEnumerable<IDeliveryReceipt>` | Optimized | Local + Remote |
+| `PublishManyAsync` | Batch event publishing | `IEnumerable<IDeliveryReceipt>` | Optimized | Local + Remote |
+| `LocalSendManyAsync` | Batch local-only dispatch | `IEnumerable<IDeliveryReceipt>` | ~20ns/msg | Local only |
 
 ## IDispatcher Interface
 
@@ -36,15 +36,13 @@ namespace Whizbang.Core;
 
 public interface IDispatcher {
     // Pattern 1: Command dispatch with delivery receipt
-    Task<DeliveryReceipt> SendAsync<TMessage>(
-        TMessage message,
-        CancellationToken cancellationToken = default
+    Task<IDeliveryReceipt> SendAsync<TMessage>(
+        TMessage message
     ) where TMessage : notnull;
 
-    // Pattern 2: In-process RPC with typed response
-    Task<TResponse> LocalInvokeAsync<TMessage, TResponse>(
-        TMessage message,
-        CancellationToken cancellationToken = default
+    // Pattern 2: In-process RPC with typed result
+    ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(
+        TMessage message
     ) where TMessage : notnull;
 
     // In-process RPC with perspective sync (wait for all perspectives)
@@ -54,11 +52,10 @@ public interface IDispatcher {
         CancellationToken cancellationToken = default
     ) where TMessage : notnull;
 
-    // Pattern 3: Event broadcasting (fire-and-forget)
-    Task PublishAsync<TMessage>(
-        TMessage message,
-        CancellationToken cancellationToken = default
-    ) where TMessage : notnull;
+    // Pattern 3: Event broadcasting with delivery receipt
+    Task<IDeliveryReceipt> PublishAsync<TEvent>(
+        TEvent eventData
+    );
 }
 ```
 
@@ -70,13 +67,12 @@ public interface IDispatcher {
 
 **Signature**:
 ```csharp{title="Pattern 1: SendAsync - Command Dispatch" description="Demonstrates pattern 1: SendAsync - Command Dispatch" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "SendAsync"]}
-Task<DeliveryReceipt> SendAsync<TMessage>(
-    TMessage message,
-    CancellationToken cancellationToken = default
+Task<IDeliveryReceipt> SendAsync<TMessage>(
+    TMessage message
 ) where TMessage : notnull;
 ```
 
-**Returns**: `DeliveryReceipt` containing message ID, correlation ID, and timestamp.
+**Returns**: `IDeliveryReceipt` containing message ID, correlation ID, destination, status, and metadata.
 
 ### Basic Usage
 
@@ -112,12 +108,33 @@ public class OrdersController : ControllerBase {
 
 ### DeliveryReceipt Structure
 
-```csharp{title="DeliveryReceipt Structure" description="Demonstrates deliveryReceipt Structure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "DeliveryReceipt", "Structure"]}
-public record DeliveryReceipt(
-    Guid MessageId,        // Unique ID for this message
-    Guid CorrelationId,    // ID for tracking related messages
-    DateTimeOffset Timestamp
-);
+```csharp{title="IDeliveryReceipt Interface" description="Demonstrates IDeliveryReceipt interface and DeliveryReceipt class" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "DeliveryReceipt", "Structure"]}
+public interface IDeliveryReceipt {
+    MessageId MessageId { get; }              // Unique message identifier (value object)
+    DateTimeOffset Timestamp { get; }         // When the message was accepted
+    string Destination { get; }               // Where routed (receptor name, topic, etc.)
+    DeliveryStatus Status { get; }            // Accepted, Queued, Delivered, Failed
+    IReadOnlyDictionary<string, JsonElement> Metadata { get; }  // Extensible metadata
+    CorrelationId? CorrelationId { get; }     // Correlation ID from message context
+    MessageId? CausationId { get; }           // ID of the message that caused this one
+    Guid? StreamId { get; }                   // Stream ID from [StreamId] attribute
+}
+
+public enum DeliveryStatus {
+    Accepted = 0,   // Accepted by dispatcher, ready for processing
+    Queued = 1,     // Queued for async processing (e.g., inbox pattern)
+    Delivered = 2,  // Delivered to handler (handler executed)
+    Failed = 3      // Failed to deliver or process
+}
+
+// Concrete implementation with factory methods
+public sealed class DeliveryReceipt : IDeliveryReceipt {
+    // Factory methods for creating receipts:
+    public static DeliveryReceipt Accepted(MessageId messageId, string destination, ...);
+    public static DeliveryReceipt Queued(MessageId messageId, string destination, ...);
+    public static DeliveryReceipt Delivered(MessageId messageId, string destination, ...);
+    public static DeliveryReceipt Failed(MessageId messageId, string destination, ...);
+}
 ```
 
 **Use cases**:
@@ -192,13 +209,12 @@ public async Task<ActionResult> GetOrderStatus(Guid correlationId) {
 
 **Signature**:
 ```csharp{title="Pattern 2: LocalInvokeAsync - In-Process RPC" description="Demonstrates pattern 2: LocalInvokeAsync - In-Process RPC" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "LocalInvokeAsync"]}
-Task<TResponse> LocalInvokeAsync<TMessage, TResponse>(
-    TMessage message,
-    CancellationToken cancellationToken = default
+ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(
+    TMessage message
 ) where TMessage : notnull;
 ```
 
-**Returns**: Typed response from receptor (`TResponse`).
+**Returns**: Typed result from receptor (`TResult`).
 
 **Performance**: < 20ns dispatch overhead, zero allocations (with object pooling).
 
@@ -523,13 +539,12 @@ The default timeout is 30 seconds if not specified.
 
 **Signature**:
 ```csharp{title="Pattern 3: PublishAsync - Event Broadcasting" description="Demonstrates pattern 3: PublishAsync - Event Broadcasting" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "PublishAsync"]}
-Task PublishAsync<TMessage>(
-    TMessage message,
-    CancellationToken cancellationToken = default
-) where TMessage : notnull;
+Task<IDeliveryReceipt> PublishAsync<TEvent>(
+    TEvent eventData
+);
 ```
 
-**Returns**: `Task` (no return value, fire-and-forget).
+**Returns**: `IDeliveryReceipt` with delivery status, correlation, and stream information.
 
 ### Basic Usage
 
@@ -705,8 +720,8 @@ Understanding when to use `IEventStore.AppendAsync` versus `IDispatcher.PublishA
 | Method | Responsibility | Triggers Perspectives | Uses Outbox | Return |
 |--------|---------------|----------------------|-------------|--------|
 | `IEventStore.AppendAsync` | Persist event to event store | No | No | `void` |
-| `IDispatcher.PublishAsync` | Broadcast event | Yes (local) | Yes (remote) | `void` |
-| `IDispatcher.SendAsync` | Route command | No | Yes | `DeliveryReceipt` |
+| `IDispatcher.PublishAsync` | Broadcast event | Yes (local) | Yes (remote) | `IDeliveryReceipt` |
+| `IDispatcher.SendAsync` | Route command | No | Yes | `IDeliveryReceipt` |
 
 ### Correct Patterns
 
@@ -822,7 +837,7 @@ Task<IEnumerable<IDeliveryReceipt>> SendManyAsync(
     IEnumerable<object> messages);
 ```
 
-**Returns**: `DeliveryReceipt` per message — `Delivered` for locally-handled messages, `Accepted` for outbox-only messages.
+**Returns**: `IDeliveryReceipt` per message — `Delivered` for locally-handled messages, `Accepted` for outbox-only messages.
 
 **Example**:
 ```csharp{title="SendManyAsync (2)" description="Demonstrates sendManyAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "SendManyAsync"]}
@@ -867,7 +882,7 @@ Task<IEnumerable<IDeliveryReceipt>> PublishManyAsync(
     IEnumerable<object> events);
 ```
 
-**Returns**: `DeliveryReceipt` per event — `Delivered` for locally-handled events, `Accepted` for outbox-only events.
+**Returns**: `IDeliveryReceipt` per event — `Delivered` for locally-handled events, `Accepted` for outbox-only events.
 
 **Example**:
 ```csharp
@@ -900,7 +915,7 @@ ValueTask<IEnumerable<IDeliveryReceipt>> LocalSendManyAsync(
     IEnumerable<object> messages);
 ```
 
-**Returns**: `DeliveryReceipt` per message — all with `Delivered` status.
+**Returns**: `IDeliveryReceipt` per message — all with `Delivered` status.
 
 **Throws**: `ReceptorNotFoundException` if any message has no local receptor.
 
@@ -1759,7 +1774,7 @@ if (existing is not null) {
 }
 
 // Process message
-var result = await _dispatcher.LocalInvokeAsync<TMessage, TResponse>(message);
+var result = await _dispatcher.LocalInvokeAsync<TMessage, TResult>(message);
 
 // Store in inbox
 await _coordinator.ProcessWorkBatchAsync(

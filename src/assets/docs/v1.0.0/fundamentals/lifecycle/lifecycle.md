@@ -275,12 +275,21 @@ Verify your services handle pause correctly:
 ```csharp{title="Test Pause/Resume Behavior" description="Verify your services handle pause correctly:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Test", "Pause"]}
 [Test]
 public async Task Service_WhenPaused_StopsProcessingMessagesAsync() {
-  // Arrange
+  // Arrange - use lifecycle hooks to synchronize deterministically
+  var pauseConfirmed = new TaskCompletionSource(
+    TaskCreationOptions.RunContinuationsAsynchronously);
+  var orderProcessed = new TaskCompletionSource(
+    TaskCreationOptions.RunContinuationsAsynchronously);
+
+  _lifecycleHooks.OnPaused += () => pauseConfirmed.TrySetResult();
+  _lifecycleHooks.OnMessageProcessed += msg => {
+    if (msg is CreateOrderCommand) orderProcessed.TrySetResult();
+  };
+
+  // Pause and wait for confirmation via hook
   await _dispatcher.SendAsync(new PauseProcessingCommand(
     Reason: "Test pause"));
-
-  // Wait for pause to take effect
-  await Task.Delay(1000);
+  await pauseConfirmed.Task;
 
   // Act - send message while paused
   await _dispatcher.SendAsync(new CreateOrderCommand { /* ... */ });
@@ -289,11 +298,10 @@ public async Task Service_WhenPaused_StopsProcessingMessagesAsync() {
   var order = await _orderLens.GetByIdAsync(orderId);
   await Assert.That(order).IsNull();  // Not processed yet
 
-  // Resume and verify
+  // Resume and wait for processing via hook
   await _dispatcher.SendAsync(new ResumeProcessingCommand(
     Reason: "Test resume"));
-
-  await Task.Delay(2000);  // Wait for processing
+  await orderProcessed.Task;
 
   order = await _orderLens.GetByIdAsync(orderId);
   await Assert.That(order).IsNotNull();  // Now processed
@@ -366,12 +374,21 @@ lifetime.ApplicationStopping.Register(async () => {
 Whizbang provides other system commands for distributed coordination:
 
 ### RebuildPerspectiveCommand
-Rebuild a specific perspective across all services:
-```csharp{title="RebuildPerspectiveCommand" description="Rebuild a specific perspective across all services:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "RebuildPerspectiveCommand"]}
+Rebuild one or more perspectives across all services:
+```csharp{title="RebuildPerspectiveCommand" description="Rebuild one or more perspectives across all services:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "RebuildPerspectiveCommand"]}
 await dispatcher.SendAsync(new RebuildPerspectiveCommand(
-  "OrderSummary",
+  PerspectiveNames: ["OrderSummary"],
+  Mode: RebuildMode.BlueGreen,
   FromEventId: 12345L
 ));
+```
+
+See [Perspectives](../perspectives/perspectives.md#rebuild) for details.
+
+### CancelPerspectiveRebuildCommand
+Cancel an in-progress perspective rebuild:
+```csharp{title="CancelPerspectiveRebuildCommand" description="Cancel an in-progress perspective rebuild:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "CancelPerspectiveRebuildCommand"]}
+await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand("OrderSummary"));
 ```
 
 See [Perspectives](../perspectives/perspectives.md#rebuild) for details.

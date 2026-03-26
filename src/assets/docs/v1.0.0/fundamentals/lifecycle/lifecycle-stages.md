@@ -90,7 +90,11 @@ At each stage, **lifecycle receptors** can execute to:
 
 ---
 
-## All 20 Lifecycle Stages
+## All 24 Lifecycle Stages
+
+:::updated
+The `LifecycleStage` enum contains 25 values total: 24 true lifecycle stages plus one special value (`AfterReceptorCompletion = -1`). `AfterReceptorCompletion` is **not** a true lifecycle stage — it is a hook that fires synchronously after a receptor completes in the Dispatcher, before any lifecycle stages are invoked. It exists as the default for backward compatibility with tag hooks.
+:::
 
 ### Immediate Stage
 
@@ -468,6 +472,56 @@ See [Lifecycle Synchronization](../../operations/testing/lifecycle-synchronizati
 
 ---
 
+### PostAllPerspectives Stages (2 stages)
+
+:::new
+PostAllPerspectives stages are new in v1.0.0 and fire **once per event** after **all** perspectives have finished processing it. They sit between PostPerspective (per-perspective) and PostLifecycle (end-of-lifecycle) in the pipeline.
+:::
+
+#### `PostAllPerspectivesAsync`
+
+**Timing**: After ALL perspectives have completed processing this event (WhenAll pattern), before PostLifecycle stages. Non-blocking.
+
+**Use Cases**:
+- Cross-perspective aggregation that needs all perspective data committed
+- Notifications that require all perspectives to be up-to-date
+- Derived computations spanning multiple perspectives
+
+**Guarantees**:
+- **Fires exactly once per event** — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) via WhenAll
+- Non-blocking — does not delay PostLifecycle
+- All perspective checkpoints have been saved
+- Fires **before** PostLifecycle stages
+
+**Example**:
+```csharp{title="`PostAllPerspectivesAsync`" description="Cross-perspective aggregation after all perspectives complete" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PostAllPerspectivesAsync"]}
+[FireAt(LifecycleStage.PostAllPerspectivesAsync)]
+public class CrossPerspectiveAggregator : IReceptor<OrderPlacedEvent> {
+  private readonly IOrderSummaryService _summaryService;
+
+  public async ValueTask HandleAsync(OrderPlacedEvent evt, CancellationToken ct) {
+    // Safe to read all perspectives — every perspective has processed this event
+    await _summaryService.RebuildSummaryAsync(evt.OrderId, ct);
+  }
+}
+```
+
+#### `PostAllPerspectivesInline`
+
+**Timing**: Same as `PostAllPerspectivesAsync` but **blocking** — the worker waits for completion before proceeding to PostLifecycle.
+
+**Use Cases**:
+- Critical cross-perspective consistency checks
+- Aggregation that must complete before PostLifecycle fires
+- Test synchronization after all perspectives finish
+
+**Guarantees**:
+- **Fires exactly once per event** — managed by Lifecycle Coordinator via WhenAll
+- **Blocking** — PostLifecycle stages wait for completion
+- All perspective checkpoints have been saved
+
+---
+
 ### PostLifecycle Stages (2 stages)
 
 :::new
@@ -539,14 +593,16 @@ ENTRY: dispatch               ENTRY: load from DB      ENTRY: receive           
   ├─ LocalImmediateInline      ├─ PreOutboxInline       ├─ PreInboxInline         ├─ PrePerspectiveInline
   ├─ PostLifecycleAsync†       ├─ PostOutboxAsync       ├─ PostInboxAsync         ├─ PostPerspectiveAsync
   └─ PostLifecycleInline†      ├─ PostOutboxInline      ├─ PostInboxInline        ├─ PostPerspectiveInline
-EXIT: done / WhenAll          ├─ PostLifecycleAsync‡   ├─ PostLifecycleAsync*    ├─ PostLifecycleAsync**
-                              └─ PostLifecycleInline‡   └─ PostLifecycleInline*   └─ PostLifecycleInline**
-                             EXIT: transport / WhenAll  EXIT: done / WhenAll      EXIT: done / WhenAll
+EXIT: done / WhenAll          ├─ PostLifecycleAsync‡   ├─ PostLifecycleAsync*    ├─ PostAllPerspectivesAsync
+                              └─ PostLifecycleInline‡   └─ PostLifecycleInline*   ├─ PostAllPerspectivesInline
+                             EXIT: transport / WhenAll  EXIT: done / WhenAll      ├─ PostLifecycleAsync**
+                                                                                  └─ PostLifecycleInline**
+                                                                                 EXIT: done / WhenAll
 
 † fires if this is the only processing path (Route.Local), OR via WhenAll
 ‡ fires if no further processing (event leaves service), OR via WhenAll
 * fires for events WITHOUT perspectives, OR via WhenAll
-** fires AFTER ALL perspectives complete, OR via WhenAll
+** fires AFTER ALL perspectives complete (PostAllPerspectives → PostLifecycle), OR via WhenAll
 ```
 
 See [Lifecycle Coordinator](lifecycle-coordinator.md) for details on entry/exit points, WhenAll, and tracking.
@@ -686,6 +742,7 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 | `PreInbox*` / `PostInbox*` | `ServiceBusConsumerWorker.cs` | Around `ProcessInboxWorkAsync()` |
 | `PrePerspective*` | `PerspectiveRunnerTemplate.cs` | Before event processing loop |
 | `PostPerspective*` | `PerspectiveRunnerTemplate.cs` | During event processing loop (after `Apply()`, before checkpoint save) |
+| `PostAllPerspectives*` | `PerspectiveWorker.cs` | After ALL perspectives complete (WhenAll) — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
 | `PostLifecycle*` | `PerspectiveWorker.cs`, `TransportConsumerWorker.cs`, `Dispatcher.cs` | After all processing completes — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
 
 ---
@@ -702,7 +759,7 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 
 ## Summary
 
-- **Lifecycle stages** across 7 phases (Immediate, LocalImmediate, Distribute, Outbox, Inbox, Perspective, PostLifecycle)
+- **24 lifecycle stages** across 8 phases (Immediate, LocalImmediate, Distribute, Outbox, Inbox, Perspective, PostAllPerspectives, PostLifecycle) plus 1 special value (`AfterReceptorCompletion`)
 - **Two mutually exclusive paths**: Local (mediator) and Distributed (outbox/inbox)
 - **Default stages** for receptors without `[FireAt]`:
   - **Local path**: `LocalImmediateInline`
