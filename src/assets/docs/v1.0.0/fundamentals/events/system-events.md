@@ -23,6 +23,7 @@ codeReferences:
   - src/Whizbang.Core/SystemEvents/Security/AccessGranted.cs
   - src/Whizbang.Core/SystemEvents/Security/AccessDenied.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterTests.cs
+  - src/Whizbang.Core/Events/System/SystemEvents.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventTransportFilterTests.cs
 ---
 
@@ -1108,7 +1109,234 @@ System events provide **observability, auditing, and diagnostics** for Whizbang 
 - **LocalOnly by default** - no transport publishing, no duplication
 - **Same infrastructure** - consumed via perspectives and lenses
 - **Self-audit prevention** - system events excluded from audit
-- **Built-in events** - EventAudited, CommandAudited, security events
+- **Built-in events** - EventAudited, CommandAudited, security events, perspective rebuild/rewind events, migration events
 - **Extensible** - emit custom system events for your scenarios
 
 Use system events to build compliance-ready audit trails, security monitoring, and operational insights without polluting your domain model.
+
+---
+
+<a id="perspective-rebuild-events"></a>
+## Perspective Rebuild Events
+
+These events are emitted during perspective rebuild operations (enabled via `EnablePerspectiveEvents()`). They track the full lifecycle of a rebuild.
+
+### PerspectiveRebuildStarted
+
+Emitted when a perspective rebuild starts (any mode).
+
+```csharp{title="PerspectiveRebuildStarted" description="Emitted when a perspective rebuild starts" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"]}
+public record PerspectiveRebuildStarted(
+    [property: StreamId] Guid StreamId,
+    string PerspectiveName,
+    RebuildMode Mode,
+    int TotalStreams,
+    DateTimeOffset StartedAt
+) : IEvent;
+```
+
+### PerspectiveRebuildProgress
+
+Emitted periodically during a rebuild to report progress.
+
+```csharp{title="PerspectiveRebuildProgress" description="Emitted periodically during a rebuild to report progress" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"]}
+public record PerspectiveRebuildProgress(
+    [property: StreamId] Guid StreamId,
+    string PerspectiveName,
+    RebuildMode Mode,
+    int ProcessedStreams,
+    int TotalStreams,
+    int EventsReplayed,
+    DateTimeOffset StartedAt
+) : IEvent;
+```
+
+### PerspectiveRebuildCompleted
+
+Emitted when a perspective rebuild completes successfully.
+
+```csharp{title="PerspectiveRebuildCompleted" description="Emitted when a perspective rebuild completes successfully" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"]}
+public record PerspectiveRebuildCompleted(
+    [property: StreamId] Guid StreamId,
+    string PerspectiveName,
+    RebuildMode Mode,
+    int StreamsProcessed,
+    int EventsReplayed,
+    TimeSpan Duration
+) : IEvent;
+```
+
+### PerspectiveRebuildFailed
+
+Emitted when a perspective rebuild fails.
+
+```csharp{title="PerspectiveRebuildFailed" description="Emitted when a perspective rebuild fails" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"]}
+public record PerspectiveRebuildFailed(
+    [property: StreamId] Guid StreamId,
+    string PerspectiveName,
+    RebuildMode Mode,
+    string Error,
+    int StreamsProcessedBeforeFailure,
+    TimeSpan Duration
+) : IEvent;
+```
+
+---
+
+<a id="perspective-rewind-events"></a>
+## Perspective Rewind Events
+
+These events are emitted when a perspective rewinds due to a late-arriving event. Rewind replays events from the nearest snapshot to incorporate out-of-order events.
+
+### PerspectiveRewindStarted
+
+Emitted when a perspective rewind begins.
+
+```csharp{title="PerspectiveRewindStarted" description="Emitted when a perspective rewind begins due to a late-arriving event" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rewind"]}
+public record PerspectiveRewindStarted(
+    [property: StreamId] Guid StreamId,
+    string PerspectiveName,
+    Guid TriggeringEventId,
+    Guid? ReplayFromSnapshotEventId,
+    bool HasSnapshot,
+    DateTimeOffset StartedAt
+) : IEvent;
+```
+
+### PerspectiveRewindCompleted
+
+Emitted when a perspective rewind completes successfully.
+
+```csharp{title="PerspectiveRewindCompleted" description="Emitted when a perspective rewind completes successfully" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rewind"]}
+public record PerspectiveRewindCompleted(
+    [property: StreamId] Guid StreamId,
+    string PerspectiveName,
+    Guid TriggeringEventId,
+    Guid FinalEventId,
+    int EventsReplayed,
+    DateTimeOffset StartedAt,
+    DateTimeOffset CompletedAt
+) : IEvent;
+```
+
+---
+
+<a id="migration-events"></a>
+## Migration Events
+
+These events track the lifecycle of database migrations. They are emitted during `AddWhizbang()` startup when migrations are applied.
+
+### MigrationItemStarted
+
+Emitted when an individual migration starts processing.
+
+```csharp{title="MigrationItemStarted" description="Emitted when an individual migration starts processing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+public record MigrationItemStarted(
+    [property: StreamId] Guid StreamId,
+    string MigrationKey,
+    MigrationStrategy Strategy,
+    string? OldHash,
+    string NewHash
+) : IEvent;
+```
+
+### MigrationItemCompleted
+
+Emitted when an individual migration completes.
+
+```csharp{title="MigrationItemCompleted" description="Emitted when an individual migration completes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+public record MigrationItemCompleted(
+    [property: StreamId] Guid StreamId,
+    string MigrationKey,
+    MigrationStatus Status,
+    string StatusDescription,
+    TimeSpan Duration
+) : IEvent;
+```
+
+### MigrationItemFailed
+
+Emitted when an individual migration fails.
+
+```csharp{title="MigrationItemFailed" description="Emitted when an individual migration fails" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+public record MigrationItemFailed(
+    [property: StreamId] Guid StreamId,
+    string MigrationKey,
+    MigrationStatus Status,
+    MigrationFailureReason FailureReason,
+    string Error,
+    TimeSpan Duration
+) : IEvent;
+```
+
+### MigrationBatchStarted
+
+Emitted when the full migration batch starts (all infrastructure + perspectives).
+
+```csharp{title="MigrationBatchStarted" description="Emitted when the full migration batch starts" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+public record MigrationBatchStarted(
+    [property: StreamId] Guid StreamId,
+    string LibraryVersion,
+    int TotalMigrations,
+    int TotalPerspectives
+) : IEvent;
+```
+
+### MigrationBatchCompleted
+
+Emitted when the full migration batch completes, including per-item results.
+
+```csharp{title="MigrationBatchCompleted" description="Emitted when the full migration batch completes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+public record MigrationBatchCompleted(
+    [property: StreamId] Guid StreamId,
+    string LibraryVersion,
+    MigrationBatchItemResult[] Results,
+    int Applied,
+    int Updated,
+    int Skipped,
+    int Failed,
+    TimeSpan TotalDuration
+) : IEvent;
+
+public record MigrationBatchItemResult(
+    string MigrationKey,
+    MigrationStatus Status,
+    string StatusDescription);
+```
+
+### Migration Enums {#migration-enums}
+
+#### MigrationStatus
+
+Status of a migration item in `wh_schema_migrations`:
+
+| Value | Description |
+|-------|-------------|
+| `Applied` (1) | Migration was applied for the first time |
+| `Updated` (2) | Migration was updated (hash changed) |
+| `Skipped` (3) | Migration was skipped (hash unchanged) |
+| `MigratingInBackground` (4) | Migration is running in the background |
+| `Failed` (-1) | Migration failed |
+
+#### MigrationStrategy
+
+Strategy used for executing a migration:
+
+| Value | Description |
+|-------|-------------|
+| `DirectDdl` | Direct DDL execution (CREATE TABLE, ALTER, etc.) |
+| `ColumnCopy` | Column copy strategy for zero-downtime changes |
+| `EventReplay` | Event replay strategy for perspective migrations |
+
+#### MigrationFailureReason
+
+Reason a migration failed:
+
+| Value | Description |
+|-------|-------------|
+| `Unknown` (0) | Unknown failure reason |
+| `SqlError` (1) | SQL execution error |
+| `Timeout` (2) | Migration timed out |
+| `ColumnTypeMismatch` (3) | Column type mismatch during copy |
+| `DataCopyFailed` (4) | Data copy operation failed |
+| `SwapFailed` (5) | Column swap operation failed |

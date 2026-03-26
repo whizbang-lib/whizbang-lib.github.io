@@ -234,7 +234,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     _logger = logger;
   }
 
-  public async Task<OrderCreated> HandleAsync(
+  public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder command,
     CancellationToken ct = default
   ) {
@@ -386,7 +386,7 @@ public class OrdersController : ControllerBase {
     CancellationToken ct
   ) {
     try {
-      var result = await _dispatcher.DispatchAsync(command, ct);
+      var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
 
       return CreatedAtAction(
         nameof(GetOrder),

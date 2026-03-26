@@ -10,14 +10,16 @@ tags: >-
   work-coordinator, atomic-operations, batch-processing,
   distributed-coordination, lease-management
 codeReferences:
-  - src/Whizbang.Core/WorkCoordination/IWorkCoordinator.cs
-  - src/Whizbang.Data.Postgres/WorkCoordination/PostgresWorkCoordinator.cs
-  - src/Whizbang.Data.Postgres/WorkCoordination/process_work_batch.sql
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
 ---
 
 # Work Coordinator
 
 The **Work Coordinator** (`IWorkCoordinator`) is Whizbang's atomic batch processing engine. It handles Outbox, Inbox, and event store tracking in a single database transaction with lease-based coordination for distributed work.
+
+> **This page is the API reference.** For conceptual architecture (lease-based coordination, virtual partition distribution, stream ordering guarantees), see [Work Coordination](work-coordination.md).
 
 ## Overview
 
@@ -52,56 +54,52 @@ The Work Coordinator solves a critical problem: **How do you atomically coordina
 ```csharp{title="IWorkCoordinator Interface" description="Demonstrates iWorkCoordinator Interface" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "IWorkCoordinator", "Interface"]}
 public interface IWorkCoordinator {
     Task<WorkBatch> ProcessWorkBatchAsync(
-        // Instance info
-        Guid instanceId,
-        string serviceName,
-        string hostName,
-        int processId,
-        Dictionary<string, JsonElement>? metadata,
-
-        // Outbox completions and failures
-        MessageCompletion[] outboxCompletions,
-        MessageFailure[] outboxFailures,
-
-        // Inbox completions and failures
-        MessageCompletion[] inboxCompletions,
-        MessageFailure[] inboxFailures,
-
-        // Event store tracking - Receptors
-        ReceptorProcessingCompletion[] receptorCompletions,
-        ReceptorProcessingFailure[] receptorFailures,
-
-        // Event store tracking - Perspectives
-        PerspectiveCheckpointCompletion[] perspectiveCompletions,
-        PerspectiveCheckpointFailure[] perspectiveFailures,
-
-        // New work to store
-        OutboxMessage[] newOutboxMessages,
-        InboxMessage[] newInboxMessages,
-
-        // Lease renewals
-        Guid[] renewOutboxLeaseIds,
-        Guid[] renewInboxLeaseIds,
-
-        // Configuration
-        WorkBatchFlags flags = WorkBatchFlags.None,
-        int partitionCount = 10000,
-        int maxPartitionsPerInstance = 100,
-        int leaseSeconds = 300,
-        int staleThresholdSeconds = 600,
-
+        ProcessWorkBatchRequest request,
         CancellationToken cancellationToken = default
     );
 }
 ```
 
-**Returns**:
-```csharp{title="IWorkCoordinator Interface - WorkBatch" description="Demonstrates iWorkCoordinator Interface" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "IWorkCoordinator", "Interface"]}
-public record WorkBatch(
-    OutboxMessage[] ClaimedOutboxMessages,
-    InboxMessage[] ClaimedInboxMessages,
-    int[] AssignedPartitions
-);
+**Parameter Object**:
+```csharp{title="ProcessWorkBatchRequest" description="Parameter object for ProcessWorkBatchAsync" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "IWorkCoordinator", "Request"]}
+public sealed record ProcessWorkBatchRequest {
+    // Instance info
+    public required Guid InstanceId { get; init; }
+    public required string ServiceName { get; init; }
+    public required string HostName { get; init; }
+    public required int ProcessId { get; init; }
+    public Dictionary<string, JsonElement>? Metadata { get; init; }
+
+    // Outbox completions and failures
+    public required MessageCompletion[] OutboxCompletions { get; init; }
+    public required MessageFailure[] OutboxFailures { get; init; }
+
+    // Inbox completions and failures
+    public required MessageCompletion[] InboxCompletions { get; init; }
+    public required MessageFailure[] InboxFailures { get; init; }
+
+    // Event store tracking - Receptors
+    public required ReceptorProcessingCompletion[] ReceptorCompletions { get; init; }
+    public required ReceptorProcessingFailure[] ReceptorFailures { get; init; }
+
+    // Event store tracking - Perspectives
+    public required PerspectiveCursorCompletion[] PerspectiveCompletions { get; init; }
+    public required PerspectiveCursorFailure[] PerspectiveFailures { get; init; }
+
+    // New work to store
+    public required OutboxMessage[] NewOutboxMessages { get; init; }
+    public required InboxMessage[] NewInboxMessages { get; init; }
+
+    // Lease renewals
+    public required Guid[] RenewOutboxLeaseIds { get; init; }
+    public required Guid[] RenewInboxLeaseIds { get; init; }
+
+    // Configuration
+    public WorkBatchOptions Flags { get; init; } = WorkBatchOptions.None;
+    public int PartitionCount { get; init; } = 10_000;
+    public int LeaseSeconds { get; init; } = 300;
+    public int StaleThresholdSeconds { get; init; } = 600;
+}
 ```
 
 ---
@@ -287,17 +285,17 @@ public record ReceptorProcessingFailure(
 ### Event Store Tracking - Perspectives
 
 ```csharp{title="Event Store Tracking - Perspectives" description="Demonstrates event Store Tracking - Perspectives" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Event", "Store", "Tracking"]}
-PerspectiveCheckpointCompletion[] perspectiveCompletions,
-PerspectiveCheckpointFailure[] perspectiveFailures,
+PerspectiveCursorCompletion[] perspectiveCompletions,
+PerspectiveCursorFailure[] perspectiveFailures,
 
-public record PerspectiveCheckpointCompletion(
+public record PerspectiveCursorCompletion(
     Guid StreamId,
     string PerspectiveName,
     Guid LastEventId,
     PerspectiveProcessingStatus Status
 );
 
-public record PerspectiveCheckpointFailure(
+public record PerspectiveCursorFailure(
     Guid StreamId,
     string PerspectiveName,
     Guid LastEventId,
@@ -358,11 +356,10 @@ Guid[] renewInboxLeaseIds,
 ### Configuration
 
 ```csharp{title="Configuration" description="Demonstrates configuration" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Configuration"]}
-WorkBatchFlags flags = WorkBatchFlags.None,
-int partitionCount = 10000,
-int maxPartitionsPerInstance = 100,
-int leaseSeconds = 300,
-int staleThresholdSeconds = 600,
+public WorkBatchOptions Flags { get; init; } = WorkBatchOptions.None;
+public int PartitionCount { get; init; } = 10_000;
+public int LeaseSeconds { get; init; } = 300;
+public int StaleThresholdSeconds { get; init; } = 600;
 ```
 
 **Flags**:
@@ -370,10 +367,9 @@ int staleThresholdSeconds = 600,
 - `SkipClaim`: Don't claim new work (only process completions/failures)
 
 **Parameters**:
-- `partitionCount`: Total partitions (10,000 recommended)
-- `maxPartitionsPerInstance`: Max partitions per worker (100 recommended)
-- `leaseSeconds`: Lease duration (300s = 5 minutes)
-- `staleThresholdSeconds`: Stale lease threshold (600s = 10 minutes)
+- `PartitionCount`: Total partitions (10,000 recommended)
+- `LeaseSeconds`: Lease duration (300s = 5 minutes)
+- `StaleThresholdSeconds`: Stale lease threshold (600s = 10 minutes)
 
 ---
 
@@ -566,7 +562,6 @@ CREATE OR REPLACE FUNCTION process_work_batch(
 
     -- Configuration
     p_partition_count INT DEFAULT 10000,
-    p_max_partitions_per_instance INT DEFAULT 100,
     p_lease_seconds INT DEFAULT 300,
     p_stale_threshold_seconds INT DEFAULT 600
 )
@@ -664,7 +659,7 @@ public class WorkCoordinatorMetrics {
 
 **Warning**:
 - ⚠️ `OutboxStoredCount > 10000` (backlog growing)
-- ⚠️ `ActiveLeases > workers * maxPartitionsPerInstance` (too many leases)
+- ⚠️ `ActiveLeases` growing unexpectedly (too many leases)
 
 ---
 

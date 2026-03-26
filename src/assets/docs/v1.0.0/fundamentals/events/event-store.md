@@ -93,7 +93,24 @@ var syncResult = await _eventStore.AppendAndWaitAsync<OrderCreatedEvent, OrderPr
 | `streamId` | `Guid` | The stream/aggregate ID |
 | `message` | `TMessage` | The event to append |
 | `timeout` | `TimeSpan?` | Maximum wait time (default: 30 seconds) |
+| `onWaiting` | `Action<SyncWaitingContext>?` | Optional callback invoked when waiting begins (only if there are events to wait for) |
+| `onDecisionMade` | `Action<SyncDecisionContext>?` | Optional callback always invoked when the sync decision is made, regardless of outcome |
 | `cancellationToken` | `CancellationToken` | Cancellation token |
+
+### Waiting for All Perspectives {#append-and-wait-all}
+
+The single-type-parameter overload `AppendAndWaitAsync<TMessage>` waits for **all** registered perspectives to process the event, rather than a specific one:
+
+```csharp{title="Wait for All Perspectives" description="Append and wait for all perspectives to process" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "AppendAndWait", "All"]}
+var syncResult = await _eventStore.AppendAndWaitAsync(
+    streamId: orderId,
+    message: new OrderCreatedEvent(orderId, customerId, items),
+    timeout: TimeSpan.FromSeconds(10));
+
+// Event has been appended AND all perspectives have processed it
+```
+
+This uses `IEventCompletionAwaiter` internally to wait for all perspectives.
 
 ### SyncResult
 
@@ -173,11 +190,22 @@ public interface IEventStore {
   Task AppendAsync<TMessage>(Guid streamId, TMessage message, CancellationToken ct = default)
       where TMessage : notnull;
 
-  // Append and wait for perspective sync
+  // Append and wait for specific perspective sync
   Task<SyncResult> AppendAndWaitAsync<TMessage, TPerspective>(
-      Guid streamId, TMessage message, TimeSpan? timeout = null, CancellationToken ct = default)
+      Guid streamId, TMessage message, TimeSpan? timeout = null,
+      Action<SyncWaitingContext>? onWaiting = null,
+      Action<SyncDecisionContext>? onDecisionMade = null,
+      CancellationToken ct = default)
       where TMessage : notnull
       where TPerspective : class;
+
+  // Append and wait for ALL perspectives to process
+  Task<SyncResult> AppendAndWaitAsync<TMessage>(
+      Guid streamId, TMessage message, TimeSpan? timeout = null,
+      Action<SyncWaitingContext>? onWaiting = null,
+      Action<SyncDecisionContext>? onDecisionMade = null,
+      CancellationToken ct = default)
+      where TMessage : notnull;
 
   // Read by sequence number
   IAsyncEnumerable<MessageEnvelope<TMessage>> ReadAsync<TMessage>(
@@ -191,9 +219,14 @@ public interface IEventStore {
   IAsyncEnumerable<MessageEnvelope<IEvent>> ReadPolymorphicAsync(
       Guid streamId, Guid? fromEventId, IReadOnlyList<Type> eventTypes, CancellationToken ct = default);
 
-  // Get events between checkpoints
+  // Get events between checkpoints (single type)
   Task<List<MessageEnvelope<TMessage>>> GetEventsBetweenAsync<TMessage>(
       Guid streamId, Guid? afterEventId, Guid upToEventId, CancellationToken ct = default);
+
+  // Get events between checkpoints (polymorphic - multiple event types)
+  Task<List<MessageEnvelope<IEvent>>> GetEventsBetweenPolymorphicAsync(
+      Guid streamId, Guid? afterEventId, Guid upToEventId,
+      IReadOnlyList<Type> eventTypes, CancellationToken ct = default);
 
   // Get last sequence number
   Task<long> GetLastSequenceAsync(Guid streamId, CancellationToken ct = default);

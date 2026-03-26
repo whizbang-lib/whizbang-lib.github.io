@@ -439,3 +439,4 @@ services.AddWhizbang(options => {
 - [Lifecycle Receptors](../receptors/lifecycle-receptors.md) - `[FireAt]` attribute and `ILifecycleContext`
 - [Testing: Lifecycle Synchronization](../../operations/testing/lifecycle-synchronization.md) - Test patterns with lifecycle hooks
 - [Message Tags](../messages/message-tags.md) - Tags fire at every stage as lifecycle observers
+- [Metrics Reference](../../operations/observability/metrics.md#lifecycle-coordinator) - Complete metrics reference for all Whizbang subsystems including lifecycle coordinator

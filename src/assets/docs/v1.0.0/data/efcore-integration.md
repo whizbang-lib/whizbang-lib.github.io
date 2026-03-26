@@ -54,7 +54,7 @@ dotnet tool install --global dotnet-ef
 
 ### JSONB Column Support
 
-EF Core 10 has native **JSONB** support for PostgreSQL:
+EF Core 10 has native **JSONB** support for PostgreSQL via `ComplexProperty().ToJson()`:
 
 ```csharp{title="JSONB Column Support" description="EF Core 10 has native JSONB support for PostgreSQL:" category="Implementation" difficulty="ADVANCED" tags=["Data", "JSONB", "Column", "Support"]}
 public class Product {
@@ -68,7 +68,14 @@ public class Product {
 public class ProductMetadata {
     public string Category { get; set; } = default!;
     public string[] Tags { get; set; } = Array.Empty<string>();
-    public Dictionary<string, string> Attributes { get; set; } = new();
+    // Note: Dictionary<K,V> is NOT supported by ComplexProperty().ToJson().
+    // Use List<T> with Key/Value properties instead:
+    public List<AttributeEntry> Attributes { get; set; } = [];
+}
+
+public class AttributeEntry {
+    public string Key { get; set; } = default!;
+    public string Value { get; set; } = default!;
 }
 
 // DbContext configuration
@@ -76,9 +83,9 @@ protected override void OnModelCreating(ModelBuilder modelBuilder) {
     modelBuilder.Entity<Product>(entity => {
         entity.ToTable("products");
 
-        // JSONB column (automatic in EF Core 10 for PostgreSQL)
-        entity.OwnsOne(p => p.Metadata, owned => {
-            owned.ToJson();  // Stores as JSONB
+        // JSONB column - EF Core 10 ComplexProperty().ToJson() for full LINQ support
+        entity.ComplexProperty(p => p.Metadata, cp => {
+            cp.ToJson("metadata");  // Stores as JSONB
         });
     });
 }
