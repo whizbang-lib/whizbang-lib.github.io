@@ -7,6 +7,10 @@ description: >-
   Deploy with Native AOT - zero reflection, trim-safe code, and AOT-compatible
   patterns
 tags: 'native-aot, aot, reflection, trim-safe, deployment'
+codeReferences:
+  - src/Whizbang.Generators/MessageJsonContextGenerator.cs
+  - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+  - src/Whizbang.Core/Serialization/JsonTypeInfoResolverExtensions.cs
 ---
 
 # Native AOT

@@ -3,6 +3,11 @@ title: Scoping
 version: 1.0.0
 category: Core Concepts
 description: Multi-tenancy and data isolation through composable scope filters, enabling tenant, user, organization, and principal-based access patterns.
+codeReferences:
+  - src/Whizbang.Core/Scoping/IScopedInterfaces.cs
+  - src/Whizbang.Core/Lenses/ScopeFilter.cs
+  - src/Whizbang.Core/Lenses/ScopeFilterBuilder.cs
+  - src/Whizbang.Core/Lenses/PerspectiveScope.cs
 ---
 
 # Scoping System

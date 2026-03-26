@@ -10,6 +10,9 @@ tags:
   - perspectives
   - streamkey
   - source-generator
+codeReferences:
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
 ---
 
 # WHIZ030: Perspective Event Missing StreamKey

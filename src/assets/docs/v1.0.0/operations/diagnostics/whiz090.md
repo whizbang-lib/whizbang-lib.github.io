@@ -12,6 +12,9 @@ tags:
   - attributes
   - source-generator
   - naming-convention
+codeReferences:
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators/Analyzers/MessageTagParameterAnalyzer.cs
 ---
 
 # WHIZ090: MessageTag Parameter Naming

@@ -7,6 +7,11 @@ description: >-
   Application monitoring - Application Insights, Prometheus, distributed
   tracing, metrics, and dashboards
 tags: 'monitoring, observability, application-insights, prometheus, tracing, metrics'
+codeReferences:
+  - src/Whizbang.Core/Observability/WhizbangActivitySource.cs
+  - src/Whizbang.Core/Observability/WhizbangMetrics.cs
+  - src/Whizbang.Core/Observability/DispatcherMetrics.cs
+  - src/Whizbang.Core/HealthChecks/SubscriptionHealthCheck.cs
 ---
 
 # Monitoring & Observability

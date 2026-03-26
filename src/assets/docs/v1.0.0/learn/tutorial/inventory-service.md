@@ -7,6 +7,15 @@ description: >-
   Build the Inventory Worker - event subscription, stock reservations,
   compensation, and perspectives
 tags: 'tutorial, inventory-service, event-driven, perspectives, compensation'
+codeReferences:
+  - samples/ECommerce/ECommerce.InventoryWorker/Program.cs
+  - >-
+    samples/ECommerce/ECommerce.InventoryWorker/Receptors/ReserveInventoryReceptor.cs
+  - >-
+    samples/ECommerce/ECommerce.InventoryWorker/Perspectives/InventoryLevelsPerspective.cs
+  - >-
+    samples/ECommerce/ECommerce.Contracts/Commands/ReserveInventoryCommand.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/InventoryReservedEvent.cs
 ---
 
 # Inventory Service

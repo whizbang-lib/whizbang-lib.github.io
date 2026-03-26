@@ -11,6 +11,10 @@ tags:
   - pgvector
   - efcore
   - package-reference
+codeReferences:
+  - src/Whizbang.Generators/VectorDependencyAnalyzer.cs
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/VectorFieldPackageReferenceAnalyzer.cs
 ---
 
 # WHIZ070: Missing Pgvector.EntityFrameworkCore Package

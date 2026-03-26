@@ -7,6 +7,11 @@ description: >-
   Optimize Whizbang performance - zero-allocation patterns, pooling, batching,
   and profiling
 tags: 'performance, optimization, profiling, zero-allocation, pooling'
+codeReferences:
+  - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  - src/Whizbang.Core/Workers/BatchedCompletionStrategy.cs
+  - src/Whizbang.Core/Workers/ProcessedEventCache.cs
+  - src/Whizbang.Core/Observability/WhizbangMetrics.cs
 ---
 
 # Performance Tuning

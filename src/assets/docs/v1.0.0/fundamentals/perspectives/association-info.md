@@ -2,6 +2,10 @@
 title: PerspectiveAssociationInfo
 version: 1.0.0
 category: Perspectives
+codeReferences:
+  - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveAssociationGenerator.cs
 ---
 
 # PerspectiveAssociationInfo: Strongly-Typed Associations with Delegates {#PerspectiveAssociationInfo}

@@ -7,6 +7,14 @@ description: >-
   Build the Customer Service BFF - perspectives, read models, CQRS query side,
   and GraphQL API
 tags: 'tutorial, customer-service, bff, perspectives, cqrs, read-models'
+codeReferences:
+  - samples/ECommerce/ECommerce.BFF.API/Program.cs
+  - >-
+    samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
+  - >-
+    samples/ECommerce/ECommerce.BFF.API/Perspectives/InventoryLevelsPerspective.cs
+  - samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs
+  - samples/ECommerce/ECommerce.BFF.API/GraphQL/CatalogQueries.cs
 ---
 
 # Customer Service (BFF)

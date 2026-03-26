@@ -5,6 +5,12 @@ category: Components
 order: 9
 description: Basic in-process message transport for local development
 tags: 'transports, messaging, in-process, communication, v0.1.0'
+codeReferences:
+  - src/Whizbang.Core/Transports/ITransport.cs
+  - src/Whizbang.Core/Transports/ITransportManager.cs
+  - src/Whizbang.Core/Transports/ISubscription.cs
+  - src/Whizbang.Core/Transports/IMessageSerializer.cs
+  - src/Whizbang.Core/Transports/BulkPublish.cs
 ---
 
 # Transports Component

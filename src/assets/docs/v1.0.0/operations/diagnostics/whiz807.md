@@ -11,6 +11,10 @@ tags:
   - vector-field
   - perspectives
   - source-generator
+codeReferences:
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators/PerspectiveSchemaGenerator.cs
+  - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
 ---
 
 # WHIZ807: Physical Fields Discovered

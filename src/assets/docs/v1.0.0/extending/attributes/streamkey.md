@@ -10,6 +10,10 @@ tags:
   - perspectives
   - event-sourcing
   - source-generator
+codeReferences:
+  - src/Whizbang.Core/StreamIdExtractor.cs
+  - src/Whizbang.Core/IStreamIdExtractor.cs
+  - src/Whizbang.Core/StreamIdAttribute.cs
 ---
 
 # StreamKey Attribute

@@ -9,6 +9,10 @@ description: >-
 tags: >-
   scaling, horizontal-scaling, partitioning, load-balancing, autoscaling,
   performance
+codeReferences:
+  - src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs
+  - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
+  - src/Whizbang.Core/Workers/PerspectiveWorker.cs
 ---
 
 # Scaling Patterns

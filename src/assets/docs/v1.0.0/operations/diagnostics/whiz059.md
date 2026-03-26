@@ -11,6 +11,9 @@ tags:
   - interception
   - source-generator
   - suppression
+codeReferences:
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators/GuidInterceptorGenerator.cs
 ---
 
 # WHIZ059: GUID Interception Suppressed

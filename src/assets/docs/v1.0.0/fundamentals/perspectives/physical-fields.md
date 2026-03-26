@@ -2,6 +2,12 @@
 title: Physical Fields
 version: 1.0.0
 category: Perspectives
+codeReferences:
+  - src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs
+  - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs
 ---
 
 # Physical Fields

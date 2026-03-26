@@ -7,6 +7,14 @@ description: >-
   Build the Analytics Worker - real-time analytics, time-series perspectives,
   and reporting dashboards
 tags: 'tutorial, analytics-service, perspectives, time-series, reporting, dashboards'
+codeReferences:
+  - >-
+    samples/ECommerce/ECommerce.BFF.API/Perspectives/PerspectiveModels.cs
+  - >-
+    samples/ECommerce/ECommerce.BFF.API/Hubs/OrderStatusHub.cs
+  - >-
+    samples/ECommerce/ECommerce.BFF.API/Hubs/ProductInventoryHub.cs
+  - samples/ECommerce/ECommerce.BFF.API/Endpoints/GetOrderHistoryEndpoint.cs
 ---
 
 # Analytics Service

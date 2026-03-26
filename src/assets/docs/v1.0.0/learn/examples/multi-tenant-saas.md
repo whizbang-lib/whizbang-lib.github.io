@@ -7,6 +7,13 @@ description: >-
   Build multi-tenant SaaS applications with tenant isolation, per-tenant
   databases, and cross-tenant analytics
 tags: 'multi-tenancy, saas, tenant-isolation, database-per-tenant'
+codeReferences:
+  - src/Whizbang.Core/Lenses/TenantConstants.cs
+  - src/Whizbang.Core/Lenses/ILensQuery.cs
+  - src/Whizbang.Core/IStreamIdExtractor.cs
+  - samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs
+  - >-
+    samples/ECommerce/ECommerce.BFF.API/Endpoints/SuperAdmin/GetOrdersByTenantEndpoint.cs
 ---
 
 # Multi-Tenant SaaS

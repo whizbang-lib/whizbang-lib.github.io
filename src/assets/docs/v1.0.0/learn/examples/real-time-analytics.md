@@ -7,6 +7,14 @@ description: >-
   Build real-time analytics dashboards - streaming metrics, SignalR updates, and
   live KPIs
 tags: 'real-time, analytics, signalr, streaming, dashboards, websockets'
+codeReferences:
+  - src/Whizbang.SignalR/Hooks/SignalRNotificationHook.cs
+  - >-
+    src/Whizbang.SignalR/DependencyInjection/SignalRServiceCollectionExtensions.cs
+  - samples/ECommerce/ECommerce.BFF.API/Hubs/OrderStatusHub.cs
+  - samples/ECommerce/ECommerce.BFF.API/Hubs/ProductInventoryHub.cs
+  - >-
+    samples/ECommerce/ECommerce.BFF.API/Perspectives/InventoryLevelsPerspective.cs
 ---
 
 # Real-Time Analytics

@@ -10,6 +10,10 @@ tags:
   - multi-model
   - type-safety
   - analyzer
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/LensQueryTypeArgumentAnalyzer.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresLensQuery.cs
 ---
 
 # WHIZ400: Invalid Type Argument for ILensQuery

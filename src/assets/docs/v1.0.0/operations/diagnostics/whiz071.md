@@ -11,6 +11,10 @@ tags:
   - pgvector
   - npgsql
   - package-reference
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres.Generators/VectorFieldPackageReferenceAnalyzer.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Core/Perspectives/SuppressVectorPackageCheckAttribute.cs
 ---
 
 # WHIZ071: Missing Pgvector Package

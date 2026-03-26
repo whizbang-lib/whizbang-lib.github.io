@@ -5,6 +5,12 @@ category: Features
 order: 1
 description: Timeout handling that respects debugging sessions and breakpoints
 tags: 'debugger, clock, timeout, stopwatch, diagnostics'
+codeReferences:
+  - src/Whizbang.Core/Diagnostics/DebuggerAwareClock.cs
+  - src/Whizbang.Core/Diagnostics/IDebuggerAwareClock.cs
+  - src/Whizbang.Core/Diagnostics/IActiveStopwatch.cs
+  - src/Whizbang.Core/Diagnostics/DebuggerAwareClockOptions.cs
+  - src/Whizbang.Core/Diagnostics/DebuggerDetectionMode.cs
 ---
 
 # Debugger-Aware Clock

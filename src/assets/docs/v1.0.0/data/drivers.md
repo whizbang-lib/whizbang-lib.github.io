@@ -5,6 +5,11 @@ category: Components
 order: 8
 description: Basic in-memory storage driver for development and testing
 tags: 'drivers, storage, in-memory, abstraction, v0.1.0'
+codeReferences:
+  - src/Whizbang.Core/Perspectives/IDriverOptions.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCoreDriverSelector.cs
+  - src/Whizbang.Data.EFCore.Postgres/InMemoryDriverExtensions.cs
+  - src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs
 ---
 
 # Drivers Component

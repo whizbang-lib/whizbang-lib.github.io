@@ -5,6 +5,10 @@ category: Advanced Topics
 order: 9
 description: 'Common issues, debugging techniques, diagnostic tools, and solutions'
 tags: 'troubleshooting, debugging, diagnostics, common-issues, solutions'
+codeReferences:
+  - src/Whizbang.Core/Diagnostics/DebuggerAwareClock.cs
+  - src/Whizbang.Core/Generated/WhizbangDiagnostics.cs
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
 ---
 
 # Troubleshooting Guide

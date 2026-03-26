@@ -7,6 +7,11 @@ description: >-
   Deploy to production - Azure Kubernetes Service, CI/CD pipelines, monitoring,
   and scaling
 tags: 'tutorial, deployment, kubernetes, azure, cicd, monitoring'
+codeReferences:
+  - samples/ECommerce/ECommerce.AppHost/Program.cs
+  - samples/ECommerce/ECommerce.ServiceDefaults/Extensions.cs
+  - samples/ECommerce/ECommerce.OrderService.API/Program.cs
+  - samples/ECommerce/ECommerce.InventoryWorker/Program.cs
 ---
 
 # Deployment
