@@ -119,6 +119,11 @@ public class EventSourcingDispatcher : IDispatcher {
 **Core Concepts**:
 - [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Default dispatcher
 
+### For Users
+
+New to dispatchers? Start with the user guide:
+- [Dispatcher Guide](../../fundamentals/dispatcher/dispatcher.md) — Core dispatch patterns, local vs distributed dispatch, and usage examples
+
 ---
 
 *Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*

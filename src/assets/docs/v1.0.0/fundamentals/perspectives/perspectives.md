@@ -912,6 +912,12 @@ public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {
 - ECommerce: BFF Pattern - Real-world perspectives
 - ECommerce: Product Catalog - Complete example
 
+### For Contributors
+
+Looking to extend or customize perspectives? See:
+- [Custom Perspectives](../../extending/extensibility/custom-perspectives.md) — Advanced patterns like time-travel, snapshots, caching, and custom storage backends
+- [Perspective Discovery](../../extending/source-generators/perspective-discovery.md) — How source generators discover and register perspective runners at compile time
+
 ---
 
 *Version 1.0.0 - Foundation Release | Last Updated: 2025-12-21*

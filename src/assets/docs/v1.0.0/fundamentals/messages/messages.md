@@ -273,6 +273,11 @@ public record ProductPriceChanged : IEvent {
 - [Receptors](../receptors/receptors.md) - Message handlers
 - [Dispatcher](../dispatcher/dispatcher.md) - Message routing
 
+### For Contributors
+
+Looking to understand how messages are discovered and registered? See:
+- [Message Registry](../../extending/source-generators/message-registry.md) — How source generators build the message type registry for routing and serialization
+
 ---
 
 *Version 1.0.0 - Foundation Release*

@@ -282,6 +282,11 @@ public void Registry_WithMultiplePriorities_OrdersByPriorityAsync() {
 - [AOT Requirements](../../operations/deployment/native-aot.md) - AOT compatibility patterns
 - Source Generators - Generated registration code
 
+### For Contributors
+
+Looking to understand how source generators configure assembly registration? See:
+- [Source Generator Configuration](../../extending/source-generators/configuration.md) — Configure source generator behavior and assembly-level registration
+
 ---
 
 *Version 1.0.0 - Foundation Release*

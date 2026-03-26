@@ -1148,6 +1148,12 @@ public class CompleteOrderReceptor : IReceptor<CompleteOrder, OrderCompleted> {
 **Examples**:
 - ECommerce: Order Service - Real-world receptor patterns
 
+### For Contributors
+
+Looking to extend or customize receptors? See:
+- [Custom Receptors](../../extending/extensibility/custom-receptors.md) — Advanced patterns like streaming, lifecycle hooks, base classes, and performance optimization
+- [Receptor Discovery](../../extending/source-generators/receptor-discovery.md) — How source generators discover and register receptors at compile time
+
 ---
 
 *Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*

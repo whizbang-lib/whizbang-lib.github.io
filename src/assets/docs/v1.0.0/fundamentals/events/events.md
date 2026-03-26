@@ -342,6 +342,11 @@ public class OrderSummaryPerspective : IPerspective<OrderSummary> {
 - [Commands and Events](../../messaging/commands-events.md) - Detailed patterns
 - [Perspectives](../perspectives/perspectives.md) - Event projections
 
+### For Contributors
+
+Looking to understand how aggregate IDs are generated? See:
+- [Aggregate IDs](../../extending/source-generators/aggregate-ids.md) — UUIDv7 generation and identity value object source generation
+
 ---
 
 *Version 1.0.0 - Foundation Release*

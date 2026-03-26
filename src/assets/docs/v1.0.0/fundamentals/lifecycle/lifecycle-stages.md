@@ -787,3 +787,8 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 - **Runtime registration** via `ILifecycleReceptorRegistry` for tests
 - **Zero reflection** - fully AOT-compatible via `IReceptorInvoker` and `IReceptorRegistry`
 - **Performance** - keep lifecycle receptors fast and lightweight
+
+### For Contributors
+
+Looking to understand the internal message flow? See:
+- [Message Lifecycle & Architecture](../../extending/internals/message-lifecycle.md) — Complete internal view of how messages flow through Dispatcher, Outbox, Inbox, and Perspectives

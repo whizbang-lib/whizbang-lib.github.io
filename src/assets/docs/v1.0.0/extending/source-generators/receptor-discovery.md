@@ -722,6 +722,11 @@ internal record CreateOrder(Guid CustomerId, OrderItem[] Items);
 - Performance: Local Invoke - Sub-20ns dispatch
 - Testing: Receptor Testing - Unit testing receptors
 
+### For Users
+
+New to receptors? Start with the user guide:
+- [Receptors Guide](../../fundamentals/receptors/receptors.md) — Core receptor patterns, command handling, and dependency injection
+
 ---
 
 *Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
