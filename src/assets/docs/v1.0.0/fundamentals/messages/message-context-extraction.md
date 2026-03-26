@@ -9,6 +9,7 @@ description: >-
 tags: 'context-extraction, envelope, tracing, opentelemetry, scope, security, hops'
 codeReferences:
   - src/Whizbang.Core/Observability/EnvelopeContextExtractor.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Message Context Extraction

@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs
   - src/Whizbang.Core/Transports/AzureServiceBus/AspireConfigurationGenerator.cs
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusReadinessCheck.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # .NET Aspire Integration

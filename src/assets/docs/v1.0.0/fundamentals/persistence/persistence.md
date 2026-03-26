@@ -10,6 +10,7 @@ tags: 'persistence, event-sourcing, batching, outbox, configuration'
 codeReferences:
   - src/Whizbang.Core/Persistence/PersistenceMode.cs
   - src/Whizbang.Core/Attributes/PersistenceStrategyAttribute.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Persistence

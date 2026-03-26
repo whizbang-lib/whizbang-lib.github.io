@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Observability/Hooks/OpenTelemetrySpanHook.cs
   - src/Whizbang.Observability/Hooks/OpenTelemetryMetricHook.cs
   - src/Whizbang.Observability/DependencyInjection/ObservabilityTagExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # OpenTelemetry Integration

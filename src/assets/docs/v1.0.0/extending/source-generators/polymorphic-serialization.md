@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
   - src/Whizbang.Generators/InheritanceInfo.cs
   - src/Whizbang.Generators/PolymorphicTypeInfo.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Polymorphic Serialization

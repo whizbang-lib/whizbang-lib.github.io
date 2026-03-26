@@ -15,6 +15,7 @@ tags:
 codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ080: Multiple Handlers for RPC Message

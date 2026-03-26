@@ -10,6 +10,7 @@ tags: 'perspectives, association, metadata, source-generators, registration'
 codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveAssociationInfo.cs
   - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Association Info

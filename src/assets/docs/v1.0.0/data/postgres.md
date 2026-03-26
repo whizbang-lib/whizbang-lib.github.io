@@ -9,6 +9,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/PostgresOptions.cs
   - src/Whizbang.Data.Postgres/PostgresConnectionRetry.cs
   - src/Whizbang.Data.Postgres/PostgresReadinessExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # PostgreSQL Data Provider

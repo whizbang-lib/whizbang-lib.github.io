@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/PerspectiveSchemaGenerator.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ802: VectorField Invalid Dimensions

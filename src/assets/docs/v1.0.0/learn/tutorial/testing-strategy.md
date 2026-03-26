@@ -18,6 +18,7 @@ codeReferences:
     samples/ECommerce/tests/ECommerce.BFF.API.Tests/PerspectiveModelsTests.cs
   - >-
     samples/ECommerce/tests/ECommerce.PaymentWorker.Tests/ProcessPaymentReceptorTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Testing Strategy

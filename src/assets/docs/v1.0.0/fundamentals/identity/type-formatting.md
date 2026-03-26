@@ -10,6 +10,7 @@ description: >-
 tags: 'type-formatter, type-formatting, type-names, aot, identity, source-generators'
 codeReferences:
   - src/Whizbang.Core/TypeFormatter.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # TypeFormatter: Type Name Formatting Utility

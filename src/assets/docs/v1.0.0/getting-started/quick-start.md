@@ -12,6 +12,7 @@ codeReferences:
   - >-
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
   - samples/ECommerce/ECommerce.BFF.API/Program.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Quick Start Tutorial

@@ -10,6 +10,7 @@ description: >-
 tags: 'raw-sql, sql, connection-access, bulk-operations, npgsql, lenses'
 codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/LensQueryConnectionExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Raw SQL and Connection Access

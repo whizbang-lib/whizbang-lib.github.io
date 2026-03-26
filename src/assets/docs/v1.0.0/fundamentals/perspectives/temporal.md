@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/ITemporalPerspectiveFor.cs
   - src/Whizbang.Core/Perspectives/ITemporalPerspectiveStore.cs
   - src/Whizbang.Core/Perspectives/TemporalActionType.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Temporal Perspectives

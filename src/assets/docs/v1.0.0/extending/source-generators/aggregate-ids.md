@@ -12,6 +12,7 @@ tags: >-
 codeReferences:
   - src/Whizbang.Generators/AggregateIdGenerator.cs
   - src/Whizbang.Core/Policies/PolicyContext.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Aggregate IDs

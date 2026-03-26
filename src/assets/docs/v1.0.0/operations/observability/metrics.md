@@ -16,6 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/TransportMetrics.cs
   - src/Whizbang.Core/Observability/PerspectiveMetrics.cs
   - src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Metrics Reference

@@ -10,6 +10,7 @@ description: >-
 tags: 'idempotency, exactly-once, deduplication, at-least-once, inbox, outbox, message-processing'
 codeReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Idempotency Patterns

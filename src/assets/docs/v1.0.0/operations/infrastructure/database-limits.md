@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Generators.Shared/Limits/IDbProviderLimits.cs
   - src/Whizbang.Generators.Shared/Utilities/IdentifierValidation.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/Limits/PostgresLimits.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Database Identifier Limits

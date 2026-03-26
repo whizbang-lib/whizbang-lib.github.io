@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Lenses/LensOptions.cs
   - src/Whizbang.Core/Lenses/FilterMode.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableLensQuery.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Scoped Lenses

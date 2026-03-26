@@ -10,6 +10,7 @@ description: >-
 tags: 'perspective-registry, schema-management, drift-detection, table-mapping, perspectives'
 codeReferences:
   - src/Whizbang.Data.Schema/Schemas/PerspectiveRegistrySchema.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Registry

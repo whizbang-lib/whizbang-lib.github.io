@@ -9,6 +9,7 @@ tags: 'event-streams, stream-id, event-sourcing, aggregates'
 codeReferences:
   - src/Whizbang.Core/ValueObjects/StreamId.cs
   - src/Whizbang.Core/Messaging/IEventStore.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Event Streams

@@ -14,6 +14,7 @@ codeReferences:
   - samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Endpoints/SuperAdmin/GetOrdersByTenantEndpoint.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Multi-Tenant SaaS

@@ -10,6 +10,7 @@ codeReferences:
   - src/Whizbang.Core/Lenses/IScopedLensQuery.cs
   - src/Whizbang.Core/Lenses/ScopedLensQuery.cs
   - src/Whizbang.Core/Lenses/LensQueryFactory.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Scoped Lens Queries

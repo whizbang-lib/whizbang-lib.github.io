@@ -10,6 +10,7 @@ codeReferences:
   - src/Whizbang.Core/IMessage.cs
   - src/Whizbang.Core/ICommand.cs
   - src/Whizbang.Core/IEvent.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Messages

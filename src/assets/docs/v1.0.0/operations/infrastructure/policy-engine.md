@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Core/Policies/PolicyEngine.cs
   - src/Whizbang.Core/Policies/PolicyConfiguration.cs
   - src/Whizbang.Core/Policies/PolicyContext.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Policy Engine Component

@@ -23,6 +23,7 @@ codeReferences:
   - src/Whizbang.Core/Attributes/TelemetryTagAttribute.cs
   - src/Whizbang.Core/Attributes/MetricTagAttribute.cs
   - src/Whizbang.Generators/MessageTagDiscoveryGenerator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Message Tags

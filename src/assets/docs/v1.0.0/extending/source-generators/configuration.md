@@ -12,6 +12,7 @@ tags: >-
 codeReferences:
   - src/Whizbang.Generators.Shared/Utilities/ConfigurationUtilities.cs
   - src/Whizbang.Generators.Shared/Models/TableNameConfig.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Configuration

@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs
   - src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Work Coordination

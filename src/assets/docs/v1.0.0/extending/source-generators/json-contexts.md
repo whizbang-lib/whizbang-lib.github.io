@@ -12,6 +12,7 @@ tags: >-
 codeReferences:
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
   - src/Whizbang.Core/Serialization/WhizbangJsonContext.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # JSON Contexts

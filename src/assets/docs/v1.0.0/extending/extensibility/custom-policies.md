@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Policies/IPolicyEngine.cs
   - src/Whizbang.Core/Policies/PolicyEngine.cs
   - src/Whizbang.Core/Policies/PolicyConfiguration.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Policies

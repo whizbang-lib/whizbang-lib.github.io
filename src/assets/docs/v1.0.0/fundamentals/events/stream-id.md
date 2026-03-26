@@ -9,6 +9,7 @@ tags: 'stream-id, events, event-sourcing, auto-generation'
 codeReferences:
   - src/Whizbang.Core/IHasStreamId.cs
   - src/Whizbang.Core/ValueObjects/StreamId.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Stream ID

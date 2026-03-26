@@ -15,6 +15,7 @@ tags:
 codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/Analyzers/MessageTagParameterAnalyzer.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ090: MessageTag Parameter Naming

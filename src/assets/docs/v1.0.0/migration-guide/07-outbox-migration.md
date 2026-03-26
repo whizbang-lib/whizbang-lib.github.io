@@ -9,6 +9,7 @@ description: >-
 tags: 'migration, outbox, inbox, durability, messaging'
 codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Outbox Migration: Wolverine → Whizbang

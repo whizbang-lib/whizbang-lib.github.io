@@ -15,6 +15,7 @@ codeReferences:
     samples/ECommerce/ECommerce.BFF.API/Perspectives/InventoryLevelsPerspective.cs
   - samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs
   - samples/ECommerce/ECommerce.BFF.API/GraphQL/CatalogQueries.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Customer Service (BFF)

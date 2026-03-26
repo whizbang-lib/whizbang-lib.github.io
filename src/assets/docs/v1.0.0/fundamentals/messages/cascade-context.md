@@ -17,6 +17,7 @@ codeReferences:
   - src/Whizbang.Core/Security/ScopedMessageContext.cs
   - src/Whizbang.Core/IMessageContext.cs
   - src/Whizbang.Core/MessageContext.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Cascade Context & Security Propagation

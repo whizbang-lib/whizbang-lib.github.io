@@ -11,6 +11,7 @@ tags: 'graphql, setup, installation, configuration, hotchocolate, asp-net'
 codeReferences:
   - src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangExtensions.cs
   - src/Whizbang.Transports.HotChocolate/Configuration/WhizbangGraphQLOptions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # GraphQL Setup

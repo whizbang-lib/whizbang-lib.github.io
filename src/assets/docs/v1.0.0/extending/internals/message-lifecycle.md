@@ -20,6 +20,7 @@ codeReferences:
   - src/Whizbang.Core/Streams/OrderedStreamProcessor.cs
   - src/Whizbang.Data.Postgres/Messaging/DapperWorkCoordinator.cs
   - src/Whizbang.Data.EFCore.Postgres/Messaging/EFCoreWorkCoordinator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Message Lifecycle & Architecture

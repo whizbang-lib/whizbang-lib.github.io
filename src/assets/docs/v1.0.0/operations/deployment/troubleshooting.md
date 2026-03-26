@@ -9,6 +9,7 @@ codeReferences:
   - src/Whizbang.Core/Diagnostics/DebuggerAwareClock.cs
   - src/Whizbang.Core/Generated/WhizbangDiagnostics.cs
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Troubleshooting Guide

@@ -7,6 +7,7 @@ description: Updating test infrastructure when migrating to Whizbang
 tags: 'migration, testing, tunit, mocks, integration-tests'
 codeReferences:
   - src/Whizbang.Testing/InMemoryEventStore.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Testing Migration

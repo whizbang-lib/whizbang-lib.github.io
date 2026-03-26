@@ -10,6 +10,7 @@ tags: 'pooling, performance, allocations, gc, policy-context, object-reuse'
 codeReferences:
   - src/Whizbang.Core/Pooling/PolicyContextPool.cs
   - src/Whizbang.Core/Pooling/ExecutionState.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Object Pooling

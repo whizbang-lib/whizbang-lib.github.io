@@ -24,6 +24,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/Sync/IEventCompletionAwaiter.cs
   - src/Whizbang.Core/Perspectives/Sync/EventCompletionAwaiter.cs
   - src/Whizbang.Core/Lenses/ISyncAwareLensQuery.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Synchronization

@@ -11,6 +11,7 @@ tags: 'table-naming, naming-conventions, snake-case, suffix-stripping, perspecti
 codeReferences:
   - src/Whizbang.Generators.Shared/Utilities/NamingConventionUtilities.cs
   - src/Whizbang.Generators.Shared/Models/TableNameConfig.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Table Naming

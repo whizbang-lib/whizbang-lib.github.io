@@ -10,6 +10,7 @@ tags: 'installation, setup, nuget, project-templates'
 codeReferences:
   - Directory.Build.props
   - Directory.Packages.props
+lastMaintainedCommit: '01f07906'
 ---
 
 # Installation Guide

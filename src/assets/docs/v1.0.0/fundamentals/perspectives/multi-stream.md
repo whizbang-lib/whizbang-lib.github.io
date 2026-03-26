@@ -11,6 +11,7 @@ tags: >-
   aggregation, read-models, marten
 codeReferences:
   - src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Multi-Stream Perspectives

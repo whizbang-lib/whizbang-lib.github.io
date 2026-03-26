@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/StreamIdExtractor.cs
   - src/Whizbang.Core/IStreamIdExtractor.cs
   - src/Whizbang.Core/StreamIdAttribute.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # StreamKey Attribute

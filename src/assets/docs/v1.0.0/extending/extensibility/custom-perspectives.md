@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/IPerspectiveOf.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
   - src/Whizbang.Core/Messaging/PerspectiveCheckpointRecord.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Perspectives

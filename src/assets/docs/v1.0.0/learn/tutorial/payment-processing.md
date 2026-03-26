@@ -16,6 +16,7 @@ codeReferences:
   - samples/ECommerce/ECommerce.Contracts/Commands/ProcessPaymentCommand.cs
   - samples/ECommerce/ECommerce.Contracts/Events/PaymentProcessedEvent.cs
   - samples/ECommerce/ECommerce.Contracts/Events/PaymentFailedEvent.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Payment Processing Service

@@ -10,6 +10,7 @@ description: >-
 tags: 'fuzzy-matching, match-strictness, type-matching, flags, type-comparison, identity'
 codeReferences:
   - src/Whizbang.Core/MatchStrictness.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # MatchStrictness: Fuzzy Type Matching Control

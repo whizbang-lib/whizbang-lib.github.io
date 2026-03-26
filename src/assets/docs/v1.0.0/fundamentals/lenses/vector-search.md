@@ -11,6 +11,7 @@ tags: 'vector-search, pgvector, similarity-search, embeddings, semantic-search, 
 codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/VectorSearchExtensions.cs
   - src/Whizbang.Core/Lenses/VectorSearchResult.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Vector Similarity Search

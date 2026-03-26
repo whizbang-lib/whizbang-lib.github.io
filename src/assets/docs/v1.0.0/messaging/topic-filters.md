@@ -11,6 +11,7 @@ tags: 'topic-filters, routing, attributes, source-generation, AOT, message-routi
 codeReferences:
   - src/Whizbang.Core/TopicFilterAttribute.cs
   - src/Whizbang.Core/TopicFilterAttribute{TEnum}.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Topic Filters

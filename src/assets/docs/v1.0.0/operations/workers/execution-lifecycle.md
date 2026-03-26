@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Execution/IExecutionStrategy.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Messaging/IDatabaseReadinessCheck.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Execution Lifecycle

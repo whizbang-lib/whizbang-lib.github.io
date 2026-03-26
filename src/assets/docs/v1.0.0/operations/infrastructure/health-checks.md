@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/PostgresHealthCheck.cs
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusReadinessCheck.cs
   - src/Whizbang.Core/Transports/ITransportReadinessCheck.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Health Checks

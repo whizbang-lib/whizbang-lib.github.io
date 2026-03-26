@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs
   - src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperPerspectiveSnapshotStore.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Snapshots

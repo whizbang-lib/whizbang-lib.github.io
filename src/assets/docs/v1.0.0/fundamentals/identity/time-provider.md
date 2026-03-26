@@ -9,6 +9,7 @@ tags: 'time, testing, dependency-injection, aot'
 codeReferences:
   - src/Whizbang.Core/ITimeProvider.cs
   - src/Whizbang.Core/SystemTimeProvider.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Time Provider

@@ -10,6 +10,7 @@ description: >-
 tags: 'graphql, filtering, where, hotchocolate, operators, query'
 codeReferences:
   - src/Whizbang.Transports.HotChocolate/Conventions/WhizbangFilterConvention.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # GraphQL Filtering

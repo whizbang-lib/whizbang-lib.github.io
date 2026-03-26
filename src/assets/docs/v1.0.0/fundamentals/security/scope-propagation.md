@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Core/Dispatch/DispatcherSecurityExtensions.cs
   - src/Whizbang.Core/Dispatch/SystemDispatcherBuilder.cs
   - src/Whizbang.Core/Dispatch/ImpersonationDispatcherBuilder.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Scope Propagation

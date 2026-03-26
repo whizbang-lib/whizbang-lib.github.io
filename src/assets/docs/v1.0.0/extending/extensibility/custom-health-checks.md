@@ -10,6 +10,7 @@ tags: 'health-checks, monitoring, kubernetes, readiness, liveness'
 codeReferences:
   - src/Whizbang.Core/Workers/ITransportReadinessCheck.cs
   - src/Whizbang.Core/Workers/DefaultTransportReadinessCheck.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Health Checks

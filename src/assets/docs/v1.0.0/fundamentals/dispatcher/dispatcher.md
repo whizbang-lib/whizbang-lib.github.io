@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/IDispatcher.cs
   - src/Whizbang.Core/Dispatcher.cs
   - samples/ECommerce/ECommerce.BFF.API/Endpoints/CreateOrderEndpoint.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Dispatcher Deep Dive

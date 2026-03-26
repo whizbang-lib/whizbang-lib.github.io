@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Attributes/AuditEventAttribute.cs
   - tests/Whizbang.Core.Tests/SystemEvents/EventAuditedTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditedTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Audit Logging

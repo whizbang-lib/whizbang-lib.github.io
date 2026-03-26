@@ -14,6 +14,7 @@ tags:
 codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/GuidInterceptorGenerator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ059: GUID Interception Suppressed

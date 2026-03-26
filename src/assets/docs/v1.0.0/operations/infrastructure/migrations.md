@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Data/IMigrationProvider.cs
   - src/Whizbang.Data.Postgres/Migrations/000_MigrationTracking.sql
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Migration Tracking

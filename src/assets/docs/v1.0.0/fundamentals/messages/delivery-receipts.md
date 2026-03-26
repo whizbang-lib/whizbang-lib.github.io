@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/IStreamIdExtractor.cs
   - src/Whizbang.Core/StreamIdExtractor.cs
   - src/Whizbang.Core/Registry/StreamIdExtractorRegistry.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Delivery Receipts

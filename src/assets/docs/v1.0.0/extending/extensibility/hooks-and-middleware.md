@@ -11,6 +11,7 @@ tags: >-
   aop
 codeReferences:
   - src/Whizbang.Core/Pipeline/IPipelineBehavior.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Hooks and Middleware

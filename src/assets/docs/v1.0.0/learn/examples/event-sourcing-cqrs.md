@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Event Sourcing & CQRS

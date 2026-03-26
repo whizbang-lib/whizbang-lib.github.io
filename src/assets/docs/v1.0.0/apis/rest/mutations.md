@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Transports.Mutations/MutationEndpointBase.cs
 testReferences:
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/RestMutationEndpointBaseTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # REST Mutations

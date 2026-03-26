@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Transports/ITransport.cs
   - src/Whizbang.Core/Transports/TransportCapabilities.cs
   - src/Whizbang.Core/Transports/InProcessTransport.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Transports

@@ -14,6 +14,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/LensRequestTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/LensEndpointBaseTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # REST Filtering

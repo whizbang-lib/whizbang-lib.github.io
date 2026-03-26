@@ -10,6 +10,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCoreDriverSelector.cs
   - src/Whizbang.Data.EFCore.Postgres/InMemoryDriverExtensions.cs
   - src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Drivers Component

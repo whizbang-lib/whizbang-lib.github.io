@@ -12,6 +12,7 @@ tags: >-
 codeReferences:
   - samples/ECommerce/ECommerce.BFF.API/Perspectives/OrderSummaryPerspective.cs
   - samples/ECommerce/ECommerce.BFF.API/Infrastructure/Migrations/
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspectives Storage

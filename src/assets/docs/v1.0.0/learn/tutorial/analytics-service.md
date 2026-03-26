@@ -15,6 +15,7 @@ codeReferences:
   - >-
     samples/ECommerce/ECommerce.BFF.API/Hubs/ProductInventoryHub.cs
   - samples/ECommerce/ECommerce.BFF.API/Endpoints/GetOrderHistoryEndpoint.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Analytics Service

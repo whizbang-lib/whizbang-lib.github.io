@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/GuidInterceptorGenerator.cs
   - src/Whizbang.Core/ValueObjects/TrackedGuid.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ058: GUID Call Intercepted

@@ -12,6 +12,7 @@ codeReferences:
   - samples/ECommerce/ECommerce.Contracts/Ids.cs
   - samples/ECommerce/ECommerce.Contracts/Events/OrderCreatedEvent.cs
   - samples/ECommerce/ECommerce.ServiceDefaults/Extensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # ECommerce Tutorial Overview

@@ -10,6 +10,7 @@ description: >-
 tags: 'multi-instance, coordination, lease-management, partitioning, distributed-processing, stream-ordering, scaling'
 codeReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Multi-Instance Coordination

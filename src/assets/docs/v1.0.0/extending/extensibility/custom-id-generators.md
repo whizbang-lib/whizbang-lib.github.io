@@ -9,6 +9,7 @@ description: >-
 tags: 'id-generation, uuidv7, snowflake, ulid, cuid'
 codeReferences:
   - src/Whizbang.Core/ValueObjects/MessageId.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom ID Generators

@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/Transports/ISubscription.cs
   - src/Whizbang.Core/Transports/IMessageSerializer.cs
   - src/Whizbang.Core/Transports/BulkPublish.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Transports Component

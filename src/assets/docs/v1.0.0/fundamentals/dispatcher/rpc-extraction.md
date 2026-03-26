@@ -10,6 +10,7 @@ codeReferences:
   - src/Whizbang.Core/Dispatch/Route.cs
   - src/Whizbang.Core/Dispatch/Routed.cs
   - src/Whizbang.Core/Internal/ResponseExtractor.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # RPC Response Extraction

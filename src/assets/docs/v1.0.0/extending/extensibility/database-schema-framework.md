@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Data.Schema/DefaultValue.cs
   - src/Whizbang.Data.Schema/DefaultValueFunction.cs
   - src/Whizbang.Data.Schema/SchemaConfiguration.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Database Schema Framework

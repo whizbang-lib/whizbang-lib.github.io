@@ -8,6 +8,7 @@ tags: 'migration, transport, rabbitmq, azure-service-bus, messaging'
 codeReferences:
   - src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs
   - src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Transport Configuration

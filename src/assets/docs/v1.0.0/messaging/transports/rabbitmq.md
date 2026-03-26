@@ -20,6 +20,7 @@ testReferences:
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQChannelPoolTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQConnectionRetryTests.cs
   - samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/
+lastMaintainedCommit: '01f07906'
 ---
 
 # RabbitMQ Transport

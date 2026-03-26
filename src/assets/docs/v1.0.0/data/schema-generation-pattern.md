@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Data.Schema/Schemas/InboxSchema.cs
   - src/Whizbang.Data.Schema/Schemas/OutboxSchema.cs
   - src/Whizbang.Data.Schema/Schemas/EventStoreSchema.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Schema Generation Pattern

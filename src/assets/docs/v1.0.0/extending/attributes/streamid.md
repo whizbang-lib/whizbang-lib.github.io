@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/StreamIdAttribute.cs
   - src/Whizbang.Generators/StreamIdGenerator.cs
   - src/Whizbang.Core/StreamIdResolver.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # StreamId Attribute

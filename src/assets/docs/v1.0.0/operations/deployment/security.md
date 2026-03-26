@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Core/Security/MessageSecurityServiceCollectionExtensions.cs
   - src/Whizbang.Core/Security/ISecurityContextExtractor.cs
   - src/Whizbang.Core/Security/MessageSecurityOptions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Security Best Practices

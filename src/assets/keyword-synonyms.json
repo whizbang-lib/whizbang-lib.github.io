@@ -1,0 +1,30 @@
+{
+  "_description": "Controlled vocabulary of synonyms per concept. Used by search index to boost relevance when users search for alternative terms.",
+  "concepts": {
+    "dispatcher": ["message bus", "event router", "command handler", "send message", "dispatch", "mediator", "IDispatcher"],
+    "receptor": ["message handler", "command handler", "event handler", "handler", "IReceptor", "ISyncReceptor"],
+    "perspective": ["projection", "read model", "view", "materialized view", "denormalized view", "CQRS read side", "IPerspectiveFor"],
+    "lens": ["query", "read query", "data access", "ILensQuery", "read model query", "CQRS query side"],
+    "lifecycle": ["pipeline", "message pipeline", "processing stages", "hooks", "middleware", "cross-cutting"],
+    "event store": ["event log", "append-only log", "event journal", "event persistence", "IEventStore"],
+    "outbox": ["transactional outbox", "reliable messaging", "guaranteed delivery", "event publishing"],
+    "inbox": ["message deduplication", "exactly-once", "idempotent processing", "message inbox"],
+    "work coordinator": ["batch processing", "distributed coordination", "lease management", "work distribution"],
+    "transport": ["message broker", "message queue", "pub/sub", "RabbitMQ", "Azure Service Bus", "messaging middleware"],
+    "delivery receipt": ["message acknowledgment", "delivery confirmation", "IDeliveryReceipt", "message tracking"],
+    "stream": ["aggregate stream", "event stream", "StreamId", "StreamKey", "event sequence"],
+    "routing": ["message routing", "namespace routing", "topic routing", "command routing", "event routing"],
+    "FireAt": ["lifecycle hook", "stage hook", "lifecycle receptor", "FireAtAttribute", "message hook"],
+    "scope": ["security context", "tenant context", "IScopeContext", "authorization context", "multi-tenancy"],
+    "cascade": ["auto-publish", "event cascade", "message cascade", "auto-route", "event propagation"],
+    "rebuild": ["replay", "reconstruction", "blue-green", "perspective rebuild", "event replay"],
+    "sync": ["synchronization", "read-your-writes", "perspective sync", "consistency", "await perspective"],
+    "physical field": ["database column", "indexed column", "extracted field", "split storage"],
+    "vector field": ["embedding", "similarity search", "pgvector", "nearest neighbor", "cosine distance"],
+    "source generator": ["Roslyn generator", "compile-time generation", "code generation", "AOT generation"],
+    "AOT": ["ahead-of-time", "Native AOT", "trimming", "zero reflection", "publish trimmed"],
+    "tag": ["message tag", "attribute tag", "cross-cutting concern", "declarative hook", "IMessageTagHook"],
+    "envelope": ["message envelope", "message wrapper", "message metadata", "hop", "distributed tracing"],
+    "auto-populate": ["automatic property", "PopulateTimestamp", "PopulateFromContext", "PopulateFromService"]
+  }
+}

@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Lifecycle/LifecycleTrackingState.cs
   - src/Whizbang.Core/Lifecycle/DebugAwareStopwatch.cs
   - src/Whizbang.Core/Lifecycle/StageRecord.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Lifecycle Coordinator

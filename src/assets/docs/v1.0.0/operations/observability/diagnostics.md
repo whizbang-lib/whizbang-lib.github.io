@@ -9,6 +9,7 @@ description: >-
 tags: 'diagnostics, health-check, monitoring, system-commands, observability'
 codeReferences:
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Diagnostics

@@ -16,6 +16,7 @@ codeReferences:
   - >-
     samples/ECommerce/ECommerce.Contracts/Commands/ReserveInventoryCommand.cs
   - samples/ECommerce/ECommerce.Contracts/Events/InventoryReservedEvent.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Inventory Service

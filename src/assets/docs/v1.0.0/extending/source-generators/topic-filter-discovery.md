@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Generators/TopicFilterGenerator.cs
   - src/Whizbang.Core/TopicFilterAttribute.cs
   - 'src/Whizbang.Core/TopicFilterAttribute{TEnum}.cs'
+lastMaintainedCommit: '01f07906'
 ---
 
 # Topic Filter Discovery

@@ -10,6 +10,7 @@ description: >-
 tags: 'typed-associations, perspective-associations, source-generated, type-safety, aot, delegates'
 codeReferences:
   - src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # GetPerspectiveAssociations: Strongly-Typed Perspective Queries

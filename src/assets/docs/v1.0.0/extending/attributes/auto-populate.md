@@ -28,6 +28,7 @@ codeReferences:
   - src/Whizbang.Core/AutoPopulate/MessageEnvelopeAutoPopulateExtensions.cs
   - src/Whizbang.Core/AutoPopulate/JsonAutoPopulateHelper.cs
   - src/Whizbang.Generators/AutoPopulateDiscoveryGenerator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Auto-Populate Attributes

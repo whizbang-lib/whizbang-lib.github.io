@@ -10,6 +10,7 @@ tags: 'mutations, hooks, lifecycle, validation, error-handling'
 codeReferences:
   - src/Whizbang.Transports.Mutations/Base/MutationEndpointBase.cs
   - src/Whizbang.Transports.Mutations/Base/IMutationContext.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Mutation Hooks

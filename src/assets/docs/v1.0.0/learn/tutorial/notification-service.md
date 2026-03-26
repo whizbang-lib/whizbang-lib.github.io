@@ -13,6 +13,7 @@ codeReferences:
     samples/ECommerce/ECommerce.NotificationWorker/Receptors/SendNotificationReceptor.cs
   - samples/ECommerce/ECommerce.Contracts/Commands/SendNotificationCommand.cs
   - samples/ECommerce/ECommerce.Contracts/Events/NotificationSentEvent.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Notification Service

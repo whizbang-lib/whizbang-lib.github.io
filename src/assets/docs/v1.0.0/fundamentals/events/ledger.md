@@ -9,6 +9,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IEventStore.cs
   - src/Whizbang.Core/Messaging/InMemoryEventStore.cs
   - src/Whizbang.Core/Messaging/EventStoreRecord.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Ledger Component

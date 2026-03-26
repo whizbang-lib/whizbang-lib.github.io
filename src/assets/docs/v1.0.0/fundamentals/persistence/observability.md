@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/MessageEnvelope.cs
   - src/Whizbang.Core/Observability/MessageHop.cs
   - src/Whizbang.Core/Policies/PolicyDecisionTrail.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Observability & Message Hops

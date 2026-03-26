@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/PostgresConnectionFactory.cs
   - samples/ECommerce/ECommerce.BFF.API/Perspectives/OrderSummaryPerspective.cs
   - samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Dapper Integration

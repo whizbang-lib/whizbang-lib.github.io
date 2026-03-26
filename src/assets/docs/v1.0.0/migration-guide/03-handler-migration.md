@@ -8,6 +8,7 @@ tags: 'migration, handlers, receptors, wolverine, conversion'
 codeReferences:
   - src/Whizbang.Core/IReceptor.cs
   - src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Handler Migration: Wolverine → Whizbang Receptors

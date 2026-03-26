@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/IReceptor.cs
   - >-
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Receptors

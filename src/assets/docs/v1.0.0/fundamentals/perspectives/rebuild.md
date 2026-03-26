@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
   - src/Whizbang.Core/Events/System/SystemEvents.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Rebuild

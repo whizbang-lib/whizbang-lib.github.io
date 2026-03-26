@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IDatabaseReadinessCheck.cs
   - src/Whizbang.Data.Postgres/PostgresDatabaseReadinessCheck.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Database Readiness

@@ -6,6 +6,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres.Generators/PerspectiveModelPolymorphicAnalyzer.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Core/Perspectives/PolymorphicDiscriminatorAttribute.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Polymorphic Types in Perspectives

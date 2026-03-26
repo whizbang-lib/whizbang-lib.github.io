@@ -9,6 +9,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/VectorSearchExtensions.cs
   - src/Whizbang.Data.EFCore.Postgres/DbContextRegistrationRegistry.cs
   - src/Whizbang.Data.EFCore.Custom/WhizbangDbContextAttribute.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Vector Search
