@@ -36,25 +36,7 @@ The coordinator solves all of these by being the single source of truth for stag
 
 Events flow through different workers depending on their dispatch path. Each worker is a **segment** of the lifecycle, with well-defined entry and exit points. The coordinator tracks events only while they are **live in-memory** — tracking is abandoned at persistence/transport boundaries and recreated at entry points.
 
-```
-Dispatcher                    OutboxWorker              TransportConsumer         PerspectiveWorker
-─────────────────────────    ─────────────────────    ─────────────────────    ─────────────────────
-ENTRY: dispatch               ENTRY: load from DB      ENTRY: receive            ENTRY: load from DB
-  ┌─ LocalImmediateAsync       ┌─ PreOutboxAsync        ┌─ PreInboxAsync          ┌─ PrePerspectiveAsync
-  ├─ LocalImmediateInline      ├─ PreOutboxInline       ├─ PreInboxInline         ├─ PrePerspectiveInline
-  ├─ PostLifecycleAsync†       ├─ PostOutboxAsync       ├─ PostInboxAsync         ├─ PostPerspectiveAsync
-  └─ PostLifecycleInline†      ├─ PostOutboxInline      ├─ PostInboxInline        ├─ PostPerspectiveInline
-EXIT: done / WhenAll          ├─ PostLifecycleAsync‡   ├─ PostLifecycleAsync*    ├─ PostLifecycleAsync**
-                              └─ PostLifecycleInline‡   └─ PostLifecycleInline*   └─ PostLifecycleInline**
-                             EXIT: transport / WhenAll  EXIT: done / WhenAll      EXIT: done / WhenAll
-```
-
-| Symbol | Meaning |
-|--------|---------|
-| `†` | Fires if this is the only processing path (`Route.Local`), or via WhenAll |
-| `‡` | Fires if no further processing (event leaves service), or via WhenAll |
-| `*` | Fires for events WITHOUT perspectives, or via WhenAll |
-| `**` | Fires AFTER ALL perspectives complete, or via WhenAll |
+See [Lifecycle Stages Pipeline](lifecycle-stages.md#pipeline-overview) for the full pipeline diagram showing all stages per worker, including PostAllPerspectives and PostLifecycle.
 
 **Key insight**: `PostLifecycle` always fires at the **end** of whichever worker is the last to act on the event. The coordinator guarantees this happens exactly once.
 

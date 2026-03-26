@@ -651,6 +651,14 @@ sequenceDiagram
     Worker->>Perspective: RunAsync()
     Perspective-->>Perspective: Apply events
     Note right of Worker: PostPerspectiveInline ⭐
+
+    Note over Worker,Perspective: PostAllPerspectives Phase
+    Note right of Worker: PostAllPerspectivesAsync (after ALL perspectives complete)
+    Note right of Worker: PostAllPerspectivesInline
+
+    Note over Worker,Perspective: PostLifecycle Phase
+    Note right of Worker: PostLifecycleAsync (final stage)
+    Note right of Worker: PostLifecycleInline
     Worker->>Coordinator: ReportCompletionAsync()
 ```
 
