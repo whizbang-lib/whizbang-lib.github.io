@@ -413,6 +413,16 @@ await dispatcher.SendAsync(new DiagnosticsCommand(
 ));
 ```
 
+#### DiagnosticType Values
+
+| Value | Description |
+|-------|-------------|
+| `HealthCheck` | Basic health check - is the service responsive? |
+| `ResourceMetrics` | Memory usage, thread count, and resource metrics. |
+| `PipelineStatus` | Current state of message processing pipelines. |
+| `PerspectiveStatus` | Perspective and projection state information. |
+| `Full` | Full diagnostic dump including all above categories. |
+
 See [Observability: Diagnostics](../../operations/observability/diagnostics.md#system-diagnostics) for details.
 
 ## See Also

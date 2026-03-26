@@ -105,6 +105,22 @@ optionsBuilder
 
 This registers the `PhysicalFieldQueryInterceptor` which automatically translates queries on physical fields.
 
+## PerspectiveStorageAttribute {#PerspectiveStorageAttribute}
+
+The `[PerspectiveStorage]` attribute is applied to the **model class** (not the perspective class) to configure how physical fields are stored relative to JSONB. If omitted, the model defaults to `FieldStorageMode.JsonOnly` for backwards compatibility.
+
+```csharp{title="PerspectiveStorageAttribute" description="Configures how physical fields are stored relative to JSONB" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "PerspectiveStorageAttribute"]}
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct,
+    AllowMultiple = false, Inherited = false)]
+public sealed class PerspectiveStorageAttribute(FieldStorageMode mode) : Attribute {
+    public FieldStorageMode Mode { get; }
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Mode` | `FieldStorageMode` | The storage mode for physical fields in this model |
+
 ## FieldStorageMode {#FieldStorageMode}
 
 `FieldStorageMode` defines how physical fields are stored relative to JSONB in a perspective. Configure it using the `[PerspectiveStorage]` attribute on your model class.

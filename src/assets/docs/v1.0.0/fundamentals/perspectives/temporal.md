@@ -135,15 +135,21 @@ var userActivity = await temporalLens
 
 ## Action Types
 
-The `TemporalActionType` enum tracks what happened:
+The `TemporalActionType` enum tracks what happened to the entity. Each temporal row includes an `ActionType` that indicates the kind of change:
 
 ```csharp{title="Action Types" description="The TemporalActionType enum tracks what happened:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Action", "Types"]}
 public enum TemporalActionType {
-  Insert,   // New entity created
-  Update,   // Entity modified
-  Delete    // Entity removed/soft-deleted
+  Insert = 0,   // New entity was created (first entry in temporal history)
+  Update = 1,   // Existing entity was modified
+  Delete = 2    // Entity was soft-deleted or removed
 }
 ```
+
+| Value | Name | Description |
+|-------|------|-------------|
+| `0` | `Insert` | New entity was created. This is the first entry in the temporal history for a stream. |
+| `1` | `Update` | Existing entity was modified. The entity already existed and its state has changed. |
+| `2` | `Delete` | Entity was soft-deleted or removed. The entity still exists in history but is no longer active. |
 
 ## Filtering Events
 

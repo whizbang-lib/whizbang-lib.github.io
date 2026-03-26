@@ -251,7 +251,7 @@ Receptors can optionally inject `ILifecycleContext` to access metadata about the
 
 ### Interface Definition
 
-```csharp{title="Interface Definition" description="Demonstrates interface Definition" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Interface", "Definition"]}
+```csharp{title="Interface Definition" description="Full ILifecycleContext interface with all properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Interface", "Definition"]}
 public interface ILifecycleContext {
   /// <summary>The lifecycle stage currently executing</summary>
   LifecycleStage CurrentStage { get; }
@@ -262,11 +262,85 @@ public interface ILifecycleContext {
   /// <summary>The stream ID (aggregate ID) for event-sourced messages</summary>
   Guid? StreamId { get; }
 
-  /// <summary>The perspective name processing this message (null if not perspective stage)</summary>
-  string? PerspectiveName { get; }
+  /// <summary>The perspective Type being processed (null if not perspective stage)</summary>
+  Type? PerspectiveType { get; }
 
   /// <summary>The last processed event ID for the perspective (checkpoint position)</summary>
   Guid? LastProcessedEventId { get; }
+
+  /// <summary>Outbox or Inbox - distinguishes local publish vs transport receive</summary>
+  MessageSource? MessageSource { get; }
+
+  /// <summary>Current attempt number (1-based). Increments on retries after failures.</summary>
+  int? AttemptNumber { get; }
+
+  /// <summary>Processing mode: Live, Replay, or Rebuild</summary>
+  ProcessingMode? ProcessingMode { get; }
+}
+```
+
+### Property Reference
+
+| Property | Type | Set For | Description |
+|----------|------|---------|-------------|
+| `CurrentStage` | `LifecycleStage` | All stages | The lifecycle stage currently executing |
+| `EventId` | `Guid?` | Event stages | The event ID that triggered this invocation. Null for command stages (e.g., ImmediateAsync). |
+| `StreamId` | `Guid?` | Perspective, outbox, inbox stages | The stream ID being processed. Null for immediate dispatch. |
+| `PerspectiveType` | `Type?` | PrePerspective*, PostPerspective* | The `Type` of the perspective class being executed. Use to filter by specific perspective. |
+| `LastProcessedEventId` | `Guid?` | Perspective stages | The checkpoint position after processing completes. |
+| `MessageSource` | `MessageSource?` | Distribute stages only | `Outbox` for local publish, `Inbox` for transport receive. Allows filtering in distribute receptors. |
+| `AttemptNumber` | `int?` | Perspective stages | 1-based attempt number. Increments on retries (e.g., when checkpoint save fails after successful processing). |
+| `ProcessingMode` | `ProcessingMode?` | Perspective stages | `Live` (normal), `Replay` (rewind), or `Rebuild` (full rebuild). Null for non-perspective stages. |
+
+### ProcessingMode Enum {#processing-mode}
+
+`ProcessingMode` indicates whether the current lifecycle invocation is live processing or a replay/rebuild operation. During replay and rebuild, side-effect receptors (email, webhooks, cache busting) are suppressed by default. Use `[FireDuringReplay]` to opt specific receptors into replay/rebuild invocation.
+
+| Value | Numeric | Description |
+|-------|---------|-------------|
+| `Live` | 0 | Normal live processing. All receptors fire as usual. |
+| `Replay` | 1 | Rewind replay triggered by a late-arriving event. Receptors suppressed unless decorated with `[FireDuringReplay]`. |
+| `Rebuild` | 2 | Full or partial perspective rebuild. Receptors suppressed unless decorated with `[FireDuringReplay]`. |
+
+```csharp{title="ProcessingMode Usage" description="Branch behavior based on processing mode" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "ProcessingMode", "Replay"]}
+[FireDuringReplay]
+[FireAt(LifecycleStage.PostPerspectiveInline)]
+public class DependentModelUpdater : IReceptor<OrderCreatedEvent> {
+  private readonly ILifecycleContext? _context;
+
+  public DependentModelUpdater(ILifecycleContext? context = null) {
+    _context = context;
+  }
+
+  public ValueTask HandleAsync(OrderCreatedEvent evt, CancellationToken ct) {
+    if (_context?.ProcessingMode == ProcessingMode.Replay) {
+      // Skip expensive operations during replay, just update dependent model
+    }
+    return ValueTask.CompletedTask;
+  }
+}
+```
+
+### AttemptNumber Usage
+
+Perspective lifecycle stages may fire multiple times if processing succeeds but the checkpoint save fails. Use `AttemptNumber` to guard against duplicate side effects:
+
+```csharp{title="AttemptNumber Usage" description="Use AttemptNumber to only fire on first attempt" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "AttemptNumber", "Retry"]}
+[FireAt(LifecycleStage.PostPerspectiveAsync)]
+public class NotificationReceptor : IReceptor<OrderCreatedEvent> {
+  private readonly ILifecycleContext _context;
+
+  public NotificationReceptor(ILifecycleContext context) {
+    _context = context;
+  }
+
+  public ValueTask HandleAsync(OrderCreatedEvent evt, CancellationToken ct) {
+    if (_context.AttemptNumber > 1) {
+      return ValueTask.CompletedTask; // Skip retries, only fire on first attempt
+    }
+    // Send notification...
+    return ValueTask.CompletedTask;
+  }
 }
 ```
 
@@ -289,7 +363,7 @@ public class PerspectiveProgressReceptor : IReceptor<IEvent> {
   public ValueTask HandleAsync(IEvent evt, CancellationToken ct) {
     _logger.LogInformation(
       "Perspective {Perspective} processed event {EventId} from stream {StreamId}",
-      _context.PerspectiveName,
+      _context.PerspectiveType?.Name,
       _context.EventId,
       _context.StreamId);
 
@@ -312,8 +386,8 @@ public class SpecificPerspectiveReceptor : IReceptor<ProductCreatedEvent> {
   }
 
   public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
-    // Only execute for "ProductCatalog" perspective
-    if (_context.PerspectiveName != "ProductCatalog") {
+    // Only execute for ProductCatalogPerspective
+    if (_context.PerspectiveType?.Name != "ProductCatalogPerspective") {
       return ValueTask.CompletedTask;  // Skip
     }
 
@@ -986,7 +1060,7 @@ public class PerspectiveCompletionReceptor<TEvent> : IReceptor<TEvent>
   public ValueTask HandleAsync(TEvent message, CancellationToken ct) {
     // Filter by perspective if specified
     if (_context is not null && _perspectiveName is not null) {
-      if (_context.PerspectiveName != _perspectiveName) {
+      if (_context.PerspectiveType?.Name != _perspectiveName) {
         return ValueTask.CompletedTask;  // Not our perspective
       }
     }

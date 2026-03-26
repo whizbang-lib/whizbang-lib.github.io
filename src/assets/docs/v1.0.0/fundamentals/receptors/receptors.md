@@ -33,10 +33,17 @@ A Receptor is analogous to a biological receptor:
 ```csharp{title="IReceptor Interface" description="Demonstrates iReceptor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "IReceptor", "Interface"]}
 namespace Whizbang.Core;
 
-public interface IReceptor<in TMessage, TResponse>
-    where TMessage : notnull {
-
+// Response-producing receptor (commands/queries)
+public interface IReceptor<in TMessage, TResponse> {
     ValueTask<TResponse> HandleAsync(
+        TMessage message,
+        CancellationToken cancellationToken = default
+    );
+}
+
+// Void receptor (side-effect-only, zero-allocation pattern)
+public interface IReceptor<in TMessage> {
+    ValueTask HandleAsync(
         TMessage message,
         CancellationToken cancellationToken = default
     );
@@ -45,13 +52,63 @@ public interface IReceptor<in TMessage, TResponse>
 
 **Type Parameters**:
 - `TMessage`: The incoming message/command type
-- `TResponse`: The response/event type
+- `TResponse`: The response/event type (only for the two-parameter variant)
+
+**Two Variants**:
+- `IReceptor<TMessage, TResponse>`: Returns a typed business result. Use for commands that produce events or queries that return data.
+- `IReceptor<TMessage>`: Returns `ValueTask` (no result). Use for side-effect-only operations where only the side effects matter (logging, cache invalidation, notifications). For synchronous completions, return `ValueTask.CompletedTask` for zero allocations.
 
 **Key Characteristics**:
 - **Stateless**: No instance fields, all data via parameters
 - **Single Responsibility**: One receptor per message type
-- **Async**: Returns `ValueTask<T>` for optimal performance
+- **Async**: Returns `ValueTask<T>` or `ValueTask` for optimal performance
 - **Type Safe**: Compile-time enforcement of message → response mapping
+
+### Void Receptor Example
+
+```csharp{title="Void Receptor Example" description="IReceptor with no return value for side-effect-only operations" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "IReceptor", "Void"]}
+public class SendWelcomeEmailReceptor : IReceptor<UserRegistered> {
+    private readonly IEmailService _email;
+
+    public SendWelcomeEmailReceptor(IEmailService email) {
+        _email = email;
+    }
+
+    public async ValueTask HandleAsync(
+        UserRegistered message,
+        CancellationToken cancellationToken = default) {
+
+        await _email.SendAsync(message.Email, "Welcome!", "Thanks for registering.");
+    }
+}
+
+// Synchronous completion (zero allocations)
+public class LogOrderReceptor : IReceptor<OrderCreated> {
+    private readonly ILogger<LogOrderReceptor> _logger;
+
+    public LogOrderReceptor(ILogger<LogOrderReceptor> logger) {
+        _logger = logger;
+    }
+
+    public ValueTask HandleAsync(
+        OrderCreated message,
+        CancellationToken cancellationToken = default) {
+
+        _logger.LogInformation("Order {OrderId} created", message.OrderId);
+        return ValueTask.CompletedTask; // Zero allocations
+    }
+}
+```
+
+Void receptors are invoked via the dispatcher using `LocalInvokeAsync` without a result type parameter:
+
+```csharp{title="Invoking Void Receptors" description="Dispatching to void receptors via LocalInvokeAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Void", "Dispatcher"]}
+// Generic (AOT-compatible)
+await _dispatcher.LocalInvokeAsync<UserRegistered>(message);
+
+// Non-generic
+await _dispatcher.LocalInvokeAsync(message);
+```
 
 ---
 

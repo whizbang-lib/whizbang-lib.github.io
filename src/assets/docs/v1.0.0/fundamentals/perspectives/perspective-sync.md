@@ -816,6 +816,32 @@ await _perspectiveSyncAwaiter.WaitForStreamAsync(
 
 This enables cross-scope sync even though the events weren't emitted in the current scope.
 
+### AwaitPerspectiveSyncAttribute API {#await-attribute-api}
+
+The `[AwaitPerspectiveSync]` attribute configures perspective synchronization on a receptor class. It can be applied multiple times to wait for multiple perspectives.
+
+```csharp{title="AwaitPerspectiveSyncAttribute API" description="Attribute properties for configuring perspective sync" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "AwaitPerspectiveSyncAttribute", "API"]}
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public sealed class AwaitPerspectiveSyncAttribute(Type perspectiveType) : Attribute {
+    public static int DefaultTimeoutMs { get; set; } = 5000;
+
+    public Type PerspectiveType { get; }
+    public Type[]? EventTypes { get; init; }
+    public int TimeoutMs { get; init; } = -1;
+    public int EffectiveTimeoutMs { get; }
+    public SyncFireBehavior FireBehavior { get; init; } = SyncFireBehavior.FireOnSuccess;
+}
+```
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `PerspectiveType` | `Type` | (required) | The perspective type to wait for |
+| `EventTypes` | `Type[]?` | `null` | Event types to wait for. If null/empty, waits for ALL pending events on the stream. |
+| `TimeoutMs` | `int` | `-1` | Timeout in ms for this sync operation. `-1` uses `DefaultTimeoutMs`. |
+| `EffectiveTimeoutMs` | `int` | (computed) | Returns `TimeoutMs` if explicitly set, otherwise `DefaultTimeoutMs`. |
+| `FireBehavior` | `SyncFireBehavior` | `FireOnSuccess` | Controls handler invocation behavior on sync completion or timeout. |
+| `DefaultTimeoutMs` (static) | `int` | `5000` | Global default timeout. Individual attributes can override via `TimeoutMs`. |
+
 ### Fire Behavior Control {#fire-behavior}
 
 `SyncFireBehavior` controls what happens after perspective sync completes (or times out).
