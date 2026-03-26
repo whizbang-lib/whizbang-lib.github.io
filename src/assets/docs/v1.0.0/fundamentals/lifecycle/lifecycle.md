@@ -226,6 +226,9 @@ await dispatcher.SendAsync(new PauseProcessingCommand(
 ```
 
 ### Implement Health Checks
+
+> **Note**: `IProcessingStateMonitor` shown below is an aspirational pattern illustrating how you might expose pause state to health checks. This interface is not provided by the Whizbang library -- you would implement it in your application based on your pause/resume handler state.
+
 Monitor paused state in your health check endpoints:
 ```csharp{title="Implement Health Checks" description="Monitor paused state in your health check endpoints:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Implement", "Health"]}
 public class ProcessingHealthCheck : IHealthCheck {
@@ -311,6 +314,9 @@ public async Task Service_WhenPaused_StopsProcessingMessagesAsync() {
 ## Implementation Notes
 
 ### Service-Specific Handlers
+
+> **Note**: `IWorkerCoordinator` shown below is an aspirational pattern illustrating how you might coordinate worker lifecycle in response to pause/resume commands. This interface is not provided by the Whizbang library -- you would implement it in your application to manage your specific worker infrastructure.
+
 Each service should implement handlers for pause/resume commands:
 ```csharp{title="Service-Specific Handlers" description="Each service should implement handlers for pause/resume commands:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Service-Specific", "Handlers"]}
 public class PauseResumeHandler :
@@ -364,7 +370,9 @@ lifetime.ApplicationStopping.Register(async () => {
   await dispatcher.SendAsync(new PauseProcessingCommand(
     Reason: "Service shutting down for deployment"));
 
-  // Give time for command to propagate
+  // Intentional delay: gives the transport time to propagate the
+  // pause command to all consumers before the host shuts down.
+  // In production, tune this value based on your transport latency.
   await Task.Delay(2000);
 });
 ```
