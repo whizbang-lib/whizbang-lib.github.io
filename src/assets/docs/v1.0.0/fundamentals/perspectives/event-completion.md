@@ -518,5 +518,5 @@ var awaiter = serviceProvider.GetRequiredService<IEventCompletionAwaiter>();
 ## Related
 
 - **[Perspective Synchronization](perspective-sync.md)** - Single-perspective consistency
-- **Source Code**: [IEventCompletionAwaiter.cs](../../../code/Whizbang.Core/Perspectives/Sync/IEventCompletionAwaiter.cs)
-- **Tests**: [EventCompletionAwaiterTests.cs](../../../tests/Whizbang.Core.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs)
+- **Source Code**: IEventCompletionAwaiter
+- **Tests**: EventCompletionAwaiterTests
