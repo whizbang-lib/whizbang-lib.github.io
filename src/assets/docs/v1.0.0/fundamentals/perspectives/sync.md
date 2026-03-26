@@ -13,6 +13,10 @@ codeReferences:
 
 Perspective sync enables you to wait for perspectives to catch up with specific events before reading data. This is essential for read-your-writes consistency in event-sourced systems where perspectives are updated asynchronously.
 
+:::updated
+This page provides a quick reference for `SyncInquiry`, `SyncInquiryResult`, and `PerspectiveSyncAwaiter`. For the comprehensive guide covering `SyncFilter`, `ISyncEventTracker`, cross-scope sync, the type registry system, debugger-aware timeouts, and `[AwaitPerspectiveSync]`, see [Perspective Synchronization](perspective-sync.md).
+:::
+
 ## Overview
 
 When you dispatch a command that publishes events, the perspective may not be immediately updated. Sync inquiries let you check whether specific events have been processed and wait for the perspective to catch up.

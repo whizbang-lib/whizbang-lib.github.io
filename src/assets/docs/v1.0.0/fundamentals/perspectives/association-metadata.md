@@ -16,6 +16,10 @@ codeReferences:
 
 `PerspectiveAssociationInfo` is a metadata structure used by source generators to track the relationship between perspective implementations and their model types. It enables compile-time discovery and runtime registration of perspectives.
 
+:::updated
+This page covers the **non-generic** `PerspectiveAssociationInfo` class used by source generators for **compile-time discovery and registration**. For the **generic** `PerspectiveAssociationInfo<TModel, TEvent>` record used for **runtime invocation** of perspective Apply methods via strongly-typed delegates, see [PerspectiveAssociationInfo (Typed Delegates)](association-info.md).
+:::
+
 ## Purpose
 
 The perspective discovery system needs to know:

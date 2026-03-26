@@ -152,48 +152,9 @@ services.Configure<RoutingOptions>(opts => {
 
 ## System Commands
 
-All services automatically subscribe to system commands for framework-level operations:
+All services automatically subscribe to system commands (`whizbang.core.commands.system.#`) for framework-level operations. These include commands for pausing/resuming processing, rebuilding perspectives, clearing caches, and collecting diagnostics.
 
-```csharp{title="System Commands" description="All services automatically subscribe to system commands for framework-level operations:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "System", "Commands"]}
-namespace Whizbang.Core.Commands.System;
-
-// Rebuild one or more perspectives across all services
-public record RebuildPerspectiveCommand(
-    string[]? PerspectiveNames = null,
-    RebuildMode Mode = RebuildMode.BlueGreen,
-    Guid[]? IncludeStreamIds = null,
-    Guid[]? ExcludeStreamIds = null,
-    long? FromEventId = null
-) : ICommand;
-
-// Cancel an in-progress perspective rebuild
-public record CancelPerspectiveRebuildCommand(
-    string PerspectiveName
-) : ICommand;
-
-// Clear cached data
-public record ClearCacheCommand(
-    string? CacheKey = null,
-    string? CacheRegion = null
-) : ICommand;
-
-// Collect diagnostics from all services
-public record DiagnosticsCommand(
-    DiagnosticType Type,
-    Guid? CorrelationId = null
-) : ICommand;
-
-// Pause message processing (coordinated maintenance)
-public record PauseProcessingCommand(
-    int? DurationSeconds = null,
-    string? Reason = null
-) : ICommand;
-
-// Resume message processing
-public record ResumeProcessingCommand(
-    string? Reason = null
-) : ICommand;
-```
+For the full list of system commands with signatures, parameters, and usage examples, see [Lifecycle Management](../lifecycle/lifecycle.md).
 
 ### Sending System Commands
 

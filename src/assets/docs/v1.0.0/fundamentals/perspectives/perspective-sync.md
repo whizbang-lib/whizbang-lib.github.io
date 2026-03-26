@@ -30,6 +30,10 @@ codeReferences:
 
 **Perspective Synchronization** enables **read-your-writes consistency** for perspectives. When a handler emits events, it can wait for perspectives to process those events before querying, ensuring the handler sees its own changes.
 
+:::updated
+This is the comprehensive guide for perspective synchronization. For a quick reference covering just `SyncInquiry`, `SyncInquiryResult`, and `PerspectiveSyncAwaiter`, see [Perspective Sync (Quick Reference)](sync.md).
+:::
+
 ## The Problem {#problem}
 
 In event-sourced systems, perspective updates happen asynchronously via background workers. This creates a delay (typically 2-30 seconds) where perspectives aren't yet queryable:

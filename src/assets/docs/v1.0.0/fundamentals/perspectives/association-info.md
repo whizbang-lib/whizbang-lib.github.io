@@ -12,6 +12,10 @@ codeReferences:
 
 PerspectiveAssociationInfo is a generic record type that provides strongly-typed perspective associations with AOT-compatible delegates to perspective Apply methods. It enables compile-time type safety and performant perspective invocation without reflection.
 
+:::updated
+This page covers the **generic** `PerspectiveAssociationInfo<TModel, TEvent>` record used for **runtime invocation** of perspective Apply methods via delegates. For the **non-generic** `PerspectiveAssociationInfo` metadata class used by source generators for **compile-time discovery and registration**, see [Perspective Association Info (Metadata)](association-metadata.md).
+:::
+
 ## Overview
 
 **PerspectiveAssociationInfo&lt;TModel, TEvent&gt;** provides:
