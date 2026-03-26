@@ -1,6 +1,6 @@
 {
-  "totalInternalLinks": 834,
-  "valid": 830,
+  "totalInternalLinks": 870,
+  "valid": 866,
   "broken": 4,
   "brokenLinks": [
     {
@@ -105,6 +105,10 @@
       "valid": 5,
       "broken": 0
     },
+    "src/assets/docs/v1.0.0/data/efcore-complex-types.md": {
+      "valid": 1,
+      "broken": 0
+    },
     "src/assets/docs/v1.0.0/data/efcore-integration.md": {
       "valid": 6,
       "broken": 0
@@ -131,6 +135,10 @@
     },
     "src/assets/docs/v1.0.0/data/turnkey-initialization.md": {
       "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md": {
+      "valid": 3,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/extending/attributes/generatestreamid.md": {
@@ -245,6 +253,10 @@
       "valid": 7,
       "broken": 0
     },
+    "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md": {
+      "valid": 4,
+      "broken": 0
+    },
     "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md": {
       "valid": 9,
       "broken": 0
@@ -350,10 +362,14 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md": {
-      "valid": 13,
+      "valid": 15,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md": {
       "valid": 5,
       "broken": 0
     },
@@ -370,6 +386,10 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/messages/message-associations.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/messages/message-context-extraction.md": {
       "valid": 3,
       "broken": 0
     },
@@ -413,6 +433,10 @@
       "valid": 5,
       "broken": 2
     },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md": {
+      "valid": 6,
+      "broken": 0
+    },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md": {
       "valid": 13,
       "broken": 0
@@ -435,6 +459,14 @@
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/registry.md": {
       "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/stream-locking.md": {
+      "valid": 1,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/sync.md": {
@@ -705,6 +737,10 @@
       "valid": 1,
       "broken": 0
     },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz300.md": {
+      "valid": 2,
+      "broken": 0
+    },
     "src/assets/docs/v1.0.0/operations/diagnostics/whiz400.md": {
       "valid": 2,
       "broken": 0
@@ -719,6 +755,10 @@
     },
     "src/assets/docs/v1.0.0/operations/infrastructure/aspire-integration.md": {
       "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/infrastructure/database-limits.md": {
+      "valid": 3,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/operations/infrastructure/health-checks.md": {
@@ -743,6 +783,10 @@
     },
     "src/assets/docs/v1.0.0/operations/observability/logging-categories.md": {
       "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/observability/metrics.md": {
+      "valid": 4,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/operations/observability/opentelemetry-integration.md": {

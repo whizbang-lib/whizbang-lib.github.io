@@ -1,45 +1,45 @@
 {
-  "totalPages": 243,
-  "pagesWithGaps": 243,
+  "totalPages": 254,
+  "pagesWithGaps": 254,
   "fieldCoverage": {
     "title": {
-      "present": 213,
-      "missing": 30,
-      "pct": 88
+      "present": 254,
+      "missing": 0,
+      "pct": 100
     },
     "version": {
-      "present": 164,
-      "missing": 79,
-      "pct": 67
+      "present": 205,
+      "missing": 49,
+      "pct": 81
     },
     "category": {
-      "present": 174,
-      "missing": 69,
-      "pct": 72
+      "present": 215,
+      "missing": 39,
+      "pct": 85
     },
     "order": {
-      "present": 190,
-      "missing": 53,
-      "pct": 78
+      "present": 230,
+      "missing": 24,
+      "pct": 91
     },
     "description": {
-      "present": 170,
-      "missing": 73,
-      "pct": 70
+      "present": 211,
+      "missing": 43,
+      "pct": 83
     },
     "tags": {
-      "present": 167,
-      "missing": 76,
-      "pct": 69
+      "present": 208,
+      "missing": 46,
+      "pct": 82
     },
     "codeReferences": {
-      "present": 116,
-      "missing": 127,
-      "pct": 48
+      "present": 157,
+      "missing": 97,
+      "pct": 62
     },
     "slug": {
       "present": 0,
-      "missing": 243,
+      "missing": 254,
       "pct": 0
     }
   },
@@ -131,51 +131,78 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "GraphQL Filtering",
+        "version": "1.0.0",
+        "category": "GraphQL",
+        "order": "4",
+        "description": "HotChocolate filtering capabilities for PerspectiveRow data using standard where arguments. Covers string, numeric, date, boolean, and composite filter operators with JSONB-aware querying.",
+        "tags": "graphql, filtering, where, hotchocolate, operators, query",
+        "codeReferences": "src/Whizbang.Transports.HotChocolate/Conventions/WhizbangFilterConvention.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/index.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "GraphQL Integration",
+        "version": "1.0.0",
+        "category": "GraphQL",
+        "order": "1",
+        "description": "Overview of Whizbang's HotChocolate GraphQL integration for Lenses with automatic query generation, filtering, sorting, paging, projection, and scope-aware multi-tenancy. Fully AOT compatible via source generators.",
+        "tags": "graphql, hotchocolate, lenses, aot, query-generation, paging, projection",
+        "codeReferences": "src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangExtensions.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/lens-integration.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Lens Integration",
+        "version": "1.0.0",
+        "category": "GraphQL",
+        "order": "3",
+        "description": "The GraphQLLens attribute for marking lens interfaces for GraphQL exposure with automatic query generation. Covers attribute properties, GraphQLLensScope options, and configurable filtering, sorting, and paging.",
+        "tags": "graphql, lens, graphql-lens-attribute, scope, query-generation, hotchocolate",
+        "codeReferences": "src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensAttribute.cs, src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensScope.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/polymorphic-types.md",
@@ -205,51 +232,78 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/scoping.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "GraphQL Scoping",
+        "version": "1.0.0",
+        "category": "GraphQL",
+        "order": "7",
+        "description": "Scope middleware for automatic multi-tenancy and security filtering in GraphQL queries. Extracts tenant and user context from JWT claims and headers via IScopeContextAccessor for transparent lens query filtering.",
+        "tags": "graphql, scoping, multi-tenancy, security, middleware, jwt, scope-context",
+        "codeReferences": "src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs, src/Whizbang.Transports.HotChocolate/Middleware/ScopeMiddlewareExtensions.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/setup.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "GraphQL Setup",
+        "version": "1.0.0",
+        "category": "GraphQL",
+        "order": "2",
+        "description": "Installation and configuration guide for Whizbang's HotChocolate GraphQL integration. Covers package installation, minimal setup, scope middleware configuration, and advanced GraphQL options.",
+        "tags": "graphql, setup, installation, configuration, hotchocolate, asp-net",
+        "codeReferences": "src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangExtensions.cs, src/Whizbang.Transports.HotChocolate/Configuration/WhizbangGraphQLOptions.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/sorting.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "GraphQL Sorting",
+        "version": "1.0.0",
+        "category": "GraphQL",
+        "order": "5",
+        "description": "HotChocolate sorting capabilities for PerspectiveRow data using the order argument. Covers ascending and descending sort directions, multi-field sorting, and OrderBy stripping for optimized database queries.",
+        "tags": "graphql, sorting, order-by, hotchocolate, ascending, descending",
+        "codeReferences": "src/Whizbang.Transports.HotChocolate/Conventions/WhizbangSortConvention.cs, src/Whizbang.Transports.HotChocolate/QueryTranslation/OrderByStrippingExpressionVisitor.cs, src/Whizbang.Transports.HotChocolate/Middleware/UseOrderByStrippingAttribute.cs, src/Whizbang.Transports.HotChocolate/Middleware/OrderByStrippingMiddleware.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/mutations/_folder.md",
@@ -586,6 +640,31 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "EF Core Complex Types",
+        "version": "1.0.0",
+        "category": "Data Access",
+        "order": "3",
+        "description": "EF Core 10 ComplexProperty().ToJson() patterns for perspective metadata and scope - in-place updates, collection handling, and index corruption prevention",
+        "tags": "ef-core, complex-types, json, jsonb, perspectives, metadata, scope, in-place-updates, complexproperty",
+        "codeReferences": "src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs, src/Whizbang.Core/Lenses/PerspectiveMetadata.cs, src/Whizbang.Core/Lenses/PerspectiveScope.cs, src/Whizbang.Core/Lenses/PerspectiveRow.cs"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/data/efcore-integration.md",
       "presentFields": [
         "title",
@@ -734,51 +813,78 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/data/schema-migration.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Schema Migration",
+        "version": "1.0.0",
+        "category": "Data Access",
+        "order": "7",
+        "description": "Automatic schema management for perspective tables with built-in drift detection, safe rename operations, and SHA-256 hash comparison across deployments.",
+        "tags": "schema-migration, drift-detection, database-schema, perspectives, ddl, sha256",
+        "codeReferences": "src/Whizbang.Generators.Shared/Utilities/SchemaHashUtilities.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/data/turnkey-initialization.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Turnkey Database Initialization",
+        "version": "1.0.0",
+        "category": "Data Access",
+        "order": "5",
+        "description": "One-line database initialization that creates infrastructure tables, perspective tables, indexes, PostgreSQL extensions, and functions before application startup to prevent race conditions.",
+        "tags": "turnkey-initialization, database-setup, startup, ef-core, postgresql, schema-creation",
+        "codeReferences": "src/Whizbang.Data.EFCore.Postgres/DbContextInitializationRegistry.cs, src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs, src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs, src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/data/work-coordinator-strategies.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Work Coordinator Strategies",
+        "version": "1.0.0",
+        "category": "Data Access",
+        "order": "8",
+        "description": "Strategy pattern for controlling message flush behavior from in-memory queues to the database. Covers Immediate, Scoped, Interval, and Batch strategies with trade-offs between latency, throughput, and database load.",
+        "tags": "work-coordinator, flush-strategy, batch, scoped, interval, process-work-batch",
+        "codeReferences": "src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs, src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs, src/Whizbang.Core/Messaging/WorkCoordinatorStrategyFactory.cs, src/Whizbang.Core/Messaging/IWorkFlusher.cs, src/Whizbang.Hosting.AspNet/WhizbangFlushMiddleware.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/extending/_folder.md",
@@ -818,6 +924,31 @@
       "frontmatter": {
         "title": "Attributes",
         "order": "2"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Auto-Populate Attributes",
+        "version": "1.0.0",
+        "category": "Attributes",
+        "order": "5",
+        "description": "Automatically populate message properties with timestamps, service info, security context, and message identifiers at dispatch time using zero-reflection source-generated code",
+        "tags": "attributes, auto-populate, timestamps, observability, security-context, source-generator, aot",
+        "codeReferences": "src/Whizbang.Core/Attributes/PopulateTimestampAttribute.cs, src/Whizbang.Core/Attributes/PopulateFromServiceAttribute.cs, src/Whizbang.Core/Attributes/PopulateFromIdentifierAttribute.cs, src/Whizbang.Core/Attributes/PopulateFromContextAttribute.cs, src/Whizbang.Core/Attributes/TimestampKind.cs, src/Whizbang.Core/Attributes/ServiceKind.cs, src/Whizbang.Core/Attributes/IdentifierKind.cs, src/Whizbang.Core/Attributes/ContextKind.cs, src/Whizbang.Core/AutoPopulate/PopulateKind.cs, src/Whizbang.Core/AutoPopulate/IAutoPopulateRegistry.cs, src/Whizbang.Core/AutoPopulate/IAutoPopulateProcessor.cs, src/Whizbang.Core/AutoPopulate/IAutoPopulatePopulator.cs, src/Whizbang.Core/AutoPopulate/AutoPopulateRegistry.cs, src/Whizbang.Core/AutoPopulate/AutoPopulateProcessor.cs, src/Whizbang.Core/AutoPopulate/AutoPopulatePopulatorRegistry.cs, src/Whizbang.Core/AutoPopulate/AutoPopulateRegistration.cs, src/Whizbang.Core/AutoPopulate/MessageEnvelopeAutoPopulateExtensions.cs, src/Whizbang.Core/AutoPopulate/JsonAutoPopulateHelper.cs, src/Whizbang.Generators/AutoPopulateDiscoveryGenerator.cs"
       }
     },
     {
@@ -1620,6 +1751,31 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Type Symbol Extensions",
+        "version": "1.0.0",
+        "category": "Source Generators",
+        "order": "11",
+        "description": "Roslyn INamedTypeSymbol extension methods for walking type hierarchies - properties, methods, and attribute discovery across inheritance chains",
+        "tags": "source-generators, roslyn, type-hierarchy, properties, methods, attributes, aot, utilities",
+        "codeReferences": "src/Whizbang.Generators.Shared/Utilities/TypeSymbolExtensions.cs"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/_folder.md",
       "presentFields": [
         "title",
@@ -1686,19 +1842,28 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Namespace-Based Routing",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "2",
+        "description": "Namespace-based routing in Whizbang determines how commands and events flow between services. Commands use a shared inbox topic with namespace filtering, while events publish to namespace-specific topics for pub/sub distribution with automatic subscription discovery.",
+        "tags": "routing, namespace-routing, message-routing, inbox, topics, pub-sub",
+        "codeReferences": "src/Whizbang.Core/Routing/RoutingOptions.cs, src/Whizbang.Core/Routing/NamespaceRoutingStrategy.cs, src/Whizbang.Core/Routing/SharedTopicInboxStrategy.cs, src/Whizbang.Core/Routing/EventSubscriptionDiscovery.cs, src/Whizbang.Core/Routing/MessageKindAttribute.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/rpc-extraction.md",
@@ -1772,19 +1937,28 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/event-store.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Event Store",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "9",
+        "description": "The IEventStore interface provides append-only event storage for event sourcing in Whizbang. Supports stream-based storage with automatic sequence numbering, polymorphic reads, and synchronous verification via AppendAndWaitAsync.",
+        "tags": "event-store, event-sourcing, append-only, streams, IEventStore, persistence",
+        "codeReferences": "src/Whizbang.Core/Messaging/IEventStore.cs, src/Whizbang.Core/Messaging/AppendAndWaitEventStoreDecorator.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/event-streams.md",
@@ -1957,19 +2131,28 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/identity/fuzzy-matching.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "MatchStrictness: Fuzzy Type Matching Control",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "26",
+        "description": "MatchStrictness is a flag enum that controls how type names are compared during fuzzy matching. Enables flexible type matching by ignoring case, version, assembly, or namespace components with combinable flags and composite presets for common scenarios.",
+        "tags": "fuzzy-matching, match-strictness, type-matching, flags, type-comparison, identity",
+        "codeReferences": "src/Whizbang.Core/MatchStrictness.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/identity/time-provider.md",
@@ -1998,67 +2181,103 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/identity/type-formatting.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "TypeFormatter: Type Name Formatting Utility",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "27",
+        "description": "TypeFormatter is a static utility that formats .NET Type objects into string representations using TypeQualification flags. Handles namespace, assembly, version, and culture formatting with culture-invariant output and full AOT compatibility.",
+        "tags": "type-formatter, type-formatting, type-names, aot, identity, source-generators",
+        "codeReferences": "src/Whizbang.Core/TypeFormatter.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/identity/type-matching.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "TypeMatcher: Type Name Matching Utilities",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "28",
+        "description": "TypeMatcher provides flexible type name matching with fuzzy matching via MatchStrictness flags and regex pattern matching. Implements a sequential transformation pipeline for type string comparisons with null-safe handling.",
+        "tags": "type-matcher, type-matching, fuzzy-matching, regex, identity, type-comparison",
+        "codeReferences": "src/Whizbang.Core/TypeMatcher.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/identity/type-qualification.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "TypeQualification: Type Name Formatting Control",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "29",
+        "description": "TypeQualification is a flag enum that controls how .NET type names are formatted in generated code. Provides fine-grained control over namespace, assembly, version, and other type name components with composite presets for common scenarios.",
+        "tags": "type-qualification, type-formatting, flags, source-generators, identity, aot",
+        "codeReferences": "src/Whizbang.Core/TypeQualification.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/identity/whizbang-ids.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "WhizbangIds: Strongly-Typed Identity Values",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "24",
+        "description": "Whizbang uses strongly-typed identity values based on UUIDv7 for all identifiers. Provides compile-time type safety, prevents ID mixing, and enables AOT-compatible dependency injection with source-generated value types and TrackedGuid metadata.",
+        "tags": "whizbang-ids, identity, uuidv7, tracked-guid, type-safety, value-objects",
+        "codeReferences": "src/Whizbang.Core/IWhizbangId.cs, src/Whizbang.Core/ValueObjects/WhizbangId.cs, src/Whizbang.Core/ValueObjects/TrackedGuid.cs, src/Whizbang.Core/ValueObjects/GuidMetadata.cs, src/Whizbang.Core/WhizbangIdProviderRegistry.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lenses/_folder.md",
@@ -2157,19 +2376,28 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lenses/raw-sql.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Raw SQL and Connection Access",
+        "version": "1.0.0",
+        "category": "Lenses",
+        "order": "6",
+        "description": "Escape hatches for raw SQL execution and direct database connection access in Whizbang lenses. Covers ExecuteSqlAsync with SQL injection protection, direct DbConnection access for bulk operations, and Npgsql binary import for high-performance data loading.",
+        "tags": "raw-sql, sql, connection-access, bulk-operations, npgsql, lenses",
+        "codeReferences": "src/Whizbang.Data.EFCore.Postgres/LensQueryConnectionExtensions.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lenses/scoped-lenses.md",
@@ -2248,19 +2476,28 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lenses/vector-search.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Vector Similarity Search",
+        "version": "1.0.0",
+        "category": "Lenses",
+        "order": "7",
+        "description": "Whizbang supports pgvector similarity queries for semantic search, embeddings, and AI/ML workloads. Provides turnkey setup with automatic NpgsqlDataSource and DbContext configuration when perspectives use VectorField attributes, plus cosine, L2, and inner product distance functions.",
+        "tags": "vector-search, pgvector, similarity-search, embeddings, semantic-search, ai-ml",
+        "codeReferences": "src/Whizbang.Data.EFCore.Postgres/VectorSearchExtensions.cs, src/Whizbang.Core/Lenses/VectorSearchResult.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/_folder.md",
@@ -2378,6 +2615,31 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Cascade Context & Security Propagation",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "6",
+        "description": "Propagate correlation, causation, and security context across message flows with CascadeContext, enrichers, and scope context integration",
+        "tags": "cascade-context, security-propagation, scope-context, enrichers, multi-tenant, correlation",
+        "codeReferences": "src/Whizbang.Core/Observability/CascadeContext.cs, src/Whizbang.Core/Observability/CascadeContextFactory.cs, src/Whizbang.Core/Observability/ICascadeContextEnricher.cs, src/Whizbang.Core/Observability/SecurityContext.cs, src/Whizbang.Core/Security/IScopeContextAccessor.cs, src/Whizbang.Core/Security/ScopeContextAccessor.cs, src/Whizbang.Core/Security/ScopedMessageContext.cs, src/Whizbang.Core/IMessageContext.cs, src/Whizbang.Core/MessageContext.cs"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/delivery-receipts.md",
       "presentFields": [
         "title",
@@ -2475,6 +2737,31 @@
         "description": "MessageAssociationRecord and MessageAssociationsSchema for tracking message-to-consumer mappings in Whizbang.",
         "tags": "message-associations, perspectives, receptors, discovery",
         "codeReferences": "src/Whizbang.Core/Messaging/MessageAssociationRecord.cs, src/Whizbang.Data.Schema/Schemas/MessageAssociationsSchema.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context-extraction.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Message Context Extraction",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "7",
+        "description": "Extract trace context and security scope from message envelopes using EnvelopeContextExtractor - the single source of truth for context extraction",
+        "tags": "context-extraction, envelope, tracing, opentelemetry, scope, security, hops",
+        "codeReferences": "src/Whizbang.Core/Observability/EnvelopeContextExtractor.cs"
       }
     },
     {
@@ -2764,6 +3051,31 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspectives with Actions",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "5",
+        "description": "Soft-delete and purge support for perspectives using IPerspectiveWithActionsFor, ApplyResult, and ModelAction to control row lifecycle from pure Apply methods",
+        "tags": "perspectives, delete, purge, soft-delete, ApplyResult, ModelAction, row-removal",
+        "codeReferences": "src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs, src/Whizbang.Core/Perspectives/ApplyResult.cs, src/Whizbang.Core/Perspectives/ModelAction.cs"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
       "presentFields": [
         "title",
@@ -2878,19 +3190,78 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/registry.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Perspective Registry",
+        "version": "1.0.0",
+        "category": "Perspectives",
+        "order": "6",
+        "description": "The perspective registry is a system table that tracks the mapping between C# perspective types and their database tables. Enables automatic schema management, drift detection via SHA-256 hashing, and safe table renaming across deployments.",
+        "tags": "perspective-registry, schema-management, drift-detection, table-mapping, perspectives",
+        "codeReferences": "src/Whizbang.Data.Schema/Schemas/PerspectiveRegistrySchema.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspective Snapshots",
+        "version": "1.0.0",
+        "category": "Perspectives",
+        "order": "11",
+        "description": "Snapshot and rewind pattern for efficient late-arriving event processing - store model state at intervals, restore from snapshots instead of replaying from event zero",
+        "tags": "perspectives, snapshots, rewind, late-arriving-events, replay, read-models, operational",
+        "codeReferences": "src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs, src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs, src/Whizbang.Data.Dapper.Postgres/DapperPerspectiveSnapshotStore.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/stream-locking.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspective Stream Locking",
+        "version": "1.0.0",
+        "category": "Perspectives",
+        "order": "12",
+        "description": "Stream-level locking for perspective rewind, bootstrap, and purge operations - prevents concurrent event application during destructive operations",
+        "tags": "perspectives, stream-locking, concurrency, rewind, bootstrap, purge, distributed-locking, operational",
+        "codeReferences": "src/Whizbang.Core/Perspectives/IPerspectiveStreamLocker.cs, src/Whizbang.Core/Perspectives/PerspectiveStreamLockOptions.cs, src/Whizbang.Data.Dapper.Postgres/DapperPerspectiveStreamLocker.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/sync.md",
@@ -2915,51 +3286,78 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/table-naming.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Perspective Table Naming",
+        "version": "1.0.0",
+        "category": "Perspectives",
+        "order": "7",
+        "description": "Whizbang automatically generates database table names for perspectives using configurable naming conventions. Strips common suffixes like Projection, Model, and Dto by default, and supports MSBuild properties for customizing suffix stripping behavior.",
+        "tags": "table-naming, naming-conventions, snake-case, suffix-stripping, perspectives, schema",
+        "codeReferences": "src/Whizbang.Generators.Shared/Utilities/NamingConventionUtilities.cs, src/Whizbang.Generators.Shared/Models/TableNameConfig.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/temporal.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Temporal Perspectives",
+        "version": "1.0.0",
+        "category": "Perspectives",
+        "order": "8",
+        "description": "Temporal perspectives create append-only logs where each event creates a new row rather than updating existing rows. Ideal for activity feeds, audit logs, and full history tracking using the ITemporalPerspectiveFor interface.",
+        "tags": "temporal-perspectives, append-only, audit-log, activity-feed, history, ITemporalPerspectiveFor",
+        "codeReferences": "src/Whizbang.Core/Perspectives/ITemporalPerspectiveFor.cs, src/Whizbang.Core/Perspectives/ITemporalPerspectiveStore.cs, src/Whizbang.Core/Perspectives/TemporalActionType.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/typed-associations.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "GetPerspectiveAssociations: Strongly-Typed Perspective Queries",
+        "version": "1.0.0",
+        "category": "Perspectives",
+        "order": "9",
+        "description": "GetPerspectiveAssociations is a source-generated method returning strongly-typed perspective associations filtered by model and event type. Provides compile-time type safety and AOT-compatible delegate access to perspective Apply methods.",
+        "tags": "typed-associations, perspective-associations, source-generated, type-safety, aot, delegates",
+        "codeReferences": "src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/vector-fields.md",
@@ -3099,35 +3497,53 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/security/implementing-multi-tenancy.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Implementing Multi-Tenancy",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "9",
+        "description": "Step-by-step guide to implementing multi-tenancy in Whizbang applications, covering tenant isolation, role-based security options, scope filters, and group-based sharing patterns.",
+        "tags": "multi-tenancy, tenant-isolation, security-options, scope-filters, rbac, saas, data-isolation",
+        "codeReferences": "src/Whizbang.Core/Security/SecurityOptions.cs, src/Whizbang.Core/Security/IPermissionExtractor.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/security/message-security.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Message Security Context Propagation",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "10",
+        "description": "Automatic security context establishment for incoming messages in distributed systems. Covers security extractors, scope context population, transport metadata, and audit event emission for compliance.",
+        "tags": "message-security, security-context, extractors, distributed-security, scope-context, transport-metadata, audit",
+        "codeReferences": "src/Whizbang.Core/Security/IMessageSecurityContextProvider.cs, src/Whizbang.Core/Security/DefaultMessageSecurityContextProvider.cs, src/Whizbang.Core/Security/ISecurityContextExtractor.cs, src/Whizbang.Core/Security/Extractors/MessageHopSecurityExtractor.cs, src/Whizbang.Core/Security/MessageSecurityOptions.cs, src/Whizbang.Core/Security/SecurityContextHelper.cs, src/Whizbang.Core/Security/IMessageContextAccessor.cs, src/Whizbang.Core/Security/MessageSecurityServiceCollectionExtensions.cs, src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/security/multi-tenancy.md",
@@ -3785,51 +4201,78 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/commands-events.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Commands and Events",
+        "version": "1.0.0",
+        "category": "Messaging",
+        "order": "5",
+        "description": "Core message types in Whizbang representing intent (commands) and facts (events). Covers ICommand, IEvent, and IQuery marker interfaces, naming conventions, and message envelope integration.",
+        "tags": "commands, events, queries, messaging, ICommand, IEvent, CQRS, message-types",
+        "codeReferences": "src/Whizbang.Core/ICommand.cs, src/Whizbang.Core/IEvent.cs, src/Whizbang.Core/IQuery.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/failure-handling.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Failure Handling",
+        "version": "1.0.0",
+        "category": "Messaging",
+        "order": "6",
+        "description": "Sophisticated failure handling in Whizbang messaging including exponential backoff retry scheduling, stream-based failure cascades, poison message detection, and bitwise message processing status tracking.",
+        "tags": "failure-handling, retry, exponential-backoff, poison-messages, error-recovery, stream-cascade, resilience",
+        "codeReferences": "tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/idempotency-patterns.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Idempotency Patterns",
+        "version": "1.0.0",
+        "category": "Messaging",
+        "order": "7",
+        "description": "Idempotency strategies for inbox and outbox message processing in Whizbang. Covers exactly-once processing via deduplication tables, at-least-once delivery guarantees, and transactional boundary patterns.",
+        "tags": "idempotency, exactly-once, deduplication, at-least-once, inbox, outbox, message-processing",
+        "codeReferences": "tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/inbox-pattern.md",
@@ -3883,19 +4326,28 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Multi-Instance Coordination",
+        "version": "1.0.0",
+        "category": "Messaging",
+        "order": "8",
+        "description": "Reliable, ordered message processing across multiple service instances using lease-based coordination, partition reassignment, stale instance cleanup, and cross-instance stream ordering guarantees.",
+        "tags": "multi-instance, coordination, lease-management, partitioning, distributed-processing, stream-ordering, scaling",
+        "codeReferences": "tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/outbox-pattern.md",
@@ -3924,19 +4376,28 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/topic-filters.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Topic Filters",
+        "version": "1.0.0",
+        "category": "Messaging",
+        "order": "9",
+        "description": "Type-safe, compile-time routing configuration for commands using TopicFilterAttribute. Supports string literals, strongly-typed enums, multiple topics per command, and AOT-compatible source generation.",
+        "tags": "topic-filters, routing, attributes, source-generation, AOT, message-routing, compile-time",
+        "codeReferences": "src/Whizbang.Core/TopicFilterAttribute.cs, src/Whizbang.Core/TopicFilterAttribute{TEnum}.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/_folder.md",
@@ -4085,19 +4546,28 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
-      "presentFields": [],
-      "missingFields": [
+      "presentFields": [
         "title",
         "version",
         "category",
         "order",
         "description",
         "tags",
-        "codeReferences",
+        "codeReferences"
+      ],
+      "missingFields": [
         "slug"
       ],
       "shortDescription": null,
-      "frontmatter": {}
+      "frontmatter": {
+        "title": "Work Coordination",
+        "version": "1.0.0",
+        "category": "Messaging",
+        "order": "10",
+        "description": "Foundation of Whizbang's distributed message processing architecture covering lease-based coordination, virtual partition distribution via consistent hashing, stream ordering guarantees, and orphaned work recovery.",
+        "tags": "work-coordination, lease-based, partitioning, consistent-hashing, stream-ordering, distributed-systems, process-work-batch",
+        "codeReferences": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs, src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs"
+      }
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordinator.md",
@@ -5026,6 +5496,31 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz300.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "order",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ300: Inconsistent Perspective Model Types",
+        "description": "Error diagnostic when a perspective class implements multiple perspective interfaces with different TModel types",
+        "version": "1.0.0",
+        "category": "Diagnostics",
+        "severity": "Error",
+        "tags": "diagnostics, perspectives, model-consistency, type-safety, analyzer",
+        "codeReferences": "src/Whizbang.Generators/Analyzers/PerspectiveModelConsistencyAnalyzer.cs"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz400.md",
       "presentFields": [
         "title",
@@ -5139,6 +5634,31 @@
         "description": "Cloud-native orchestration for Whizbang applications with .NET Aspire - automatic infrastructure provisioning and service discovery",
         "tags": "aspire, cloud-native, orchestration, service-bus, emulator, infrastructure, distributed-applications",
         "codeReferences": "src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs, src/Whizbang.Core/Transports/AzureServiceBus/AspireConfigurationGenerator.cs, src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusReadinessCheck.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/database-limits.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Database Identifier Limits",
+        "version": "1.0.0",
+        "category": "Infrastructure",
+        "order": "7",
+        "description": "Compile-time validation of database identifier lengths - table names, column names, and index names checked against provider-specific byte limits",
+        "tags": "database, limits, identifiers, validation, postgresql, compile-time, source-generators",
+        "codeReferences": "src/Whizbang.Generators.Shared/Limits/IDbProviderLimits.cs, src/Whizbang.Generators.Shared/Utilities/IdentifierValidation.cs, src/Whizbang.Data.EFCore.Postgres.Generators/Limits/PostgresLimits.cs"
       }
     },
     {
@@ -5333,6 +5853,31 @@
         "description": "Configure log levels for Whizbang's internal logging categories to control console output verbosity in development and production environments",
         "tags": "logging, log levels, categories, appsettings, observability, configuration, ILogger",
         "codeReferences": "src/Whizbang.Core/Dispatcher.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Core/Workers/TransportConsumerWorker.cs, src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs, src/Whizbang.Core/Tags/MessageTagProcessor.cs, src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/metrics.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Metrics Reference",
+        "version": "1.0.0",
+        "category": "Observability",
+        "order": "6",
+        "description": "Complete reference for all built-in OpenTelemetry metrics emitted by Whizbang - counters, histograms, and gauges across dispatcher, lifecycle, transport, perspective, work coordinator, and lifecycle coordinator subsystems",
+        "tags": "metrics, opentelemetry, counters, histograms, monitoring, Prometheus, Grafana",
+        "codeReferences": "src/Whizbang.Core/Observability/WhizbangMetrics.cs, src/Whizbang.Core/Observability/DispatcherMetrics.cs, src/Whizbang.Core/Observability/LifecycleMetrics.cs, src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs, src/Whizbang.Core/Observability/TransportMetrics.cs, src/Whizbang.Core/Observability/PerspectiveMetrics.cs, src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs"
       }
     },
     {

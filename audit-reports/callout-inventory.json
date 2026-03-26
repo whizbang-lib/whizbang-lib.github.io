@@ -1,14 +1,14 @@
 {
-  "totalCallouts": 98,
+  "totalCallouts": 100,
   "unclosed": 0,
   "byType": {
-    "new": 53,
+    "new": 54,
     "info": 5,
     "planned": 8,
     "note": 22,
     "new{important}": 2,
     "new{breaking}": 2,
-    "updated": 5,
+    "updated": 6,
     "tip": 1
   },
   "unclosedCallouts": [],
@@ -162,49 +162,35 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 327,
+      "line": 343,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 699,
+      "line": 714,
       "type": "new{important}",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 810,
+      "line": 825,
       "type": "new{breaking}",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 855,
+      "line": 870,
       "type": "new{important}",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1377,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1463,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1467,
+      "line": 1392,
       "type": "new",
       "closed": true,
       "lineCount": 3
@@ -218,14 +204,28 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1588,
+      "line": 1482,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "line": 1493,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "line": 1603,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "line": 619,
+      "line": 649,
       "type": "new",
       "closed": true,
       "lineCount": 3
@@ -295,7 +295,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lenses/vector-search.md",
-      "line": 199,
+      "line": 214,
       "type": "updated",
       "closed": true,
       "lineCount": 5
@@ -323,21 +323,35 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 128,
+      "line": 95,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 132,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 374,
+      "line": 378,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 473,
+      "line": 477,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 527,
       "type": "new",
       "closed": true,
       "lineCount": 3
@@ -414,21 +428,21 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/security/implementing-multi-tenancy.md",
-      "line": 326,
+      "line": 341,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/security/message-security.md",
-      "line": 257,
+      "line": 279,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/security/message-security.md",
-      "line": 545,
+      "line": 567,
       "type": "new",
       "closed": true,
       "lineCount": 3
