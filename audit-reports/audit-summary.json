@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-26T14:39:09.120Z",
+  "generatedAt": "2026-03-26T15:20:36.343Z",
   "docsRoot": "src/assets/docs/v1.0.0",
   "libraryPath": "/Users/philcarbone/src/whizbang/whizbang",
   "highlights": {
@@ -7,12 +7,12 @@
     "pagesWithFrontmatterGaps": 254,
     "totalCodeSamples": 3255,
     "codeSamplesWithoutMetadata": 140,
-    "undocumentedPublicTypes": 574,
-    "brokenCodeDocsLinks": 7,
+    "undocumentedPublicTypes": 515,
+    "brokenCodeDocsLinks": 0,
     "totalMermaidDiagrams": 39,
     "unclosedCallouts": 0,
     "searchChunksWithMarkdownLeaks": 5,
-    "potentiallyStalePages": 285,
+    "potentiallyStalePages": 286,
     "brokenInternalLinks": 4,
     "personaCoverageGaps": 15
   },

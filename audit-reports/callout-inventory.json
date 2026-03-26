@@ -15,756 +15,756 @@
   "callouts": [
     {
       "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 22,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 43,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 76,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 197,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 398,
-      "type": "info",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 412,
-      "type": "planned",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 429,
-      "type": "planned",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/data/efcore-integration.md",
-      "line": 841,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-dispatchers.md",
-      "line": 18,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-health-checks.md",
-      "line": 19,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-id-generators.md",
-      "line": 18,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-perspectives.md",
-      "line": 20,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-perspectives.md",
-      "line": 56,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-policies.md",
-      "line": 22,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-receptors.md",
-      "line": 20,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-serializers.md",
-      "line": 18,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-storage.md",
-      "line": 18,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-transports.md",
-      "line": 22,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-work-coordinators.md",
-      "line": 18,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/extending/extensibility/database-schema-framework.md",
-      "line": 27,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/extending/extensibility/plugin-architecture.md",
-      "line": 19,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 358,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 594,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 790,
-      "type": "new{important}",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 901,
-      "type": "new{breaking}",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 946,
-      "type": "new{important}",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1545,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1656,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1660,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1671,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1781,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "line": 610,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 21,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 42,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 64,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 133,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 157,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 226,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 356,
-      "type": "info",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 370,
-      "type": "planned",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 385,
-      "type": "planned",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/lenses/vector-search.md",
-      "line": 214,
-      "type": "updated",
-      "closed": true,
-      "lineCount": 5
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-coordinator.md",
-      "line": 194,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 24,
-      "type": "updated",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 70,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 95,
-      "type": "updated",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 132,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 198,
-      "type": "planned",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 382,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 481,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 531,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-      "line": 328,
-      "type": "tip",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/association-info.md",
-      "line": 15,
-      "type": "updated",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/association-metadata.md",
-      "line": 19,
-      "type": "updated",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/event-completion.md",
-      "line": 370,
-      "type": "updated",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/multi-stream.md",
-      "line": 297,
-      "type": "info",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "line": 33,
-      "type": "updated",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "line": 622,
-      "type": "updated",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "line": 663,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "line": 921,
-      "type": "info",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "line": 39,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/sync.md",
-      "line": 16,
-      "type": "updated",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "line": 67,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "line": 195,
-      "type": "updated",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "line": 412,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "line": 853,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "line": 117,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/security/implementing-multi-tenancy.md",
-      "line": 341,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/security/message-security.md",
-      "line": 279,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/security/message-security.md",
-      "line": 567,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/security/scope-propagation.md",
-      "line": 32,
-      "type": "new{breaking}",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/learn/tutorial/analytics-service.md",
-      "line": 24,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/learn/tutorial/customer-service.md",
-      "line": 24,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/learn/tutorial/deployment.md",
-      "line": 21,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/learn/tutorial/inventory-service.md",
-      "line": 25,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/learn/tutorial/notification-service.md",
-      "line": 22,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/learn/tutorial/order-management.md",
-      "line": 24,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/learn/tutorial/payment-processing.md",
-      "line": 25,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/learn/tutorial/shipping-service.md",
-      "line": 24,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/learn/tutorial/testing-strategy.md",
-      "line": 27,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "line": 301,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "line": 342,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "line": 388,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "line": 437,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "line": 532,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "line": 590,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/transport-consumer.md",
-      "line": 141,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
       "line": 23,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
+      "file": "src/assets/docs/v1.0.0/data/drivers.md",
       "line": 44,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 80,
+      "file": "src/assets/docs/v1.0.0/data/drivers.md",
+      "line": 77,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 160,
+      "file": "src/assets/docs/v1.0.0/data/drivers.md",
+      "line": 198,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 319,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 459,
+      "file": "src/assets/docs/v1.0.0/data/drivers.md",
+      "line": 399,
       "type": "info",
       "closed": true,
       "lineCount": 3
     },
     {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 473,
+      "file": "src/assets/docs/v1.0.0/data/drivers.md",
+      "line": 413,
       "type": "planned",
       "closed": true,
       "lineCount": 3
     },
     {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 489,
+      "file": "src/assets/docs/v1.0.0/data/drivers.md",
+      "line": 430,
       "type": "planned",
       "closed": true,
       "lineCount": 3
     },
     {
-      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
+      "file": "src/assets/docs/v1.0.0/data/efcore-integration.md",
+      "line": 842,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-dispatchers.md",
+      "line": 19,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-health-checks.md",
+      "line": 20,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-id-generators.md",
+      "line": 19,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-perspectives.md",
+      "line": 21,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-perspectives.md",
+      "line": 57,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-policies.md",
+      "line": 23,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-receptors.md",
+      "line": 21,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-serializers.md",
+      "line": 19,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-storage.md",
+      "line": 19,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-transports.md",
+      "line": 23,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/custom-work-coordinators.md",
+      "line": 19,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/database-schema-framework.md",
+      "line": 28,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/extensibility/plugin-architecture.md",
+      "line": 20,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "line": 359,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "line": 595,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "line": 791,
+      "type": "new{important}",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "line": 902,
+      "type": "new{breaking}",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "line": 947,
+      "type": "new{important}",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "line": 1546,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "line": 1657,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "line": 1661,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "line": 1672,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "line": 1782,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
+      "line": 611,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
+      "line": 22,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
+      "line": 43,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
+      "line": 65,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
+      "line": 134,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
+      "line": 158,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
+      "line": 227,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
+      "line": 357,
+      "type": "info",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
+      "line": 371,
+      "type": "planned",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
+      "line": 386,
+      "type": "planned",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lenses/vector-search.md",
+      "line": 215,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 5
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-coordinator.md",
+      "line": 195,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 25,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 71,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 96,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 133,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 199,
+      "type": "planned",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 383,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 482,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 532,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
+      "line": 329,
+      "type": "tip",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/association-info.md",
+      "line": 16,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/association-metadata.md",
+      "line": 20,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/event-completion.md",
+      "line": 371,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/multi-stream.md",
+      "line": 298,
+      "type": "info",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
+      "line": 34,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
+      "line": 623,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
+      "line": 664,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
+      "line": 922,
+      "type": "info",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
+      "line": 40,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/sync.md",
+      "line": 17,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
+      "line": 68,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
+      "line": 196,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
+      "line": 413,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
+      "line": 854,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
+      "line": 118,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/implementing-multi-tenancy.md",
+      "line": 342,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/message-security.md",
+      "line": 280,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/message-security.md",
+      "line": 568,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/scope-propagation.md",
+      "line": 33,
+      "type": "new{breaking}",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/analytics-service.md",
+      "line": 25,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/customer-service.md",
+      "line": 25,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/deployment.md",
+      "line": 22,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/inventory-service.md",
+      "line": 26,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/notification-service.md",
+      "line": 23,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/order-management.md",
+      "line": 25,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/payment-processing.md",
+      "line": 26,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/shipping-service.md",
+      "line": 25,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/learn/tutorial/testing-strategy.md",
+      "line": 28,
+      "type": "note",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
+      "line": 302,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
+      "line": 343,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
+      "line": 389,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
+      "line": 438,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
+      "line": 533,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
+      "line": 591,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/transport-consumer.md",
+      "line": 142,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
       "line": 24,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
-      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
+      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
       "line": 45,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
+      "line": 81,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
+      "line": 161,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
+      "line": 320,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
+      "line": 460,
+      "type": "info",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
+      "line": 474,
+      "type": "planned",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
+      "line": 490,
+      "type": "planned",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 62,
+      "line": 25,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 104,
+      "line": 46,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 127,
+      "line": 63,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 156,
+      "line": 105,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 192,
+      "line": 128,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 223,
+      "line": 157,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 258,
+      "line": 193,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 354,
+      "line": 224,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
+      "line": 259,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
+      "line": 355,
       "type": "info",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 367,
+      "line": 368,
       "type": "planned",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 387,
+      "line": 388,
       "type": "planned",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "line": 1122,
+      "line": 1123,
       "type": "new",
       "closed": true,
       "lineCount": 7
