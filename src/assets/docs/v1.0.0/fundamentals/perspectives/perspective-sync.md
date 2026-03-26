@@ -1362,6 +1362,6 @@ The key insight is tracking "what did I emit" vs "what has been processed" and b
 ## Related
 
 - **[Event Completion Awaiter](event-completion.md)** - Wait for ALL perspectives (RPC completion)
-- **Source Code**: [SyncFilter.cs](../../../code/Whizbang.Core/Perspectives/Sync/SyncFilter.cs)
-- **Tests**: [SyncFilterBuilderTests.cs](../../../tests/Whizbang.Core.Tests/Perspectives/Sync/)
+- **Source Code**: SyncFilter
+- **Tests**: SyncFilterBuilderTests
 - **Concepts**: [Perspectives](perspectives.md) | [Lenses](../lenses/lenses.md)
