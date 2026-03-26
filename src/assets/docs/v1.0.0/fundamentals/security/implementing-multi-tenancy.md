@@ -11,6 +11,7 @@ tags: 'multi-tenancy, tenant-isolation, security-options, scope-filters, rbac, s
 codeReferences:
   - src/Whizbang.Core/Security/SecurityOptions.cs
   - src/Whizbang.Core/Security/IPermissionExtractor.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Implementing Multi-Tenancy

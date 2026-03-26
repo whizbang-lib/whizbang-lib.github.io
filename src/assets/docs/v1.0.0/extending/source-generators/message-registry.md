@@ -12,6 +12,7 @@ tags: >-
 codeReferences:
   - src/Whizbang.Generators/MessageRegistryGenerator.cs
   - tools/vscode-extension/src/staticAnalysis/messageRegistry.ts
+lastMaintainedCommit: '01f07906'
 ---
 
 # Message Registry

@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/WhizbangMetrics.cs
   - src/Whizbang.Core/Observability/DispatcherMetrics.cs
   - src/Whizbang.Core/HealthChecks/SubscriptionHealthCheck.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Monitoring & Observability

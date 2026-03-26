@@ -9,6 +9,7 @@ description: >-
 tags: 'lifecycle, system-commands, maintenance, pause, resume'
 codeReferences:
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Lifecycle Management

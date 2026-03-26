@@ -9,6 +9,7 @@ tags: 'envelope, registry, message-tracking, observability'
 codeReferences:
   - src/Whizbang.Core/Observability/IEnvelopeRegistry.cs
   - src/Whizbang.Core/Observability/EnvelopeRegistry.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Envelope Registry

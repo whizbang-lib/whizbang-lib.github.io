@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/WorkCoordinatorStrategyFactory.cs
   - src/Whizbang.Core/Messaging/IWorkFlusher.cs
   - src/Whizbang.Hosting.AspNet/WhizbangFlushMiddleware.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Work Coordinator Strategies

@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/WorkCoordination/PostgresWorkCoordinator.cs
   - >-
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Outbox Pattern

@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/Sync/ISyncEventTracker.cs
   - src/Whizbang.Core/Perspectives/Sync/SyncEventTracker.cs
   - src/Whizbang.Core/Dispatch/DispatchOptions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Event Completion Awaiter

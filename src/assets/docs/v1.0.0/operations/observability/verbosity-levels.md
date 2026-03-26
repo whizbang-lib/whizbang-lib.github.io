@@ -10,6 +10,7 @@ tags: 'tracing, verbosity, observability, diagnostics, configuration'
 codeReferences:
   - src/Whizbang.Core/Tracing/TraceVerbosity.cs
   - src/Whizbang.Core/Tracing/TracingOptions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Trace Verbosity Levels

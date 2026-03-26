@@ -10,6 +10,7 @@ tags: 'caching, distributed-cache, cache-invalidation, redis'
 codeReferences:
   - src/Whizbang.Core/Commands/ClearCacheCommand.cs
   - src/Whizbang.Core/Caching/ICacheService.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Caching

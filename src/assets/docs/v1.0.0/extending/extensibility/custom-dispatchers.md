@@ -9,6 +9,7 @@ description: >-
 tags: 'dispatcher, mediator, routing, event-sourcing'
 codeReferences:
   - src/Whizbang.Core/Dispatcher/IDispatcher.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Dispatchers

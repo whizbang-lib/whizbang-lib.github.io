@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Generators/VectorDependencyAnalyzer.cs
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/VectorFieldPackageReferenceAnalyzer.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ070: Missing Pgvector.EntityFrameworkCore Package

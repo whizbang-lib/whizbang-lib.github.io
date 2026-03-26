@@ -9,6 +9,7 @@ description: >-
 tags: 'work-coordination, iworkcoordinator, distributed-locks, redis-queues'
 codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Work Coordinators

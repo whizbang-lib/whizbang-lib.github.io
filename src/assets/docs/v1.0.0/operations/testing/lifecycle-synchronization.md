@@ -15,6 +15,7 @@ codeReferences:
   - >-
     samples/ECommerce/tests/ECommerce.Integration.Tests/Fixtures/LifecycleReceptorTestExtensions.cs
   - src/Whizbang.Core/Messaging/ILifecycleReceptorRegistry.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Lifecycle Synchronization

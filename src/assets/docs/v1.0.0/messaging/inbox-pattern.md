@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/WorkCoordination/IWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/WorkCoordination/PostgresWorkCoordinator.cs
   - samples/ECommerce/ECommerce.InventoryWorker/Workers/InventoryWorker.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Inbox Pattern

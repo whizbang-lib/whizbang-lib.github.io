@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/Lenses/ILensQuery.cs
   - samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs
   - samples/ECommerce/ECommerce.BFF.API/Lenses/InventoryLens.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Lenses Guide

@@ -12,6 +12,7 @@ codeReferences:
   - samples/ECommerce/ECommerce.Messages/
   - samples/ECommerce/ECommerce.OrderService.API/
   - samples/ECommerce/ECommerce.BFF.API/
+lastMaintainedCommit: '01f07906'
 ---
 
 # Project Structure Guide

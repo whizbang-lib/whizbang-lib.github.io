@@ -12,6 +12,7 @@ codeReferences:
   - samples/ECommerce/ECommerce.ServiceDefaults/Extensions.cs
   - samples/ECommerce/ECommerce.OrderService.API/Program.cs
   - samples/ECommerce/ECommerce.InventoryWorker/Program.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Deployment

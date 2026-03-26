@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
   - src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs
   - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Turnkey Database Initialization

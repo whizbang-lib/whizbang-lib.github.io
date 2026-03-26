@@ -15,6 +15,7 @@ codeReferences:
     samples/ECommerce/ECommerce.OrderService.API/Endpoints/Orders/CreateOrderEndpoint.cs
   - samples/ECommerce/ECommerce.Contracts/Commands/CreateOrderCommand.cs
   - samples/ECommerce/ECommerce.Contracts/Events/OrderCreatedEvent.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Order Management Service

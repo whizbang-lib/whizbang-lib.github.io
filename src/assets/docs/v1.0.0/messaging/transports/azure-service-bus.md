@@ -28,6 +28,7 @@ testReferences:
     tests/Whizbang.Transports.AzureServiceBus.Tests/SubscriptionNameDerivationTests.cs
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusInfrastructureProvisionerTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Azure Service Bus Transport

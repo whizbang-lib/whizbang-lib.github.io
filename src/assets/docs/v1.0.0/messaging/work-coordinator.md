@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Work Coordinator

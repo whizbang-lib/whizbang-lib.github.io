@@ -11,6 +11,7 @@ tags: >-
 codeReferences:
   - src/Whizbang.Generators.Shared/Utilities/AttributeUtilities.cs
   - src/Whizbang.Generators/MessageTagDiscoveryGenerator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Attribute Utilities

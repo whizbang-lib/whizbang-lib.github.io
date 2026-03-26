@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IFilterableEventStoreQuery.cs
   - src/Whizbang.Core/Messaging/IScopedEventStoreQuery.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableEventStoreQuery.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Event Store Query

@@ -9,6 +9,7 @@ description: >-
 tags: 'serialization, protobuf, messagepack, aot, json'
 codeReferences:
   - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Serializers

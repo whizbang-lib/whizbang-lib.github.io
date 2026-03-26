@@ -10,6 +10,7 @@ tags: 'source-generators, receptors, roslyn, compile-time, zero-reflection, aot'
 codeReferences:
   - src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs
   - src/Whizbang.Generators/Templates/DispatcherTemplate.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Receptor Discovery

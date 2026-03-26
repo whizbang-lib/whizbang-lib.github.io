@@ -12,6 +12,7 @@ tags: >-
 codeReferences:
   - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
   - src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Discovery

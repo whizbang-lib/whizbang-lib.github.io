@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/EventStore/IEventStore.cs
   - src/Whizbang.Core/Coordination/IWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/Schema/event_store.sql
+lastMaintainedCommit: '01f07906'
 ---
 
 # Event Store

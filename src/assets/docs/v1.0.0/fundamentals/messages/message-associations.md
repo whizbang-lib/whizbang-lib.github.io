@@ -9,6 +9,7 @@ tags: 'message-associations, perspectives, receptors, discovery'
 codeReferences:
   - src/Whizbang.Core/Messaging/MessageAssociationRecord.cs
   - src/Whizbang.Data.Schema/Schemas/MessageAssociationsSchema.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Message Associations

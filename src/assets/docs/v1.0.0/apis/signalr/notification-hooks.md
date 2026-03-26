@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Tags/IMessageTagHook.cs
 testReferences:
   - tests/Whizbang.SignalR.Tests/Hooks/SignalRNotificationHookTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # SignalR Notification Hooks

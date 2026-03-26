@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/Diagnostics/IActiveStopwatch.cs
   - src/Whizbang.Core/Diagnostics/DebuggerAwareClockOptions.cs
   - src/Whizbang.Core/Diagnostics/DebuggerDetectionMode.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Debugger-Aware Clock

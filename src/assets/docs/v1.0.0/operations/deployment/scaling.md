@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Scaling Patterns

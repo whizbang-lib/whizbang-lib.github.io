@@ -8,6 +8,7 @@ description: >-
 tags: 'di, dependency-injection, lenses, service-registration, queries'
 codeReferences:
   - src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # AddLensServices

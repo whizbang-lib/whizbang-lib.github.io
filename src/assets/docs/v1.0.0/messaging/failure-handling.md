@@ -10,6 +10,7 @@ description: >-
 tags: 'failure-handling, retry, exponential-backoff, poison-messages, error-recovery, stream-cascade, resilience'
 codeReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Failure Handling

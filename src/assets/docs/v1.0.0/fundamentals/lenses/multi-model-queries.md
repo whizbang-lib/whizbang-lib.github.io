@@ -10,6 +10,7 @@ codeReferences:
   - src/Whizbang.Core/Lenses/ILensQuery.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresLensQuery.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreInfrastructureRegistration.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Multi-Model Queries

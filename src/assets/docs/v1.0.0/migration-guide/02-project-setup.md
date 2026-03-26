@@ -7,6 +7,7 @@ description: NuGet packages and initial configuration for migrating to Whizbang
 tags: 'migration, nuget, packages, configuration, setup'
 codeReferences:
   - samples/ECommerce/ECommerce.OrderService.API/Program.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Project Setup for Migration

@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Core/IReceptor.cs
   - src/Whizbang.Core/IPerspectiveOf.cs
   - README.md
+lastMaintainedCommit: '01f07906'
 ---
 
 # Introduction to Whizbang

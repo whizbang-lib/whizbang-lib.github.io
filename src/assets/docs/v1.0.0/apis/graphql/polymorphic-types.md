@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Transports.HotChocolate/Extensions/PolymorphicTypeExtensions.cs
 testReferences:
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/PolymorphicTypeExtensionsTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Polymorphic Types in GraphQL

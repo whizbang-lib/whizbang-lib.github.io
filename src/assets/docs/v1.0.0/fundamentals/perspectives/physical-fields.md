@@ -8,6 +8,7 @@ codeReferences:
   - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Physical Fields

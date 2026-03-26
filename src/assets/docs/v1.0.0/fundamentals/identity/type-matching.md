@@ -10,6 +10,7 @@ description: >-
 tags: 'type-matcher, type-matching, fuzzy-matching, regex, identity, type-comparison'
 codeReferences:
   - src/Whizbang.Core/TypeMatcher.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # TypeMatcher: Type Name Matching Utilities

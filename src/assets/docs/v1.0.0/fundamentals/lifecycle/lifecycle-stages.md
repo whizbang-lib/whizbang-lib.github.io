@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Lifecycle/ILifecycleTracking.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Lifecycle Stages

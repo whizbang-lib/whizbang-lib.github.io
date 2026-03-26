@@ -11,6 +11,7 @@ tags: 'graphql, scoping, multi-tenancy, security, middleware, jwt, scope-context
 codeReferences:
   - src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
   - src/Whizbang.Transports.HotChocolate/Middleware/ScopeMiddlewareExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # GraphQL Scoping

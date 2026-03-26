@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Security/Permission.cs
   - src/Whizbang.Core/Security/SecurityOptions.cs
   - src/Whizbang.Core/Security/Attributes/ScopedAttribute.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Security System

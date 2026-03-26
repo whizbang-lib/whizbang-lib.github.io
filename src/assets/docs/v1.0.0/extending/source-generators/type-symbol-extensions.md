@@ -11,6 +11,7 @@ tags: >-
   aot, utilities
 codeReferences:
   - src/Whizbang.Generators.Shared/Utilities/TypeSymbolExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Type Symbol Extensions

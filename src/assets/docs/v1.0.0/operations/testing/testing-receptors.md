@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/ReceptorInvoker.cs
   - src/Whizbang.Testing/Lifecycle/PerspectiveCompletionWaiter.cs
   - src/Whizbang.Testing/Lifecycle/LifecycleStageAwaiter.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Testing Receptors & Perspectives

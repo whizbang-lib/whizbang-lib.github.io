@@ -15,6 +15,7 @@ tags:
 codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/SerializablePropertyAnalyzer.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ062: Property Uses Non-Serializable Interface Type

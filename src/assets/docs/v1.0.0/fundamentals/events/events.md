@@ -9,6 +9,7 @@ tags: 'events, event-sourcing, eventid, immutability'
 codeReferences:
   - src/Whizbang.Core/IEvent.cs
   - src/Whizbang.Core/ValueObjects/EventId.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Events

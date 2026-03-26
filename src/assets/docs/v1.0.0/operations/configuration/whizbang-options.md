@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs
   - src/Whizbang.Core/Tags/TagOptions.cs
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WhizbangCoreOptions

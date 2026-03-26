@@ -10,6 +10,7 @@ tags: 'ef-core, entity-framework, postgresql, orm, jsonb, uuidv7'
 codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/WhizbangDbContext.cs
   - samples/ECommerce/ECommerce.Domain/Infrastructure/ECommerceDbContext.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # EF Core Integration

@@ -10,6 +10,7 @@ tags: 'plugins, dynamic-loading, hot-reload, extensibility'
 codeReferences:
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
   - src/Whizbang.Core/ServiceRegistrationCallbacks.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Plugin Architecture

@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Security/IMessageContextAccessor.cs
   - src/Whizbang.Core/Security/MessageSecurityServiceCollectionExtensions.cs
   - src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Message Security Context Propagation

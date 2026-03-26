@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Routing/SharedTopicInboxStrategy.cs
   - src/Whizbang.Core/Routing/EventSubscriptionDiscovery.cs
   - src/Whizbang.Core/Routing/MessageKindAttribute.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Namespace-Based Routing

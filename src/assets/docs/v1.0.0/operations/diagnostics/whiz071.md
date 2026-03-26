@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres.Generators/VectorFieldPackageReferenceAnalyzer.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Core/Perspectives/SuppressVectorPackageCheckAttribute.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ071: Missing Pgvector Package

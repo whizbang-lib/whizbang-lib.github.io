@@ -8,6 +8,7 @@ description: >-
 tags: 'di, dependency-injection, perspectives, service-registration'
 codeReferences:
   - src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # AddPerspectiveServices

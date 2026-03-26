@@ -10,6 +10,7 @@ description: >-
 tags: 'graphql, hotchocolate, lenses, aot, query-generation, paging, projection'
 codeReferences:
   - src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # GraphQL Integration

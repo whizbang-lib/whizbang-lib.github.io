@@ -7,6 +7,7 @@ tags: efcore, json, jsonb, postgresql, npgsql, converters
 codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/Serialization/EFCoreJsonContext.cs
   - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # EF Core 10 JSON Configuration with Custom Converters

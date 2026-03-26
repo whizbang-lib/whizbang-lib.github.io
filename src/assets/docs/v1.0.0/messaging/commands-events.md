@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Core/ICommand.cs
   - src/Whizbang.Core/IEvent.cs
   - src/Whizbang.Core/IQuery.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Commands and Events

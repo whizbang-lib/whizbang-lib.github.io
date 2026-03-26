@@ -15,6 +15,7 @@ codeReferences:
     samples/ECommerce/ECommerce.ShippingWorker/Receptors/PaymentShippingReceptor.cs
   - samples/ECommerce/ECommerce.Contracts/Commands/CreateShipmentCommand.cs
   - samples/ECommerce/ECommerce.Contracts/Events/ShipmentCreatedEvent.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Shipping Service

@@ -10,6 +10,7 @@ description: >-
 tags: 'schema-migration, drift-detection, database-schema, perspectives, ddl, sha256'
 codeReferences:
   - src/Whizbang.Generators.Shared/Utilities/SchemaHashUtilities.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Schema Migration

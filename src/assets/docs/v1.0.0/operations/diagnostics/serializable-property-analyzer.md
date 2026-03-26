@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Generators/SerializablePropertyAnalyzer.cs
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Core/Attributes/WhizbangSerializableAttribute.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Serializable Property Analyzer

@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/Lenses/TenantConstants.cs
   - src/Whizbang.Core/Security/ScopeContext.cs
   - src/Whizbang.Core/Security/Attributes/ScopedAttribute.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Multi-Tenancy Patterns

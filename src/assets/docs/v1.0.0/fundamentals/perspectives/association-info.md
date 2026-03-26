@@ -6,6 +6,7 @@ codeReferences:
   - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
   - src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveAssociationGenerator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # PerspectiveAssociationInfo: Strongly-Typed Associations with Delegates {#PerspectiveAssociationInfo}

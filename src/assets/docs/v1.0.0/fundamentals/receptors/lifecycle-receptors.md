@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IReceptorRegistry.cs
   - src/Whizbang.Core/Messaging/ReceptorInvoker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Lifecycle Receptors

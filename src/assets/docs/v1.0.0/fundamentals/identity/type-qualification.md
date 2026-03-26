@@ -10,6 +10,7 @@ description: >-
 tags: 'type-qualification, type-formatting, flags, source-generators, identity, aot'
 codeReferences:
   - src/Whizbang.Core/TypeQualification.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # TypeQualification: Type Name Formatting Control

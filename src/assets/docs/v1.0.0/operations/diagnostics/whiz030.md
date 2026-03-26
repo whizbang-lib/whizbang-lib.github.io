@@ -13,6 +13,7 @@ tags:
 codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ030: Perspective Event Missing StreamKey

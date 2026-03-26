@@ -8,6 +8,7 @@ description: >-
 tags: 'envelope, serialization, aot, json'
 codeReferences:
   - src/Whizbang.Core/Messaging/EnvelopeSerializer.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Envelope Serialization

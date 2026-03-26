@@ -8,6 +8,7 @@ tags: 'migration, projections, perspectives, marten, read-models'
 codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Projection Migration: Marten → Whizbang Perspectives

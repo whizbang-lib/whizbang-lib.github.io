@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Tracing/TraceVerbosity.cs
   - src/Whizbang.Core/Tracing/ITracer.cs
   - src/Whizbang.Core/Tracing/WhizbangTraceAttribute.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Tracing

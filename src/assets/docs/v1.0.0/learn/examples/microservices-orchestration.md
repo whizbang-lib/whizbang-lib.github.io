@@ -15,6 +15,7 @@ codeReferences:
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
   - >-
     samples/ECommerce/ECommerce.PaymentWorker/Receptors/ProcessPaymentReceptor.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Microservices Orchestration

@@ -12,6 +12,7 @@ tags: >-
 codeReferences:
   - src/Whizbang.Core/Transports/InProcessTransport.cs
   - tests/Whizbang.Transports.Tests/InProcessTransportTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # In-Memory Transport

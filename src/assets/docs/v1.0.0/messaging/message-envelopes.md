@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/MessageEnvelope.cs
   - src/Whizbang.Core/Observability/MessageHop.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Message Envelopes Deep Dive

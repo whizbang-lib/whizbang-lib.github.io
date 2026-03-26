@@ -7,6 +7,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/Sync/SyncInquiryResult.cs
   - src/Whizbang.Core/Perspectives/Sync/IPerspectiveSyncAwaiter.cs
   - src/Whizbang.Core/Perspectives/Sync/PerspectiveSyncOptions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Sync

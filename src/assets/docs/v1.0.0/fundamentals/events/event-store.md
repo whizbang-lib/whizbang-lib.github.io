@@ -11,6 +11,7 @@ tags: 'event-store, event-sourcing, append-only, streams, IEventStore, persisten
 codeReferences:
   - src/Whizbang.Core/Messaging/IEventStore.cs
   - src/Whizbang.Core/Messaging/AppendAndWaitEventStoreDecorator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Event Store

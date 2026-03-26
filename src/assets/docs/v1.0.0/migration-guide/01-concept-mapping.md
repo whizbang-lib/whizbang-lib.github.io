@@ -10,6 +10,7 @@ codeReferences:
   - src/Whizbang.Core/IDispatcher.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
   - src/Whizbang.Core/Messaging/IEventStore.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Concept Mapping: Marten/Wolverine → Whizbang

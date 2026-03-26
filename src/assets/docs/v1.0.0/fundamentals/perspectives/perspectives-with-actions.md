@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs
   - src/Whizbang.Core/Perspectives/ApplyResult.cs
   - src/Whizbang.Core/Perspectives/ModelAction.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspectives with Actions

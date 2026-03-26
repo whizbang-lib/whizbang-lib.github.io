@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/Security/SecurityContextHelper.cs
   - src/Whizbang.Core/Security/IMessageSecurityContextProvider.cs
   - src/Whizbang.Core/Transports/ServiceBusTransportMetadata.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Security Context Propagation

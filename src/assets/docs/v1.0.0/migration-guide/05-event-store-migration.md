@@ -8,6 +8,7 @@ tags: 'migration, event-store, marten, events, streams'
 codeReferences:
   - src/Whizbang.Core/Messaging/IEventStore.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Event Store Migration: Marten → Whizbang

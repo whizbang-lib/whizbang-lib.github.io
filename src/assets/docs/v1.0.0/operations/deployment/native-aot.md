@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
   - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
   - src/Whizbang.Core/Serialization/JsonTypeInfoResolverExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Native AOT

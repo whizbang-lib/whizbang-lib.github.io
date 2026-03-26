@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Transports.FastEndpoints/Endpoints/RestMutationEndpointBase.cs
 testReferences:
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/ServiceRegistrationTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # REST API Setup

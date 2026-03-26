@@ -11,6 +11,7 @@ tags: 'graphql, lens, graphql-lens-attribute, scope, query-generation, hotchocol
 codeReferences:
   - src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensAttribute.cs
   - src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensScope.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Lens Integration

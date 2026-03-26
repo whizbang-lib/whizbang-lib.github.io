@@ -9,6 +9,7 @@ codeReferences:
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
   - src/Whizbang.Core/IDispatcher.cs
   - src/Whizbang.Core/ICommand.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Migration Checklist

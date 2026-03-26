@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Transports.HotChocolate/QueryTranslation/OrderByStrippingExpressionVisitor.cs
   - src/Whizbang.Transports.HotChocolate/Middleware/UseOrderByStrippingAttribute.cs
   - src/Whizbang.Transports.HotChocolate/Middleware/OrderByStrippingMiddleware.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # GraphQL Sorting

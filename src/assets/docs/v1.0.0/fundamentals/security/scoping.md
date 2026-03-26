@@ -8,6 +8,7 @@ codeReferences:
   - src/Whizbang.Core/Lenses/ScopeFilter.cs
   - src/Whizbang.Core/Lenses/ScopeFilterBuilder.cs
   - src/Whizbang.Core/Lenses/PerspectiveScope.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Scoping System

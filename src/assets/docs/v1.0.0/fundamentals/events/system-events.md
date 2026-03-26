@@ -25,6 +25,7 @@ codeReferences:
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterTests.cs
   - src/Whizbang.Core/Events/System/SystemEvents.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventTransportFilterTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # System Events

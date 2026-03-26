@@ -4,6 +4,7 @@ version: 1.0.0
 category: Perspectives
 codeReferences:
   - src/Whizbang.Core/Perspectives/PolymorphicDiscriminatorAttribute.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Polymorphic Discriminator

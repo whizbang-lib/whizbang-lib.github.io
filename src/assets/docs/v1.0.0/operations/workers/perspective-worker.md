@@ -19,6 +19,7 @@ codeReferences:
     src/Whizbang.Data.Postgres/Migrations/005_CreateClaimPerspectiveCheckpointWorkFunction.sql
   - >-
     src/Whizbang.Data.Postgres/Migrations/005a_CreateCompletePerspectiveCheckpointWorkFunction.sql
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Worker

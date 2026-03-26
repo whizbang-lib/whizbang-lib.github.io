@@ -9,6 +9,7 @@ description: >-
 tags: 'di, dependency-injection, service-registration, convenience'
 codeReferences:
   - src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # AddAllWhizbangServices

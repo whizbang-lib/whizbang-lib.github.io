@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/BatchedCompletionStrategy.cs
   - src/Whizbang.Core/Workers/ProcessedEventCache.cs
   - src/Whizbang.Core/Observability/WhizbangMetrics.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Performance Tuning

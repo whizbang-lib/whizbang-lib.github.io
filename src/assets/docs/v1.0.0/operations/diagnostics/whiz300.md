@@ -14,6 +14,7 @@ tags:
   - analyzer
 codeReferences:
   - src/Whizbang.Generators/Analyzers/PerspectiveModelConsistencyAnalyzer.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ300: Inconsistent Perspective Model Types

@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Deployment Strategies

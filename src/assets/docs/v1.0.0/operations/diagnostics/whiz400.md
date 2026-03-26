@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/LensQueryTypeArgumentAnalyzer.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresLensQuery.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ400: Invalid Type Argument for ILensQuery

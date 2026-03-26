@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/ValueObjects/TrackedGuid.cs
   - src/Whizbang.Core/ValueObjects/GuidMetadata.cs
   - src/Whizbang.Core/WhizbangIdProviderRegistry.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WhizbangIds: Strongly-Typed Identity Values

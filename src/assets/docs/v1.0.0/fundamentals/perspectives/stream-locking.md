@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveStreamLocker.cs
   - src/Whizbang.Core/Perspectives/PerspectiveStreamLockOptions.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperPerspectiveStreamLocker.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Stream Locking

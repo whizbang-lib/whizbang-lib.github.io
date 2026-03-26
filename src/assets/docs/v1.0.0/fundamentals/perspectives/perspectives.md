@@ -16,6 +16,7 @@ codeReferences:
     samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/InventoryLevelsPerspective.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspectives Guide

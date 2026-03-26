@@ -8,6 +8,7 @@ description: >-
 tags: 'mutations, dto, mapping, requests, commands'
 codeReferences:
   - src/Whizbang.Transports.Mutations/Base/MutationEndpointBase.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Request DTOs

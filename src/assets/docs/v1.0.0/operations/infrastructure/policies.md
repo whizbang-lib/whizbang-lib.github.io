@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Policies/PolicyContext.cs
   - src/Whizbang.Core/Policies/PolicyDecisionTrail.cs
   - src/Whizbang.Core/Policies/PolicyConfiguration.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Policy-Based Routing

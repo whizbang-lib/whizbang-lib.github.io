@@ -13,6 +13,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.SignalR.Tests/DependencyInjection/SignalRServiceCollectionExtensionsTests.cs
   - tests/Whizbang.SignalR.Tests/Hooks/SignalRNotificationHookTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # SignalR Integration

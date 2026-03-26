@@ -8,6 +8,7 @@ description: >-
 tags: 'assembly-registry, multi-assembly, module-initializer, aot'
 codeReferences:
   - src/Whizbang.Core/Registry/AssemblyRegistry.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Assembly Registry

@@ -9,6 +9,7 @@ tags: 'lenses, temporal, history, time-travel, activity-feed, audit'
 codeReferences:
   - src/Whizbang.Core/Lenses/ITemporalLensQuery.cs
   - src/Whizbang.Core/Lenses/TemporalPerspectiveRow.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Temporal Lens Queries

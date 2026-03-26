@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Lenses/PerspectiveMetadata.cs
   - src/Whizbang.Core/Lenses/PerspectiveScope.cs
   - src/Whizbang.Core/Lenses/PerspectiveRow.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # EF Core Complex Types
