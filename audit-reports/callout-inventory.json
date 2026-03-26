@@ -1,70 +1,70 @@
 {
-  "totalCallouts": 100,
+  "totalCallouts": 108,
   "unclosed": 0,
   "byType": {
-    "new": 54,
-    "info": 5,
-    "planned": 8,
+    "new": 56,
+    "info": 6,
+    "planned": 9,
     "note": 22,
     "new{important}": 2,
     "new{breaking}": 2,
-    "updated": 6,
+    "updated": 10,
     "tip": 1
   },
   "unclosedCallouts": [],
   "callouts": [
     {
       "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 17,
+      "line": 22,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 38,
+      "line": 43,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 71,
+      "line": 76,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 192,
+      "line": 197,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 393,
+      "line": 398,
       "type": "info",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 407,
+      "line": 412,
       "type": "planned",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/data/drivers.md",
-      "line": 424,
+      "line": 429,
       "type": "planned",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/data/efcore-integration.md",
-      "line": 834,
+      "line": 841,
       "type": "new",
       "closed": true,
       "lineCount": 3
@@ -155,140 +155,147 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/extending/extensibility/plugin-architecture.md",
-      "line": 16,
+      "line": 19,
       "type": "note",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 343,
+      "line": 358,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 714,
+      "line": 594,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "line": 790,
       "type": "new{important}",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 825,
+      "line": 901,
       "type": "new{breaking}",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 870,
+      "line": 946,
       "type": "new{important}",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1392,
+      "line": 1545,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1478,
+      "line": 1656,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1482,
+      "line": 1660,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1493,
+      "line": 1671,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "line": 1603,
+      "line": 1781,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "line": 649,
+      "line": 610,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 17,
+      "line": 21,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 38,
+      "line": 42,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 60,
+      "line": 64,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 129,
+      "line": 133,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 153,
+      "line": 157,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 222,
+      "line": 226,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 352,
+      "line": 356,
       "type": "info",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 366,
+      "line": 370,
       "type": "planned",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/ledger.md",
-      "line": 381,
+      "line": 385,
       "type": "planned",
       "closed": true,
       "lineCount": 3
@@ -302,7 +309,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-coordinator.md",
-      "line": 212,
+      "line": 194,
       "type": "new",
       "closed": true,
       "lineCount": 3
@@ -337,21 +344,28 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 378,
+      "line": 198,
+      "type": "planned",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 382,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 477,
+      "line": 481,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 527,
+      "line": 531,
       "type": "new",
       "closed": true,
       "lineCount": 3
@@ -364,6 +378,20 @@
       "lineCount": 3
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/association-info.md",
+      "line": 15,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/association-metadata.md",
+      "line": 19,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/event-completion.md",
       "line": 370,
       "type": "updated",
@@ -371,23 +399,51 @@
       "lineCount": 3
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/multi-stream.md",
+      "line": 297,
+      "type": "info",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "line": 618,
+      "line": 33,
       "type": "updated",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "line": 659,
+      "line": 622,
+      "type": "updated",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
+      "line": 663,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "line": 891,
+      "line": 921,
       "type": "info",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
+      "line": 39,
+      "type": "new",
+      "closed": true,
+      "lineCount": 3
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/sync.md",
+      "line": 16,
+      "type": "updated",
       "closed": true,
       "lineCount": 3
     },
@@ -407,21 +463,21 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "line": 338,
+      "line": 412,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "line": 779,
+      "line": 853,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "line": 60,
+      "line": 117,
       "type": "new",
       "closed": true,
       "lineCount": 3
@@ -449,70 +505,70 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/security/scope-propagation.md",
-      "line": 26,
+      "line": 32,
       "type": "new{breaking}",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/learn/tutorial/analytics-service.md",
-      "line": 16,
+      "line": 24,
       "type": "note",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/learn/tutorial/customer-service.md",
-      "line": 16,
+      "line": 24,
       "type": "note",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/learn/tutorial/deployment.md",
-      "line": 16,
+      "line": 21,
       "type": "note",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/learn/tutorial/inventory-service.md",
-      "line": 16,
+      "line": 25,
       "type": "note",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/learn/tutorial/notification-service.md",
-      "line": 16,
+      "line": 22,
       "type": "note",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/learn/tutorial/order-management.md",
-      "line": 16,
+      "line": 24,
       "type": "note",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/learn/tutorial/payment-processing.md",
-      "line": 18,
+      "line": 25,
       "type": "note",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/learn/tutorial/shipping-service.md",
-      "line": 16,
+      "line": 24,
       "type": "note",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/learn/tutorial/testing-strategy.md",
-      "line": 16,
+      "line": 27,
       "type": "note",
       "closed": true,
       "lineCount": 3
@@ -568,140 +624,140 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 17,
+      "line": 23,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 38,
+      "line": 44,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 74,
+      "line": 80,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 154,
+      "line": 160,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 313,
+      "line": 319,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 453,
+      "line": 459,
       "type": "info",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 467,
+      "line": 473,
       "type": "planned",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 483,
+      "line": 489,
       "type": "planned",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 19,
+      "line": 24,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 40,
+      "line": 45,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 57,
+      "line": 62,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 99,
+      "line": 104,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 122,
+      "line": 127,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 151,
+      "line": 156,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 187,
+      "line": 192,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 218,
+      "line": 223,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 253,
+      "line": 258,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 349,
+      "line": 354,
       "type": "info",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 362,
+      "line": 367,
       "type": "planned",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 382,
+      "line": 387,
       "type": "planned",
       "closed": true,
       "lineCount": 3

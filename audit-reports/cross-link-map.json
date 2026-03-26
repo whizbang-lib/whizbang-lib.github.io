@@ -1,6 +1,6 @@
 {
-  "totalInternalLinks": 870,
-  "valid": 866,
+  "totalInternalLinks": 883,
+  "valid": 879,
   "broken": 4,
   "brokenLinks": [
     {
@@ -262,7 +262,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md": {
-      "valid": 4,
+      "valid": 5,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/dispatcher/rpc-extraction.md": {
@@ -358,7 +358,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-coordinator.md": {
-      "valid": 4,
+      "valid": 6,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md": {
@@ -394,7 +394,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/messages/message-context.md": {
-      "valid": 5,
+      "valid": 6,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md": {
@@ -414,11 +414,11 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/association-info.md": {
-      "valid": 3,
+      "valid": 4,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/association-metadata.md": {
-      "valid": 3,
+      "valid": 4,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/event-completion.md": {
@@ -430,7 +430,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md": {
-      "valid": 5,
+      "valid": 6,
       "broken": 2
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md": {
@@ -438,7 +438,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md": {
-      "valid": 13,
+      "valid": 14,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/physical-fields.md": {
@@ -470,7 +470,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/sync.md": {
-      "valid": 3,
+      "valid": 4,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/table-naming.md": {
@@ -602,7 +602,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/messaging/outbox-pattern.md": {
-      "valid": 5,
+      "valid": 6,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/messaging/topic-filters.md": {
@@ -630,11 +630,11 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/messaging/work-coordination.md": {
-      "valid": 5,
+      "valid": 7,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/messaging/work-coordinator.md": {
-      "valid": 11,
+      "valid": 12,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/migration-guide/01-concept-mapping.md": {
