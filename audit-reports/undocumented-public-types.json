@@ -1,11 +1,11 @@
 {
   "totalPublicTypes": 1064,
-  "documented": 493,
-  "undocumented": 571,
+  "documented": 490,
+  "undocumented": 574,
   "coveragePct": 46,
   "byKind": {
     "class": 354,
-    "enum": 38,
+    "enum": 41,
     "interface": 95,
     "record": 79,
     "struct": 5
@@ -103,6 +103,13 @@
       "docsPath": null
     },
     {
+      "symbol": "DispatchModes",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Dispatch/DispatchMode.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
       "symbol": "Routed",
       "kind": "struct",
       "file": "src/Whizbang.Core/Dispatch/Routed.cs",
@@ -152,7 +159,7 @@
       "docsPath": null
     },
     {
-      "symbol": "DiagnosticCategory",
+      "symbol": "DiagnosticCategories",
       "kind": "enum",
       "file": "src/Whizbang.Core/Generated/DiagnosticCategory.cs",
       "hasDocs": false,
@@ -292,7 +299,7 @@
       "docsPath": null
     },
     {
-      "symbol": "ScopeFilter",
+      "symbol": "ScopeFilters",
       "kind": "enum",
       "file": "src/Whizbang.Core/Lenses/ScopeFilter.cs",
       "hasDocs": false,
@@ -845,7 +852,7 @@
       "docsPath": null
     },
     {
-      "symbol": "WorkBatchFlags",
+      "symbol": "WorkBatchOptions",
       "kind": "enum",
       "file": "src/Whizbang.Core/Messaging/WorkCoordinatorEnums.cs",
       "hasDocs": false,
@@ -2147,6 +2154,13 @@
       "docsPath": null
     },
     {
+      "symbol": "TypeQualifications",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/TypeQualification.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
       "symbol": "Uuid7IdProvider",
       "kind": "class",
       "file": "src/Whizbang.Core/Uuid7IdProvider.cs",
@@ -2164,6 +2178,13 @@
       "symbol": "GuidOrderingValidator",
       "kind": "class",
       "file": "src/Whizbang.Core/Validation/GuidOrderingValidator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "GuidMetadatas",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/ValueObjects/GuidMetadata.cs",
       "hasDocs": false,
       "docsPath": null
     },
@@ -3078,13 +3099,6 @@
       "docsPath": null
     },
     {
-      "symbol": "IReadOnlyListTypeInfo",
-      "kind": "record",
-      "file": "src/Whizbang.Generators/IReadOnlyListTypeInfo.cs",
-      "hasDocs": false,
-      "docsPath": null
-    },
-    {
       "symbol": "ListTypeInfo",
       "kind": "record",
       "file": "src/Whizbang.Generators/ListTypeInfo.cs",
@@ -3165,6 +3179,13 @@
       "symbol": "GeneratorFieldStorageMode",
       "kind": "enum",
       "file": "src/Whizbang.Generators/PerspectiveSchemaGenerator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "ReadOnlyListTypeInfo",
+      "kind": "record",
+      "file": "src/Whizbang.Generators/ReadOnlyListTypeInfo.cs",
       "hasDocs": false,
       "docsPath": null
     },
@@ -3883,7 +3904,7 @@
       "docsPath": null
     },
     {
-      "symbol": "GraphQLLensScope",
+      "symbol": "GraphQLLensScopes",
       "kind": "enum",
       "file": "src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensScope.cs",
       "hasDocs": false,

@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-03-26T12:37:56.828Z",
+  "generatedAt": "2026-03-26T14:33:37.959Z",
   "docsRoot": "src/assets/docs/v1.0.0",
   "libraryPath": "/Users/philcarbone/src/whizbang/whizbang",
   "highlights": {
     "totalPages": 254,
     "pagesWithFrontmatterGaps": 254,
-    "totalCodeSamples": 3224,
+    "totalCodeSamples": 3255,
     "codeSamplesWithoutMetadata": 140,
-    "undocumentedPublicTypes": 571,
+    "undocumentedPublicTypes": 574,
     "brokenCodeDocsLinks": 7,
     "totalMermaidDiagrams": 39,
     "unclosedCallouts": 0,

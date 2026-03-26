@@ -1,10 +1,10 @@
 {
-  "totalSamples": 3224,
-  "withMetadata": 3084,
+  "totalSamples": 3255,
+  "withMetadata": 3115,
   "withoutMetadata": 140,
   "byLanguage": {
     "bash": 147,
-    "csharp": 2675,
+    "csharp": 2706,
     "graphql": 35,
     "json": 65,
     "sql": 148,
@@ -27,42 +27,42 @@
   "metaFieldCoverage": {
     "title": {
       "present": 0,
-      "missing": 3084,
+      "missing": 3115,
       "pct": 0
     },
     "description": {
       "present": 0,
-      "missing": 3084,
+      "missing": 3115,
       "pct": 0
     },
     "category": {
       "present": 0,
-      "missing": 3084,
+      "missing": 3115,
       "pct": 0
     },
     "difficulty": {
       "present": 0,
-      "missing": 3084,
+      "missing": 3115,
       "pct": 0
     },
     "tags": {
       "present": 0,
-      "missing": 3084,
+      "missing": 3115,
       "pct": 0
     },
     "framework": {
       "present": 0,
-      "missing": 3084,
+      "missing": 3115,
       "pct": 0
     },
     "testFile": {
       "present": 0,
-      "missing": 3084,
+      "missing": 3115,
       "pct": 0
     },
     "testMethod": {
       "present": 0,
-      "missing": 3084,
+      "missing": 3115,
       "pct": 0
     }
   },
@@ -4188,9 +4188,7 @@
       "blockIndex": 0,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "operations"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -4249,9 +4247,7 @@
       "blockIndex": 3,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "drivers"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -4663,7 +4659,7 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 26,
+      "lineCount": 33,
       "preview": "public class Product {\n    public Guid Id { get; set; }\n    public string Name { get; set; } = defau"
     },
     {
@@ -15252,7 +15248,7 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 26,
+      "lineCount": 40,
       "preview": "namespace Whizbang.Core;\n\npublic interface IDispatcher {\n    // Pattern 1: Command dispatch with del"
     },
     {
@@ -15420,9 +15416,7 @@
       "blockIndex": 9,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "transparently"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -15475,8 +15469,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 14,
-      "preview": "// With typed result\nTask<TResult> LocalInvokeAndSyncAsync<TMessage, TResult>(\n    TMessage message,"
+      "lineCount": 38,
+      "preview": "// With typed result - waits for ALL perspectives\nTask<TResult> LocalInvokeAndSyncAsync<TMessage, TR"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
@@ -15544,6 +15538,44 @@
       "blockIndex": 15,
       "language": "csharp",
       "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "// Wait for OrderSummaryPerspective only (typed result)\nvar result = await _dispatcher.LocalInvokeAn"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "blockIndex": 16,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "var result = await _dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderResult>(\n    command,\n    t"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "blockIndex": 17,
+      "language": "csharp",
+      "hasMetadata": true,
       "presentMeta": [
         "3"
       ],
@@ -15562,7 +15594,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 16,
+      "blockIndex": 18,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -15581,7 +15613,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 17,
+      "blockIndex": 19,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -15602,7 +15634,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 18,
+      "blockIndex": 20,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -15621,7 +15653,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 19,
+      "blockIndex": 21,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -15640,7 +15672,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 20,
+      "blockIndex": 22,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -15661,7 +15693,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 21,
+      "blockIndex": 23,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -15680,7 +15712,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 22,
+      "blockIndex": 24,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -15699,7 +15731,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 23,
+      "blockIndex": 25,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -15718,7 +15750,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 24,
+      "blockIndex": 26,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -15739,7 +15771,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 25,
+      "blockIndex": 27,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -15758,7 +15790,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 26,
+      "blockIndex": 28,
       "language": "csharp",
       "hasMetadata": false,
       "presentMeta": [],
@@ -15777,7 +15809,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 27,
+      "blockIndex": 29,
       "language": "csharp",
       "hasMetadata": false,
       "presentMeta": [],
@@ -15796,7 +15828,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 28,
+      "blockIndex": 30,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -15817,7 +15849,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 29,
+      "blockIndex": 31,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -15836,7 +15868,64 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 30,
+      "blockIndex": 32,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "public sealed record InvokeResult<TResult>(\n    TResult Value,           // The business result from"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "blockIndex": 33,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 17,
+      "preview": "// Generic (AOT-compatible) - preserves type at compile time\nValueTask<InvokeResult<TResult>> LocalI"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "blockIndex": 34,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 28,
+      "preview": "[HttpPost(\"orders\")]\npublic async Task<ActionResult> CreateOrder(\n    [FromBody] CreateOrderRequest"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "blockIndex": 35,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -15855,7 +15944,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 31,
+      "blockIndex": 36,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -15874,7 +15963,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 32,
+      "blockIndex": 37,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -15893,7 +15982,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 33,
+      "blockIndex": 38,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -15914,7 +16003,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 34,
+      "blockIndex": 39,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -15935,7 +16024,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 35,
+      "blockIndex": 40,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -15956,7 +16045,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 36,
+      "blockIndex": 41,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -15975,7 +16064,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 37,
+      "blockIndex": 42,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -15994,7 +16083,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 38,
+      "blockIndex": 43,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16015,7 +16104,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 39,
+      "blockIndex": 44,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16036,7 +16125,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 40,
+      "blockIndex": 45,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16057,7 +16146,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 41,
+      "blockIndex": 46,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16078,7 +16167,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 42,
+      "blockIndex": 47,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16099,7 +16188,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 43,
+      "blockIndex": 48,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16120,7 +16209,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 44,
+      "blockIndex": 49,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16141,7 +16230,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 45,
+      "blockIndex": 50,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16162,7 +16251,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 46,
+      "blockIndex": 51,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16183,7 +16272,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 47,
+      "blockIndex": 52,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16204,7 +16293,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 48,
+      "blockIndex": 53,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16225,7 +16314,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 49,
+      "blockIndex": 54,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16246,7 +16335,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 50,
+      "blockIndex": 55,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -16265,7 +16354,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 51,
+      "blockIndex": 56,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -16284,7 +16373,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 52,
+      "blockIndex": 57,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16305,7 +16394,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 53,
+      "blockIndex": 58,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16326,7 +16415,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 54,
+      "blockIndex": 59,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16347,7 +16436,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 55,
+      "blockIndex": 60,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16368,7 +16457,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 56,
+      "blockIndex": 61,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16389,7 +16478,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 57,
+      "blockIndex": 62,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16410,7 +16499,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-      "blockIndex": 58,
+      "blockIndex": 63,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -16426,6 +16515,44 @@
       ],
       "lineCount": 34,
       "preview": "public class OrderEndpointsTests {\n    private IDispatcher _dispatcher;\n    private OrdersController"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "blockIndex": 64,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 21,
+      "preview": "// With cancellation token\nusing var cts = new CancellationTokenSource();\nvar options = new Dispatch"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
+      "blockIndex": 65,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 17,
+      "preview": "[HttpPost(\"orders\")]\npublic async Task<ActionResult<OrderResult>> CreateOrder(\n    [FromBody] Create"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
@@ -16554,27 +16681,6 @@
       "blockIndex": 6,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "operations"
-      ],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 39,
-      "preview": "namespace Whizbang.Core.Commands.System;\n\n// Rebuild one or more perspectives across all services\npu"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 7,
-      "language": "csharp",
-      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -16591,7 +16697,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 8,
+      "blockIndex": 7,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16612,7 +16718,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 9,
+      "blockIndex": 8,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -16631,7 +16737,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 10,
+      "blockIndex": 9,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16652,7 +16758,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 11,
+      "blockIndex": 10,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16673,7 +16779,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 12,
+      "blockIndex": 11,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16694,7 +16800,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 13,
+      "blockIndex": 12,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16715,7 +16821,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 14,
+      "blockIndex": 13,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16736,7 +16842,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 15,
+      "blockIndex": 14,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -16755,7 +16861,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 16,
+      "blockIndex": 15,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -16774,7 +16880,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 17,
+      "blockIndex": 16,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -16793,7 +16899,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 18,
+      "blockIndex": 17,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16814,7 +16920,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 19,
+      "blockIndex": 18,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16835,7 +16941,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 20,
+      "blockIndex": 19,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16856,7 +16962,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 21,
+      "blockIndex": 20,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -16875,7 +16981,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 22,
+      "blockIndex": 21,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16896,7 +17002,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 23,
+      "blockIndex": 22,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -16915,7 +17021,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 24,
+      "blockIndex": 23,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -16934,7 +17040,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 25,
+      "blockIndex": 24,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16955,7 +17061,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 26,
+      "blockIndex": 25,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -16976,7 +17082,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 27,
+      "blockIndex": 26,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -16995,7 +17101,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 28,
+      "blockIndex": 27,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17016,7 +17122,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 29,
+      "blockIndex": 28,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17035,7 +17141,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 30,
+      "blockIndex": 29,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17054,7 +17160,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 31,
+      "blockIndex": 30,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17075,7 +17181,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 32,
+      "blockIndex": 31,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17096,7 +17202,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 33,
+      "blockIndex": 32,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17117,7 +17223,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 34,
+      "blockIndex": 33,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17136,7 +17242,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 35,
+      "blockIndex": 34,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17157,7 +17263,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 36,
+      "blockIndex": 35,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17178,7 +17284,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 37,
+      "blockIndex": 36,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17197,7 +17303,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 38,
+      "blockIndex": 37,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17218,7 +17324,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 39,
+      "blockIndex": 38,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17239,7 +17345,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 40,
+      "blockIndex": 39,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17260,7 +17366,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 41,
+      "blockIndex": 40,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17279,7 +17385,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 42,
+      "blockIndex": 41,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17298,7 +17404,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 43,
+      "blockIndex": 42,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17319,7 +17425,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 44,
+      "blockIndex": 43,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17340,7 +17446,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 45,
+      "blockIndex": 44,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17359,7 +17465,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 46,
+      "blockIndex": 45,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17378,7 +17484,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 47,
+      "blockIndex": 46,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17399,7 +17505,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 48,
+      "blockIndex": 47,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17420,7 +17526,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 49,
+      "blockIndex": 48,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17439,7 +17545,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 50,
+      "blockIndex": 49,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17458,7 +17564,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 51,
+      "blockIndex": 50,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17479,7 +17585,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 52,
+      "blockIndex": 51,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17500,7 +17606,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 53,
+      "blockIndex": 52,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17519,7 +17625,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 54,
+      "blockIndex": 53,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17540,7 +17646,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 55,
+      "blockIndex": 54,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17559,7 +17665,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 56,
+      "blockIndex": 55,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17580,7 +17686,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 57,
+      "blockIndex": 56,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17601,7 +17707,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 58,
+      "blockIndex": 57,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17620,7 +17726,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 59,
+      "blockIndex": 58,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17641,7 +17747,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 60,
+      "blockIndex": 59,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17662,7 +17768,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 61,
+      "blockIndex": 60,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17683,7 +17789,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 62,
+      "blockIndex": 61,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17704,7 +17810,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 63,
+      "blockIndex": 62,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -17725,7 +17831,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 64,
+      "blockIndex": 63,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17744,7 +17850,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 65,
+      "blockIndex": 64,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17763,7 +17869,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 66,
+      "blockIndex": 65,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17782,7 +17888,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 67,
+      "blockIndex": 66,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17801,7 +17907,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 68,
+      "blockIndex": 67,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -18274,6 +18380,25 @@
       "blockIndex": 3,
       "language": "csharp",
       "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "var syncResult = await _eventStore.AppendAndWaitAsync(\n    streamId: orderId,\n    message: new Order"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/event-store.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
       "presentMeta": [
         "outcome"
       ],
@@ -18292,7 +18417,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/event-store.md",
-      "blockIndex": 4,
+      "blockIndex": 5,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -18313,7 +18438,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/event-store.md",
-      "blockIndex": 5,
+      "blockIndex": 6,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -18334,7 +18459,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/event-store.md",
-      "blockIndex": 6,
+      "blockIndex": 7,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -18348,12 +18473,12 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 34,
+      "lineCount": 50,
       "preview": "public interface IEventStore {\n  // Append with envelope (full control)\n  Task AppendAsync<TMessage>"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/event-store.md",
-      "blockIndex": 7,
+      "blockIndex": 8,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -18889,9 +19014,7 @@
       "blockIndex": 0,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "storage"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -18948,9 +19071,7 @@
       "blockIndex": 3,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "dispatcher"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -19009,9 +19130,7 @@
       "blockIndex": 6,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "capabilities"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -19983,6 +20102,215 @@
       ],
       "lineCount": 22,
       "preview": "public class AuditService {\n  private readonly IAuditLogLens _auditLens;\n\n  // Tenant admin views th"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
+      "blockIndex": 34,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "public record PerspectiveRebuildStarted(\n    [property: StreamId] Guid StreamId,\n    string Perspect"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
+      "blockIndex": 35,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "public record PerspectiveRebuildProgress(\n    [property: StreamId] Guid StreamId,\n    string Perspec"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
+      "blockIndex": 36,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "public record PerspectiveRebuildCompleted(\n    [property: StreamId] Guid StreamId,\n    string Perspe"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
+      "blockIndex": 37,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "public record PerspectiveRebuildFailed(\n    [property: StreamId] Guid StreamId,\n    string Perspecti"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
+      "blockIndex": 38,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "public record PerspectiveRewindStarted(\n    [property: StreamId] Guid StreamId,\n    string Perspecti"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
+      "blockIndex": 39,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "public record PerspectiveRewindCompleted(\n    [property: StreamId] Guid StreamId,\n    string Perspec"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
+      "blockIndex": 40,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "public record MigrationItemStarted(\n    [property: StreamId] Guid StreamId,\n    string MigrationKey,"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
+      "blockIndex": 41,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "public record MigrationItemCompleted(\n    [property: StreamId] Guid StreamId,\n    string MigrationKe"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
+      "blockIndex": 42,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "public record MigrationItemFailed(\n    [property: StreamId] Guid StreamId,\n    string MigrationKey,"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
+      "blockIndex": 43,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "public record MigrationBatchStarted(\n    [property: StreamId] Guid StreamId,\n    string LibraryVersi"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
+      "blockIndex": 44,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "public record MigrationBatchCompleted(\n    [property: StreamId] Guid StreamId,\n    string LibraryVer"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/identity/assembly-registry.md",
@@ -23153,8 +23481,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 7,
-      "preview": "namespace Whizbang.Core;\n\npublic interface ILensQuery {\n    // Marker interface - no required method"
+      "lineCount": 13,
+      "preview": "namespace Whizbang.Core.Lenses;\n\n// Non-generic marker interface\npublic interface ILensQuery;\n\n// Ty"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lenses/lenses.md",
@@ -25233,12 +25561,50 @@
         "testFile",
         "testMethod"
       ],
+      "lineCount": 33,
+      "preview": "[FireAt(LifecycleStage.PostPerspectiveInline)]\npublic class PerformanceMonitorReceptor : IReceptor<I"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-coordinator.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 21,
+      "preview": "[FireAt(LifecycleStage.PostPerspectiveInline)]\npublic class PerspectiveAuditReceptor : IReceptor<IEv"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-coordinator.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
       "lineCount": 17,
       "preview": "// ENTRY: Begin tracking for each unique event in the batch\nforeach (var (eventId, (envelope, stream"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-coordinator.md",
-      "blockIndex": 5,
+      "blockIndex": 7,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -25257,7 +25623,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-coordinator.md",
-      "blockIndex": 6,
+      "blockIndex": 8,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -25461,7 +25827,7 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 37,
+      "lineCount": 45,
       "preview": "sequenceDiagram\n    participant Caller\n    participant Receptor\n    participant UOW as Unit of Work"
     },
     {
@@ -25835,7 +26201,7 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 14,
+      "lineCount": 16,
       "preview": "// In Program.cs\nvar lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();\n\nlifeti"
     },
     {
@@ -26612,9 +26978,7 @@
       "blockIndex": 6,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "ConcurrentDictionary"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -26625,8 +26989,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 18,
-      "preview": "public sealed class EnvelopeRegistry : IEnvelopeRegistry {\n  private readonly ConcurrentDictionary<o"
+      "lineCount": 32,
+      "preview": "public sealed class EnvelopeRegistry : IEnvelopeRegistry, IDisposable {\n  private static readonly Co"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/envelope-serialization.md",
@@ -27405,6 +27769,63 @@
       ],
       "lineCount": 19,
       "preview": "public class HttpClientWithCorrelation {\n    private readonly HttpClient _httpClient;\n    private re"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context.md",
+      "blockIndex": 16,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 12,
+      "preview": "public interface IMessageContext {\n  MessageId MessageId { get; }\n  CorrelationId CorrelationId { ge"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context.md",
+      "blockIndex": 17,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 13,
+      "preview": "// In lifecycle receptors, use ScopeContext from the message context\n// because the original HTTP co"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context.md",
+      "blockIndex": 18,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "public interface ICallerInfo {\n  string CallerMemberName { get; }  // Method name that dispatched th"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -30732,12 +31153,31 @@
         "testFile",
         "testMethod"
       ],
+      "lineCount": 11,
+      "preview": "[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]\npublic sealed class AwaitPerspectiveS"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
+      "blockIndex": 31,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
       "lineCount": 17,
       "preview": "public enum SyncFireBehavior {\n  /// <summary>\n  /// Only invoke handler if sync completes successfu"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 31,
+      "blockIndex": 32,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -30758,7 +31198,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 32,
+      "blockIndex": 33,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -30779,7 +31219,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 33,
+      "blockIndex": 34,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -30800,7 +31240,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 34,
+      "blockIndex": 35,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -30819,7 +31259,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 35,
+      "blockIndex": 36,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -30840,7 +31280,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 36,
+      "blockIndex": 37,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -30859,7 +31299,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 37,
+      "blockIndex": 38,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -30878,7 +31318,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 38,
+      "blockIndex": 39,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -30899,7 +31339,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 39,
+      "blockIndex": 40,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -30920,7 +31360,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 40,
+      "blockIndex": 41,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -30941,7 +31381,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 41,
+      "blockIndex": 42,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -30962,7 +31402,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 42,
+      "blockIndex": 43,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -30983,7 +31423,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 43,
+      "blockIndex": 44,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31004,7 +31444,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 44,
+      "blockIndex": 45,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31023,7 +31463,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 45,
+      "blockIndex": 46,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31044,7 +31484,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 46,
+      "blockIndex": 47,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31065,7 +31505,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 47,
+      "blockIndex": 48,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31086,7 +31526,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 48,
+      "blockIndex": 49,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31107,7 +31547,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "blockIndex": 49,
+      "blockIndex": 50,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31315,12 +31755,50 @@
         "testFile",
         "testMethod"
       ],
+      "lineCount": 16,
+      "preview": "public class OrderPerspective :\n    IPerspectiveFor<OrderView, OrderCreated>,\n    IPerspectiveFor<Or"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 14,
+      "preview": "// Only included in DbContexts registered with the \"catalog\" key\n[WhizbangPerspective(\"catalog\")]\npu"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
       "lineCount": 24,
       "preview": "using Whizbang.Core;\n\n// Event with StreamKey\npublic record ProductCreatedEvent : IEvent {\n    [Aggr"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 2,
+      "blockIndex": 4,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31339,7 +31817,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 3,
+      "blockIndex": 5,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31360,7 +31838,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 4,
+      "blockIndex": 6,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31379,7 +31857,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 5,
+      "blockIndex": 7,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31400,7 +31878,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 6,
+      "blockIndex": 8,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31421,7 +31899,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 7,
+      "blockIndex": 9,
       "language": "sql",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31440,7 +31918,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 8,
+      "blockIndex": 10,
       "language": "sql",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31459,7 +31937,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 9,
+      "blockIndex": 11,
       "language": "sql",
       "hasMetadata": true,
       "presentMeta": [
@@ -31480,7 +31958,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 10,
+      "blockIndex": 12,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31501,7 +31979,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 11,
+      "blockIndex": 13,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31520,7 +31998,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 12,
+      "blockIndex": 14,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31539,7 +32017,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 13,
+      "blockIndex": 15,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31560,7 +32038,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 14,
+      "blockIndex": 16,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31579,7 +32057,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 15,
+      "blockIndex": 17,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31598,7 +32076,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 16,
+      "blockIndex": 18,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31619,7 +32097,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 17,
+      "blockIndex": 19,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31640,7 +32118,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 18,
+      "blockIndex": 20,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31659,7 +32137,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 19,
+      "blockIndex": 21,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31813,7 +32291,7 @@
         "testMethod"
       ],
       "lineCount": 6,
-      "preview": "// No attribute needed - this is the default\npublic record ProductDto {\n    public decimal Price { g"
+      "preview": "[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct,\n    AllowMultiple = false, Inherit"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/physical-fields.md",
@@ -31831,8 +32309,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 8,
-      "preview": "[PerspectiveStorage(FieldStorageMode.Extracted)]\npublic record ProductDto {\n    [PhysicalField(Index"
+      "lineCount": 6,
+      "preview": "// No attribute needed - this is the default\npublic record ProductDto {\n    public decimal Price { g"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/physical-fields.md",
@@ -31851,11 +32329,30 @@
         "testMethod"
       ],
       "lineCount": 8,
-      "preview": "[PerspectiveStorage(FieldStorageMode.Split)]\npublic record ProductSearchDto {\n    [VectorField(1536)"
+      "preview": "[PerspectiveStorage(FieldStorageMode.Extracted)]\npublic record ProductDto {\n    [PhysicalField(Index"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/physical-fields.md",
       "blockIndex": 9,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "[PerspectiveStorage(FieldStorageMode.Split)]\npublic record ProductSearchDto {\n    [VectorField(1536)"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/physical-fields.md",
+      "blockIndex": 10,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31876,7 +32373,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/physical-fields.md",
-      "blockIndex": 10,
+      "blockIndex": 11,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31895,7 +32392,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/physical-fields.md",
-      "blockIndex": 11,
+      "blockIndex": 12,
       "language": "sql",
       "hasMetadata": true,
       "presentMeta": [
@@ -33492,7 +33989,7 @@
         "testMethod"
       ],
       "lineCount": 6,
-      "preview": "public enum TemporalActionType {\n  Insert,   // New entity created\n  Update,   // Entity modified"
+      "preview": "public enum TemporalActionType {\n  Insert = 0,   // New entity was created (first entry in temporal"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/temporal.md",
@@ -34283,7 +34780,7 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 17,
+      "lineCount": 26,
       "preview": "public interface ILifecycleContext {\n  /// <summary>The lifecycle stage currently executing</summary"
     },
     {
@@ -34302,12 +34799,50 @@
         "testFile",
         "testMethod"
       ],
+      "lineCount": 17,
+      "preview": "[FireDuringReplay]\n[FireAt(LifecycleStage.PostPerspectiveInline)]\npublic class DependentModelUpdater"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
+      "blockIndex": 9,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 17,
+      "preview": "[FireAt(LifecycleStage.PostPerspectiveAsync)]\npublic class NotificationReceptor : IReceptor<OrderCre"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
+      "blockIndex": 10,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
       "lineCount": 24,
       "preview": "[FireAt(LifecycleStage.PostPerspectiveAsync)]\npublic class PerspectiveProgressReceptor : IReceptor<I"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 9,
+      "blockIndex": 11,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34328,7 +34863,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 10,
+      "blockIndex": 12,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34349,7 +34884,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 11,
+      "blockIndex": 13,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34371,7 +34906,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 12,
+      "blockIndex": 14,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34393,7 +34928,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 13,
+      "blockIndex": 15,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34414,7 +34949,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 14,
+      "blockIndex": 16,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34435,7 +34970,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 15,
+      "blockIndex": 17,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34456,7 +34991,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 16,
+      "blockIndex": 18,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -34475,7 +35010,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 17,
+      "blockIndex": 19,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34496,7 +35031,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 18,
+      "blockIndex": 20,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34517,7 +35052,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 19,
+      "blockIndex": 21,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34538,7 +35073,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 20,
+      "blockIndex": 22,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34559,7 +35094,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 21,
+      "blockIndex": 23,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -34578,7 +35113,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 22,
+      "blockIndex": 24,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34599,7 +35134,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 23,
+      "blockIndex": 25,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34620,7 +35155,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 24,
+      "blockIndex": 26,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34641,7 +35176,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 25,
+      "blockIndex": 27,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34662,7 +35197,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 26,
+      "blockIndex": 28,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34683,7 +35218,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 27,
+      "blockIndex": 29,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34704,7 +35239,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 28,
+      "blockIndex": 30,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34725,7 +35260,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 29,
+      "blockIndex": 31,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34746,7 +35281,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 30,
+      "blockIndex": 32,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34767,7 +35302,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 31,
+      "blockIndex": 33,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34788,7 +35323,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 32,
+      "blockIndex": 34,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34809,7 +35344,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 33,
+      "blockIndex": 35,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34830,7 +35365,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 34,
+      "blockIndex": 36,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34851,7 +35386,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 35,
+      "blockIndex": 37,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34872,7 +35407,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 36,
+      "blockIndex": 38,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34893,7 +35428,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 37,
+      "blockIndex": 39,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34914,7 +35449,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 38,
+      "blockIndex": 40,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34935,7 +35470,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 39,
+      "blockIndex": 41,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -34956,7 +35491,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 40,
+      "blockIndex": 42,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -34975,7 +35510,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
-      "blockIndex": 41,
+      "blockIndex": 43,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35010,17 +35545,53 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 11,
-      "preview": "namespace Whizbang.Core;\n\npublic interface IReceptor<in TMessage, TResponse>\n    where TMessage : no"
+      "lineCount": 18,
+      "preview": "namespace Whizbang.Core;\n\n// Response-producing receptor (commands/queries)\npublic interface IRecept"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
       "blockIndex": 1,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "ISyncReceptor"
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
       ],
+      "lineCount": 32,
+      "preview": "public class SendWelcomeEmailReceptor : IReceptor<UserRegistered> {\n    private readonly IEmailServi"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "// Generic (AOT-compatible)\nawait _dispatcher.LocalInvokeAsync<UserRegistered>(message);\n\n// Non-gen"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -35036,7 +35607,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 2,
+      "blockIndex": 4,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -35055,7 +35626,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 3,
+      "blockIndex": 5,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -35074,7 +35645,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 4,
+      "blockIndex": 6,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35095,7 +35666,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 5,
+      "blockIndex": 7,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35116,7 +35687,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 6,
+      "blockIndex": 8,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -35135,7 +35706,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 7,
+      "blockIndex": 9,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35156,7 +35727,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 8,
+      "blockIndex": 10,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35177,7 +35748,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 9,
+      "blockIndex": 11,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35198,7 +35769,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 10,
+      "blockIndex": 12,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35219,7 +35790,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 11,
+      "blockIndex": 13,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35240,7 +35811,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 12,
+      "blockIndex": 14,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35261,7 +35832,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 13,
+      "blockIndex": 15,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -35280,7 +35851,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 14,
+      "blockIndex": 16,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -35299,7 +35870,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 15,
+      "blockIndex": 17,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35320,7 +35891,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 16,
+      "blockIndex": 18,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35341,7 +35912,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 17,
+      "blockIndex": 19,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35362,7 +35933,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 18,
+      "blockIndex": 20,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35383,7 +35954,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 19,
+      "blockIndex": 21,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35404,7 +35975,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 20,
+      "blockIndex": 22,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35425,7 +35996,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 21,
+      "blockIndex": 23,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -35446,7 +36017,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-      "blockIndex": 22,
+      "blockIndex": 24,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -46336,8 +46907,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 39,
-      "preview": "public interface IWorkCoordinator {\n    Task<WorkBatch> ProcessWorkBatchAsync(\n        Guid instance"
+      "lineCount": 7,
+      "preview": "public interface IWorkCoordinator {\n    Task<WorkBatch> ProcessWorkBatchAsync(\n        ProcessWorkBa"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/outbox-pattern.md",
@@ -46414,7 +46985,7 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 10,
+      "lineCount": 9,
       "preview": "{\n  \"WorkCoordinatorPublisher\": {\n    \"PollingIntervalMilliseconds\": 1000,\n    \"LeaseSeconds\": 300,"
     },
     {
@@ -47464,8 +48035,7 @@
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
-        "Problem",
-        "problem"
+        "Problem"
       ],
       "missingMeta": [
         "title",
@@ -48939,9 +49509,7 @@
       "blockIndex": 0,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "passing"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -48979,9 +49547,7 @@
       "blockIndex": 2,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "transport"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -49260,8 +49826,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 11,
-      "preview": "await coordinator.ProcessWorkBatchAsync(\n    instanceId,\n    serviceName,\n    hostName,\n    processI"
+      "lineCount": 6,
+      "preview": "var request = new ProcessWorkBatchRequest {\n    // ... other properties\n    LeaseSeconds = 300,  //"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
@@ -49279,8 +49845,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 6,
-      "preview": "await coordinator.ProcessWorkBatchAsync(\n    // ... other parameters\n    partitionCount: 10000,  //"
+      "lineCount": 5,
+      "preview": "var request = new ProcessWorkBatchRequest {\n    // ... other properties\n    PartitionCount = 10_000,"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
@@ -49301,7 +49867,7 @@
         "testMethod"
       ],
       "lineCount": 6,
-      "preview": "await coordinator.ProcessWorkBatchAsync(\n    // ... other parameters\n    leaseSeconds: 2,  // 2 seco"
+      "preview": "var request = new ProcessWorkBatchRequest {\n    // ... other properties\n    LeaseSeconds = 2,  // 2"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
@@ -49319,8 +49885,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 33,
-      "preview": "public interface IWorkCoordinator<TDbContext> where TDbContext : DbContext {\n    Task<WorkBatch> Pro"
+      "lineCount": 7,
+      "preview": "public interface IWorkCoordinator {\n    Task<WorkBatch> ProcessWorkBatchAsync(\n        ProcessWorkBa"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordinator.md",
@@ -49338,8 +49904,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 44,
-      "preview": "public interface IWorkCoordinator {\n    Task<WorkBatch> ProcessWorkBatchAsync(\n        // Instance i"
+      "lineCount": 7,
+      "preview": "public interface IWorkCoordinator {\n    Task<WorkBatch> ProcessWorkBatchAsync(\n        ProcessWorkBa"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordinator.md",
@@ -49357,8 +49923,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 6,
-      "preview": "public record WorkBatch(\n    OutboxMessage[] ClaimedOutboxMessages,\n    InboxMessage[] ClaimedInboxM"
+      "lineCount": 39,
+      "preview": "public sealed record ProcessWorkBatchRequest {\n    // Instance info\n    public required Guid Instanc"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordinator.md",
@@ -49516,7 +50082,7 @@
         "testMethod"
       ],
       "lineCount": 18,
-      "preview": "PerspectiveCheckpointCompletion[] perspectiveCompletions,\nPerspectiveCheckpointFailure[] perspective"
+      "preview": "PerspectiveCursorCompletion[] perspectiveCompletions,\nPerspectiveCursorFailure[] perspectiveFailures"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordinator.md",
@@ -49572,8 +50138,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 6,
-      "preview": "WorkBatchFlags flags = WorkBatchFlags.None,\nint partitionCount = 10000,\nint maxPartitionsPerInstance"
+      "lineCount": 5,
+      "preview": "public WorkBatchOptions Flags { get; init; } = WorkBatchOptions.None;\npublic int PartitionCount { ge"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordinator.md",
@@ -49677,7 +50243,7 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 69,
+      "lineCount": 68,
       "preview": "CREATE OR REPLACE FUNCTION process_work_batch(\n    p_instance_id UUID,\n    p_service_name VARCHAR(25"
     },
     {
@@ -58591,8 +59157,7 @@
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
-        "Problem",
-        "problem"
+        "Problem"
       ],
       "missingMeta": [
         "title",
@@ -59641,8 +60206,7 @@
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
-        "Problem",
-        "problem"
+        "Problem"
       ],
       "missingMeta": [
         "title",
@@ -59704,9 +60268,7 @@
       "blockIndex": 0,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "execution"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -59725,9 +60287,7 @@
       "blockIndex": 1,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "strategies"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -59765,9 +60325,7 @@
       "blockIndex": 3,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "indefinitely"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -59786,9 +60344,7 @@
       "blockIndex": 4,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "processing"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -59807,9 +60363,7 @@
       "blockIndex": 5,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "failures"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -59847,9 +60401,7 @@
       "blockIndex": 7,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "attributes"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -59868,9 +60420,7 @@
       "blockIndex": 8,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "needs"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -59889,9 +60439,7 @@
       "blockIndex": 9,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "overhead"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",

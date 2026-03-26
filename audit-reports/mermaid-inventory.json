@@ -86,10 +86,10 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 614,
+      "line": 618,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
-      "lineCount": 36,
+      "lineCount": 44,
       "preview": "sequenceDiagram\n    participant Caller\n    participant Receptor"
     },
     {
@@ -230,7 +230,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
-      "line": 67,
+      "line": 70,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 21,
@@ -238,7 +238,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
-      "line": 95,
+      "line": 98,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 19,
@@ -246,7 +246,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
-      "line": 121,
+      "line": 124,
       "diagramType": "flowchart",
       "firstLine": "flowchart TD",
       "lineCount": 11,
@@ -254,7 +254,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
-      "line": 187,
+      "line": 190,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 25,
@@ -262,7 +262,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
-      "line": 217,
+      "line": 220,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 17,
@@ -270,7 +270,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
-      "line": 174,
+      "line": 179,
       "diagramType": "stateDiagram",
       "firstLine": "stateDiagram-v2",
       "lineCount": 6,
