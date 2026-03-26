@@ -10,7 +10,7 @@ tags: 'dispatcher, messaging, commands, events, patterns'
 codeReferences:
   - src/Whizbang.Core/IDispatcher.cs
   - src/Whizbang.Core/Dispatcher.cs
-  - samples/ECommerce/ECommerce.BFF.API/Endpoints/OrderEndpoints.cs
+  - samples/ECommerce/ECommerce.BFF.API/Endpoints/CreateOrderEndpoint.cs
 ---
 
 # Dispatcher Deep Dive
@@ -64,6 +64,13 @@ public interface IDispatcher {
     Task<IDeliveryReceipt> PublishAsync<TEvent>(
         TEvent eventData
     );
+
+    // Advanced/Internal: Cascade a message using a source envelope's security context
+    Task CascadeMessageAsync(
+        IMessage message,
+        IMessageEnvelope? sourceEnvelope,
+        DispatchMode mode,
+        CancellationToken cancellationToken = default);
 }
 ```
 

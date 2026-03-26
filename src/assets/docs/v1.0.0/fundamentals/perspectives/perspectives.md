@@ -61,6 +61,50 @@ public interface IPerspectiveFor<TModel, TEvent>
 - **Event replay**: Runner applies events in UUID7 order
 - **Unit of work**: All events applied, then model + checkpoint saved once
 
+### `[MustExist]` Attribute {#must-exist}
+
+Use `[MustExist]` on an `Apply` method to indicate the model must already exist (i.e., it was created by a prior event). The generated runner will throw `InvalidOperationException` if the current model is `null` when that method is called:
+
+```csharp{title="MustExist Attribute" description="Require the model to already exist before applying an event" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "MustExist", "Attribute"]}
+public class OrderPerspective :
+    IPerspectiveFor<OrderView, OrderCreated>,
+    IPerspectiveFor<OrderView, OrderShipped> {
+
+  // Creation - nullable parameter, handles initial creation
+  public OrderView Apply(OrderView? current, OrderCreated @event) {
+    return new OrderView { OrderId = @event.OrderId, Status = "Created" };
+  }
+
+  // Update - non-nullable parameter, requires existing model
+  [MustExist]
+  public OrderView Apply(OrderView current, OrderShipped @event) {
+    return current with { Status = "Shipped" };
+  }
+}
+```
+
+### `[WhizbangPerspective]` Attribute {#whizbang-perspective}
+
+In multi-DbContext scenarios, use `[WhizbangPerspective("key")]` to route a perspective to specific DbContexts. Without this attribute, perspectives match the default DbContext only:
+
+```csharp{title="WhizbangPerspective Attribute" description="Route perspectives to specific DbContexts in multi-context scenarios" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "WhizbangPerspective", "Attribute", "Multi-DbContext"]}
+// Only included in DbContexts registered with the "catalog" key
+[WhizbangPerspective("catalog")]
+public class ProductPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> {
+  public ProductModel Apply(ProductModel? current, ProductCreatedEvent @event) =>
+    new() { ProductId = @event.ProductId, Name = @event.Name };
+}
+
+// Included in BOTH "catalog" AND "orders" DbContexts
+[WhizbangPerspective("catalog", "orders")]
+public class CustomerPerspective : IPerspectiveFor<CustomerModel, CustomerCreatedEvent> {
+  public CustomerModel Apply(CustomerModel? current, CustomerCreatedEvent @event) =>
+    new() { CustomerId = @event.CustomerId };
+}
+```
+
+See [Persistence](../persistence/persistence.md) for DbContext key configuration.
+
 ---
 
 ## StreamKey Attribute
