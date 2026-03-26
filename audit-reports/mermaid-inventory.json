@@ -86,7 +86,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "line": 558,
+      "line": 614,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 36,
@@ -110,7 +110,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/failure-handling.md",
-      "line": 70,
+      "line": 84,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 27,
@@ -118,7 +118,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/failure-handling.md",
-      "line": 168,
+      "line": 182,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 26,
@@ -126,7 +126,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/idempotency-patterns.md",
-      "line": 58,
+      "line": 72,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 38,
@@ -134,7 +134,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/idempotency-patterns.md",
-      "line": 174,
+      "line": 188,
       "diagramType": "graph",
       "firstLine": "graph TD",
       "lineCount": 20,
@@ -142,7 +142,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/idempotency-patterns.md",
-      "line": 257,
+      "line": 271,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 23,
@@ -150,7 +150,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
-      "line": 17,
+      "line": 31,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 31,
@@ -158,7 +158,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
-      "line": 67,
+      "line": 81,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 22,
@@ -166,7 +166,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
-      "line": 125,
+      "line": 139,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 36,
@@ -174,7 +174,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
-      "line": 180,
+      "line": 194,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 32,
@@ -182,7 +182,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
-      "line": 260,
+      "line": 274,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 18,
@@ -190,7 +190,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
-      "line": 299,
+      "line": 313,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 23,
@@ -198,7 +198,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
-      "line": 343,
+      "line": 357,
       "diagramType": "graph",
       "firstLine": "graph TD",
       "lineCount": 17,
@@ -206,7 +206,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
-      "line": 377,
+      "line": 391,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 25,
@@ -214,7 +214,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
-      "line": 419,
+      "line": 433,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 49,
@@ -222,7 +222,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
-      "line": 492,
+      "line": 506,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 37,
@@ -230,7 +230,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
-      "line": 52,
+      "line": 67,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 21,
@@ -238,7 +238,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
-      "line": 80,
+      "line": 95,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 19,
@@ -246,7 +246,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
-      "line": 106,
+      "line": 121,
       "diagramType": "flowchart",
       "firstLine": "flowchart TD",
       "lineCount": 11,
@@ -254,7 +254,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
-      "line": 172,
+      "line": 187,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 25,
@@ -262,7 +262,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
-      "line": 202,
+      "line": 217,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 17,

@@ -1,10 +1,10 @@
 {
-  "totalSamples": 3118,
-  "withMetadata": 2979,
-  "withoutMetadata": 139,
+  "totalSamples": 3224,
+  "withMetadata": 3084,
+  "withoutMetadata": 140,
   "byLanguage": {
     "bash": 147,
-    "csharp": 2571,
+    "csharp": 2675,
     "graphql": 35,
     "json": 65,
     "sql": 148,
@@ -14,55 +14,55 @@
     "xml": 54,
     "yaml": 28,
     "mermaid": 39,
-    "ini": 3,
+    "ini": 4,
     "html": 1,
     "dockerfile": 2,
     "bicep": 1,
     "liquid": 2,
     "kusto": 8,
-    "promql": 4,
+    "promql": 5,
     "javascript": 1,
     "powershell": 2
   },
   "metaFieldCoverage": {
     "title": {
       "present": 0,
-      "missing": 2979,
+      "missing": 3084,
       "pct": 0
     },
     "description": {
       "present": 0,
-      "missing": 2979,
+      "missing": 3084,
       "pct": 0
     },
     "category": {
       "present": 0,
-      "missing": 2979,
+      "missing": 3084,
       "pct": 0
     },
     "difficulty": {
       "present": 0,
-      "missing": 2979,
+      "missing": 3084,
       "pct": 0
     },
     "tags": {
       "present": 0,
-      "missing": 2979,
+      "missing": 3084,
       "pct": 0
     },
     "framework": {
       "present": 0,
-      "missing": 2979,
+      "missing": 3084,
       "pct": 0
     },
     "testFile": {
       "present": 0,
-      "missing": 2979,
+      "missing": 3084,
       "pct": 0
     },
     "testMethod": {
       "present": 0,
-      "missing": 2979,
+      "missing": 3084,
       "pct": 0
     }
   },
@@ -4399,6 +4399,215 @@
       "preview": "// v0.4.0 - SQL and NoSQL drivers\nservices.AddWhizbangDrivers(options => {\n    options.UsePostgreSQL"
     },
     {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "public class PerspectiveRow<TModel> where TModel : class {\n  public required Guid Id { get; init; }"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 14,
+      "preview": "protected override void OnModelCreating(ModelBuilder modelBuilder) {\n  modelBuilder.Entity<Perspecti"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 20,
+      "preview": "// Filter by data fields\nvar highValueOrders = await context.Set<PerspectiveRow<OrderModel>>()\n    ."
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 14,
+      "preview": "// CORRECT: class with parameterless constructor\npublic class PerspectiveMetadata {\n  public Perspec"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 24,
+      "preview": "// CORRECT: List<ScopeExtension> works with ToJson()\npublic class ScopeExtension {\n  public ScopeExt"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "public class PerspectiveRow<TModel> where TModel : class {\n  // init is fine for non-complex columns"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 24,
+      "preview": "// 1. Detach any locally tracked entity\nvar localRow = context.Set<PerspectiveRow<TModel>>().Local"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 7,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "protected static void UpdateMetadataInPlace(PerspectiveMetadata target, PerspectiveMetadata source)"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 8,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 20,
+      "preview": "protected static void UpdateScopeInPlace(PerspectiveScope target, PerspectiveScope source) {\n  // Sc"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 9,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "protected static PerspectiveMetadata CloneMetadata(PerspectiveMetadata metadata) {\n  return new Pers"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 10,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "protected static PerspectiveScope CloneScope(PerspectiveScope scope) {\n  return new PerspectiveScope"
+    },
+    {
       "file": "src/assets/docs/v1.0.0/data/efcore-integration.md",
       "blockIndex": 0,
       "language": "bash",
@@ -7221,6 +7430,234 @@
       ],
       "lineCount": 10,
       "preview": "public class ImportService(IWorkFlusher flusher) {\n  public async Task ImportBatchAsync(IEnumerable<"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "using Whizbang.Core.Attributes;     // Attributes and kind enums\nusing Whizbang.Core.AutoPopulate;"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "public record OrderCreated(\n    [property: StreamId] Guid OrderId,\n    string ProductName,\n    [prop"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "public record PaymentProcessed(\n    [property: StreamId] Guid PaymentId,\n    decimal Amount,\n    [pr"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "public record OrderShipped(\n    [property: StreamId] Guid OrderId,\n    string TrackingNumber,\n    [p"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "public record ShipmentDispatched(\n    [property: StreamId] Guid ShipmentId,\n    string TrackingNumbe"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "public record DocumentCreated(\n    [property: StreamId] Guid DocumentId,\n    string Title,\n    [prop"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 18,
+      "preview": "// On record parameters (preferred for positional records)\npublic record OrderCreated(\n    [property"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md",
+      "blockIndex": 7,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "// Phase 1: Sent -- when dispatcher.SendAsync/PublishAsync is called\n// Populates: TimestampKind.Sen"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md",
+      "blockIndex": 8,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 13,
+      "preview": "// Generated code (simplified) -- you never write this\npublic object? TryPopulateSent(object message"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md",
+      "blockIndex": 9,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "// Get a specific auto-populated value\nvar sentAt = envelope.GetAutoPopulated<DateTimeOffset>(\"SentA"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md",
+      "blockIndex": 10,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "// By Type reference\nvar updatedPayload = JsonAutoPopulateHelper.PopulateTimestamp(\n    payload: jso"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md",
+      "blockIndex": 11,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 23,
+      "preview": "public record InvoiceGenerated(\n    [property: StreamId] Guid InvoiceId,\n    decimal TotalAmount,"
     },
     {
       "file": "src/assets/docs/v1.0.0/extending/attributes/generatestreamid.md",
@@ -14496,6 +14933,310 @@
       "preview": "using Whizbang.Core;  // Required!\n\n[TopicFilter(\"orders.created\")]\npublic record CreateOrderCommand"
     },
     {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "public static IEnumerable<IPropertySymbol> GetAllProperties(\n    this INamedTypeSymbol typeSymbol,"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "// Given this hierarchy:\n// class BaseModel { public Guid Id { get; set; } }\n// class OrderView : Ba"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "public static string[] GetAllPublicPropertyNames(\n    this INamedTypeSymbol typeSymbol)"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "var propertyNames = typeSymbol.GetAllPublicPropertyNames();\n// => [\"Status\", \"Id\"]\n\n// Useful in cod"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "public static IPropertySymbol? FindPropertyWithAttribute(\n    this INamedTypeSymbol typeSymbol,"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "// Given:\n// class BaseAggregate { [StreamId] public Guid Id { get; set; } }\n// class Order : BaseAg"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "public static IEnumerable<IMethodSymbol> GetAllMethods(\n    this INamedTypeSymbol typeSymbol,\n    bo"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 7,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "var allMethods = typeSymbol.GetAllMethods();\n\nforeach (var method in allMethods) {\n  Console.WriteLi"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 8,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "public static IMethodSymbol? FindMethodWithAttribute(\n    this INamedTypeSymbol typeSymbol,\n    stri"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 9,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "var initMethod = typeSymbol.FindMethodWithAttribute(\n    \"global::Whizbang.Core.InitializeAttribute\""
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 10,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "public static IEnumerable<IMethodSymbol> GetAllMethodsByName(\n    this INamedTypeSymbol typeSymbol,"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 11,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "// Given a perspective with multiple Apply overloads:\n// public OrderView Apply(OrderView model, Ord"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 12,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 14,
+      "preview": "private static void _generateColumnMappings(\n    INamedTypeSymbol modelType,\n    StringBuilder sb) {"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 13,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "private static string? _getStreamIdPropertyName(INamedTypeSymbol typeSymbol) {\n  var property = type"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 14,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 15,
+      "preview": "private static List<EventHandlerInfo> _discoverApplyMethods(\n    INamedTypeSymbol perspectiveType) {"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md",
+      "blockIndex": 15,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 44,
+      "preview": "[Test]\npublic async Task GetAllProperties_WithInheritance_IncludesBasePropertiesAsync() {\n  var sour"
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
       "blockIndex": 0,
       "language": "csharp",
@@ -14511,7 +15252,7 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 29,
+      "lineCount": 26,
       "preview": "namespace Whizbang.Core;\n\npublic interface IDispatcher {\n    // Pattern 1: Command dispatch with del"
     },
     {
@@ -14532,8 +15273,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 5,
-      "preview": "Task<DeliveryReceipt> SendAsync<TMessage>(\n    TMessage message,\n    CancellationToken cancellationT"
+      "lineCount": 4,
+      "preview": "Task<IDeliveryReceipt> SendAsync<TMessage>(\n    TMessage message\n) where TMessage : notnull;"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
@@ -14570,8 +15311,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 6,
-      "preview": "public record DeliveryReceipt(\n    Guid MessageId,        // Unique ID for this message\n    Guid Cor"
+      "lineCount": 27,
+      "preview": "public interface IDeliveryReceipt {\n    MessageId MessageId { get; }              // Unique message"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
@@ -14612,8 +15353,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 5,
-      "preview": "Task<TResponse> LocalInvokeAsync<TMessage, TResponse>(\n    TMessage message,\n    CancellationToken c"
+      "lineCount": 4,
+      "preview": "ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(\n    TMessage message\n) where TMessage : notn"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
@@ -14816,8 +15557,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 5,
-      "preview": "Task PublishAsync<TMessage>(\n    TMessage message,\n    CancellationToken cancellationToken = default"
+      "lineCount": 4,
+      "preview": "Task<IDeliveryReceipt> PublishAsync<TEvent>(\n    TEvent eventData\n);"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
@@ -15826,8 +16567,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 31,
-      "preview": "namespace Whizbang.Core.Commands.System;\n\n// Rebuild a perspective across all services\npublic record"
+      "lineCount": 39,
+      "preview": "namespace Whizbang.Core.Commands.System;\n\n// Rebuild one or more perspectives across all services\npu"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
@@ -15845,8 +16586,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 12,
-      "preview": "// Rebuild a perspective across all services\nawait dispatcher.SendAsync(new RebuildPerspectiveComman"
+      "lineCount": 16,
+      "preview": "// Rebuild a specific perspective across all services\nawait dispatcher.SendAsync(new RebuildPerspect"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
@@ -24682,12 +25423,31 @@
         "testFile",
         "testMethod"
       ],
+      "lineCount": 10,
+      "preview": "[FireAt(LifecycleStage.PostAllPerspectivesAsync)]\npublic class CrossPerspectiveAggregator : IRecepto"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "blockIndex": 8,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
       "lineCount": 11,
       "preview": "[FireAt(LifecycleStage.PostLifecycleAsync)]\npublic class OrderNotificationReceptor : IReceptor<Order"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "blockIndex": 8,
+      "blockIndex": 9,
       "language": "mermaid",
       "hasMetadata": false,
       "presentMeta": [],
@@ -24706,7 +25466,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "blockIndex": 9,
+      "blockIndex": 10,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -24727,7 +25487,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-      "blockIndex": 10,
+      "blockIndex": 11,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -25033,8 +25793,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 26,
-      "preview": "[Test]\npublic async Task Service_WhenPaused_StopsProcessingMessagesAsync() {\n  // Arrange\n  await _d"
+      "lineCount": 34,
+      "preview": "[Test]\npublic async Task Service_WhenPaused_StopsProcessingMessagesAsync() {\n  // Arrange - use life"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle.md",
@@ -25096,8 +25856,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 5,
-      "preview": "await dispatcher.SendAsync(new RebuildPerspectiveCommand(\n  \"OrderSummary\",\n  FromEventId: 12345L\n))"
+      "lineCount": 6,
+      "preview": "await dispatcher.SendAsync(new RebuildPerspectiveCommand(\n  PerspectiveNames: [\"OrderSummary\"],\n  Mo"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle.md",
@@ -25105,7 +25865,7 @@
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
-        "services"
+        "rebuild"
       ],
       "missingMeta": [
         "title",
@@ -25117,8 +25877,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 5,
-      "preview": "await dispatcher.SendAsync(new ClearCacheCommand(\n  CacheKey: \"product:*\",\n  CacheRegion: \"products\""
+      "lineCount": 2,
+      "preview": "await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand(\"OrderSummary\"));"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle.md",
@@ -25139,7 +25899,332 @@
         "testMethod"
       ],
       "lineCount": 5,
+      "preview": "await dispatcher.SendAsync(new ClearCacheCommand(\n  CacheKey: \"product:*\",\n  CacheRegion: \"products\""
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle.md",
+      "blockIndex": 19,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "services"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
       "preview": "await dispatcher.SendAsync(new DiagnosticsCommand(\n  DiagnosticType.Full,\n  CorrelationId: Guid.NewG"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "public sealed record CascadeContext {\n    public required CorrelationId CorrelationId { get; init; }"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "// No security context\nvar root = CascadeContext.NewRoot();\n\n// Inherits UserId/TenantId from ambien"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "// Add a single key\nvar enriched = cascade.WithMetadata(\"FeatureFlag\", \"new-checkout-v2\");\n\n// Merge"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "public record SecurityContext {\n    public string? UserId { get; init; }\n    public string? TenantId"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 2,
+      "preview": "services.AddSingleton<CascadeContextFactory>();"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "public sealed class CascadeContextFactory(IEnumerable<ICascadeContextEnricher>? enrichers) {\n    //"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 22,
+      "preview": "public class OrderWorker {\n    private readonly CascadeContextFactory _cascadeFactory;\n    private r"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 7,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "public interface ICascadeContextEnricher {\n    CascadeContext Enrich(CascadeContext context, IMessag"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 8,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 17,
+      "preview": "public class FeatureFlagEnricher : ICascadeContextEnricher {\n    private readonly IFeatureFlagServic"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 9,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "public interface IScopeContext {\n    PerspectiveScope Scope { get; }              // TenantId, UserI"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 10,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "public interface IMessageContext {\n    // ... MessageId, CorrelationId, CausationId, etc.\n\n    // Th"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 11,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 14,
+      "preview": "public interface IScopeContextAccessor {\n    IScopeContext? Current { get; set; }\n\n    // SOURCE OF"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 12,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "public sealed class ScopeContextAccessor : IScopeContextAccessor {\n    // Static accessors for singl"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 13,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "// IScopeContextAccessor interface default implementations\nstring? UserId => InitiatingContext?.User"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 14,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "// Priority for UserId/TenantId:\n// 1. InitiatingContext (SOURCE OF TRUTH)\n// 2. CurrentContext.Scop"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 15,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "var cascade = cascadeFactory.FromEnvelope(envelope);\nvar childContext = MessageContext.Create(cascad"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/delivery-receipts.md",
@@ -25875,6 +26960,139 @@
       ],
       "lineCount": 17,
       "preview": "CREATE TABLE wb_message_associations (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  message_ty"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context-extraction.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "public readonly record struct ExtractedContext(\n    ActivityContext TraceContext,  // For OpenTeleme"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context-extraction.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 2,
+      "preview": "public static ExtractedContext ExtractFromEnvelope(IMessageEnvelope envelope);"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context-extraction.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 2,
+      "preview": "public static ExtractedContext ExtractFromHops(IReadOnlyList<MessageHop>? hops);"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context-extraction.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "// Trace context only (ActivityContext from last hop's TraceParent)\npublic static ActivityContext Ex"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context-extraction.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 21,
+      "preview": "public class OrderEventWorker {\n    public async Task ProcessAsync(IMessageEnvelope envelope, Cancel"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context-extraction.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "var traceContext = EnvelopeContextExtractor.ExtractTraceContext(envelope.Hops);\n\nusing var activity"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context-extraction.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "var scope = EnvelopeContextExtractor.ExtractScope(envelope.Hops);\n\nif (scope is not null) {\n    var"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context.md",
@@ -29909,6 +31127,160 @@
       "preview": "// Short timeout for real-time responses\n.WithTimeout(TimeSpan.FromMilliseconds(500))\n\n// Longer tim"
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "namespace Whizbang.Core.Perspectives;\n\npublic interface IPerspectiveWithActionsFor<TModel, TEvent> :"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 18,
+      "preview": "namespace Whizbang.Core.Perspectives;\n\npublic readonly struct ApplyResult<TModel> where TModel : cla"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "using Whizbang.Core.Perspectives;\n\npublic class OrderPerspective : IPerspectiveWithActionsFor<OrderV"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "lifecycle"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "namespace Whizbang.Core.Perspectives;\n\npublic enum ModelAction {\n    None = 0,    // Keep the model"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 77,
+      "preview": "using Whizbang.Core;\nusing Whizbang.Core.Perspectives;\n\n// Events\npublic record OrderCreatedEvent :"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 24,
+      "preview": "using Whizbang.Core;\nusing Whizbang.Core.Perspectives;\n\npublic record OrderArchivedEvent : IEvent {"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "using Whizbang.Core;\n\npublic record OrderView {\n    [StreamKey]\n    public Guid OrderId { get; init;"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md",
+      "blockIndex": 7,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 98,
+      "preview": "using Whizbang.Core.Perspectives;\n\npublic class OrderPerspectiveTests {\n    [Test]\n    public async"
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
       "blockIndex": 0,
       "language": "csharp",
@@ -31221,6 +32593,310 @@
       ],
       "lineCount": 3,
       "preview": "// Registry is included in standard initialization\nawait dbContext.EnsureWhizbangDatabaseInitialized"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 20,
+      "preview": "public interface IPerspectiveSnapshotStore {\n  Task CreateSnapshotAsync(Guid streamId, string perspe"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "// Snapshot is created automatically by the perspective runner\n// after every N events (configured v"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "var snapshot = await snapshotStore.GetLatestSnapshotAsync(orderId, \"OrderPerspective\");\nif (snapshot"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 13,
+      "preview": "// Late-arriving event detected at rewindTriggerEventId\nvar snapshot = await snapshotStore.GetLatest"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "var hasSnapshots = await snapshotStore.HasAnySnapshotAsync(orderId, \"OrderPerspective\");\nif (!hasSna"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "// Keep the 5 most recent snapshots, delete the rest\nawait snapshotStore.PruneOldSnapshotsAsync(orde"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "// During perspective rebuild, invalidate all existing snapshots\nawait snapshotStore.DeleteAllSnapsh"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md",
+      "blockIndex": 7,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 12,
+      "preview": "public class PerspectiveSnapshotOptions {\n  // Create a snapshot every N events processed (default:"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md",
+      "blockIndex": 8,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "services.Configure<PerspectiveSnapshotOptions>(options => {\n    options.SnapshotEveryNEvents = 50;"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/stream-locking.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "public interface IPerspectiveStreamLocker {\n  Task<bool> TryAcquireLockAsync(Guid streamId, string p"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/stream-locking.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "var lockAcquired = await streamLocker.TryAcquireLockAsync(\n    streamId: orderId,\n    perspectiveNam"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/stream-locking.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "// Called periodically by the keepalive background task\nawait streamLocker.RenewLockAsync(orderId, \""
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/stream-locking.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 2,
+      "preview": "await streamLocker.ReleaseLockAsync(orderId, \"OrderPerspective\", instanceId);"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/stream-locking.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 26,
+      "preview": "// 1. Acquire lock\nvar lockAcquired = await streamLocker.TryAcquireLockAsync(\n    streamId, perspect"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/stream-locking.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "public class PerspectiveStreamLockOptions {\n  // How long a lock is valid before expiring (default:"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/stream-locking.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "services.Configure<PerspectiveStreamLockOptions>(options => {\n    options.LockTimeout = TimeSpan.Fro"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/sync.md",
@@ -56173,6 +57849,124 @@
       "preview": "// What Roslyn sees:\n// - Constructor parameter: \"tagName\"\n// - Constructor arguments: [\"tenants\"]"
     },
     {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz300.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 14,
+      "preview": "// WHIZ300: Different model types (OrderView vs ProductView)\npublic class OrderPerspective :\n    IPe"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz300.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "1"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 13,
+      "preview": "public class OrderPerspective :\n    IPerspectiveFor<OrderView, OrderCreated>,\n    IPerspectiveWithAc"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz300.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "2"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "public class OrderPerspective :\n    IPerspectiveFor<OrderView, OrderCreated> {\n\n  public OrderView A"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz300.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 24,
+      "preview": "// All interfaces use OrderView as TModel - no WHIZ300\npublic class OrderPerspective :\n    IPerspect"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz300.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "#pragma warning disable WHIZ300 // Intentional inconsistent model types for testing\npublic class Tes"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz300.md",
+      "blockIndex": 5,
+      "language": "ini",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "[*.cs]\ndotnet_diagnostic.WHIZ300.severity = none"
+    },
+    {
       "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz400.md",
       "blockIndex": 0,
       "language": "csharp",
@@ -56875,6 +58669,139 @@
       ],
       "lineCount": 8,
       "preview": "// Service Program.cs - add service defaults\nvar builder = WebApplication.CreateBuilder(args);\nbuild"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/database-limits.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "public interface IDbProviderLimits {\n  int MaxTableNameBytes { get; }\n  int MaxColumnNameBytes { get"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/database-limits.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "public sealed class PostgresLimits : IDbProviderLimits {\n  public const int MAX_IDENTIFIER_BYTES = 6"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/database-limits.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "// ASCII characters: 1 byte each\nIdentifierValidation.GetByteCount(\"orders\");        // 6 bytes\nIden"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/database-limits.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 21,
+      "preview": "var limits = PostgresLimits.Instance;\n\n// Validate table name - returns error message or null\nstring"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/database-limits.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "// Model type name is long\npublic class CustomerOrderFulfillmentStatusView { }\n\n// Generated table n"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/database-limits.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "// Index name pattern: ix_{table}_{column1}_{column2}\n// Example: ix_perspective_row_order_view_cust"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/database-limits.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 12,
+      "preview": "public sealed class MySqlLimits : IDbProviderLimits {\n  public const int MAX_IDENTIFIER_LENGTH = 64;"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/health-checks.md",
@@ -58648,6 +60575,101 @@
       ],
       "lineCount": 18,
       "preview": "{\n  \"Logging\": {\n    \"LogLevel\": {\n      \"Default\": \"Information\",\n      \"Microsoft.AspNetCore\": \"Wa"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/metrics.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 21,
+      "preview": "// Metrics are registered automatically - no opt-in required\nservices.AddWhizbang(options => {\n  //"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/metrics.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "// Registered automatically as singleton\npublic sealed class WhizbangMetrics(IMeterFactory? meterFac"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/metrics.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 14,
+      "preview": "builder.Services.AddOpenTelemetry()\n    .WithMetrics(metrics => {\n      metrics.AddMeter(\"Whizbang.D"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/metrics.md",
+      "blockIndex": 3,
+      "language": "promql",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 19,
+      "preview": "# Dispatch throughput (messages/sec)\nrate(whizbang_dispatcher_messages_dispatched_total[5m])\n\n# p99"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/metrics.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "// In ServiceDefaults project\nbuilder.Services.AddOpenTelemetry()\n    .WithMetrics(metrics => {"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/observability/opentelemetry-integration.md",

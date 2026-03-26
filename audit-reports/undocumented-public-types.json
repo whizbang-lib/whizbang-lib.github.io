@@ -1,13 +1,13 @@
 {
-  "totalPublicTypes": 1060,
-  "documented": 546,
-  "undocumented": 514,
-  "coveragePct": 52,
+  "totalPublicTypes": 1064,
+  "documented": 493,
+  "undocumented": 571,
+  "coveragePct": 46,
   "byKind": {
-    "class": 353,
-    "enum": 37,
-    "interface": 43,
-    "record": 76,
+    "class": 354,
+    "enum": 38,
+    "interface": 95,
+    "record": 79,
     "struct": 5
   },
   "undocumentedTypes": [
@@ -337,6 +337,20 @@
       "symbol": "AppendAndWaitEventStoreDecorator",
       "kind": "class",
       "file": "src/Whizbang.Core/Messaging/AppendAndWaitEventStoreDecorator.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "FlushTrigger",
+      "kind": "enum",
+      "file": "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "WorkBatchFlushedArgs",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs",
       "hasDocs": false,
       "docsPath": null
     },
@@ -894,6 +908,13 @@
       "docsPath": null
     },
     {
+      "symbol": "LifecycleCoordinatorMetrics",
+      "kind": "class",
+      "file": "src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
       "symbol": "HopType",
       "kind": "enum",
       "file": "src/Whizbang.Core/Observability/MessageHop.cs",
@@ -988,6 +1009,363 @@
       "symbol": "IDriverOptions",
       "kind": "interface",
       "file": "src/Whizbang.Core/Perspectives/IDriverOptions.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IPerspectiveBase",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
       "hasDocs": false,
       "docsPath": null
     },
@@ -1643,6 +2021,20 @@
       "docsPath": null
     },
     {
+      "symbol": "BulkPublishItem",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Transports/BulkPublish.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "BulkPublishItemResult",
+      "kind": "record",
+      "file": "src/Whizbang.Core/Transports/BulkPublish.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
       "symbol": "DispatcherTransportBridge",
       "kind": "class",
       "file": "src/Whizbang.Core/Transports/DispatcherTransportBridge.cs",
@@ -1828,6 +2220,13 @@
       "symbol": "MessagePublishResult",
       "kind": "record",
       "file": "src/Whizbang.Core/Workers/IMessagePublishStrategy.cs",
+      "hasDocs": false,
+      "docsPath": null
+    },
+    {
+      "symbol": "IProcessedEventCacheObserver",
+      "kind": "interface",
+      "file": "src/Whizbang.Core/Workers/IProcessedEventCacheObserver.cs",
       "hasDocs": false,
       "docsPath": null
     },
