@@ -206,16 +206,25 @@ async function generateEnhancedSearchIndex() {
       
       // Clean content (remove markdown syntax)
       const cleanContent = bodyContent
+        .replace(/```\w*\{[^}]*\}[\s\S]*?```/g, '') // Remove code blocks with metadata
+        .replace(/```[\s\S]*?```/g, '') // Remove remaining code blocks
+        .replace(/:::(\w+)(\{[^}]*\})?/g, '') // Remove callout openers (:::new, :::updated{type="breaking"})
+        .replace(/^:::$/gm, '') // Remove callout closers
+        .replace(/<wb-[^>]*>[^<]*<\/wb-[^>]*>/g, '') // Remove custom components
+        .replace(/<wb-[^>]*\/>/g, '') // Remove self-closing custom components
+        .replace(/^\|.*\|$/gm, '') // Remove table rows
+        .replace(/^\|[-:|\s]+\|$/gm, '') // Remove table separator rows
         .replace(/#{1,6}\s+/g, '') // Remove headers
         .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
         .replace(/\*(.*?)\*/g, '$1') // Remove italic
         .replace(/`(.*?)`/g, '$1') // Remove inline code
-        .replace(/```[\s\S]*?```/g, '') // Remove code blocks
         .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove links, keep text
         .replace(/!\[([^\]]*)\]\([^\)]+\)/g, '$1') // Remove images
         .replace(/^\s*[-*+]\s+/gm, '') // Remove list markers
         .replace(/^\s*\d+\.\s+/gm, '') // Remove numbered list markers
+        .replace(/\{#[\w-]+\}/g, '') // Remove anchor IDs ({#some-id})
         .replace(/\n\s*\n/g, '\n') // Remove extra newlines
+        .replace(/\n{3,}/g, '\n\n') // Collapse multiple newlines
         .trim();
       
       // Extract keywords for enhanced search
