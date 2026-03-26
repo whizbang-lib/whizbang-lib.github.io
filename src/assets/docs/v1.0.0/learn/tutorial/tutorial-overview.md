@@ -7,6 +7,11 @@ description: >-
   Build a complete e-commerce system with Whizbang - microservices, event
   sourcing, CQRS, and distributed messaging
 tags: 'tutorial, ecommerce, microservices, event-sourcing, cqrs, distributed-systems'
+codeReferences:
+  - samples/ECommerce/ECommerce.AppHost/Program.cs
+  - samples/ECommerce/ECommerce.Contracts/Ids.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/OrderCreatedEvent.cs
+  - samples/ECommerce/ECommerce.ServiceDefaults/Extensions.cs
 ---
 
 # ECommerce Tutorial Overview

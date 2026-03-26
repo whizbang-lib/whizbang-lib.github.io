@@ -7,6 +7,11 @@ description: >-
   Security guidelines - authentication, authorization, encryption, secrets
   management, OWASP Top 10
 tags: 'security, authentication, authorization, encryption, owasp, secrets'
+codeReferences:
+  - src/Whizbang.Core/Security/SecurityOptions.cs
+  - src/Whizbang.Core/Security/MessageSecurityServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Security/ISecurityContextExtractor.cs
+  - src/Whizbang.Core/Security/MessageSecurityOptions.cs
 ---
 
 # Security Best Practices

@@ -2,6 +2,10 @@
 title: Vector Fields
 version: 1.0.0
 category: Perspectives
+codeReferences:
+  - src/Whizbang.Core/Perspectives/VectorFieldAttribute.cs
+  - src/Whizbang.Core/Perspectives/VectorDistanceMetric.cs
+  - src/Whizbang.Core/Perspectives/VectorIndexType.cs
 ---
 
 # Vector Fields

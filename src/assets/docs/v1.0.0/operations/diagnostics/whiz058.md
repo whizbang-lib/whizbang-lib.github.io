@@ -11,6 +11,10 @@ tags:
   - interception
   - source-generator
   - trackedguid
+codeReferences:
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators/GuidInterceptorGenerator.cs
+  - src/Whizbang.Core/ValueObjects/TrackedGuid.cs
 ---
 
 # WHIZ058: GUID Call Intercepted

@@ -2,6 +2,8 @@
 title: Polymorphic Discriminator
 version: 1.0.0
 category: Perspectives
+codeReferences:
+  - src/Whizbang.Core/Perspectives/PolymorphicDiscriminatorAttribute.cs
 ---
 
 # Polymorphic Discriminator

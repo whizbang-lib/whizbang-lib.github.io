@@ -7,6 +7,13 @@ description: >-
   Implement full event sourcing with CQRS - event store, snapshots, temporal
   queries, and projections
 tags: 'event-sourcing, cqrs, event-store, snapshots, temporal-queries'
+codeReferences:
+  - src/Whizbang.Core/Messaging/IEventStore.cs
+  - src/Whizbang.Core/Messaging/IEventStoreQuery.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs
+  - >-
+    samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
 ---
 
 # Event Sourcing & CQRS

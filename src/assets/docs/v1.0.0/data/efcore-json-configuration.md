@@ -4,6 +4,9 @@ category: Data
 order: 10
 description: Configuring EF Core 10 with custom JSON converters for JSONB columns
 tags: efcore, json, jsonb, postgresql, npgsql, converters
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres/Serialization/EFCoreJsonContext.cs
+  - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
 ---
 
 # EF Core 10 JSON Configuration with Custom Converters

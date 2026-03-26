@@ -11,6 +11,10 @@ tags:
   - physical-field
   - perspectives
   - source-generator
+codeReferences:
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators/PerspectiveSchemaGenerator.cs
+  - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
 ---
 
 # WHIZ802: VectorField Invalid Dimensions

@@ -5,6 +5,10 @@ category: Components
 order: 1
 description: PostgreSQL data provider for Whizbang applications
 tags: data, postgres, postgresql, database
+codeReferences:
+  - src/Whizbang.Data.Postgres/PostgresOptions.cs
+  - src/Whizbang.Data.Postgres/PostgresConnectionRetry.cs
+  - src/Whizbang.Data.Postgres/PostgresReadinessExtensions.cs
 ---
 
 # PostgreSQL Data Provider

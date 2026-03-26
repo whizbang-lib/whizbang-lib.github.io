@@ -2,6 +2,11 @@
 title: Perspective Sync
 version: 1.0.0
 category: Perspectives
+codeReferences:
+  - src/Whizbang.Core/Perspectives/Sync/SyncInquiry.cs
+  - src/Whizbang.Core/Perspectives/Sync/SyncInquiryResult.cs
+  - src/Whizbang.Core/Perspectives/Sync/IPerspectiveSyncAwaiter.cs
+  - src/Whizbang.Core/Perspectives/Sync/PerspectiveSyncOptions.cs
 ---
 
 # Perspective Sync

@@ -7,6 +7,12 @@ description: >-
   Build the Notification Worker - email/SMS notifications, template rendering,
   and delivery tracking
 tags: 'tutorial, notification-service, email, sms, event-driven'
+codeReferences:
+  - samples/ECommerce/ECommerce.NotificationWorker/Program.cs
+  - >-
+    samples/ECommerce/ECommerce.NotificationWorker/Receptors/SendNotificationReceptor.cs
+  - samples/ECommerce/ECommerce.Contracts/Commands/SendNotificationCommand.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/NotificationSentEvent.cs
 ---
 
 # Notification Service

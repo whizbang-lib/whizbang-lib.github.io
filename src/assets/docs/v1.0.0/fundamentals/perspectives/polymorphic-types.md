@@ -2,6 +2,10 @@
 title: Polymorphic Types in Perspectives
 version: 1.0.0
 category: Perspectives
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres.Generators/PerspectiveModelPolymorphicAnalyzer.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Core/Perspectives/PolymorphicDiscriminatorAttribute.cs
 ---
 
 # Polymorphic Types in Perspectives

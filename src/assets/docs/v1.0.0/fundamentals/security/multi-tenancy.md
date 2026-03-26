@@ -7,6 +7,10 @@ description: >-
   Multi-tenancy architecture patterns - database-per-tenant, schema-per-tenant,
   row-level security
 tags: 'multi-tenancy, saas, database-per-tenant, row-level-security, isolation'
+codeReferences:
+  - src/Whizbang.Core/Lenses/TenantConstants.cs
+  - src/Whizbang.Core/Security/ScopeContext.cs
+  - src/Whizbang.Core/Security/Attributes/ScopedAttribute.cs
 ---
 
 # Multi-Tenancy Patterns

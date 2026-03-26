@@ -11,6 +11,10 @@ tags:
   - serialization
   - aot
   - source-generator
+codeReferences:
+  - src/Whizbang.Generators/SerializablePropertyAnalyzer.cs
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Core/Attributes/WhizbangSerializableAttribute.cs
 ---
 
 # Serializable Property Analyzer

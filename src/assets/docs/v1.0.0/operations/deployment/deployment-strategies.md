@@ -7,6 +7,10 @@ description: >-
   Deployment patterns - blue-green, canary, rolling updates, feature flags, and
   rollback strategies
 tags: 'deployment, blue-green, canary, rolling-update, feature-flags, kubernetes'
+codeReferences:
+  - src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs
+  - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  - src/Whizbang.Core/ServiceCollectionExtensions.cs
 ---
 
 # Deployment Strategies

@@ -7,6 +7,11 @@ description: >-
   Cross-cutting concerns as composable policies - retry, timeout, cache, and
   circuit breaker
 tags: 'policies, cross-cutting, resilience, caching, v0.1.0'
+codeReferences:
+  - src/Whizbang.Core/Policies/IPolicyEngine.cs
+  - src/Whizbang.Core/Policies/PolicyEngine.cs
+  - src/Whizbang.Core/Policies/PolicyConfiguration.cs
+  - src/Whizbang.Core/Policies/PolicyContext.cs
 ---
 
 # Policy Engine Component

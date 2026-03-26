@@ -12,6 +12,9 @@ tags:
   - receptor
   - handler
   - source-generator
+codeReferences:
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs
 ---
 
 # WHIZ080: Multiple Handlers for RPC Message

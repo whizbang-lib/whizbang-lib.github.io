@@ -5,6 +5,10 @@ category: Migration Guide
 order: 10
 description: Complete checklist for migrating from Marten/Wolverine to Whizbang
 tags: 'migration, checklist, verification, validation'
+codeReferences:
+  - src/Whizbang.Core/ServiceCollectionExtensions.cs
+  - src/Whizbang.Core/IDispatcher.cs
+  - src/Whizbang.Core/ICommand.cs
 ---
 
 # Migration Checklist

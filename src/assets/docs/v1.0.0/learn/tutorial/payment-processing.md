@@ -9,6 +9,13 @@ description: >-
 tags: >-
   tutorial, payment-service, distributed-transactions, saga-pattern,
   compensation
+codeReferences:
+  - samples/ECommerce/ECommerce.PaymentWorker/Program.cs
+  - >-
+    samples/ECommerce/ECommerce.PaymentWorker/Receptors/ProcessPaymentReceptor.cs
+  - samples/ECommerce/ECommerce.Contracts/Commands/ProcessPaymentCommand.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/PaymentProcessedEvent.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/PaymentFailedEvent.cs
 ---
 
 # Payment Processing Service

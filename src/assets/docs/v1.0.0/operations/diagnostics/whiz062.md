@@ -12,6 +12,9 @@ tags:
   - interface
   - aot
   - source-generator
+codeReferences:
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators/SerializablePropertyAnalyzer.cs
 ---
 
 # WHIZ062: Property Uses Non-Serializable Interface Type

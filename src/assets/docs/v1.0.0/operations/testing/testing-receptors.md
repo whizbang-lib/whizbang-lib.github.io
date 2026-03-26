@@ -7,6 +7,11 @@ description: >-
   Unit testing patterns for receptors and perspectives - mocking, fixtures, and
   test strategies
 tags: 'testing, unit-tests, mocking, tunit, fixtures'
+codeReferences:
+  - src/Whizbang.Core/Dispatcher.cs
+  - src/Whizbang.Core/Messaging/ReceptorInvoker.cs
+  - src/Whizbang.Testing/Lifecycle/PerspectiveCompletionWaiter.cs
+  - src/Whizbang.Testing/Lifecycle/LifecycleStageAwaiter.cs
 ---
 
 # Testing Receptors & Perspectives

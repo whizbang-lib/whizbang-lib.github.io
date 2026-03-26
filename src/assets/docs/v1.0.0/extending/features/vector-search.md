@@ -5,6 +5,10 @@ category: Features
 order: 2
 description: pgvector similarity search with automatic configuration
 tags: 'vector, pgvector, embeddings, similarity, AI, ML'
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres/VectorSearchExtensions.cs
+  - src/Whizbang.Data.EFCore.Postgres/DbContextRegistrationRegistry.cs
+  - src/Whizbang.Data.EFCore.Custom/WhizbangDbContextAttribute.cs
 ---
 
 # Vector Search

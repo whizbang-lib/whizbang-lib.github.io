@@ -7,6 +7,14 @@ description: >-
   Build the Order Service - HTTP API, command handling, event publishing, and
   PostgreSQL persistence
 tags: 'tutorial, order-service, commands, events, http-api'
+codeReferences:
+  - samples/ECommerce/ECommerce.OrderService.API/Program.cs
+  - >-
+    samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
+  - >-
+    samples/ECommerce/ECommerce.OrderService.API/Endpoints/Orders/CreateOrderEndpoint.cs
+  - samples/ECommerce/ECommerce.Contracts/Commands/CreateOrderCommand.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/OrderCreatedEvent.cs
 ---
 
 # Order Management Service

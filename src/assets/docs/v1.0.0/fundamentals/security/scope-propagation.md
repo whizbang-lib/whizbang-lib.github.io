@@ -6,6 +6,12 @@ order: 8
 description: >-
   Delta-based scope propagation across message hops with explicit tenant strategy enforcement for system and impersonation operations.
 tags: 'security, scope, tenant, multi-tenancy, system-operations, impersonation, delta, wire-format'
+codeReferences:
+  - src/Whizbang.Core/Security/ScopeDelta.cs
+  - src/Whizbang.Core/Security/ScopePropJsonConverter.cs
+  - src/Whizbang.Core/Dispatch/DispatcherSecurityExtensions.cs
+  - src/Whizbang.Core/Dispatch/SystemDispatcherBuilder.cs
+  - src/Whizbang.Core/Dispatch/ImpersonationDispatcherBuilder.cs
 ---
 
 # Scope Propagation

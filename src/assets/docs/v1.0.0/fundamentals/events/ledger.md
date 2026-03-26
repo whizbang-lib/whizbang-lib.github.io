@@ -5,6 +5,10 @@ category: Components
 order: 7
 description: In-memory event store with basic append and read operations
 tags: 'ledger, event-store, events, in-memory, v0.1.0'
+codeReferences:
+  - src/Whizbang.Core/Messaging/IEventStore.cs
+  - src/Whizbang.Core/Messaging/InMemoryEventStore.cs
+  - src/Whizbang.Core/Messaging/EventStoreRecord.cs
 ---
 
 # Ledger Component

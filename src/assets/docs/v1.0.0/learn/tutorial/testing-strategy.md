@@ -7,6 +7,17 @@ description: >-
   Comprehensive testing strategy - unit tests, integration tests, e2e tests,
   mocks, and fixtures
 tags: 'tutorial, testing, unit-tests, integration-tests, e2e-tests, tunit'
+codeReferences:
+  - >-
+    samples/ECommerce/tests/ECommerce.InventoryWorker.Tests/Receptors/CreateProductReceptorTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Workflows/CreateProductWorkflowTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.BFF.API.Tests/PerspectiveModelsTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.PaymentWorker.Tests/ProcessPaymentReceptorTests.cs
 ---
 
 # Testing Strategy

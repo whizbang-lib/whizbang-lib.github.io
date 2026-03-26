@@ -7,6 +7,9 @@ description: >-
   Design plugin systems - dynamic assembly loading, hot-reload, and extension
   points
 tags: 'plugins, dynamic-loading, hot-reload, extensibility'
+codeReferences:
+  - src/Whizbang.Core/ServiceCollectionExtensions.cs
+  - src/Whizbang.Core/ServiceRegistrationCallbacks.cs
 ---
 
 # Plugin Architecture

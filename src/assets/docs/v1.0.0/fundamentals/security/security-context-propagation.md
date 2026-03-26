@@ -6,6 +6,11 @@ order: 7
 description: >-
   End-to-end security context flow across service boundaries, from HTTP requests through message processing, with automatic propagation and audit trails.
 tags: 'security, message-security, scoping, distributed-systems, audit, context-propagation'
+codeReferences:
+  - src/Whizbang.Core/Messaging/SecurityContextEventStoreDecorator.cs
+  - src/Whizbang.Core/Security/SecurityContextHelper.cs
+  - src/Whizbang.Core/Security/IMessageSecurityContextProvider.cs
+  - src/Whizbang.Core/Transports/ServiceBusTransportMetadata.cs
 ---
 
 # Security Context Propagation

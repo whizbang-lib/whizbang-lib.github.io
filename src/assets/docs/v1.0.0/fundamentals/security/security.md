@@ -8,6 +8,12 @@ description: >-
   scope context, security principals, row-level and column-level security,
   data masking, and EF Core integration for principal-based filtering.
 tags: 'security, permissions, roles, rbac, abac, scope-context, principals, row-level-security, column-level-security, masking'
+codeReferences:
+  - src/Whizbang.Core/Security/IScopeContext.cs
+  - src/Whizbang.Core/Security/Role.cs
+  - src/Whizbang.Core/Security/Permission.cs
+  - src/Whizbang.Core/Security/SecurityOptions.cs
+  - src/Whizbang.Core/Security/Attributes/ScopedAttribute.cs
 ---
 
 # Security System

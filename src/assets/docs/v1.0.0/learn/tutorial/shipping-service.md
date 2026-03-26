@@ -7,6 +7,14 @@ description: >-
   Build the Shipping Worker - carrier API integration, shipment creation,
   tracking, and status updates
 tags: 'tutorial, shipping-service, carrier-api, tracking, event-driven'
+codeReferences:
+  - samples/ECommerce/ECommerce.ShippingWorker/Program.cs
+  - >-
+    samples/ECommerce/ECommerce.ShippingWorker/Receptors/CreateShipmentReceptor.cs
+  - >-
+    samples/ECommerce/ECommerce.ShippingWorker/Receptors/PaymentShippingReceptor.cs
+  - samples/ECommerce/ECommerce.Contracts/Commands/CreateShipmentCommand.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/ShipmentCreatedEvent.cs
 ---
 
 # Shipping Service
