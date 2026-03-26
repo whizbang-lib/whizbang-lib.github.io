@@ -36,12 +36,16 @@ A Perspective is analogous to a **viewpoint** or **lens through which you see da
 
 ## IPerspectiveFor Interface
 
+:::new
+All perspective variants (`IPerspectiveFor`, `IPerspectiveWithActionsFor`, `ITemporalPerspectiveFor`, `IGlobalPerspectiveFor`) now inherit from `IPerspectiveBase<TModel>`, a unified marker interface used by source generators for perspective discovery. You do not implement `IPerspectiveBase` directly -- use the specific perspective interfaces below.
+:::
+
 ```csharp{title="IPerspectiveFor Interface" description="Demonstrates iPerspectiveFor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveFor", "Interface"]}
 namespace Whizbang.Core.Perspectives;
 
 public interface IPerspectiveFor<TModel, TEvent>
-    where TModel : notnull
-    where TEvent : notnull, IEvent {
+    where TModel : class
+    where TEvent : IEvent {
 
     TModel Apply(TModel currentData, TEvent @event);
 }
@@ -377,7 +381,7 @@ public class ProductCatalogPerspective :
 
 **Pattern**: One read model, multiple events that update it over time.
 
-**Note**: Maximum 5 event types per perspective (language limitation). For more events, create multiple perspectives targeting the same model.
+**Note**: `IPerspectiveFor` supports up to 20 event type parameters per perspective. For more events, create multiple perspectives targeting the same model.
 
 ---
 

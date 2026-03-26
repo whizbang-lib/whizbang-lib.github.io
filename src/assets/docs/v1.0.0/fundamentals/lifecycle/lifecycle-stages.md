@@ -195,6 +195,10 @@ public class LocalDispatchLogger : IReceptor<ICommand> {
 
 ### Distribute Stages (5 stages)
 
+:::planned
+All five Distribute stages (`PreDistributeInline`, `PreDistributeAsync`, `DistributeAsync`, `PostDistributeAsync`, `PostDistributeInline`) are planned for coordinator-managed execution. The enum values exist in `LifecycleStage` but are not yet wired into the pipeline. They will fire for both outbox (publishing) and inbox (consuming) paths — use `MessageSource` to distinguish.
+:::
+
 #### `PreDistributeInline`
 
 **Timing**: Before `ProcessWorkBatchAsync()` call in unit of work strategy.

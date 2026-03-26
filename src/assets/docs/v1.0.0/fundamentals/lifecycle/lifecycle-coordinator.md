@@ -198,16 +198,16 @@ The coordinator emits OTel metrics via `LifecycleCoordinatorMetrics` (meter: `Wh
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `active_tracked_events` | UpDownCounter | Events currently in lifecycle tracking |
-| `pending_perspective_states` | UpDownCounter | Events awaiting perspective WhenAll |
-| `pending_when_all_states` | UpDownCounter | Events awaiting segment WhenAll |
-| `perspective_completions_signaled` | Counter | Individual perspective signals |
-| `all_perspectives_completed` | Counter | Events where all perspectives finished |
-| `expectations_not_registered` | Counter | Events with no expectations (key mismatch detector) |
-| `post_all_perspectives_fired` | Counter | PostAllPerspectives executions |
-| `post_lifecycle_fired` | Counter | PostLifecycle executions |
-| `stage_transitions` | Counter | Stage transitions (tag: `stage`) |
-| `stale_tracking_cleaned` | Counter | Stale entries cleaned by inactivity threshold |
+| `whizbang.lifecycle_coordinator.active_tracked_events` | UpDownCounter | Events currently in lifecycle tracking |
+| `whizbang.lifecycle_coordinator.pending_perspective_states` | UpDownCounter | Events awaiting perspective WhenAll completion |
+| `whizbang.lifecycle_coordinator.pending_when_all_states` | UpDownCounter | Events awaiting segment WhenAll completion |
+| `whizbang.lifecycle_coordinator.perspective_completions_signaled` | Counter | Individual perspective complete signals received |
+| `whizbang.lifecycle_coordinator.all_perspectives_completed` | Counter | Events where all perspectives finished |
+| `whizbang.lifecycle_coordinator.expectations_not_registered` | Counter | Events with no perspective expectations (key mismatch detector) |
+| `whizbang.lifecycle_coordinator.post_all_perspectives_fired` | Counter | PostAllPerspectives stage executions |
+| `whizbang.lifecycle_coordinator.post_lifecycle_fired` | Counter | PostLifecycle stage executions |
+| `whizbang.lifecycle_coordinator.stage_transitions` | Counter | Stage transitions (tag: `stage`) |
+| `whizbang.lifecycle_coordinator.stale_tracking_cleaned` | Counter | Stale tracking entries cleaned by inactivity threshold |
 
 :::new
 Lifecycle coordinator metrics are automatically registered via `AddWhizbang()`.
@@ -270,6 +270,109 @@ public interface ILifecycleTracking {
   static ValueTask AdvanceBatchAsync(
     IEnumerable<ILifecycleTracking> trackings,
     LifecycleStage stage, IServiceProvider scopedProvider, CancellationToken ct);
+}
+```
+
+---
+
+## Tracking Context
+
+The `ILifecycleTrackingContext` extends `ILifecycleContext` with coordinator-specific capabilities: timing, stage history, cancellation, and dynamic hook registration. It is optionally injectable by lifecycle receptors.
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `StageElapsed` | `TimeSpan` | Elapsed time in the current stage. Debug-aware: pauses when debugger is attached. |
+| `TotalElapsed` | `TimeSpan` | Total elapsed time since tracking began. Debug-aware. |
+| `ServiceInstance` | `ServiceInstanceInfo?` | The service instance processing this event. |
+| `BatchSize` | `int` | Number of events in the current batch. Game loop workers: count of events. Independent mode: 1. |
+| `StageHistory` | `IReadOnlyList<StageRecord>` | Stages this tracking instance has passed through, with timing. Only tracks the current hydrated run, not across persistence boundaries. |
+| `IsCancelled` | `bool` | Whether this lifecycle has been cancelled. |
+| `CancellationReason` | `string?` | The reason for cancellation, if cancelled. |
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `Cancel(string reason)` | Cancels remaining stages in this lifecycle. |
+| `OnStage(LifecycleStage stage, Func<ILifecycleTrackingContext, CancellationToken, ValueTask> hook)` | Registers a delegate hook to fire at a specific stage. |
+
+### Usage
+
+```csharp{title="ILifecycleTrackingContext" description="Accessing tracking context in a lifecycle receptor" category="API" difficulty="INTERMEDIATE" tags=["Lifecycle", "Tracking", "Context"]}
+[FireAt(LifecycleStage.PostPerspectiveInline)]
+public class PerformanceMonitorReceptor : IReceptor<IEvent> {
+  private readonly ILifecycleTrackingContext _tracking;
+
+  public PerformanceMonitorReceptor(ILifecycleTrackingContext tracking) {
+    _tracking = tracking;
+  }
+
+  public ValueTask HandleAsync(IEvent evt, CancellationToken ct) {
+    // Check timing
+    if (_tracking.StageElapsed > TimeSpan.FromSeconds(5)) {
+      Console.WriteLine($"Slow stage detected: {_tracking.StageElapsed}");
+    }
+
+    // Review stage history
+    foreach (var record in _tracking.StageHistory) {
+      Console.WriteLine($"Stage {record.Stage}: {record.Duration}");
+    }
+
+    // Cancel remaining stages if needed
+    if (_tracking.TotalElapsed > TimeSpan.FromMinutes(1)) {
+      _tracking.Cancel("Lifecycle exceeded 1 minute timeout");
+    }
+
+    // Register a dynamic hook for a later stage
+    _tracking.OnStage(LifecycleStage.PostLifecycleAsync, async (ctx, token) => {
+      Console.WriteLine($"Total lifecycle time: {ctx.TotalElapsed}");
+    });
+
+    return ValueTask.CompletedTask;
+  }
+}
+```
+
+---
+
+## Perspective Stage Context
+
+The `ILifecyclePerspectiveStageContext` carries perspective-relevant information alongside the base lifecycle context during perspective lifecycle stages.
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Lifecycle` | `ILifecycleContext` | The parent lifecycle context. |
+| `PerspectiveNames` | `IReadOnlyList<string>` | Names of perspectives being processed in this stage. |
+| `StreamId` | `Guid` | The stream ID being processed. |
+| `LastProcessedEventId` | `Guid?` | The last successfully processed event ID (checkpoint position). |
+| `PerspectiveType` | `Type?` | The perspective type being processed, if applicable. |
+
+### Usage
+
+```csharp{title="ILifecyclePerspectiveStageContext" description="Accessing perspective stage context in a lifecycle receptor" category="API" difficulty="INTERMEDIATE" tags=["Lifecycle", "Perspective", "Context"]}
+[FireAt(LifecycleStage.PostPerspectiveInline)]
+public class PerspectiveAuditReceptor : IReceptor<IEvent> {
+  private readonly ILifecyclePerspectiveStageContext _perspectiveContext;
+
+  public PerspectiveAuditReceptor(ILifecyclePerspectiveStageContext perspectiveContext) {
+    _perspectiveContext = perspectiveContext;
+  }
+
+  public ValueTask HandleAsync(IEvent evt, CancellationToken ct) {
+    Console.WriteLine($"Stream: {_perspectiveContext.StreamId}");
+    Console.WriteLine($"Perspectives: {string.Join(", ", _perspectiveContext.PerspectiveNames)}");
+    Console.WriteLine($"Checkpoint: {_perspectiveContext.LastProcessedEventId}");
+
+    if (_perspectiveContext.PerspectiveType is not null) {
+      Console.WriteLine($"Type: {_perspectiveContext.PerspectiveType.Name}");
+    }
+
+    return ValueTask.CompletedTask;
+  }
 }
 ```
 
