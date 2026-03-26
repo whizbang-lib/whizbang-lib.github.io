@@ -141,13 +141,13 @@ Publisher (Order Service)
 
 ### 1. Add NuGet Package
 
-```bash{title="Add NuGet Package" description="Demonstrates add NuGet Package" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Add", "NuGet"]}
+```bash{title="Add NuGet Package" description="Add NuGet Package" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Add", "NuGet"]}
 dotnet add package Whizbang.Transports.AzureServiceBus
 ```
 
 ### 2. Register Transport (Standard .NET)
 
-```csharp{title="Register Transport (Standard .NET)" description="Demonstrates register Transport (Standard .NET)" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Register", "Transport"]}
+```csharp{title="Register Transport (Standard .NET)" description="Register Transport (Standard .NET)" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Register", "Transport"]}
 using Whizbang.Transports.AzureServiceBus;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -174,7 +174,7 @@ app.Run();
 
 **.NET Aspire App Host** (`AppHost/Program.cs`):
 
-```csharp{title="Register Transport (.NET Aspire)" description="Demonstrates register Transport (.NET Aspire)" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Register", "Transport"]}
+```csharp{title="Register Transport (.NET Aspire)" description="Register Transport (.NET Aspire)" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Register", "Transport"]}
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Add Azure Service Bus resource (or emulator)
@@ -573,7 +573,7 @@ var destination = new TransportDestination(
 
 ### Publishing Messages
 
-```csharp{title="Publishing Messages" description="Demonstrates publishing Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Publishing", "Messages"]}
+```csharp{title="Publishing Messages" description="Publishing Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Publishing", "Messages"]}
 using Whizbang.Core.Transports;
 
 public class OrderService {
@@ -624,7 +624,7 @@ public class OrderService {
 
 ### Subscribing to Messages
 
-```csharp{title="Subscribing to Messages" description="Demonstrates subscribing to Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Subscribing", "Messages"]}
+```csharp{title="Subscribing to Messages" description="Subscribing to Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Subscribing", "Messages"]}
 using Whizbang.Core.Transports;
 
 public class InventoryServiceWorker : BackgroundService {
@@ -780,7 +780,7 @@ _isEmulator = connectionString.Contains("localhost") ||
 
 **Example**:
 
-```csharp{title="Aspire Service Bus Emulator (2)" description="Demonstrates aspire Service Bus Emulator" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Aspire", "Service"]}
+```csharp{title="Aspire Service Bus Emulator (2)" description="Aspire Service Bus Emulator" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Aspire", "Service"]}
 // AppHost
 var serviceBus = builder.AddAzureServiceBus("messaging")
   .RunAsEmulator();  // Starts container with emulator
@@ -796,7 +796,7 @@ await transport.InitializeAsync();  // Skips admin verification for emulator
 
 ### Automatic Retry with Abandon
 
-```csharp{title="Automatic Retry with Abandon" description="Demonstrates automatic Retry with Abandon" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Automatic", "Retry"]}
+```csharp{title="Automatic Retry with Abandon" description="Automatic Retry with Abandon" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Automatic", "Retry"]}
 try {
   // Invoke handler
   await handler(envelope, ct);
@@ -828,7 +828,7 @@ try {
 
 ### Dead Letter Queue Monitoring
 
-```csharp{title="Dead Letter Queue Monitoring" description="Demonstrates dead Letter Queue Monitoring" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Dead", "Letter"]}
+```csharp{title="Dead Letter Queue Monitoring" description="Dead Letter Queue Monitoring" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Dead", "Letter"]}
 // Monitor DLQ for failed messages
 var receiver = client.CreateReceiver(
   "whizbang-events",
@@ -854,7 +854,7 @@ await foreach (var message in receiver.ReceiveMessagesAsync()) {
 
 ### Automatic Lock Extension
 
-```csharp{title="Automatic Lock Extension" description="Demonstrates automatic Lock Extension" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Automatic", "Lock"]}
+```csharp{title="Automatic Lock Extension" description="Automatic Lock Extension" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Automatic", "Lock"]}
 var processorOptions = new ServiceBusProcessorOptions {
   MaxConcurrentCalls = 20,
   AutoCompleteMessages = false,  // Manual completion after handler succeeds
@@ -896,7 +896,7 @@ activity?.SetTag("message.correlation_id", correlationId);
 
 ### Health Checks
 
-```csharp{title="Health Checks" description="Demonstrates health Checks" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Health", "Checks"]}
+```csharp{title="Health Checks" description="Health Checks" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Health", "Checks"]}
 // Register health check
 builder.Services.AddAzureServiceBusHealthChecks();
 
@@ -935,7 +935,7 @@ public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context
 
 ### Concurrency
 
-```csharp{title="Concurrency" description="Demonstrates concurrency" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Concurrency"]}
+```csharp{title="Concurrency" description="Concurrency" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Concurrency"]}
 options.MaxConcurrentCalls = 20;  // Process 20 messages in parallel
 ```
 
@@ -1015,7 +1015,7 @@ services.AddWhizbang()
 
 **Solution**:
 
-```csharp{title="Problem: Messages Not Reaching Subscriber" description="Demonstrates problem: Messages Not Reaching Subscriber" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "Messages"]}
+```csharp{title="Problem: Messages Not Reaching Subscriber" description="Problem: Messages Not Reaching Subscriber" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "Messages"]}
 // Verify destination property matches filter
 var destination = new TransportDestination(
   Address: "whizbang-events",
@@ -1038,7 +1038,7 @@ var destination = new TransportDestination(
 
 **Solution**:
 
-```csharp{title="Problem: 'No JsonTypeInfo found for envelope type'" description="Demonstrates problem: 'No JsonTypeInfo found for envelope type'" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Problem:", "'No"]}
+```csharp{title="Problem: 'No JsonTypeInfo found for envelope type'" description="Problem: 'No JsonTypeInfo found for envelope type'" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Problem:", "'No"]}
 // Ensure envelope type is registered
 // In library: MessageEnvelope<T> should auto-register via MessageJsonContextGenerator
 
@@ -1061,7 +1061,7 @@ if (typeInfo == null) {
 
 **Solution**:
 
-```csharp{title="Problem: Transport Initialization Fails" description="Demonstrates problem: Transport Initialization Fails" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Problem:", "Transport"]}
+```csharp{title="Problem: Transport Initialization Fails" description="Problem: Transport Initialization Fails" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Problem:", "Transport"]}
 try {
   await transport.InitializeAsync();
 } catch (InvalidOperationException ex) {
@@ -1084,7 +1084,7 @@ try {
 
 **Solution**:
 
-```csharp{title="Problem: Messages Dead-Lettered Immediately" description="Demonstrates problem: Messages Dead-Lettered Immediately" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "Messages"]}
+```csharp{title="Problem: Messages Dead-Lettered Immediately" description="Problem: Messages Dead-Lettered Immediately" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "Messages"]}
 // Check DLQ for failure reason
 var dlqReceiver = client.CreateReceiver(
   "whizbang-events",

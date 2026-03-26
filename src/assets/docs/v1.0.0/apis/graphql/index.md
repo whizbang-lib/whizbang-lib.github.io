@@ -29,20 +29,20 @@ The `Whizbang.Transports.HotChocolate` package integrates Whizbang Lenses with [
 
 ### 1. Install the Package
 
-```bash{title="Install the Package" description="Demonstrates install the Package" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Install", "Package"]}
+```bash{title="Install the Package" description="Install the Package" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Install", "Package"]}
 dotnet add package Whizbang.Transports.HotChocolate
 ```
 
 ### 2. Define Your Lens
 
-```csharp{title="Define Your Lens" description="Demonstrates define Your Lens" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Define", "Your"]}
+```csharp{title="Define Your Lens" description="Define Your Lens" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Define", "Your"]}
 [GraphQLLens(QueryName = "orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 ```
 
 ### 3. Configure Services
 
-```csharp{title="Configure Services" description="Demonstrates configure Services" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Configure", "Services"]}
+```csharp{title="Configure Services" description="Configure Services" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Configure", "Services"]}
 // Program.cs
 builder.Services.AddGraphQLServer()
     .AddWhizbangLenses()

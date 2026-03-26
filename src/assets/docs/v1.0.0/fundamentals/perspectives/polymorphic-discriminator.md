@@ -51,7 +51,7 @@ The source generator creates:
 2. A B-tree index on the discriminator column
 3. Registration in the physical field registry
 
-```sql{title="Generated Schema" description="Demonstrates generated Schema" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Generated", "Schema"]}
+```sql{title="Generated Schema" description="Generated Schema" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Generated", "Schema"]}
 CREATE TABLE wh_per_form_field (
     id UUID PRIMARY KEY,
     stream_id UUID NOT NULL,
@@ -159,7 +159,7 @@ This enables efficient queries like "find all text fields across all forms."
 
 ### Multiple Polymorphic Properties
 
-```csharp{title="Multiple Polymorphic Properties" description="Demonstrates multiple Polymorphic Properties" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Multiple", "Polymorphic"]}
+```csharp{title="Multiple Polymorphic Properties" description="Multiple Polymorphic Properties" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Multiple", "Polymorphic"]}
 public record ConfigModel {
     [PolymorphicDiscriminator(ColumnName = "input_type")]
     public string InputSettingsType { get; init; }

@@ -30,7 +30,7 @@ A Receptor is analogous to a biological receptor:
 
 ## IReceptor Interface
 
-```csharp{title="IReceptor Interface" description="Demonstrates iReceptor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "IReceptor", "Interface"]}
+```csharp{title="IReceptor Interface" description="IReceptor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "IReceptor", "Interface"]}
 namespace Whizbang.Core;
 
 // Response-producing receptor (commands/queries)
@@ -118,7 +118,7 @@ await _dispatcher.LocalInvokeAsync(message);
 For receptors that perform pure computation without async operations, use `ISyncReceptor`:
 :::
 
-```csharp{title="ISyncReceptor Interface" description=":::new For receptors that perform pure computation without async operations, use ISyncReceptor: :::" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "ISyncReceptor", "Interface"]}
+```csharp{title="ISyncReceptor Interface" description="ISyncReceptor Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "ISyncReceptor", "Interface"]}
 namespace Whizbang.Core;
 
 public interface ISyncReceptor<in TMessage, out TResponse>
@@ -158,7 +158,7 @@ The dispatcher uses `VoidSyncReceptorInvoker` (for void receptors) and regular i
 
 ### Sync Receptor Example
 
-```csharp{title="Sync Receptor Example" description="Demonstrates sync Receptor Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Sync", "Receptor"]}
+```csharp{title="Sync Receptor Example" description="Sync Receptor Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Sync", "Receptor"]}
 // Before (async ceremony for pure computation)
 public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)> {
     public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
@@ -192,7 +192,7 @@ public class CreateOrderReceptor : ISyncReceptor<CreateOrder, (OrderResult, Orde
 
 ### Void Sync Receptor Example
 
-```csharp{title="Void Sync Receptor Example" description="Demonstrates void Sync Receptor Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Void", "Sync"]}
+```csharp{title="Void Sync Receptor Example" description="Void Sync Receptor Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Void", "Sync"]}
 // For side-effect-only operations (logging, caching, etc.)
 public class LogUserActionReceptor : ISyncReceptor<LogUserAction> {
     private readonly ILogger<LogUserActionReceptor> _logger;
@@ -247,7 +247,7 @@ var result = await _dispatcher.LocalInvokeAsync<ProcessPayment, PaymentResult>(c
 
 ## Basic Example
 
-```csharp{title="Basic Example" description="Demonstrates basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Basic", "Example"]}
+```csharp{title="Basic Example" description="Basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Basic", "Example"]}
 using Whizbang.Core;
 
 public record CreateOrder(
@@ -669,7 +669,7 @@ builder.Services.AddDiscoveredReceptors();  // Automatically finds all IReceptor
 - Stateless (no benefit to reusing instances)
 - Minimal allocation cost
 
-```csharp{title="Lifetime" description="Demonstrates lifetime" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Lifetime"]}
+```csharp{title="Lifetime" description="Lifetime" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Lifetime"]}
 // Correct
 builder.Services.AddTransient<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
 
@@ -924,7 +924,7 @@ public class CancelOrderReceptorTests {
 
 ### Pattern: Multi-Step Validation
 
-```csharp{title="Pattern: Multi-Step Validation" description="Demonstrates pattern: Multi-Step Validation" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern:", "Multi-Step"]}
+```csharp{title="Pattern: Multi-Step Validation" description="Pattern: Multi-Step Validation" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern:", "Multi-Step"]}
 public class ReserveInventoryReceptor : IReceptor<ReserveInventory, InventoryReserved> {
     private readonly IDbConnectionFactory _db;
     private readonly ILogger<ReserveInventoryReceptor> _logger;
@@ -1043,7 +1043,7 @@ internal record InventoryCheck(
 
 ### Pattern: Saga Coordination
 
-```csharp{title="Pattern: Saga Coordination" description="Demonstrates pattern: Saga Coordination" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern:", "Saga"]}
+```csharp{title="Pattern: Saga Coordination" description="Pattern: Saga Coordination" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern:", "Saga"]}
 public class CompleteOrderReceptor : IReceptor<CompleteOrder, OrderCompleted> {
     private readonly IDispatcher _dispatcher;
     private readonly ILogger<CompleteOrderReceptor> _logger;

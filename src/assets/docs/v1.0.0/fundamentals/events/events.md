@@ -26,7 +26,7 @@ Events are the **source of truth** in event-sourced systems:
 
 ## IEvent Interface
 
-```csharp{title="IEvent Interface" description="Demonstrates iEvent Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IEvent", "Interface"]}
+```csharp{title="IEvent Interface" description="IEvent Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IEvent", "Interface"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -40,7 +40,7 @@ public interface IEvent : IMessage {
 
 ## EventId Value Object {#eventid}
 
-```csharp{title="EventId Value Object" description="Demonstrates eventId Value Object" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "EventId", "Value"]}
+```csharp{title="EventId Value Object" description="EventId Value Object" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "EventId", "Value"]}
 namespace Whizbang.Core.ValueObjects;
 
 /// <summary>
@@ -54,7 +54,7 @@ public readonly partial struct EventId;
 
 ### Creating EventIds
 
-```csharp{title="Creating EventIds" description="Demonstrates creating EventIds" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Creating", "EventIds"]}
+```csharp{title="Creating EventIds" description="Creating EventIds" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Creating", "EventIds"]}
 // Create new EventId (UUIDv7)
 var eventId = EventId.New();
 
@@ -75,7 +75,7 @@ Guid underlying = eventId.Value;
 
 ### Basic Event
 
-```csharp{title="Basic Event" description="Demonstrates basic Event" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Basic", "Event"]}
+```csharp{title="Basic Event" description="Basic Event" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Basic", "Event"]}
 public record OrderCreated : IEvent {
   [StreamKey]
   public required Guid OrderId { get; init; }
@@ -105,7 +105,7 @@ public record ProductPriceChanged : IEvent {
 
 ### Event with Nested Data
 
-```csharp{title="Event with Nested Data" description="Demonstrates event with Nested Data" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Nested"]}
+```csharp{title="Event with Nested Data" description="Event with Nested Data" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Nested"]}
 public record OrderShipped : IEvent {
   [StreamKey]
   public required Guid OrderId { get; init; }
@@ -161,7 +161,7 @@ public record OrderChanged : IEvent { }  // What changed?
 
 ### Capture Complete State
 
-```csharp{title="Capture Complete State" description="Demonstrates capture Complete State" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Capture", "Complete"]}
+```csharp{title="Capture Complete State" description="Capture Complete State" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Capture", "Complete"]}
 // ✅ GOOD: Complete state for reconstruction
 public record AccountBalanceChanged : IEvent {
   [StreamKey]
@@ -183,7 +183,7 @@ public record AccountBalanceChanged : IEvent {
 
 ### Include Temporal Information
 
-```csharp{title="Include Temporal Information" description="Demonstrates include Temporal Information" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Include", "Temporal"]}
+```csharp{title="Include Temporal Information" description="Include Temporal Information" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Include", "Temporal"]}
 public record OrderCreated : IEvent {
   [StreamKey]
   public required Guid OrderId { get; init; }
@@ -200,7 +200,7 @@ public record OrderCancelled : IEvent {
 
 ### Use Value Objects for Type Safety
 
-```csharp{title="Use Value Objects for Type Safety" description="Demonstrates use Value Objects for Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Value", "Objects"]}
+```csharp{title="Use Value Objects for Type Safety" description="Use Value Objects for Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Value", "Objects"]}
 // ✅ GOOD: Type-safe identifiers
 public record OrderCreated : IEvent {
   [StreamKey]
@@ -266,7 +266,7 @@ Key differences:
 
 ### In Receptors
 
-```csharp{title="In Receptors" description="Demonstrates in Receptors" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Receptors"]}
+```csharp{title="In Receptors" description="In Receptors" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Receptors"]}
 public class InventoryReceptor : IReceptor<OrderCreated, InventoryReserved> {
   public async ValueTask<InventoryReserved> HandleAsync(
       OrderCreated @event,
@@ -286,7 +286,7 @@ public class InventoryReceptor : IReceptor<OrderCreated, InventoryReserved> {
 
 ### In Perspectives
 
-```csharp{title="In Perspectives" description="Demonstrates in Perspectives" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspectives"]}
+```csharp{title="In Perspectives" description="In Perspectives" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspectives"]}
 public class OrderSummaryPerspective : IPerspective<OrderSummary> {
   public async Task<OrderSummary> ProjectAsync(
       IEvent @event,

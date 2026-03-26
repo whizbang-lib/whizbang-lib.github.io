@@ -292,7 +292,7 @@ public class DiagnosticCollectorPerspective : IPerspective {
 
 Integrate diagnostics with monitoring dashboards:
 
-```csharp{title="Dashboard Diagnostics" description="Expose diagnostics via API" category="Usage" difficulty="INTERMEDIATE" tags=["Diagnostics", "Monitoring", "Dashboard"]}
+```csharp{title="Dashboard Diagnostics" description="Expose diagnostics via API" category="Usage" difficulty="INTERMEDIATE" tags=["Operations", "Observability", "C#", "Dashboard", "Diagnostics"]}
 public class SystemDiagnosticsHub : Hub {
   private readonly IDispatcher _dispatcher;
   private readonly ILens<DiagnosticCollectorPerspective> _diagnosticsLens;

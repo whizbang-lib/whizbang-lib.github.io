@@ -217,7 +217,7 @@ You cannot chain `.OrderBy(r => r.Distance)` or `.Where(r => r.Distance < x)` af
 `OrderByCosineDistance` and `WithinCosineDistance` for SQL-side operations first.
 :::
 
-```csharp{title="Pattern 5: Combined Filter + Sort + Project" description=":::updated Important: WithCosineDistance must be used as the final projection before ToListAsync()." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Combined"]}
+```csharp{title="Pattern 5: Combined Filter + Sort + Project" description="Pattern 5: Combined Filter + Sort + Project" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Combined"]}
 var searchEmbedding = await embeddingService.EmbedAsync(userQuery);
 
 // Filter -> Sort -> Project with scores
@@ -274,7 +274,7 @@ double innerProduct = VectorSearchExtensions.CalculateInnerProductDistance(vecto
 
 ## Complete Example: Semantic Search with Ranking
 
-```csharp{title="Complete Example: Semantic Search with Ranking" description="Demonstrates complete Example: Semantic Search with Ranking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Complete", "Example:"]}
+```csharp{title="Complete Example: Semantic Search with Ranking" description="Complete Example: Semantic Search with Ranking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Complete", "Example:"]}
 public class SearchService {
   private readonly ILensQueryFactory<DocumentModel> _documentLens;
   private readonly IEmbeddingService _embeddingService;

@@ -145,7 +145,7 @@ public class OrderResolver {
 
 ### Simple Join
 
-```csharp{title="Simple Join" description="Demonstrates simple Join" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Simple", "Join"]}
+```csharp{title="Simple Join" description="Simple Join" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Simple", "Join"]}
 var ordersWithCustomers = await (
     from o in query.Query<Order>()
     join c in query.Query<Customer>() on o.Data.CustomerId equals c.Id
@@ -155,7 +155,7 @@ var ordersWithCustomers = await (
 
 ### Left Join
 
-```csharp{title="Left Join" description="Demonstrates left Join" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Left", "Join"]}
+```csharp{title="Left Join" description="Left Join" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Left", "Join"]}
 var ordersWithOptionalCustomers = await (
     from o in query.Query<Order>()
     join c in query.Query<Customer>() on o.Data.CustomerId equals c.Id into customers
@@ -169,7 +169,7 @@ var ordersWithOptionalCustomers = await (
 
 ### Multiple Joins
 
-```csharp{title="Multiple Joins" description="Demonstrates multiple Joins" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Multiple", "Joins"]}
+```csharp{title="Multiple Joins" description="Multiple Joins" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Multiple", "Joins"]}
 // Using ILensQuery<Order, Customer, Product>
 var fullOrderDetails = await (
     from o in query.Query<Order>()

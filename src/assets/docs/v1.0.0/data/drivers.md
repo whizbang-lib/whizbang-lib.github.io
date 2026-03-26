@@ -44,7 +44,7 @@ Think of drivers as adapters that allow Whizbang to speak different storage "lan
 The basic driver interface for storage operations:
 :::
 
-```csharp{title="Core Interface (v1.0.0)" description=":::new The basic driver interface for storage operations: :::" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Core", "Interface", "V1.0.0"]}
+```csharp{title="Core Interface (v1.0.0)" description="Core Interface (v1.0.0)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Core", "Interface"]}
 public interface IDriver {
     // Basic CRUD operations
     Task<T?> Get<T>(string key) where T : class;
@@ -77,7 +77,7 @@ public enum DriverCapabilities {
 The default in-memory driver for v1.0.0:
 :::
 
-```csharp{title="In-Memory Driver" description=":::new The default in-memory driver for v1." category="Implementation" difficulty="ADVANCED" tags=["Data", "In-Memory", "Driver"]}
+```csharp{title="In-Memory Driver" description="In-Memory Driver" category="Implementation" difficulty="ADVANCED" tags=["Data", "In-Memory", "Driver"]}
 [WhizbangDriver("InMemory")]
 public class InMemoryDriver : IDriver {
     private readonly ConcurrentDictionary<string, object> _store = new();
@@ -172,7 +172,7 @@ public class InMemoryDriver : IDriver {
 
 Drivers are registered at startup and discovered by source generators:
 
-```csharp{title="Driver Registration" description="Drivers are registered at startup and discovered by source generators:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Driver", "Registration"]}
+```csharp{title="Driver Registration" description="Drivers are registered at startup and discovered by source generators:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Driver", "Registration"]}
 // Manual registration
 services.AddWhizbangDrivers(options => {
     options.UseInMemory();
@@ -198,7 +198,7 @@ public static partial class WhizbangGenerated {
 Higher-level store abstraction built on drivers:
 :::
 
-```csharp{title="Store Abstraction" description=":::new Higher-level store abstraction built on drivers: :::" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Store", "Abstraction"]}
+```csharp{title="Store Abstraction" description="Store Abstraction" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Store", "Abstraction"]}
 public interface IStore<T> where T : class {
     Task<T?> GetById(string id);
     Task Save(string id, T entity);
@@ -237,7 +237,7 @@ public class DriverStore<T> : IStore<T> where T : class {
 
 ### In Perspectives
 
-```csharp{title="In Perspectives" description="Demonstrates in Perspectives" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Perspectives"]}
+```csharp{title="In Perspectives" description="In Perspectives" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Perspectives"]}
 public class OrderPerspective : IPerspectiveOf<OrderCreated> {
     private readonly IStore<Order> _orderStore;
     
@@ -261,7 +261,7 @@ public class OrderPerspective : IPerspectiveOf<OrderCreated> {
 
 ### In Lenses
 
-```csharp{title="In Lenses" description="Demonstrates in Lenses" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Lenses"]}
+```csharp{title="In Lenses" description="In Lenses" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Lenses"]}
 public class OrderLens : IOrderLens {
     private readonly IStore<Order> _orderStore;
     
@@ -281,7 +281,7 @@ public class OrderLens : IOrderLens {
 
 ## Testing with Drivers
 
-```csharp{title="Testing with Drivers" description="Demonstrates testing with Drivers" category="Implementation" difficulty="ADVANCED" tags=["Data", "Testing", "Drivers"]}
+```csharp{title="Testing with Drivers" description="Testing with Drivers" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Testing", "Drivers"]}
 [Test]
 public class DriverTests {
     private InMemoryDriver _driver;
@@ -342,7 +342,7 @@ public class DriverTests {
 
 ## Driver Selection Strategy
 
-```csharp{title="Driver Selection Strategy" description="Demonstrates driver Selection Strategy" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Driver", "Selection", "Strategy"]}
+```csharp{title="Driver Selection Strategy" description="Driver Selection Strategy" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Driver", "Selection", "Strategy"]}
 public interface IDriverSelector {
     IDriver GetDriver(string name);
     IDriver GetDriverForType<T>();
@@ -372,7 +372,7 @@ public class DriverSelector : IDriverSelector {
 
 ## IDE Features
 
-```csharp{title="IDE Features" description="Demonstrates iDE Features" category="Implementation" difficulty="BEGINNER" tags=["Data", "IDE", "Features"]}
+```csharp{title="IDE Features" description="IDE Features" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "IDE", "Features"]}
 // IDE shows: "Driver: InMemory | Objects: 234 | Memory: 5.2MB"
 public interface IDriver { }
 
@@ -413,7 +413,7 @@ These limitations are addressed in future versions:
 v0.2.0 adds persistent file storage:
 :::
 
-```csharp{title="To v0.2.0 (File Storage)" description=":::planned v0." category="Implementation" difficulty="BEGINNER" tags=["Data", "V0.2.0", "File", "Storage"]}
+```csharp{title="To v0.2.0 (File Storage)" description="To v0.2.0 (File Storage)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "File", "Storage"]}
 // v0.2.0 - File-based driver
 services.AddWhizbangDrivers(options => {
     options.UseFileDriver(file => {
@@ -430,7 +430,7 @@ services.AddWhizbangDrivers(options => {
 v0.4.0 adds real database support:
 :::
 
-```csharp{title="To v0.4.0 (Database Drivers)" description=":::planned v0." category="Implementation" difficulty="BEGINNER" tags=["Data", "V0.4.0", "Database", "Drivers"]}
+```csharp{title="To v0.4.0 (Database Drivers)" description="To v0.4.0 (Database Drivers)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Database", "Drivers"]}
 // v0.4.0 - SQL and NoSQL drivers
 services.AddWhizbangDrivers(options => {
     options.UsePostgreSQL("Host=localhost;Database=whizbang");

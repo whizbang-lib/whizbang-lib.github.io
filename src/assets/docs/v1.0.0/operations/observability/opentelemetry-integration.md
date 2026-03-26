@@ -19,7 +19,7 @@ Whizbang integrates with OpenTelemetry through message tag hooks, providing auto
 
 ## Quick Start
 
-```csharp{title="Enable OpenTelemetry Hooks" description="Register OpenTelemetry hooks in AddWhizbang" category="Configuration" difficulty="BEGINNER" tags=["OpenTelemetry", "Configuration", "Hooks"]}
+```csharp{title="Enable OpenTelemetry Hooks" description="Register OpenTelemetry hooks in AddWhizbang" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Observability", "C#", "Enable", "OpenTelemetry"]}
 services.AddWhizbang(options => {
   // Register both span and metric hooks
   options.Tags.UseOpenTelemetry();

@@ -87,7 +87,7 @@ Message Processing Lifecycle:
 
 ### Implementation
 
-```csharp{title="Implementation" description="Demonstrates implementation" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Implementation"]}
+```csharp{title="Implementation" description="Implementation" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Implementation"]}
 using Whizbang.Core.Pooling;
 
 public static class PolicyContextPool {
@@ -149,7 +149,7 @@ public static class PolicyContextPool {
 
 ### Basic Rent/Return
 
-```csharp{title="Basic Rent/Return" description="Demonstrates basic Rent/Return" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Basic", "Rent"]}
+```csharp{title="Basic Rent/Return" description="Basic Rent/Return" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Basic", "Rent"]}
 using Whizbang.Core.Pooling;
 using Whizbang.Core.Policies;
 
@@ -188,7 +188,7 @@ public class MessageHandler {
 
 ### Automatic Return with Using
 
-```csharp{title="Automatic Return with Using" description="Demonstrates automatic Return with Using" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Automatic", "Return"]}
+```csharp{title="Automatic Return with Using" description="Automatic Return with Using" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Automatic", "Return"]}
 // Helper class for IDisposable pattern
 public class PooledPolicyContext : IDisposable {
   public PolicyContext Context { get; }
@@ -215,7 +215,7 @@ var config = await policyEngine.MatchAsync(pooled.Context);
 
 ### Async Method Pattern
 
-```csharp{title="Async Method Pattern" description="Demonstrates async Method Pattern" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Async", "Method"]}
+```csharp{title="Async Method Pattern" description="Async Method Pattern" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Async", "Method"]}
 public async Task ProcessMessageAsync(
   CreateOrder command,
   IMessageEnvelope envelope,
@@ -246,7 +246,7 @@ public async Task ProcessMessageAsync(
 
 ### 1. Rent (Create or Reuse)
 
-```csharp{title="Rent (Create or Reuse)" description="Demonstrates rent (Create or Reuse)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Rent", "Create"]}
+```csharp{title="Rent (Create or Reuse)" description="Rent (Create or Reuse)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Rent", "Create"]}
 var context = PolicyContextPool.Rent(message, envelope, services, "production");
 ```
 
@@ -258,7 +258,7 @@ var context = PolicyContextPool.Rent(message, envelope, services, "production");
 
 ### 2. Initialize
 
-```csharp{title="Initialize" description="Demonstrates initialize" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Initialize"]}
+```csharp{title="Initialize" description="Initialize" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Initialize"]}
 context.Initialize(message, envelope, services, environment);
 ```
 
@@ -273,7 +273,7 @@ context.Initialize(message, envelope, services, environment);
 
 ### 3. Use
 
-```csharp{title="Use" description="Demonstrates use" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure"]}
+```csharp{title="Use" description="Use" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure"]}
 var config = await policyEngine.MatchAsync(context);
 var aggregateId = context.GetAggregateId();
 var service = context.GetService<IOrderRepository>();
@@ -288,7 +288,7 @@ var service = context.GetService<IOrderRepository>();
 
 ### 4. Reset
 
-```csharp{title="Reset" description="Demonstrates reset" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Reset"]}
+```csharp{title="Reset" description="Reset" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Reset"]}
 context.Reset();
 ```
 
@@ -304,7 +304,7 @@ context.Reset();
 
 ### 5. Return
 
-```csharp{title="Return" description="Demonstrates return" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Return"]}
+```csharp{title="Return" description="Return" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Return"]}
 PolicyContextPool.Return(context);
 ```
 
@@ -374,7 +374,7 @@ Heap Savings: 1M × 160 bytes - 160KB = 159.84MB saved
 
 ### Custom Pool Size
 
-```csharp{title="Custom Pool Size" description="Demonstrates custom Pool Size" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Custom", "Pool"]}
+```csharp{title="Custom Pool Size" description="Custom Pool Size" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Custom", "Pool"]}
 // For very high throughput (100K+ msg/sec), increase max size
 private const int MaxPoolSize = 4096;  // 4x default
 
@@ -386,7 +386,7 @@ private const int MaxPoolSize = 256;  // 1/4 default
 
 ### Pool Monitoring
 
-```csharp{title="Pool Monitoring" description="Demonstrates pool Monitoring" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Pool", "Monitoring"]}
+```csharp{title="Pool Monitoring" description="Pool Monitoring" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Pool", "Monitoring"]}
 public static class PolicyContextPool {
   // Metrics for monitoring
   private static long _totalRented = 0;
@@ -430,7 +430,7 @@ public static class PolicyContextPool {
 
 ### Pre-Warming Pool
 
-```csharp{title="Pre-Warming Pool" description="Demonstrates pre-Warming Pool" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Pre-Warming", "Pool"]}
+```csharp{title="Pre-Warming Pool" description="Pre-Warming Pool" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Pre-Warming", "Pool"]}
 // Warm pool on application startup
 public static class PolicyContextPool {
   public static void WarmPool(int targetSize = MaxPoolSize) {
@@ -471,7 +471,7 @@ public class Program {
 3. Pool cleared between rent/return
 
 **Solution**:
-```csharp{title="Problem: Pool Never Reuses Contexts" description="Demonstrates problem: Pool Never Reuses Contexts" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Pool"]}
+```csharp{title="Problem: Pool Never Reuses Contexts" description="Problem: Pool Never Reuses Contexts" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Pool"]}
 // 1. Verify return in finally
 try {
   var context = PolicyContextPool.Rent(...);
@@ -497,7 +497,7 @@ Console.WriteLine($"Pool Size: {poolSize}, Returned: {returned}, Rented: {rented
 **Cause**: Context references not cleared in `Reset()`.
 
 **Solution**:
-```csharp{title="Problem: Memory Leak Despite Pooling" description="Demonstrates problem: Memory Leak Despite Pooling" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Memory"]}
+```csharp{title="Problem: Memory Leak Despite Pooling" description="Problem: Memory Leak Despite Pooling" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Memory"]}
 // Verify Reset() clears ALL references
 internal void Reset() {
   Message = null!;          // ⭐ Clear
@@ -524,7 +524,7 @@ Assert.That(context.Services).IsNull();
 3. Concurrent processing exceeds pool capacity
 
 **Solution**:
-```csharp{title="Problem: Pool Depletion Under Load" description="Demonstrates problem: Pool Depletion Under Load" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Pool"]}
+```csharp{title="Problem: Pool Depletion Under Load" description="Problem: Pool Depletion Under Load" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Pool"]}
 // 1. Audit return paths
 public async Task HandleAsync(message) {
   var context = PolicyContextPool.Rent(...);

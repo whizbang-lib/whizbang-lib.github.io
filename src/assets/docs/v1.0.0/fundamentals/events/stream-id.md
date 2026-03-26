@@ -26,7 +26,7 @@ Every event in Whizbang belongs to a **stream** - a sequence of events for a spe
 
 ## IHasStreamId Interface {#ihasstreamid}
 
-```csharp{title="IHasStreamId Interface" description="Demonstrates iHasStreamId Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "IHasStreamId", "Interface"]}
+```csharp{title="IHasStreamId Interface" description="IHasStreamId Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "IHasStreamId", "Interface"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -75,7 +75,7 @@ Events without `[GenerateStreamId]` are validated at pipeline boundaries by `Str
 
 ### Usage Example
 
-```csharp{title="Usage Example" description="Demonstrates usage Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage", "Example"]}
+```csharp{title="Usage Example" description="Usage Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage", "Example"]}
 // Stream-initiating event with auto-generation
 public record OrderCreated : IEvent {
   [StreamId] [GenerateStreamId]
@@ -106,7 +106,7 @@ For full details, see the [`[GenerateStreamId]` attribute reference](../../exten
 3. Sets the `StreamId` property on the message
 4. Message is then processed with the generated ID
 
-```csharp{title="How Auto-Generation Works" description="Demonstrates how Auto-Generation Works" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Auto-Generation", "Works"]}
+```csharp{title="How Auto-Generation Works" description="How Auto-Generation Works" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Auto-Generation", "Works"]}
 // Internal dispatcher logic (simplified)
 if (message is IHasStreamId hasStreamId && hasStreamId.StreamId == Guid.Empty) {
   hasStreamId.StreamId = TrackedGuid.NewMedo();
@@ -130,7 +130,7 @@ public readonly partial struct StreamId;
 
 ### Usage
 
-```csharp{title="Usage" description="Demonstrates usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage"]}
+```csharp{title="Usage" description="Usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage"]}
 // Create new StreamId
 var streamId = StreamId.New();
 
@@ -188,7 +188,7 @@ public record OrderCreated : IEvent {
 
 ### Appending Events
 
-```csharp{title="Appending Events" description="Demonstrates appending Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Appending"]}
+```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Appending"]}
 // Event store uses StreamId for organization
 await eventStore.AppendAsync(order.StreamId, new OrderShipped {
   OrderId = order.Id,
@@ -198,7 +198,7 @@ await eventStore.AppendAsync(order.StreamId, new OrderShipped {
 
 ### Reading Events
 
-```csharp{title="Reading Events" description="Demonstrates reading Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Reading"]}
+```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Reading"]}
 // Read all events for a stream
 await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromSequence: 0)) {
   var evt = envelope.Payload;
@@ -208,7 +208,7 @@ await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromSequen
 
 ### Polymorphic Reads
 
-```csharp{title="Polymorphic Reads" description="Demonstrates polymorphic Reads" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Polymorphic", "Reads"]}
+```csharp{title="Polymorphic Reads" description="Polymorphic Reads" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Polymorphic", "Reads"]}
 // Read multiple event types from a stream
 var eventTypes = new[] { typeof(OrderCreated), typeof(OrderShipped), typeof(OrderDelivered) };
 

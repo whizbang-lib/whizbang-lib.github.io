@@ -44,13 +44,13 @@ Lens Query (automatic filtering)
 
 ### 1. Register Services
 
-```csharp{title="Register Services" description="Demonstrates register Services" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Register", "Services"]}
+```csharp{title="Register Services" description="Register Services" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Register", "Services"]}
 builder.Services.AddWhizbangScope();
 ```
 
 ### 2. Add Middleware
 
-```csharp{title="Add Middleware" description="Demonstrates add Middleware" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Add", "Middleware"]}
+```csharp{title="Add Middleware" description="Add Middleware" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Add", "Middleware"]}
 app.UseAuthentication();
 app.UseWhizbangScope();  // After auth
 app.MapGraphQL();
@@ -71,7 +71,7 @@ app.MapGraphQL();
 
 ### Custom Configuration
 
-```csharp{title="Custom Configuration" description="Demonstrates custom Configuration" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Custom", "Configuration"]}
+```csharp{title="Custom Configuration" description="Custom Configuration" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Custom", "Configuration"]}
 builder.Services.AddWhizbangScope(options => {
     // Custom claim types
     options.TenantIdClaimType = "https://myapp.com/tenant_id";
@@ -184,7 +184,7 @@ WHERE scope->'AllowedPrincipals' ?| ARRAY['user:user-456', 'group:sales-team']
 
 ### Via IScopeContextAccessor
 
-```csharp{title="Via IScopeContextAccessor" description="Demonstrates via IScopeContextAccessor" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "IScopeContextAccessor"]}
+```csharp{title="Via IScopeContextAccessor" description="Via IScopeContextAccessor" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "IScopeContextAccessor"]}
 public class Query {
     public CurrentUser GetCurrentUser([Service] IScopeContextAccessor accessor) {
         var context = accessor.Current;
@@ -243,7 +243,7 @@ builder.Services.AddScoped<IOrderLens>(sp => {
 
 ### In Resolvers
 
-```csharp{title="In Resolvers" description="Demonstrates in Resolvers" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Resolvers"]}
+```csharp{title="In Resolvers" description="In Resolvers" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Resolvers"]}
 public class Query {
     public async Task<Order?> GetOrder(
         Guid id,
@@ -264,7 +264,7 @@ public class Query {
 
 ### With Attributes
 
-```csharp{title="With Attributes" description="Demonstrates with Attributes" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Attributes"]}
+```csharp{title="With Attributes" description="With Attributes" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Attributes"]}
 [RequirePermission("orders:read")]
 public IQueryable<PerspectiveRow<OrderReadModel>> GetOrders(
     [Service] IOrderLens lens) {
@@ -274,7 +274,7 @@ public IQueryable<PerspectiveRow<OrderReadModel>> GetOrders(
 
 ## Testing Scoped Queries
 
-```csharp{title="Testing Scoped Queries" description="Demonstrates testing Scoped Queries" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Testing", "Scoped"]}
+```csharp{title="Testing Scoped Queries" description="Testing Scoped Queries" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Testing", "Scoped"]}
 [Test]
 public async Task Query_FiltersByTenantAsync() {
     // Arrange

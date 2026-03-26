@@ -152,7 +152,7 @@ public abstract class CheckpointPerspective<TEvent> : IPerspectiveOf<TEvent> whe
 ```
 
 **Usage**:
-```csharp{title="Pattern 1: Checkpoint-Aware Perspective Base - OrderCreated" description="Demonstrates pattern 1: Checkpoint-Aware Perspective Base" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Checkpoint-Aware"]}
+```csharp{title="Pattern 1: Checkpoint-Aware Perspective Base - OrderCreated" description="Pattern 1: Checkpoint-Aware Perspective Base - OrderCreated" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Checkpoint-Aware"]}
 public record OrderCreated(
   Guid StreamId,
   Guid EventId,
@@ -257,7 +257,7 @@ public abstract class SnapshotPerspective<TEvent, TSnapshot> : IPerspectiveOf<TE
 ```
 
 **Usage**:
-```csharp{title="Pattern 2: Snapshot Perspective Base - OrderSnapshot" description="Demonstrates pattern 2: Snapshot Perspective Base" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Snapshot"]}
+```csharp{title="Pattern 2: Snapshot Perspective Base - OrderSnapshot" description="Pattern 2: Snapshot Perspective Base - OrderSnapshot" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Snapshot"]}
 public record OrderSnapshot {
   public Guid OrderId { get; set; }
   public Guid CustomerId { get; set; }
@@ -383,7 +383,7 @@ public class TimeravelOrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 ```
 
 **Usage**:
-```csharp{title="Pattern 3: Event Replay Perspective (2)" description="Demonstrates pattern 3: Event Replay Perspective" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Event"]}
+```csharp{title="Pattern 3: Event Replay Perspective (2)" description="Pattern 3: Event Replay Perspective" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Event"]}
 // Standard event processing
 await perspective.UpdateAsync(orderCreated, ct);
 
@@ -701,7 +701,7 @@ public class RedisPerspectiveStore<TModel> : IPerspectiveStore<TModel> where TMo
 ```
 
 **Usage**:
-```csharp{title="Pattern 6: IPerspectiveStore Implementation -" description="Demonstrates pattern 6: IPerspectiveStore Implementation" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "IPerspectiveStore"]}
+```csharp{title="Pattern 6: IPerspectiveStore Implementation -" description="Pattern 6: IPerspectiveStore Implementation -" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "IPerspectiveStore"]}
 // Register Redis perspective store
 builder.Services.AddSingleton<IConnectionMultiplexer>(
   ConnectionMultiplexer.Connect("localhost:6379")
@@ -780,7 +780,7 @@ public class OrderDetailsPerspective :
 ```
 
 **Schema**:
-```sql{title="Pattern 7: Hierarchical Perspective (2)" description="Demonstrates pattern 7: Hierarchical Perspective" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Hierarchical"]}
+```sql{title="Pattern 7: Hierarchical Perspective (2)" description="Pattern 7: Hierarchical Perspective" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Hierarchical"]}
 CREATE TABLE order_details (
     order_id UUID PRIMARY KEY,
     customer_id UUID NOT NULL,
@@ -854,7 +854,7 @@ public class EnrichedOrderPerspective : IPerspectiveOf<OrderCreated> {
 
 ### Testing Checkpoint Perspectives
 
-```csharp{title="Testing Checkpoint Perspectives" description="Demonstrates testing Checkpoint Perspectives" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Checkpoint"]}
+```csharp{title="Testing Checkpoint Perspectives" description="Testing Checkpoint Perspectives" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Checkpoint"]}
 public class CheckpointPerspectiveTests {
   [Test]
   public async Task UpdateAsync_UpdatesCheckpointAfterProcessingAsync() {
@@ -888,7 +888,7 @@ public class CheckpointPerspectiveTests {
 
 ### Testing Time-Travel Perspectives
 
-```csharp{title="Testing Time-Travel Perspectives" description="Demonstrates testing Time-Travel Perspectives" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Time-Travel"]}
+```csharp{title="Testing Time-Travel Perspectives" description="Testing Time-Travel Perspectives" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Time-Travel"]}
 public class TimeravelPerspectiveTests {
   [Test]
   public async Task RebuildToEventAsync_ReplaysEventsUpToTargetAsync() {

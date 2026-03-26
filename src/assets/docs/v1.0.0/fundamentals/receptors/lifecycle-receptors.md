@@ -72,7 +72,7 @@ Lifecycle receptors can inject **scoped dependencies** just like regular recepto
 
 ### Example with Scoped Dependencies
 
-```csharp{title="Example with Scoped Dependencies" description="Demonstrates example with Scoped Dependencies" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Example", "Scoped"]}
+```csharp{title="Example with Scoped Dependencies" description="Example with Scoped Dependencies" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Example", "Scoped"]}
 [FireAt(LifecycleStage.PostDistributeInline)]
 public class StartupHandler : IReceptor<StartedEvent> {
   private readonly AppDbContext _dbContext;        // Scoped!
@@ -204,7 +204,7 @@ Receptors **without `[FireAt]` fire at default stages** based on the dispatch pa
 | **Distributed (Sender)** | `PreOutboxInline` | Before publishing to transport |
 | **Distributed (Receiver)** | `PostInboxInline` | After receiving from transport |
 
-```csharp{title="Default Behavior (No Attribute)" description="| Path | Default Stage | When | |------|--------------|------| | Local | LocalImmediateInline | DispatchAsync(msg" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Default", "Behavior"]}
+```csharp{title="Default Behavior (No Attribute)" description="Default Behavior (No Attribute)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Default", "Behavior"]}
 // No [FireAt] attribute = fires at default stages
 public class CreateProductReceptor : IReceptor<CreateProductCommand, ProductCreatedEvent> {
   public async ValueTask<ProductCreatedEvent> HandleAsync(
@@ -228,7 +228,7 @@ public class CreateProductReceptor : IReceptor<CreateProductCommand, ProductCrea
 - **Default receptors "just work"** regardless of how message is dispatched
 - **Adding `[FireAt]` opts OUT of defaults** - you control exactly when receptor fires:
 
-```csharp{title="Default Behavior (No Attribute) - LocalOnlyHandler" description="**Why these defaults?" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Default", "Behavior"]}
+```csharp{title="Default Behavior (No Attribute) - LocalOnlyHandler" description="Default Behavior (No Attribute) - LocalOnlyHandler" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Default", "Behavior"]}
 // ONLY fires locally, never on distributed path
 [FireAt(LifecycleStage.LocalImmediateInline)]
 public class LocalOnlyHandler : IReceptor<SomeCommand> { }
@@ -346,7 +346,7 @@ public class NotificationReceptor : IReceptor<OrderCreatedEvent> {
 
 ### Constructor Injection
 
-```csharp{title="Constructor Injection" description="Demonstrates constructor Injection" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Constructor", "Injection"]}
+```csharp{title="Constructor Injection" description="Constructor Injection" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Constructor", "Injection"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class PerspectiveProgressReceptor : IReceptor<IEvent> {
   private readonly ILogger _logger;
@@ -618,7 +618,7 @@ Security context is established **before** each lifecycle receptor invocation fo
 
 ### Example: Tenant-Aware Audit Trail
 
-```csharp{title="Example: Tenant-Aware Audit Trail" description="Demonstrates example: Tenant-Aware Audit Trail" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Example:", "Tenant-Aware"]}
+```csharp{title="Example: Tenant-Aware Audit Trail" description="Example: Tenant-Aware Audit Trail" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Example:", "Tenant-Aware"]}
 [FireAt(LifecycleStage.PostPerspectiveInline)]
 public class TenantAuditReceptor : IReceptor<OrderPlacedEvent> {
   private readonly IMessageContext _messageContext;
@@ -1300,7 +1300,7 @@ The `DispatcherEventCascader` implementation:
 2. **Applies routing** based on wrapper type and `[DefaultRouting]` attributes
 3. **Dispatches** each message according to its routing configuration
 
-```csharp{title="How It Works - CreateOrderHandler" description="Demonstrates how It Works" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Works"]}
+```csharp{title="How It Works - CreateOrderHandler" description="How It Works - CreateOrderHandler" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Works"]}
 // Receptor returns tuple with event - event is auto-cascaded
 public class CreateOrderHandler : IReceptor<CreateOrderCommand, (OrderResult, OrderCreatedEvent)> {
   public ValueTask<(OrderResult, OrderCreatedEvent)> HandleAsync(

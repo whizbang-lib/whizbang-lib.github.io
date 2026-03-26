@@ -20,7 +20,7 @@ Whizbang provides automatic schema management for perspective tables, with built
 
 When your application starts, Whizbang automatically creates all required infrastructure tables and perspective tables:
 
-```csharp{title="Automatic Schema Creation" description="When your application starts, Whizbang automatically creates all required infrastructure tables and perspective tables:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Automatic", "Schema", "Creation"]}
+```csharp{title="Automatic Schema Creation" description="When your application starts, Whizbang automatically creates all required infrastructure tables and perspective tables:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Automatic", "Schema", "Creation"]}
 // In your startup code
 await dbContext.EnsureWhizbangDatabaseInitializedAsync();
 ```
@@ -96,7 +96,7 @@ You have several options:
 
 If the changes are backward-compatible (adding nullable columns), you can proceed safely:
 
-```csharp{title="Option 1: Ignore (Default)" description="If the changes are backward-compatible (adding nullable columns), you can proceed safely:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Option", "Ignore", "Default"]}
+```csharp{title="Option 1: Ignore (Default)" description="If the changes are backward-compatible (adding nullable columns), you can proceed safely:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Option", "Ignore", "Default"]}
 services.AddWhizbang(options => {
   options.Perspectives.OnSchemaDrift = SchemaDriftBehavior.LogWarning;
 });
@@ -106,7 +106,7 @@ services.AddWhizbang(options => {
 
 For strict environments where drift should block deployment:
 
-```csharp{title="Option 2: Throw Exception" description="For strict environments where drift should block deployment:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Option", "Throw", "Exception"]}
+```csharp{title="Option 2: Throw Exception" description="For strict environments where drift should block deployment:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Option", "Throw", "Exception"]}
 services.AddWhizbang(options => {
   options.Perspectives.OnSchemaDrift = SchemaDriftBehavior.ThrowException;
 });
@@ -116,7 +116,7 @@ services.AddWhizbang(options => {
 
 For breaking changes, create a migration:
 
-```sql{title="Option 3: Manual Migration" description="For breaking changes, create a migration:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Option", "Manual", "Migration"]}
+```sql{title="Option 3: Manual Migration" description="For breaking changes, create a migration:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Sql", "Option", "Manual", "Migration"]}
 -- Add new column
 ALTER TABLE wh_per_customer
 ADD COLUMN email VARCHAR(255);
@@ -142,7 +142,7 @@ When you rename a perspective class or change its [table naming](../fundamentals
 
 ### Example
 
-```csharp{title="Example" description="Demonstrates example" category="Implementation" difficulty="BEGINNER" tags=["Data", "Example"]}
+```csharp{title="Example" description="Example" category="Implementation" difficulty="BEGINNER" tags=["Data", "Example"]}
 // Before: Table is wh_per_customer_dto
 public class CustomerDto : IPerspectiveFor<CustomerData, CustomerEvent> { }
 
@@ -169,7 +169,7 @@ The rename operation is safe because:
 
 ### Development vs Production
 
-```csharp{title="Development vs Production" description="Demonstrates development vs Production" category="Implementation" difficulty="BEGINNER" tags=["Data", "Development", "Production"]}
+```csharp{title="Development vs Production" description="Development vs Production" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Development", "Production"]}
 services.AddWhizbang(options => {
   if (env.IsDevelopment()) {
     // Recreate tables on schema change (lose data)
@@ -228,7 +228,7 @@ Migrations are applied automatically and idempotently.
 
 The registry stores full schema definitions as JSON:
 
-```json{title="Schema JSON Format" description="The registry stores full schema definitions as JSON:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Schema", "JSON", "Format"]}
+```json{title="Schema JSON Format" description="The registry stores full schema definitions as JSON:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Json", "Schema", "JSON", "Format"]}
 {
   "columns": [
     {
@@ -289,7 +289,7 @@ The registry stores full schema definitions as JSON:
 
 Before making breaking changes, rename the old table:
 
-```sql{title="Preserve Old Table" description="Before making breaking changes, rename the old table:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Preserve", "Old", "Table"]}
+```sql{title="Preserve Old Table" description="Before making breaking changes, rename the old table:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Sql", "Preserve", "Old", "Table"]}
 -- Before deployment
 ALTER TABLE wh_per_customer RENAME TO wh_per_customer_backup;
 

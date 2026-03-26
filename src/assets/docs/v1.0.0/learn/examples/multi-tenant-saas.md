@@ -148,7 +148,7 @@ public class TenantIdentificationMiddleware {
 
 **Program.cs registration**:
 
-```csharp{title="Tenant Middleware (2)" description="Demonstrates tenant Middleware" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Tenant", "Middleware"]}
+```csharp{title="Tenant Middleware (2)" description="Tenant Middleware" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Tenant", "Middleware"]}
 app.UseMiddleware<TenantIdentificationMiddleware>();
 ```
 
@@ -223,7 +223,7 @@ public record TenantConfig(
 
 **Program.cs**:
 
-```csharp{title="Tenant-Aware Database Connection" description="Demonstrates tenant-Aware Database Connection" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Tenant-Aware", "Database"]}
+```csharp{title="Tenant-Aware Database Connection" description="Tenant-Aware Database Connection" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Tenant-Aware", "Database"]}
 builder.Services.AddScoped<NpgsqlConnection>(sp => {
   var tenantId = TenantContext.CurrentTenantId
     ?? throw new InvalidOperationException("Tenant context not set");
@@ -331,7 +331,7 @@ public class TenantAwareMessageContext : IMessageContext {
 
 **Program.cs**:
 
-```csharp{title="Message Context Propagation (2)" description="Demonstrates message Context Propagation" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Message", "Context"]}
+```csharp{title="Message Context Propagation (2)" description="Message Context Propagation" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Message", "Context"]}
 builder.Services.Decorate<IMessageContext, TenantAwareMessageContext>();
 ```
 
@@ -526,7 +526,7 @@ public class TenantFeatureService {
 
 **Usage**:
 
-```csharp{title="Tenant-Specific Customizations (2)" description="Demonstrates tenant-Specific Customizations" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant-Specific", "Customizations"]}
+```csharp{title="Tenant-Specific Customizations (2)" description="Tenant-Specific Customizations" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant-Specific", "Customizations"]}
 public async Task<OrderCreated> HandleAsync(CreateOrder command, CancellationToken ct) {
   // Check if tenant has analytics feature
   var hasAnalytics = await _featureService.IsFeatureEnabledAsync("analytics");
@@ -556,7 +556,7 @@ public async Task<OrderCreated> HandleAsync(CreateOrder command, CancellationTok
 
 ### Shared Database with Row-Level Security
 
-```sql{title="Shared Database with Row-Level Security" description="Demonstrates shared Database with Row-Level Security" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Shared", "Database"]}
+```sql{title="Shared Database with Row-Level Security" description="Shared Database with Row-Level Security" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Shared", "Database"]}
 -- PostgreSQL Row-Level Security
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 

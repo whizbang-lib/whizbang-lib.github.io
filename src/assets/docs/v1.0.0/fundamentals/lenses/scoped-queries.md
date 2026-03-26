@@ -65,7 +65,7 @@ public class OrderProcessor : BackgroundService {
 
 ### IScopedLensQuery Methods
 
-```csharp{title="IScopedLensQuery Methods" description="Demonstrates iScopedLensQuery Methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "IScopedLensQuery", "Methods"]}
+```csharp{title="IScopedLensQuery Methods" description="IScopedLensQuery Methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "IScopedLensQuery", "Methods"]}
 public interface IScopedLensQuery<TModel> where TModel : class {
   // Streaming results (scope disposed after enumeration)
   IAsyncEnumerable<PerspectiveRow<TModel>> QueryAsync(
@@ -90,7 +90,7 @@ public interface IScopedLensQuery<TModel> where TModel : class {
 ### Usage Patterns
 
 **Get by ID**:
-```csharp{title="Usage Patterns" description="Demonstrates usage Patterns" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Usage", "Patterns"]}
+```csharp{title="Usage Patterns" description="Usage Patterns" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Usage", "Patterns"]}
 var order = await _scopedLens.GetByIdAsync(orderId, ct);
 ```
 

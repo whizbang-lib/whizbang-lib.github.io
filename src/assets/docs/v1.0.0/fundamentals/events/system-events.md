@@ -65,7 +65,7 @@ System events are **internal events emitted by Whizbang** for observability, aud
 
 ### Enable System Events
 
-```csharp{title="Enable System Events" description="Demonstrates enable System Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Enable", "System"]}
+```csharp{title="Enable System Events" description="Enable System Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Enable", "System"]}
 // In Program.cs - enable the system events you need
 services.AddWhizbang(options => {
   // Enable event and command auditing
@@ -90,7 +90,7 @@ services.AddWhizbang(options => {
 
 System events are consumed like domain events - create perspectives:
 
-```csharp{title="Consume System Events" description="System events are consumed like domain events - create perspectives:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Consume", "System"]}
+```csharp{title="Consume System Events" description="System events are consumed like domain events - create perspectives:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "C#", "Consume", "System"]}
 using Whizbang.Core.Perspectives;
 using Whizbang.Core.SystemEvents;
 using Whizbang.Core.Audit;
@@ -883,7 +883,7 @@ public static class SystemEventStreams {
 
 ### Basic Registration
 
-```csharp{title="Basic Registration" description="Demonstrates basic Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Basic", "Registration"]}
+```csharp{title="Basic Registration" description="Basic Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Basic", "Registration"]}
 services.AddSystemEvents(options => {
   options.EnableAudit();
 });
@@ -895,7 +895,7 @@ This registers:
 
 ### Full Auditing Registration
 
-```csharp{title="Full Auditing Registration" description="Demonstrates full Auditing Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Full", "Auditing"]}
+```csharp{title="Full Auditing Registration" description="Full Auditing Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Full", "Auditing"]}
 services.AddSystemEventAuditing(options => {
   options.EnableEventAudit();
   options.EnableCommandAudit();
@@ -909,7 +909,7 @@ This registers:
 
 ### Complete Setup Example
 
-```csharp{title="Complete Setup Example" description="Demonstrates complete Setup Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Complete", "Setup"]}
+```csharp{title="Complete Setup Example" description="Complete Setup Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Complete", "Setup"]}
 // In Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -939,7 +939,7 @@ app.Run();
 
 ### 1. Enable Only What You Need
 
-```csharp{title="Enable Only What You Need" description="Demonstrates enable Only What You Need" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Enable", "Only"]}
+```csharp{title="Enable Only What You Need" description="Enable Only What You Need" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Enable", "Only"]}
 // BFF: Enable full audit for compliance
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAudit();
@@ -956,7 +956,7 @@ services.AddWhizbang();
 
 ### 2. Use LocalOnly (Default)
 
-```csharp{title="Use LocalOnly (Default)" description="Demonstrates use LocalOnly (Default)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "LocalOnly", "Default"]}
+```csharp{title="Use LocalOnly (Default)" description="Use LocalOnly (Default)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "LocalOnly", "Default"]}
 // Default behavior - system events stay local
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAudit();
@@ -970,7 +970,7 @@ services.AddWhizbang(options => {
 
 ### 3. Exclude High-Frequency Events
 
-```csharp{title="Exclude High-Frequency Events" description="Demonstrates exclude High-Frequency Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Exclude", "High-Frequency"]}
+```csharp{title="Exclude High-Frequency Events" description="Exclude High-Frequency Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Exclude", "High-Frequency"]}
 // Exclude events that would create excessive audit volume
 [AuditEvent(Exclude = true, Reason = "High-frequency telemetry event")]
 public sealed record MetricCaptured : IEvent {
@@ -995,7 +995,7 @@ Never remove this attribute from system events!
 
 ### 5. Query System Events Like Domain Events
 
-```csharp{title="Query System Events Like Domain Events" description="Demonstrates query System Events Like Domain Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Query", "System"]}
+```csharp{title="Query System Events Like Domain Events" description="Query System Events Like Domain Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Query", "System"]}
 public interface ISecurityAuditLens : ILensQuery<SecurityAuditEntry> { }
 
 public class SecurityService {
@@ -1020,7 +1020,7 @@ public class SecurityService {
 
 ### Centralized Monitoring Service
 
-```csharp{title="Centralized Monitoring Service" description="Demonstrates centralized Monitoring Service" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Centralized", "Monitoring"]}
+```csharp{title="Centralized Monitoring Service" description="Centralized Monitoring Service" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Centralized", "Monitoring"]}
 // Monitoring service receives system events from all hosts
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAll();
@@ -1033,7 +1033,7 @@ services.AddWhizbang(options => {
 
 ### Selective Security Auditing
 
-```csharp{title="Selective Security Auditing" description="Demonstrates selective Security Auditing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Selective", "Security"]}
+```csharp{title="Selective Security Auditing" description="Selective Security Auditing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Selective", "Security"]}
 // Only audit high-sensitivity operations
 public class DocumentService {
   private readonly ISystemEventEmitter _emitter;
@@ -1064,7 +1064,7 @@ public class DocumentService {
 
 ### Multi-Tenant Audit Queries
 
-```csharp{title="Multi-Tenant Audit Queries" description="Demonstrates multi-Tenant Audit Queries" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Multi-Tenant", "Audit"]}
+```csharp{title="Multi-Tenant Audit Queries" description="Multi-Tenant Audit Queries" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Multi-Tenant", "Audit"]}
 public class AuditService {
   private readonly IAuditLogLens _auditLens;
 

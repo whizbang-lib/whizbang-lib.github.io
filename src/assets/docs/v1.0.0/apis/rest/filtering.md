@@ -110,14 +110,14 @@ All filters are AND'd together.
 
 ### Basic Lens
 
-```csharp{title="Basic Lens" description="Demonstrates basic Lens" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Basic", "Lens"]}
+```csharp{title="Basic Lens" description="Basic Lens" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Basic", "Lens"]}
 [RestLens(Route = "/api/orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 ```
 
 ### With Custom Paging
 
-```csharp{title="With Custom Paging" description="Demonstrates with Custom Paging" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Custom", "Paging"]}
+```csharp{title="With Custom Paging" description="With Custom Paging" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Custom", "Paging"]}
 [RestLens(
     Route = "/api/orders",
     DefaultPageSize = 25,
@@ -127,7 +127,7 @@ public interface IOrderLens : ILensQuery<OrderReadModel> { }
 
 ### Filtering Only (No Sorting)
 
-```csharp{title="Filtering Only (No Sorting)" description="Demonstrates filtering Only (No Sorting)" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Filtering", "Only"]}
+```csharp{title="Filtering Only (No Sorting)" description="Filtering Only (No Sorting)" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Filtering", "Only"]}
 [RestLens(
     Route = "/api/statuses",
     EnableSorting = false,
@@ -150,7 +150,7 @@ public interface IStatusLens : ILensQuery<StatusReadModel> { }
 
 ### LensResponse
 
-```csharp{title="LensResponse" description="Demonstrates lensResponse" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "LensResponse"]}
+```csharp{title="LensResponse" description="LensResponse" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "LensResponse"]}
 public class LensResponse<T> {
     public IReadOnlyList<T> Data { get; init; }
     public int Page { get; init; }
@@ -164,7 +164,7 @@ public class LensResponse<T> {
 
 ### Example Response
 
-```json{title="Example Response" description="Demonstrates example Response" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "Example", "Response"]}
+```json{title="Example Response" description="Example Response" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "Example", "Response"]}
 {
   "data": [
     {
@@ -196,7 +196,7 @@ public readonly record struct SortExpression(string Field, bool Descending);
 
 ### Example
 
-```csharp{title="Example" description="Demonstrates example" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Example"]}
+```csharp{title="Example" description="Example" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Example"]}
 var sorts = ParseSortExpression("-createdAt,name,+status");
 // Returns:
 // [
@@ -219,7 +219,7 @@ protected (int skip, int take) CalculatePaging(
 
 ### Example
 
-```csharp{title="Example (2)" description="Demonstrates example" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Example"]}
+```csharp{title="Example (2)" description="Example (2)" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Example"]}
 // With request: page=3, pageSize=50, max=100
 var (skip, take) = CalculatePaging(request, 10, 100);
 // skip = 100 (page 3, 0-indexed: 2 * 50)
@@ -251,7 +251,7 @@ public partial class OrderLensEndpoint {
 
 ### JavaScript/TypeScript
 
-```typescript{title="JavaScript/TypeScript" description="Demonstrates javaScript/TypeScript" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "JavaScript", "TypeScript"]}
+```typescript{title="JavaScript/TypeScript" description="JavaScript/TypeScript" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "JavaScript", "TypeScript"]}
 async function getOrders(params: {
     page?: number;
     pageSize?: number;
@@ -285,7 +285,7 @@ const orders = await getOrders({
 
 ### C# HttpClient
 
-```csharp{title="C# HttpClient" description="Demonstrates c# HttpClient" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "HttpClient"]}
+```csharp{title="C# HttpClient" description="C# HttpClient" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "HttpClient"]}
 public async Task<LensResponse<OrderReadModel>> GetOrdersAsync(
     int page = 1,
     int pageSize = 10,

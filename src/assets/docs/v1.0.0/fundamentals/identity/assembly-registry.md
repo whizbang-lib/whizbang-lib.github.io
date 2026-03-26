@@ -25,7 +25,7 @@ When types are defined in a "contracts" assembly but used in a "service" assembl
 
 ## AssemblyRegistry<T> {#assemblyregistry}
 
-```csharp{title="AssemblyRegistry<T>" description="Demonstrates assemblyRegistry<T>" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "AssemblyRegistry<T>", "Assemblyregistry"]}
+```csharp{title="AssemblyRegistry<T>" description="AssemblyRegistry<T>" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "AssemblyRegistry<T>", "Assemblyregistry"]}
 namespace Whizbang.Core.Registry;
 
 /// <summary>
@@ -102,7 +102,7 @@ Lower priority = higher precedence.
 
 ### Registering via ModuleInitializer
 
-```csharp{title="Registering via ModuleInitializer" description="Demonstrates registering via ModuleInitializer" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Registering", "ModuleInitializer"]}
+```csharp{title="Registering via ModuleInitializer" description="Registering via ModuleInitializer" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Registering", "ModuleInitializer"]}
 // In MyApp.Contracts assembly
 namespace MyApp.Contracts;
 
@@ -142,7 +142,7 @@ internal static class StreamIdExtractorRegistration {
 
 ### Consuming Registered Contributions
 
-```csharp{title="Consuming Registered Contributions" description="Demonstrates consuming Registered Contributions" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Consuming", "Registered"]}
+```csharp{title="Consuming Registered Contributions" description="Consuming Registered Contributions" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Consuming", "Registered"]}
 // In service configuration
 public static class ServiceConfiguration {
   public static IServiceCollection AddMyServices(
@@ -163,7 +163,7 @@ public static class ServiceConfiguration {
 
 ### Creating a Domain-Specific Registry
 
-```csharp{title="Creating a Domain-Specific Registry" description="Demonstrates creating a Domain-Specific Registry" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Creating", "Domain-Specific"]}
+```csharp{title="Creating a Domain-Specific Registry" description="Creating a Domain-Specific Registry" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Creating", "Domain-Specific"]}
 // Wrapper for type-specific registry
 public static class MyFeatureRegistry {
   public static void Register(IMyFeatureProvider provider, int priority = 1000) {
@@ -185,7 +185,7 @@ Whizbang includes several domain-specific registries:
 
 ### StreamIdExtractorRegistry
 
-```csharp{title="StreamIdExtractorRegistry" description="Demonstrates streamIdExtractorRegistry" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "StreamIdExtractorRegistry"]}
+```csharp{title="StreamIdExtractorRegistry" description="StreamIdExtractorRegistry" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "StreamIdExtractorRegistry"]}
 // Extracts stream IDs from messages
 StreamIdExtractorRegistry.Register(extractor, priority: 100);
 var streamId = StreamIdExtractorRegistry.ExtractStreamId(message, type);
@@ -193,7 +193,7 @@ var streamId = StreamIdExtractorRegistry.ExtractStreamId(message, type);
 
 ### JsonContextRegistry
 
-```csharp{title="JsonContextRegistry" description="Demonstrates jsonContextRegistry" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "JsonContextRegistry"]}
+```csharp{title="JsonContextRegistry" description="JsonContextRegistry" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "JsonContextRegistry"]}
 // Registers JSON serialization contexts for AOT
 JsonContextRegistry.Register(MyJsonContext.Default, priority: 100);
 var typeInfo = JsonContextRegistry.GetTypeInfo<MyMessage>();

@@ -35,7 +35,7 @@ Comprehensive **testing strategies** for receptors and perspectives using TUnit,
 
 **Whizbang uses modern .NET testing tools**:
 
-```xml{title="Testing Stack" description="**Whizbang uses modern ." category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Stack"]}
+```xml{title="Testing Stack" description="**Whizbang uses modern ." category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Xml", "Stack"]}
 <ItemGroup>
   <PackageReference Include="TUnit" Version="1.0.0" />
   <PackageReference Include="TUnit.Assertions" Version="1.0.0" />
@@ -117,7 +117,7 @@ public class CreateOrderReceptorTests {
 
 ### Database Mocking
 
-```csharp{title="Database Mocking" description="Demonstrates database Mocking" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Database", "Mocking"]}
+```csharp{title="Database Mocking" description="Database Mocking" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Database", "Mocking"]}
 [Test]
 public async Task HandleAsync_DatabaseFailure_ThrowsException() {
   // Arrange
@@ -136,7 +136,7 @@ public async Task HandleAsync_DatabaseFailure_ThrowsException() {
 
 ### Service Bus Mocking
 
-```csharp{title="Service Bus Mocking" description="Demonstrates service Bus Mocking" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Service", "Bus"]}
+```csharp{title="Service Bus Mocking" description="Service Bus Mocking" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Service", "Bus"]}
 [Test]
 public async Task HandleAsync_PublishesToServiceBus() {
   // Arrange
@@ -199,7 +199,7 @@ public static class OrderTestData {
 
 **Usage**:
 
-```csharp{title="Test Data Generation with Bogus (2)" description="Demonstrates test Data Generation with Bogus" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Data"]}
+```csharp{title="Test Data Generation with Bogus (2)" description="Test Data Generation with Bogus" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Data"]}
 [Test]
 public async Task HandleAsync_MultipleItems_CalculatesTotalCorrectly() {
   // Arrange
@@ -325,7 +325,7 @@ public class DatabaseFixture : IAsyncLifetime {
 
 **Usage**:
 
-```csharp{title="Test Fixtures - CreateOrderReceptorIntegrationTests" description="Demonstrates test Fixtures" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Fixtures"]}
+```csharp{title="Test Fixtures - CreateOrderReceptorIntegrationTests" description="Test Fixtures - CreateOrderReceptorIntegrationTests" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Fixtures"]}
 public class CreateOrderReceptorIntegrationTests : IClassFixture<DatabaseFixture> {
   private readonly DatabaseFixture _fixture;
 
@@ -360,7 +360,7 @@ public class CreateOrderReceptorIntegrationTests : IClassFixture<DatabaseFixture
 
 **PostgreSQL Container**:
 
-```csharp{title="Integration Testing with Testcontainers" description="PostgreSQL Container:" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Integration", "Testcontainers"]}
+```csharp{title="Integration Testing with Testcontainers" description="PostgreSQL Container:" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "C#", "Integration", "Testcontainers"]}
 using Testcontainers.PostgreSql;
 
 public class PostgresIntegrationTests : IAsyncLifetime {
@@ -411,7 +411,7 @@ public class PostgresIntegrationTests : IAsyncLifetime {
 
 **Azure Service Bus Container**:
 
-```csharp{title="Integration Testing with Testcontainers -" description="Azure Service Bus Container:" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Integration", "Testcontainers"]}
+```csharp{title="Integration Testing with Testcontainers -" description="Azure Service Bus Container:" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "C#", "Integration", "Testcontainers"]}
 using Testcontainers.Azurite;
 
 public class ServiceBusIntegrationTests : IAsyncLifetime {
@@ -521,7 +521,7 @@ public class OrderValidationTests {
 
 ### 1. Use `await` in Assertions
 
-```csharp{title="Use `await` in Assertions" description="Demonstrates use `await` in Assertions" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Await", "Assertions"]}
+```csharp{title="Use `await` in Assertions" description="Use `await` in Assertions" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Await", "Assertions"]}
 // ✅ GOOD - Await TUnit assertions
 await Assert.That(result).IsNotNull();
 await Assert.That(result.OrderId).IsEqualTo("order-123");
@@ -532,7 +532,7 @@ Assert.That(result).IsNotNull();  // Won't work in TUnit
 
 ### 2. Test Cancellation
 
-```csharp{title="Test Cancellation" description="Demonstrates test Cancellation" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Cancellation"]}
+```csharp{title="Test Cancellation" description="Test Cancellation" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Cancellation"]}
 [Test]
 public async Task HandleAsync_CancellationRequested_ThrowsOperationCanceledException() {
   // Arrange
@@ -550,7 +550,7 @@ public async Task HandleAsync_CancellationRequested_ThrowsOperationCanceledExcep
 
 ### 3. Test Timeout
 
-```csharp{title="Test Timeout" description="Demonstrates test Timeout" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Timeout"]}
+```csharp{title="Test Timeout" description="Test Timeout" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Timeout"]}
 [Test]
 [Timeout(5000)]  // 5 seconds max
 public async Task HandleAsync_SlowOperation_CompletesWithinTimeout() {
@@ -574,7 +574,7 @@ public async Task HandleAsync_SlowOperation_CompletesWithinTimeout() {
 
 **PolicyTests.cs**:
 
-```csharp{title="Testing Policies" description="**PolicyTests." category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Policies"]}
+```csharp{title="Testing Policies" description="**PolicyTests." category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "C#", "Policies"]}
 public class TenantIsolationPolicyTests {
   [Test]
   public async Task ApplyAsync_DifferentTenant_ThrowsUnauthorizedException() {

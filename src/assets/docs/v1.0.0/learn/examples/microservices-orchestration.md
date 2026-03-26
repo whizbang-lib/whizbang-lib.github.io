@@ -526,7 +526,7 @@ public class SagasController : ControllerBase {
 
 **Response**:
 
-```json{title="Saga Visualization API (2)" description="Demonstrates saga Visualization API" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Saga", "Visualization"]}
+```json{title="Saga Visualization API (2)" description="Saga Visualization API" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Saga", "Visualization"]}
 {
   "sagaId": "abc123",
   "orderId": "order-456",

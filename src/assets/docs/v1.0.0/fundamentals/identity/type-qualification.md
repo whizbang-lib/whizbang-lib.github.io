@@ -29,7 +29,7 @@ TypeQualification is a flag enum that controls how .NET type names are formatted
 
 ### Using TypeQualification Flags
 
-```csharp{title="Using TypeQualification Flags" description="Demonstrates using TypeQualification Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Using", "TypeQualification"]}
+```csharp{title="Using TypeQualification Flags" description="Using TypeQualification Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Using", "TypeQualification"]}
 using Whizbang.Core;
 
 var type = typeof(ECommerce.Contracts.Events.ProductCreatedEvent);
@@ -53,7 +53,7 @@ var withVersion = TypeFormatter.FormatType(type, TypeQualification.FullyQualifie
 
 ### Combining Individual Flags
 
-```csharp{title="Combining Individual Flags" description="Demonstrates combining Individual Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Combining", "Individual"]}
+```csharp{title="Combining Individual Flags" description="Combining Individual Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Combining", "Individual"]}
 // Custom combination: Namespace + Type + Assembly (no version)
 var custom = TypeFormatter.FormatType(
     type,
@@ -245,7 +245,7 @@ var toggled = qualification ^ TypeQualification.GlobalPrefix;
 
 ### Building Qualification Dynamically
 
-```csharp{title="Building Qualification Dynamically" description="Demonstrates building Qualification Dynamically" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Building", "Qualification"]}
+```csharp{title="Building Qualification Dynamically" description="Building Qualification Dynamically" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Building", "Qualification"]}
 public TypeQualification BuildQualification(
     bool includeNamespace,
     bool includeAssembly,
@@ -328,7 +328,7 @@ public enum TypeQualification {
 
 ### Usage with TypeFormatter
 
-```csharp{title="Usage with TypeFormatter" description="Demonstrates usage with TypeFormatter" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Usage", "TypeFormatter"]}
+```csharp{title="Usage with TypeFormatter" description="Usage with TypeFormatter" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Usage", "TypeFormatter"]}
 // Format a type with qualification
 string formatted = TypeFormatter.FormatType(Type type, TypeQualification qualification);
 
@@ -355,7 +355,7 @@ var custom = TypeFormatter.FormatType(
 
 ### ❌ Forgetting TypeName Flag
 
-```csharp{title="❌ Forgetting TypeName Flag" description="Demonstrates ❌ Forgetting TypeName Flag" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Forgetting", "TypeName"]}
+```csharp{title="❌ Forgetting TypeName Flag" description="❌ Forgetting TypeName Flag" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Forgetting", "TypeName"]}
 // ❌ WRONG: Missing TypeName
 var qual = TypeQualification.Namespace | TypeQualification.Assembly;
 var result = TypeFormatter.FormatType(type, qual);
@@ -369,7 +369,7 @@ var result = TypeFormatter.FormatType(type, qual);
 
 ### ❌ Confusing Component Flags with Presets
 
-```csharp{title="❌ Confusing Component Flags with Presets" description="Demonstrates ❌ Confusing Component Flags with Presets" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Confusing", "Component"]}
+```csharp{title="❌ Confusing Component Flags with Presets" description="❌ Confusing Component Flags with Presets" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Confusing", "Component"]}
 // ❌ WRONG: Trying to "remove" from a preset
 var qualification = TypeQualification.FullyQualified & ~TypeQualification.Assembly;
 // This works but is less clear
@@ -380,7 +380,7 @@ var qualification = TypeQualification.Namespace | TypeQualification.TypeName;
 
 ### ❌ Assuming Default Behavior
 
-```csharp{title="❌ Assuming Default Behavior" description="Demonstrates ❌ Assuming Default Behavior" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Assuming", "Default"]}
+```csharp{title="❌ Assuming Default Behavior" description="❌ Assuming Default Behavior" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Assuming", "Default"]}
 // ❌ WRONG: Assuming default includes namespace
 var formatted = TypeFormatter.FormatType(type, TypeQualification.TypeName);
 // Result: "ProductCreatedEvent" - No namespace!

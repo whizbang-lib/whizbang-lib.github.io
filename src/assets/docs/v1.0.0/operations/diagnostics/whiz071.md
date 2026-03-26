@@ -44,19 +44,19 @@ Add the `Pgvector` package reference to your project:
 
 ### Using .NET CLI
 
-```bash{title="Using .NET CLI" description="Demonstrates using .NET CLI" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", ".NET"]}
+```bash{title="Using .NET CLI" description="Using .NET CLI" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", ".NET"]}
 dotnet add package Pgvector
 ```
 
 ### Using Package Manager Console
 
-```powershell{title="Using Package Manager Console" description="Demonstrates using Package Manager Console" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Package"]}
+```powershell{title="Using Package Manager Console" description="Using Package Manager Console" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Package"]}
 Install-Package Pgvector
 ```
 
 ### Using PackageReference in .csproj
 
-```xml{title="Using PackageReference in .csproj" description="Demonstrates using PackageReference in .csproj" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "PackageReference"]}
+```xml{title="Using PackageReference in .csproj" description="Using PackageReference in .csproj" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "PackageReference"]}
 <ItemGroup>
   <PackageReference Include="Pgvector" Version="0.3.0" />
 </ItemGroup>
@@ -98,7 +98,7 @@ When using `[VectorField]`, you typically need **both** packages:
 
 ### Before (causes WHIZ071)
 
-```csharp{title="Before (causes WHIZ071)" description="Demonstrates before (causes WHIZ071)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
+```csharp{title="Before (causes WHIZ071)" description="Before (causes WHIZ071)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
 // Missing: <PackageReference Include="Pgvector" />
 
 public record ProductDto {
@@ -112,7 +112,7 @@ public record ProductDto {
 
 ### After (compiles successfully)
 
-```csharp{title="After (compiles successfully)" description="Demonstrates after (compiles successfully)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Compiles"]}
+```csharp{title="After (compiles successfully)" description="After (compiles successfully)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Compiles"]}
 // Added: <PackageReference Include="Pgvector" />
 
 public record ProductDto {

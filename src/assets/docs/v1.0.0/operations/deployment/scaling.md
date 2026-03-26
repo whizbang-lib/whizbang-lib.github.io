@@ -40,7 +40,7 @@ Comprehensive guide to **scaling Whizbang applications** - horizontal autoscalin
 
 **hpa.yaml**:
 
-```yaml{title="CPU-Based Autoscaling" description="Demonstrates cPU-Based Autoscaling" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "CPU-Based", "Autoscaling"]}
+```yaml{title="CPU-Based Autoscaling" description="CPU-Based Autoscaling" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "CPU-Based", "Autoscaling"]}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -243,7 +243,7 @@ public class PostgresConnectionFactory : IDbConnectionFactory {
 
 **Usage**:
 
-```csharp{title="Read Replicas (3)" description="Demonstrates read Replicas" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Read", "Replicas"]}
+```csharp{title="Read Replicas (3)" description="Read Replicas" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Read", "Replicas"]}
 // Write operations use primary
 public async Task<OrderCreated> HandleAsync(CreateOrder command, CancellationToken ct) {
   await using var connection = await _dbFactory.CreateWriteConnectionAsync(ct);
@@ -342,7 +342,7 @@ public class PartitionManagementService : BackgroundService {
 
 ### Partition by Hash (Customer ID)
 
-```sql{title="Partition by Hash (Customer ID)" description="Demonstrates partition by Hash (Customer ID)" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Partition", "Hash"]}
+```sql{title="Partition by Hash (Customer ID)" description="Partition by Hash (Customer ID)" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Partition", "Hash"]}
 -- Partition by hash (distribute evenly across partitions)
 CREATE TABLE orders (
   order_id UUID NOT NULL,
@@ -482,7 +482,7 @@ spec:
 
 **service.yaml**:
 
-```yaml{title="Sticky Sessions (Session Affinity)" description="Demonstrates sticky Sessions (Session Affinity)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Sticky", "Sessions"]}
+```yaml{title="Sticky Sessions (Session Affinity)" description="Sticky Sessions (Session Affinity)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Sticky", "Sessions"]}
 apiVersion: v1
 kind: Service
 metadata:
@@ -508,7 +508,7 @@ spec:
 
 **Program.cs**:
 
-```csharp{title="Distributed Cache (Redis)" description="Demonstrates distributed Cache (Redis)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Distributed", "Cache"]}
+```csharp{title="Distributed Cache (Redis)" description="Distributed Cache (Redis)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Distributed", "Cache"]}
 builder.Services.AddStackExchangeRedisCache(options => {
   options.Configuration = builder.Configuration["Redis:ConnectionString"];
   options.InstanceName = "whizbang:";
@@ -517,7 +517,7 @@ builder.Services.AddStackExchangeRedisCache(options => {
 
 **Usage**:
 
-```csharp{title="Distributed Cache (Redis) - GetOrderReceptor" description="Demonstrates distributed Cache (Redis)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Distributed", "Cache"]}
+```csharp{title="Distributed Cache (Redis) - GetOrderReceptor" description="Distributed Cache (Redis) - GetOrderReceptor" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Distributed", "Cache"]}
 public class GetOrderReceptor : IReceptor<GetOrder, OrderRow?> {
   private readonly IDistributedCache _cache;
   private readonly IDbConnection _db;
@@ -695,7 +695,7 @@ export default function () {
 
 **Run**:
 
-```bash{title="k6 Load Test (2)" description="Demonstrates k6 Load Test" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Load", "Test"]}
+```bash{title="k6 Load Test (2)" description="k6 Load Test" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Load", "Test"]}
 k6 run load-test.js
 ```
 

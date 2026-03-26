@@ -30,7 +30,7 @@ The `Whizbang.Transports.FastEndpoints` package provides:
 
 ## Installation
 
-```bash{title="Installation" description="Demonstrates installation" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Installation"]}
+```bash{title="Installation" description="Installation" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Installation"]}
 dotnet add package Whizbang.Transports.FastEndpoints
 dotnet add package FastEndpoints
 ```
@@ -39,7 +39,7 @@ dotnet add package FastEndpoints
 
 ### Minimal Setup
 
-```csharp{title="Minimal Setup" description="Demonstrates minimal Setup" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Minimal", "Setup"]}
+```csharp{title="Minimal Setup" description="Minimal Setup" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Minimal", "Setup"]}
 // Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,7 +55,7 @@ app.Run();
 
 ### With Whizbang Core
 
-```csharp{title="With Whizbang Core" description="Demonstrates with Whizbang Core" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Whizbang", "Core"]}
+```csharp{title="With Whizbang Core" description="With Whizbang Core" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Whizbang", "Core"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Add Whizbang core services
@@ -98,7 +98,7 @@ builder.Services.AddFastEndpoints()
 
 Use the `[RestLens]` attribute to mark lens interfaces for REST endpoint generation:
 
-```csharp{title="Defining REST Lenses" description="Use the [RestLens] attribute to mark lens interfaces for REST endpoint generation:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Defining", "REST"]}
+```csharp{title="Defining REST Lenses" description="Use the [RestLens] attribute to mark lens interfaces for REST endpoint generation:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "C#", "Defining", "REST"]}
 [RestLens(Route = "/api/orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 ```
@@ -109,7 +109,7 @@ See [REST Filtering](filtering.md) for query parameter usage.
 
 Use the `[CommandEndpoint]` attribute to generate mutation endpoints:
 
-```csharp{title="Defining REST Mutations" description="Use the [CommandEndpoint] attribute to generate mutation endpoints:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Defining", "REST"]}
+```csharp{title="Defining REST Mutations" description="Use the [CommandEndpoint] attribute to generate mutation endpoints:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "C#", "Defining", "REST"]}
 [CommandEndpoint<CreateOrderCommand, OrderResult>(RestRoute = "/api/orders")]
 public partial class CreateOrderEndpoint;
 ```

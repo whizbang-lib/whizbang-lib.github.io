@@ -356,7 +356,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 ### Application Integration
 
 **ASP.NET Core Program.cs**:
-```csharp{title="Application Integration" description="Demonstrates application Integration" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Application", "Integration"]}
+```csharp{title="Application Integration" description="Application Integration" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Application", "Integration"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure services
@@ -498,7 +498,7 @@ See [Database Readiness](database-readiness.md) for full details.
 ### DO ✅
 
 **1. Complete Current Batch**:
-```csharp{title="DO ✅" description="Demonstrates dO ✅" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers"]}
+```csharp{title="DO ✅" description="DO ✅" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers"]}
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
     var workBatch = await GetWorkBatchAsync(ct);
@@ -520,7 +520,7 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 ```
 
 **2. Set Reasonable Drain Timeout**:
-```csharp{title="DO ✅ (2)" description="Demonstrates dO ✅" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers"]}
+```csharp{title="DO ✅ (2)" description="DO ✅ (2)" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers"]}
 public async Task DrainAsync(CancellationToken ct = default) {
   var timeout = TimeSpan.FromSeconds(30);  // ✅ 30 seconds max
 
@@ -533,7 +533,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 ```
 
 **3. Use Shutdown Token for New Work**:
-```csharp{title="DO ✅ (3)" description="Demonstrates dO ✅" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers"]}
+```csharp{title="DO ✅ (3)" description="DO ✅ (3)" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers"]}
 public ValueTask<TResult> ExecuteAsync<TResult>(
   IMessageEnvelope envelope,
   Func<IMessageEnvelope, PolicyContext, ValueTask<TResult>> handler,
@@ -552,7 +552,7 @@ public ValueTask<TResult> ExecuteAsync<TResult>(
 ### DON'T ❌
 
 **1. Don't Abandon In-Flight Work**:
-```csharp{title="DON'T ❌" description="Demonstrates dON'T ❌" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "DON'T"]}
+```csharp{title="DON'T ❌" description="DON'T ❌" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "DON'T"]}
 // ❌ BAD: Immediately exit on cancellation
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
@@ -570,7 +570,7 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 ```
 
 **2. Don't Block Shutdown Indefinitely**:
-```csharp{title="DON'T ❌ (2)" description="Demonstrates dON'T ❌" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "DON'T"]}
+```csharp{title="DON'T ❌ (2)" description="DON'T ❌ (2)" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "DON'T"]}
 // ❌ BAD: No timeout on drain
 public async Task DrainAsync(CancellationToken ct = default) {
   await _worker;  // ❌ Could wait forever if worker is stuck
@@ -578,7 +578,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 ```
 
 **3. Don't Throw on Shutdown**:
-```csharp{title="DON'T ❌ (3)" description="Demonstrates dON'T ❌" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "DON'T"]}
+```csharp{title="DON'T ❌ (3)" description="DON'T ❌ (3)" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "DON'T"]}
 // ❌ BAD: Throwing exceptions during shutdown
 public async Task StopAsync(CancellationToken ct = default) {
   if (_worker == null) {
@@ -605,7 +605,7 @@ public async Task StopAsync(CancellationToken ct = default) {
 
 ### Logging Startup
 
-```csharp{title="Logging Startup" description="Demonstrates logging Startup" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Logging", "Startup"]}
+```csharp{title="Logging Startup" description="Logging Startup" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Logging", "Startup"]}
 public async Task StartAsync(CancellationToken ct = default) {
   _logger.LogInformation(
     "Starting {StrategyName} execution strategy",
@@ -623,7 +623,7 @@ public async Task StartAsync(CancellationToken ct = default) {
 
 ### Logging Shutdown
 
-```csharp{title="Logging Shutdown" description="Demonstrates logging Shutdown" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Logging", "Shutdown"]}
+```csharp{title="Logging Shutdown" description="Logging Shutdown" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Logging", "Shutdown"]}
 public async Task StopAsync(CancellationToken ct = default) {
   _logger.LogInformation(
     "{StrategyName} stopping - no new work will be accepted",
@@ -677,7 +677,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 
 ### Testing StartAsync
 
-```csharp{title="Testing StartAsync" description="Demonstrates testing StartAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "StartAsync"]}
+```csharp{title="Testing StartAsync" description="Testing StartAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "StartAsync"]}
 [Test]
 public async Task StartAsync_ShouldBeIdempotentAsync() {
   // Arrange
@@ -694,7 +694,7 @@ public async Task StartAsync_ShouldBeIdempotentAsync() {
 
 ### Testing StopAsync
 
-```csharp{title="Testing StopAsync" description="Demonstrates testing StopAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "StopAsync"]}
+```csharp{title="Testing StopAsync" description="Testing StopAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "StopAsync"]}
 [Test]
 public async Task StopAsync_ShouldPreventNewExecutionsAsync() {
   // Arrange
@@ -713,7 +713,7 @@ public async Task StopAsync_ShouldPreventNewExecutionsAsync() {
 
 ### Testing DrainAsync
 
-```csharp{title="Testing DrainAsync" description="Demonstrates testing DrainAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "DrainAsync"]}
+```csharp{title="Testing DrainAsync" description="Testing DrainAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "DrainAsync"]}
 [Test]
 public async Task DrainAsync_ShouldWaitForPendingWorkAsync() {
   // Arrange
@@ -748,7 +748,7 @@ public async Task DrainAsync_ShouldWaitForPendingWorkAsync() {
 **Problem**: Worker needs database migrations before starting.
 
 **Solution**:
-```csharp{title="Pattern 1: Initialization Dependencies" description="Demonstrates pattern 1: Initialization Dependencies" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Pattern", "Initialization"]}
+```csharp{title="Pattern 1: Initialization Dependencies" description="Pattern 1: Initialization Dependencies" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Pattern", "Initialization"]}
 public class PerspectiveWorker : BackgroundService {
   private readonly IDatabaseReadinessCheck _dbCheck;
 
@@ -774,7 +774,7 @@ public class PerspectiveWorker : BackgroundService {
 **Problem**: Need to drain work from multiple channels.
 
 **Solution**:
-```csharp{title="Pattern 2: Multi-Phase Shutdown" description="Demonstrates pattern 2: Multi-Phase Shutdown" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Pattern", "Multi-Phase"]}
+```csharp{title="Pattern 2: Multi-Phase Shutdown" description="Pattern 2: Multi-Phase Shutdown" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Pattern", "Multi-Phase"]}
 public async Task DrainAsync(CancellationToken ct = default) {
   // Phase 1: Drain primary work queue
   _primaryChannel.Writer.Complete();
@@ -793,7 +793,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 **Problem**: Expose readiness to container orchestrator (Kubernetes).
 
 **Solution**:
-```csharp{title="Pattern 3: Startup Health Checks" description="Demonstrates pattern 3: Startup Health Checks" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Pattern", "Startup"]}
+```csharp{title="Pattern 3: Startup Health Checks" description="Pattern 3: Startup Health Checks" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Pattern", "Startup"]}
 // ASP.NET Core health checks
 builder.Services.AddHealthChecks()
   .AddCheck<DatabaseReadinessHealthCheck>("database")

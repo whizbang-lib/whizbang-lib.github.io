@@ -25,7 +25,7 @@ When processing messages, sometimes only the message payload is available, but t
 
 ## IEnvelopeRegistry Interface {#ienveloperegistry}
 
-```csharp{title="IEnvelopeRegistry Interface" description="Demonstrates iEnvelopeRegistry Interface" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "IEnvelopeRegistry", "Interface"]}
+```csharp{title="IEnvelopeRegistry Interface" description="IEnvelopeRegistry Interface" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "IEnvelopeRegistry", "Interface"]}
 namespace Whizbang.Core.Observability;
 
 /// <summary>
@@ -148,7 +148,7 @@ public class EventStore : IEventStore {
 
 ### Security Context Propagation
 
-```csharp{title="Security Context Propagation" description="Demonstrates security Context Propagation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Security", "Context"]}
+```csharp{title="Security Context Propagation" description="Security Context Propagation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Security", "Context"]}
 public class SecurityContextEventStoreDecorator : IEventStore {
   private readonly IEnvelopeRegistry _envelopeRegistry;
   private readonly IEventStore _inner;
@@ -175,7 +175,7 @@ public class SecurityContextEventStoreDecorator : IEventStore {
 
 ### Correlation Tracking
 
-```csharp{title="Correlation Tracking" description="Demonstrates correlation Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Correlation", "Tracking"]}
+```csharp{title="Correlation Tracking" description="Correlation Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Correlation", "Tracking"]}
 public class CorrelationTrackingReceptor : IReceptor<CreateOrder, OrderCreated> {
   private readonly IEnvelopeRegistry _envelopeRegistry;
 

@@ -40,7 +40,7 @@ The **AggregateIdGenerator** discovers properties marked with `[AggregateId]` at
 
 ### 1. Mark Properties with [AggregateId]
 
-```csharp{title="Mark Properties with [AggregateId]" description="Demonstrates mark Properties with [AggregateId]" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Mark", "Properties"]}
+```csharp{title="Mark Properties with [AggregateId]" description="Mark Properties with [AggregateId]" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Mark", "Properties"]}
 using Whizbang.Core;
 
 // Command
@@ -134,7 +134,7 @@ public static class AggregateIdExtractors {
 
 ### PolicyContext Integration
 
-```csharp{title="PolicyContext Integration" description="Demonstrates policyContext Integration" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "PolicyContext", "Integration"]}
+```csharp{title="PolicyContext Integration" description="PolicyContext Integration" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "PolicyContext", "Integration"]}
 using Whizbang.Core.Policies;
 
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
@@ -187,7 +187,7 @@ var envelope = MessageEnvelope.Create(
 
 ### Pattern 1: Simple Aggregate ID
 
-```csharp{title="Pattern 1: Simple Aggregate ID" description="Demonstrates pattern 1: Simple Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Simple"]}
+```csharp{title="Pattern 1: Simple Aggregate ID" description="Pattern 1: Simple Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Simple"]}
 public record CreateOrder(
     [property: AggregateId] Guid OrderId,  // ← Primary entity ID
     Guid CustomerId,
@@ -196,7 +196,7 @@ public record CreateOrder(
 ```
 
 **Generated**:
-```csharp{title="Pattern 1: Simple Aggregate ID (2)" description="Demonstrates pattern 1: Simple Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Simple"]}
+```csharp{title="Pattern 1: Simple Aggregate ID (2)" description="Pattern 1: Simple Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Simple"]}
 if (messageType == typeof(CreateOrder)) {
     return ((CreateOrder)message).OrderId;
 }
@@ -206,7 +206,7 @@ if (messageType == typeof(CreateOrder)) {
 
 ### Pattern 2: Nullable Aggregate ID
 
-```csharp{title="Pattern 2: Nullable Aggregate ID" description="Demonstrates pattern 2: Nullable Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Nullable"]}
+```csharp{title="Pattern 2: Nullable Aggregate ID" description="Pattern 2: Nullable Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Nullable"]}
 public record GetOrders(
     [property: AggregateId] Guid? OrderId,  // ← Nullable (optional filter)
     Guid CustomerId
@@ -214,7 +214,7 @@ public record GetOrders(
 ```
 
 **Generated**:
-```csharp{title="Pattern 2: Nullable Aggregate ID (2)" description="Demonstrates pattern 2: Nullable Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Nullable"]}
+```csharp{title="Pattern 2: Nullable Aggregate ID (2)" description="Pattern 2: Nullable Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Nullable"]}
 if (messageType == typeof(GetOrders)) {
     return ((GetOrders)message).OrderId;  // Returns Guid? (nullable)
 }
@@ -226,7 +226,7 @@ if (messageType == typeof(GetOrders)) {
 
 ### Pattern 3: Inherited Aggregate ID
 
-```csharp{title="Pattern 3: Inherited Aggregate ID" description="Demonstrates pattern 3: Inherited Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Inherited"]}
+```csharp{title="Pattern 3: Inherited Aggregate ID" description="Pattern 3: Inherited Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Inherited"]}
 // Base class
 public abstract record OrderCommand {
     [AggregateId]
@@ -279,7 +279,7 @@ warning WHIZ005: Type 'CreateOrder' has multiple [AggregateId] attributes. Using
 ```
 
 **Cause**:
-```csharp{title="WHIZ005: Multiple [AggregateId] Attributes" description="Demonstrates wHIZ005: Multiple [AggregateId] Attributes" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ005:", "Multiple"]}
+```csharp{title="WHIZ005: Multiple [AggregateId] Attributes" description="WHIZ005: Multiple [AggregateId] Attributes" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ005:", "Multiple"]}
 public record CreateOrder(
     [property: AggregateId] Guid OrderId,  // ← First (used)
     [property: AggregateId] Guid CustomerId  // ← Second (ignored)
@@ -302,7 +302,7 @@ error WHIZ006: Property 'CreateOrder.OrderId' has [AggregateId] but is not Guid 
 ```
 
 **Cause**:
-```csharp{title="WHIZ006: Invalid Property Type" description="Demonstrates wHIZ006: Invalid Property Type" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ006:", "Invalid"]}
+```csharp{title="WHIZ006: Invalid Property Type" description="WHIZ006: Invalid Property Type" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ006:", "Invalid"]}
 public record CreateOrder(
     [property: AggregateId] string OrderId,  // ❌ String, not Guid
     Guid CustomerId
@@ -392,7 +392,7 @@ Memory Diagnostics:
 2. Wrong message type passed
 
 **Solution**:
-```csharp{title="Problem: Extractor Returns Null" description="Demonstrates problem: Extractor Returns Null" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Extractor"]}
+```csharp{title="Problem: Extractor Returns Null" description="Problem: Extractor Returns Null" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Extractor"]}
 // ✅ Mark property
 public record CreateOrder(
     [property: AggregateId] Guid OrderId,  // Add attribute

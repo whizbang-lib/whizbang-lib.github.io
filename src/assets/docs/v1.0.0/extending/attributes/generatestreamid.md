@@ -19,13 +19,13 @@ The `[GenerateStreamId]` attribute marks an event for automatic StreamId generat
 
 ## Namespace
 
-```csharp{title="Namespace" description="Demonstrates namespace" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Namespace"]}
+```csharp{title="Namespace" description="Namespace" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Namespace"]}
 using Whizbang.Core;
 ```
 
 ## Syntax
 
-```csharp{title="Syntax" description="Demonstrates syntax" category="Reference" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "Syntax"]}
+```csharp{title="Syntax" description="Syntax" category="Reference" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "Syntax"]}
 // On a property (alongside [StreamId])
 public record OrderCreatedEvent : IEvent {
   [StreamId] [GenerateStreamId]

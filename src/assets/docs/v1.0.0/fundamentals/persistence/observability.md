@@ -50,7 +50,7 @@ Whizbang Message:
 
 ## MessageEnvelope Structure
 
-```csharp{title="MessageEnvelope Structure" description="Demonstrates messageEnvelope Structure" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "MessageEnvelope", "Structure"]}
+```csharp{title="MessageEnvelope Structure" description="MessageEnvelope Structure" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "MessageEnvelope", "Structure"]}
 public class MessageEnvelope {
     // Identity
     public required MessageId MessageId { get; init; }
@@ -77,7 +77,7 @@ public class MessageEnvelope {
 
 ## MessageHop Structure
 
-```csharp{title="MessageHop Structure" description="Demonstrates messageHop Structure" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "MessageHop", "Structure"]}
+```csharp{title="MessageHop Structure" description="MessageHop Structure" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "MessageHop", "Structure"]}
 public class MessageHop {
     // Hop Type
     public required MessageHopType Type { get; init; }  // Current or Causation
@@ -237,7 +237,7 @@ var envelope = MessageEnvelope.Create(
 
 ## Security Context
 
-```csharp{title="Security Context" description="Demonstrates security Context" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Security", "Context"]}
+```csharp{title="Security Context" description="Security Context" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Security", "Context"]}
 public record SecurityContext {
     public Guid? UserId { get; init; }
     public Guid? TenantId { get; init; }
@@ -250,7 +250,7 @@ public record SecurityContext {
 
 ### Example: Multi-Tenant Authorization
 
-```csharp{title="Example: Multi-Tenant Authorization" description="Demonstrates example: Multi-Tenant Authorization" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Example:", "Multi-Tenant"]}
+```csharp{title="Example: Multi-Tenant Authorization" description="Example: Multi-Tenant Authorization" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Example:", "Multi-Tenant"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IHttpContextAccessor _httpContext;
 
@@ -287,7 +287,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ## Policy Decision Trail
 
-```csharp{title="Policy Decision Trail" description="Demonstrates policy Decision Trail" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Policy", "Decision"]}
+```csharp{title="Policy Decision Trail" description="Policy Decision Trail" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Policy", "Decision"]}
 public record PolicyDecisionTrail {
     public List<PolicyDecision> Decisions { get; init; } = new();
 }
@@ -304,7 +304,7 @@ public record PolicyDecision {
 
 ### Example: Rate Limiting Policy
 
-```csharp{title="Example: Rate Limiting Policy" description="Demonstrates example: Rate Limiting Policy" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Example:", "Rate"]}
+```csharp{title="Example: Rate Limiting Policy" description="Example: Rate Limiting Policy" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Example:", "Rate"]}
 public class RateLimitingPolicy : IPolicy {
     public async Task<PolicyDecision> EvaluateAsync(
         MessageEnvelope envelope,
@@ -389,7 +389,7 @@ Metadata: {
 
 ## Debugging Information
 
-```csharp{title="Debugging Information" description="Demonstrates debugging Information" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Debugging", "Information"]}
+```csharp{title="Debugging Information" description="Debugging Information" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Debugging", "Information"]}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     [CallerMemberName] string memberName = "",
@@ -436,7 +436,7 @@ Stack Trace from Hops:
 
 ## Timing & Performance
 
-```csharp{title="Timing & Performance" description="Demonstrates timing & Performance" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Timing", "Performance"]}
+```csharp{title="Timing & Performance" description="Timing & Performance" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Timing", "Performance"]}
 public class MessageHop {
     public DateTimeOffset Timestamp { get; init; }  // When hop was created
     public TimeSpan? Duration { get; init; }        // How long this hop took
@@ -445,7 +445,7 @@ public class MessageHop {
 
 ### Example: Performance Profiling
 
-```csharp{title="Example: Performance Profiling" description="Demonstrates example: Performance Profiling" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Example:", "Performance"]}
+```csharp{title="Example: Performance Profiling" description="Example: Performance Profiling" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Example:", "Performance"]}
 var startTime = DateTimeOffset.UtcNow;
 
 // Business logic...
@@ -479,7 +479,7 @@ foreach (var hop in slowHops) {
 
 ## Visualizing Hops
 
-```csharp{title="Visualizing Hops" description="Demonstrates visualizing Hops" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Visualizing", "Hops"]}
+```csharp{title="Visualizing Hops" description="Visualizing Hops" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Visualizing", "Hops"]}
 public class HopVisualizer {
     public void PrintHops(MessageEnvelope envelope) {
         Console.WriteLine($"Message: {envelope.MessageId}");

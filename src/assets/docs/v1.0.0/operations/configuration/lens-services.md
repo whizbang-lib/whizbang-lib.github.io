@@ -16,7 +16,7 @@ codeReferences:
 
 ## Signature
 
-```csharp{title="Signature" description="Demonstrates signature" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "Signature"]}
+```csharp{title="Signature" description="Signature" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "Signature"]}
 public static IServiceCollection AddLensServices(
     this IServiceCollection services,
     Action<ServiceRegistrationOptions>? configure = null)

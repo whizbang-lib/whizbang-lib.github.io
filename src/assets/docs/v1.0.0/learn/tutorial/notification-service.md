@@ -849,7 +849,7 @@ var notificationWorker = builder.AddProject<Projects.ECommerce_NotificationWorke
 
 ### 2. Create Order
 
-```bash{title="Create Order" description="Demonstrates create Order" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
+```bash{title="Create Order" description="Create Order" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{ ... }'
@@ -861,7 +861,7 @@ Navigate to SendGrid dashboard → Activity Feed → Search for recipient email
 
 ### 4. Verify Database
 
-```sql{title="Verify Database" description="Demonstrates verify Database" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Database"]}
+```sql{title="Verify Database" description="Verify Database" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Database"]}
 SELECT * FROM notifications WHERE order_id = '<order-id>';
 ```
 
@@ -876,7 +876,7 @@ SELECT * FROM notifications WHERE order_id = '<order-id>';
 
 ### Multi-Event Subscriptions
 
-```csharp{title="Multi-Event Subscriptions" description="Demonstrates multi-Event Subscriptions" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Multi-Event", "Subscriptions"]}
+```csharp{title="Multi-Event Subscriptions" description="Multi-Event Subscriptions" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Multi-Event", "Subscriptions"]}
 // Single service subscribes to multiple events
 public class OrderConfirmationReceptor : IReceptor<OrderCreated, NotificationSent> { }
 public class PaymentReceiptReceptor : IReceptor<PaymentProcessed, NotificationSent> { }
@@ -911,7 +911,7 @@ public class ShipmentNotificationReceptor : IReceptor<ShipmentCreated, Notificat
 
 ### Unit Test - Email Rendering
 
-```csharp{title="Unit Test - Email Rendering" description="Demonstrates unit Test - Email Rendering" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Email Rendering" description="Unit Test - Email Rendering" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task OrderConfirmation_RendersTemplateCorrectlyAsync() {
   // Arrange

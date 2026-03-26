@@ -26,7 +26,7 @@ Whizbang provides a central clock service that tracks "active" time - time when 
 
 ## The Problem
 
-```csharp{title="The Problem" description="Demonstrates the Problem" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Problem"]}
+```csharp{title="The Problem" description="The Problem" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Problem"]}
 // Traditional timeout - triggers during debugging!
 var stopwatch = Stopwatch.StartNew();
 await DoWorkAsync();  // You hit a breakpoint here, examine variables for 30 seconds...
@@ -37,7 +37,7 @@ if (stopwatch.Elapsed > TimeSpan.FromSeconds(5)) {
 
 ## The Solution
 
-```csharp{title="The Solution" description="Demonstrates the Solution" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Solution"]}
+```csharp{title="The Solution" description="The Solution" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Solution"]}
 // Debugger-aware timeout - ignores breakpoint time
 using var clock = new DebuggerAwareClock();
 var stopwatch = clock.StartNew();
@@ -164,7 +164,7 @@ using var clock = new DebuggerAwareClock(new DebuggerAwareClockOptions {
 
 ### Basic Timeout Check
 
-```csharp{title="Basic Timeout Check" description="Demonstrates basic Timeout Check" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Basic", "Timeout"]}
+```csharp{title="Basic Timeout Check" description="Basic Timeout Check" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Basic", "Timeout"]}
 public class WorkCoordinator {
   private readonly IDebuggerAwareClock _clock;
 
@@ -190,7 +190,7 @@ public class WorkCoordinator {
 
 ### Monitoring Pause State
 
-```csharp{title="Monitoring Pause State" description="Demonstrates monitoring Pause State" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Monitoring", "Pause"]}
+```csharp{title="Monitoring Pause State" description="Monitoring Pause State" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Monitoring", "Pause"]}
 // Subscribe to pause/resume events (useful for VS Code extension)
 using var subscription = clock.OnPauseStateChanged(isPaused => {
   if (isPaused) {
@@ -203,7 +203,7 @@ using var subscription = clock.OnPauseStateChanged(isPaused => {
 
 ### Performance Metrics
 
-```csharp{title="Performance Metrics" description="Demonstrates performance Metrics" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "Performance", "Metrics"]}
+```csharp{title="Performance Metrics" description="Performance Metrics" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "Performance", "Metrics"]}
 var stopwatch = clock.StartNew();
 await DoWorkAsync();
 stopwatch.Halt();
@@ -237,7 +237,7 @@ public class MyService {
 
 ### Custom Configuration
 
-```csharp{title="Custom Configuration" description="Demonstrates custom Configuration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Custom", "Configuration"]}
+```csharp{title="Custom Configuration" description="Custom Configuration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Custom", "Configuration"]}
 builder.Services.AddWhizbang(options => {
   options.ConfigureDebuggerAwareClock(clockOptions => {
     clockOptions.Mode = DebuggerDetectionMode.CpuTimeSampling;

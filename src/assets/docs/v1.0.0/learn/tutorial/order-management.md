@@ -558,7 +558,7 @@ builder.Build().Run();
 
 ### 1. Start Aspire
 
-```bash{title="Start Aspire" description="Demonstrates start Aspire" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Start", "Aspire"]}
+```bash{title="Start Aspire" description="Start Aspire" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Start", "Aspire"]}
 cd ECommerce.AppHost
 dotnet run
 ```
@@ -567,7 +567,7 @@ Open Aspire Dashboard: `http://localhost:15000`
 
 ### 2. Create Order
 
-```bash{title="Create Order" description="Demonstrates create Order" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
+```bash{title="Create Order" description="Create Order" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{
@@ -628,7 +628,7 @@ curl -X POST http://localhost:5000/api/orders \
 
 ### 3. Verify Database
 
-```sql{title="Verify Database" description="Demonstrates verify Database" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Verify", "Database"]}
+```sql{title="Verify Database" description="Verify Database" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Verify", "Database"]}
 -- Connect to PostgreSQL
 psql -h localhost -U postgres -d orders
 
@@ -690,7 +690,7 @@ Check Aspire Dashboard:
 
 ### Message Context
 
-```csharp{title="Message Context" description="Demonstrates message Context" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Message", "Context"]}
+```csharp{title="Message Context" description="Message Context" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Message", "Context"]}
 public interface IMessageContext {
   Guid MessageId { get; }           // Unique ID for this message
   Guid? CorrelationId { get; }      // Business transaction ID
@@ -766,7 +766,7 @@ public class CreateOrderReceptorTests {
 
 ### Integration Test
 
-```csharp{title="Integration Test" description="Demonstrates integration Test" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Integration", "Test"]}
+```csharp{title="Integration Test" description="Integration Test" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Integration", "Test"]}
 [Test]
 public async Task CreateOrder_EndToEnd_PublishesEvent() {
   // Arrange

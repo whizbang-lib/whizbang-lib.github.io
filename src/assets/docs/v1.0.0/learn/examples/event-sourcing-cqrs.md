@@ -532,7 +532,7 @@ public class EventStoreQueryService {
 
 **Usage**:
 
-```csharp{title="Temporal Queries (2)" description="Demonstrates temporal Queries" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Temporal", "Queries"]}
+```csharp{title="Temporal Queries (2)" description="Temporal Queries" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Temporal", "Queries"]}
 // Get order state as of yesterday
 var orderYesterday = await queryService.LoadAsOfAsync(
   orderId,

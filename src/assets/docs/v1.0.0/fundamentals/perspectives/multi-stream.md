@@ -57,7 +57,7 @@ Multi-Stream (IGlobalPerspectiveFor):
 
 ## IGlobalPerspectiveFor Interface
 
-```csharp{title="IGlobalPerspectiveFor Interface" description="Demonstrates iGlobalPerspectiveFor Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "IGlobalPerspectiveFor", "Interface"]}
+```csharp{title="IGlobalPerspectiveFor Interface" description="IGlobalPerspectiveFor Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "IGlobalPerspectiveFor", "Interface"]}
 /// <summary>
 /// Multi-stream perspective that handles a single event type with partition key extraction.
 /// GetPartitionKey extracts the partition from events (like Marten's Identity method).
@@ -96,7 +96,7 @@ Aggregate order statistics per customer across all order streams.
 
 ### Events
 
-```csharp{title="Events" description="Demonstrates events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Events"]}
+```csharp{title="Events" description="Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Events"]}
 using Whizbang.Core;
 
 // Order created event (separate stream per order)
@@ -121,7 +121,7 @@ public record OrderCompletedEvent : IEvent {
 
 ### Read Model
 
-```csharp{title="Read Model" description="Demonstrates read Model" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Read", "Model"]}
+```csharp{title="Read Model" description="Read Model" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Read", "Model"]}
 // Customer statistics model (one per customer)
 public record CustomerStatisticsDto {
   public Guid CustomerId { get; init; }           // Partition key
@@ -134,7 +134,7 @@ public record CustomerStatisticsDto {
 
 ### Multi-Stream Perspective
 
-```csharp{title="Multi-Stream Perspective" description="Demonstrates multi-Stream Perspective" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Multi-Stream", "Perspective"]}
+```csharp{title="Multi-Stream Perspective" description="Multi-Stream Perspective" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Multi-Stream", "Perspective"]}
 using Whizbang.Core.Perspectives;
 
 public class CustomerStatisticsPerspective :
@@ -186,7 +186,7 @@ public class CustomerStatisticsPerspective :
 
 ### Guid Partition Key
 
-```csharp{title="Guid Partition Key" description="Demonstrates guid Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Guid", "Partition"]}
+```csharp{title="Guid Partition Key" description="Guid Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Guid", "Partition"]}
 // Partition by customer ID
 public class CustomerActivityPerspective :
   IGlobalPerspectiveFor<CustomerActivityDto, Guid, OrderCreatedEvent> {
@@ -203,7 +203,7 @@ public class CustomerActivityPerspective :
 
 ### String Partition Key
 
-```csharp{title="String Partition Key" description="Demonstrates string Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "String", "Partition"]}
+```csharp{title="String Partition Key" description="String Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "String", "Partition"]}
 // Partition by product category
 public class CategorySalesPerspective :
   IGlobalPerspectiveFor<CategorySalesDto, string, ProductSoldEvent> {
@@ -224,7 +224,7 @@ public class CategorySalesPerspective :
 
 ### Composite Partition Key
 
-```csharp{title="Composite Partition Key" description="Demonstrates composite Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Composite", "Partition"]}
+```csharp{title="Composite Partition Key" description="Composite Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Composite", "Partition"]}
 // Partition by tenant + customer
 public record TenantCustomerKey(Guid TenantId, Guid CustomerId);
 
@@ -306,7 +306,7 @@ Whizbang's multi-stream perspectives are inspired by [Marten's MultiStreamProjec
 
 ### Marten Pattern
 
-```csharp{title="Marten Pattern" description="Demonstrates marten Pattern" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Marten", "Pattern"]}
+```csharp{title="Marten Pattern" description="Marten Pattern" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Marten", "Pattern"]}
 // Marten (C#)
 public class TripProjection : MultiStreamProjection<Trip, string> {
   public TripProjection() {
@@ -328,7 +328,7 @@ public class TripProjection : MultiStreamProjection<Trip, string> {
 
 ### Whizbang Pattern
 
-```csharp{title="Whizbang Pattern" description="Demonstrates whizbang Pattern" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Whizbang", "Pattern"]}
+```csharp{title="Whizbang Pattern" description="Whizbang Pattern" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Whizbang", "Pattern"]}
 // Whizbang (C#)
 public class TripPerspective :
   IGlobalPerspectiveFor<TripDto, string, TripStartedEvent>,
@@ -449,7 +449,7 @@ public class TenantUsagePerspective :
 
 ### GetPartitionKey - Pure Function
 
-```csharp{title="GetPartitionKey - Pure Function" description="Demonstrates getPartitionKey - Pure Function" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "GetPartitionKey", "Pure"]}
+```csharp{title="GetPartitionKey - Pure Function" description="GetPartitionKey - Pure Function" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "GetPartitionKey", "Pure"]}
 // ✅ CORRECT: Pure function (deterministic, no side effects)
 public Guid GetPartitionKey(OrderCreatedEvent @event) {
   return @event.CustomerId;
@@ -469,7 +469,7 @@ public string GetPartitionKey(OrderCreatedEvent @event) {
 
 ### Apply - Pure Function
 
-```csharp{title="Apply - Pure Function" description="Demonstrates apply - Pure Function" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Apply", "Pure"]}
+```csharp{title="Apply - Pure Function" description="Apply - Pure Function" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Apply", "Pure"]}
 // ✅ CORRECT: Pure function (returns new instance)
 public CustomerDto Apply(CustomerDto currentData, OrderCreatedEvent @event) {
   return new CustomerDto {
@@ -544,7 +544,7 @@ INSERT INTO wh_perspective_checkpoints (
 
 ### Unit Tests
 
-```csharp{title="Unit Tests" description="Demonstrates unit Tests" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Unit", "Tests"]}
+```csharp{title="Unit Tests" description="Unit Tests" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Unit", "Tests"]}
 using TUnit.Assertions;
 using TUnit.Core;
 

@@ -36,7 +36,7 @@ var receipt = await dispatcher.SendAsync(new CreateOrder {
 
 ## DeliveryReceipt Structure
 
-```csharp{title="DeliveryReceipt Structure" description="Demonstrates deliveryReceipt Structure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "DeliveryReceipt", "Structure"]}
+```csharp{title="DeliveryReceipt Structure" description="DeliveryReceipt Structure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "DeliveryReceipt", "Structure"]}
 public record DeliveryReceipt(
     Guid MessageId,        // Unique message identifier
     Guid CorrelationId,    // For distributed tracing
@@ -49,7 +49,7 @@ public record DeliveryReceipt(
 
 ### IStreamIdExtractor Interface {#istreamidextractor}
 
-```csharp{title="IStreamIdExtractor Interface" description="Demonstrates iStreamIdExtractor Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IStreamIdExtractor", "Interface"]}
+```csharp{title="IStreamIdExtractor Interface" description="IStreamIdExtractor Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IStreamIdExtractor", "Interface"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -228,7 +228,7 @@ When the service assembly loads:
 
 ### Tracking Message Delivery
 
-```csharp{title="Tracking Message Delivery" description="Demonstrates tracking Message Delivery" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Tracking", "Message"]}
+```csharp{title="Tracking Message Delivery" description="Tracking Message Delivery" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Tracking", "Message"]}
 [HttpPost("orders")]
 public async Task<ActionResult> CreateOrder(
     [FromBody] CreateOrderRequest request,
@@ -254,7 +254,7 @@ public async Task<ActionResult> CreateOrder(
 
 ### Correlation Tracking
 
-```csharp{title="Correlation Tracking" description="Demonstrates correlation Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Correlation", "Tracking"]}
+```csharp{title="Correlation Tracking" description="Correlation Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Correlation", "Tracking"]}
 // Check status by correlation ID
 [HttpGet("orders/status/{correlationId:guid}")]
 public async Task<ActionResult> GetStatus(Guid correlationId) {
@@ -270,7 +270,7 @@ public async Task<ActionResult> GetStatus(Guid correlationId) {
 
 ### Idempotency
 
-```csharp{title="Idempotency" description="Demonstrates idempotency" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Idempotency"]}
+```csharp{title="Idempotency" description="Idempotency" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Idempotency"]}
 // Use MessageId for idempotency
 public async Task ProcessWithIdempotencyAsync(DeliveryReceipt receipt) {
   if (await _idempotencyStore.ExistsAsync(receipt.MessageId)) {

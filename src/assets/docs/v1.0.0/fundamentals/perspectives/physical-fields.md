@@ -139,7 +139,7 @@ public sealed class PerspectiveStorageAttribute(FieldStorageMode mode) : Attribu
 
 ### JsonOnly (Default)
 
-```csharp{title="JsonOnly (Default)" description="Demonstrates jsonOnly (Default)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "JsonOnly", "Default"]}
+```csharp{title="JsonOnly (Default)" description="JsonOnly (Default)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "JsonOnly", "Default"]}
 // No attribute needed - this is the default
 public record ProductDto {
     public decimal Price { get; init; }      // Stored in JSONB only

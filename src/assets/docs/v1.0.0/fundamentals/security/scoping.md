@@ -57,7 +57,7 @@ Storing scope separately from your domain data provides:
 
 ### Accessing Scope Values
 
-```csharp{title="Accessing Scope Values" description="Demonstrates accessing Scope Values" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Accessing", "Scope"]}
+```csharp{title="Accessing Scope Values" description="Accessing Scope Values" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Accessing", "Scope"]}
 var scope = new PerspectiveScope {
   TenantId = "tenant-123",
   UserId = "user-456"
@@ -90,7 +90,7 @@ Whizbang provides marker interfaces for models that include scope identifiers in
 
 ### ITenantScoped
 
-```csharp{title="ITenantScoped" description="Demonstrates iTenantScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ITenantScoped"]}
+```csharp{title="ITenantScoped" description="ITenantScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ITenantScoped"]}
 public interface ITenantScoped {
   string TenantId { get; }
 }
@@ -108,7 +108,7 @@ public class Order : ITenantScoped {
 
 ### IUserScoped
 
-```csharp{title="IUserScoped" description="Demonstrates iUserScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IUserScoped"]}
+```csharp{title="IUserScoped" description="IUserScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IUserScoped"]}
 public interface IUserScoped : ITenantScoped {
   string UserId { get; }
 }
@@ -127,7 +127,7 @@ public class SavedSearch : IUserScoped {
 
 ### IOrganizationScoped
 
-```csharp{title="IOrganizationScoped" description="Demonstrates iOrganizationScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IOrganizationScoped"]}
+```csharp{title="IOrganizationScoped" description="IOrganizationScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IOrganizationScoped"]}
 public interface IOrganizationScoped : ITenantScoped {
   string OrganizationId { get; }
 }
@@ -145,7 +145,7 @@ public class Department : IOrganizationScoped {
 
 ### ICustomerScoped
 
-```csharp{title="ICustomerScoped" description="Demonstrates iCustomerScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ICustomerScoped"]}
+```csharp{title="ICustomerScoped" description="ICustomerScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ICustomerScoped"]}
 public interface ICustomerScoped : ITenantScoped {
   string CustomerId { get; }
 }
@@ -251,7 +251,7 @@ public static class ScopeFilterExtensions {
 
 ### Usage
 
-```csharp{title="Usage" description="Demonstrates usage" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Usage"]}
+```csharp{title="Usage" description="Usage" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Usage"]}
 // Use predefined patterns
 var myRecords = ScopeFilterExtensions.TenantUser;
 var sharedWithMe = ScopeFilterExtensions.TenantPrincipal;
@@ -280,7 +280,7 @@ filterInfo.UseOrLogicForUserAndPrincipal;  // false
 
 ### ScopeFilterInfo
 
-```csharp{title="ScopeFilterInfo" description="Demonstrates scopeFilterInfo" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "ScopeFilterInfo"]}
+```csharp{title="ScopeFilterInfo" description="ScopeFilterInfo" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "ScopeFilterInfo"]}
 public readonly record struct ScopeFilterInfo {
   public ScopeFilter Filters { get; init; }
   public string? TenantId { get; init; }

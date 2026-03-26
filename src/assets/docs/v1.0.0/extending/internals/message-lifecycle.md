@@ -406,7 +406,7 @@ graph TB
 
 ### Phase 1: Validation
 
-```csharp{title="Phase 1: Validation" description="Demonstrates phase 1: Validation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Validation"]}
+```csharp{title="Phase 1: Validation" description="Phase 1: Validation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Validation"]}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {
@@ -430,7 +430,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 ### Phase 2: Business Logic
 
-```csharp{title="Phase 2: Business Logic" description="Demonstrates phase 2: Business Logic" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Business"]}
+```csharp{title="Phase 2: Business Logic" description="Phase 2: Business Logic" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Business"]}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {
@@ -468,7 +468,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 ### Phase 3: Event Generation
 
-```csharp{title="Phase 3: Event Generation" description="Demonstrates phase 3: Event Generation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Event"]}
+```csharp{title="Phase 3: Event Generation" description="Phase 3: Event Generation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Event"]}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {
@@ -558,7 +558,7 @@ var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(comman
 
 ### 1. Immediate Strategy (Lowest Latency)
 
-```csharp{title="Immediate Strategy (Lowest Latency)" description="Demonstrates immediate Strategy (Lowest Latency)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Internals", "Immediate", "Strategy"]}
+```csharp{title="Immediate Strategy (Lowest Latency)" description="Immediate Strategy (Lowest Latency)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Internals", "Immediate", "Strategy"]}
 public class ImmediateWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
     public async Task QueueOutboxMessage(NewOutboxMessage message) {
         _pendingOutbox.Add(message);
@@ -575,7 +575,7 @@ public class ImmediateWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
 
 ### 2. Scoped Strategy (Per-Request Batching)
 
-```csharp{title="Scoped Strategy (Per-Request Batching)" description="Demonstrates scoped Strategy (Per-Request Batching)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Scoped", "Strategy"]}
+```csharp{title="Scoped Strategy (Per-Request Batching)" description="Scoped Strategy (Per-Request Batching)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Scoped", "Strategy"]}
 public class ScopedWorkCoordinatorStrategy : IWorkCoordinatorStrategy, IAsyncDisposable {
     public async Task QueueOutboxMessage(NewOutboxMessage message) {
         _pendingOutbox.Add(message);
@@ -595,7 +595,7 @@ public class ScopedWorkCoordinatorStrategy : IWorkCoordinatorStrategy, IAsyncDis
 
 ### 3. Interval Strategy (Highest Throughput)
 
-```csharp{title="Interval Strategy (Highest Throughput)" description="Demonstrates interval Strategy (Highest Throughput)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Interval", "Strategy"]}
+```csharp{title="Interval Strategy (Highest Throughput)" description="Interval Strategy (Highest Throughput)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Interval", "Strategy"]}
 public class IntervalWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
     public async Task QueueOutboxMessage(NewOutboxMessage message) {
         _pendingOutbox.Add(message);

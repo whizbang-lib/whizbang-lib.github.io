@@ -61,7 +61,7 @@ Service C (PaymentWorker)
 
 ### Storing Envelope in Outbox
 
-```csharp{title="Storing Envelope in Outbox" description="Demonstrates storing Envelope in Outbox" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Storing", "Envelope", "Outbox"]}
+```csharp{title="Storing Envelope in Outbox" description="Storing Envelope in Outbox" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Storing", "Envelope", "Outbox"]}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {
@@ -122,7 +122,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 ### Azure Service Bus Integration
 
-```csharp{title="Azure Service Bus Integration" description="Demonstrates azure Service Bus Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Azure", "Service", "Bus"]}
+```csharp{title="Azure Service Bus Integration" description="Azure Service Bus Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Azure", "Service", "Bus"]}
 public class AzureServiceBusTransport : IMessageTransport {
     public async Task PublishAsync(
         string topic,
@@ -165,7 +165,7 @@ public class AzureServiceBusTransport : IMessageTransport {
 
 ### Inbox Deduplication + Hop Restoration
 
-```csharp{title="Inbox Deduplication + Hop Restoration" description="Demonstrates inbox Deduplication + Hop Restoration" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Inbox", "Deduplication", "Hop"]}
+```csharp{title="Inbox Deduplication + Hop Restoration" description="Inbox Deduplication + Hop Restoration" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Inbox", "Deduplication", "Hop"]}
 public async Task SubscribeAsync(
     string topic,
     Func<MessageEnvelope, CancellationToken, Task> handler,
@@ -250,7 +250,7 @@ public async Task SubscribeAsync(
 
 ### InventoryWorker Example
 
-```csharp{title="InventoryWorker Example" description="Demonstrates inventoryWorker Example" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "InventoryWorker", "Example"]}
+```csharp{title="InventoryWorker Example" description="InventoryWorker Example" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "InventoryWorker"]}
 public async Task ProcessOrderCreatedAsync(
     MessageEnvelope envelope,
     CancellationToken ct = default) {
@@ -324,7 +324,7 @@ public async Task ProcessOrderCreatedAsync(
 
 ### Find Complete Workflow
 
-```sql{title="Find Complete Workflow" description="Demonstrates find Complete Workflow" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Find", "Complete", "Workflow"]}
+```sql{title="Find Complete Workflow" description="Find Complete Workflow" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Sql", "Find", "Complete", "Workflow"]}
 -- Find all messages in a workflow (all services)
 SELECT
     o.message_id,
@@ -348,7 +348,7 @@ msg-003    | PaymentProcessed   | payment   | 2024-12-12 10:00:02 | [API Gateway
 
 ### Visualize Hop Accumulation
 
-```csharp{title="Visualize Hop Accumulation" description="Demonstrates visualize Hop Accumulation" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Visualize", "Hop", "Accumulation"]}
+```csharp{title="Visualize Hop Accumulation" description="Visualize Hop Accumulation" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Visualize", "Hop", "Accumulation"]}
 public void PrintHopAccumulation(Guid correlationId) {
     var messages = GetMessagesByCorrelation(correlationId);
 
@@ -389,7 +389,7 @@ PaymentProcessed (2024-12-12 10:00:02):
 
 ### Extracting Security from Hops
 
-```csharp{title="Extracting Security from Hops" description="Demonstrates extracting Security from Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Extracting", "Security", "Hops"]}
+```csharp{title="Extracting Security from Hops" description="Extracting Security from Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Extracting", "Security", "Hops"]}
 public async Task<InventoryReserved> HandleAsync(
     MessageEnvelope envelope,
     CancellationToken ct = default) {
@@ -452,7 +452,7 @@ public async Task<InventoryReserved> HandleAsync(
 3. Hops not stored in outbox
 
 **Solution**:
-```csharp{title="Problem: Missing Hops" description="Demonstrates problem: Missing Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Problem:", "Missing", "Hops"]}
+```csharp{title="Problem: Missing Hops" description="Problem: Missing Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Problem:", "Missing", "Hops"]}
 // Verify hops are inherited
 var newEnvelope = MessageEnvelope.Create(
     /* ... */,
@@ -475,7 +475,7 @@ Debug.Assert(deserialized.Hops.Count == envelope.Hops.Count);
 3. Loop repeats forever
 
 **Solution**:
-```csharp{title="Problem: Circular Dependencies" description="Demonstrates problem: Circular Dependencies" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Problem:", "Circular", "Dependencies"]}
+```csharp{title="Problem: Circular Dependencies" description="Problem: Circular Dependencies" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Problem:", "Circular", "Dependencies"]}
 // Detect circular dependency via hop count
 if (envelope.Hops.Count > 10) {
     _logger.LogError(
@@ -502,7 +502,7 @@ if (envelope.Hops.Count > 10) {
 
 ### Serialization Performance
 
-```csharp{title="Serialization Performance" description="Demonstrates serialization Performance" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Serialization", "Performance"]}
+```csharp{title="Serialization Performance" description="Serialization Performance" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Serialization", "Performance"]}
 // ✅ Efficient: Use JsonTypeInfo for AOT
 var json = JsonSerializer.Serialize(
     envelope,

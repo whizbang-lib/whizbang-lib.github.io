@@ -31,7 +31,7 @@ Whizbang's event store is designed for:
 
 ### Appending Events
 
-```csharp{title="Appending Events" description="Demonstrates appending Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Appending"]}
+```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Appending"]}
 public class OrderHandler {
   private readonly IEventStore _eventStore;
 
@@ -47,7 +47,7 @@ public class OrderHandler {
 
 ### Reading Events
 
-```csharp{title="Reading Events" description="Demonstrates reading Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Reading"]}
+```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Reading"]}
 // Read all events of a specific type
 await foreach (var envelope in _eventStore.ReadAsync<OrderCreatedEvent>(orderId, fromSequence: 0)) {
   var evt = envelope.Payload;
@@ -77,7 +77,7 @@ The decorator is automatically applied when using `DecorateEventStoreWithSyncTra
 
 ### Usage
 
-```csharp{title="Usage" description="Demonstrates usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Usage"]}
+```csharp{title="Usage" description="Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Usage"]}
 var syncResult = await _eventStore.AppendAndWaitAsync<OrderCreatedEvent, OrderProjection>(
     streamId: orderId,
     message: new OrderCreatedEvent(orderId, customerId, items),
@@ -181,7 +181,7 @@ await _eventStore.AppendAsync(orderId, evt);
 
 ## IEventStore Interface
 
-```csharp{title="IEventStore Interface" description="Demonstrates iEventStore Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "IEventStore", "Interface"]}
+```csharp{title="IEventStore Interface" description="IEventStore Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "IEventStore", "Interface"]}
 public interface IEventStore {
   // Append with envelope (full control)
   Task AppendAsync<TMessage>(Guid streamId, MessageEnvelope<TMessage> envelope, CancellationToken ct = default);

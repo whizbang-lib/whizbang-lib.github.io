@@ -28,7 +28,7 @@ The `PolymorphicTypeExtensions` class enables:
 
 ## Installation
 
-```bash{title="Installation" description="Demonstrates installation" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Installation"]}
+```bash{title="Installation" description="Installation" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Installation"]}
 dotnet add package Whizbang.Transports.HotChocolate
 ```
 
@@ -36,7 +36,7 @@ dotnet add package Whizbang.Transports.HotChocolate
 
 ### Base Type with Attributes
 
-```csharp{title="Base Type with Attributes" description="Demonstrates base Type with Attributes" category="API" difficulty="ADVANCED" tags=["Apis", "Graphql", "Base", "Type"]}
+```csharp{title="Base Type with Attributes" description="Base Type with Attributes" category="API" difficulty="ADVANCED" tags=["Apis", "Graphql", "Base", "Type"]}
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(TextFieldSettings), "text")]
 [JsonDerivedType(typeof(NumberFieldSettings), "number")]
@@ -176,7 +176,7 @@ type DateFieldSettings implements AbstractFieldSettings {
 
 ### Model Definitions
 
-```csharp{title="Model Definitions" description="Demonstrates model Definitions" category="API" difficulty="ADVANCED" tags=["Apis", "Graphql", "Model", "Definitions"]}
+```csharp{title="Model Definitions" description="Model Definitions" category="API" difficulty="ADVANCED" tags=["Apis", "Graphql", "Model", "Definitions"]}
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(EmailNotification), "email")]
 [JsonDerivedType(typeof(SmsNotification), "sms")]
@@ -202,7 +202,7 @@ public class PushNotification : NotificationSettings {
 
 ### Service Registration
 
-```csharp{title="Service Registration" description="Demonstrates service Registration" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Service", "Registration"]}
+```csharp{title="Service Registration" description="Service Registration" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Service", "Registration"]}
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
@@ -218,7 +218,7 @@ app.Run();
 
 ### Query Type
 
-```csharp{title="Query Type" description="Demonstrates query Type" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Query", "Type"]}
+```csharp{title="Query Type" description="Query Type" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Query", "Type"]}
 public class Query {
     public NotificationSettings GetUserNotificationSettings(
         [Service] IUserService userService,
@@ -254,7 +254,7 @@ public class Query {
 
 ### Missing JsonPolymorphic Attribute
 
-```csharp{title="Missing JsonPolymorphic Attribute" description="Demonstrates missing JsonPolymorphic Attribute" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Missing", "JsonPolymorphic"]}
+```csharp{title="Missing JsonPolymorphic Attribute" description="Missing JsonPolymorphic Attribute" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Missing", "JsonPolymorphic"]}
 // This will throw InvalidOperationException
 builder.Services.AddGraphQLServer()
     .AddPolymorphicType<SomeTypeWithoutAttribute>();
@@ -263,7 +263,7 @@ builder.Services.AddGraphQLServer()
 
 ### Missing JsonDerivedType Attributes
 
-```csharp{title="Missing JsonDerivedType Attributes" description="Demonstrates missing JsonDerivedType Attributes" category="API" difficulty="ADVANCED" tags=["Apis", "Graphql", "Missing", "JsonDerivedType"]}
+```csharp{title="Missing JsonDerivedType Attributes" description="Missing JsonDerivedType Attributes" category="API" difficulty="ADVANCED" tags=["Apis", "Graphql", "Missing", "JsonDerivedType"]}
 [JsonPolymorphic]
 public abstract class BaseType { } // No [JsonDerivedType] attributes
 

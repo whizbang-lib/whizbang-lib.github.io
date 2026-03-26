@@ -42,7 +42,7 @@ When you see this diagnostic:
 
 ## Example: Physical Field Discovery
 
-```csharp{title="Example: Physical Field Discovery" description="Demonstrates example: Physical Field Discovery" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Physical"]}
+```csharp{title="Example: Physical Field Discovery" description="Example: Physical Field Discovery" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Physical"]}
 public record ProductDto {
   [StreamKey]
   public Guid ProductId { get; init; }
@@ -111,7 +111,7 @@ dotnet build -v detailed
 
 ### Suppress (if too noisy)
 
-```xml{title="Suppress (if too noisy)" description="Demonstrates suppress (if too noisy)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppress", "Too"]}
+```xml{title="Suppress (if too noisy)" description="Suppress (if too noisy)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppress", "Too"]}
 <PropertyGroup>
   <NoWarn>$(NoWarn);WHIZ807</NoWarn>
 </PropertyGroup>

@@ -43,7 +43,7 @@ This is an advanced topic for building extensible systems on top of Whizbang. Mo
 
 ### Pattern 1: IPlugin Contract
 
-```csharp{title="Pattern 1: IPlugin Contract" description="Demonstrates pattern 1: IPlugin Contract" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "IPlugin"]}
+```csharp{title="Pattern 1: IPlugin Contract" description="Pattern 1: IPlugin Contract" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "IPlugin"]}
 public interface IWhizbangPlugin {
   string Name { get; }
   Version Version { get; }
@@ -55,7 +55,7 @@ public interface IWhizbangPlugin {
 
 ### Pattern 2: Plugin Loader
 
-```csharp{title="Pattern 2: Plugin Loader" description="Demonstrates pattern 2: Plugin Loader" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Plugin"]}
+```csharp{title="Pattern 2: Plugin Loader" description="Pattern 2: Plugin Loader" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Plugin"]}
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -86,7 +86,7 @@ public class PluginLoader {
 
 ### Pattern 3: Receptor Plugin
 
-```csharp{title="Pattern 3: Receptor Plugin" description="Demonstrates pattern 3: Receptor Plugin" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Receptor"]}
+```csharp{title="Pattern 3: Receptor Plugin" description="Pattern 3: Receptor Plugin" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Receptor"]}
 // Plugin assembly
 public class CustomReceptorPlugin : IWhizbangPlugin {
   public string Name => "CustomReceptors";
@@ -108,7 +108,7 @@ public class CustomReceptorPlugin : IWhizbangPlugin {
 
 ### Pattern 4: Reloadable Plugins
 
-```csharp{title="Pattern 4: Reloadable Plugins" description="Demonstrates pattern 4: Reloadable Plugins" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Reloadable"]}
+```csharp{title="Pattern 4: Reloadable Plugins" description="Pattern 4: Reloadable Plugins" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Reloadable"]}
 public class HotReloadPluginManager {
   private readonly Dictionary<string, AssemblyLoadContext> _contexts = [];
   private FileSystemWatcher? _watcher;

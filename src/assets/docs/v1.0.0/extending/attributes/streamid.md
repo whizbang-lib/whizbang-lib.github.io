@@ -19,13 +19,13 @@ The `[StreamId]` attribute marks a property or parameter as the stream identifie
 
 ## Namespace
 
-```csharp{title="Namespace" description="Demonstrates namespace" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Namespace"]}
+```csharp{title="Namespace" description="Namespace" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Namespace"]}
 using Whizbang.Core;
 ```
 
 ## Syntax
 
-```csharp{title="Syntax" description="Demonstrates syntax" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Syntax"]}
+```csharp{title="Syntax" description="Syntax" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Syntax"]}
 // On a record parameter
 public record OrderCreated([property: StreamId] Guid OrderId, string ProductName) : IEvent;
 
@@ -160,21 +160,21 @@ public record OrderCancelled : IEvent {
 
 ### Guid (Most Common)
 
-```csharp{title="Guid StreamId" description="Standard Guid stream identifier" category="Usage" difficulty="BEGINNER" tags=["StreamId", "Guid"]}
+```csharp{title="Guid StreamId" description="Standard Guid stream identifier" category="Usage" difficulty="BEGINNER" tags=["Extending", "Attributes", "C#", "Guid", "StreamId"]}
 [StreamId]
 public Guid ProductId { get; init; }
 ```
 
 ### Nullable Guid
 
-```csharp{title="Nullable Guid StreamId" description="Nullable Guid for optional stream association" category="Usage" difficulty="INTERMEDIATE" tags=["StreamId", "Guid", "Nullable"]}
+```csharp{title="Nullable Guid StreamId" description="Nullable Guid for optional stream association" category="Usage" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "C#", "Nullable", "Guid"]}
 [StreamId]
 public Guid? ParentOrderId { get; init; }  // May be null for root orders
 ```
 
 ### WhizbangId Types
 
-```csharp{title="WhizbangId StreamId" description="Strongly-typed ID as stream identifier" category="Usage" difficulty="INTERMEDIATE" tags=["StreamId", "WhizbangId", "Value-Objects"]}
+```csharp{title="WhizbangId StreamId" description="Strongly-typed ID as stream identifier" category="Usage" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "C#", "WhizbangId", "StreamId"]}
 // Using Vogen-generated value object
 [StreamId]
 public ProductId ProductId { get; init; }
@@ -234,7 +234,7 @@ public record ValidEvent : IEvent {
 
 Both attributes often appear on the same property, as the stream ID for storage and the stream key for perspectives are typically the same:
 
-```csharp{title="StreamId and StreamKey Together" description="Combining StreamId and StreamKey attributes" category="Usage" difficulty="INTERMEDIATE" tags=["StreamId", "StreamKey", "Combined"]}
+```csharp{title="StreamId and StreamKey Together" description="Combining StreamId and StreamKey attributes" category="Usage" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "C#", "StreamId", "StreamKey"]}
 public record OrderCreated : IEvent {
   [StreamId]   // For event store stream identification
   [StreamKey]  // For perspective event ordering

@@ -380,7 +380,7 @@ histogram_quantile(0.95, rate(whizbang_work_coordinator_process_batch_duration_b
 
 For .NET Aspire projects, metrics appear automatically in the Aspire dashboard:
 
-```csharp{title="Aspire Metrics Integration" description="Configure Whizbang meters for Aspire dashboard" category="Configuration" difficulty="BEGINNER" tags=["Metrics", "Aspire", "Configuration"]}
+```csharp{title="Aspire Metrics Integration" description="Configure Whizbang meters for Aspire dashboard" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Observability", "C#", "Aspire", "Metrics"]}
 // In ServiceDefaults project
 builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => {

@@ -370,7 +370,7 @@ The `SyncContext` provides handlers with information about the perspective sync 
 
 #### SyncContext Properties
 
-```csharp{title="SyncContext Properties" description="Demonstrates syncContext Properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "SyncContext", "Properties"]}
+```csharp{title="SyncContext Properties" description="SyncContext Properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "SyncContext", "Properties"]}
 public sealed class SyncContext {
   public Guid StreamId { get; init; }
   public Type PerspectiveType { get; init; }
@@ -507,7 +507,7 @@ public class Dispatcher {
 
 #### Implementation
 
-```csharp{title="Implementation" description="Demonstrates implementation" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Implementation"]}
+```csharp{title="Implementation" description="Implementation" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Implementation"]}
 public static class ScopedEventTrackerAccessor {
   private static readonly AsyncLocal<IScopedEventTracker?> _current = new();
 
@@ -664,7 +664,7 @@ Internally, waiter registrations are keyed by `awaiterId` using `ConcurrentDicti
 All awaiter classes implement `IAwaiterIdentity`, providing a unique `AwaiterId` for per-awaiter tracking and cleanup.
 :::
 
-```csharp{title="Awaiter Identity" description=":::new All awaiter classes implement IAwaiterIdentity, providing a unique AwaiterId for per-awaiter tracking and" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Awaiter", "Identity"]}
+```csharp{title="Awaiter Identity" description="Awaiter Identity" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Awaiter", "Identity"]}
 public interface IAwaiterIdentity {
   Guid AwaiterId { get; }
 }
@@ -852,7 +852,7 @@ public sealed class AwaitPerspectiveSyncAttribute(Type perspectiveType) : Attrib
 
 #### Behavior Options
 
-```csharp{title="Behavior Options" description="Demonstrates behavior Options" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Behavior", "Options"]}
+```csharp{title="Behavior Options" description="Behavior Options" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Behavior", "Options"]}
 public enum SyncFireBehavior {
   /// <summary>
   /// Only invoke handler if sync completes successfully. Throw on timeout.
@@ -967,7 +967,7 @@ public async ValueTask LocalInvokeAsync<TMessage>(TMessage message) {
 
 #### Implementation Logic
 
-```csharp{title="Implementation Logic" description="Demonstrates implementation Logic" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Implementation", "Logic"]}
+```csharp{title="Implementation Logic" description="Implementation Logic" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Implementation", "Logic"]}
 private async ValueTask _awaitPerspectiveSyncIfNeededAsync(
     object message,
     Type messageType,
@@ -1263,7 +1263,7 @@ var options = SyncFilter.ForEventTypes<OrderCreatedEvent>()
 
 ### Combined AND/OR
 
-```csharp{title="Combined AND/OR" description="Demonstrates combined AND/OR" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Combined"]}
+```csharp{title="Combined AND/OR" description="Combined AND/OR" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Combined"]}
 // (OrderCreated AND PaymentProcessed) OR OrderCancelled
 var options = SyncFilter.ForStream(orderId)
     .AndEventTypes<OrderCreatedEvent>()
@@ -1310,21 +1310,21 @@ The system uses CPU time sampling to detect when execution is frozen at a breakp
 
 ### Do: Use CurrentScope for Same-Request Consistency
 
-```csharp{title="Do: Use CurrentScope for Same-Request Consistency" description="Demonstrates do: Use CurrentScope for Same-Request Consistency" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "CurrentScope"]}
+```csharp{title="Do: Use CurrentScope for Same-Request Consistency" description="Do: Use CurrentScope for Same-Request Consistency" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "CurrentScope"]}
 // Handler chain within same HTTP request - tracks all emitted events
 SyncFilter.CurrentScope()
 ```
 
 ### Do: Use ForStream for Specific Stream Consistency
 
-```csharp{title="Do: Use ForStream for Specific Stream Consistency" description="Demonstrates do: Use ForStream for Specific Stream Consistency" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "ForStream"]}
+```csharp{title="Do: Use ForStream for Specific Stream Consistency" description="Do: Use ForStream for Specific Stream Consistency" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "ForStream"]}
 // Wait for events on a specific stream
 SyncFilter.ForStream(orderId)
 ```
 
 ### Don't: Over-synchronize
 
-```csharp{title="Don't: Over-synchronize" description="Demonstrates don't: Over-synchronize" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "Over-synchronize"]}
+```csharp{title="Don't: Over-synchronize" description="Don't: Over-synchronize" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "Over-synchronize"]}
 // Avoid: Waiting for all events when you only need specific ones
 SyncFilter.All()  // Too broad
 
@@ -1334,7 +1334,7 @@ SyncFilter.ForEventTypes<OrderCreatedEvent>()
 
 ### Do: Set Appropriate Timeouts
 
-```csharp{title="Do: Set Appropriate Timeouts" description="Demonstrates do: Set Appropriate Timeouts" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "Set"]}
+```csharp{title="Do: Set Appropriate Timeouts" description="Do: Set Appropriate Timeouts" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "Set"]}
 // Short timeout for real-time responses
 .WithTimeout(TimeSpan.FromMilliseconds(500))
 

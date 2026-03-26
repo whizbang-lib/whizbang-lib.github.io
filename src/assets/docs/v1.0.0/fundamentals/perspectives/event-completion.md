@@ -108,7 +108,7 @@ public class OrderService {
 
 ### Configuration Options
 
-```csharp{title="Configuration Options" description="Demonstrates configuration Options" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Configuration", "Options"]}
+```csharp{title="Configuration Options" description="Configuration Options" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Configuration", "Options"]}
 public sealed class DispatchOptions {
     // When true, LocalInvokeAsync waits for all perspectives to finish
     public bool WaitForPerspectives { get; set; } = false;
@@ -180,7 +180,7 @@ public async ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(
 
 ### _waitForPerspectivesIfNeededAsync Implementation
 
-```csharp{title="_waitForPerspectivesIfNeededAsync Implementation" description="Demonstrates _waitForPerspectivesIfNeededAsync Implementation" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "_waitForPerspectivesIfNeededAsync", "Implementation"]}
+```csharp{title="_waitForPerspectivesIfNeededAsync Implementation" description="_waitForPerspectivesIfNeededAsync Implementation" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "_waitForPerspectivesIfNeededAsync", "Implementation"]}
 private async ValueTask _waitForPerspectivesIfNeededAsync(DispatchOptions options) {
   // Short-circuit if not waiting for perspectives
   if (!options.WaitForPerspectives) {
@@ -343,7 +343,7 @@ public class OrderOrchestrator {
 
 ### API Reference
 
-```csharp{title="API Reference" description="Demonstrates aPI Reference" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "API", "Reference"]}
+```csharp{title="API Reference" description="API Reference" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "API", "Reference"]}
 public interface IEventCompletionAwaiter : IAwaiterIdentity {
     /// <summary>
     /// Unique identity for per-awaiter tracking and cleanup.
@@ -450,7 +450,7 @@ try {
 
 ### Do: Use for External API Responses
 
-```csharp{title="Do: Use for External API Responses" description="Demonstrates do: Use for External API Responses" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "External"]}
+```csharp{title="Do: Use for External API Responses" description="Do: Use for External API Responses" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "External"]}
 [HttpPost]
 public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
     var options = new DispatchOptions().WithPerspectiveWait();
@@ -464,7 +464,7 @@ public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
 
 ### Do: Set Appropriate Timeouts
 
-```csharp{title="Do: Set Appropriate Timeouts" description="Demonstrates do: Set Appropriate Timeouts" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "Set"]}
+```csharp{title="Do: Set Appropriate Timeouts" description="Do: Set Appropriate Timeouts" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "Set"]}
 // Short timeout for real-time APIs
 .WithPerspectiveWait(TimeSpan.FromSeconds(5))
 
@@ -474,7 +474,7 @@ public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
 
 ### Don't: Use When Not Needed
 
-```csharp{title="Don't: Use When Not Needed" description="Demonstrates don't: Use When Not Needed" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "When"]}
+```csharp{title="Don't: Use When Not Needed" description="Don't: Use When Not Needed" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "When"]}
 // Fire-and-forget scenarios don't need to wait
 await _dispatcher.SendAsync(command, ct); // No waiting
 
@@ -485,7 +485,7 @@ await _dispatcher.LocalInvokeAsync(command, options, ct); // Waits
 
 ### Don't: Confuse with Perspective-Specific Sync
 
-```csharp{title="Don't: Confuse with Perspective-Specific Sync" description="Demonstrates don't: Confuse with Perspective-Specific Sync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "Confuse"]}
+```csharp{title="Don't: Confuse with Perspective-Specific Sync" description="Don't: Confuse with Perspective-Specific Sync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "Confuse"]}
 // WRONG: Using event completion when you only need one perspective
 var options = new DispatchOptions().WithPerspectiveWait();
 await _dispatcher.LocalInvokeAsync(command, options, ct);

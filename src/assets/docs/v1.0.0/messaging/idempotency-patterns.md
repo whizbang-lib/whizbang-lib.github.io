@@ -50,7 +50,7 @@ Idempotency ensures that processing the same message multiple times produces the
 
 ### Database Schema
 
-```sql{title="Database Schema" description="Demonstrates database Schema" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Database", "Schema"]}
+```sql{title="Database Schema" description="Database Schema" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Sql", "Database", "Schema"]}
 CREATE TABLE wh_message_deduplication (
   message_id UUID PRIMARY KEY,
   first_seen_at TIMESTAMPTZ NOT NULL
@@ -114,7 +114,7 @@ sequenceDiagram
 
 **PostgreSQL Function** (lines 348-404 in `014_CreateProcessWorkBatchFunction.sql`):
 
-```sql{title="Implementation Details" description="PostgreSQL Function (lines 348-404 in `014_CreateProcessWorkBatchFunction." category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Implementation", "Details"]}
+```sql{title="Implementation Details" description="PostgreSQL Function (lines 348-404 in `014_CreateProcessWorkBatchFunction." category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Sql", "Implementation", "Details"]}
 -- Store new inbox messages (with partition assignment and deduplication)
 IF jsonb_array_length(p_new_inbox_messages) > 0 THEN
   -- First, record all message IDs in permanent deduplication table
@@ -210,7 +210,7 @@ graph TD
 
 ### Example: Idempotent Command Handler
 
-```csharp{title="Example: Idempotent Command Handler" description="Demonstrates example: Idempotent Command Handler" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Example:", "Idempotent", "Command"]}
+```csharp{title="Example: Idempotent Command Handler" description="Example: Idempotent Command Handler" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Example:", "Idempotent", "Command"]}
 public async Task<Result> HandleCreateOrderAsync(CreateOrderCommand command) {
     // Start application transaction
     using var transaction = await _dbContext.Database.BeginTransactionAsync();
@@ -321,7 +321,7 @@ sequenceDiagram
 ### Inbox Best Practices
 
 **1. Use Deterministic Message IDs**:
-```csharp{title="Inbox Best Practices" description="Demonstrates inbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Inbox", "Best", "Practices"]}
+```csharp{title="Inbox Best Practices" description="Inbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Inbox", "Best", "Practices"]}
 // ✅ Good: Deterministic ID based on event content
 var messageId = Uuid7.FromName(
     namespaceId: Uuid7.NamespaceOID,
@@ -338,13 +338,13 @@ var messageId = Uuid7.NewUuid7();  // Different every time
 - Helps identify duplicate sources
 
 **3. Monitor Deduplication Table Size**:
-```sql{title="Inbox Best Practices (2)" description="Demonstrates inbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Inbox", "Best", "Practices"]}
+```sql{title="Inbox Best Practices (2)" description="Inbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Sql", "Inbox", "Best", "Practices"]}
 SELECT COUNT(*) FROM wh_message_deduplication;
 SELECT pg_total_relation_size('wh_message_deduplication');
 ```
 
 **4. Consider Retention Policy** (optional):
-```sql{title="Inbox Best Practices (3)" description="Demonstrates inbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Inbox", "Best", "Practices"]}
+```sql{title="Inbox Best Practices (3)" description="Inbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Sql", "Inbox", "Best", "Practices"]}
 -- Delete deduplication records older than 90 days (if needed)
 DELETE FROM wh_message_deduplication
 WHERE first_seen_at < NOW() - INTERVAL '90 days';
@@ -353,7 +353,7 @@ WHERE first_seen_at < NOW() - INTERVAL '90 days';
 ### Outbox Best Practices
 
 **1. Use Deterministic Command IDs**:
-```csharp{title="Outbox Best Practices" description="Demonstrates outbox Best Practices" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Outbox", "Best", "Practices"]}
+```csharp{title="Outbox Best Practices" description="Outbox Best Practices" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Outbox", "Best", "Practices"]}
 public class CreateOrderCommand {
     public Guid OrderId { get; init; }  // Deterministic, from client
     // ... other properties
@@ -370,7 +370,7 @@ await httpClient.PostAsync("/orders", command);  // Same OrderId
 ```
 
 **2. Implement Idempotency Checks**:
-```csharp{title="Outbox Best Practices (2)" description="Demonstrates outbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Outbox", "Best", "Practices"]}
+```csharp{title="Outbox Best Practices (2)" description="Outbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Outbox", "Best", "Practices"]}
 // Always check if entity already exists
 var existing = await _dbContext.Orders
     .FirstOrDefaultAsync(o => o.Id == command.OrderId);
@@ -381,7 +381,7 @@ if (existing != null) {
 ```
 
 **3. Use Unique Constraints**:
-```csharp{title="Outbox Best Practices (3)" description="Demonstrates outbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Outbox", "Best", "Practices"]}
+```csharp{title="Outbox Best Practices (3)" description="Outbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Outbox", "Best", "Practices"]}
 modelBuilder.Entity<Order>(entity => {
     entity.HasKey(e => e.Id);
 
@@ -392,7 +392,7 @@ modelBuilder.Entity<Order>(entity => {
 ```
 
 **4. Transaction Scope**:
-```csharp{title="Outbox Best Practices (4)" description="Demonstrates outbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Outbox", "Best", "Practices"]}
+```csharp{title="Outbox Best Practices (4)" description="Outbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Outbox", "Best", "Practices"]}
 // Ensure outbox is in same transaction as business logic
 using var transaction = await _dbContext.Database.BeginTransactionAsync();
 

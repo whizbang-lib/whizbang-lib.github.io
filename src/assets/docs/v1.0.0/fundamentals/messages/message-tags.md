@@ -1177,7 +1177,7 @@ Understanding how tag hooks interact with dependency injection is crucial for co
 
 ### How Scoping Works
 
-```csharp{title="Tag Hook DI Scoping" description="Understanding scope creation for tag hooks" category="Architecture" difficulty="ADVANCED" tags=["Tags", "DI", "Scoping"]}
+```csharp{title="Tag Hook DI Scoping" description="Understanding scope creation for tag hooks" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "C#", "Tag", "Hook"]}
 // 1. Dispatcher is Singleton, holds Singleton IMessageTagProcessor
 public class Dispatcher : IDispatcher {
   private readonly IMessageTagProcessor _tagProcessor; // Singleton
@@ -1588,7 +1588,7 @@ file static class ModuleInitializer {
 
 **Diagnostic**:
 
-```csharp{title="Debugging Payload Content" description="Inspect payload structure" category="Troubleshooting" difficulty="BEGINNER" tags=["Tags", "Payload", "Debugging"]}
+```csharp{title="Debugging Payload Content" description="Inspect payload structure" category="Troubleshooting" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "C#", "Debugging", "Payload"]}
 public async ValueTask<JsonElement?> OnTaggedMessageAsync(
     TagContext<NotificationTagAttribute> context,
     CancellationToken ct) {

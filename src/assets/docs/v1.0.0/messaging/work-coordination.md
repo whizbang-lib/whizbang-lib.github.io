@@ -279,7 +279,7 @@ Partition ownership is stable across instance scaling:
 
 ### Lease Configuration
 
-```csharp{title="Lease Configuration" description="Demonstrates lease Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Lease", "Configuration"]}
+```csharp{title="Lease Configuration" description="Lease Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Lease", "Configuration"]}
 var request = new ProcessWorkBatchRequest {
     // ... other properties
     LeaseSeconds = 300,  // 5 minutes (default)
@@ -289,7 +289,7 @@ var request = new ProcessWorkBatchRequest {
 
 ### Partition Configuration
 
-```csharp{title="Partition Configuration" description="Demonstrates partition Configuration" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Partition", "Configuration"]}
+```csharp{title="Partition Configuration" description="Partition Configuration" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Partition", "Configuration"]}
 var request = new ProcessWorkBatchRequest {
     // ... other properties
     PartitionCount = 10_000,  // Total partitions (default)
@@ -300,7 +300,7 @@ var request = new ProcessWorkBatchRequest {
 
 For fast tests, use short lease and stale times:
 
-```csharp{title="Testing Configuration" description="For fast tests, use short lease and stale times:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Testing", "Configuration"]}
+```csharp{title="Testing Configuration" description="For fast tests, use short lease and stale times:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Testing", "Configuration"]}
 var request = new ProcessWorkBatchRequest {
     // ... other properties
     LeaseSeconds = 2,  // 2 seconds for fast tests
@@ -343,7 +343,7 @@ Horizontal scaling through partition distribution:
 
 ### C# Interface
 
-```csharp{title="C# Interface" description="Demonstrates c# Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Interface"]}
+```csharp{title="C# Interface" description="C# Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Interface"]}
 public interface IWorkCoordinator {
     Task<WorkBatch> ProcessWorkBatchAsync(
         ProcessWorkBatchRequest request,
