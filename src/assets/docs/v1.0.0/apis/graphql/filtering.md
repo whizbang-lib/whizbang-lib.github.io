@@ -21,7 +21,7 @@ Whizbang's HotChocolate integration provides powerful filtering capabilities for
 
 Filter on data properties using the `where` argument:
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   orders(where: { data: { status: { eq: "Completed" } } }) {
     nodes {
@@ -38,7 +38,7 @@ Filter on data properties using the `where` argument:
 
 ### String Operators
 
-```graphql
+```graphql{title="# Exact match" description="# Exact match" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 # Exact match
 where: { data: { customerName: { eq: "Alice" } } }
 
@@ -63,7 +63,7 @@ where: { data: { status: { nin: ["Cancelled", "Refunded"] } } }
 
 ### Numeric Operators
 
-```graphql
+```graphql{title="# Equal" description="# Equal" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 # Equal
 where: { data: { totalAmount: { eq: 100.00 } } }
 
@@ -90,7 +90,7 @@ where: {
 
 ### Date/Time Operators
 
-```graphql
+```graphql{title="# Exact date" description="# Exact date" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 # Exact date
 where: { data: { createdAt: { eq: "2024-01-15T00:00:00Z" } } }
 
@@ -111,14 +111,14 @@ where: {
 
 ### Boolean Operators
 
-```graphql
+```graphql{title="where:  data:  isActive:  eq: true } } }" description="where:  data:  isActive:  eq: true } } }" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 where: { data: { isActive: { eq: true } } }
 where: { data: { isDeleted: { eq: false } } }
 ```
 
 ### Null Checks
 
-```graphql
+```graphql{title="# Is null" description="# Is null" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 # Is null
 where: { data: { deletedAt: { eq: null } } }
 
@@ -132,7 +132,7 @@ where: { data: { deletedAt: { neq: null } } }
 
 Multiple conditions at the same level are AND'd together:
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   orders(where: {
     data: {
@@ -147,7 +147,7 @@ Multiple conditions at the same level are AND'd together:
 
 ### AND (Explicit)
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   orders(where: {
     and: [
@@ -163,7 +163,7 @@ Multiple conditions at the same level are AND'd together:
 
 ### OR
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   orders(where: {
     or: [
@@ -178,7 +178,7 @@ Multiple conditions at the same level are AND'd together:
 
 ### Complex Combinations
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   orders(where: {
     and: [
@@ -200,7 +200,7 @@ Multiple conditions at the same level are AND'd together:
 
 Filter on `PerspectiveRow` system fields:
 
-```graphql
+```graphql{title="# By ID" description="# By ID" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 # By ID
 {
   orders(where: { id: { eq: "550e8400-e29b-41d4-a716-446655440000" } }) {
@@ -227,7 +227,7 @@ Filter on `PerspectiveRow` system fields:
 
 When metadata is exposed (scope includes `Metadata`):
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   orders(where: {
     metadata: {
@@ -248,7 +248,7 @@ When metadata is exposed (scope includes `Metadata`):
 
 When scope is exposed (scope includes `Scope`):
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   adminOrders(where: {
     scope: {
@@ -269,7 +269,7 @@ When scope is exposed (scope includes `Scope`):
 
 Use GraphQL variables for dynamic filtering:
 
-```graphql
+```graphql{title="query GetOrders($status: String!, $minAmount: Decimal!)" description="query GetOrders($status: String!, $minAmount: Decimal!)" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 query GetOrders($status: String!, $minAmount: Decimal!) {
   orders(where: {
     and: [

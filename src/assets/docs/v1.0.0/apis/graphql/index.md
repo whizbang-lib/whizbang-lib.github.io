@@ -59,7 +59,7 @@ app.MapGraphQL();
 
 ### 4. Query Your Data
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   orders(
     where: { data: { status: { eq: "Completed" } } }

@@ -86,7 +86,7 @@ Expose only the business data:
 public interface IProductLens : ILensQuery<ProductReadModel> { }
 ```
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   products {
     nodes {
@@ -111,7 +111,7 @@ Include event sourcing metadata:
 public interface IAuditLens : ILensQuery<AuditReadModel> { }
 ```
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   auditLog {
     nodes {
@@ -140,7 +140,7 @@ Expose everything including scope data:
 public interface IAdminOrderLens : ILensQuery<OrderReadModel> { }
 ```
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   adminOrders {
     nodes {
@@ -177,7 +177,7 @@ Disable paging for simple lists:
 public interface IStatusLens : ILensQuery<StatusReadModel> { }
 ```
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   statuses(where: { data: { isActive: { eq: true } } }) {
     id
@@ -218,7 +218,7 @@ public record OrderReadModel {
 
 The generated GraphQL schema includes:
 
-```graphql
+```graphql{title="type Query" description="type Query" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 type Query {
   orders(
     where: OrderFilterInput

@@ -200,7 +200,7 @@ public class Query {
 
 ### Exposing Current Scope
 
-```graphql
+```graphql{title="type Query" description="type Query" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 type Query {
   currentScope: ScopeInfo!
   orders(...): OrdersConnection
