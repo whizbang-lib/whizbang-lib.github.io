@@ -712,6 +712,11 @@ $$ LANGUAGE plpgsql;
 **Examples**:
 - ECommerce: Order Service - Real-world implementation
 
+### For Users
+
+New to lifecycle stages? Start with the user guide:
+- [Lifecycle Stages](../../fundamentals/lifecycle/lifecycle-stages.md) — All 24 lifecycle stages, timing guarantees, and how to register lifecycle receptors
+
 ---
 
 *Version 1.0.0 - Foundation Release | Last Updated: 2025-12-21*

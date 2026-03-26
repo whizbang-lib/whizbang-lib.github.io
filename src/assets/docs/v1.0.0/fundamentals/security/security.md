@@ -902,6 +902,11 @@ public interface ICustomerScoped : ITenantScoped {
 }
 ```
 
+### For Contributors
+
+Looking to extend the security system? See:
+- [Custom Policies](../../extending/extensibility/custom-policies.md) — Build custom authorization policies and permission evaluation strategies
+
 ## Related Documentation
 
 - [Scoping](./scoping.md) - Scope system overview

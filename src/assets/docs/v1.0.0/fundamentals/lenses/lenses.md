@@ -833,6 +833,11 @@ public class OrderQueries {
 **Examples**:
 - ECommerce: BFF Pattern - Real-world lens usage
 
+### For Contributors
+
+Looking to implement custom storage backends for lenses? See:
+- [Custom Storage](../../extending/extensibility/custom-storage.md) — Build custom storage backends and persistence implementations
+
 ---
 
 *Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*

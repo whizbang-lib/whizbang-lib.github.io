@@ -964,6 +964,11 @@ public class TimeravelPerspectiveTests {
 **Messaging**:
 - [Work Coordinator](../../messaging/work-coordinator.md) - Atomic batch processing and checkpoint tracking
 
+### For Users
+
+New to perspectives? Start with the user guide:
+- [Perspectives Guide](../../fundamentals/perspectives/perspectives.md) — Core perspective concepts, pure function patterns, and read model design
+
 ---
 
 *Version 1.0.0 - Foundation Release | Last Updated: 2025-12-21*

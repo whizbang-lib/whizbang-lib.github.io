@@ -2091,6 +2091,11 @@ public async Task<ActionResult<OrderResult>> CreateOrder(
 **Examples**:
 - ECommerce: Order Service - Real-world dispatcher usage
 
+### For Contributors
+
+Looking to extend or customize dispatch behavior? See:
+- [Custom Dispatchers](../../extending/extensibility/custom-dispatchers.md) — Build custom dispatch strategies like mediator patterns or event sourcing dispatchers
+
 ---
 
 *Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*

@@ -994,6 +994,11 @@ public class StreamingReceptorTests {
 - [Performance Tuning](../../operations/deployment/performance-tuning.md) - Optimization strategies
 - [Testing Receptors](../../operations/testing/testing-receptors.md) - Comprehensive testing guide
 
+### For Users
+
+New to receptors? Start with the user guide:
+- [Receptors Guide](../../fundamentals/receptors/receptors.md) — Core receptor patterns, command handling, and dependency injection
+
 ---
 
 *Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*

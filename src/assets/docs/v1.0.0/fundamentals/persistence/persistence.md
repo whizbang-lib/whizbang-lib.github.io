@@ -342,6 +342,11 @@ public class ImportUsersReceptor : BaseBatchReceptor<ImportUsers, UsersImported>
 - [Work Coordinator](../../messaging/work-coordinator.md) - Background processing for outbox
 - [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable event publishing details
 
+### For Contributors
+
+Looking to extend the persistence layer? See:
+- [Database Schema Framework](../../extending/extensibility/database-schema-framework.md) — Build custom database schema management and migration strategies
+
 ---
 
 *Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
