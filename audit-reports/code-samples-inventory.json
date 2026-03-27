@@ -1,11 +1,11 @@
 {
-  "totalSamples": 3255,
-  "withMetadata": 3115,
-  "withoutMetadata": 140,
+  "totalSamples": 3254,
+  "withMetadata": 3151,
+  "withoutMetadata": 103,
   "byLanguage": {
     "bash": 147,
     "csharp": 2706,
-    "graphql": 35,
+    "graphql": 34,
     "json": 65,
     "sql": 148,
     "typescript": 4,
@@ -27,42 +27,42 @@
   "metaFieldCoverage": {
     "title": {
       "present": 0,
-      "missing": 3115,
+      "missing": 3151,
       "pct": 0
     },
     "description": {
       "present": 0,
-      "missing": 3115,
+      "missing": 3151,
       "pct": 0
     },
     "category": {
       "present": 0,
-      "missing": 3115,
+      "missing": 3151,
       "pct": 0
     },
     "difficulty": {
       "present": 0,
-      "missing": 3115,
+      "missing": 3151,
       "pct": 0
     },
     "tags": {
       "present": 0,
-      "missing": 3115,
+      "missing": 3151,
       "pct": 0
     },
     "framework": {
       "present": 0,
-      "missing": 3115,
+      "missing": 3151,
       "pct": 0
     },
     "testFile": {
       "present": 0,
-      "missing": 3115,
+      "missing": 3151,
       "pct": 0
     },
     "testMethod": {
       "present": 0,
-      "missing": 3115,
+      "missing": 3151,
       "pct": 0
     }
   },
@@ -166,7 +166,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
       "blockIndex": 0,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -185,7 +185,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
       "blockIndex": 1,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -204,7 +204,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
       "blockIndex": 2,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -223,7 +223,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
       "blockIndex": 3,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -242,26 +242,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
       "blockIndex": 4,
       "language": "graphql",
-      "hasMetadata": false,
-      "presentMeta": [],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 3,
-      "preview": "where: { data: { isActive: { eq: true } } }\nwhere: { data: { isDeleted: { eq: false } } }"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
-      "blockIndex": 5,
-      "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -278,9 +259,9 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
-      "blockIndex": 6,
+      "blockIndex": 5,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -297,9 +278,9 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
-      "blockIndex": 7,
+      "blockIndex": 6,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -316,9 +297,9 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
-      "blockIndex": 8,
+      "blockIndex": 7,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -335,9 +316,9 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
-      "blockIndex": 9,
+      "blockIndex": 8,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -354,9 +335,9 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
-      "blockIndex": 10,
+      "blockIndex": 9,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -373,9 +354,9 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
-      "blockIndex": 11,
+      "blockIndex": 10,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -392,9 +373,9 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
-      "blockIndex": 12,
+      "blockIndex": 11,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -411,10 +392,13 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
-      "blockIndex": 13,
+      "blockIndex": 12,
       "language": "graphql",
-      "hasMetadata": false,
-      "presentMeta": [],
+      "hasMetadata": true,
+      "presentMeta": [
+        "status",
+        "minAmount"
+      ],
       "missingMeta": [
         "title",
         "description",
@@ -430,7 +414,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/filtering.md",
-      "blockIndex": 14,
+      "blockIndex": 13,
       "language": "json",
       "hasMetadata": true,
       "presentMeta": [],
@@ -508,7 +492,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/index.md",
       "blockIndex": 3,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -588,7 +572,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/lens-integration.md",
       "blockIndex": 3,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -628,7 +612,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/lens-integration.md",
       "blockIndex": 5,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -668,7 +652,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/lens-integration.md",
       "blockIndex": 7,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -708,7 +692,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/lens-integration.md",
       "blockIndex": 9,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -769,7 +753,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/lens-integration.md",
       "blockIndex": 12,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -889,7 +873,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/polymorphic-types.md",
       "blockIndex": 4,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -908,7 +892,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/polymorphic-types.md",
       "blockIndex": 5,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -927,7 +911,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/polymorphic-types.md",
       "blockIndex": 6,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -1003,7 +987,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/polymorphic-types.md",
       "blockIndex": 10,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -1239,7 +1223,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/scoping.md",
       "blockIndex": 9,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -1498,7 +1482,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/sorting.md",
       "blockIndex": 0,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -1517,7 +1501,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/sorting.md",
       "blockIndex": 1,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -1536,7 +1520,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/sorting.md",
       "blockIndex": 2,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -1555,7 +1539,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/sorting.md",
       "blockIndex": 3,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -1574,7 +1558,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/sorting.md",
       "blockIndex": 4,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -1593,7 +1577,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/sorting.md",
       "blockIndex": 5,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -1612,7 +1596,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/sorting.md",
       "blockIndex": 6,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -1631,7 +1615,7 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/sorting.md",
       "blockIndex": 7,
       "language": "graphql",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -1650,8 +1634,10 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/sorting.md",
       "blockIndex": 8,
       "language": "graphql",
-      "hasMetadata": false,
-      "presentMeta": [],
+      "hasMetadata": true,
+      "presentMeta": [
+        "sortField"
+      ],
       "missingMeta": [
         "title",
         "description",
@@ -1747,8 +1733,11 @@
       "file": "src/assets/docs/v1.0.0/apis/graphql/sorting.md",
       "blockIndex": 13,
       "language": "graphql",
-      "hasMetadata": false,
-      "presentMeta": [],
+      "hasMetadata": true,
+      "presentMeta": [
+        "tenantId",
+        "status"
+      ],
       "missingMeta": [
         "title",
         "description",
@@ -15792,7 +15781,7 @@
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
       "blockIndex": 28,
       "language": "csharp",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -15811,7 +15800,7 @@
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
       "blockIndex": 29,
       "language": "csharp",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",

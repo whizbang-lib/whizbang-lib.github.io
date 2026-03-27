@@ -1,37 +1,8 @@
 {
-  "totalInternalLinks": 883,
-  "valid": 879,
-  "broken": 4,
-  "brokenLinks": [
-    {
-      "source": "src/assets/docs/v1.0.0/fundamentals/perspectives/event-completion.md",
-      "target": "../../../code/Whizbang.Core/Perspectives/Sync/IEventCompletionAwaiter.cs",
-      "resolvedPath": "src/assets/docs/code/Whizbang.Core/Perspectives/Sync/IEventCompletionAwaiter.cs",
-      "linkText": "IEventCompletionAwaiter.cs",
-      "valid": false
-    },
-    {
-      "source": "src/assets/docs/v1.0.0/fundamentals/perspectives/event-completion.md",
-      "target": "../../../tests/Whizbang.Core.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs",
-      "resolvedPath": "src/assets/docs/tests/Whizbang.Core.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs",
-      "linkText": "EventCompletionAwaiterTests.cs",
-      "valid": false
-    },
-    {
-      "source": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "target": "../../../code/Whizbang.Core/Perspectives/Sync/SyncFilter.cs",
-      "resolvedPath": "src/assets/docs/code/Whizbang.Core/Perspectives/Sync/SyncFilter.cs",
-      "linkText": "SyncFilter.cs",
-      "valid": false
-    },
-    {
-      "source": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-      "target": "../../../tests/Whizbang.Core.Tests/Perspectives/Sync/",
-      "resolvedPath": "src/assets/docs/tests/Whizbang.Core.Tests/Perspectives/Sync",
-      "linkText": "SyncFilterBuilderTests.cs",
-      "valid": false
-    }
-  ],
+  "totalInternalLinks": 932,
+  "valid": 932,
+  "broken": 0,
+  "brokenLinks": [],
   "linksBySource": {
     "src/assets/docs/v1.0.0/README.md": {
       "valid": 16,
@@ -154,7 +125,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/extending/extensibility/custom-dispatchers.md": {
-      "valid": 1,
+      "valid": 2,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/extending/extensibility/custom-health-checks.md": {
@@ -166,7 +137,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/extending/extensibility/custom-perspectives.md": {
-      "valid": 13,
+      "valid": 14,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/extending/extensibility/custom-policies.md": {
@@ -174,7 +145,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/extending/extensibility/custom-receptors.md": {
-      "valid": 8,
+      "valid": 9,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/extending/extensibility/custom-serializers.md": {
@@ -214,7 +185,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md": {
-      "valid": 6,
+      "valid": 7,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/extending/source-generators/aggregate-ids.md": {
@@ -246,7 +217,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/extending/source-generators/receptor-discovery.md": {
-      "valid": 6,
+      "valid": 7,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/extending/source-generators/topic-filter-discovery.md": {
@@ -258,7 +229,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md": {
-      "valid": 9,
+      "valid": 10,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md": {
@@ -282,7 +253,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/events/events.md": {
-      "valid": 5,
+      "valid": 6,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/events/ledger.md": {
@@ -298,7 +269,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/identity/assembly-registry.md": {
-      "valid": 2,
+      "valid": 3,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/identity/fuzzy-matching.md": {
@@ -330,7 +301,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/lenses/lenses.md": {
-      "valid": 6,
+      "valid": 7,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/lenses/multi-model-queries.md": {
@@ -362,7 +333,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md": {
-      "valid": 15,
+      "valid": 16,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle.md": {
@@ -402,7 +373,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/messages/messages.md": {
-      "valid": 5,
+      "valid": 6,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md": {
@@ -410,7 +381,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/persistence/persistence.md": {
-      "valid": 4,
+      "valid": 5,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/association-info.md": {
@@ -423,7 +394,7 @@
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/event-completion.md": {
       "valid": 2,
-      "broken": 2
+      "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/multi-stream.md": {
       "valid": 7,
@@ -431,14 +402,14 @@
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md": {
       "valid": 6,
-      "broken": 2
+      "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md": {
       "valid": 6,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md": {
-      "valid": 14,
+      "valid": 16,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/physical-fields.md": {
@@ -490,7 +461,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md": {
-      "valid": 8,
+      "valid": 10,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/security/audit-logging.md": {
@@ -518,7 +489,11 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/security/security.md": {
-      "valid": 4,
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/getting-started/glossary.md": {
+      "valid": 36,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/getting-started/installation.md": {

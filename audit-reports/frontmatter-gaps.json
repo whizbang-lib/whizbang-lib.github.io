@@ -1,45 +1,45 @@
 {
-  "totalPages": 254,
-  "pagesWithGaps": 254,
+  "totalPages": 255,
+  "pagesWithGaps": 255,
   "fieldCoverage": {
     "title": {
-      "present": 254,
+      "present": 255,
       "missing": 0,
       "pct": 100
     },
     "version": {
-      "present": 215,
+      "present": 216,
       "missing": 39,
       "pct": 85
     },
     "category": {
-      "present": 225,
+      "present": 226,
       "missing": 29,
       "pct": 89
     },
     "order": {
-      "present": 230,
+      "present": 231,
       "missing": 24,
       "pct": 91
     },
     "description": {
-      "present": 221,
+      "present": 222,
       "missing": 33,
       "pct": 87
     },
     "tags": {
-      "present": 218,
+      "present": 219,
       "missing": 36,
       "pct": 86
     },
     "codeReferences": {
       "present": 214,
-      "missing": 40,
+      "missing": 41,
       "pct": 84
     },
     "slug": {
       "present": 0,
-      "missing": 254,
+      "missing": 255,
       "pct": 0
     }
   },
@@ -3858,6 +3858,31 @@
       "frontmatter": {
         "title": "Getting Started",
         "order": "1"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/getting-started/glossary.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags"
+      ],
+      "missingFields": [
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Glossary",
+        "version": "1.0.0",
+        "category": "Getting Started",
+        "order": "5",
+        "description": "Definitions of key terms and concepts used throughout Whizbang documentation - CQRS, event sourcing, perspectives, receptors, and framework-specific terminology",
+        "tags": "glossary, terminology, definitions, concepts, vocabulary, reference",
+        "lastMaintainedCommit": "01f07906"
       }
     },
     {
