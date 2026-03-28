@@ -8,6 +8,7 @@ description: >-
 tags: 'envelope, serialization, aot, json'
 codeReferences:
   - src/Whizbang.Core/Messaging/EnvelopeSerializer.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Envelope Serialization
@@ -25,7 +26,7 @@ When storing or transmitting envelopes, they need to be serialized to JSON. The 
 
 ## EnvelopeSerializer {#envelopeserializer}
 
-```csharp{title="EnvelopeSerializer" description="Demonstrates envelopeSerializer" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "EnvelopeSerializer", "Envelopeserializer"]}
+```csharp{title="EnvelopeSerializer" description="EnvelopeSerializer" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "EnvelopeSerializer", "Envelopeserializer"]}
 namespace Whizbang.Core.Messaging;
 
 /// <summary>
@@ -54,7 +55,7 @@ public sealed class EnvelopeSerializer : IEnvelopeSerializer {
 
 ## IEnvelopeSerializer Interface {#ienvelopeserializer}
 
-```csharp{title="IEnvelopeSerializer Interface" description="Demonstrates iEnvelopeSerializer Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IEnvelopeSerializer", "Interface"]}
+```csharp{title="IEnvelopeSerializer Interface" description="IEnvelopeSerializer Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IEnvelopeSerializer", "Interface"]}
 namespace Whizbang.Core.Messaging;
 
 /// <summary>
@@ -75,7 +76,7 @@ public interface IEnvelopeSerializer {
 
 ## SerializedEnvelope {#serializedenvelope}
 
-```csharp{title="SerializedEnvelope" description="Demonstrates serializedEnvelope" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "SerializedEnvelope", "Serializedenvelope"]}
+```csharp{title="SerializedEnvelope" description="SerializedEnvelope" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "SerializedEnvelope", "Serializedenvelope"]}
 namespace Whizbang.Core.Messaging;
 
 /// <summary>
@@ -113,7 +114,7 @@ public sealed record SerializedEnvelope(
 
 ### Serializing for Storage
 
-```csharp{title="Serializing for Storage" description="Demonstrates serializing for Storage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Serializing", "Storage"]}
+```csharp{title="Serializing for Storage" description="Serializing for Storage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Serializing", "Storage"]}
 public class EventStore {
   private readonly IEnvelopeSerializer _serializer;
 
@@ -145,7 +146,7 @@ public class EventStore {
 
 ### Deserializing from Storage
 
-```csharp{title="Deserializing from Storage" description="Demonstrates deserializing from Storage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Deserializing", "Storage"]}
+```csharp{title="Deserializing from Storage" description="Deserializing from Storage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Deserializing", "Storage"]}
 public async Task<object> LoadMessageAsync(Guid messageId) {
   var row = await _db.QuerySingleAsync<EventRow>(
       "SELECT * FROM events WHERE message_id = @MessageId",
@@ -167,7 +168,7 @@ public async Task<object> LoadMessageAsync(Guid messageId) {
 
 ### Outbox Integration
 
-```csharp{title="Outbox Integration" description="Demonstrates outbox Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Outbox", "Integration"]}
+```csharp{title="Outbox Integration" description="Outbox Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Outbox", "Integration"]}
 public async Task WriteToOutboxAsync<TMessage>(
     MessageEnvelope<TMessage> envelope,
     CancellationToken ct = default) {
@@ -232,7 +233,7 @@ Types are registered via `[ModuleInitializer]` in generated code.
 
 ### Type Resolution Failure
 
-```csharp{title="Type Resolution Failure" description="Demonstrates type Resolution Failure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Type", "Resolution"]}
+```csharp{title="Type Resolution Failure" description="Type Resolution Failure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Type", "Resolution"]}
 try {
   var message = serializer.DeserializeMessage(jsonEnvelope, messageTypeName);
 } catch (InvalidOperationException ex) {
@@ -243,7 +244,7 @@ try {
 
 ### Serialization Failure
 
-```csharp{title="Serialization Failure" description="Demonstrates serialization Failure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Serialization", "Failure"]}
+```csharp{title="Serialization Failure" description="Serialization Failure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Serialization", "Failure"]}
 try {
   var serialized = serializer.SerializeEnvelope(envelope);
 } catch (InvalidOperationException ex) {

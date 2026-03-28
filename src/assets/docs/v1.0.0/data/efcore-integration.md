@@ -10,6 +10,7 @@ tags: 'ef-core, entity-framework, postgresql, orm, jsonb, uuidv7'
 codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/WhizbangDbContext.cs
   - samples/ECommerce/ECommerce.Domain/Infrastructure/ECommerceDbContext.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # EF Core Integration
@@ -33,7 +34,7 @@ codeReferences:
 
 ## Installation
 
-```bash{title="Installation" description="Demonstrates installation" category="Implementation" difficulty="BEGINNER" tags=["Data", "Installation"]}
+```bash{title="Installation" description="Installation" category="Implementation" difficulty="BEGINNER" tags=["Data", "Installation"]}
 dotnet add package Whizbang.Data.EFCore.Postgres
 ```
 
@@ -54,9 +55,9 @@ dotnet tool install --global dotnet-ef
 
 ### JSONB Column Support
 
-EF Core 10 has native **JSONB** support for PostgreSQL:
+EF Core 10 has native **JSONB** support for PostgreSQL via `ComplexProperty().ToJson()`:
 
-```csharp{title="JSONB Column Support" description="EF Core 10 has native JSONB support for PostgreSQL:" category="Implementation" difficulty="ADVANCED" tags=["Data", "JSONB", "Column", "Support"]}
+```csharp{title="JSONB Column Support" description="EF Core 10 has native JSONB support for PostgreSQL:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "JSONB", "Column", "Support"]}
 public class Product {
     public Guid Id { get; set; }
     public string Name { get; set; } = default!;
@@ -68,7 +69,14 @@ public class Product {
 public class ProductMetadata {
     public string Category { get; set; } = default!;
     public string[] Tags { get; set; } = Array.Empty<string>();
-    public Dictionary<string, string> Attributes { get; set; } = new();
+    // Note: Dictionary<K,V> is NOT supported by ComplexProperty().ToJson().
+    // Use List<T> with Key/Value properties instead:
+    public List<AttributeEntry> Attributes { get; set; } = [];
+}
+
+public class AttributeEntry {
+    public string Key { get; set; } = default!;
+    public string Value { get; set; } = default!;
 }
 
 // DbContext configuration
@@ -76,16 +84,16 @@ protected override void OnModelCreating(ModelBuilder modelBuilder) {
     modelBuilder.Entity<Product>(entity => {
         entity.ToTable("products");
 
-        // JSONB column (automatic in EF Core 10 for PostgreSQL)
-        entity.OwnsOne(p => p.Metadata, owned => {
-            owned.ToJson();  // Stores as JSONB
+        // JSONB column - EF Core 10 ComplexProperty().ToJson() for full LINQ support
+        entity.ComplexProperty(p => p.Metadata, cp => {
+            cp.ToJson("metadata");  // Stores as JSONB
         });
     });
 }
 ```
 
 **Query JSONB**:
-```csharp{title="JSONB Column Support (2)" description="Query JSONB:" category="Implementation" difficulty="BEGINNER" tags=["Data", "JSONB", "Column", "Support"]}
+```csharp{title="JSONB Column Support (2)" description="Query JSONB:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "JSONB", "Column", "Support"]}
 // Query nested JSONB properties
 var products = await context.Products
     .Where(p => p.Metadata.Category == "Electronics")
@@ -101,7 +109,7 @@ var products = await context.Products
 
 EF Core 10 with Npgsql supports **UUIDv7** (time-ordered GUIDs):
 
-```csharp{title="UUIDv7 Support" description="EF Core 10 with Npgsql supports UUIDv7 (time-ordered GUIDs):" category="Implementation" difficulty="ADVANCED" tags=["Data", "UUIDv7", "Support"]}
+```csharp{title="UUIDv7 Support" description="EF Core 10 with Npgsql supports UUIDv7 (time-ordered GUIDs):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "UUIDv7", "Support"]}
 public class Order {
     public Guid Id { get; set; }  // Will be UUIDv7
     public Guid CustomerId { get; set; }
@@ -132,7 +140,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder) {
 
 EF Core 10 supports **complex types** (value objects without separate tables):
 
-```csharp{title="Complex Types" description="EF Core 10 supports complex types (value objects without separate tables):" category="Implementation" difficulty="ADVANCED" tags=["Data", "Complex", "Types"]}
+```csharp{title="Complex Types" description="EF Core 10 supports complex types (value objects without separate tables):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Complex", "Types"]}
 public class Order {
     public Guid Id { get; set; }
     public Money Total { get; set; }  // Complex type
@@ -168,7 +176,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder) {
 
 ### Basic Configuration
 
-```csharp{title="Basic Configuration" description="Demonstrates basic Configuration" category="Implementation" difficulty="ADVANCED" tags=["Data", "Basic", "Configuration"]}
+```csharp{title="Basic Configuration" description="Basic Configuration" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Configuration"]}
 public class ECommerceDbContext : DbContext {
     public ECommerceDbContext(DbContextOptions<ECommerceDbContext> options)
         : base(options) {
@@ -189,7 +197,7 @@ public class ECommerceDbContext : DbContext {
 
 ### Entity Type Configuration
 
-```csharp{title="Entity Type Configuration" description="Demonstrates entity Type Configuration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Entity", "Type", "Configuration"]}
+```csharp{title="Entity Type Configuration" description="Entity Type Configuration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Entity", "Type", "Configuration"]}
 public class OrderConfiguration : IEntityTypeConfiguration<Order> {
     public void Configure(EntityTypeBuilder<Order> builder) {
         builder.ToTable("orders");
@@ -231,7 +239,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order> {
 
 ### Registration (Program.cs)
 
-```csharp{title="Registration (Program.cs)" description="Demonstrates registration (Program.cs)" category="Implementation" difficulty="BEGINNER" tags=["Data", "Registration", "Program.cs"]}
+```csharp{title="Registration (Program.cs)" description="Registration (Program.cs)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Registration", "Program.cs"]}
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
 
 builder.Services.AddDbContext<ECommerceDbContext>(options => {
@@ -254,7 +262,7 @@ builder.Services.AddDbContext<ECommerceDbContext>(options => {
 
 ### Creating Migrations
 
-```bash{title="Creating Migrations" description="Demonstrates creating Migrations" category="Implementation" difficulty="BEGINNER" tags=["Data", "Creating", "Migrations"]}
+```bash{title="Creating Migrations" description="Creating Migrations" category="Implementation" difficulty="BEGINNER" tags=["Data", "Bash", "Creating", "Migrations"]}
 # Add new migration
 dotnet ef migrations add InitialCreate --project src/ECommerce.Infrastructure --startup-project src/ECommerce.API
 
@@ -270,7 +278,7 @@ dotnet ef migrations list --project src/ECommerce.Infrastructure --startup-proje
 
 ### Migration Example
 
-```csharp{title="Migration Example" description="Demonstrates migration Example" category="Implementation" difficulty="ADVANCED" tags=["Data", "Migration", "Example"]}
+```csharp{title="Migration Example" description="Migration Example" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Migration"]}
 public partial class InitialCreate : Migration {
     protected override void Up(MigrationBuilder migrationBuilder) {
         // Enable UUIDv7 extension
@@ -311,7 +319,7 @@ public partial class InitialCreate : Migration {
 
 ### Apply Migrations at Startup
 
-```csharp{title="Apply Migrations at Startup" description="Demonstrates apply Migrations at Startup" category="Implementation" difficulty="BEGINNER" tags=["Data", "Apply", "Migrations", "Startup"]}
+```csharp{title="Apply Migrations at Startup" description="Apply Migrations at Startup" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Apply", "Migrations", "Startup"]}
 // Program.cs - Apply migrations on startup (Development only)
 if (app.Environment.IsDevelopment()) {
     using var scope = app.Services.CreateScope();
@@ -326,7 +334,7 @@ if (app.Environment.IsDevelopment()) {
 
 ### Insert
 
-```csharp{title="Insert" description="Demonstrates insert" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Insert"]}
+```csharp{title="Insert" description="Insert" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Insert"]}
 public class OrderService {
     private readonly ECommerceDbContext _context;
 
@@ -361,7 +369,7 @@ public class OrderService {
 
 ### Query
 
-```csharp{title="Query" description="Demonstrates query" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Query"]}
+```csharp{title="Query" description="Query" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Query"]}
 public async Task<Order?> GetOrderAsync(
     Guid orderId,
     CancellationToken ct = default) {
@@ -385,7 +393,7 @@ public async Task<Order[]> GetOrdersByCustomerAsync(
 
 ### Update
 
-```csharp{title="Update" description="Demonstrates update" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Update"]}
+```csharp{title="Update" description="Update" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Update"]}
 public async Task UpdateOrderStatusAsync(
     Guid orderId,
     string newStatus,
@@ -407,7 +415,7 @@ public async Task UpdateOrderStatusAsync(
 
 ### Delete
 
-```csharp{title="Delete" description="Demonstrates delete" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Delete"]}
+```csharp{title="Delete" description="Delete" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Delete"]}
 public async Task DeleteOrderAsync(
     Guid orderId,
     CancellationToken ct = default) {
@@ -428,7 +436,7 @@ public async Task DeleteOrderAsync(
 
 ### Pagination
 
-```csharp{title="Pagination" description="Demonstrates pagination" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pagination"]}
+```csharp{title="Pagination" description="Pagination" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pagination"]}
 public async Task<PagedResult<Order>> GetOrdersPagedAsync(
     int pageNumber,
     int pageSize,
@@ -455,7 +463,7 @@ public async Task<PagedResult<Order>> GetOrdersPagedAsync(
 
 ### Search
 
-```csharp{title="Search" description="Demonstrates search" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Search"]}
+```csharp{title="Search" description="Search" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Search"]}
 public async Task<Order[]> SearchOrdersAsync(
     string searchTerm,
     CancellationToken ct = default) {
@@ -475,7 +483,7 @@ public async Task<Order[]> SearchOrdersAsync(
 
 ### Aggregations
 
-```csharp{title="Aggregations" description="Demonstrates aggregations" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Aggregations"]}
+```csharp{title="Aggregations" description="Aggregations" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Aggregations"]}
 public async Task<OrderStatistics> GetOrderStatisticsAsync(
     Guid customerId,
     CancellationToken ct = default) {
@@ -497,7 +505,7 @@ public async Task<OrderStatistics> GetOrderStatisticsAsync(
 
 ### Raw SQL Queries
 
-```csharp{title="Raw SQL Queries" description="Demonstrates raw SQL Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Raw", "SQL", "Queries"]}
+```csharp{title="Raw SQL Queries" description="Raw SQL Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Raw", "SQL", "Queries"]}
 public async Task<OrderSummary[]> GetTopCustomersAsync(
     int limit,
     CancellationToken ct = default) {
@@ -523,7 +531,7 @@ public async Task<OrderSummary[]> GetTopCustomersAsync(
 
 ### Explicit Transactions
 
-```csharp{title="Explicit Transactions" description="Demonstrates explicit Transactions" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Explicit", "Transactions"]}
+```csharp{title="Explicit Transactions" description="Explicit Transactions" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Explicit", "Transactions"]}
 public async Task TransferInventoryAsync(
     Guid fromWarehouseId,
     Guid toWarehouseId,
@@ -558,7 +566,7 @@ public async Task TransferInventoryAsync(
 
 ### Implicit Transactions
 
-```csharp{title="Implicit Transactions" description="Demonstrates implicit Transactions" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Implicit", "Transactions"]}
+```csharp{title="Implicit Transactions" description="Implicit Transactions" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Implicit", "Transactions"]}
 // SaveChangesAsync wraps all changes in a transaction automatically
 public async Task CreateOrderWithItemsAsync(
     Order order,
@@ -583,7 +591,7 @@ public async Task CreateOrderWithItemsAsync(
 
 Use `.AsNoTracking()` for read-only queries (better performance):
 
-```csharp{title="No-Tracking Queries" description="Demonstrates no-Tracking Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "No-Tracking", "Queries"]}
+```csharp{title="No-Tracking Queries" description="No-Tracking Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "No-Tracking", "Queries"]}
 // ✅ Read-only query (no change tracking overhead)
 public async Task<Order[]> GetOrdersForDisplayAsync(CancellationToken ct = default) {
     return await _context.Orders
@@ -602,7 +610,7 @@ public async Task<Order[]> GetOrdersAsync(CancellationToken ct = default) {
 
 ### Tracking State
 
-```csharp{title="Tracking State" description="Demonstrates tracking State" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Tracking", "State"]}
+```csharp{title="Tracking State" description="Tracking State" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Tracking", "State"]}
 public void DemoTrackingStates() {
     var order = new Order { /* ... */ };
 
@@ -633,7 +641,7 @@ public void DemoTrackingStates() {
 
 ### Split Queries
 
-```csharp{title="Split Queries" description="Demonstrates split Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Split", "Queries"]}
+```csharp{title="Split Queries" description="Split Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Split", "Queries"]}
 // ✅ Split query (multiple queries, better for large data)
 var orders = await _context.Orders
     .Include(o => o.Items)
@@ -655,7 +663,7 @@ var orders = await _context.Orders
 
 ### Batch Operations
 
-```csharp{title="Batch Operations" description="Demonstrates batch Operations" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Batch", "Operations"]}
+```csharp{title="Batch Operations" description="Batch Operations" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Batch", "Operations"]}
 // ✅ Batch insert (single SaveChanges)
 public async Task BulkInsertOrdersAsync(Order[] orders, CancellationToken ct = default) {
     _context.Orders.AddRange(orders);
@@ -673,7 +681,7 @@ public async Task SlowInsertOrdersAsync(Order[] orders, CancellationToken ct = d
 
 ### Compiled Queries
 
-```csharp{title="Compiled Queries" description="Demonstrates compiled Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Compiled", "Queries"]}
+```csharp{title="Compiled Queries" description="Compiled Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Compiled", "Queries"]}
 // Compiled query (cached expression tree)
 private static readonly Func<ECommerceDbContext, Guid, Task<Order?>> GetOrderByIdQuery =
     EF.CompileAsyncQuery(
@@ -696,7 +704,7 @@ public async Task<Order?> GetOrderFastAsync(Guid orderId) {
 
 ### In-Memory Provider
 
-```csharp{title="In-Memory Provider" description="Demonstrates in-Memory Provider" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "In-Memory", "Provider"]}
+```csharp{title="In-Memory Provider" description="In-Memory Provider" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "In-Memory", "Provider"]}
 public class OrderServiceTests {
     private ECommerceDbContext CreateInMemoryContext() {
         var options = new DbContextOptionsBuilder<ECommerceDbContext>()
@@ -729,7 +737,7 @@ public class OrderServiceTests {
 
 ### SQLite Provider (Better for Testing)
 
-```csharp{title="SQLite Provider (Better for Testing)" description="Demonstrates sQLite Provider (Better for Testing)" category="Implementation" difficulty="ADVANCED" tags=["Data", "SQLite", "Provider", "Better"]}
+```csharp{title="SQLite Provider (Better for Testing)" description="SQLite Provider (Better for Testing)" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "SQLite", "Provider", "Better"]}
 public class OrderServiceTests {
     private ECommerceDbContext CreateSqliteContext() {
         var connection = new SqliteConnection("DataSource=:memory:");
@@ -777,7 +785,7 @@ public class OrderServiceTests {
 
 ### Integration Tests with PostgreSQL
 
-```csharp{title="Integration Tests with PostgreSQL" description="Demonstrates integration Tests with PostgreSQL" category="Implementation" difficulty="ADVANCED" tags=["Data", "Integration", "Tests", "PostgreSQL"]}
+```csharp{title="Integration Tests with PostgreSQL" description="Integration Tests with PostgreSQL" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Integration", "Tests", "PostgreSQL"]}
 public class OrderServiceIntegrationTests {
     private ECommerceDbContext _context = default!;
 
@@ -857,7 +865,7 @@ When you build your application, the **EF Core source generator** runs automatic
 
 Initialize your database schema with a single call:
 
-```csharp{title="Schema Initialization" description="Initialize your database schema with a single call:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Schema", "Initialization"]}
+```csharp{title="Schema Initialization" description="Initialize your database schema with a single call:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Schema", "Initialization"]}
 public class Program {
     public static async Task Main(string[] args) {
         var builder = WebApplication.CreateBuilder(args);
@@ -889,7 +897,7 @@ public class Program {
 
 When you build your project, the source generator creates this extension method:
 
-```csharp{title="Generated Code Example" description="When you build your project, the source generator creates this extension method:" category="Implementation" difficulty="ADVANCED" tags=["Data", "Generated", "Code", "Example"]}
+```csharp{title="Generated Code Example" description="When you build your project, the source generator creates this extension method:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Generated", "Code"]}
 // Auto-generated: OrderDbContext_SchemaExtensions.g.cs
 public static partial class OrderDbContextSchemaExtensions {
     public static async Task EnsureWhizbangDatabaseInitializedAsync(
@@ -945,7 +953,7 @@ public static partial class OrderDbContextSchemaExtensions {
 
 Enable Native AOT in your `.csproj`:
 
-```xml{title="Publishing with AOT" description="Enable Native AOT in your `." category="Implementation" difficulty="BEGINNER" tags=["Data", "Publishing", "AOT"]}
+```xml{title="Publishing with AOT" description="Enable Native AOT in your `." category="Implementation" difficulty="BEGINNER" tags=["Data", "Xml", "Publishing", "AOT"]}
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -956,7 +964,7 @@ Enable Native AOT in your `.csproj`:
 
 Build and publish:
 
-```bash{title="Publishing with AOT (2)" description="Build and publish:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Publishing", "AOT"]}
+```bash{title="Publishing with AOT (2)" description="Build and publish:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Bash", "Publishing", "AOT"]}
 dotnet publish -c Release -r linux-x64
 ```
 
@@ -995,7 +1003,7 @@ dotnet publish -c Release -r linux-x64
 
 ### Hybrid Approach (Recommended)
 
-```csharp{title="Hybrid Approach (Recommended)" description="Demonstrates hybrid Approach (Recommended)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Hybrid", "Approach", "Recommended"]}
+```csharp{title="Hybrid Approach (Recommended)" description="Hybrid Approach (Recommended)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Hybrid", "Approach", "Recommended"]}
 // ✅ EF Core for write model (domain aggregates)
 public class OrderService {
     private readonly ECommerceDbContext _context;
@@ -1059,7 +1067,7 @@ public class OrderLens : ILensQuery {
 
 ### Pattern 1: Command Handler with EF Core
 
-```csharp{title="Pattern 1: Command Handler with EF Core" description="Demonstrates pattern 1: Command Handler with EF Core" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Command", "Handler"]}
+```csharp{title="Pattern 1: Command Handler with EF Core" description="Pattern 1: Command Handler with EF Core" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Command", "Handler"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly ECommerceDbContext _context;
 
@@ -1097,7 +1105,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### Pattern 2: Query with Projection
 
-```csharp{title="Pattern 2: Query with Projection" description="Demonstrates pattern 2: Query with Projection" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Query", "Projection"]}
+```csharp{title="Pattern 2: Query with Projection" description="Pattern 2: Query with Projection" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Query", "Projection"]}
 public async Task<OrderListItem[]> GetOrderListAsync(
     Guid customerId,
     CancellationToken ct = default) {
@@ -1120,7 +1128,7 @@ public async Task<OrderListItem[]> GetOrderListAsync(
 
 ### Pattern 3: Optimistic Concurrency
 
-```csharp{title="Pattern 3: Optimistic Concurrency" description="Demonstrates pattern 3: Optimistic Concurrency" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Optimistic", "Concurrency"]}
+```csharp{title="Pattern 3: Optimistic Concurrency" description="Pattern 3: Optimistic Concurrency" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Optimistic", "Concurrency"]}
 public class Order {
     public Guid Id { get; set; }
     public string Status { get; set; } = default!;

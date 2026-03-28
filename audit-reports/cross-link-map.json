@@ -1,0 +1,796 @@
+{
+  "totalInternalLinks": 932,
+  "valid": 932,
+  "broken": 0,
+  "brokenLinks": [],
+  "linksBySource": {
+    "src/assets/docs/v1.0.0/README.md": {
+      "valid": 16,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/graphql/filtering.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/graphql/index.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/graphql/lens-integration.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/graphql/polymorphic-types.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/graphql/scoping.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/graphql/setup.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/graphql/sorting.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/mutations/custom-request-dto.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/mutations/hooks.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/rest/filtering.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/rest/mutations.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/rest/setup.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/signalr/notification-hooks.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/signalr/signalr.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/data/caching.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/data/dapper-integration.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/data/drivers.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/data/efcore-complex-types.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/data/efcore-integration.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/data/event-store.md": {
+      "valid": 9,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/data/perspectives-storage.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/data/postgres.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/data/schema-generation-pattern.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/data/schema-migration.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/data/turnkey-initialization.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/attributes/auto-populate.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/attributes/generatestreamid.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/attributes/streamid.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/attributes/streamkey.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/extensibility/custom-dispatchers.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/extensibility/custom-health-checks.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/extensibility/custom-id-generators.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/extensibility/custom-perspectives.md": {
+      "valid": 14,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/extensibility/custom-policies.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/extensibility/custom-receptors.md": {
+      "valid": 9,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/extensibility/custom-serializers.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/extensibility/custom-storage.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/extensibility/custom-transports.md": {
+      "valid": 8,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/extensibility/custom-work-coordinators.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/extensibility/database-schema-framework.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/extensibility/hooks-and-middleware.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/extensibility/plugin-architecture.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/features/debugger-aware-clock.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/features/vector-search.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/source-generators/aggregate-ids.md": {
+      "valid": 8,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/source-generators/attribute-utilities.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/source-generators/configuration.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/source-generators/json-contexts.md": {
+      "valid": 8,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/source-generators/message-registry.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/source-generators/perspective-discovery.md": {
+      "valid": 12,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/source-generators/polymorphic-serialization.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/source-generators/receptor-discovery.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/source-generators/topic-filter-discovery.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/extending/source-generators/type-symbol-extensions.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md": {
+      "valid": 10,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/dispatcher/rpc-extraction.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/events/event-store-query.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/events/event-store.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/events/event-streams.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/events/events.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/events/ledger.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/events/stream-id.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/events/system-events.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/identity/assembly-registry.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/identity/fuzzy-matching.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/identity/time-provider.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/identity/type-formatting.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/identity/type-matching.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/identity/type-qualification.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/identity/whizbang-ids.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/lenses/lens-query-factory.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/lenses/lenses.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/lenses/multi-model-queries.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/lenses/raw-sql.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/lenses/scoped-lenses.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/lenses/scoped-queries.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/lenses/temporal-query.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/lenses/vector-search.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-coordinator.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md": {
+      "valid": 16,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/messages/delivery-receipts.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/messages/envelope-registry.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/messages/envelope-serialization.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/messages/message-associations.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/messages/message-context-extraction.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/messages/message-context.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/messages/messages.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/persistence/persistence.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/association-info.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/association-metadata.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/event-completion.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/multi-stream.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md": {
+      "valid": 16,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/physical-fields.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/polymorphic-discriminator.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/polymorphic-types.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/rebuild.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/registry.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/stream-locking.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/sync.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/table-naming.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/typed-associations.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/vector-fields.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md": {
+      "valid": 10,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/security/audit-logging.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/security/implementing-multi-tenancy.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/security/message-security.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/security/scope-propagation.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/security/scoping.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/security/security-context-propagation.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/security/security.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/getting-started/glossary.md": {
+      "valid": 36,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/getting-started/installation.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/getting-started/introduction.md": {
+      "valid": 16,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/getting-started/project-structure.md": {
+      "valid": 8,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/getting-started/quick-start.md": {
+      "valid": 11,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/learn/tutorial/analytics-service.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/learn/tutorial/customer-service.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/learn/tutorial/deployment.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/learn/tutorial/inventory-service.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/learn/tutorial/notification-service.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/learn/tutorial/order-management.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/learn/tutorial/payment-processing.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/learn/tutorial/shipping-service.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/learn/tutorial/testing-strategy.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/learn/tutorial/tutorial-overview.md": {
+      "valid": 11,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/commands-events.md": {
+      "valid": 10,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/failure-handling.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/idempotency-patterns.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/inbox-pattern.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/message-envelopes.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/outbox-pattern.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/topic-filters.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md": {
+      "valid": 8,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/transports/in-memory.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/transports/transport-consumer.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/transports/transports.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/work-coordination.md": {
+      "valid": 7,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/work-coordinator.md": {
+      "valid": 12,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/migration-guide/01-concept-mapping.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/migration-guide/02-project-setup.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/migration-guide/03-handler-migration.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/migration-guide/04-projection-migration.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/migration-guide/05-event-store-migration.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/migration-guide/06-transport-configuration.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/migration-guide/07-outbox-migration.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/migration-guide/08-testing-migration.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/migration-guide/README.md": {
+      "valid": 9,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/configuration/all-services.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/configuration/lens-services.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/configuration/perspective-services.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/configuration/service-registration-options.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/configuration/service-registration.md": {
+      "valid": 10,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/configuration/whizbang-options.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/serializable-property-analyzer.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz030.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz031.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz058.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz059.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz062.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz070.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz071.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz080.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz090.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz300.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz400.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz802.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz807.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/infrastructure/aspire-integration.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/infrastructure/database-limits.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/infrastructure/health-checks.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/infrastructure/policies.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/infrastructure/pooling.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/observability/diagnostics.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/observability/logging-categories.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/observability/metrics.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/observability/opentelemetry-integration.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/observability/tracing.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/observability/verbosity-levels.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/testing/lifecycle-synchronization.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/workers/database-readiness.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/workers/execution-lifecycle.md": {
+      "valid": 6,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md": {
+      "valid": 11,
+      "broken": 0
+    }
+  }
+}

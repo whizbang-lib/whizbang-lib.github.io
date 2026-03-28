@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Lenses/LensOptions.cs
   - src/Whizbang.Core/Lenses/FilterMode.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableLensQuery.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Scoped Lenses
@@ -45,7 +46,7 @@ The `IScopedLensFactory` is the primary entry point for obtaining scoped lenses.
 
 ### Primary API: Composable Filters
 
-```csharp{title="Primary API: Composable Filters" description="Demonstrates primary API: Composable Filters" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Primary", "API:"]}
+```csharp{title="Primary API: Composable Filters" description="Primary API: Composable Filters" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Primary", "API:"]}
 public interface IScopedLensFactory {
   // Get lens with composable scope filters
   TLens GetLens<TLens>(ScopeFilter filters) where TLens : ILensQuery;
@@ -87,7 +88,7 @@ factory.GetMyOrSharedLens<TLens>();   // ScopeFilter.Tenant | ScopeFilter.User |
 
 ### Usage Examples
 
-```csharp{title="Usage Examples" description="Demonstrates usage Examples" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Usage", "Examples"]}
+```csharp{title="Usage Examples" description="Usage Examples" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Usage", "Examples"]}
 public class OrderController : ControllerBase {
   private readonly IScopedLensFactory _lensFactory;
 
@@ -195,7 +196,7 @@ public class OrderProcessor : BackgroundService {
 
 ### IScopedLensQuery Methods
 
-```csharp{title="IScopedLensQuery Methods" description="Demonstrates iScopedLensQuery Methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "IScopedLensQuery", "Methods"]}
+```csharp{title="IScopedLensQuery Methods" description="IScopedLensQuery Methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "IScopedLensQuery", "Methods"]}
 public interface IScopedLensQuery<TModel> where TModel : class {
   // Stream results with auto-scoping
   IAsyncEnumerable<PerspectiveRow<TModel>> QueryAsync(
@@ -219,7 +220,7 @@ public interface IScopedLensQuery<TModel> where TModel : class {
 
 ### Usage Examples
 
-```csharp{title="Usage Examples - ReportGenerator" description="Demonstrates usage Examples" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Usage", "Examples"]}
+```csharp{title="Usage Examples - ReportGenerator" description="Usage Examples - ReportGenerator" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Usage", "Examples"]}
 public class ReportGenerator {
   private readonly IScopedLensQuery<OrderSummary> _orderLens;
 
@@ -268,7 +269,7 @@ public class ReportGenerator {
 
 ### Properties
 
-```csharp{title="Properties" description="Demonstrates properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Properties"]}
+```csharp{title="Properties" description="Properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Properties"]}
 public sealed class ScopeDefinition {
   // Unique name for this scope (e.g., "Tenant", "User", "Global")
   public string Name { get; }
@@ -292,7 +293,7 @@ public sealed class ScopeDefinition {
 
 ### Defining Named Scopes
 
-```csharp{title="Defining Named Scopes" description="Demonstrates defining Named Scopes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Defining", "Named"]}
+```csharp{title="Defining Named Scopes" description="Defining Named Scopes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Defining", "Named"]}
 services.AddWhizbang(options => {
   // Tenant-only scope
   options.Lenses.DefineScope("Tenant", scope => {
@@ -323,7 +324,7 @@ services.AddWhizbang(options => {
 
 ### Using Named Scopes (Legacy API)
 
-```csharp{title="Using Named Scopes (Legacy API)" description="Demonstrates using Named Scopes (Legacy API)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Using", "Named"]}
+```csharp{title="Using Named Scopes (Legacy API)" description="Using Named Scopes (Legacy API)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Using", "Named"]}
 // Get lens using named scope
 var lens = factory.GetLens<IOrderLens>("Tenant");
 var globalLens = factory.GetLens<IOrderLens>("Global");
@@ -339,7 +340,7 @@ var globalLens = factory.GetLens<IOrderLens>("Global");
 
 ### LensOptions API
 
-```csharp{title="LensOptions API" description="Demonstrates lensOptions API" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "LensOptions", "API"]}
+```csharp{title="LensOptions API" description="LensOptions API" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "LensOptions", "API"]}
 public sealed class LensOptions {
   // Get all defined scopes
   public IReadOnlyList<ScopeDefinition> Scopes { get; }
@@ -354,7 +355,7 @@ public sealed class LensOptions {
 
 ### Configuration Example
 
-```csharp{title="Configuration Example" description="Demonstrates configuration Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Configuration", "Example"]}
+```csharp{title="Configuration Example" description="Configuration Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Configuration", "Example"]}
 services.AddWhizbang(options => {
   // Chain multiple scope definitions
   options.Lenses
@@ -375,7 +376,7 @@ services.AddWhizbang(options => {
 
 ### Accessing Configuration at Runtime
 
-```csharp{title="Accessing Configuration at Runtime" description="Demonstrates accessing Configuration at Runtime" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Accessing", "Configuration"]}
+```csharp{title="Accessing Configuration at Runtime" description="Accessing Configuration at Runtime" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Accessing", "Configuration"]}
 public class CustomLensFactory {
   private readonly LensOptions _options;
 
@@ -403,7 +404,7 @@ public class CustomLensFactory {
 
 ### FilterMode Enum
 
-```csharp{title="FilterMode Enum" description="Demonstrates filterMode Enum" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "FilterMode", "Enum"]}
+```csharp{title="FilterMode Enum" description="FilterMode Enum" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "FilterMode", "Enum"]}
 public enum FilterMode {
   // Filter using equality (WHERE property = @value)
   Equals = 0,
@@ -483,7 +484,7 @@ options.Lenses.DefineScope("Region", scope => {
 
 ### Filter Composition
 
-```csharp{title="Filter Composition" description="Demonstrates filter Composition" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Filter", "Composition"]}
+```csharp{title="Filter Composition" description="Filter Composition" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Filter", "Composition"]}
 public class EFCoreFilterableLensQuery<TModel> : ILensQuery<TModel>, IFilterableLens {
   private ScopeFilterInfo _filterInfo;
 

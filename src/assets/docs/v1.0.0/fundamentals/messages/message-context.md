@@ -8,10 +8,13 @@ description: >-
   and CausationId - automatic distributed tracing built into Whizbang
 tags: 'message-context, correlation, causation, distributed-tracing, observability'
 codeReferences:
+  - src/Whizbang.Core/IMessageContext.cs
   - src/Whizbang.Core/ValueObjects/MessageId.cs
   - src/Whizbang.Core/ValueObjects/CorrelationId.cs
   - src/Whizbang.Core/ValueObjects/CausationId.cs
   - src/Whizbang.Core/Observability/MessageEnvelope.cs
+  - src/Whizbang.Core/Observability/ICallerInfo.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Message Context & Tracing
@@ -93,7 +96,7 @@ public record struct MessageId(Guid Value) {
 
 ### Usage
 
-```csharp{title="Usage" description="Demonstrates usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Usage"]}
+```csharp{title="Usage" description="Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Usage"]}
 // Whizbang creates MessageId automatically
 var receipt = await _dispatcher.SendAsync(command);
 
@@ -150,7 +153,7 @@ public record struct CorrelationId(Guid Value) {
 
 ### Usage
 
-```csharp{title="Usage (2)" description="Demonstrates usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Usage"]}
+```csharp{title="Usage (2)" description="Usage (2)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Usage"]}
 // Create new correlation for HTTP request
 var correlationId = CorrelationId.New();
 
@@ -167,7 +170,7 @@ Console.WriteLine($"Correlation ID: {result.CorrelationId}");
 
 ### Querying by CorrelationId
 
-```csharp{title="Querying by CorrelationId" description="Demonstrates querying by CorrelationId" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Querying", "CorrelationId"]}
+```csharp{title="Querying by CorrelationId" description="Querying by CorrelationId" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Querying", "CorrelationId"]}
 // Find all messages in a workflow
 public async Task<Message[]> GetWorkflowMessagesAsync(
     CorrelationId correlationId,
@@ -248,7 +251,7 @@ PaymentProcessed Event
 
 ### Usage
 
-```csharp{title="Usage - CreateOrderReceptor" description="Demonstrates usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Usage"]}
+```csharp{title="Usage - CreateOrderReceptor" description="Usage - CreateOrderReceptor" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Usage"]}
 // Receptor creates event with causation
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
@@ -294,7 +297,7 @@ public class MessageEnvelope {
 
 ### Automatic Context Propagation
 
-```csharp{title="Automatic Context Propagation" description="Demonstrates automatic Context Propagation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Automatic", "Context"]}
+```csharp{title="Automatic Context Propagation" description="Automatic Context Propagation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Automatic", "Context"]}
 // 1. HTTP Request arrives
 [HttpPost("orders")]
 public async Task<ActionResult> CreateOrder(
@@ -327,7 +330,7 @@ public async Task<ActionResult> CreateOrder(
 
 ### Querying Workflow History
 
-```csharp{title="Querying Workflow History" description="Demonstrates querying Workflow History" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "Querying", "Workflow"]}
+```csharp{title="Querying Workflow History" description="Querying Workflow History" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "Querying", "Workflow"]}
 public class WorkflowTracer {
     private readonly IDbConnectionFactory _db;
 
@@ -393,7 +396,7 @@ Workflow: corr-abc
 
 ### Visualizing Causation Chains
 
-```csharp{title="Visualizing Causation Chains" description="Demonstrates visualizing Causation Chains" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Visualizing", "Causation"]}
+```csharp{title="Visualizing Causation Chains" description="Visualizing Causation Chains" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Visualizing", "Causation"]}
 public class CausationVisualizer {
     public void VisualizeCausationChain(TraceMessage[] messages) {
         var messageMap = messages.ToDictionary(m => m.MessageId);
@@ -439,7 +442,7 @@ public class CausationVisualizer {
 
 ### Structured Logging
 
-```csharp{title="Structured Logging" description="Demonstrates structured Logging" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Structured", "Logging"]}
+```csharp{title="Structured Logging" description="Structured Logging" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Structured", "Logging"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly ILogger<CreateOrderReceptor> _logger;
 
@@ -487,7 +490,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### Application Insights Integration
 
-```csharp{title="Application Insights Integration" description="Demonstrates application Insights Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Application", "Insights"]}
+```csharp{title="Application Insights Integration" description="Application Insights Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Application", "Insights"]}
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly TelemetryClient _telemetry;
 
@@ -545,7 +548,7 @@ public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### ASP.NET Core Middleware
 
-```csharp{title="ASP.NET Core Middleware" description="Demonstrates aSP.NET Core Middleware" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ASP.NET", "Core"]}
+```csharp{title="ASP.NET Core Middleware" description="ASP.NET Core Middleware" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ASP.NET", "Core"]}
 public class CorrelationIdMiddleware {
     private readonly RequestDelegate _next;
 
@@ -574,7 +577,7 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 
 ### Propagating to Downstream Services
 
-```csharp{title="Propagating to Downstream Services" description="Demonstrates propagating to Downstream Services" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Propagating", "Downstream"]}
+```csharp{title="Propagating to Downstream Services" description="Propagating to Downstream Services" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Propagating", "Downstream"]}
 public class HttpClientWithCorrelation {
     private readonly HttpClient _httpClient;
     private readonly IHttpContextAccessor _httpContext;
@@ -597,12 +600,68 @@ public class HttpClientWithCorrelation {
 
 ---
 
+## IMessageContext Interface {#imessagecontext}
+
+The `IMessageContext` interface provides all context and metadata for a message flowing through the system:
+
+```csharp{title="IMessageContext Interface" description="Full IMessageContext interface with all properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IMessageContext"]}
+public interface IMessageContext {
+  MessageId MessageId { get; }
+  CorrelationId CorrelationId { get; }
+  MessageId CausationId { get; }
+  DateTimeOffset Timestamp { get; }
+  string? UserId { get; }
+  string? TenantId { get; }
+  IReadOnlyDictionary<string, object> Metadata { get; }
+  IScopeContext? ScopeContext { get; }
+  ICallerInfo? CallerInfo { get; }
+}
+```
+
+### ScopeContext {#scope-context}
+
+The `ScopeContext` property carries rich authorization context (Roles, Permissions, SecurityPrincipals, Claims) that the message **owns**.
+
+**Important**: The ScopeContext is **owned by the message**, not read from ambient `AsyncLocal`. When a message context is created, it captures the current scope context. `AsyncLocal` then reads **from** the initiating message context's ScopeContext, not the other way around.
+
+```csharp{title="ScopeContext Ownership" description="ScopeContext is owned by the message, not AsyncLocal" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ScopeContext"]}
+// In lifecycle receptors, use ScopeContext from the message context
+// because the original HTTP context is unavailable
+public class OrderLifecycleReceptor : ILifecycleReceptor<OrderCreatedEvent> {
+  public async ValueTask PostPerspectiveAsync(
+      OrderCreatedEvent evt,
+      IMessageContext context,
+      CancellationToken ct) {
+    // Use context.ScopeContext for authorization
+    var tenantId = context.TenantId;  // From message, not HTTP
+    var scope = context.ScopeContext;  // Roles, permissions carried by message
+  }
+}
+```
+
+### CallerInfo {#caller-info}
+
+The `CallerInfo` property captures the caller's source location at dispatch time using `[CallerMemberName]`, `[CallerFilePath]`, and `[CallerLineNumber]`. This enables click-to-navigate in IDEs like VSCode.
+
+```csharp{title="CallerInfo Interface" description="Captures source location at dispatch time" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CallerInfo"]}
+public interface ICallerInfo {
+  string CallerMemberName { get; }  // Method name that dispatched the message
+  string CallerFilePath { get; }    // Source file path
+  int CallerLineNumber { get; }     // Line number in source file
+}
+```
+
+`CallerInfo` is `null` when caller info is unavailable (e.g., `MessageContext.New()` or test contexts).
+
+---
+
 ## Further Reading
 
 **Core Concepts**:
 - [Observability](../persistence/observability.md) - MessageEnvelope and hops for distributed tracing
 - [Dispatcher](../dispatcher/dispatcher.md) - How messages are routed
 - [Receptors](../receptors/receptors.md) - Message handlers
+- [Cascade Context](cascade-context.md) - ScopeContext propagation
 
 **Messaging Patterns**:
 - [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable messaging with context

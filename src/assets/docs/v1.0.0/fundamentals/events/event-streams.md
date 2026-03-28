@@ -9,6 +9,7 @@ tags: 'event-streams, stream-id, event-sourcing, aggregates'
 codeReferences:
   - src/Whizbang.Core/ValueObjects/StreamId.cs
   - src/Whizbang.Core/Messaging/IEventStore.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Event Streams
@@ -26,7 +27,7 @@ In event sourcing, events are organized into **streams**:
 
 ## StreamId Value Object {#streamid}
 
-```csharp{title="StreamId Value Object" description="Demonstrates streamId Value Object" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Value"]}
+```csharp{title="StreamId Value Object" description="StreamId Value Object" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Value"]}
 namespace Whizbang.Core.ValueObjects;
 
 /// <summary>
@@ -40,7 +41,7 @@ public readonly partial struct StreamId;
 
 ### Creating StreamIds
 
-```csharp{title="Creating StreamIds" description="Demonstrates creating StreamIds" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Creating", "StreamIds"]}
+```csharp{title="Creating StreamIds" description="Creating StreamIds" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Creating", "StreamIds"]}
 // Create new StreamId (UUIDv7)
 var streamId = StreamId.New();
 
@@ -81,7 +82,7 @@ Each event has:
 
 ### Appending Events
 
-```csharp{title="Appending Events" description="Demonstrates appending Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Appending"]}
+```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Appending"]}
 // Append event to a stream
 await eventStore.AppendAsync(order.StreamId, new OrderShipped {
   OrderId = order.Id,
@@ -92,7 +93,7 @@ await eventStore.AppendAsync(order.StreamId, new OrderShipped {
 
 ### Reading Events
 
-```csharp{title="Reading Events" description="Demonstrates reading Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Reading"]}
+```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Reading"]}
 // Read all events from a stream
 await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromSequence: 0)) {
   Console.WriteLine($"Event {envelope.Sequence}: {envelope.Payload.GetType().Name}");
@@ -101,7 +102,7 @@ await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromSequen
 
 ### Reading from Checkpoint
 
-```csharp{title="Reading from Checkpoint" description="Demonstrates reading from Checkpoint" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Reading", "Checkpoint"]}
+```csharp{title="Reading from Checkpoint" description="Reading from Checkpoint" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Reading", "Checkpoint"]}
 // Read events after a specific event ID (checkpoint-based)
 await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromEventId: lastProcessedId)) {
   await ProcessEventAsync(envelope.Payload);
@@ -110,7 +111,7 @@ await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromEventI
 
 ### Polymorphic Reads
 
-```csharp{title="Polymorphic Reads" description="Demonstrates polymorphic Reads" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Polymorphic", "Reads"]}
+```csharp{title="Polymorphic Reads" description="Polymorphic Reads" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Polymorphic", "Reads"]}
 // Read multiple event types from a stream
 var eventTypes = new[] {
   typeof(OrderCreated),

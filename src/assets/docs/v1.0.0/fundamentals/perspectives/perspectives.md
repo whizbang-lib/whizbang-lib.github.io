@@ -16,6 +16,7 @@ codeReferences:
     samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/InventoryLevelsPerspective.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspectives Guide
@@ -36,12 +37,16 @@ A Perspective is analogous to a **viewpoint** or **lens through which you see da
 
 ## IPerspectiveFor Interface
 
-```csharp{title="IPerspectiveFor Interface" description="Demonstrates iPerspectiveFor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveFor", "Interface"]}
+:::new
+All perspective variants (`IPerspectiveFor`, `IPerspectiveWithActionsFor`, `ITemporalPerspectiveFor`, `IGlobalPerspectiveFor`) now inherit from `IPerspectiveBase<TModel>`, a unified marker interface used by source generators for perspective discovery. You do not implement `IPerspectiveBase` directly -- use the specific perspective interfaces below.
+:::
+
+```csharp{title="IPerspectiveFor Interface" description="IPerspectiveFor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveFor", "Interface"]}
 namespace Whizbang.Core.Perspectives;
 
 public interface IPerspectiveFor<TModel, TEvent>
-    where TModel : notnull
-    where TEvent : notnull, IEvent {
+    where TModel : class
+    where TEvent : IEvent {
 
     TModel Apply(TModel currentData, TEvent @event);
 }
@@ -57,6 +62,50 @@ public interface IPerspectiveFor<TModel, TEvent>
 - **Event replay**: Runner applies events in UUID7 order
 - **Unit of work**: All events applied, then model + checkpoint saved once
 
+### `[MustExist]` Attribute {#must-exist}
+
+Use `[MustExist]` on an `Apply` method to indicate the model must already exist (i.e., it was created by a prior event). The generated runner will throw `InvalidOperationException` if the current model is `null` when that method is called:
+
+```csharp{title="MustExist Attribute" description="Require the model to already exist before applying an event" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "MustExist", "Attribute"]}
+public class OrderPerspective :
+    IPerspectiveFor<OrderView, OrderCreated>,
+    IPerspectiveFor<OrderView, OrderShipped> {
+
+  // Creation - nullable parameter, handles initial creation
+  public OrderView Apply(OrderView? current, OrderCreated @event) {
+    return new OrderView { OrderId = @event.OrderId, Status = "Created" };
+  }
+
+  // Update - non-nullable parameter, requires existing model
+  [MustExist]
+  public OrderView Apply(OrderView current, OrderShipped @event) {
+    return current with { Status = "Shipped" };
+  }
+}
+```
+
+### `[WhizbangPerspective]` Attribute {#whizbang-perspective}
+
+In multi-DbContext scenarios, use `[WhizbangPerspective("key")]` to route a perspective to specific DbContexts. Without this attribute, perspectives match the default DbContext only:
+
+```csharp{title="WhizbangPerspective Attribute" description="Route perspectives to specific DbContexts in multi-context scenarios" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "WhizbangPerspective", "Attribute", "Multi-DbContext"]}
+// Only included in DbContexts registered with the "catalog" key
+[WhizbangPerspective("catalog")]
+public class ProductPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> {
+  public ProductModel Apply(ProductModel? current, ProductCreatedEvent @event) =>
+    new() { ProductId = @event.ProductId, Name = @event.Name };
+}
+
+// Included in BOTH "catalog" AND "orders" DbContexts
+[WhizbangPerspective("catalog", "orders")]
+public class CustomerPerspective : IPerspectiveFor<CustomerModel, CustomerCreatedEvent> {
+  public CustomerModel Apply(CustomerModel? current, CustomerCreatedEvent @event) =>
+    new() { CustomerId = @event.CustomerId };
+}
+```
+
+See [Persistence](../persistence/persistence.md) for DbContext key configuration.
+
 ---
 
 ## StreamKey Attribute
@@ -68,7 +117,7 @@ The `[StreamKey]` attribute marks the property that identifies the stream/aggreg
 - **Model types**: Identifies which stream the model represents
 
 **Example**:
-```csharp{title="StreamKey Attribute" description="Demonstrates streamKey Attribute" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "StreamKey", "Attribute"]}
+```csharp{title="StreamKey Attribute" description="StreamKey Attribute" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "StreamKey", "Attribute"]}
 using Whizbang.Core;
 
 // Event with StreamKey
@@ -107,7 +156,7 @@ public record ProductDto {
 
 ## Basic Example
 
-```csharp{title="Basic Example" description="Demonstrates basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Basic", "Example"]}
+```csharp{title="Basic Example" description="Basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Basic", "Example"]}
 using Whizbang.Core;
 using Whizbang.Core.Perspectives;
 
@@ -377,7 +426,7 @@ public class ProductCatalogPerspective :
 
 **Pattern**: One read model, multiple events that update it over time.
 
-**Note**: Maximum 5 event types per perspective (language limitation). For more events, create multiple perspectives targeting the same model.
+**Note**: `IPerspectiveFor` supports up to 20 event type parameters per perspective. For more events, create multiple perspectives targeting the same model.
 
 ---
 
@@ -385,7 +434,7 @@ public class ProductCatalogPerspective :
 
 One event can update **multiple read models**:
 
-```csharp{title="Multiple Perspectives per Event" description="One event can update multiple read models:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Multiple", "Per"]}
+```csharp{title="Multiple Perspectives per Event" description="One event can update multiple read models:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "C#", "Multiple"]}
 // Event published once
 public record OrderCreatedEvent : IEvent {
     [StreamKey]
@@ -529,7 +578,7 @@ Each read model has its own **perspective** and **table schema** optimized for i
 ### Registration
 
 **Manual**:
-```csharp{title="Registration" description="Demonstrates registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registration"]}
+```csharp{title="Registration" description="Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registration"]}
 // Register perspective (transient recommended)
 builder.Services.AddTransient<ProductCatalogPerspective>();
 
@@ -567,7 +616,7 @@ builder.Services.AddScoped<IPerspectiveStore<ProductDto>, PostgresPerspectiveSto
 
 ### Unit Tests (Pure Functions)
 
-```csharp{title="Unit Tests (Pure Functions)" description="Demonstrates unit Tests (Pure Functions)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Unit", "Tests"]}
+```csharp{title="Unit Tests (Pure Functions)" description="Unit Tests (Pure Functions)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Unit", "Tests"]}
 public class ProductCatalogPerspectiveTests {
     [Test]
     public async Task Apply_ProductCreatedEvent_CreatesNewModelAsync() {
@@ -862,6 +911,12 @@ public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {
 **Examples**:
 - ECommerce: BFF Pattern - Real-world perspectives
 - ECommerce: Product Catalog - Complete example
+
+### For Contributors
+
+Looking to extend or customize perspectives? See:
+- [Custom Perspectives](../../extending/extensibility/custom-perspectives.md) — Advanced patterns like time-travel, snapshots, caching, and custom storage backends
+- [Perspective Discovery](../../extending/source-generators/perspective-discovery.md) — How source generators discover and register perspective runners at compile time
 
 ---
 

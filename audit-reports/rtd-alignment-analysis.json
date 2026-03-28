@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-03-25",
+  "summary": "RTD is a read-only mirror with significant feature degradation in code metadata, interactive components, and callout attributes",
+  "featureParity": {
+    "admonitions": { "angular": "custom-enhanced", "rtd": "standard", "status": "divergence", "note": "Angular has planned callouts with version linking; RTD gets plain admonitions" },
+    "codeHighlighting": { "angular": true, "rtd": true, "status": "parity" },
+    "codeCopyButtons": { "angular": true, "rtd": true, "status": "parity" },
+    "codeMetadata": { "angular": true, "rtd": false, "status": "angular-only", "note": "Title, description, framework, difficulty, tags all stripped by build.py" },
+    "tabbedContent": { "angular": false, "rtd": true, "status": "rtd-only", "note": "Angular site cannot render pymdownx.tabbed content" },
+    "mermaidDiagrams": { "angular": "enhanced-fullscreen", "rtd": "standard", "status": "parity-with-extras" },
+    "tableOfContents": { "angular": true, "rtd": true, "status": "parity" },
+    "searchSuggestions": { "angular": "version-aware", "rtd": "standard", "status": "parity-with-extras" },
+    "navigationSections": { "angular": true, "rtd": true, "status": "parity" },
+    "collapsibleDetails": { "angular": "code-only", "rtd": "generic", "status": "rtd-better", "note": "Angular only collapses code blocks; RTD supports generic collapsible details" },
+    "darkMode": { "angular": true, "rtd": true, "status": "parity" },
+    "interactiveExamples": { "angular": true, "rtd": false, "status": "angular-only", "note": "wb-example components disappear on RTD" },
+    "videoEmbedding": { "angular": true, "rtd": false, "status": "angular-only", "note": "wb-video components disappear on RTD" },
+    "crossVersionLinking": { "angular": true, "rtd": false, "status": "angular-only", "note": "Callout version attributes stripped by build.py" }
+  },
+  "transformationGaps": {
+    "calloutsHandled": ["new", "new{breaking}", "updated", "deprecated", "planned", "tip"],
+    "calloutsNotHandled": ["note", "warning", "any custom callout attributes beyond type"],
+    "codeMetadataHandling": "Stripped entirely — titles, descriptions, framework tags lost",
+    "customComponentsHandled": [],
+    "customComponentsNotHandled": ["wb-video", "wb-example"],
+    "otherGaps": ["showLinesOnly collapse syntax not handled", "callout version/header attributes lost"]
+  },
+  "recommendations": {
+    "angularShouldAdopt": [
+      { "feature": "Tabbed content", "effort": "M", "value": "HIGH", "note": "Multi-language code samples, alternative implementations" },
+      { "feature": "Generic collapsible details", "effort": "S", "value": "MEDIUM", "note": "Collapse prose, deep dives without code" }
+    ],
+    "rtdBuildPyShouldHandle": [
+      { "feature": "wb-video fallback", "effort": "S", "note": "Replace with YouTube link text" },
+      { "feature": "wb-example fallback", "effort": "S", "note": "Replace with link to live example" },
+      { "feature": "Code block title preservation", "effort": "S", "note": "Convert {title: ...} to a bold line above the code fence" }
+    ]
+  }
+}

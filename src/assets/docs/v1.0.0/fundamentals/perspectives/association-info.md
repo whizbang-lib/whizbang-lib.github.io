@@ -2,11 +2,20 @@
 title: PerspectiveAssociationInfo
 version: 1.0.0
 category: Perspectives
+codeReferences:
+  - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveAssociationGenerator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # PerspectiveAssociationInfo: Strongly-Typed Associations with Delegates {#PerspectiveAssociationInfo}
 
 PerspectiveAssociationInfo is a generic record type that provides strongly-typed perspective associations with AOT-compatible delegates to perspective Apply methods. It enables compile-time type safety and performant perspective invocation without reflection.
+
+:::updated
+This page covers the **generic** `PerspectiveAssociationInfo<TModel, TEvent>` record used for **runtime invocation** of perspective Apply methods via delegates. For the **non-generic** `PerspectiveAssociationInfo` metadata class used by source generators for **compile-time discovery and registration**, see [Perspective Association Info (Metadata)](association-metadata.md).
+:::
 
 ## Overview
 
@@ -21,7 +30,7 @@ PerspectiveAssociationInfo is a generic record type that provides strongly-typed
 
 ### Getting Typed Associations
 
-```csharp{title="Getting Typed Associations" description="Demonstrates getting Typed Associations" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Getting", "Typed"]}
+```csharp{title="Getting Typed Associations" description="Getting Typed Associations" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Getting", "Typed"]}
 using Whizbang.Core.Generated;
 
 // Get associations for specific model and event types
@@ -42,7 +51,7 @@ foreach (var assoc in associations) {
 
 ### Using Delegates
 
-```csharp{title="Using Delegates" description="Demonstrates using Delegates" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Using", "Delegates"]}
+```csharp{title="Using Delegates" description="Using Delegates" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Using", "Delegates"]}
 // Example: Generic perspective applier
 public TModel ApplyEvent<TModel, TEvent>(
     TModel model,
@@ -71,7 +80,7 @@ var updated = ApplyEvent(productModel, productEvent, "ECommerce.BFF.API");
 
 ### Type Definition
 
-```csharp{title="Type Definition" description="Demonstrates type Definition" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Type", "Definition"]}
+```csharp{title="Type Definition" description="Type Definition" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Type", "Definition"]}
 /// <summary>
 /// Rich association info with strongly-typed delegate for perspective Apply method.
 /// Provides compile-time type safety and AOT-compatible delegate invocation.
@@ -108,7 +117,7 @@ public sealed record PerspectiveAssociationInfo<TModel, TEvent>(
 
 ### Direct Invocation
 
-```csharp{title="Direct Invocation" description="Demonstrates direct Invocation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Direct", "Invocation"]}
+```csharp{title="Direct Invocation" description="Direct Invocation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Direct", "Invocation"]}
 var associations = PerspectiveRegistrationExtensions
     .GetPerspectiveAssociations<InventoryModel, ProductCreatedEvent>("ECommerce.BFF.API");
 
@@ -124,7 +133,7 @@ foreach (var assoc in associations) {
 
 ### Generic Invocation Helper
 
-```csharp{title="Generic Invocation Helper" description="Demonstrates generic Invocation Helper" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Generic", "Invocation"]}
+```csharp{title="Generic Invocation Helper" description="Generic Invocation Helper" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Generic", "Invocation"]}
 public class PerspectiveApplier {
     private readonly string _serviceName;
 
@@ -384,7 +393,7 @@ public sealed record PerspectiveAssociationInfo<TModel, TEvent>(
 
 ### Converting Between Types
 
-```csharp{title="Converting Between Types" description="Demonstrates converting Between Types" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Converting", "Between"]}
+```csharp{title="Converting Between Types" description="Converting Between Types" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Converting", "Between"]}
 // Get MessageAssociations (all perspectives)
 var messageAssocs = PerspectiveRegistrationExtensions
     .GetMessageAssociations("ECommerce.BFF.API");
@@ -444,7 +453,7 @@ public static IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>
 
 ### ❌ Forgetting to Check for Empty Results
 
-```csharp{title="❌ Forgetting to Check for Empty Results" description="Demonstrates ❌ Forgetting to Check for Empty Results" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Forgetting", "Check"]}
+```csharp{title="❌ Forgetting to Check for Empty Results" description="❌ Forgetting to Check for Empty Results" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Forgetting", "Check"]}
 // ❌ WRONG: Assuming associations exist
 var associations = PerspectiveRegistrationExtensions
     .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);
@@ -462,7 +471,7 @@ if (!associations.Any()) {
 
 ### ❌ Not Caching in Loops
 
-```csharp{title="❌ Not Caching in Loops" description="Demonstrates ❌ Not Caching in Loops" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Not", "Caching"]}
+```csharp{title="❌ Not Caching in Loops" description="❌ Not Caching in Loops" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Not", "Caching"]}
 // ❌ WRONG: Getting associations in loop
 foreach (var evt in events) {
     var associations = PerspectiveRegistrationExtensions
@@ -483,7 +492,7 @@ foreach (var evt in events) {
 
 ### ❌ Mixing Type Parameters
 
-```csharp{title="❌ Mixing Type Parameters" description="Demonstrates ❌ Mixing Type Parameters" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Mixing", "Type"]}
+```csharp{title="❌ Mixing Type Parameters" description="❌ Mixing Type Parameters" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Mixing", "Type"]}
 // ❌ WRONG: Mismatched types
 var associations = PerspectiveRegistrationExtensions
     .GetPerspectiveAssociations<ProductModel, OrderCreatedEvent>(serviceName);
@@ -505,7 +514,7 @@ assoc.ApplyDelegate(model, productEvent); // Works!
 
 ### Delegate Invocation Cost
 
-```csharp{title="Delegate Invocation Cost" description="Demonstrates delegate Invocation Cost" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Delegate", "Invocation"]}
+```csharp{title="Delegate Invocation Cost" description="Delegate Invocation Cost" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Delegate", "Invocation"]}
 // Delegate invocation: ~1-2ns per call (very fast)
 var model = assoc.ApplyDelegate(currentModel, evt);
 
@@ -515,7 +524,7 @@ var model = assoc.ApplyDelegate(currentModel, evt);
 
 ### Caching Strategy
 
-```csharp{title="Caching Strategy" description="Demonstrates caching Strategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Caching", "Strategy"]}
+```csharp{title="Caching Strategy" description="Caching Strategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Caching", "Strategy"]}
 // For high-throughput scenarios, cache associations
 private readonly IReadOnlyList<PerspectiveAssociationInfo<ProductModel, ProductCreatedEvent>> _cached;
 

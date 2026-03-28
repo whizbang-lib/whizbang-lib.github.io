@@ -10,11 +10,16 @@ tags: 'perspectives, association, metadata, source-generators, registration'
 codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveAssociationInfo.cs
   - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Association Info
 
 `PerspectiveAssociationInfo` is a metadata structure used by source generators to track the relationship between perspective implementations and their model types. It enables compile-time discovery and runtime registration of perspectives.
+
+:::updated
+This page covers the **non-generic** `PerspectiveAssociationInfo` class used by source generators for **compile-time discovery and registration**. For the **generic** `PerspectiveAssociationInfo<TModel, TEvent>` record used for **runtime invocation** of perspective Apply methods via strongly-typed delegates, see [PerspectiveAssociationInfo (Typed Delegates)](association-info.md).
+:::
 
 ## Purpose
 
@@ -27,7 +32,7 @@ The perspective discovery system needs to know:
 
 ## Structure
 
-```csharp{title="Structure" description="Demonstrates structure" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Structure"]}
+```csharp{title="Structure" description="Structure" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Structure"]}
 namespace Whizbang.Core.Perspectives;
 
 /// <summary>
@@ -96,7 +101,7 @@ The generated registration code uses this metadata to:
 2. Register the perspective in DI container
 3. Create event subscription mappings
 
-```csharp{title="Runtime Registration" description="Demonstrates runtime Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Runtime", "Registration"]}
+```csharp{title="Runtime Registration" description="Runtime Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Runtime", "Registration"]}
 // Auto-generated registration
 services.AddTransient<OrderSummaryPerspective>();
 services.AddTransient<IPerspectiveRunner>(sp =>
@@ -114,7 +119,7 @@ For each `PerspectiveAssociationInfo`, the generator creates:
 
 ### 1. Perspective Runner
 
-```csharp{title="Perspective Runner" description="Demonstrates perspective Runner" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Perspective", "Runner"]}
+```csharp{title="Perspective Runner" description="Perspective Runner" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Perspective", "Runner"]}
 internal sealed class OrderSummaryPerspectiveRunner : IPerspectiveRunner {
   // Implements event replay logic
   public async Task<PerspectiveCheckpointCompletion> RunAsync(
@@ -129,7 +134,7 @@ internal sealed class OrderSummaryPerspectiveRunner : IPerspectiveRunner {
 
 ### 2. Registry Entry
 
-```csharp{title="Registry Entry" description="Demonstrates registry Entry" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registry", "Entry"]}
+```csharp{title="Registry Entry" description="Registry Entry" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registry", "Entry"]}
 // In generated PerspectiveRunnerRegistry
 registry.Register(
   perspectiveName: "OrderSummaryPerspective",
@@ -139,7 +144,7 @@ registry.Register(
 
 ### 3. Event Subscriptions
 
-```csharp{title="Event Subscriptions" description="Demonstrates event Subscriptions" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Event", "Subscriptions"]}
+```csharp{title="Event Subscriptions" description="Event Subscriptions" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Event", "Subscriptions"]}
 // In generated EventSubscriptionDiscovery
 subscriptions.Add(new EventSubscription {
   EventType = typeof(OrderCreated),
@@ -155,7 +160,7 @@ subscriptions.Add(new EventSubscription {
 
 ### Step 1: Define Perspective
 
-```csharp{title="Step 1: Define Perspective" description="Demonstrates step 1: Define Perspective" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Step", "Define"]}
+```csharp{title="Step 1: Define Perspective" description="Step 1: Define Perspective" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Step", "Define"]}
 public class ProductCatalogPerspective :
     IPerspectiveFor<ProductDto, ProductCreated>,
     IPerspectiveFor<ProductDto, ProductUpdated> {
@@ -179,7 +184,7 @@ public class ProductCatalogPerspective :
 
 ### Step 2: Generator Creates Association
 
-```csharp{title="Step 2: Generator Creates Association" description="Demonstrates step 2: Generator Creates Association" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Step", "Generator"]}
+```csharp{title="Step 2: Generator Creates Association" description="Step 2: Generator Creates Association" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Step", "Generator"]}
 // Auto-generated metadata
 new PerspectiveAssociationInfo {
   PerspectiveType = typeof(ProductCatalogPerspective),
@@ -193,7 +198,7 @@ new PerspectiveAssociationInfo {
 
 ### Step 3: Generator Creates Runner
 
-```csharp{title="Step 3: Generator Creates Runner" description="Demonstrates step 3: Generator Creates Runner" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Step", "Generator"]}
+```csharp{title="Step 3: Generator Creates Runner" description="Step 3: Generator Creates Runner" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Step", "Generator"]}
 // Auto-generated runner
 internal sealed class ProductCatalogPerspectiveRunner : IPerspectiveRunner {
   public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {

@@ -11,6 +11,11 @@ tags:
   - physical-field
   - perspectives
   - source-generator
+codeReferences:
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators/PerspectiveSchemaGenerator.cs
+  - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ802: VectorField Invalid Dimensions
@@ -40,7 +45,7 @@ Specify a valid positive integer for the dimensions:
 
 ### Before (causes WHIZ802)
 
-```csharp{title="Before (causes WHIZ802)" description="Demonstrates before (causes WHIZ802)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
+```csharp{title="Before (causes WHIZ802)" description="Before (causes WHIZ802)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
 public record ProductDto {
   [StreamKey]
   public Guid ProductId { get; init; }
@@ -53,7 +58,7 @@ public record ProductDto {
 
 ### After (error resolved)
 
-```csharp{title="After (error resolved)" description="Demonstrates after (error resolved)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Error"]}
+```csharp{title="After (error resolved)" description="After (error resolved)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Error"]}
 public record ProductDto {
   [StreamKey]
   public Guid ProductId { get; init; }
@@ -86,7 +91,7 @@ The dimensions parameter:
 
 ## Example: Multiple Embedding Types
 
-```csharp{title="Example: Multiple Embedding Types" description="Demonstrates example: Multiple Embedding Types" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Multiple"]}
+```csharp{title="Example: Multiple Embedding Types" description="Example: Multiple Embedding Types" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Multiple"]}
 public record DocumentDto {
   [StreamKey]
   public Guid DocumentId { get; init; }

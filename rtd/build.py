@@ -33,7 +33,12 @@ CALLOUT_OPEN_RE = re.compile(
 )
 CALLOUT_CLOSE_RE = re.compile(r"^:::\s*$")
 CODE_FENCE_RE = re.compile(r"^(`{3,})")
-CODE_META_RE = re.compile(r"^(```\w+)\{[^}]+\}")
+CODE_META_RE = re.compile(r'^(```\w+)\{([^}]+)\}', re.MULTILINE)
+WB_VIDEO_RE = re.compile(r'<wb-video\s+id="([^"]+)"[^>]*>.*?</wb-video>', re.DOTALL)
+WB_VIDEO_SELF_RE = re.compile(r'<wb-video\s+id="([^"]+)"[^/]*/>')
+WB_EXAMPLE_RE = re.compile(r'<wb-example\s+id="([^"]+)"[^>]*>.*?</wb-example>', re.DOTALL)
+WB_EXAMPLE_SELF_RE = re.compile(r'<wb-example\s+id="([^"]+)"[^/]*/>')
+ANCHOR_ID_RE = re.compile(r'\s*\{#[\w-]+\}')
 
 
 def clean_and_copy():
@@ -112,15 +117,61 @@ def convert_callouts(text: str) -> str:
 
 
 def strip_code_metadata(text: str) -> str:
-    """Strip custom metadata from code fence opening lines."""
-    return CODE_META_RE.sub(r"\1", text)
+    """Strip custom metadata from code fence opening lines, preserving title as bold text."""
+
+    def _replace_meta(m):
+        fence = m.group(1)  # e.g., ```csharp
+        meta = m.group(2)  # e.g., title="Example" description="..."
+        title_match = re.search(r'title\s*=\s*"([^"]*)"', meta)
+        if title_match:
+            title = title_match.group(1)
+            return f"**{title}**\n\n{fence}"
+        return fence
+
+    return CODE_META_RE.sub(_replace_meta, text)
+
+
+def convert_custom_components(text: str) -> str:
+    """Replace custom Angular components with plain-text fallbacks for RTD."""
+    # <wb-video id="xyz"> → YouTube link
+    text = WB_VIDEO_RE.sub(
+        r'[:material-video: Watch on YouTube](https://www.youtube.com/watch?v=\1){.md-button}',
+        text,
+    )
+    text = WB_VIDEO_SELF_RE.sub(
+        r'[:material-video: Watch on YouTube](https://www.youtube.com/watch?v=\1){.md-button}',
+        text,
+    )
+    # <wb-example id="xyz"> → StackBlitz link
+    text = WB_EXAMPLE_RE.sub(
+        r'[:material-code-tags: Open in StackBlitz](https://stackblitz.com/edit/\1){.md-button}',
+        text,
+    )
+    text = WB_EXAMPLE_SELF_RE.sub(
+        r'[:material-code-tags: Open in StackBlitz](https://stackblitz.com/edit/\1){.md-button}',
+        text,
+    )
+    return text
+
+
+def strip_anchor_ids(text: str) -> str:
+    """Remove custom anchor IDs ({#some-id}) that MkDocs doesn't support."""
+    return ANCHOR_ID_RE.sub("", text)
+
+
+def strip_lastmaintained(text: str) -> str:
+    """Remove lastMaintainedCommit from frontmatter (internal-only field)."""
+    return re.sub(r"^lastMaintainedCommit:.*\n", "", text, flags=re.MULTILINE)
 
 
 def transform_file(filepath: Path):
     """Apply all transformations to a markdown file."""
     text = filepath.read_text(encoding="utf-8")
+    text = strip_lastmaintained(text)
     text = convert_callouts(text)
+    text = convert_custom_components(text)
     text = strip_code_metadata(text)
+    text = strip_anchor_ids(text)
     filepath.write_text(text, encoding="utf-8")
 
 

@@ -1,3 +1,18 @@
+---
+title: "TypeMatcher: Type Name Matching Utilities"
+version: 1.0.0
+category: "Core Concepts"
+order: 28
+description: >-
+  TypeMatcher provides flexible type name matching with fuzzy matching via MatchStrictness flags
+  and regex pattern matching. Implements a sequential transformation pipeline for type string
+  comparisons with null-safe handling.
+tags: 'type-matcher, type-matching, fuzzy-matching, regex, identity, type-comparison'
+codeReferences:
+  - src/Whizbang.Core/TypeMatcher.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # TypeMatcher: Type Name Matching Utilities
 
 TypeMatcher is a static utility class that provides flexible type name matching with support for fuzzy matching via MatchStrictness flags and regex pattern matching. It handles the transformation pipeline for type string comparisons.
@@ -15,7 +30,7 @@ TypeMatcher is a static utility class that provides flexible type name matching 
 
 ### Basic Matching
 
-```csharp{title="Basic Matching" description="Demonstrates basic Matching" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Matching"]}
+```csharp{title="Basic Matching" description="Basic Matching" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Matching"]}
 using Whizbang.Core;
 
 var type1 = "ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts";
@@ -40,7 +55,7 @@ bool caseInsensitive = TypeMatcher.Matches(
 
 ### Pattern Matching
 
-```csharp{title="Pattern Matching" description="Demonstrates pattern Matching" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Pattern", "Matching"]}
+```csharp{title="Pattern Matching" description="Pattern Matching" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Pattern", "Matching"]}
 using System.Text.RegularExpressions;
 
 var typeString = "ECommerce.Contracts.Events.ProductCreatedEvent";
@@ -89,7 +104,7 @@ var type = "MyApp.Events.OrderCreated, MyApp, Version=1.0.0";
 
 ### Strictness Examples
 
-```csharp{title="Strictness Examples" description="Demonstrates strictness Examples" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "Strictness", "Examples"]}
+```csharp{title="Strictness Examples" description="Strictness Examples" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "Strictness", "Examples"]}
 var fullType = "ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts, Version=1.0.0";
 
 // Exact (no transformations)
@@ -250,7 +265,7 @@ TypeMatcher.Matches(typeString, null);     // Throws: ArgumentNullException
 
 ### Common Patterns
 
-```csharp{title="Common Patterns" description="Demonstrates common Patterns" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Common", "Patterns"]}
+```csharp{title="Common Patterns" description="Common Patterns" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Common", "Patterns"]}
 // Match any event type
 var eventPattern = new Regex(".*Event$");
 bool isEvent = TypeMatcher.Matches("ProductCreatedEvent", eventPattern);
@@ -290,7 +305,7 @@ bool inAssembly = TypeMatcher.Matches(
 
 ### Combining Pattern and Fuzzy Matching
 
-```csharp{title="Combining Pattern and Fuzzy Matching" description="Demonstrates combining Pattern and Fuzzy Matching" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Combining", "Pattern"]}
+```csharp{title="Combining Pattern and Fuzzy Matching" description="Combining Pattern and Fuzzy Matching" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Combining", "Pattern"]}
 public IEnumerable<string> FindMatchingTypes(
     IEnumerable<string> types,
     string pattern,
@@ -360,7 +375,7 @@ bool match8 = TypeMatcher.Matches("MyType", (Regex)null!);
 
 ### Case Sensitivity
 
-```csharp{title="Case Sensitivity" description="Demonstrates case Sensitivity" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Case", "Sensitivity"]}
+```csharp{title="Case Sensitivity" description="Case Sensitivity" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Case", "Sensitivity"]}
 // Case-sensitive (default)
 bool caseSensitive = TypeMatcher.Matches(
     "ProductCreatedEvent",
@@ -491,7 +506,7 @@ public static class TypeMatcher {
 
 ### ❌ Assuming Culture-Sensitive Matching
 
-```csharp{title="❌ Assuming Culture-Sensitive Matching" description="Demonstrates ❌ Assuming Culture-Sensitive Matching" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Assuming", "Culture-Sensitive"]}
+```csharp{title="❌ Assuming Culture-Sensitive Matching" description="❌ Assuming Culture-Sensitive Matching" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Assuming", "Culture-Sensitive"]}
 // ❌ WRONG: Expecting culture-sensitive comparison
 // TypeMatcher always uses Ordinal/OrdinalIgnoreCase
 bool match = TypeMatcher.Matches("Straße", "Strasse", MatchStrictness.CaseInsensitive);
@@ -503,7 +518,7 @@ bool match = TypeMatcher.Matches("Straße", "Strasse", MatchStrictness.CaseInsen
 
 ### ❌ Forgetting Transformation Order
 
-```csharp{title="❌ Forgetting Transformation Order" description="Demonstrates ❌ Forgetting Transformation Order" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Forgetting", "Transformation"]}
+```csharp{title="❌ Forgetting Transformation Order" description="❌ Forgetting Transformation Order" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Forgetting", "Transformation"]}
 // ❌ WRONG: Assuming IgnoreNamespace strips everything
 var type = "MyApp.Events.OrderCreated, MyApp, Version=1.0.0";
 bool match = TypeMatcher.Matches(type, "OrderCreated", MatchStrictness.IgnoreNamespace);
@@ -516,7 +531,7 @@ bool match = TypeMatcher.Matches(type, "OrderCreated", MatchStrictness.SimpleNam
 
 ### ❌ Not Checking for Null Pattern
 
-```csharp{title="❌ Not Checking for Null Pattern" description="Demonstrates ❌ Not Checking for Null Pattern" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Not", "Checking"]}
+```csharp{title="❌ Not Checking for Null Pattern" description="❌ Not Checking for Null Pattern" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Not", "Checking"]}
 // ❌ WRONG: Passing null regex
 Regex? pattern = null;
 bool match = TypeMatcher.Matches("MyType", pattern!);
@@ -530,7 +545,7 @@ if (pattern != null) {
 
 ### ❌ Overly Broad Patterns
 
-```csharp{title="❌ Overly Broad Patterns" description="Demonstrates ❌ Overly Broad Patterns" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Overly", "Broad"]}
+```csharp{title="❌ Overly Broad Patterns" description="❌ Overly Broad Patterns" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Overly", "Broad"]}
 // ❌ WRONG: Pattern matches too many types
 var pattern = new Regex(".*"); // Matches EVERYTHING!
 if (TypeMatcher.Matches(userType, pattern)) {
@@ -568,7 +583,7 @@ public bool CachedMatch(string type1, string type2, MatchStrictness strictness) 
 
 ### Regex Performance
 
-```csharp{title="Regex Performance" description="Demonstrates regex Performance" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Regex", "Performance"]}
+```csharp{title="Regex Performance" description="Regex Performance" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Regex", "Performance"]}
 // ❌ WRONG: Create regex in hot path
 for (int i = 0; i < 10000; i++) {
     var pattern = new Regex(".*Event$"); // Creates 10,000 regex instances!

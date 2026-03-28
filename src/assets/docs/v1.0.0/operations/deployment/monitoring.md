@@ -7,6 +7,12 @@ description: >-
   Application monitoring - Application Insights, Prometheus, distributed
   tracing, metrics, and dashboards
 tags: 'monitoring, observability, application-insights, prometheus, tracing, metrics'
+codeReferences:
+  - src/Whizbang.Core/Observability/WhizbangActivitySource.cs
+  - src/Whizbang.Core/Observability/WhizbangMetrics.cs
+  - src/Whizbang.Core/Observability/DispatcherMetrics.cs
+  - src/Whizbang.Core/HealthChecks/SubscriptionHealthCheck.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Monitoring & Observability
@@ -32,7 +38,7 @@ Comprehensive **monitoring and observability** for Whizbang applications - Appli
 
 **Program.cs**:
 
-```csharp{title="Setup" description="Demonstrates setup" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Setup"]}
+```csharp{title="Setup" description="Setup" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Setup"]}
 builder.Services.AddApplicationInsightsTelemetry(options => {
   options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
   options.EnableAdaptiveSampling = true;
@@ -55,7 +61,7 @@ builder.Services.AddApplicationInsightsTelemetryProcessor<FilterHealthChecksTele
 
 ### Structured Logging
 
-```csharp{title="Structured Logging" description="Demonstrates structured Logging" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Structured", "Logging"]}
+```csharp{title="Structured Logging" description="Structured Logging" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Structured", "Logging"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
   private readonly ILogger<CreateOrderReceptor> _logger;
 
@@ -150,7 +156,7 @@ requests
 
 **Program.cs**:
 
-```csharp{title="Setup (3)" description="Demonstrates setup" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Setup"]}
+```csharp{title="Setup (3)" description="Setup (3)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Setup"]}
 builder.Services.AddOpenTelemetry()
   .WithMetrics(metrics => {
     metrics
@@ -204,7 +210,7 @@ public class OrderMetrics {
 
 **Usage**:
 
-```csharp{title="Custom Metrics (2)" description="Demonstrates custom Metrics" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Custom", "Metrics"]}
+```csharp{title="Custom Metrics (2)" description="Custom Metrics" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Custom", "Metrics"]}
 public async Task<OrderCreated> HandleAsync(
   CreateOrder command,
   CancellationToken ct = default
@@ -365,7 +371,7 @@ private async Task ProcessMessageAsync(ProcessMessageEventArgs args) {
 
 **Program.cs**:
 
-```csharp{title="Basic Health Checks" description="Demonstrates basic Health Checks" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Basic", "Health"]}
+```csharp{title="Basic Health Checks" description="Basic Health Checks" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Basic", "Health"]}
 builder.Services.AddHealthChecks()
   .AddNpgSql(
     builder.Configuration["Database:ConnectionString"],
@@ -541,7 +547,7 @@ requests
 
 **alerts.yml**:
 
-```yaml{title="Prometheus Alerts" description="Demonstrates prometheus Alerts" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Prometheus", "Alerts"]}
+```yaml{title="Prometheus Alerts" description="Prometheus Alerts" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Prometheus", "Alerts"]}
 groups:
   - name: order-service
     interval: 30s
@@ -586,7 +592,7 @@ groups:
 
 **Azure CLI**:
 
-```bash{title="Application Insights Alerts" description="Demonstrates application Insights Alerts" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Application", "Insights"]}
+```bash{title="Application Insights Alerts" description="Application Insights Alerts" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Application", "Insights"]}
 # Create alert for error rate
 az monitor metrics alert create \
   --name "High Error Rate" \
@@ -618,7 +624,7 @@ az monitor metrics alert create \
 
 **Program.cs**:
 
-```csharp{title="Serilog with Sinks" description="Demonstrates serilog with Sinks" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Serilog", "Sinks"]}
+```csharp{title="Serilog with Sinks" description="Serilog with Sinks" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Serilog", "Sinks"]}
 using Serilog;
 using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
@@ -692,7 +698,7 @@ public class CreateOrderBenchmark {
 
 **Run**:
 
-```bash{title="BenchmarkDotNet Integration (2)" description="Demonstrates benchmarkDotNet Integration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "BenchmarkDotNet", "Integration"]}
+```bash{title="BenchmarkDotNet Integration (2)" description="BenchmarkDotNet Integration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "BenchmarkDotNet", "Integration"]}
 dotnet run -c Release --project Benchmarks
 
 # Output:
