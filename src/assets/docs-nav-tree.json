@@ -37,6 +37,11 @@
           "slug": "v1.0.0/getting-started/project-structure",
           "title": "Project Structure Guide",
           "order": 4
+        },
+        {
+          "slug": "v1.0.0/getting-started/glossary",
+          "title": "Glossary",
+          "order": 5
         }
       ],
       "children": []
@@ -157,6 +162,11 @@
               "order": 8
             },
             {
+              "slug": "v1.0.0/fundamentals/events/event-store",
+              "title": "Event Store",
+              "order": 9
+            },
+            {
               "slug": "v1.0.0/fundamentals/events/event-store-query",
               "title": "Event Store Query",
               "order": 10
@@ -175,11 +185,6 @@
               "slug": "v1.0.0/fundamentals/events/event-streams",
               "title": "Event Streams",
               "order": 13
-            },
-            {
-              "slug": "v1.0.0/fundamentals/events/event-store",
-              "title": "Event Store",
-              "order": 999
             }
           ],
           "children": []
@@ -195,14 +200,14 @@
               "order": 1
             },
             {
+              "slug": "v1.0.0/fundamentals/dispatcher/routing",
+              "title": "Namespace-Based Routing",
+              "order": 2
+            },
+            {
               "slug": "v1.0.0/fundamentals/dispatcher/rpc-extraction",
               "title": "RPC Response Extraction",
               "order": 18
-            },
-            {
-              "slug": "v1.0.0/fundamentals/dispatcher/routing",
-              "title": "Routing",
-              "order": 999
             }
           ],
           "children": []
@@ -221,6 +226,16 @@
               "slug": "v1.0.0/fundamentals/messages",
               "title": "Messages",
               "order": 5
+            },
+            {
+              "slug": "v1.0.0/fundamentals/messages/cascade-context",
+              "title": "Cascade Context & Security Propagation",
+              "order": 6
+            },
+            {
+              "slug": "v1.0.0/fundamentals/messages/message-context-extraction",
+              "title": "Message Context Extraction",
+              "order": 7
             },
             {
               "slug": "v1.0.0/fundamentals/messages/message-tags",
@@ -299,9 +314,44 @@
               "order": 5
             },
             {
+              "slug": "v1.0.0/fundamentals/perspectives/perspectives-with-actions",
+              "title": "Perspectives with Actions",
+              "order": 5
+            },
+            {
+              "slug": "v1.0.0/fundamentals/perspectives/registry",
+              "title": "Perspective Registry",
+              "order": 6
+            },
+            {
+              "slug": "v1.0.0/fundamentals/perspectives/table-naming",
+              "title": "Perspective Table Naming",
+              "order": 7
+            },
+            {
+              "slug": "v1.0.0/fundamentals/perspectives/temporal",
+              "title": "Temporal Perspectives",
+              "order": 8
+            },
+            {
+              "slug": "v1.0.0/fundamentals/perspectives/typed-associations",
+              "title": "GetPerspectiveAssociations: Strongly-Typed Perspective Queries",
+              "order": 9
+            },
+            {
               "slug": "v1.0.0/fundamentals/perspectives/rebuild",
               "title": "Perspective Rebuild",
               "order": 10
+            },
+            {
+              "slug": "v1.0.0/fundamentals/perspectives/snapshots",
+              "title": "Perspective Snapshots",
+              "order": 11
+            },
+            {
+              "slug": "v1.0.0/fundamentals/perspectives/stream-locking",
+              "title": "Perspective Stream Locking",
+              "order": 12
             },
             {
               "slug": "v1.0.0/fundamentals/perspectives/association-info",
@@ -324,28 +374,8 @@
               "order": 999
             },
             {
-              "slug": "v1.0.0/fundamentals/perspectives/registry",
-              "title": "Registry",
-              "order": 999
-            },
-            {
               "slug": "v1.0.0/fundamentals/perspectives/sync",
               "title": "Perspective Sync",
-              "order": 999
-            },
-            {
-              "slug": "v1.0.0/fundamentals/perspectives/table-naming",
-              "title": "Table Naming",
-              "order": 999
-            },
-            {
-              "slug": "v1.0.0/fundamentals/perspectives/temporal",
-              "title": "Temporal",
-              "order": 999
-            },
-            {
-              "slug": "v1.0.0/fundamentals/perspectives/typed-associations",
-              "title": "Typed Associations",
               "order": 999
             },
             {
@@ -393,13 +423,13 @@
             },
             {
               "slug": "v1.0.0/fundamentals/lenses/raw-sql",
-              "title": "Raw Sql",
-              "order": 999
+              "title": "Raw SQL and Connection Access",
+              "order": 6
             },
             {
               "slug": "v1.0.0/fundamentals/lenses/vector-search",
-              "title": "Vector Search",
-              "order": 999
+              "title": "Vector Similarity Search",
+              "order": 7
             }
           ],
           "children": []
@@ -415,6 +445,11 @@
               "order": 9
             },
             {
+              "slug": "v1.0.0/fundamentals/lifecycle/lifecycle-coordinator",
+              "title": "Lifecycle Coordinator",
+              "order": 11
+            },
+            {
               "slug": "v1.0.0/fundamentals/lifecycle",
               "title": "Lifecycle Management",
               "order": 25
@@ -428,39 +463,39 @@
           "order": 8,
           "pages": [
             {
+              "slug": "v1.0.0/fundamentals/identity/whizbang-ids",
+              "title": "WhizbangIds: Strongly-Typed Identity Values",
+              "order": 24
+            },
+            {
               "slug": "v1.0.0/fundamentals/identity/assembly-registry",
               "title": "Assembly Registry",
               "order": 25
             },
             {
-              "slug": "v1.0.0/fundamentals/identity/time-provider",
-              "title": "Time Provider",
-              "order": 30
-            },
-            {
               "slug": "v1.0.0/fundamentals/identity/fuzzy-matching",
-              "title": "Fuzzy Matching",
-              "order": 999
+              "title": "MatchStrictness: Fuzzy Type Matching Control",
+              "order": 26
             },
             {
               "slug": "v1.0.0/fundamentals/identity/type-formatting",
-              "title": "Type Formatting",
-              "order": 999
+              "title": "TypeFormatter: Type Name Formatting Utility",
+              "order": 27
             },
             {
               "slug": "v1.0.0/fundamentals/identity/type-matching",
-              "title": "Type Matching",
-              "order": 999
+              "title": "TypeMatcher: Type Name Matching Utilities",
+              "order": 28
             },
             {
               "slug": "v1.0.0/fundamentals/identity/type-qualification",
-              "title": "Type Qualification",
-              "order": 999
+              "title": "TypeQualification: Type Name Formatting Control",
+              "order": 29
             },
             {
-              "slug": "v1.0.0/fundamentals/identity/whizbang-ids",
-              "title": "Whizbang Ids",
-              "order": 999
+              "slug": "v1.0.0/fundamentals/identity/time-provider",
+              "title": "Time Provider",
+              "order": 30
             }
           ],
           "children": []
@@ -497,13 +532,13 @@
             },
             {
               "slug": "v1.0.0/fundamentals/security/implementing-multi-tenancy",
-              "title": "Implementing Multi Tenancy",
-              "order": 999
+              "title": "Implementing Multi-Tenancy",
+              "order": 9
             },
             {
               "slug": "v1.0.0/fundamentals/security/message-security",
-              "title": "Message Security",
-              "order": 999
+              "title": "Message Security Context Propagation",
+              "order": 10
             },
             {
               "slug": "v1.0.0/fundamentals/security/scoping",
@@ -560,33 +595,33 @@
         },
         {
           "slug": "v1.0.0/messaging/commands-events",
-          "title": "Commands Events",
-          "order": 999
+          "title": "Commands and Events",
+          "order": 5
         },
         {
           "slug": "v1.0.0/messaging/failure-handling",
           "title": "Failure Handling",
-          "order": 999
+          "order": 6
         },
         {
           "slug": "v1.0.0/messaging/idempotency-patterns",
           "title": "Idempotency Patterns",
-          "order": 999
+          "order": 7
         },
         {
           "slug": "v1.0.0/messaging/multi-instance-coordination",
-          "title": "Multi Instance Coordination",
-          "order": 999
+          "title": "Multi-Instance Coordination",
+          "order": 8
         },
         {
           "slug": "v1.0.0/messaging/topic-filters",
           "title": "Topic Filters",
-          "order": 999
+          "order": 9
         },
         {
           "slug": "v1.0.0/messaging/work-coordination",
           "title": "Work Coordination",
-          "order": 999
+          "order": 10
         }
       ],
       "children": [
@@ -646,6 +681,11 @@
           "order": 2
         },
         {
+          "slug": "v1.0.0/data/efcore-complex-types",
+          "title": "EF Core Complex Types",
+          "order": 3
+        },
+        {
           "slug": "v1.0.0/data/perspectives-storage",
           "title": "Perspectives Storage",
           "order": 3
@@ -656,9 +696,19 @@
           "order": 4
         },
         {
+          "slug": "v1.0.0/data/turnkey-initialization",
+          "title": "Turnkey Database Initialization",
+          "order": 5
+        },
+        {
           "slug": "v1.0.0/data/schema-generation-pattern",
           "title": "Schema Generation Pattern",
           "order": 6
+        },
+        {
+          "slug": "v1.0.0/data/schema-migration",
+          "title": "Schema Migration",
+          "order": 7
         },
         {
           "slug": "v1.0.0/data/caching",
@@ -671,24 +721,14 @@
           "order": 8
         },
         {
+          "slug": "v1.0.0/data/work-coordinator-strategies",
+          "title": "Work Coordinator Strategies",
+          "order": 8
+        },
+        {
           "slug": "v1.0.0/data/efcore-json-configuration",
           "title": "EF Core 10 JSON Configuration",
           "order": 10
-        },
-        {
-          "slug": "v1.0.0/data/schema-migration",
-          "title": "Schema Migration",
-          "order": 999
-        },
-        {
-          "slug": "v1.0.0/data/turnkey-initialization",
-          "title": "Turnkey Initialization",
-          "order": 999
-        },
-        {
-          "slug": "v1.0.0/data/work-coordinator-strategies",
-          "title": "Work Coordinator Strategies",
-          "order": 999
         }
       ],
       "children": []
@@ -728,39 +768,39 @@
           "order": 2,
           "pages": [
             {
+              "slug": "v1.0.0/apis/graphql/index",
+              "title": "GraphQL Integration",
+              "order": 1
+            },
+            {
+              "slug": "v1.0.0/apis/graphql/setup",
+              "title": "GraphQL Setup",
+              "order": 2
+            },
+            {
+              "slug": "v1.0.0/apis/graphql/lens-integration",
+              "title": "Lens Integration",
+              "order": 3
+            },
+            {
+              "slug": "v1.0.0/apis/graphql/filtering",
+              "title": "GraphQL Filtering",
+              "order": 4
+            },
+            {
+              "slug": "v1.0.0/apis/graphql/sorting",
+              "title": "GraphQL Sorting",
+              "order": 5
+            },
+            {
               "slug": "v1.0.0/apis/graphql/polymorphic-types",
               "title": "Polymorphic Types",
               "order": 6
             },
             {
-              "slug": "v1.0.0/apis/graphql/filtering",
-              "title": "Filtering",
-              "order": 999
-            },
-            {
-              "slug": "v1.0.0/apis/graphql/index",
-              "title": "Index",
-              "order": 999
-            },
-            {
-              "slug": "v1.0.0/apis/graphql/lens-integration",
-              "title": "Lens Integration",
-              "order": 999
-            },
-            {
               "slug": "v1.0.0/apis/graphql/scoping",
-              "title": "Scoping",
-              "order": 999
-            },
-            {
-              "slug": "v1.0.0/apis/graphql/setup",
-              "title": "Setup",
-              "order": 999
-            },
-            {
-              "slug": "v1.0.0/apis/graphql/sorting",
-              "title": "Sorting",
-              "order": 999
+              "title": "GraphQL Scoping",
+              "order": 7
             }
           ],
           "children": []
@@ -876,6 +916,11 @@
               "slug": "v1.0.0/operations/observability/logging-categories",
               "title": "Logging Categories",
               "order": 4
+            },
+            {
+              "slug": "v1.0.0/operations/observability/metrics",
+              "title": "Metrics Reference",
+              "order": 6
             }
           ],
           "children": []
@@ -914,6 +959,11 @@
               "slug": "v1.0.0/operations/infrastructure/policy-engine",
               "title": "Policy Engine Component",
               "order": 6
+            },
+            {
+              "slug": "v1.0.0/operations/infrastructure/database-limits",
+              "title": "Database Identifier Limits",
+              "order": 7
             }
           ],
           "children": []
@@ -1012,6 +1062,11 @@
             {
               "slug": "v1.0.0/operations/diagnostics/whiz090",
               "title": "WHIZ090: MessageTag Parameter Naming",
+              "order": 999
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz300",
+              "title": "WHIZ300: Inconsistent Perspective Model Types",
               "order": 999
             },
             {
@@ -1172,6 +1227,11 @@
               "order": 3
             },
             {
+              "slug": "v1.0.0/extending/attributes/auto-populate",
+              "title": "Auto-Populate Attributes",
+              "order": 5
+            },
+            {
               "slug": "v1.0.0/extending/attributes/streamkey",
               "title": "StreamKey Attribute",
               "order": 999
@@ -1228,6 +1288,11 @@
               "slug": "v1.0.0/extending/source-generators/attribute-utilities",
               "title": "Attribute Utilities",
               "order": 10
+            },
+            {
+              "slug": "v1.0.0/extending/source-generators/type-symbol-extensions",
+              "title": "Type Symbol Extensions",
+              "order": 11
             }
           ],
           "children": []
