@@ -1,0 +1,54 @@
+{
+  "session": "2G",
+  "section": "apis/ (rest, graphql, mutations, signalr)",
+  "auditDate": "2026-03-25",
+  "pagesAudited": ["apis/ (all ~12 pages)"],
+  "libraryFilesRead": ["Baseline data analysis — source verification deferred"],
+  "tasks": [
+    {
+      "id": "2G-001",
+      "type": "frontmatter",
+      "priority": "P0",
+      "page": "apis/graphql/ (6 pages)",
+      "dimension": "page-frontmatter",
+      "summary": "6 GraphQL pages missing ALL frontmatter",
+      "details": "filtering.md, index.md, lens-integration.md, scoping.md, setup.md, sorting.md all have no YAML frontmatter. These cover HotChocolate GraphQL integration. Need full frontmatter with tags: GraphQL, HotChocolate, filtering, sorting, scoping, lens integration, query, schema.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2G-002",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "apis/ (5 pages)",
+      "dimension": "page-frontmatter",
+      "summary": "5 API pages have frontmatter but missing codeReferences",
+      "details": "REST, mutations, and SignalR pages have frontmatter but no codeReferences. Should reference their respective transport project files (FastEndpoints, HotChocolate, Mutations, SignalR).",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2G-003",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "apis/graphql/",
+      "dimension": "incomplete-docs",
+      "summary": "Verify GraphQL polymorphic types page matches HotChocolate integration",
+      "details": "apis/graphql/polymorphic-types.md covers HotChocolate polymorphic type support. Need to verify it matches current Whizbang.Transports.HotChocolate implementation, especially around discriminator columns and type resolvers.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2G-004",
+      "type": "code-sample-fix",
+      "priority": "P2",
+      "page": "apis/",
+      "dimension": "code-sample-frontmatter",
+      "summary": "Code samples across all API pages have auto-generated poor metadata",
+      "details": "Same pattern.",
+      "sourceFiles": [],
+      "effort": "M"
+    }
+  ],
+  "sectionSummary": "APIs section has ~12 pages. Main issue: 6 GraphQL pages have NO frontmatter. No broken code-docs links. REST (FastEndpoints), mutations, and SignalR pages have decent frontmatter but missing codeReferences."
+}

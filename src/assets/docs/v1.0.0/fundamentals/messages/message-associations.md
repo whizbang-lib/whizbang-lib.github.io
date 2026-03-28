@@ -9,6 +9,7 @@ tags: 'message-associations, perspectives, receptors, discovery'
 codeReferences:
   - src/Whizbang.Core/Messaging/MessageAssociationRecord.cs
   - src/Whizbang.Data.Schema/Schemas/MessageAssociationsSchema.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Message Associations
@@ -26,7 +27,7 @@ When a service starts, it **reconciles** its message associations with the datab
 
 ## MessageAssociationRecord {#messageassociationrecord}
 
-```csharp{title="MessageAssociationRecord" description="Demonstrates messageAssociationRecord" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationRecord", "Messageassociationrecord"]}
+```csharp{title="MessageAssociationRecord" description="MessageAssociationRecord" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationRecord", "Messageassociationrecord"]}
 namespace Whizbang.Core.Messaging;
 
 /// <summary>
@@ -74,7 +75,7 @@ public sealed class MessageAssociationRecord {
 
 ## MessageAssociationsSchema {#messageassociationsschema}
 
-```csharp{title="MessageAssociationsSchema" description="Demonstrates messageAssociationsSchema" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationsSchema", "Messageassociationsschema"]}
+```csharp{title="MessageAssociationsSchema" description="MessageAssociationsSchema" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationsSchema", "Messageassociationsschema"]}
 namespace Whizbang.Data.Schema.Schemas;
 
 /// <summary>
@@ -146,7 +147,7 @@ At startup, services reconcile their associations:
 
 ### Implementation Example
 
-```csharp{title="Implementation Example" description="Demonstrates implementation Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Implementation", "Example"]}
+```csharp{title="Implementation Example" description="Implementation Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Implementation", "Example"]}
 public class MessageAssociationReconciler {
   private readonly IDbConnection _db;
   private readonly string _serviceName;
@@ -251,7 +252,7 @@ public async Task<IEnumerable<string>> GetConsumedTypesAsync(
 
 ## Database Schema
 
-```sql{title="Database Schema" description="Demonstrates database Schema" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Database", "Schema"]}
+```sql{title="Database Schema" description="Database Schema" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Database", "Schema"]}
 CREATE TABLE wb_message_associations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   message_type VARCHAR(500) NOT NULL,

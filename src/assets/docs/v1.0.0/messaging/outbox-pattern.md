@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/WorkCoordination/PostgresWorkCoordinator.cs
   - >-
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Outbox Pattern
@@ -26,7 +27,7 @@ The **Outbox Pattern** ensures reliable event publishing in distributed systems 
 
 ### Naive Approach (BROKEN)
 
-```csharp{title="Naive Approach (BROKEN)" description="Demonstrates naive Approach (BROKEN)" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Naive", "Approach", "BROKEN"]}
+```csharp{title="Naive Approach (BROKEN)" description="Naive Approach (BROKEN)" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Naive", "Approach", "BROKEN"]}
 public async Task<OrderCreated> HandleAsync(CreateOrder message, CancellationToken ct) {
     // 1. Update database
     await _db.ExecuteAsync(
@@ -85,7 +86,7 @@ public async Task<OrderCreated> HandleAsync(CreateOrder message, CancellationTok
 
 ### Database Schema
 
-```sql{title="Database Schema" description="Demonstrates database Schema" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Database", "Schema"]}
+```sql{title="Database Schema" description="Database Schema" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Sql", "Database", "Schema"]}
 CREATE TABLE wh_outbox (
     message_id UUID PRIMARY KEY,
     correlation_id UUID NOT NULL,
@@ -130,46 +131,16 @@ CREATE INDEX idx_outbox_correlation ON wh_outbox(correlation_id);
 
 ### IWorkCoordinator Interface
 
-```csharp{title="IWorkCoordinator Interface" description="Demonstrates iWorkCoordinator Interface" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "IWorkCoordinator", "Interface"]}
+```csharp{title="IWorkCoordinator Interface" description="IWorkCoordinator Interface" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "IWorkCoordinator", "Interface"]}
 public interface IWorkCoordinator {
     Task<WorkBatch> ProcessWorkBatchAsync(
-        Guid instanceId,
-        string serviceName,
-        string hostName,
-        int processId,
-        Dictionary<string, JsonElement>? metadata,
-
-        // Completions and failures
-        MessageCompletion[] outboxCompletions,
-        MessageFailure[] outboxFailures,
-        MessageCompletion[] inboxCompletions,
-        MessageFailure[] inboxFailures,
-
-        // Event store tracking
-        ReceptorProcessingCompletion[] receptorCompletions,
-        ReceptorProcessingFailure[] receptorFailures,
-        PerspectiveCheckpointCompletion[] perspectiveCompletions,
-        PerspectiveCheckpointFailure[] perspectiveFailures,
-
-        // New work to store
-        OutboxMessage[] newOutboxMessages,
-        InboxMessage[] newInboxMessages,
-
-        // Lease renewals
-        Guid[] renewOutboxLeaseIds,
-        Guid[] renewInboxLeaseIds,
-
-        // Configuration
-        WorkBatchFlags flags = WorkBatchFlags.None,
-        int partitionCount = 10000,
-        int maxPartitionsPerInstance = 100,
-        int leaseSeconds = 300,
-        int staleThresholdSeconds = 600,
-
+        ProcessWorkBatchRequest request,
         CancellationToken cancellationToken = default
     );
 }
 ```
+
+The `ProcessWorkBatchRequest` parameter object groups all work batch data (completions, failures, new messages, lease renewals, configuration). See [Work Coordinator](work-coordinator.md) for the full API reference.
 
 **Key Method**: `ProcessWorkBatchAsync` handles **atomic operations**:
 1. Delete completed messages
@@ -183,7 +154,7 @@ public interface IWorkCoordinator {
 
 ### Example: CreateOrderReceptor
 
-```csharp{title="Example: CreateOrderReceptor" description="Demonstrates example: CreateOrderReceptor" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Example:", "CreateOrderReceptor"]}
+```csharp{title="Example: CreateOrderReceptor" description="Example: CreateOrderReceptor" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Example:", "CreateOrderReceptor"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IWorkCoordinator _coordinator;
     private readonly IDbConnectionFactory _db;
@@ -279,7 +250,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### WorkCoordinatorPublisher Worker
 
-```csharp{title="WorkCoordinatorPublisher Worker" description="Demonstrates workCoordinatorPublisher Worker" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "WorkCoordinatorPublisher", "Worker"]}
+```csharp{title="WorkCoordinatorPublisher Worker" description="WorkCoordinatorPublisher Worker" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "WorkCoordinatorPublisher", "Worker"]}
 public class WorkCoordinatorPublisherWorker : BackgroundService {
     private readonly IWorkCoordinator _coordinator;
     private readonly IMessageTransport _transport;
@@ -407,7 +378,7 @@ public class WorkCoordinatorPublisherWorker : BackgroundService {
 
 ### How Leasing Works
 
-```sql{title="How Leasing Works" description="Demonstrates how Leasing Works" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Leasing", "Works"]}
+```sql{title="How Leasing Works" description="How Leasing Works" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Sql", "How", "Leasing", "Works"]}
 -- Claim messages for this instance
 UPDATE wh_outbox
 SET
@@ -433,14 +404,13 @@ RETURNING *;
 
 ### Configuration
 
-```json{title="Configuration" description="Demonstrates configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Configuration"]}
+```json{title="Configuration" description="Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Configuration"]}
 {
   "WorkCoordinatorPublisher": {
     "PollingIntervalMilliseconds": 1000,
     "LeaseSeconds": 300,
     "StaleThresholdSeconds": 600,
-    "PartitionCount": 10000,
-    "MaxPartitionsPerInstance": 100
+    "PartitionCount": 10000
   }
 }
 ```
@@ -450,7 +420,6 @@ RETURNING *;
 - `LeaseSeconds`: How long a lease lasts (300s = 5 minutes)
 - `StaleThresholdSeconds`: When to consider a lease stale (600s = 10 minutes)
 - `PartitionCount`: Total partitions for consistent hashing (10,000)
-- `MaxPartitionsPerInstance`: Max partitions per worker (100)
 
 ---
 
@@ -475,7 +444,7 @@ The Outbox Pattern provides **at-least-once delivery**:
 
 ### Retry Strategy
 
-```csharp{title="Retry Strategy" description="Demonstrates retry Strategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Retry", "Strategy"]}
+```csharp{title="Retry Strategy" description="Retry Strategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Retry", "Strategy"]}
 public async Task ProcessWorkBatchAsync(...) {
     // Failed messages: increment attempt count, update status
     foreach (var failure in outboxFailures) {
@@ -504,7 +473,7 @@ public async Task ProcessWorkBatchAsync(...) {
 - Attempt 5+: Give up (status = Failed)
 
 **Monitoring**:
-```sql{title="Retry Strategy (2)" description="Monitoring:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Retry", "Strategy"]}
+```sql{title="Retry Strategy (2)" description="Monitoring:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Sql", "Retry", "Strategy"]}
 -- Find messages with multiple failures
 SELECT message_id, message_type, attempts, last_error, created_at
 FROM wh_outbox
@@ -543,7 +512,7 @@ ORDER BY created_at DESC;
 
 ### Key Metrics
 
-```csharp{title="Key Metrics" description="Demonstrates key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Key", "Metrics"]}
+```csharp{title="Key Metrics" description="Key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Key", "Metrics"]}
 public class OutboxMetrics {
     public int StoredCount { get; set; }      // Messages waiting to be published
     public int PublishedCount { get; set; }   // Messages successfully published
@@ -589,7 +558,7 @@ public async Task<OutboxMetrics> GetMetricsAsync(CancellationToken ct = default)
 
 ### Unit Tests
 
-```csharp{title="Unit Tests" description="Demonstrates unit Tests" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Unit", "Tests"]}
+```csharp{title="Unit Tests" description="Unit Tests" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Unit", "Tests"]}
 [Test]
 public async Task ProcessWorkBatchAsync_NewOutboxMessage_StoresInDatabaseAsync() {
     // Arrange
@@ -642,7 +611,7 @@ public async Task ProcessWorkBatchAsync_NewOutboxMessage_StoresInDatabaseAsync()
 
 ### Integration Tests
 
-```csharp{title="Integration Tests" description="Demonstrates integration Tests" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Integration", "Tests"]}
+```csharp{title="Integration Tests" description="Integration Tests" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Integration", "Tests"]}
 [Test]
 public async Task WorkCoordinatorPublisher_PublishesFromOutboxAsync() {
     // Arrange

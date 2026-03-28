@@ -7,6 +7,12 @@ description: >-
   Build a complete e-commerce system with Whizbang - microservices, event
   sourcing, CQRS, and distributed messaging
 tags: 'tutorial, ecommerce, microservices, event-sourcing, cqrs, distributed-systems'
+codeReferences:
+  - samples/ECommerce/ECommerce.AppHost/Program.cs
+  - samples/ECommerce/ECommerce.Contracts/Ids.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/OrderCreatedEvent.cs
+  - samples/ECommerce/ECommerce.ServiceDefaults/Extensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # ECommerce Tutorial Overview
@@ -124,7 +130,7 @@ A distributed e-commerce platform with 7 microservices:
 
 ### 1. Create Solution
 
-```bash{title="Create Solution" description="Demonstrates create Solution" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Solution"]}
+```bash{title="Create Solution" description="Create Solution" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Solution"]}
 mkdir ECommerce
 cd ECommerce
 
@@ -133,7 +139,7 @@ dotnet new sln -n ECommerce
 
 ### 2. Add Projects
 
-```bash{title="Add Projects" description="Demonstrates add Projects" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Add", "Projects"]}
+```bash{title="Add Projects" description="Add Projects" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Add", "Projects"]}
 # Order Service (HTTP API)
 dotnet new webapi -n ECommerce.OrderService.API
 dotnet sln add ECommerce.OrderService.API
@@ -173,7 +179,7 @@ dotnet sln add ECommerce.AppHost
 
 ### 3. Add Whizbang Packages
 
-```bash{title="Add Whizbang Packages" description="Demonstrates add Whizbang Packages" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Add", "Whizbang"]}
+```bash{title="Add Whizbang Packages" description="Add Whizbang Packages" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Add", "Whizbang"]}
 # All projects
 dotnet add ECommerce.OrderService.API package Whizbang.Core
 dotnet add ECommerce.InventoryWorker package Whizbang.Core
@@ -252,7 +258,7 @@ ECommerce/
 
 ### Event-Driven Architecture
 
-```csharp{title="Event-Driven Architecture" description="Demonstrates event-Driven Architecture" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Event-Driven", "Architecture"]}
+```csharp{title="Event-Driven Architecture" description="Event-Driven Architecture" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Event-Driven", "Architecture"]}
 // Command: Create Order (synchronous)
 CreateOrder command → CreateOrderReceptor → OrderCreated event
 
@@ -292,7 +298,7 @@ Compensation (if payment fails):
 
 ### 1. Run Locally (Aspire)
 
-```bash{title="Run Locally (Aspire)" description="Demonstrates run Locally (Aspire)" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Run", "Locally"]}
+```bash{title="Run Locally (Aspire)" description="Run Locally (Aspire)" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Run", "Locally"]}
 cd ECommerce.AppHost
 dotnet run
 ```
@@ -301,7 +307,7 @@ Open Aspire Dashboard: `http://localhost:15000`
 
 ### 2. Create Order via API
 
-```bash{title="Create Order via API" description="Demonstrates create Order via API" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
+```bash{title="Create Order via API" description="Create Order via API" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/orders \
   -H "Content-Type: application/json" \
   -d '{
@@ -323,7 +329,7 @@ Check Aspire Dashboard:
 
 ### 4. Query Read Model
 
-```bash{title="Query Read Model" description="Demonstrates query Read Model" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Read"]}
+```bash{title="Query Read Model" description="Query Read Model" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Read"]}
 curl http://localhost:5001/customers/cust-123/orders
 ```
 

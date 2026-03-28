@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/IReceptor.cs
   - >-
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Receptors
@@ -197,7 +198,7 @@ public abstract class ReceptorBase<TMessage, TResponse> : IReceptor<TMessage, TR
 ```
 
 **Usage**:
-```csharp{title="Pattern 1: Base Class with Shared Logic - CreateOrder" description="Demonstrates pattern 1: Base Class with Shared Logic" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Base"]}
+```csharp{title="Pattern 1: Base Class with Shared Logic - CreateOrder" description="Pattern 1: Base Class with Shared Logic - CreateOrder" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Base"]}
 public record CreateOrder(Guid CustomerId, OrderLineItem[] Items);
 public record OrderCreated(Guid OrderId, Guid CustomerId, decimal Total);
 
@@ -327,7 +328,7 @@ public abstract class TransactionalReceptor<TMessage, TResponse> : IReceptor<TMe
 ```
 
 **Usage**:
-```csharp{title="Pattern 2: Transactional Receptor Base - TransferFunds" description="Demonstrates pattern 2: Transactional Receptor Base" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Transactional"]}
+```csharp{title="Pattern 2: Transactional Receptor Base - TransferFunds" description="Pattern 2: Transactional Receptor Base - TransferFunds" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Transactional"]}
 public record TransferFunds(Guid FromAccountId, Guid ToAccountId, decimal Amount);
 public record FundsTransferred(Guid TransactionId, DateTimeOffset CompletedAt);
 
@@ -436,7 +437,7 @@ public abstract class TenantReceptor<TMessage, TResponse> : IReceptor<TMessage, 
 ```
 
 **Usage**:
-```csharp{title="Pattern 3: Multi-Tenant Receptor Base - CreateProduct" description="Demonstrates pattern 3: Multi-Tenant Receptor Base" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Multi-Tenant"]}
+```csharp{title="Pattern 3: Multi-Tenant Receptor Base - CreateProduct" description="Pattern 3: Multi-Tenant Receptor Base - CreateProduct" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Multi-Tenant"]}
 public record CreateProduct(string Name, decimal Price);
 public record ProductCreated(Guid ProductId, Guid TenantId);
 
@@ -551,7 +552,7 @@ public class GetOrderHistoryReceptor : IStreamingReceptor<GetOrderHistory, Order
 ```
 
 **Usage**:
-```csharp{title="Pattern 4: IAsyncEnumerable Streaming -" description="Demonstrates pattern 4: IAsyncEnumerable Streaming" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "IAsyncEnumerable"]}
+```csharp{title="Pattern 4: IAsyncEnumerable Streaming -" description="Pattern 4: IAsyncEnumerable Streaming -" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "IAsyncEnumerable"]}
 public class OrderHistoryController : ControllerBase {
   private readonly GetOrderHistoryReceptor _receptor;
 
@@ -831,7 +832,7 @@ public abstract class ResilientReceptor<TMessage, TResponse> : IReceptor<TMessag
 ```
 
 **Usage**:
-```csharp{title="Pattern 8: Resilient Receptor (Retry + Circuit Breaker) -" description="Demonstrates pattern 8: Resilient Receptor (Retry + Circuit Breaker)" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Resilient"]}
+```csharp{title="Pattern 8: Resilient Receptor (Retry + Circuit Breaker) -" description="Pattern 8: Resilient Receptor (Retry + Circuit Breaker) -" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Resilient"]}
 public record CallExternalApi(string Endpoint);
 public record ApiResponse(string Data);
 
@@ -885,7 +886,7 @@ public class CallExternalApiReceptor : ResilientReceptor<CallExternalApi, ApiRes
 
 ### Testing Base Classes
 
-```csharp{title="Testing Base Classes" description="Demonstrates testing Base Classes" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Base"]}
+```csharp{title="Testing Base Classes" description="Testing Base Classes" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Base"]}
 public class ReceptorBaseTests {
   [Test]
   public async Task HandleAsync_CallsValidateAndExecuteAsync() {
@@ -930,7 +931,7 @@ internal class TestReceptor : ReceptorBase<TestMessage, TestResponse> {
 
 ### Testing Streaming Receptors
 
-```csharp{title="Testing Streaming Receptors" description="Demonstrates testing Streaming Receptors" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Streaming"]}
+```csharp{title="Testing Streaming Receptors" description="Testing Streaming Receptors" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Streaming"]}
 public class StreamingReceptorTests {
   [Test]
   public async Task StreamAsync_YieldsAllResultsAsync() {
@@ -992,6 +993,11 @@ public class StreamingReceptorTests {
 **Advanced**:
 - [Performance Tuning](../../operations/deployment/performance-tuning.md) - Optimization strategies
 - [Testing Receptors](../../operations/testing/testing-receptors.md) - Comprehensive testing guide
+
+### For Users
+
+New to receptors? Start with the user guide:
+- [Receptors Guide](../../fundamentals/receptors/receptors.md) — Core receptor patterns, command handling, and dependency injection
 
 ---
 

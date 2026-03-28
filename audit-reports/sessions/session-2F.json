@@ -1,0 +1,160 @@
+{
+  "session": "2F",
+  "section": "data/",
+  "auditDate": "2026-03-25",
+  "pagesAudited": [
+    "data/caching.md",
+    "data/dapper-integration.md",
+    "data/drivers.md",
+    "data/efcore-integration.md",
+    "data/efcore-json-configuration.md",
+    "data/event-store.md",
+    "data/perspectives-storage.md",
+    "data/postgres.md",
+    "data/schema-generation-pattern.md",
+    "data/schema-migration.md",
+    "data/turnkey-initialization.md",
+    "data/work-coordinator-strategies.md"
+  ],
+  "libraryFilesRead": [
+    "src/Whizbang.Data.Schema/",
+    "src/Whizbang.Data.Postgres/",
+    "src/Whizbang.Data.EFCore.Postgres/",
+    "src/Whizbang.Data.Dapper.Postgres/"
+  ],
+  "tasks": [
+    {
+      "id": "2F-001",
+      "type": "new-content",
+      "priority": "P1",
+      "page": "data/efcore-complex-types.md",
+      "dimension": "incomplete-docs",
+      "summary": "efcore-complex-types page doesn't exist — 2 types reference it",
+      "details": "UpdateMetadataInPlace and UpdateScopeInPlace have <docs> tags pointing to data/efcore-complex-types but the page doesn't exist. These cover EF Core complex type patterns for JSONB columns (ToJson(), owned entities, etc.).",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2F-002",
+      "type": "frontmatter",
+      "priority": "P0",
+      "page": "data/schema-migration.md",
+      "dimension": "page-frontmatter",
+      "summary": "schema-migration.md missing ALL frontmatter",
+      "details": "No YAML frontmatter at all. Critical operational page needs all fields. Tags: schema migration, database migration, EF Core migration, Dapper migration, column add, table alter.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2F-003",
+      "type": "frontmatter",
+      "priority": "P0",
+      "page": "data/turnkey-initialization.md",
+      "dimension": "page-frontmatter",
+      "summary": "turnkey-initialization.md missing ALL frontmatter",
+      "details": "No frontmatter. Tags: initialization, database setup, auto-migration, schema creation, startup.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2F-004",
+      "type": "frontmatter",
+      "priority": "P0",
+      "page": "data/work-coordinator-strategies.md",
+      "dimension": "page-frontmatter",
+      "summary": "work-coordinator-strategies.md missing ALL frontmatter",
+      "details": "No frontmatter. Tags: work coordinator, IUnitOfWorkStrategy, immediate, scoped, interval, batch processing, EFCore work coordinator.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2F-005",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "data/drivers.md",
+      "dimension": "page-frontmatter",
+      "summary": "drivers.md missing codeReferences",
+      "details": "Has other frontmatter but no codeReferences. Should reference driver interface files and IDriverOptions.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2F-006",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "data/postgres.md",
+      "dimension": "page-frontmatter",
+      "summary": "postgres.md missing codeReferences",
+      "details": "Has frontmatter but no codeReferences. Should reference Whizbang.Data.Postgres project files.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2F-007",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "data/efcore-json-configuration.md",
+      "dimension": "page-frontmatter",
+      "summary": "efcore-json-configuration.md missing version and codeReferences",
+      "details": "Has partial frontmatter. Missing version and codeReferences to EF Core JSON configuration files.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2F-008",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "data/efcore-integration.md",
+      "dimension": "incomplete-docs",
+      "summary": "EFCore 10 complex types (ToJson) may not be fully documented",
+      "details": "Memory note says project uses 'EF Core 10: Complex types with ToJson() (not owned entities)'. Need to verify efcore-integration.md and efcore-json-configuration.md cover the ToJson() pattern correctly and don't reference deprecated owned entity patterns.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2F-009",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "data/",
+      "dimension": "incomplete-docs",
+      "summary": "EFCoreWorkCoordinator recently refactored — verify docs match",
+      "details": "Memory notes and git history show EFCoreWorkCoordinator had cognitive complexity reduction and recent fixes. work-coordinator-strategies.md covers strategies but may not reflect current EFCoreWorkCoordinator API. Also verify the strategies (Immediate, Scoped, Interval) match current implementation.",
+      "sourceFiles": ["src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs"],
+      "effort": "M"
+    },
+    {
+      "id": "2F-010",
+      "type": "docs-update",
+      "priority": "P2",
+      "page": "data/",
+      "dimension": "incomplete-docs",
+      "summary": "UUIDv7 usage pattern may need documentation",
+      "details": "Memory note says 'Guid.CreateVersion7() (never Guid.NewGuid())'. Data pages should mention this pattern where relevant (event IDs, stream IDs, primary keys). This is a project-wide standard that data pages should reinforce.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2F-011",
+      "type": "code-sample-fix",
+      "priority": "P2",
+      "page": "data/",
+      "dimension": "code-sample-frontmatter",
+      "summary": "Code samples across all 12 pages have auto-generated poor metadata",
+      "details": "Same pattern as all previous sessions.",
+      "sourceFiles": [],
+      "effort": "L"
+    },
+    {
+      "id": "2F-012",
+      "type": "frontmatter",
+      "priority": "P2",
+      "page": "data/_folder.md",
+      "dimension": "page-frontmatter",
+      "summary": "_folder.md missing version, category, description, tags",
+      "details": "Standard _folder.md gap. Tags should include: data layer, database, PostgreSQL, EF Core, Dapper, schema, persistence.",
+      "sourceFiles": [],
+      "effort": "S"
+    }
+  ],
+  "sectionSummary": "The data section has 12 content pages. Main issues: (1) 3 pages missing ALL frontmatter (schema-migration, turnkey-initialization, work-coordinator-strategies), (2) efcore-complex-types page referenced but doesn't exist, (3) 3 more pages missing codeReferences, (4) EFCore 10 ToJson() pattern needs verification, (5) EFCoreWorkCoordinator recently refactored. The section is generally well-structured with good coverage of EFCore, Dapper, Postgres, caching, and schema generation. Code sample metadata issue persists."
+}

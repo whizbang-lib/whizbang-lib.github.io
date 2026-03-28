@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Lifecycle/ILifecycleTracking.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Lifecycle Stages
@@ -90,7 +91,11 @@ At each stage, **lifecycle receptors** can execute to:
 
 ---
 
-## All 20 Lifecycle Stages
+## All 24 Lifecycle Stages
+
+:::updated
+The `LifecycleStage` enum contains 25 values total: 24 true lifecycle stages plus one special value (`AfterReceptorCompletion = -1`). `AfterReceptorCompletion` is **not** a true lifecycle stage — it is a hook that fires synchronously after a receptor completes in the Dispatcher, before any lifecycle stages are invoked. It exists as the default for backward compatibility with tag hooks.
+:::
 
 ### Immediate Stage
 
@@ -109,7 +114,7 @@ At each stage, **lifecycle receptors** can execute to:
 - Errors propagate to caller
 
 **Example**:
-```csharp{title="`ImmediateAsync`" description="Demonstrates `ImmediateAsync`" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ImmediateAsync"]}
+```csharp{title="`ImmediateAsync`" description="ImmediateAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ImmediateAsync"]}
 [FireAt(LifecycleStage.ImmediateAsync)]
 public class CommandMetricsReceptor : IReceptor<ICommand> {
     private readonly IMetricsCollector _metrics;
@@ -146,7 +151,7 @@ LocalImmediate stages are new in v1.0.0 and enable in-memory mediator-style mess
 - Errors propagate to caller
 
 **Example**:
-```csharp{title="`LocalImmediateInline` ⭐ **Default Stage for Local Path**" description="Demonstrates `LocalImmediateInline` ⭐ **Default Stage for Local Path**" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "LocalImmediateInline", "**Default"]}
+```csharp{title="`LocalImmediateInline` ⭐ **Default Stage for Local Path**" description="LocalImmediateInline` " category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "LocalImmediateInline", "**Default"]}
 // Receptor WITHOUT [FireAt] fires here when dispatched locally!
 public class CreateTenantCommandHandler : IReceptor<CreateTenantCommand, TenantCreatedEvent> {
     public async ValueTask<TenantCreatedEvent> HandleAsync(CreateTenantCommand cmd, CancellationToken ct) {
@@ -177,7 +182,7 @@ await dispatcher.DispatchAsync(new CreateTenantCommand("Acme"), local: true);
 - Errors logged but don't affect caller
 
 **Example**:
-```csharp{title="`LocalImmediateAsync`" description="Demonstrates `LocalImmediateAsync`" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "LocalImmediateAsync"]}
+```csharp{title="`LocalImmediateAsync`" description="LocalImmediateAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "LocalImmediateAsync"]}
 [FireAt(LifecycleStage.LocalImmediateAsync)]
 public class LocalDispatchLogger : IReceptor<ICommand> {
     public ValueTask HandleAsync(ICommand cmd, CancellationToken ct) {
@@ -190,6 +195,10 @@ public class LocalDispatchLogger : IReceptor<ICommand> {
 ---
 
 ### Distribute Stages (5 stages)
+
+:::planned
+All five Distribute stages (`PreDistributeInline`, `PreDistributeAsync`, `DistributeAsync`, `PostDistributeAsync`, `PostDistributeInline`) are planned for coordinator-managed execution. The enum values exist in `LifecycleStage` but are not yet wired into the pipeline. They will fire for both outbox (publishing) and inbox (consuming) paths — use `MessageSource` to distinguish.
+:::
 
 #### `PreDistributeInline`
 
@@ -421,7 +430,7 @@ Perspective lifecycle stages are new in v1.0.0 and enable deterministic test syn
 **Hook Location**: Generated perspective runner (from `PerspectiveRunnerTemplate.cs`) during event processing loop, after `Apply()` and before checkpoint save
 
 **Example**:
-```csharp{title="`PostPerspectiveAsync`" description="Demonstrates `PostPerspectiveAsync`" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PostPerspectiveAsync"]}
+```csharp{title="`PostPerspectiveAsync`" description="PostPerspectiveAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PostPerspectiveAsync"]}
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class PerspectiveMetricsReceptor : IReceptor<IEvent> {
     private readonly IMetricsCollector _metrics;
@@ -465,6 +474,56 @@ public class PerspectiveCompletionReceptor<TEvent> : IReceptor<TEvent>
 ```
 
 See [Lifecycle Synchronization](../../operations/testing/lifecycle-synchronization.md) for complete test patterns.
+
+---
+
+### PostAllPerspectives Stages (2 stages)
+
+:::new
+PostAllPerspectives stages are new in v1.0.0 and fire **once per event** after **all** perspectives have finished processing it. They sit between PostPerspective (per-perspective) and PostLifecycle (end-of-lifecycle) in the pipeline.
+:::
+
+#### `PostAllPerspectivesAsync`
+
+**Timing**: After ALL perspectives have completed processing this event (WhenAll pattern), before PostLifecycle stages. Non-blocking.
+
+**Use Cases**:
+- Cross-perspective aggregation that needs all perspective data committed
+- Notifications that require all perspectives to be up-to-date
+- Derived computations spanning multiple perspectives
+
+**Guarantees**:
+- **Fires exactly once per event** — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) via WhenAll
+- Non-blocking — does not delay PostLifecycle
+- All perspective checkpoints have been saved
+- Fires **before** PostLifecycle stages
+
+**Example**:
+```csharp{title="`PostAllPerspectivesAsync`" description="Cross-perspective aggregation after all perspectives complete" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PostAllPerspectivesAsync"]}
+[FireAt(LifecycleStage.PostAllPerspectivesAsync)]
+public class CrossPerspectiveAggregator : IReceptor<OrderPlacedEvent> {
+  private readonly IOrderSummaryService _summaryService;
+
+  public async ValueTask HandleAsync(OrderPlacedEvent evt, CancellationToken ct) {
+    // Safe to read all perspectives — every perspective has processed this event
+    await _summaryService.RebuildSummaryAsync(evt.OrderId, ct);
+  }
+}
+```
+
+#### `PostAllPerspectivesInline`
+
+**Timing**: Same as `PostAllPerspectivesAsync` but **blocking** — the worker waits for completion before proceeding to PostLifecycle.
+
+**Use Cases**:
+- Critical cross-perspective consistency checks
+- Aggregation that must complete before PostLifecycle fires
+- Test synchronization after all perspectives finish
+
+**Guarantees**:
+- **Fires exactly once per event** — managed by Lifecycle Coordinator via WhenAll
+- **Blocking** — PostLifecycle stages wait for completion
+- All perspective checkpoints have been saved
 
 ---
 
@@ -539,14 +598,16 @@ ENTRY: dispatch               ENTRY: load from DB      ENTRY: receive           
   ├─ LocalImmediateInline      ├─ PreOutboxInline       ├─ PreInboxInline         ├─ PrePerspectiveInline
   ├─ PostLifecycleAsync†       ├─ PostOutboxAsync       ├─ PostInboxAsync         ├─ PostPerspectiveAsync
   └─ PostLifecycleInline†      ├─ PostOutboxInline      ├─ PostInboxInline        ├─ PostPerspectiveInline
-EXIT: done / WhenAll          ├─ PostLifecycleAsync‡   ├─ PostLifecycleAsync*    ├─ PostLifecycleAsync**
-                              └─ PostLifecycleInline‡   └─ PostLifecycleInline*   └─ PostLifecycleInline**
-                             EXIT: transport / WhenAll  EXIT: done / WhenAll      EXIT: done / WhenAll
+EXIT: done / WhenAll          ├─ PostLifecycleAsync‡   ├─ PostLifecycleAsync*    ├─ PostAllPerspectivesAsync
+                              └─ PostLifecycleInline‡   └─ PostLifecycleInline*   ├─ PostAllPerspectivesInline
+                             EXIT: transport / WhenAll  EXIT: done / WhenAll      ├─ PostLifecycleAsync**
+                                                                                  └─ PostLifecycleInline**
+                                                                                 EXIT: done / WhenAll
 
 † fires if this is the only processing path (Route.Local), OR via WhenAll
 ‡ fires if no further processing (event leaves service), OR via WhenAll
 * fires for events WITHOUT perspectives, OR via WhenAll
-** fires AFTER ALL perspectives complete, OR via WhenAll
+** fires AFTER ALL perspectives complete (PostAllPerspectives → PostLifecycle), OR via WhenAll
 ```
 
 See [Lifecycle Coordinator](lifecycle-coordinator.md) for details on entry/exit points, WhenAll, and tracking.
@@ -591,6 +652,14 @@ sequenceDiagram
     Worker->>Perspective: RunAsync()
     Perspective-->>Perspective: Apply events
     Note right of Worker: PostPerspectiveInline ⭐
+
+    Note over Worker,Perspective: PostAllPerspectives Phase
+    Note right of Worker: PostAllPerspectivesAsync (after ALL perspectives complete)
+    Note right of Worker: PostAllPerspectivesInline
+
+    Note over Worker,Perspective: PostLifecycle Phase
+    Note right of Worker: PostLifecycleAsync (final stage)
+    Note right of Worker: PostLifecycleInline
     Worker->>Coordinator: ReportCompletionAsync()
 ```
 
@@ -686,6 +755,7 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 | `PreInbox*` / `PostInbox*` | `ServiceBusConsumerWorker.cs` | Around `ProcessInboxWorkAsync()` |
 | `PrePerspective*` | `PerspectiveRunnerTemplate.cs` | Before event processing loop |
 | `PostPerspective*` | `PerspectiveRunnerTemplate.cs` | During event processing loop (after `Apply()`, before checkpoint save) |
+| `PostAllPerspectives*` | `PerspectiveWorker.cs` | After ALL perspectives complete (WhenAll) — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
 | `PostLifecycle*` | `PerspectiveWorker.cs`, `TransportConsumerWorker.cs`, `Dispatcher.cs` | After all processing completes — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
 
 ---
@@ -702,7 +772,7 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 
 ## Summary
 
-- **Lifecycle stages** across 7 phases (Immediate, LocalImmediate, Distribute, Outbox, Inbox, Perspective, PostLifecycle)
+- **24 lifecycle stages** across 8 phases (Immediate, LocalImmediate, Distribute, Outbox, Inbox, Perspective, PostAllPerspectives, PostLifecycle) plus 1 special value (`AfterReceptorCompletion`)
 - **Two mutually exclusive paths**: Local (mediator) and Distributed (outbox/inbox)
 - **Default stages** for receptors without `[FireAt]`:
   - **Local path**: `LocalImmediateInline`
@@ -717,3 +787,8 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 - **Runtime registration** via `ILifecycleReceptorRegistry` for tests
 - **Zero reflection** - fully AOT-compatible via `IReceptorInvoker` and `IReceptorRegistry`
 - **Performance** - keep lifecycle receptors fast and lightweight
+
+### For Contributors
+
+Looking to understand the internal message flow? See:
+- [Message Lifecycle & Architecture](../../extending/internals/message-lifecycle.md) — Complete internal view of how messages flow through Dispatcher, Outbox, Inbox, and Perspectives

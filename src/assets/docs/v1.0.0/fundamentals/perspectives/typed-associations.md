@@ -1,3 +1,18 @@
+---
+title: "GetPerspectiveAssociations: Strongly-Typed Perspective Queries"
+version: 1.0.0
+category: "Perspectives"
+order: 9
+description: >-
+  GetPerspectiveAssociations is a source-generated method returning strongly-typed perspective
+  associations filtered by model and event type. Provides compile-time type safety and
+  AOT-compatible delegate access to perspective Apply methods.
+tags: 'typed-associations, perspective-associations, source-generated, type-safety, aot, delegates'
+codeReferences:
+  - src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # GetPerspectiveAssociations: Strongly-Typed Perspective Queries
 
 GetPerspectiveAssociations is a source-generated method that returns strongly-typed perspective associations filtered by model and event type. It provides compile-time type safety and AOT-compatible delegate access to perspective Apply methods.
@@ -15,7 +30,7 @@ GetPerspectiveAssociations is a source-generated method that returns strongly-ty
 
 ### Basic Usage
 
-```csharp{title="Basic Usage" description="Demonstrates basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Basic", "Usage"]}
+```csharp{title="Basic Usage" description="Basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Basic", "Usage"]}
 using Whizbang.Core.Generated;
 
 // Get all perspectives handling ProductCreatedEvent for ProductModel
@@ -36,7 +51,7 @@ Console.WriteLine($"Final model: {model}");
 
 ### Type Safety
 
-```csharp{title="Type Safety" description="Demonstrates type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Type", "Safety"]}
+```csharp{title="Type Safety" description="Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Type", "Safety"]}
 // Compile-time type safety ensures matching types
 var associations = PerspectiveRegistrationExtensions
     .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);
@@ -59,7 +74,7 @@ productModel = assoc.ApplyDelegate(productModel, orderEvent); // Compiler error!
 
 ### Declaration
 
-```csharp{title="Declaration" description="Demonstrates declaration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Declaration"]}
+```csharp{title="Declaration" description="Declaration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Declaration"]}
 namespace Whizbang.Core.Generated;
 
 public static class PerspectiveRegistrationExtensions {
@@ -387,7 +402,7 @@ var associations3 = PerspectiveRegistrationExtensions
 
 If multiple perspectives handle the same model/event combination, all are returned:
 
-```csharp{title="Multiple Perspectives" description="If multiple perspectives handle the same model/event combination, all are returned:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Multiple"]}
+```csharp{title="Multiple Perspectives" description="If multiple perspectives handle the same model/event combination, all are returned:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "C#", "Multiple"]}
 // Two perspectives handling ProductModel + ProductCreatedEvent
 public class InventoryPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> { }
 public class CatalogPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> { }
@@ -408,7 +423,7 @@ foreach (var assoc in associations) {
 
 ### Caching Associations
 
-```csharp{title="Caching Associations" description="Demonstrates caching Associations" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Caching", "Associations"]}
+```csharp{title="Caching Associations" description="Caching Associations" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Caching", "Associations"]}
 // ❌ WRONG: Calling in loop
 foreach (var evt in events) {
     var associations = PerspectiveRegistrationExtensions
@@ -440,7 +455,7 @@ var associations = PerspectiveRegistrationExtensions
 
 ### Delegate Invocation Cost
 
-```csharp{title="Delegate Invocation Cost" description="Demonstrates delegate Invocation Cost" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Delegate", "Invocation"]}
+```csharp{title="Delegate Invocation Cost" description="Delegate Invocation Cost" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Delegate", "Invocation"]}
 // Delegate invocation is extremely fast
 // Approximately 1-2ns per invocation (similar to virtual method call)
 var result = assoc.ApplyDelegate(model, evt);
@@ -453,7 +468,7 @@ var result = assoc.ApplyDelegate(model, evt);
 
 ### Complementary APIs
 
-```csharp{title="Complementary APIs" description="Demonstrates complementary APIs" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Complementary", "APIs"]}
+```csharp{title="Complementary APIs" description="Complementary APIs" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Complementary", "APIs"]}
 // 1. Discovery with MessageAssociation (string-based)
 var allAssociations = PerspectiveRegistrationExtensions
     .GetMessageAssociations(serviceName);
@@ -526,7 +541,7 @@ foreach (var assoc in typedAssociations) {
 
 ### ❌ Not Handling Empty Results
 
-```csharp{title="❌ Not Handling Empty Results" description="Demonstrates ❌ Not Handling Empty Results" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Not", "Handling"]}
+```csharp{title="❌ Not Handling Empty Results" description="❌ Not Handling Empty Results" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Not", "Handling"]}
 // ❌ WRONG: Assuming results exist
 var associations = PerspectiveRegistrationExtensions
     .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);
@@ -543,7 +558,7 @@ if (associations.Any()) {
 
 ### ❌ Calling in Hot Paths
 
-```csharp{title="❌ Calling in Hot Paths" description="Demonstrates ❌ Calling in Hot Paths" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Calling", "Hot"]}
+```csharp{title="❌ Calling in Hot Paths" description="❌ Calling in Hot Paths" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Calling", "Hot"]}
 // ❌ WRONG: Calling repeatedly
 public TModel ProcessEvents<TModel, TEvent>(
     TModel model,
@@ -580,7 +595,7 @@ public TModel ProcessEvents<TModel, TEvent>(
 
 ### ❌ Ignoring Type Constraints
 
-```csharp{title="❌ Ignoring Type Constraints" description="Demonstrates ❌ Ignoring Type Constraints" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Ignoring", "Type"]}
+```csharp{title="❌ Ignoring Type Constraints" description="❌ Ignoring Type Constraints" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Ignoring", "Type"]}
 // ❌ WRONG: Forgetting IEvent constraint
 public void ProcessEvent<TModel, TMessage>(TModel model, TMessage message) {
     var associations = PerspectiveRegistrationExtensions

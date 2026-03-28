@@ -1,10 +1,28 @@
+---
+title: Turnkey Database Initialization
+version: 1.0.0
+category: Data Access
+order: 5
+description: >-
+  One-line database initialization that creates infrastructure tables,
+  perspective tables, indexes, PostgreSQL extensions, and functions before
+  application startup to prevent race conditions.
+tags: 'turnkey-initialization, database-setup, startup, ef-core, postgresql, schema-creation'
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres/DbContextInitializationRegistry.cs
+  - src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
+  - src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs
+  - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # Turnkey Database Initialization
 
 Whizbang provides a simple one-line initialization method that ensures your database schema is ready before your application starts. This prevents race conditions where background services might try to query the database before tables or extensions (like pgvector) are created.
 
 ## Quick Start
 
-```csharp{title="Quick Start" description="Demonstrates quick Start" category="Implementation" difficulty="BEGINNER" tags=["Data", "Quick", "Start"]}
+```csharp{title="Quick Start" description="Quick Start" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Quick", "Start"]}
 var app = builder.Build();
 
 // Initialize Whizbang database BEFORE starting the app
@@ -28,7 +46,7 @@ await app.RunAsync();
 
 ### Before (Manual Initialization)
 
-```csharp{title="Before (Manual Initialization)" description="Demonstrates before (Manual Initialization)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Before", "Manual", "Initialization"]}
+```csharp{title="Before (Manual Initialization)" description="Before (Manual Initialization)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Before", "Manual", "Initialization"]}
 // Error-prone: Must remember to do this for each DbContext
 // Risk: Code might run in the wrong order or be forgotten
 {
@@ -42,7 +60,7 @@ await app.RunAsync();
 
 ### After (Turnkey Initialization)
 
-```csharp{title="After (Turnkey Initialization)" description="Demonstrates after (Turnkey Initialization)" category="Implementation" difficulty="BEGINNER" tags=["Data", "After", "Turnkey", "Initialization"]}
+```csharp{title="After (Turnkey Initialization)" description="After (Turnkey Initialization)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "After", "Turnkey", "Initialization"]}
 // Simple: One line initializes ALL registered DbContexts
 // Safe: Runs before app starts, preventing race conditions
 await app.EnsureWhizbangInitializedAsync();
@@ -63,7 +81,7 @@ This is AOT-compatible with no reflection - all registration happens via source-
 
 If your application has multiple Whizbang DbContexts, they are all initialized automatically:
 
-```csharp{title="Multiple DbContexts" description="If your application has multiple Whizbang DbContexts, they are all initialized automatically:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Multiple", "DbContexts"]}
+```csharp{title="Multiple DbContexts" description="If your application has multiple Whizbang DbContexts, they are all initialized automatically:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Multiple", "DbContexts"]}
 // Both DbContexts are initialized with one call
 builder.Services.AddWhizbang()
     .WithEFCore<OrderDbContext>()

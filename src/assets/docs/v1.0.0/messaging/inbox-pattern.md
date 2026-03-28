@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/WorkCoordination/IWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/WorkCoordination/PostgresWorkCoordinator.cs
   - samples/ECommerce/ECommerce.InventoryWorker/Workers/InventoryWorker.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Inbox Pattern
@@ -30,7 +31,7 @@ The **Inbox Pattern** ensures exactly-once message processing by storing incomin
 
 ### Naive Approach (BROKEN)
 
-```csharp{title="Naive Approach (BROKEN)" description="Demonstrates naive Approach (BROKEN)" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Naive", "Approach", "BROKEN"]}
+```csharp{title="Naive Approach (BROKEN)" description="Naive Approach (BROKEN)" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Naive", "Approach", "BROKEN"]}
 public async Task ProcessMessageAsync(OrderCreated @event, CancellationToken ct) {
     // ❌ No duplicate detection - processes every message!
 
@@ -87,7 +88,7 @@ public async Task ProcessMessageAsync(OrderCreated @event, CancellationToken ct)
 
 ### Database Schema
 
-```sql{title="Database Schema" description="Demonstrates database Schema" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Database", "Schema"]}
+```sql{title="Database Schema" description="Database Schema" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Sql", "Database", "Schema"]}
 CREATE TABLE wh_inbox (
     message_id UUID PRIMARY KEY,
     correlation_id UUID NOT NULL,
@@ -136,7 +137,7 @@ CREATE UNIQUE INDEX idx_inbox_message_id ON wh_inbox(message_id);  -- Enforces e
 
 ### Check Before Processing
 
-```csharp{title="Check Before Processing" description="Demonstrates check Before Processing" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Check", "Before", "Processing"]}
+```csharp{title="Check Before Processing" description="Check Before Processing" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Check", "Before", "Processing"]}
 public async Task<bool> IsMessageProcessedAsync(
     Guid messageId,
     CancellationToken ct = default) {
@@ -154,7 +155,7 @@ public async Task<bool> IsMessageProcessedAsync(
 ```
 
 **Usage**:
-```csharp{title="Check Before Processing (2)" description="Demonstrates check Before Processing" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Check", "Before", "Processing"]}
+```csharp{title="Check Before Processing (2)" description="Check Before Processing" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Check", "Before", "Processing"]}
 if (await IsMessageProcessedAsync(message.MessageId, ct)) {
     _logger.LogWarning("Duplicate message {MessageId} detected, skipping", message.MessageId);
     return;  // Skip processing!
@@ -163,7 +164,7 @@ if (await IsMessageProcessedAsync(message.MessageId, ct)) {
 
 ### Atomic Insert with Duplicate Check
 
-```csharp{title="Atomic Insert with Duplicate Check" description="Demonstrates atomic Insert with Duplicate Check" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Atomic", "Insert", "Duplicate"]}
+```csharp{title="Atomic Insert with Duplicate Check" description="Atomic Insert with Duplicate Check" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Atomic", "Insert", "Duplicate"]}
 try {
     await conn.ExecuteAsync(
         """
@@ -194,7 +195,7 @@ try {
 
 ### InventoryWorker
 
-```csharp{title="InventoryWorker" description="Demonstrates inventoryWorker" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "InventoryWorker"]}
+```csharp{title="InventoryWorker" description="InventoryWorker" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "InventoryWorker"]}
 public class InventoryWorker : BackgroundService {
     private readonly IWorkCoordinator _coordinator;
     private readonly IMessageTransport _transport;
@@ -376,7 +377,7 @@ Like the Outbox Pattern, Inbox uses **leases** for coordinating work across mult
 
 ### Claiming Messages
 
-```sql{title="Claiming Messages" description="Demonstrates claiming Messages" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Claiming", "Messages"]}
+```sql{title="Claiming Messages" description="Claiming Messages" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Sql", "Claiming", "Messages"]}
 -- Claim inbox messages for processing
 UPDATE wh_inbox
 SET
@@ -455,7 +456,7 @@ Even with inbox, **business logic should be idempotent** as a defense-in-depth s
 
 ### Idempotent Update
 
-```csharp{title="Idempotent Update" description="Demonstrates idempotent Update" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Idempotent", "Update"]}
+```csharp{title="Idempotent Update" description="Idempotent Update" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Idempotent", "Update"]}
 // ✅ Idempotent - safe to run multiple times
 await _db.ExecuteAsync(
     "UPDATE orders SET status = 'Shipped', shipped_at = @ShippedAt WHERE order_id = @OrderId AND status = 'Created'",
@@ -467,7 +468,7 @@ await _db.ExecuteAsync(
 
 ### Non-Idempotent Update (Avoid!)
 
-```csharp{title="Non-Idempotent Update (Avoid!)" description="Demonstrates non-Idempotent Update (Avoid!)" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Non-Idempotent", "Update", "Avoid!"]}
+```csharp{title="Non-Idempotent Update (Avoid!)" description="Non-Idempotent Update (Avoid!)" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Non-Idempotent", "Update", "Avoid!"]}
 // ❌ Not idempotent - running twice doubles inventory!
 await _db.ExecuteAsync(
     "UPDATE inventory SET reserved = reserved + @Quantity WHERE product_id = @ProductId",
@@ -503,7 +504,7 @@ if (!alreadyReserved) {
 
 ### Retry Logic
 
-```csharp{title="Retry Logic" description="Demonstrates retry Logic" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Retry", "Logic"]}
+```csharp{title="Retry Logic" description="Retry Logic" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Retry", "Logic"]}
 // Failed messages: increment attempts, update status
 foreach (var failure in inboxFailures) {
     await conn.ExecuteAsync(
@@ -531,7 +532,7 @@ foreach (var failure in inboxFailures) {
 
 ### Dead Letter Queue
 
-```csharp{title="Dead Letter Queue" description="Demonstrates dead Letter Queue" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Dead", "Letter", "Queue"]}
+```csharp{title="Dead Letter Queue" description="Dead Letter Queue" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Dead", "Letter", "Queue"]}
 public async Task ReprocessFailedMessagesAsync(CancellationToken ct = default) {
     var failedMessages = await _db.QueryAsync<InboxRow>(
         """
@@ -584,7 +585,7 @@ public async Task ReprocessFailedMessagesAsync(CancellationToken ct = default) {
 
 ### Key Metrics
 
-```csharp{title="Key Metrics" description="Demonstrates key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Key", "Metrics"]}
+```csharp{title="Key Metrics" description="Key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Key", "Metrics"]}
 public class InboxMetrics {
     public int ReceivedCount { get; set; }     // Messages waiting to be processed
     public int ProcessingCount { get; set; }   // Messages currently being processed
@@ -628,7 +629,7 @@ public async Task<InboxMetrics> GetMetricsAsync(CancellationToken ct = default) 
 
 ### Unit Tests
 
-```csharp{title="Unit Tests" description="Demonstrates unit Tests" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Unit", "Tests"]}
+```csharp{title="Unit Tests" description="Unit Tests" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Unit", "Tests"]}
 [Test]
 public async Task ProcessMessage_Duplicate_SkipsProcessingAsync() {
     // Arrange
@@ -657,7 +658,7 @@ public async Task ProcessMessage_Duplicate_SkipsProcessingAsync() {
 
 ### Integration Tests
 
-```csharp{title="Integration Tests" description="Demonstrates integration Tests" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Integration", "Tests"]}
+```csharp{title="Integration Tests" description="Integration Tests" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Integration", "Tests"]}
 [Test]
 public async Task InventoryWorker_DuplicateMessage_ProcessesOnceAsync() {
     // Arrange

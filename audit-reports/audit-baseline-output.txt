@@ -1,0 +1,45 @@
+🚀 Whizbang Documentation Audit Baseline Generator
+
+Docs root: src/assets/docs/v1.0.0
+Library:   /Users/philcarbone/src/whizbang/whizbang
+Output:    audit-reports/
+
+📋 Generating frontmatter-gaps.json ...
+   243/243 pages have frontmatter gaps
+💻 Generating code-samples-inventory.json ...
+   3118 code samples found (2979 with metadata, 139 without)
+🔍 Generating undocumented-public-types.json ...
+   514/1060 public types lack <docs> tags (52% coverage)
+🔗 Generating broken-code-docs-links.json ...
+   284/495 code-docs links are broken
+📊 Generating mermaid-inventory.json ...
+   39 mermaid diagrams across 11 files
+📢 Generating callout-inventory.json ...
+   98 callouts found, 0 unclosed
+🔎 Generating search-index-quality.json ...
+   523 chunks have potential raw markdown leaks
+📅 Generating stale-docs-candidates.json ...
+   288 doc pages may be stale (855 source files changed in 6mo)
+🔗 Generating cross-link-map.json ...
+   4/834 internal links are broken
+👥 Generating persona-coverage.json ...
+   15 persona coverage gaps found
+
+═══════════════════════════════════════════════════
+📊 AUDIT BASELINE SUMMARY
+═══════════════════════════════════════════════════
+  total pages: 243
+  pages with frontmatter gaps: 243
+  total code samples: 3118
+  code samples without metadata: 139
+  undocumented public types: 514
+  broken code docs links: 284
+  total mermaid diagrams: 39
+  unclosed callouts: 0
+  search chunks with markdown leaks: 523
+  potentially stale pages: 288
+  broken internal links: 4
+  persona coverage gaps: 15
+═══════════════════════════════════════════════════
+
+All reports written to audit-reports/

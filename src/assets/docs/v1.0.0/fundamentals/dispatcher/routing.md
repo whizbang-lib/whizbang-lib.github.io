@@ -1,3 +1,22 @@
+---
+title: "Namespace-Based Routing"
+version: 1.0.0
+category: "Core Concepts"
+order: 2
+description: >-
+  Namespace-based routing in Whizbang determines how commands and events flow between services.
+  Commands use a shared inbox topic with namespace filtering, while events publish to namespace-specific
+  topics for pub/sub distribution with automatic subscription discovery.
+tags: 'routing, namespace-routing, message-routing, inbox, topics, pub-sub'
+codeReferences:
+  - src/Whizbang.Core/Routing/RoutingOptions.cs
+  - src/Whizbang.Core/Routing/NamespaceRoutingStrategy.cs
+  - src/Whizbang.Core/Routing/SharedTopicInboxStrategy.cs
+  - src/Whizbang.Core/Routing/EventSubscriptionDiscovery.cs
+  - src/Whizbang.Core/Routing/MessageKindAttribute.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # Namespace-Based Routing
 
 Whizbang uses namespace-based routing to determine where messages flow. Commands and events follow distinct routing patterns optimized for their specific use cases.
@@ -90,7 +109,7 @@ Event subscriptions are **automatically discovered** from your code via source g
 1. **Perspectives**: Events your service projects
 2. **Receptors**: Events your service handles
 
-```csharp{title="Automatic Event Subscription Discovery" description="Demonstrates automatic Event Subscription Discovery" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Automatic", "Event"]}
+```csharp{title="Automatic Event Subscription Discovery" description="Automatic Event Subscription Discovery" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Automatic", "Event"]}
 // This perspective automatically subscribes to "myapp.orders.events"
 [Perspective<OrderSummary>]
 public class OrderSummaryPerspective : IPerspective<OrderCreatedEvent> {
@@ -134,46 +153,19 @@ services.Configure<RoutingOptions>(opts => {
 
 ## System Commands
 
-All services automatically subscribe to system commands for framework-level operations:
+All services automatically subscribe to system commands (`whizbang.core.commands.system.#`) for framework-level operations. These include commands for pausing/resuming processing, rebuilding perspectives, clearing caches, and collecting diagnostics.
 
-```csharp{title="System Commands" description="All services automatically subscribe to system commands for framework-level operations:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "System", "Commands"]}
-namespace Whizbang.Core.Commands.System;
-
-// Rebuild a perspective across all services
-public record RebuildPerspectiveCommand(
-    string PerspectiveName,
-    long? FromEventId = null
-) : ICommand;
-
-// Clear cached data
-public record ClearCacheCommand(
-    string? CacheKey = null,
-    string? CacheRegion = null
-) : ICommand;
-
-// Collect diagnostics from all services
-public record DiagnosticsCommand(
-    DiagnosticType Type,
-    Guid? CorrelationId = null
-) : ICommand;
-
-// Pause message processing (coordinated maintenance)
-public record PauseProcessingCommand(
-    int? DurationSeconds = null,
-    string? Reason = null
-) : ICommand;
-
-// Resume message processing
-public record ResumeProcessingCommand(
-    string? Reason = null
-) : ICommand;
-```
+For the full list of system commands with signatures, parameters, and usage examples, see [Lifecycle Management](../lifecycle/lifecycle.md).
 
 ### Sending System Commands
 
-```csharp{title="Sending System Commands" description="Demonstrates sending System Commands" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Sending", "System"]}
-// Rebuild a perspective across all services
-await dispatcher.SendAsync(new RebuildPerspectiveCommand("OrderSummary"));
+```csharp{title="Sending System Commands" description="Sending System Commands" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Sending", "System"]}
+// Rebuild a specific perspective across all services
+await dispatcher.SendAsync(new RebuildPerspectiveCommand(
+    PerspectiveNames: ["OrderSummary"]));
+
+// Cancel an in-progress rebuild
+await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand("OrderSummary"));
 
 // Clear all caches
 await dispatcher.SendAsync(new ClearCacheCommand());
@@ -211,7 +203,7 @@ This approach:
 
 ### Complete Example
 
-```csharp{title="Complete Example" description="Demonstrates complete Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Complete", "Example"]}
+```csharp{title="Complete Example" description="Complete Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Complete", "Example"]}
 // User Service - handles user commands, subscribes to order events
 services.AddWhizbang()
     .WithRouting(routing => {
@@ -371,7 +363,7 @@ This builder integrates three key components:
 
 ### Creating the Builder
 
-```csharp{title="Creating the Builder" description="Demonstrates creating the Builder" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Creating", "Builder"]}
+```csharp{title="Creating the Builder" description="Creating the Builder" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Creating", "Builder"]}
 var builder = new TransportSubscriptionBuilder(
     routingOptions: serviceProvider.GetRequiredService<IOptions<RoutingOptions>>(),
     discovery: serviceProvider.GetRequiredService<EventSubscriptionDiscovery>(),
@@ -381,7 +373,7 @@ var builder = new TransportSubscriptionBuilder(
 
 ### Building Destinations
 
-```csharp{title="Building Destinations" description="Demonstrates building Destinations" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Building", "Destinations"]}
+```csharp{title="Building Destinations" description="Building Destinations" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Building", "Destinations"]}
 // Build all destinations (inbox + events)
 var destinations = builder.BuildDestinations();
 
@@ -455,7 +447,7 @@ The `SharedTopicInboxStrategy` routes all commands to a single shared "inbox" to
 
 ### Configuration
 
-```csharp{title="Configuration" description="Demonstrates configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"]}
+```csharp{title="Configuration" description="Configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"]}
 services.Configure<RoutingOptions>(opts => {
     opts.OwnDomains("myapp.users.commands");
     opts.Inbox.UseSharedTopic("inbox");  // Default
@@ -511,7 +503,7 @@ The `SharedTopicOutboxStrategy` publishes events to namespace-specific topics, a
 
 ### Configuration
 
-```csharp{title="Configuration (2)" description="Demonstrates configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"]}
+```csharp{title="Configuration (2)" description="Configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"]}
 services.Configure<RoutingOptions>(opts => {
     opts.Outbox.UseSharedTopic();  // Or UseNamespaceTopics()
 });
@@ -519,7 +511,7 @@ services.Configure<RoutingOptions>(opts => {
 
 ### Publishing Flow
 
-```csharp{title="Publishing Flow" description="Demonstrates publishing Flow" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Publishing", "Flow"]}
+```csharp{title="Publishing Flow" description="Publishing Flow" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Publishing", "Flow"]}
 // Event: OrderCreatedEvent (namespace: MyApp.Orders.Events)
 await dispatcher.PublishAsync(new OrderCreatedEvent(...));
 
@@ -565,7 +557,7 @@ opts.OwnDomains("myapp.users", "myapp.inventory");
 
 ### Configuration
 
-```csharp{title="Configuration (3)" description="Demonstrates configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"]}
+```csharp{title="Configuration (3)" description="Configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"]}
 services.Configure<RoutingOptions>(opts => {
     opts.OwnDomains("myapp.users.commands");
     opts.Inbox.UseDomainTopics(".in");  // Suffix is customizable
@@ -602,7 +594,7 @@ Events are published to domain topics with a configurable suffix:
 
 ### Configuration
 
-```csharp{title="Configuration (4)" description="Demonstrates configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"]}
+```csharp{title="Configuration (4)" description="Configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"]}
 services.Configure<RoutingOptions>(opts => {
     opts.Outbox.UseDomainTopics(".out");  // Suffix is customizable
 });
@@ -629,7 +621,7 @@ At `TransportConsumerWorker` startup, before creating subscriptions:
 3. The provisioner creates topics/exchanges for each owned domain
 4. Then subscriptions are created as normal
 
-```csharp{title="How It Works (4)" description="Demonstrates how It Works" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Works"]}
+```csharp{title="How It Works (4)" description="How It Works" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Works"]}
 // When you configure:
 services.AddWhizbang()
     .WithRouting(routing => {
@@ -702,7 +694,7 @@ public interface IInfrastructureProvisioner {
 
 ### Custom Implementation Example
 
-```csharp{title="Custom Implementation Example" description="Demonstrates custom Implementation Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Custom", "Implementation"]}
+```csharp{title="Custom Implementation Example" description="Custom Implementation Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Custom", "Implementation"]}
 public class MyCustomProvisioner : IInfrastructureProvisioner {
     private readonly IMyBrokerClient _client;
 
@@ -765,7 +757,7 @@ The `InboxSubscription` record represents the configuration for subscribing to c
 
 ### Structure
 
-```csharp{title="Structure" description="Demonstrates structure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Structure"]}
+```csharp{title="Structure" description="Structure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Structure"]}
 public sealed record InboxSubscription(
     string Topic,                                    // Topic/exchange to subscribe to
     string? FilterExpression = null,                 // Broker-specific filter
@@ -837,7 +829,7 @@ Outbox routing determines where events are published after being saved to the ou
 
 ### Strategy Selection
 
-```csharp{title="Strategy Selection" description="Demonstrates strategy Selection" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Strategy", "Selection"]}
+```csharp{title="Strategy Selection" description="Strategy Selection" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Strategy", "Selection"]}
 // Namespace-based topics (default for events)
 opts.Outbox.UseSharedTopic();  // Or UseNamespaceTopics()
 
@@ -854,7 +846,7 @@ opts.Outbox.UseDomainTopics(".out");
 
 ### Routing Strategy Interface
 
-```csharp{title="Routing Strategy Interface" description="Demonstrates routing Strategy Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Routing", "Strategy"]}
+```csharp{title="Routing Strategy Interface" description="Routing Strategy Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Routing", "Strategy"]}
 public interface IOutboxRoutingStrategy {
     /// <summary>
     /// Resolves the final publish destination for an outbox message.
@@ -872,7 +864,7 @@ public interface IOutboxRoutingStrategy {
 
 ### Example: SharedTopicOutboxStrategy
 
-```csharp{title="Example: SharedTopicOutboxStrategy" description="Demonstrates example: SharedTopicOutboxStrategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "SharedTopicOutboxStrategy"]}
+```csharp{title="Example: SharedTopicOutboxStrategy" description="Example: SharedTopicOutboxStrategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "SharedTopicOutboxStrategy"]}
 var strategy = new SharedTopicOutboxStrategy("inbox");
 
 // Command resolution
@@ -894,7 +886,7 @@ var dest = strategy.Resolve(
 
 ### Example: DomainTopicOutboxStrategy
 
-```csharp{title="Example: DomainTopicOutboxStrategy" description="Demonstrates example: DomainTopicOutboxStrategy" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Example:", "DomainTopicOutboxStrategy"]}
+```csharp{title="Example: DomainTopicOutboxStrategy" description="Example: DomainTopicOutboxStrategy" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Example:", "DomainTopicOutboxStrategy"]}
 var strategy = new DomainTopicOutboxStrategy(".out");
 
 // Event resolution
@@ -912,7 +904,7 @@ Inbox routing determines where commands are received. Whizbang supports two stra
 
 ### Strategy Selection
 
-```csharp{title="Strategy Selection (2)" description="Demonstrates strategy Selection" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Strategy", "Selection"]}
+```csharp{title="Strategy Selection (2)" description="Strategy Selection" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Strategy", "Selection"]}
 // Shared inbox topic with filtering (default)
 opts.Inbox.UseSharedTopic("inbox");
 
@@ -929,7 +921,7 @@ opts.Inbox.UseDomainTopics(".in");
 
 ### Routing Strategy Interface
 
-```csharp{title="Routing Strategy Interface - IInboxRoutingStrategy" description="Demonstrates routing Strategy Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Routing", "Strategy"]}
+```csharp{title="Routing Strategy Interface - IInboxRoutingStrategy" description="Routing Strategy Interface - IInboxRoutingStrategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Routing", "Strategy"]}
 public interface IInboxRoutingStrategy {
     /// <summary>
     /// Gets the inbox subscription configuration for this service.
@@ -947,7 +939,7 @@ public interface IInboxRoutingStrategy {
 
 ### Example: SharedTopicInboxStrategy
 
-```csharp{title="Example: SharedTopicInboxStrategy" description="Demonstrates example: SharedTopicInboxStrategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "SharedTopicInboxStrategy"]}
+```csharp{title="Example: SharedTopicInboxStrategy" description="Example: SharedTopicInboxStrategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "SharedTopicInboxStrategy"]}
 var strategy = new SharedTopicInboxStrategy("inbox");
 
 var subscription = strategy.GetSubscription(
@@ -968,7 +960,7 @@ var subscription = strategy.GetSubscription(
 
 ### Example: DomainTopicInboxStrategy
 
-```csharp{title="Example: DomainTopicInboxStrategy" description="Demonstrates example: DomainTopicInboxStrategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "DomainTopicInboxStrategy"]}
+```csharp{title="Example: DomainTopicInboxStrategy" description="Example: DomainTopicInboxStrategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "DomainTopicInboxStrategy"]}
 var strategy = new DomainTopicInboxStrategy(".in");
 
 var subscription = strategy.GetSubscription(
@@ -989,7 +981,7 @@ The `IEventNamespaceSource` interface provides runtime access to event namespace
 
 ### Interface Definition
 
-```csharp{title="Interface Definition" description="Demonstrates interface Definition" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Interface", "Definition"]}
+```csharp{title="Interface Definition" description="Interface Definition" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Interface", "Definition"]}
 public interface IEventNamespaceSource {
     /// <summary>
     /// Gets all event namespaces discovered from perspectives in this assembly.
@@ -1017,7 +1009,7 @@ public interface IEventNamespaceSource {
 
 ### Generated Code Example
 
-```csharp{title="Generated Code Example" description="Demonstrates generated Code Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Generated", "Code"]}
+```csharp{title="Generated Code Example" description="Generated Code Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Generated", "Code"]}
 // In MyApp.Orders.Perspectives assembly
 
 [System.Runtime.CompilerServices.ModuleInitializer]
@@ -1088,7 +1080,7 @@ The strategy extracts the full namespace from a message type and uses it as the 
 
 ### Configuration
 
-```csharp{title="Configuration (5)" description="Demonstrates configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Configuration"]}
+```csharp{title="Configuration (5)" description="Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Configuration"]}
 // Used internally by SharedTopicOutboxStrategy
 var strategy = new NamespaceRoutingStrategy();
 
@@ -1118,7 +1110,7 @@ var strategy = new NamespaceRoutingStrategy(type => {
 
 ### Interface
 
-```csharp{title="Interface" description="Demonstrates interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Interface"]}
+```csharp{title="Interface" description="Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Interface"]}
 public interface ITopicRoutingStrategy {
     string ResolveTopic(
         Type messageType,
@@ -1147,7 +1139,7 @@ The `MessageKind` enum classifies messages for routing purposes. It determines w
 
 ### Enum Values
 
-```csharp{title="Enum Values" description="Demonstrates enum Values" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Enum", "Values"]}
+```csharp{title="Enum Values" description="Enum Values" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Enum", "Values"]}
 public enum MessageKind {
     /// <summary>Could not determine message kind.</summary>
     Unknown = 0,
@@ -1285,7 +1277,7 @@ Topic: myapp.orders.events
 
 ### 1. Use Consistent Namespace Conventions
 
-```csharp{title="Use Consistent Namespace Conventions" description="Demonstrates use Consistent Namespace Conventions" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Consistent", "Namespace"]}
+```csharp{title="Use Consistent Namespace Conventions" description="Use Consistent Namespace Conventions" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Consistent", "Namespace"]}
 // ✅ GOOD: Clear, hierarchical namespaces
 namespace MyApp.Users.Commands;
 namespace MyApp.Users.Events;
@@ -1299,7 +1291,7 @@ namespace OrderEvents;
 
 ### 2. Prefer Strongly-Typed Configuration
 
-```csharp{title="Prefer Strongly-Typed Configuration" description="Demonstrates prefer Strongly-Typed Configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Prefer", "Strongly-Typed"]}
+```csharp{title="Prefer Strongly-Typed Configuration" description="Prefer Strongly-Typed Configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Prefer", "Strongly-Typed"]}
 // ✅ GOOD: Strongly-typed, refactor-safe
 opts.OwnNamespaceOf<CreateUserCommand>()
     .SubscribeToNamespaceOf<OrderCreatedEvent>();
@@ -1310,7 +1302,7 @@ opts.OwnDomains("myapp.users.comands");  // Typo won't be caught until runtime
 
 ### 3. Let Auto-Discovery Do the Work
 
-```csharp{title="Let Auto-Discovery Do the Work" description="Demonstrates let Auto-Discovery Do the Work" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Let", "Auto-Discovery"]}
+```csharp{title="Let Auto-Discovery Do the Work" description="Let Auto-Discovery Do the Work" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Let", "Auto-Discovery"]}
 // ✅ GOOD: Events discovered automatically
 [Perspective<OrderSummary>]
 public class OrderSummaryPerspective : IPerspective<OrderCreatedEvent> {
@@ -1326,7 +1318,7 @@ opts.SubscribeTo("myapp.users.events");
 
 ### 4. Use Manual Subscriptions for Cross-Cutting Concerns
 
-```csharp{title="Use Manual Subscriptions for Cross-Cutting Concerns" description="Demonstrates use Manual Subscriptions for Cross-Cutting Concerns" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Manual", "Subscriptions"]}
+```csharp{title="Use Manual Subscriptions for Cross-Cutting Concerns" description="Use Manual Subscriptions for Cross-Cutting Concerns" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Manual", "Subscriptions"]}
 // ✅ GOOD: Manual subscription for audit/logging service
 services.Configure<RoutingOptions>(opts => {
   opts.SubscribeTo("myapp.*.events");  // All events for auditing
@@ -1335,7 +1327,7 @@ services.Configure<RoutingOptions>(opts => {
 
 ### 5. Validate Subscriptions at Startup
 
-```csharp{title="Validate Subscriptions at Startup" description="Demonstrates validate Subscriptions at Startup" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Validate", "Subscriptions"]}
+```csharp{title="Validate Subscriptions at Startup" description="Validate Subscriptions at Startup" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Validate", "Subscriptions"]}
 // Ensure all expected namespaces are subscribed
 var discovery = services.GetRequiredService<EventSubscriptionDiscovery>();
 var namespaces = discovery.DiscoverAll();

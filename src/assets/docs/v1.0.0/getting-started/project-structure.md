@@ -12,6 +12,7 @@ codeReferences:
   - samples/ECommerce/ECommerce.Messages/
   - samples/ECommerce/ECommerce.OrderService.API/
   - samples/ECommerce/ECommerce.BFF.API/
+lastMaintainedCommit: '01f07906'
 ---
 
 # Project Structure Guide
@@ -82,7 +83,7 @@ MyApp/
 
 ### Program.cs Setup
 
-```csharp{title="Program.cs Setup" description="Demonstrates program.cs Setup" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Program.cs", "Setup"]}
+```csharp{title="Program.cs Setup" description="Program.cs Setup" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Program.cs", "Setup"]}
 using Whizbang.Core;
 using Whizbang.Data.Dapper.Postgres;
 
@@ -121,7 +122,7 @@ app.Run();
 ### Message Organization
 
 **Commands** (imperative - intent to change state):
-```csharp{title="Message Organization" description="Commands (imperative - intent to change state):" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Message", "Organization"]}
+```csharp{title="Message Organization" description="Commands (imperative - intent to change state):" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Message", "Organization"]}
 // Messages/Commands/CreateOrder.cs
 namespace MyApp.API.Messages.Commands;
 
@@ -138,7 +139,7 @@ public record OrderLineItem(
 ```
 
 **Events** (past tense - fact of what happened):
-```csharp{title="Message Organization - OrderCreated" description="Events (past tense - fact of what happened):" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Message", "Organization"]}
+```csharp{title="Message Organization - OrderCreated" description="Events (past tense - fact of what happened):" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Message", "Organization", "OrderCreated"]}
 // Messages/Events/OrderCreated.cs
 namespace MyApp.API.Messages.Events;
 
@@ -248,7 +249,7 @@ MyApp.Messages
 
 Use `Directory.Packages.props` for version consistency:
 
-```xml{title="Central Package Management" description="Use `Directory." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Central", "Package", "Management"]}
+```xml{title="Central Package Management" description="Use `Directory." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "Xml", "Central", "Package", "Management"]}
 <!-- Directory.Packages.props (solution root) -->
 <Project>
   <PropertyGroup>
@@ -265,7 +266,7 @@ Use `Directory.Packages.props` for version consistency:
 ```
 
 Then in project files:
-```xml{title="Central Package Management (2)" description="Then in project files:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Central", "Package", "Management"]}
+```xml{title="Central Package Management (2)" description="Then in project files:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Xml", "Central", "Package", "Management"]}
 <!-- MyApp.API.csproj -->
 <ItemGroup>
   <PackageReference Include="Whizbang.Core" />  <!-- Version comes from Directory.Packages.props -->
@@ -277,7 +278,7 @@ Then in project files:
 
 Use `Directory.Build.props` for consistent settings:
 
-```xml{title="Shared Build Properties" description="Use `Directory." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Shared", "Build", "Properties"]}
+```xml{title="Shared Build Properties" description="Use `Directory." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "Xml", "Shared", "Build", "Properties"]}
 <!-- Directory.Build.props (solution root) -->
 <Project>
   <PropertyGroup>
@@ -435,7 +436,7 @@ ECommerce/
 ### .NET Aspire Orchestration
 
 **ECommerce.AppHost/Program.cs**:
-```csharp{title=".NET Aspire Orchestration" description="**ECommerce." category="Configuration" difficulty="ADVANCED" tags=["Getting-Started", ".NET", "Aspire", "Orchestration"]}
+```csharp{title=".NET Aspire Orchestration" description="**ECommerce." category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Aspire", "Orchestration"]}
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Infrastructure
@@ -509,7 +510,7 @@ builder.Build().Run();
 ### appsettings.json Structure
 
 **Development** (`appsettings.Development.json`):
-```json{title="appsettings.json Structure" description="Development (`appsettings." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Appsettings.json", "Structure"]}
+```json{title="appsettings.json Structure" description="Development (`appsettings." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "Json", "Structure"]}
 {
   "Logging": {
     "LogLevel": {
@@ -537,7 +538,7 @@ builder.Build().Run();
 ```
 
 **Production** (`appsettings.Production.json`):
-```json{title="appsettings.json Structure (2)" description="Production (`appsettings." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Appsettings.json", "Structure"]}
+```json{title="appsettings.json Structure (2)" description="Production (`appsettings." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "Json", "Structure"]}
 {
   "Logging": {
     "LogLevel": {
@@ -564,7 +565,7 @@ builder.Build().Run();
 
 Use environment variables for secrets:
 
-```bash{title="Environment Variables" description="Use environment variables for secrets:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Environment", "Variables"]}
+```bash{title="Environment Variables" description="Use environment variables for secrets:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Environment", "Variables"]}
 # .env (local development - NOT committed)
 DATABASE_URL=Host=localhost;Database=myapp;Username=postgres;Password=dev_password
 SERVICE_BUS_CONNECTION_STRING=Endpoint=sb://localhost;...
@@ -580,32 +581,32 @@ kubectl create secret generic myapp-db --from-literal=connection-string="Host=..
 ### Service Registration Layers
 
 **Layer 1: Whizbang Core**:
-```csharp{title="Service Registration Layers" description="Layer 1: Whizbang Core:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Service", "Registration", "Layers"]}
+```csharp{title="Service Registration Layers" description="Layer 1: Whizbang Core:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
 builder.Services.AddWhizbangCore();  // IDispatcher, MessageEnvelope, etc.
 ```
 
 **Layer 2: Auto-Discovery** (with Whizbang.Generators):
-```csharp{title="Service Registration Layers (2)" description="Layer 2: Auto-Discovery (with Whizbang." category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Service", "Registration", "Layers"]}
+```csharp{title="Service Registration Layers (2)" description="Layer 2: Auto-Discovery (with Whizbang." category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
 builder.Services.AddDiscoveredReceptors();      // All IReceptor implementations
 builder.Services.AddDiscoveredPerspectives();   // All IPerspectiveOf implementations
 ```
 
 **Layer 3: Data Access**:
-```csharp{title="Service Registration Layers (3)" description="Layer 3: Data Access:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Service", "Registration", "Layers"]}
+```csharp{title="Service Registration Layers (3)" description="Layer 3: Data Access:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
 builder.Services.AddWhizbangDapper(connectionString);        // Dapper + PostgreSQL
 // OR
 builder.Services.AddWhizbangEFCore(connectionString);        // EF Core + PostgreSQL
 ```
 
 **Layer 4: Transports**:
-```csharp{title="Service Registration Layers (4)" description="Layer 4: Transports:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Service", "Registration", "Layers"]}
+```csharp{title="Service Registration Layers (4)" description="Layer 4: Transports:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
 builder.Services.AddWhizbangAzureServiceBus(
     builder.Configuration.GetSection("AzureServiceBus")
 );
 ```
 
 **Layer 5: Application Services**:
-```csharp{title="Service Registration Layers (5)" description="Layer 5: Application Services:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Service", "Registration", "Layers"]}
+```csharp{title="Service Registration Layers (5)" description="Layer 5: Application Services:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
 builder.Services.AddTransient<IOrderLens, OrderLens>();
 builder.Services.AddSingleton<IEmailService, SendGridEmailService>();
 ```
@@ -628,7 +629,7 @@ builder.Services.AddSingleton<IEmailService, SendGridEmailService>();
 ### Unit Tests
 
 **Test receptors in isolation**:
-```csharp{title="Unit Tests" description="Test receptors in isolation:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Unit", "Tests"]}
+```csharp{title="Unit Tests" description="Test receptors in isolation:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Unit", "Tests"]}
 // tests/MyApp.Domain.Tests/Receptors/CreateOrderReceptorTests.cs
 public class CreateOrderReceptorTests {
     [Test]
@@ -649,7 +650,7 @@ public class CreateOrderReceptorTests {
 ### Integration Tests
 
 **Test full message flow**:
-```csharp{title="Integration Tests" description="Test full message flow:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Integration", "Tests"]}
+```csharp{title="Integration Tests" description="Test full message flow:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Integration", "Tests"]}
 // tests/MyApp.Integration.Tests/OrderWorkflowTests.cs
 public class OrderWorkflowTests {
     private WebApplicationFactory<Program> _factory;
@@ -743,7 +744,7 @@ public class OrderWorkflowTests {
 
 ### Step 1: Define Message
 
-```csharp{title="Step 1: Define Message" description="Demonstrates step 1: Define Message" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Step", "Define", "Message"]}
+```csharp{title="Step 1: Define Message" description="Step 1: Define Message" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Define", "Message"]}
 // MyApp.Messages/Commands/CancelOrder.cs
 public record CancelOrder(
     Guid OrderId,
@@ -760,7 +761,7 @@ public record OrderCancelled(
 
 ### Step 2: Create Receptor
 
-```csharp{title="Step 2: Create Receptor" description="Demonstrates step 2: Create Receptor" category="Configuration" difficulty="ADVANCED" tags=["Getting-Started", "Step", "Create", "Receptor"]}
+```csharp{title="Step 2: Create Receptor" description="Step 2: Create Receptor" category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Step", "Create", "Receptor"]}
 // MyApp.Domain/Receptors/CancelOrderReceptor.cs
 using Whizbang.Core;
 using MyApp.Messages.Commands;
@@ -804,7 +805,7 @@ public class CancelOrderReceptor : IReceptor<CancelOrder, OrderCancelled> {
 
 ### Step 3: Update Perspective
 
-```csharp{title="Step 3: Update Perspective" description="Demonstrates step 3: Update Perspective" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Step", "Update", "Perspective"]}
+```csharp{title="Step 3: Update Perspective" description="Step 3: Update Perspective" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Update", "Perspective"]}
 // MyApp.ReadModels/Perspectives/OrderSummaryPerspective.cs
 public class OrderSummaryPerspective :
     IPerspectiveOf<OrderCreated>,
@@ -826,7 +827,7 @@ public class OrderSummaryPerspective :
 
 ### Step 4: Add Endpoint
 
-```csharp{title="Step 4: Add Endpoint" description="Demonstrates step 4: Add Endpoint" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Step", "Add", "Endpoint"]}
+```csharp{title="Step 4: Add Endpoint" description="Step 4: Add Endpoint" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Add", "Endpoint"]}
 // MyApp.API/Endpoints/OrdersController.cs
 [HttpPost("{orderId:guid}/cancel")]
 public async Task<ActionResult> CancelOrder(
@@ -845,7 +846,7 @@ public async Task<ActionResult> CancelOrder(
 
 ### Step 5: Test
 
-```csharp{title="Step 5: Test" description="Demonstrates step 5: Test" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Step", "Test"]}
+```csharp{title="Step 5: Test" description="Step 5: Test" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Test"]}
 // MyApp.Domain.Tests/Receptors/CancelOrderReceptorTests.cs
 [Test]
 public async Task HandleAsync_ValidOrder_ReturnsOrderCancelledAsync() {

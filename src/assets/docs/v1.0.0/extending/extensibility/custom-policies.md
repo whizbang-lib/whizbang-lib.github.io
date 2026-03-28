@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Policies/IPolicyEngine.cs
   - src/Whizbang.Core/Policies/PolicyEngine.cs
   - src/Whizbang.Core/Policies/PolicyConfiguration.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Policies
@@ -138,7 +139,7 @@ public class WeightedPolicyEngine : IPolicyEngine {
 ```
 
 **Usage**:
-```csharp{title="Pattern 1: Priority-Based Evaluation (2)" description="Demonstrates pattern 1: Priority-Based Evaluation" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Priority-Based"]}
+```csharp{title="Pattern 1: Priority-Based Evaluation (2)" description="Pattern 1: Priority-Based Evaluation" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Priority-Based"]}
 var engine = new WeightedPolicyEngine(logger);
 
 // High-priority tenant routing (priority 100)
@@ -255,7 +256,7 @@ public class AsyncPolicyEngine : IPolicyEngine {
 ```
 
 **Usage**:
-```csharp{title="Pattern 2: Async Predicate Evaluation (2)" description="Demonstrates pattern 2: Async Predicate Evaluation" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Async"]}
+```csharp{title="Pattern 2: Async Predicate Evaluation (2)" description="Pattern 2: Async Predicate Evaluation" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Async"]}
 var engine = new AsyncPolicyEngine(logger);
 
 // Async predicate: lookup feature flag from database
@@ -373,7 +374,7 @@ public class CachedPolicyEngine : IPolicyEngine {
 ```
 
 **Usage**:
-```csharp{title="Pattern 3: Policy Result Caching (2)" description="Demonstrates pattern 3: Policy Result Caching" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Policy"]}
+```csharp{title="Pattern 3: Policy Result Caching (2)" description="Pattern 3: Policy Result Caching" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Policy"]}
 var baseEngine = new PolicyEngine();
 var cachedEngine = new CachedPolicyEngine(baseEngine, memoryCache, logger);
 
@@ -485,7 +486,7 @@ public class DynamicPolicyEngine : IPolicyEngine {
 ```
 
 **Usage**:
-```csharp{title="Pattern 4: Runtime Policy Updates (2)" description="Demonstrates pattern 4: Runtime Policy Updates" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Runtime"]}
+```csharp{title="Pattern 4: Runtime Policy Updates (2)" description="Pattern 4: Runtime Policy Updates" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Runtime"]}
 var engine = new DynamicPolicyEngine(logger);
 
 // Add initial policies
@@ -611,7 +612,7 @@ public class ABTestingPolicyEngine : IPolicyEngine {
 ```
 
 **Usage**:
-```csharp{title="Pattern 5: Percentage-Based Traffic Splitting (2)" description="Demonstrates pattern 5: Percentage-Based Traffic Splitting" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Percentage-Based"]}
+```csharp{title="Pattern 5: Percentage-Based Traffic Splitting (2)" description="Pattern 5: Percentage-Based Traffic Splitting" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Percentage-Based"]}
 var baseEngine = new PolicyEngine();
 var abEngine = new ABTestingPolicyEngine(baseEngine, logger);
 
@@ -644,7 +645,7 @@ var config = await abEngine.MatchAsync(context);
 
 ### Testing Weighted Policies
 
-```csharp{title="Testing Weighted Policies" description="Demonstrates testing Weighted Policies" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Weighted"]}
+```csharp{title="Testing Weighted Policies" description="Testing Weighted Policies" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Weighted"]}
 public class WeightedPolicyEngineTests {
   [Test]
   public async Task MatchAsync_HighPriorityMatchesFirst_SkipsLowerPriorityAsync() {
@@ -680,7 +681,7 @@ public class WeightedPolicyEngineTests {
 
 ### Testing Async Policies
 
-```csharp{title="Testing Async Policies" description="Demonstrates testing Async Policies" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Async"]}
+```csharp{title="Testing Async Policies" description="Testing Async Policies" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Async"]}
 public class AsyncPolicyEngineTests {
   [Test]
   public async Task MatchAsync_AsyncPredicate_CallsDatabaseAsync() {
@@ -714,7 +715,7 @@ public class AsyncPolicyEngineTests {
 
 ### Testing Cached Policies
 
-```csharp{title="Testing Cached Policies" description="Demonstrates testing Cached Policies" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Cached"]}
+```csharp{title="Testing Cached Policies" description="Testing Cached Policies" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Cached"]}
 public class CachedPolicyEngineTests {
   [Test]
   public async Task MatchAsync_SecondCall_UsesCacheAsync() {

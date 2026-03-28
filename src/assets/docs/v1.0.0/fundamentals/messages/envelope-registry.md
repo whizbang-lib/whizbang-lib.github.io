@@ -9,6 +9,7 @@ tags: 'envelope, registry, message-tracking, observability'
 codeReferences:
   - src/Whizbang.Core/Observability/IEnvelopeRegistry.cs
   - src/Whizbang.Core/Observability/EnvelopeRegistry.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Envelope Registry
@@ -25,7 +26,7 @@ When processing messages, sometimes only the message payload is available, but t
 
 ## IEnvelopeRegistry Interface {#ienveloperegistry}
 
-```csharp{title="IEnvelopeRegistry Interface" description="Demonstrates iEnvelopeRegistry Interface" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "IEnvelopeRegistry", "Interface"]}
+```csharp{title="IEnvelopeRegistry Interface" description="IEnvelopeRegistry Interface" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "IEnvelopeRegistry", "Interface"]}
 namespace Whizbang.Core.Observability;
 
 /// <summary>
@@ -148,7 +149,7 @@ public class EventStore : IEventStore {
 
 ### Security Context Propagation
 
-```csharp{title="Security Context Propagation" description="Demonstrates security Context Propagation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Security", "Context"]}
+```csharp{title="Security Context Propagation" description="Security Context Propagation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Security", "Context"]}
 public class SecurityContextEventStoreDecorator : IEventStore {
   private readonly IEnvelopeRegistry _envelopeRegistry;
   private readonly IEventStore _inner;
@@ -175,7 +176,7 @@ public class SecurityContextEventStoreDecorator : IEventStore {
 
 ### Correlation Tracking
 
-```csharp{title="Correlation Tracking" description="Demonstrates correlation Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Correlation", "Tracking"]}
+```csharp{title="Correlation Tracking" description="Correlation Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Correlation", "Tracking"]}
 public class CorrelationTrackingReceptor : IReceptor<CreateOrder, OrderCreated> {
   private readonly IEnvelopeRegistry _envelopeRegistry;
 
@@ -198,35 +199,52 @@ public class CorrelationTrackingReceptor : IReceptor<CreateOrder, OrderCreated> 
 
 ## Implementation Details
 
-### Thread Safety
+### Thread Safety and Pooling
 
-The default implementation uses `ConcurrentDictionary`:
+The default implementation uses a pooled `Dictionary` with `ReferenceEqualityComparer` and explicit locking. After initial warmup, operations are zero-allocation:
 
-```csharp{title="Thread Safety" description="The default implementation uses ConcurrentDictionary:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Thread", "Safety"]}
-public sealed class EnvelopeRegistry : IEnvelopeRegistry {
-  private readonly ConcurrentDictionary<object, object> _envelopes = new();
+```csharp{title="Thread Safety" description="Pooled dictionary implementation with ReferenceEqualityComparer" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Thread", "Safety"]}
+public sealed class EnvelopeRegistry : IEnvelopeRegistry, IDisposable {
+  private static readonly ConcurrentBag<Dictionary<object, IMessageEnvelope>> _pool = [];
+  private readonly Dictionary<object, IMessageEnvelope> _entries;
+  private readonly object _lock = new();
+
+  public EnvelopeRegistry() {
+    // Rent from pool if available, otherwise create with ReferenceEqualityComparer
+    if (_pool.TryTake(out var dict)) {
+      _entries = dict;
+    } else {
+      _entries = new Dictionary<object, IMessageEnvelope>(
+          ReferenceEqualityComparer.Instance);
+    }
+  }
 
   public void Register<T>(MessageEnvelope<T> envelope) {
-    _envelopes[envelope.Payload!] = envelope;
+    lock (_lock) { _entries[envelope.Payload!] = envelope; }
   }
 
   public MessageEnvelope<T>? TryGetEnvelope<T>(T message) where T : notnull {
-    return _envelopes.TryGetValue(message, out var envelope)
-        ? envelope as MessageEnvelope<T>
-        : null;
+    lock (_lock) {
+      return _entries.TryGetValue(message, out var envelope)
+          ? envelope as MessageEnvelope<T> : null;
+    }
   }
 
-  public void Unregister<T>(T message) where T : notnull {
-    _envelopes.TryRemove(message, out _);
+  public void Dispose() {
+    lock (_lock) { _entries.Clear(); }
+    _pool.Add(_entries); // Return to pool
   }
 }
 ```
 
+The `ReferenceEqualityComparer.Instance` is what enforces reference identity semantics -- `TryGetEnvelope` will only find the envelope if you pass the **exact same object instance** that was registered.
+
 ### Memory Management
 
 - Envelopes are stored by reference (not copied)
+- Dictionary is pooled to minimize allocations after warmup
+- Registry implements `IDisposable` -- dictionaries are cleared and returned to the pool on dispose
 - Registry should be scoped to avoid memory leaks
-- Unregister when processing completes
 
 ## Best Practices
 

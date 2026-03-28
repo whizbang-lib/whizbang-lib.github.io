@@ -10,6 +10,7 @@ tags: 'installation, setup, nuget, project-templates'
 codeReferences:
   - Directory.Build.props
   - Directory.Packages.props
+lastMaintainedCommit: '01f07906'
 ---
 
 # Installation Guide
@@ -47,7 +48,7 @@ Install Whizbang packages for your specific needs:
 
 #### Core Package
 
-```bash{title="Core Package" description="Demonstrates core Package" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Core", "Package"]}
+```bash{title="Core Package" description="Core Package" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Core", "Package"]}
 dotnet add package Whizbang.Core
 ```
 
@@ -60,25 +61,25 @@ dotnet add package Whizbang.Core
 #### Data Access Packages
 
 **Dapper + PostgreSQL** (lightweight, fast):
-```bash{title="Data Access Packages" description="Dapper + PostgreSQL (lightweight, fast):" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Data", "Access", "Packages"]}
+```bash{title="Data Access Packages" description="Dapper + PostgreSQL (lightweight, fast):" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Data", "Access", "Packages"]}
 dotnet add package Whizbang.Data.Dapper.Postgres
 ```
 
 **EF Core + PostgreSQL** (full-featured):
-```bash{title="Data Access Packages (2)" description="EF Core + PostgreSQL (full-featured):" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Data", "Access", "Packages"]}
+```bash{title="Data Access Packages (2)" description="EF Core + PostgreSQL (full-featured):" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Data", "Access", "Packages"]}
 dotnet add package Whizbang.Data.EFCore.Postgres
 dotnet add package Whizbang.Data.EFCore.Postgres.Generators
 ```
 
 **SQLite** (development/testing):
-```bash{title="Data Access Packages (3)" description="SQLite (development/testing):" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Data", "Access", "Packages"]}
+```bash{title="Data Access Packages (3)" description="SQLite (development/testing):" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Data", "Access", "Packages"]}
 dotnet add package Whizbang.Data.Dapper.Sqlite
 ```
 
 #### Transport Packages
 
 **Azure Service Bus**:
-```bash{title="Transport Packages" description="Azure Service Bus:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Transport", "Packages"]}
+```bash{title="Transport Packages" description="Azure Service Bus:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Transport", "Packages"]}
 dotnet add package Whizbang.Transports.AzureServiceBus
 dotnet add package Whizbang.Hosting.Azure.ServiceBus
 ```
@@ -86,7 +87,7 @@ dotnet add package Whizbang.Hosting.Azure.ServiceBus
 #### Source Generators
 
 **Automatic Discovery**:
-```bash{title="Source Generators" description="Automatic Discovery:" category="Configuration" difficulty="ADVANCED" tags=["Getting-Started", "Source", "Generators"]}
+```bash{title="Source Generators" description="Automatic Discovery:" category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "Bash", "Source", "Generators"]}
 dotnet add package Whizbang.Generators
 ```
 
@@ -101,7 +102,7 @@ dotnet add package Whizbang.Generators
 
 For complete functionality, add all packages:
 
-```xml{title="Option 2: Package Bundle" description="For complete functionality, add all packages:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Option", "Package", "Bundle"]}
+```xml{title="Option 2: Package Bundle" description="For complete functionality, add all packages:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Xml", "Option", "Package", "Bundle"]}
 <!-- YourProject.csproj -->
 <ItemGroup>
   <PackageReference Include="Whizbang.Core" Version="0.1.0" />
@@ -116,7 +117,7 @@ For complete functionality, add all packages:
 
 Use `Directory.Packages.props` for version management:
 
-```xml{title="Option 3: Central Package Management (Recommended for" description="Use `Directory." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Option", "Central", "Package"]}
+```xml{title="Option 3: Central Package Management (Recommended for" description="Use `Directory." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "Xml", "Option", "Central", "Package"]}
 <!-- Directory.Packages.props -->
 <Project>
   <PropertyGroup>
@@ -138,7 +139,7 @@ Use `Directory.Packages.props` for version management:
 
 Then in project files:
 
-```xml{title="Option 3: Central Package Management (Recommended for" description="Then in project files:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Option", "Central", "Package"]}
+```xml{title="Option 3: Central Package Management (Recommended for" description="Then in project files:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Xml", "Option", "Central", "Package"]}
 <!-- YourProject.csproj -->
 <ItemGroup>
   <PackageReference Include="Whizbang.Core" />
@@ -151,7 +152,7 @@ Then in project files:
 
 ### 1. Create New Project
 
-```bash{title="Create New Project" description="Demonstrates create New Project" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Create", "New", "Project"]}
+```bash{title="Create New Project" description="Create New Project" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "Bash", "Create", "New", "Project"]}
 # Create solution
 dotnet new sln -n MyWhizbangApp
 
@@ -170,7 +171,7 @@ dotnet add package Whizbang.Data.Dapper.Postgres
 
 Ensure your project targets .NET 10:
 
-```xml{title="Configure Target Framework" description="Ensure your project targets ." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Configure", "Target", "Framework"]}
+```xml{title="Configure Target Framework" description="Ensure your project targets ." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "Xml", "Configure", "Target", "Framework"]}
 <!-- MyWhizbangApp.API.csproj -->
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
@@ -186,7 +187,7 @@ Ensure your project targets .NET 10:
 
 Create solution-level build configuration:
 
-```xml{title="Add Directory.Build.props (Optional but Recommended)" description="Create solution-level build configuration:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Add", "Directory.Build.props", "Optional"]}
+```xml{title="Add Directory.Build.props (Optional but Recommended)" description="Create solution-level build configuration:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "Xml", "Add", "Directory.Build.props", "Optional"]}
 <!-- Directory.Build.props -->
 <Project>
   <PropertyGroup>
@@ -242,7 +243,7 @@ dotnet_naming_style.end_in_async.capitalization = pascal_case
 
 #### Option A: Docker (Easiest)
 
-```bash{title="Option A: Docker (Easiest)" description="Demonstrates option A: Docker (Easiest)" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Option", "Docker", "Easiest"]}
+```bash{title="Option A: Docker (Easiest)" description="Option A: Docker (Easiest)" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Option", "Docker", "Easiest"]}
 docker run -d \
   --name whizbang-postgres \
   -e POSTGRES_PASSWORD=your_password \
@@ -256,7 +257,7 @@ docker run -d \
 
 With Aspire, PostgreSQL starts automatically:
 
-```csharp{title="Option B: .NET Aspire (Automatic)" description="With Aspire, PostgreSQL starts automatically:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Option", ".NET", "Aspire"]}
+```csharp{title="Option B: .NET Aspire (Automatic)" description="With Aspire, PostgreSQL starts automatically:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Option", "Aspire"]}
 // AppHost/Program.cs
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -273,7 +274,7 @@ builder.Build().Run();
 ### Connection String Configuration
 
 **appsettings.Development.json**:
-```json{title="Connection String Configuration" description="**appsettings." category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Connection", "String", "Configuration"]}
+```json{title="Connection String Configuration" description="**appsettings." category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Json", "Connection", "String", "Configuration"]}
 {
   "ConnectionStrings": {
     "DefaultConnection": "Host=localhost;Database=whizbang;Username=whizbang;Password=your_password"
@@ -329,7 +330,7 @@ builder.Build().Run();
 
 ### 1. Build Project
 
-```bash{title="Build Project" description="Demonstrates build Project" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Build", "Project"]}
+```bash{title="Build Project" description="Build Project" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Build", "Project"]}
 dotnet build
 ```
 
@@ -342,7 +343,7 @@ Build succeeded.
 
 ### 2. Check Source Generators
 
-```bash{title="Check Source Generators" description="Demonstrates check Source Generators" category="Configuration" difficulty="ADVANCED" tags=["Getting-Started", "Check", "Source", "Generators"]}
+```bash{title="Check Source Generators" description="Check Source Generators" category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "Bash", "Check", "Source", "Generators"]}
 ls .whizbang-generated/
 ```
 
@@ -359,7 +360,7 @@ Whizbang.Generators/
 
 ### 3. Run Tests (if added)
 
-```bash{title="Run Tests (if added)" description="Demonstrates run Tests (if added)" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Run", "Tests", "Added"]}
+```bash{title="Run Tests (if added)" description="Run Tests (if added)" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Run", "Tests"]}
 dotnet test
 ```
 

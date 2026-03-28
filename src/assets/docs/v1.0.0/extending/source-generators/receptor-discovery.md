@@ -10,6 +10,7 @@ tags: 'source-generators, receptors, roslyn, compile-time, zero-reflection, aot'
 codeReferences:
   - src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs
   - src/Whizbang.Generators/Templates/DispatcherTemplate.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Receptor Discovery
@@ -180,7 +181,7 @@ internal static class ReceptorDiscoveryDiagnostics {
 
 ### Registration in Program.cs
 
-```csharp{title="Registration in Program.cs" description="Demonstrates registration in Program.cs" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Registration", "Program.cs"]}
+```csharp{title="Registration in Program.cs" description="Registration in Program.cs" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Registration", "Program.cs"]}
 // Program.cs
 using MyApp.Generated;  // Generated namespace
 
@@ -201,7 +202,7 @@ app.Run();
 
 ### Pattern 1: Command → Event
 
-```csharp{title="Pattern 1: Command → Event" description="Demonstrates pattern 1: Command → Event" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Command"]}
+```csharp{title="Pattern 1: Command → Event" description="Pattern 1: Command → Event" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Command"]}
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
         CreateOrder message,
@@ -231,7 +232,7 @@ if (messageType == typeof(CreateOrder)) {
 
 ### Pattern 2: Query → Result
 
-```csharp{title="Pattern 2: Query → Result" description="Demonstrates pattern 2: Query → Result" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Query"]}
+```csharp{title="Pattern 2: Query → Result" description="Pattern 2: Query → Result" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Query"]}
 public class GetOrderReceptor : IReceptor<GetOrder, OrderSummary> {
     private readonly IDbConnectionFactory _db;
 
@@ -252,7 +253,7 @@ public class GetOrderReceptor : IReceptor<GetOrder, OrderSummary> {
 
 ### Pattern 3: Void Receptor (No Response)
 
-```csharp{title="Pattern 3: Void Receptor (No Response)" description="Demonstrates pattern 3: Void Receptor (No Response)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Void"]}
+```csharp{title="Pattern 3: Void Receptor (No Response)" description="Pattern 3: Void Receptor (No Response)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Void"]}
 public class SendEmailReceptor : IReceptor<SendEmail> {  // No response type
     private readonly IEmailService _email;
 
@@ -497,7 +498,7 @@ return method.Invoke(receptor, new[] { message });
 
 ### Native AOT Verification
 
-```xml{title="Native AOT Verification" description="Demonstrates native AOT Verification" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Native", "AOT"]}
+```xml{title="Native AOT Verification" description="Native AOT Verification" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Native", "AOT"]}
 <!-- Enable Native AOT -->
 <PropertyGroup>
   <PublishAot>true</PublishAot>
@@ -529,7 +530,7 @@ Generating native code
 | **PublishAsync** | ~50ns per receptor | Parallel invocation |
 
 **Benchmark**:
-```csharp{title="Dispatch Overhead" description="Demonstrates dispatch Overhead" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Dispatch", "Overhead"]}
+```csharp{title="Dispatch Overhead" description="Dispatch Overhead" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Dispatch", "Overhead"]}
 [Benchmark]
 public async Task LocalInvokeAsync_CreateOrder() {
     var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(
@@ -573,7 +574,7 @@ Memory Diagnostics:
 
 ### Value Type Records for Caching
 
-```csharp{title="Value Type Records for Caching" description="Demonstrates value Type Records for Caching" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Value", "Type"]}
+```csharp{title="Value Type Records for Caching" description="Value Type Records for Caching" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Value", "Type"]}
 internal sealed record ReceptorInfo(
     string ClassName,
     string MessageType,
@@ -663,7 +664,7 @@ public class GeneratedDispatcher : Dispatcher {
 2. Generator disabled in project file
 
 **Solution**:
-```xml{title="Problem: Generator Doesn't Run" description="Demonstrates problem: Generator Doesn't Run" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Problem:", "Generator"]}
+```xml{title="Problem: Generator Doesn't Run" description="Problem: Generator Doesn't Run" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Problem:", "Generator"]}
 <ItemGroup>
   <PackageReference Include="Whizbang.Generators" OutputItemType="Analyzer" />
 </ItemGroup>
@@ -678,7 +679,7 @@ public class GeneratedDispatcher : Dispatcher {
 2. Namespace import missing
 
 **Solution**:
-```csharp{title="Problem: No Receptors Found (WHIZ002)" description="Demonstrates problem: No Receptors Found (WHIZ002)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Receptors"]}
+```csharp{title="Problem: No Receptors Found (WHIZ002)" description="Problem: No Receptors Found (WHIZ002)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Receptors"]}
 using Whizbang.Core;  // Required!
 
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
@@ -695,7 +696,7 @@ public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 2. Message type in different assembly not referenced
 
 **Solution**:
-```csharp{title="Problem: Type Not Found in Generated Code" description="Demonstrates problem: Type Not Found in Generated Code" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Type"]}
+```csharp{title="Problem: Type Not Found in Generated Code" description="Problem: Type Not Found in Generated Code" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Type"]}
 // ✅ Public message types
 public record CreateOrder(Guid CustomerId, OrderItem[] Items);
 
@@ -720,6 +721,11 @@ internal record CreateOrder(Guid CustomerId, OrderItem[] Items);
 **Advanced**:
 - Performance: Local Invoke - Sub-20ns dispatch
 - Testing: Receptor Testing - Unit testing receptors
+
+### For Users
+
+New to receptors? Start with the user guide:
+- [Receptors Guide](../../fundamentals/receptors/receptors.md) — Core receptor patterns, command handling, and dependency injection
 
 ---
 

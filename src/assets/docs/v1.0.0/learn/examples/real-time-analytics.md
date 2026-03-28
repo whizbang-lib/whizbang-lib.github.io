@@ -7,6 +7,15 @@ description: >-
   Build real-time analytics dashboards - streaming metrics, SignalR updates, and
   live KPIs
 tags: 'real-time, analytics, signalr, streaming, dashboards, websockets'
+codeReferences:
+  - src/Whizbang.SignalR/Hooks/SignalRNotificationHook.cs
+  - >-
+    src/Whizbang.SignalR/DependencyInjection/SignalRServiceCollectionExtensions.cs
+  - samples/ECommerce/ECommerce.BFF.API/Hubs/OrderStatusHub.cs
+  - samples/ECommerce/ECommerce.BFF.API/Hubs/ProductInventoryHub.cs
+  - >-
+    samples/ECommerce/ECommerce.BFF.API/Perspectives/InventoryLevelsPerspective.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Real-Time Analytics
@@ -106,7 +115,7 @@ public class MetricsHub : Hub {
 
 **Program.cs registration**:
 
-```csharp{title="SignalR Hub (2)" description="Demonstrates signalR Hub" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalR", "Hub"]}
+```csharp{title="SignalR Hub (2)" description="SignalR Hub" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalR", "Hub"]}
 builder.Services.AddSignalR();
 
 app.MapHub<MetricsHub>("/hubs/metrics");
@@ -306,7 +315,7 @@ new MetricsDashboard();
 
 **HTML**:
 
-```html{title="Client-Side (TypeScript) (2)" description="Demonstrates client-Side (TypeScript)" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Client-Side", "TypeScript"]}
+```html{title="Client-Side (TypeScript) (2)" description="Client-Side (TypeScript)" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Client-Side", "TypeScript"]}
 <!DOCTYPE html>
 <html>
 <head>

@@ -1,3 +1,18 @@
+---
+title: "TypeFormatter: Type Name Formatting Utility"
+version: 1.0.0
+category: "Core Concepts"
+order: 27
+description: >-
+  TypeFormatter is a static utility that formats .NET Type objects into string representations
+  using TypeQualification flags. Handles namespace, assembly, version, and culture formatting
+  with culture-invariant output and full AOT compatibility.
+tags: 'type-formatter, type-formatting, type-names, aot, identity, source-generators'
+codeReferences:
+  - src/Whizbang.Core/TypeFormatter.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # TypeFormatter: Type Name Formatting Utility
 
 TypeFormatter is a static utility class that formats .NET Type objects into string representations according to TypeQualification flags. It handles namespace, assembly, version, culture, and public key token formatting with culture-invariant output.
@@ -15,7 +30,7 @@ TypeFormatter is a static utility class that formats .NET Type objects into stri
 
 ### Basic Formatting
 
-```csharp{title="Basic Formatting" description="Demonstrates basic Formatting" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Formatting"]}
+```csharp{title="Basic Formatting" description="Basic Formatting" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Formatting"]}
 using Whizbang.Core;
 
 var type = typeof(ECommerce.Contracts.Events.ProductCreatedEvent);
@@ -40,7 +55,7 @@ Console.WriteLine(custom);
 
 ### Formatting with Version Information
 
-```csharp{title="Formatting with Version Information" description="Demonstrates formatting with Version Information" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Formatting", "Version"]}
+```csharp{title="Formatting with Version Information" description="Formatting with Version Information" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Formatting", "Version"]}
 // Full assembly qualification with version
 var withVersion = TypeFormatter.FormatType(
     type,
@@ -75,7 +90,7 @@ TypeFormatter outputs components in this order:
 
 ### Flag Combinations
 
-```csharp{title="Flag Combinations" description="Demonstrates flag Combinations" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Flag", "Combinations"]}
+```csharp{title="Flag Combinations" description="Flag Combinations" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Flag", "Combinations"]}
 var type = typeof(OrderCreatedEvent);
 
 // TypeName only
@@ -243,7 +258,7 @@ public TypeDisplayInfo GetDisplayInfo(Type type) {
 
 ### Empty Namespace
 
-```csharp{title="Empty Namespace" description="Demonstrates empty Namespace" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Empty", "Namespace"]}
+```csharp{title="Empty Namespace" description="Empty Namespace" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Empty", "Namespace"]}
 // Type with no namespace (global namespace)
 public class GlobalType { }
 
@@ -256,7 +271,7 @@ var formatted = TypeFormatter.FormatType(
 
 ### Generic Types
 
-```csharp{title="Generic Types" description="Demonstrates generic Types" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Generic", "Types"]}
+```csharp{title="Generic Types" description="Generic Types" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Generic", "Types"]}
 var genericType = typeof(List<OrderCreatedEvent>);
 
 var formatted = TypeFormatter.FormatType(
@@ -269,7 +284,7 @@ var formatted = TypeFormatter.FormatType(
 
 ### Nested Types
 
-```csharp{title="Nested Types" description="Demonstrates nested Types" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Nested", "Types"]}
+```csharp{title="Nested Types" description="Nested Types" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Nested", "Types"]}
 public class OuterClass {
     public class InnerClass { }
 }
@@ -285,7 +300,7 @@ var formatted = TypeFormatter.FormatType(
 
 ### Public Key Token
 
-```csharp{title="Public Key Token" description="Demonstrates public Key Token" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Public", "Key"]}
+```csharp{title="Public Key Token" description="Public Key Token" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Public", "Key"]}
 // Strong-named assembly
 var strongType = typeof(System.String);
 
@@ -405,7 +420,7 @@ public static class TypeFormatter {
 
 ### ❌ Formatting Null Types
 
-```csharp{title="❌ Formatting Null Types" description="Demonstrates ❌ Formatting Null Types" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Formatting", "Null"]}
+```csharp{title="❌ Formatting Null Types" description="❌ Formatting Null Types" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Formatting", "Null"]}
 // ❌ WRONG: Null type
 Type? nullType = null;
 var formatted = TypeFormatter.FormatType(nullType!, TypeQualification.Simple);
@@ -419,7 +434,7 @@ if (type != null) {
 
 ### ❌ Assuming Default Format
 
-```csharp{title="❌ Assuming Default Format" description="Demonstrates ❌ Assuming Default Format" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Assuming", "Default"]}
+```csharp{title="❌ Assuming Default Format" description="❌ Assuming Default Format" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Assuming", "Default"]}
 // ❌ WRONG: Assuming ToString() matches formatted output
 var toString = type.ToString();
 var formatted = TypeFormatter.FormatType(type, TypeQualification.FullyQualified);
@@ -431,7 +446,7 @@ var formatted = TypeFormatter.FormatType(type, TypeQualification.FullyQualified)
 
 ### ❌ Hardcoding Type Names
 
-```csharp{title="❌ Hardcoding Type Names" description="Demonstrates ❌ Hardcoding Type Names" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Hardcoding", "Type"]}
+```csharp{title="❌ Hardcoding Type Names" description="❌ Hardcoding Type Names" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Hardcoding", "Type"]}
 // ❌ WRONG: Hardcoded type name
 var typeName = "ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts";
 
@@ -444,7 +459,7 @@ var typeName = TypeFormatter.FormatType(
 
 ### ❌ Ignoring Culture in Manual Formatting
 
-```csharp{title="❌ Ignoring Culture in Manual Formatting" description="Demonstrates ❌ Ignoring Culture in Manual Formatting" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Ignoring", "Culture"]}
+```csharp{title="❌ Ignoring Culture in Manual Formatting" description="❌ Ignoring Culture in Manual Formatting" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Ignoring", "Culture"]}
 // ❌ WRONG: Culture-dependent formatting
 var version = type.Assembly.GetName().Version;
 var formatted = $"Version={version}"; // May use locale-specific format

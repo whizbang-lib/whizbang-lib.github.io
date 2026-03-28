@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/PostgresHealthCheck.cs
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusReadinessCheck.cs
   - src/Whizbang.Core/Transports/ITransportReadinessCheck.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Health Checks
@@ -95,7 +96,7 @@ codeReferences:
 **Purpose**: Verify transport is available and connected.
 
 **Usage**:
-```csharp{title="Azure Service Bus Health Check" description="Demonstrates azure Service Bus Health Check" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Azure", "Service"]}
+```csharp{title="Azure Service Bus Health Check" description="Azure Service Bus Health Check" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Azure", "Service"]}
 using Whizbang.Transports.AzureServiceBus;
 
 builder.Services.AddAzureServiceBusTransport(connectionString);
@@ -137,7 +138,7 @@ public class AzureServiceBusHealthCheck(ITransport transport) : IHealthCheck {
 **Purpose**: Verify database connectivity and query execution.
 
 **Usage**:
-```csharp{title="PostgreSQL Health Check" description="Demonstrates postgreSQL Health Check" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "PostgreSQL", "Health"]}
+```csharp{title="PostgreSQL Health Check" description="PostgreSQL Health Check" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "PostgreSQL", "Health"]}
 using Whizbang.Data.Dapper.Postgres;
 
 builder.Services.AddPostgresConnection(connectionString);
@@ -181,7 +182,7 @@ public class PostgresHealthCheck(IDbConnectionFactory connectionFactory) : IHeal
 **Purpose**: Cached transport readiness check with initialization verification.
 
 **Usage**:
-```csharp{title="Service Bus Readiness Check" description="Demonstrates service Bus Readiness Check" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Service", "Bus"]}
+```csharp{title="Service Bus Readiness Check" description="Service Bus Readiness Check" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Service", "Bus"]}
 using Whizbang.Hosting.Azure.ServiceBus;
 
 builder.Services.AddSingleton<ITransportReadinessCheck, ServiceBusReadinessCheck>();
@@ -234,7 +235,7 @@ public class ServiceBusReadinessCheck : ITransportReadinessCheck {
 
 ### Basic Registration
 
-```csharp{title="Basic Registration" description="Demonstrates basic Registration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Basic", "Registration"]}
+```csharp{title="Basic Registration" description="Basic Registration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Basic", "Registration"]}
 builder.Services.AddHealthChecks()
   .AddCheck<AzureServiceBusHealthCheck>("azure_servicebus")
   .AddCheck<PostgresHealthCheck>("postgres");
@@ -261,7 +262,7 @@ app.MapHealthChecks("/health");
 
 ### Detailed Health Checks
 
-```csharp{title="Detailed Health Checks" description="Demonstrates detailed Health Checks" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Detailed", "Health"]}
+```csharp{title="Detailed Health Checks" description="Detailed Health Checks" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Detailed", "Health"]}
 builder.Services.AddHealthChecks()
   .AddCheck<AzureServiceBusHealthCheck>(
     name: "azure_servicebus",
@@ -309,7 +310,7 @@ readinessProbe:
 
 ### Implementing IHealthCheck
 
-```csharp{title="Implementing IHealthCheck" description="Demonstrates implementing IHealthCheck" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Implementing", "IHealthCheck"]}
+```csharp{title="Implementing IHealthCheck" description="Implementing IHealthCheck" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Implementing", "IHealthCheck"]}
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 public class RedisHealthCheck : IHealthCheck {
@@ -359,7 +360,7 @@ builder.Services.AddHealthChecks()
 
 ### Timeout and Failure Handling
 
-```csharp{title="Timeout and Failure Handling" description="Demonstrates timeout and Failure Handling" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Timeout", "Failure"]}
+```csharp{title="Timeout and Failure Handling" description="Timeout and Failure Handling" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Timeout", "Failure"]}
 public class ExternalApiHealthCheck : IHealthCheck {
   private readonly HttpClient _httpClient;
   private readonly TimeSpan _timeout = TimeSpan.FromSeconds(5);
@@ -423,7 +424,7 @@ app.Run();
 
 ### Startup Health Check
 
-```csharp{title="Startup Health Check" description="Demonstrates startup Health Check" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Startup", "Health"]}
+```csharp{title="Startup Health Check" description="Startup Health Check" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Startup", "Health"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Register services and health checks
@@ -458,7 +459,7 @@ app.Run();
 
 ### Cached Health Checks
 
-```csharp{title="Cached Health Checks" description="Demonstrates cached Health Checks" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Cached", "Health"]}
+```csharp{title="Cached Health Checks" description="Cached Health Checks" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Cached", "Health"]}
 public class CachedDatabaseHealthCheck : IHealthCheck {
   private readonly IDbConnectionFactory _connectionFactory;
   private DateTimeOffset? _lastCheck;
@@ -509,7 +510,7 @@ public class CachedDatabaseHealthCheck : IHealthCheck {
 
 ### Composite Health Checks
 
-```csharp{title="Composite Health Checks" description="Demonstrates composite Health Checks" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Composite", "Health"]}
+```csharp{title="Composite Health Checks" description="Composite Health Checks" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Composite", "Health"]}
 public class ApplicationHealthCheck : IHealthCheck {
   private readonly IHealthCheck[] _checks;
 
@@ -588,7 +589,7 @@ public class ApplicationHealthCheck : IHealthCheck {
 3. Caching not working (re-checking every request)
 
 **Solution**:
-```csharp{title="Problem: Health Check Always Returns Unhealthy" description="Demonstrates problem: Health Check Always Returns Unhealthy" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Health"]}
+```csharp{title="Problem: Health Check Always Returns Unhealthy" description="Problem: Health Check Always Returns Unhealthy" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Health"]}
 // 1. Check logs for actual failure reason
 var healthReport = await healthCheckService.CheckHealthAsync();
 foreach (var (key, entry) in healthReport.Entries) {
@@ -614,7 +615,7 @@ if (_lastCheck.HasValue) {
 **Cause**: Liveness check includes database or external dependencies (shouldn't).
 
 **Solution**:
-```csharp{title="Problem: Kubernetes Keeps Restarting Pod" description="Demonstrates problem: Kubernetes Keeps Restarting Pod" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Problem:", "Kubernetes"]}
+```csharp{title="Problem: Kubernetes Keeps Restarting Pod" description="Problem: Kubernetes Keeps Restarting Pod" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Problem:", "Kubernetes"]}
 // Liveness should only check app is running (no external dependencies)
 builder.Services.AddHealthChecks()
   .AddCheck("self", () => HealthCheckResult.Healthy("App is running"), tags: ["live"])
@@ -637,7 +638,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions {
 **Cause**: Kubernetes polling every 5 seconds across 100 pods = 20 queries/second.
 
 **Solution**:
-```csharp{title="Problem: Health Checks Cause Database Overload" description="Demonstrates problem: Health Checks Cause Database Overload" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Health"]}
+```csharp{title="Problem: Health Checks Cause Database Overload" description="Problem: Health Checks Cause Database Overload" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Health"]}
 // Add caching to reduce database load
 public class CachedPostgresHealthCheck : PostgresHealthCheck {
   private DateTimeOffset? _lastCheck;

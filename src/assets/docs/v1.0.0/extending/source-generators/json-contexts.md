@@ -12,6 +12,7 @@ tags: >-
 codeReferences:
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
   - src/Whizbang.Core/Serialization/WhizbangJsonContext.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # JSON Contexts
@@ -302,7 +303,7 @@ public partial class WhizbangJsonContext : JsonSerializerContext { }
 
 ### Pattern 1: Command/Event Discovery
 
-```csharp{title="Pattern 1: Command/Event Discovery" description="Demonstrates pattern 1: Command/Event Discovery" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Command"]}
+```csharp{title="Pattern 1: Command/Event Discovery" description="Pattern 1: Command/Event Discovery" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Command"]}
 // Commands and events are auto-discovered
 public record CreateOrder(
     Guid OrderId,
@@ -324,7 +325,7 @@ public record OrderCreated(
 
 ### Pattern 2: Nested Type Discovery
 
-```csharp{title="Pattern 2: Nested Type Discovery" description="Demonstrates pattern 2: Nested Type Discovery" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Nested"]}
+```csharp{title="Pattern 2: Nested Type Discovery" description="Pattern 2: Nested Type Discovery" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Nested"]}
 // Command uses OrderItem (nested type)
 public record CreateOrder(
     Guid OrderId,
@@ -346,7 +347,7 @@ public record OrderItem(
 
 ### Pattern 3: Collection Type Discovery
 
-```csharp{title="Pattern 3: Collection Type Discovery" description="Demonstrates pattern 3: Collection Type Discovery" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Collection"]}
+```csharp{title="Pattern 3: Collection Type Discovery" description="Pattern 3: Collection Type Discovery" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Collection"]}
 // List<T> types discovered from properties
 public record CreateOrder(
     Guid OrderId,
@@ -360,7 +361,7 @@ public record CreateOrder(
 
 ### Pattern 4: WhizbangId Converter Discovery
 
-```csharp{title="Pattern 4: WhizbangId Converter Discovery" description="Demonstrates pattern 4: WhizbangId Converter Discovery" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "WhizbangId"]}
+```csharp{title="Pattern 4: WhizbangId Converter Discovery" description="Pattern 4: WhizbangId Converter Discovery" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "WhizbangId"]}
 // Generator infers converters for *Id types
 public record CreateOrder(
     ProductId ProductId,  // ← Infers ProductIdJsonConverter
@@ -380,7 +381,7 @@ options.Converters.Add(new CustomerIdJsonConverter());
 
 ### Basic Serialization
 
-```csharp{title="Basic Serialization" description="Demonstrates basic Serialization" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Basic", "Serialization"]}
+```csharp{title="Basic Serialization" description="Basic Serialization" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Basic", "Serialization"]}
 using MyApp.Generated;
 
 // Create options with generated context
@@ -398,7 +399,7 @@ var deserialized = JsonSerializer.Deserialize<CreateOrder>(json, options);
 
 ### Dependency Injection
 
-```csharp{title="Dependency Injection" description="Demonstrates dependency Injection" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Dependency", "Injection"]}
+```csharp{title="Dependency Injection" description="Dependency Injection" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Dependency", "Injection"]}
 // Program.cs
 using MyApp.Generated;
 
@@ -418,7 +419,7 @@ builder.Services.Configure<JsonOptions>(options => {
 
 ### Outbox/Inbox Serialization
 
-```csharp{title="Outbox/Inbox Serialization" description="Demonstrates outbox/Inbox Serialization" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Outbox", "Inbox"]}
+```csharp{title="Outbox/Inbox Serialization" description="Outbox/Inbox Serialization" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Outbox", "Inbox"]}
 public class OutboxPublisher {
     private readonly JsonSerializerOptions _jsonOptions;
 
@@ -467,7 +468,7 @@ public class OutboxPublisher {
 
 ### Publish Native AOT
 
-```xml{title="Publish Native AOT" description="Demonstrates publish Native AOT" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Publish", "Native"]}
+```xml{title="Publish Native AOT" description="Publish Native AOT" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Publish", "Native"]}
 <!-- MyApp.csproj -->
 <PropertyGroup>
   <PublishAot>true</PublishAot>
@@ -475,7 +476,7 @@ public class OutboxPublisher {
 ```
 
 **Build**:
-```bash{title="Publish Native AOT (2)" description="Demonstrates publish Native AOT" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Publish", "Native"]}
+```bash{title="Publish Native AOT (2)" description="Publish Native AOT" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Publish", "Native"]}
 dotnet publish -c Release
 
 # Output:

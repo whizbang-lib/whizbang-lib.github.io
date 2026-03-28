@@ -7,6 +7,18 @@ description: >-
   Comprehensive testing strategy - unit tests, integration tests, e2e tests,
   mocks, and fixtures
 tags: 'tutorial, testing, unit-tests, integration-tests, e2e-tests, tunit'
+codeReferences:
+  - >-
+    samples/ECommerce/tests/ECommerce.InventoryWorker.Tests/Receptors/CreateProductReceptorTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Workflows/CreateProductWorkflowTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.BFF.API.Tests/PerspectiveModelsTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.PaymentWorker.Tests/ProcessPaymentReceptorTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Testing Strategy
@@ -567,7 +579,7 @@ public static class OrderFixture {
 
 **Usage**:
 
-```csharp{title="Test Fixtures (2)" description="Demonstrates test Fixtures" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Test", "Fixtures"]}
+```csharp{title="Test Fixtures (2)" description="Test Fixtures" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Test", "Fixtures"]}
 [Test]
 public async Task SomeTest_WithRandomData_WorksCorrectlyAsync() {
   // Arrange
@@ -649,7 +661,7 @@ public class MockPaymentGateway : IPaymentGateway {
 
 ### Running Tests with Coverage
 
-```bash{title="Running Tests with Coverage" description="Demonstrates running Tests with Coverage" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Running", "Tests"]}
+```bash{title="Running Tests with Coverage" description="Running Tests with Coverage" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Running", "Tests"]}
 cd ECommerce.OrderService.Tests
 dotnet run -- --coverage --coverage-output-format cobertura --coverage-output coverage.xml
 ```

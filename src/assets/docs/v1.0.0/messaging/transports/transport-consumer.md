@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Resilience/SubscriptionState.cs
   - src/Whizbang.Core/Resilience/SubscriptionRetryHelper.cs
   - src/Whizbang.Core/Transports/ITransportWithRecovery.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Transport Consumer

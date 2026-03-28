@@ -1,0 +1,65 @@
+{
+  "totalDocuments": 316,
+  "totalChunksWithIssues": 5,
+  "issuesByPattern": {
+    "code-metadata": 2,
+    "markdown-header": 3
+  },
+  "sampleIssues": [
+    {
+      "document": "proposals/multi-tenancy",
+      "chunkId": "proposals/multi-tenancy-chunk-0",
+      "preview": "Multi-Tenancy\nWhizbang provides comprehensive multi-tenancy support with flexible tenant isolation strategies, from single database with row-level security to complete database separation Tenant Isola",
+      "leaks": [
+        {
+          "pattern": "code-metadata",
+          "desc": "Code block metadata ({title:)"
+        }
+      ]
+    },
+    {
+      "document": "proposals/source-generation-ide",
+      "chunkId": "proposals/source-generation-ide-chunk-0",
+      "preview": "Source Generation & IDE Integration\nWhizbang uses advanced source generation and IDE integration to provide a seamless developer experience with compile-time validation, intelligent navigation, and po",
+      "leaks": [
+        {
+          "pattern": "code-metadata",
+          "desc": "Code block metadata ({title:)"
+        }
+      ]
+    },
+    {
+      "document": "v1.0.0/messaging/transports/azure-service-bus",
+      "chunkId": "v1.0.0/messaging/transports/azure-service-bus-chunk-2",
+      "preview": "Retries: Uses exponential backoff with configurable policies Connection Recovery: Re-establishes connections transparently SDK Retry Policy (configured in ServiceBusClientOptions): The Azure SDK's bui",
+      "leaks": [
+        {
+          "pattern": "markdown-header",
+          "desc": "Raw markdown header (#)"
+        }
+      ]
+    },
+    {
+      "document": "v1.0.0/messaging/transports/azure-service-bus",
+      "chunkId": "v1.0.0/messaging/transports/azure-service-bus-chunk-4",
+      "preview": "contracts embedding) Topics not covered by OwnDomains() startup provisioning Development environments where topics may not be pre-created Production: Set AutoProvisionInfrastructure = false and pre-pr",
+      "leaks": [
+        {
+          "pattern": "markdown-header",
+          "desc": "Raw markdown header (#)"
+        }
+      ]
+    },
+    {
+      "document": "v1.0.0/messaging/transports/azure-service-bus",
+      "chunkId": "v1.0.0/messaging/transports/azure-service-bus-chunk-5",
+      "preview": "design allows services to run in restricted environments where infrastructure is pre-provisioned via infrastructure-as-code tools like Terraform or Bicep Routing Pattern Filters When using wildcard ro",
+      "leaks": [
+        {
+          "pattern": "markdown-header",
+          "desc": "Raw markdown header (#)"
+        }
+      ]
+    }
+  ]
+}

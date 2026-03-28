@@ -10,6 +10,7 @@ tags: 'tracing, verbosity, observability, diagnostics, configuration'
 codeReferences:
   - src/Whizbang.Core/Tracing/TraceVerbosity.cs
   - src/Whizbang.Core/Tracing/TracingOptions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Trace Verbosity Levels
@@ -18,7 +19,7 @@ The `TraceVerbosity` enum controls how much detail Whizbang emits in traces. Ver
 
 ## Namespace
 
-```csharp{title="Namespace" description="Demonstrates namespace" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Observability", "Namespace"]}
+```csharp{title="Namespace" description="Namespace" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Observability", "Namespace"]}
 using Whizbang.Core.Tracing;
 ```
 

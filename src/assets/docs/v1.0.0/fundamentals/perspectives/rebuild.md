@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
   - src/Whizbang.Core/Events/System/SystemEvents.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Rebuild
@@ -23,7 +24,7 @@ When a perspective's schema changes or data becomes stale, Whizbang provides mul
 
 ## IPerspectiveRebuilder
 
-```csharp{title="IPerspectiveRebuilder" description="Demonstrates iPerspectiveRebuilder" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveRebuilder"]}
+```csharp{title="IPerspectiveRebuilder" description="IPerspectiveRebuilder" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveRebuilder"]}
 public interface IPerspectiveRebuilder {
   Task<RebuildResult> RebuildBlueGreenAsync(string perspectiveName, CancellationToken ct = default);
   Task<RebuildResult> RebuildInPlaceAsync(string perspectiveName, CancellationToken ct = default);
@@ -69,7 +70,7 @@ var result = await rebuilder.RebuildStreamsAsync("OrderPerspective", corruptedSt
 
 ## RebuildResult
 
-```csharp{title="RebuildResult" description="Demonstrates rebuildResult" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "RebuildResult"]}
+```csharp{title="RebuildResult" description="RebuildResult" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "RebuildResult"]}
 public record RebuildResult(
     string PerspectiveName,
     int StreamsProcessed,

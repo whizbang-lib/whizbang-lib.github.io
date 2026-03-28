@@ -7,6 +7,26 @@ import { AIContentEnhancer } from './ai-enhance-content.mjs';
 const DOCS_DIR = 'src/assets/docs';
 const OUTPUT_FILE = 'src/assets/search-index.json';
 const ENHANCED_OUTPUT_FILE = 'src/assets/enhanced-search-index.json';
+const SYNONYMS_FILE = 'src/assets/keyword-synonyms.json';
+
+// Load keyword synonyms for search boosting
+let synonymMap = {};
+try {
+  const synonymData = JSON.parse(fs.readFileSync(SYNONYMS_FILE, 'utf-8'));
+  // Build reverse map: synonym → concept (and concept → synonyms)
+  for (const [concept, synonyms] of Object.entries(synonymData.concepts || {})) {
+    // concept itself maps to all its synonyms
+    synonymMap[concept.toLowerCase()] = synonyms.map(s => s.toLowerCase());
+    // each synonym maps to the concept + other synonyms
+    for (const syn of synonyms) {
+      if (!synonymMap[syn.toLowerCase()]) synonymMap[syn.toLowerCase()] = [];
+      synonymMap[syn.toLowerCase()].push(concept.toLowerCase());
+    }
+  }
+  console.log(`📚 Loaded ${Object.keys(synonymData.concepts || {}).length} synonym concepts`);
+} catch (e) {
+  console.log('⚠️  No keyword-synonyms.json found, proceeding without synonym expansion');
+}
 
 function extractFrontmatter(content) {
   if (!content.startsWith('---')) {
@@ -61,8 +81,19 @@ function extractKeywords(text, frontmatter) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
     .forEach(([word]) => keywords.add(word));
-  
-  return Array.from(keywords);
+
+  // Expand keywords with synonyms for better search recall
+  const expanded = new Set(keywords);
+  for (const kw of keywords) {
+    const synonyms = synonymMap[kw];
+    if (synonyms) {
+      for (const syn of synonyms) {
+        expanded.add(syn);
+      }
+    }
+  }
+
+  return Array.from(expanded);
 }
 
 function createSmartChunks(content, title = '', chunkSize = 300, overlap = 50) {
@@ -206,16 +237,25 @@ async function generateEnhancedSearchIndex() {
       
       // Clean content (remove markdown syntax)
       const cleanContent = bodyContent
+        .replace(/```\w*\{[^}]*\}[\s\S]*?```/g, '') // Remove code blocks with metadata
+        .replace(/```[\s\S]*?```/g, '') // Remove remaining code blocks
+        .replace(/:::(\w+)(\{[^}]*\})?/g, '') // Remove callout openers (:::new, :::updated{type="breaking"})
+        .replace(/^:::$/gm, '') // Remove callout closers
+        .replace(/<wb-[^>]*>[^<]*<\/wb-[^>]*>/g, '') // Remove custom components
+        .replace(/<wb-[^>]*\/>/g, '') // Remove self-closing custom components
+        .replace(/^\|.*\|$/gm, '') // Remove table rows
+        .replace(/^\|[-:|\s]+\|$/gm, '') // Remove table separator rows
         .replace(/#{1,6}\s+/g, '') // Remove headers
         .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
         .replace(/\*(.*?)\*/g, '$1') // Remove italic
         .replace(/`(.*?)`/g, '$1') // Remove inline code
-        .replace(/```[\s\S]*?```/g, '') // Remove code blocks
         .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove links, keep text
         .replace(/!\[([^\]]*)\]\([^\)]+\)/g, '$1') // Remove images
         .replace(/^\s*[-*+]\s+/gm, '') // Remove list markers
         .replace(/^\s*\d+\.\s+/gm, '') // Remove numbered list markers
+        .replace(/\{#[\w-]+\}/g, '') // Remove anchor IDs ({#some-id})
         .replace(/\n\s*\n/g, '\n') // Remove extra newlines
+        .replace(/\n{3,}/g, '\n\n') // Collapse multiple newlines
         .trim();
       
       // Extract keywords for enhanced search

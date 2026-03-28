@@ -13,6 +13,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.SignalR.Tests/DependencyInjection/SignalRServiceCollectionExtensionsTests.cs
   - tests/Whizbang.SignalR.Tests/Hooks/SignalRNotificationHookTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # SignalR Integration
@@ -30,7 +31,7 @@ The `Whizbang.SignalR` package enables:
 
 ## Installation
 
-```bash{title="Installation" description="Demonstrates installation" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Installation"]}
+```bash{title="Installation" description="Installation" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Installation"]}
 dotnet add package Whizbang.SignalR
 ```
 
@@ -38,7 +39,7 @@ dotnet add package Whizbang.SignalR
 
 ### Basic Setup
 
-```csharp{title="Basic Setup" description="Demonstrates basic Setup" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Basic", "Setup"]}
+```csharp{title="Basic Setup" description="Basic Setup" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Basic", "Setup"]}
 // Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,7 +54,7 @@ app.Run();
 
 ### With Hub Options
 
-```csharp{title="With Hub Options" description="Demonstrates with Hub Options" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Hub", "Options"]}
+```csharp{title="With Hub Options" description="With Hub Options" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Hub", "Options"]}
 builder.Services.AddWhizbangSignalR()
     .AddHubOptions<NotificationHub>(options => {
         options.EnableDetailedErrors = true;
@@ -75,7 +76,7 @@ The `AddWhizbangSignalR` extension method configures SignalR to use Whizbang's `
 
 ### How It Works
 
-```csharp{title="How It Works" description="Demonstrates how It Works" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Works"]}
+```csharp{title="How It Works" description="How It Works" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Works"]}
 public static ISignalRServerBuilder AddWhizbangSignalR(this IServiceCollection services) {
     return services.AddSignalR()
         .AddJsonProtocol(options => {
@@ -88,7 +89,7 @@ The `JsonContextRegistry.CreateCombinedOptions()` method returns a `JsonSerializ
 
 ## Example Hub
 
-```csharp{title="Example Hub" description="Demonstrates example Hub" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Example", "Hub"]}
+```csharp{title="Example Hub" description="Example Hub" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Example", "Hub"]}
 public class NotificationHub : Hub {
     public async Task JoinGroup(string groupName) {
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
@@ -102,7 +103,7 @@ public class NotificationHub : Hub {
 
 ## Pushing Messages
 
-```csharp{title="Pushing Messages" description="Demonstrates pushing Messages" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", "Pushing", "Messages"]}
+```csharp{title="Pushing Messages" description="Pushing Messages" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", "Pushing", "Messages"]}
 public class OrderService {
     private readonly IHubContext<NotificationHub> _hubContext;
 
@@ -122,7 +123,7 @@ public class OrderService {
 
 ### JavaScript/TypeScript
 
-```typescript{title="JavaScript/TypeScript" description="Demonstrates javaScript/TypeScript" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", "JavaScript", "TypeScript"]}
+```typescript{title="JavaScript/TypeScript" description="JavaScript/TypeScript" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", "JavaScript", "TypeScript"]}
 import * as signalR from "@microsoft/signalr";
 
 const connection = new signalR.HubConnectionBuilder()
@@ -141,7 +142,7 @@ await connection.invoke("JoinGroup", `customer-${customerId}`);
 
 ### .NET Client
 
-```csharp{title=".NET Client" description="Demonstrates .NET Client" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", ".NET", "Client"]}
+```csharp{title=".NET Client" description=".NET Client" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", ".NET", "Client"]}
 var connection = new HubConnectionBuilder()
     .WithUrl("https://api.example.com/notifications")
     .WithAutomaticReconnect()

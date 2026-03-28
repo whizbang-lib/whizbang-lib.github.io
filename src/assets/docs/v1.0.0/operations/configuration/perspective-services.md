@@ -8,6 +8,7 @@ description: >-
 tags: 'di, dependency-injection, perspectives, service-registration'
 codeReferences:
   - src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # AddPerspectiveServices
@@ -16,7 +17,7 @@ codeReferences:
 
 ## Signature
 
-```csharp{title="Signature" description="Demonstrates signature" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "Signature"]}
+```csharp{title="Signature" description="Signature" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "Signature"]}
 public static IServiceCollection AddPerspectiveServices(
     this IServiceCollection services,
     Action<ServiceRegistrationOptions>? configure = null)

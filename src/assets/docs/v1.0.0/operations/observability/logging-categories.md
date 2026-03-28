@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs
   - src/Whizbang.Core/Tags/MessageTagProcessor.cs
   - src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Logging Categories
