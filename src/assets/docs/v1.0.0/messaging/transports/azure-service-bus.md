@@ -230,6 +230,34 @@ app.Run();
 | `MaxDeliveryAttempts` | 10 | Retry limit before dead-lettering |
 | `DefaultSubscriptionName` | "default" | Fallback subscription name if not specified |
 | `AutoProvisionInfrastructure` | `true` | Auto-create topics and subscriptions when subscribing |
+| `EnableSessions` | `false` | Enable session-based FIFO ordering (sets SessionId from StreamId) |
+| `MaxConcurrentSessions` | 64 | Maximum concurrent sessions processed per processor (only when EnableSessions is true) |
+
+### Sessions and FIFO Ordering {#sessions}
+
+Azure Service Bus supports strict FIFO message ordering within a **session**. When `EnableSessions` is true:
+
+- Messages with a `StreamId` have their `SessionId` set to the StreamId value
+- The `SessionProcessor` delivers messages with the same SessionId in order to a single consumer
+- `MaxConcurrentSessions` controls how many different streams are processed in parallel (default: 64)
+- `MaxConcurrentCallsPerSession` is always 1 (strict FIFO within each session)
+- The transport claims `TransportCapabilities.Ordered` only when sessions are enabled
+
+**Auto-Migration**: When `EnableSessions` is true and an existing subscription does not have `RequiresSession`, the transport automatically deletes and recreates it with sessions enabled. This is necessary because Azure Service Bus does not allow toggling `RequiresSession` on existing subscriptions.
+
+```csharp{title="Enable FIFO Ordering" description="Configure session-based message ordering:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "FIFO", "Sessions"]}
+builder.Services.AddAzureServiceBusTransport(
+    connectionString: "Endpoint=sb://...",
+    configureOptions: options => {
+        options.EnableSessions = true;           // Enable FIFO ordering
+        options.MaxConcurrentSessions = 128;     // Process up to 128 streams in parallel
+    }
+);
+```
+
+:::note
+Messages without a `StreamId` (null) do not set a `SessionId`. When sessions are enabled on a subscription, all messages **must** have a SessionId — messages without one will be rejected. This means enabling sessions is an all-or-nothing decision per topic/subscription.
+:::
 
 ### Connection Retry Options {#connection-retry}
 

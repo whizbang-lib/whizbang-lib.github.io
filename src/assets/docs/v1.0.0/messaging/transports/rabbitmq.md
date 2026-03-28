@@ -585,6 +585,31 @@ app.Run();
 | `DefaultQueueName` | `null` | Fallback queue name if not specified |
 | `PrefetchCount` | 10 | QoS prefetch count per consumer |
 | `AutoDeclareDeadLetterExchange` | `true` | Auto-create DLX and DLQ |
+| `EnableSingleActiveConsumer` | `false` | Enable Single Active Consumer for FIFO ordering |
+
+### Single Active Consumer (FIFO Ordering) {#single-active-consumer}
+
+RabbitMQ guarantees per-publisher per-channel ordering, but with multiple consumers, messages can be processed out of order. **Single Active Consumer** (SAC) ensures only one consumer is active at a time per queue, preserving FIFO ordering.
+
+When `EnableSingleActiveConsumer` is true:
+
+- Queues are declared with `x-single-active-consumer: true`
+- Only one consumer receives messages at a time — guaranteeing FIFO ordering
+- If the active consumer disconnects, RabbitMQ promotes another consumer automatically
+- The transport claims `TransportCapabilities.Ordered` only when SAC is enabled
+
+```csharp{title="Enable FIFO Ordering" description="Configure Single Active Consumer for message ordering:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "FIFO", "SAC"]}
+builder.Services.AddRabbitMQTransport(
+    connectionString: "amqp://guest:guest@localhost:5672",
+    configureOptions: options => {
+        options.EnableSingleActiveConsumer = true;  // Enable FIFO ordering
+    }
+);
+```
+
+:::note
+SAC limits throughput to one consumer per queue. For scaling with FIFO guarantees, consider using consistent hash exchange to pin streams to specific queues, each with SAC enabled.
+:::
 
 ### Domain Topic Auto-Provisioning {#auto-provisioning}
 
