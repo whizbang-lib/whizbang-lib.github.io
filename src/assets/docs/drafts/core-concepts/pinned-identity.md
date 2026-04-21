@@ -89,11 +89,11 @@ Skipping the rename tool leaves stored rows unresolvable. This is deliberate —
 
 `[PinnedId]` is optional and opt-in. The analyzer raises a **warning** (not an error) so adoption can happen gradually:
 
-- **WHIZ100 (Warning)** — Concrete `IMessage` without `[PinnedId]`.
-- **WHIZ101 (Warning)** — Concrete `IPerspectiveFor<>` without `[PinnedId]`.
-- **WHIZ102 (Error)** — `[PinnedId]` value is not a valid GUID.
+- **WHIZ110 (Warning)** — Concrete `IMessage` without `[PinnedId]`.
+- **WHIZ111 (Warning)** — Concrete `IPerspectiveFor<>` without `[PinnedId]`.
+- **WHIZ112 (Error)** — `[PinnedId]` value is not a valid GUID.
 
-A code fix on WHIZ100/WHIZ101 inserts `[PinnedId("<new-guid>")]`. Use "Fix all in solution" after upgrading to tag an existing codebase in one pass. After that, the GUIDs are frozen forever.
+A code fix on WHIZ110/WHIZ111 inserts `[PinnedId("<new-guid>")]`. Use "Fix all in solution" after upgrading to tag an existing codebase in one pass. After that, the GUIDs are frozen forever.
 
 ## Affected Tables
 

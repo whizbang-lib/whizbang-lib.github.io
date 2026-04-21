@@ -46,9 +46,9 @@ Stored `event_type` columns are **not** changed to GUIDs — the pinned ID lives
 
 ## Analyzer Behavior
 
-- **WHIZ100 (Warning)** — Concrete `IMessage` without `[PinnedId]`.
-- **WHIZ101 (Warning)** — Concrete `IPerspectiveFor<>` without `[PinnedId]`.
-- **WHIZ102 (Error)** — `[PinnedId]` value is not a valid GUID.
+- **WHIZ110 (Warning)** — Concrete `IMessage` without `[PinnedId]`.
+- **WHIZ111 (Warning)** — Concrete `IPerspectiveFor<>` without `[PinnedId]`.
+- **WHIZ112 (Error)** — `[PinnedId]` value is not a valid GUID.
 
 The companion code-fix inserts `[PinnedId("<new-guid>")]` with a freshly generated `Guid.NewGuid()`. Apply "Fix all in solution" after upgrading to tag an existing codebase in one pass. Generate once — pinned IDs are forever.
 
