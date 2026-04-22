@@ -102,10 +102,10 @@ Parameters can match properties from base classes:
 ```csharp{title="Inherited Properties" description="Parameters can match properties from base classes:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Inherited", "Properties"]}
 public class MyTagAttribute : MessageTagAttribute {
   // 'tag' matches inherited 'Tag' property
-  // 'includeEvent' matches inherited 'IncludeEvent' property
-  public MyTagAttribute(string tag, bool includeEvent) {
+  // 'extraJson' matches inherited 'ExtraJson' property
+  public MyTagAttribute(string tag, string extraJson) {
     Tag = tag;
-    IncludeEvent = includeEvent;
+    ExtraJson = extraJson;
   }
 }
 ```
@@ -154,7 +154,7 @@ Roslyn's `AttributeData` exposes constructor arguments via `ConstructorArguments
 // - That Tag = tagName happens in the body
 ```
 
-Whizbang's `MessageTagDiscoveryGenerator` looks for a parameter whose name matches a known property (like `Tag`, `IncludeEvent`). If no match is found, the value cannot be extracted.
+Whizbang's `MessageTagDiscoveryGenerator` looks for a parameter whose name matches a known property (like `Tag`, `ExtraJson`). If no match is found, the value cannot be extracted.
 
 ## Related Diagnostics
 

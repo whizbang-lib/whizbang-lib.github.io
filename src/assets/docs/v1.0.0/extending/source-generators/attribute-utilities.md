@@ -24,7 +24,7 @@ C# attributes can receive values through multiple syntax patterns:
 
 ```csharp{title="Why Shared Utilities?" description="C# attributes can receive values through multiple syntax patterns:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Why", "Shared"]}
 // Named arguments
-[NotificationTag(Tag = "orders", IncludeEvent = true)]
+[AuditEvent(Tag = "order-created", Exclude = true)]
 public record OrderCreated(Guid OrderId);
 
 // Constructor arguments
@@ -58,7 +58,7 @@ The `AttributeData` type exposes attribute values through two properties:
 ```
 AttributeData
 ├── NamedArguments      → KeyValuePairs for named arguments
-│   └── [Tag = "value", IncludeEvent = true]
+│   └── [Tag = "value", Exclude = true]
 └── ConstructorArguments → Indexed values from constructor
     └── ["value", true]  (positional)
 ```
@@ -141,16 +141,16 @@ public static bool GetBoolValue(
 
 ```csharp{title="GetBoolValue (2)" description="GetBoolValue" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetBoolValue"]}
 // Named argument
-[NotificationTag(IncludeEvent = true)]
-var include = AttributeUtilities.GetBoolValue(attr, "IncludeEvent", false);  // true
+[AuditEvent(Exclude = true)]
+var exclude = AttributeUtilities.GetBoolValue(attr, "Exclude", false);  // true
 
 // Constructor argument
-[FullEventTag("payments", true)]
-var include = AttributeUtilities.GetBoolValue(attr, "IncludeEvent", false);  // true
+[SelectiveAudit("payments", true)]
+var exclude = AttributeUtilities.GetBoolValue(attr, "Exclude", false);  // true
 
 // Missing property - returns default
-[NotificationTag(Tag = "orders")]
-var include = AttributeUtilities.GetBoolValue(attr, "IncludeEvent", false);  // false
+[AuditEvent(Tag = "orders")]
+var exclude = AttributeUtilities.GetBoolValue(attr, "Exclude", false);  // false
 ```
 
 ---
@@ -243,7 +243,6 @@ private static MessageTagInfo? _extractTagInfo(
   // Works with both constructor and named arguments!
   var tag = AttributeUtilities.GetStringValue(tagAttribute, "Tag") ?? "";
   var properties = AttributeUtilities.GetStringArrayValue(tagAttribute, "Properties");
-  var includeEvent = AttributeUtilities.GetBoolValue(tagAttribute, "IncludeEvent", false);
   var extraJson = AttributeUtilities.GetStringValue(tagAttribute, "ExtraJson");
 
   // Skip excluded types
@@ -255,7 +254,6 @@ private static MessageTagInfo? _extractTagInfo(
   return new MessageTagInfo(
       Tag: tag,
       Properties: properties,
-      IncludeEvent: includeEvent,
       ExtraJson: extraJson,
       // ... other properties
   );
