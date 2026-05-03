@@ -22,7 +22,10 @@ codeReferences:
   - src/Whizbang.Core/Attributes/NotificationTagAttribute.cs
   - src/Whizbang.Core/Attributes/TelemetryTagAttribute.cs
   - src/Whizbang.Core/Attributes/MetricTagAttribute.cs
+  - src/Whizbang.Core/Attributes/AttributeArgNamingAttribute.cs
+  - src/Whizbang.Core/Attributes/AttributeArgNamingConvention.cs
   - src/Whizbang.Generators/MessageTagDiscoveryGenerator.cs
+  - src/Whizbang.Generators/Utilities/AttributeArgNamingHelper.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -943,6 +946,75 @@ services.AddWhizbang(options => {
   options.Tags.UseHook<AuditLogAttribute, AuditLogHook>();
 });
 ```
+
+### Positional Constructor Arguments {#positional-ctor-args}
+
+:::new
+**v1.0.0**: `MessageTagDiscoveryGenerator` now preserves positional constructor args when reconstructing tag-attribute instances. Previously these were silently dropped — only `Tag` and named arguments survived the round-trip through the generated `AttributeFactory`, so any value passed to a positional ctor parameter (like `tagValue` or `propertyName`) was reset to its default at runtime.
+:::
+
+Tag attributes commonly accept positional constructor arguments alongside `Tag`:
+
+```csharp{title="Tag Attribute With Positional Ctor Args" description="A tag attribute whose ctor takes (tag, tagValue) — both are preserved by the generator" category="Extensibility" difficulty="INTERMEDIATE" tags=["Tags", "Custom-Attributes"]}
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = true)]
+public class NotificationTagAttribute : MessageTagAttribute {
+  public string? TagValue { get; init; }   // Must be init-settable for the generator's factory.
+
+  public NotificationTagAttribute() { Tag = string.Empty; TagValue = null; }
+
+  public NotificationTagAttribute(string tag, string tagValue) {
+    Tag = tag;
+    TagValue = tagValue;
+  }
+}
+
+// Usage:
+[NotificationTag("user-tabs", "{UserID}")]
+public class TabUpdatedEvent : IEvent {
+  public Guid UserID { get; init; }
+}
+```
+
+The generator emits an `AttributeFactory` that initializes BOTH `Tag` and `TagValue`, so the hook receives `context.Attribute.TagValue == "{UserID}"` and can substitute the placeholder against the payload.
+
+**Requirements:**
+- Properties storing positional ctor args must be **`init`-settable** (not getter-only) so the generator's object initializer can write them.
+- Constructor parameter names must follow your declared naming convention (default: PascalCase). Parameter `tagValue` initializes property `TagValue`, `propertyName` → `PropertyName`, etc.
+
+### AttributeArgNaming Convention {#arg-naming-convention}
+
+When constructor parameter names don't follow the default PascalCase convention (e.g., parameter is already `TagValue`, or you want camelCase / snake_case property names), declare an explicit convention with `[AttributeArgNaming]`:
+
+```csharp{title="Custom Naming Convention" description="Override the parameter→property mapping" category="Extensibility" difficulty="ADVANCED" tags=["Tags", "Custom-Attributes", "Conventions"]}
+using Whizbang.Core.Attributes;
+
+[AttributeArgNaming(AttributeArgNamingConvention.Identity)]   // No transform.
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public class IdTagAttribute : MessageTagAttribute {
+  public string? PropertyName { get; init; }
+
+  public IdTagAttribute() { Tag = string.Empty; }
+
+  // Parameter is already PascalCase — Identity preserves it verbatim.
+  public IdTagAttribute(string tag, string PropertyName) {
+    Tag = tag;
+    this.PropertyName = PropertyName;
+  }
+}
+```
+
+**Available conventions** (`AttributeArgNamingConvention`):
+
+| Convention | Input → Output | Use case |
+|---|---|---|
+| `PascalCase` (default) | `tagValue` → `TagValue` | Standard C# (camelCase params, PascalCase props) |
+| `Identity` | `TagValue` → `TagValue` | Parameter already matches property |
+| `CamelCase` | `TagValue` → `tagValue` | Properties follow camelCase |
+| `SnakeCase` | `tagValue` → `tag_value` | Properties follow snake_case |
+| `KebabCase` | `tagValue` → `tag-value` | Properties follow kebab-case |
+| `UpperSnake` | `tagValue` → `TAG_VALUE` | Properties follow UPPER_SNAKE |
+
+The `[AttributeArgNaming]` attribute is inherited — declaring it on a base tag attribute applies to all subclasses. The convention only affects positional ctor args; named arguments use their declared names verbatim regardless.
 
 ### Advanced Custom Tag Example
 
