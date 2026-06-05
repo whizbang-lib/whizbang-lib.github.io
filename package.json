@@ -24,7 +24,7 @@
     "@angular/platform-browser": "~21.2.6",
     "@angular/platform-browser-dynamic": "~21.2.6",
     "@angular/router": "~21.2.6",
-    "@angular/youtube-player": "^21.2.4",
+    "@angular/youtube-player": "^22.0.0",
     "@primeng/themes": "^21.0.4",
     "fuse.js": "^7.1.0",
     "gray-matter": "^4.0.3",
