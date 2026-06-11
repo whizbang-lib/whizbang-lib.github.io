@@ -94,7 +94,8 @@ The options class is `WhizbangPinnedPoolOptions`. The registration helper takes 
 
 | Property | Type | Default | Description |
 |---|---|---|---|
-| `ConnectionString` | string? | `null` | Direct (non-pgbouncer) PG conn string. **Required to take effect.** |
+| `ConnectionStringName` | string? | `null` | **Preferred.** Name of a key under standard `ConnectionStrings:*` configuration to resolve the direct conn string from (e.g. `"bffservice-db-direct"`). Wins over `ConnectionString` when both are set. |
+| `ConnectionString` | string? | `null` | Inline direct (non-pgbouncer) PG conn string. Fallback when `ConnectionStringName` is unset or unresolved. At least one of the two sources must resolve for the pool to take effect. |
 | `Enabled` | bool | `false` | Master switch. `false` → workers stay on pgbouncer. |
 | `Size` | int | `1` | Number of pinned connections held open. |
 | `IncludeFlushWorkers` | bool | `true` | Whether tier-2 flush workers also pin. |
@@ -102,18 +103,45 @@ The options class is `WhizbangPinnedPoolOptions`. The registration helper takes 
 | `ConnectionLifetimeSeconds` | int | `1800` | Auto-recycle a connection after this many seconds. |
 | `BorrowTimeoutMilliseconds` | int | `5000` | How long a worker waits to borrow before throwing. |
 
+### Connection-string source: name vs inline
+
+The pool resolves its connection string in this order:
+
+1. **`ConnectionStringName`** — looked up via `IConfiguration.GetConnectionString(name)`. Recommended for production because it keeps the secret-bearing string under standard `ConnectionStrings:*` configuration alongside the rest of the app's database secrets — key-vault, env-var, and log-redaction conventions all apply uniformly.
+2. **`ConnectionString`** — used when `ConnectionStringName` is unset OR the named key doesn't resolve. Convenient for tests / dev rigs / single-line registration.
+3. Neither set → silent no-op (pool returns `NoOpPinnedConnectionPool`, workers stay on pgbouncer). Matches `Enabled=false` behaviour so the registration is safe to call unconditionally.
+
+When configuring a real service, the typical pattern is a sibling under `ConnectionStrings:*`:
+
+```jsonc
+// appsettings.json
+{
+  "ConnectionStrings": {
+    "bffservice-db":        "Host=…;Port=6432;…", // pgbouncer (existing)
+    "bffservice-db-direct": "Host=…;Port=5432;…"  // direct (new)
+  },
+  "Whizbang": {
+    "Workers": {
+      "PinnedPool": {
+        "Enabled": true,
+        "ConnectionStringName": "bffservice-db-direct"
+      }
+    }
+  }
+}
+```
+
 ### Minimal registration
 
 ```csharp
 services.AddWhizbangPinnedWorkerPool(opts => {
-  // Bind everything from the configured section first…
+  // Bind everything from the configured section — both ConnectionStringName
+  // and any other settings come through this single call.
   builder.Configuration.GetSection("Whizbang:Workers:PinnedPool").Bind(opts);
-  // …then override anything host-specific (e.g. resolve a Key Vault secret here).
-  opts.ConnectionString ??= builder.Configuration.GetConnectionString("WorkerDirect");
 });
 ```
 
-The simpler "everything in code" shape, when you don't want config-driven values:
+The simpler "everything in code" shape, when you don't want config-driven values (test/dev):
 
 ```csharp
 services.AddWhizbangPinnedWorkerPool(opts => {
@@ -160,7 +188,7 @@ At `Size=1` and 50 pods, that's **100 direct PG conns** plus whatever pgbouncer 
 
 ## Validation
 
-When `Enabled=true`, the registration extension validates `Size > 0` at startup. If `ConnectionString` is null or whitespace, the feature silently no-ops — workers continue using pgbouncer. This is intentional: it lets you ship the registration code into all environments and toggle on per-environment via configuration.
+When `Enabled=true`, the registration extension validates `Size > 0` at startup. If neither `ConnectionStringName` nor `ConnectionString` resolves to a non-empty string, the feature silently no-ops — workers continue using pgbouncer. This is intentional: it lets you ship the registration code into all environments and toggle on per-environment via configuration.
 
 ## Observability
 
