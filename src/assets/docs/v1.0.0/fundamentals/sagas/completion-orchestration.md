@@ -169,5 +169,6 @@ This is the operator-triage signal. Subscribe a consumer-side receptor to it for
 ## Related
 
 - [Whizbang.Sagas overview](./whizbang-sagas) — the application block this is part of.
+- [Versioned Apply](../perspectives/versioned-apply) — the opt-in storage-layer guard that closes the cross-pod strand on `SagaItemModel` beyond the v0.740 stream-affinity gate.
 - [PublishOnceAsync](../dispatcher/publish-once) — the exactly-once primitive `CompleteSagaAsync` rides on.
 - [Dispatcher Deep Dive](../dispatcher/dispatcher) — the `Dispatcher.PublishAsync(event, DispatchOptions)` semantics that the cascade fix corrected.
