@@ -229,6 +229,7 @@ Whizbang.Sagas is built on Whizbang.Core's purity contract:
 
 ## Related
 
+- [Completion Orchestration & Adaptive Watchdog](./completion-orchestration) — how a saga actually closes: per-item event-driven completion path + the progress-rate-based watchdog safety net.
 - [PublishOnceAsync](../dispatcher/publish-once) — the dispatcher-level exactly-once primitive `SagaCompletionGuard` wraps.
 - [Dispatcher Deep Dive](../dispatcher/dispatcher) — the broader `IDispatcher` API surface.
 - [Collective Events](../messaging/collective-events) — for the orthogonal "one event mutates a set of streams" pattern.
