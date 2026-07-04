@@ -5,15 +5,20 @@ category: Infrastructure
 order: 5
 description: >-
   Hash-based migration tracking with per-perspective change detection,
-  blue-green table swaps, preview/rollback, and version auditing
+  blue-green table swaps, preview/rollback, version auditing, and
+  settings-gated data migrations
 tags: >-
   migrations, schema, hash-tracking, blue-green, rollback, preview,
-  database, ddl, perspective-tracking
+  database, ddl, perspective-tracking, data-migration, wh-settings
 codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs
   - src/Whizbang.Core/Data/IMigrationProvider.cs
   - src/Whizbang.Data.Postgres/Migrations/000_MigrationTracking.sql
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
+  - src/Whizbang.Data.Postgres/Migrations/063_NormalizeClrTypeNamesV2.sql
+  - src/Whizbang.Data.Postgres/Migrations/032_PerformMaintenance.sql
+testReferences:
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/NormalizeClrTypeNamesMigrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -116,6 +121,42 @@ Both the Whizbang library version and the consuming application version are reco
 - **application_version**: The consuming app's assembly name and version (e.g., `MyApp.OrderService/1.0.0`)
 
 This lets you query which app version last applied migrations to a database.
+
+## Data Migrations vs. Schema Migrations
+
+Hash tracking answers **"did the DDL / object *shape* change?"** — the SHA-256 is over the migration's SQL text, which for schema migrations mirrors the object it defines. That is exactly the wrong question for a **pure data migration** that rewrites *rows* without changing any table's shape: the hash can't tell whether the data still needs the fix, and re-scanning a large table on every startup is wasteful.
+
+For those, gate the work on a **version marker row in `wh_settings`** instead of the migration hash:
+
+```sql{title="Settings-gated data migration" description="Gate a one-time data rewrite on a wh_settings version, not the migration hash" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Data-Migration", "Settings"]}
+DO $migrate$
+DECLARE v_version INTEGER;
+BEGIN
+  SELECT setting_value::INTEGER INTO v_version
+  FROM __SCHEMA__.wh_settings WHERE setting_key = 'my_data_format_version';
+  IF COALESCE(v_version, 1) >= 2 THEN
+    RETURN;                       -- O(1) check; already migrated, no table scan
+  END IF;
+
+  -- ... one-time UPDATE(s) to normalize existing rows ...
+
+  INSERT INTO __SCHEMA__.wh_settings (setting_key, setting_value, value_type, description)
+  VALUES ('my_data_format_version', '2', 'integer', 'Encoding version of <column>.')
+  ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = NOW();
+END
+$migrate$;
+```
+
+The canonical example is `063_NormalizeClrTypeNamesV2.sql`, which normalizes stored CLR type names to their `+`-nested form and records `clr_type_name_format_version = 2`. Because the migration file still ships and runs through the normal chain, the marker — not the file hash — is the source of truth for *data* state, and re-running after v2 is a cheap no-op.
+
+### The `wh_settings` table
+
+`wh_settings` (a `setting_key` / `setting_value` / `value_type` / `description` key-value table) is the home for two kinds of SQL-side entries:
+
+- **Data-format version markers** — e.g. `clr_type_name_format_version` (above).
+- **Operational tuning knobs** read by SQL functions — e.g. `perform_maintenance` reads `debug_mode`, `dedup_retention_days`, `stuck_inbox_retention_days`, and `abandoned_stream_hours` (the idle grace before an owner-less `wh_active_streams` row is purged).
+
+Settings are seeded by migrations with `ON CONFLICT (setting_key) DO NOTHING` (so operator overrides survive re-runs). Keep C#-worker-coupled timing constants (retry backoff, work leases, liveness thresholds) *out* of this table — tuning them independently of the workers that assume them causes drift.
 
 ## Pre-v1.0 Note
 

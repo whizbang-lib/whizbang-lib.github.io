@@ -468,9 +468,21 @@ var formatted = $"Version={version}"; // May use locale-specific format
 var formatted = TypeFormatter.FormatType(type, TypeQualification.FullyQualifiedWithVersion);
 ```
 
+## Related: `TypeNameFormatter` (storage &amp; matching)
+
+Don't confuse `TypeFormatter` (the flags-based utility above) with **`TypeNameFormatter`** (`Whizbang.Core`), the fixed-format helper the runtime uses to write and match the type-name strings persisted in the database. It exposes exactly **two canonical forms**, and every writer of a given column goes through the matching one so the strings are byte-identical across drivers and generators:
+
+| Method | Output | Used for |
+|--------|--------|----------|
+| `TypeNameFormatter.Format(type)` | `"Namespace.Outer+Nested, Assembly"` (assembly-qualified) | `wh_event_store.event_type`, `wh_outbox`/`wh_inbox.message_type`, `wh_message_associations`, message routing, JSON discriminators |
+| `TypeNameFormatter.FormatClrTypeName(type)` | `"Namespace.Outer+Nested"` (no assembly) | `wh_event_store.aggregate_type`, `wh_message_type_registry.clr_type_name`, `wh_perspective_registry.clr_type_name` |
+
+Both use `+` to separate a nested type from its declaring type (matching `Type.FullName` and the [Nested Types](#nested-types) rule above). The source-generator mirrors are `TypeNameUtilities.FormatTypeNameForRuntime` (assembly-qualified) and `TypeNameUtilities.BuildClrTypeName` (no assembly), so compile-time registration and runtime lookup always agree. Read paths normalize an inbound assembly-qualified name (stripping `Version`/`Culture`/`PublicKeyToken`) via `EventTypeMatchingHelper.NormalizeTypeName` before comparing, so the short `Format` form matches every variant. Existing rows written with the older C#-display (`.`-nested) form are normalized by migration `063_NormalizeClrTypeNamesV2` — see [Migration Tracking → Data Migrations](../../operations/infrastructure/migrations.md#data-migrations-vs-schema-migrations).
+
 ## See Also
 
 - [TypeQualification](type-qualification.md) - Flag enum controlling formatting
 - [MatchStrictness](fuzzy-matching.md) - Fuzzy matching with formatted types
 - [TypeMatcher](type-matching.md) - Matching formatted type strings
 - [Perspectives](../perspectives/perspectives.md) - Message associations using formatted types
+- [Migration Tracking](../../operations/infrastructure/migrations.md) - Settings-gated data migrations (e.g. CLR type-name normalization)
