@@ -93,6 +93,8 @@ async function main() {
   // Find all C# source files (excluding Generated, obj, bin)
   const pattern = join(LIBRARY_PATH, 'src/**/*.cs');
   const files = await glob(pattern, {
+    // path.join emits backslashes on Windows, which glob would otherwise treat as escape characters
+    windowsPathsNoEscape: true,
     ignore: [
       '**/obj/**',
       '**/bin/**',
