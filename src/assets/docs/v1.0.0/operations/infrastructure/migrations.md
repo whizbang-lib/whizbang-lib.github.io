@@ -147,7 +147,7 @@ END
 $migrate$;
 ```
 
-The canonical example is `063_NormalizeClrTypeNamesV2.sql`, which normalizes stored CLR type names to their `+`-nested form and records `clr_type_name_format_version = 2`. Because the migration file still ships and runs through the normal chain, the marker — not the file hash — is the source of truth for *data* state, and re-running after v2 is a cheap no-op.
+The canonical example is `063_NormalizeClrTypeNamesV2.sql`, which normalizes stored CLR type names (both message and perspective types) to their `+`-nested form and records `clr_type_name_format_version = 3`. Because the migration file still ships and runs through the normal chain, the marker — not the file hash — is the source of truth for *data* state; bumping the marker (e.g. `2 → 3` when the normalization was extended to cover perspective types) makes the pass re-run once on already-migrated databases, and re-running after the current version is a cheap no-op.
 
 ### The `wh_settings` table
 
