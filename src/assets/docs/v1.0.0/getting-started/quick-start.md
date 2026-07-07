@@ -391,7 +391,7 @@ With **Whizbang.Generators**, receptors are discovered automatically:
    builder.Services.AddDiscoveredReceptors(); // Auto-registers all IReceptor implementations
    ```
 4. Rebuild: `dotnet build`
-5. Check `.whizbang-generated/ReceptorRegistrations.g.cs` for generated code
+5. Check `.whizbang/cache/ReceptorRegistrations.g.cs` for generated code
 
 **Benefits**:
 - No manual registration needed
@@ -641,7 +641,7 @@ GET /api/orders/{id} → OrderLens → Query read model → Return DTO
 
 ### Issue: Generated files not appearing
 
-**Symptom**: Source generators not creating files in `.whizbang-generated/`
+**Symptom**: Source generators not creating files in `.whizbang/cache/`
 
 **Solution**:
 1. Ensure `Whizbang.Generators` package is referenced
@@ -649,7 +649,7 @@ GET /api/orders/{id} → OrderLens → Query read model → Return DTO
    ```xml
    <PropertyGroup>
      <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-     <CompilerGeneratedFilesOutputPath>$(MSBuildProjectDirectory)/.whizbang-generated</CompilerGeneratedFilesOutputPath>
+     <CompilerGeneratedFilesOutputPath>$(MSBuildProjectDirectory)/.whizbang/cache</CompilerGeneratedFilesOutputPath>
    </PropertyGroup>
    ```
 3. Rebuild:

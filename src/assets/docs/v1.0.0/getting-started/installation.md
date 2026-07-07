@@ -201,7 +201,7 @@ Create solution-level build configuration:
   <PropertyGroup>
     <!-- Source Generator Settings -->
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>$(MSBuildProjectDirectory)/.whizbang-generated</CompilerGeneratedFilesOutputPath>
+    <CompilerGeneratedFilesOutputPath>$(MSBuildProjectDirectory)/.whizbang/cache</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 </Project>
 ```
@@ -292,7 +292,7 @@ builder.Build().Run();
    - Check "Enable source generators"
 3. **View Generated Files**:
    - Solution Explorer → Show All Files
-   - Expand `.whizbang-generated/` folder
+   - Expand `.whizbang/cache/` folder
 
 ### Visual Studio Code
 
@@ -344,7 +344,7 @@ Build succeeded.
 ### 2. Check Source Generators
 
 ```bash{title="Check Source Generators" description="Check Source Generators" category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "Bash", "Check", "Source", "Generators"]}
-ls .whizbang-generated/
+ls .whizbang/cache/
 ```
 
 **Expected files** (after adding receptors):
@@ -368,7 +368,7 @@ dotnet test
 
 ### Issue: Source Generators Not Running
 
-**Symptoms**: No files in `.whizbang-generated/`
+**Symptoms**: No files in `.whizbang/cache/`
 
 **Solutions**:
 1. Rebuild solution: `dotnet clean && dotnet build`
