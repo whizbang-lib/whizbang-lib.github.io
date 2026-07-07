@@ -129,7 +129,7 @@ npm install && npm run build</code></pre>
 # MCP Tools: search-docs, find-examples, get-code-location, get-related-docs, get-tests-for-code</code></pre>
     </div>
 
-    <p class="stats">Generated: 2026-03-28T21:38:33.195Z | Total documents: 262</p>
+    <p class="stats">Generated: 2026-07-07T23:25:52.601Z | Total documents: 281</p>
   </header>
 
   <nav>
@@ -148,6 +148,7 @@ npm install && npm run build</code></pre>
           <li><a href="#v1-0-0-apis-graphql-index">GraphQL Integration</a></li>
           <li><a href="#v1-0-0-apis-graphql-lens-integration">Lens Integration</a></li>
           <li><a href="#v1-0-0-apis-graphql-polymorphic-types">Polymorphic Types</a></li>
+          <li><a href="#v1-0-0-apis-graphql-production-hardening">Production Hardening</a></li>
           <li><a href="#v1-0-0-apis-graphql-scoping">GraphQL Scoping</a></li>
           <li><a href="#v1-0-0-apis-graphql-setup">GraphQL Setup</a></li>
           <li><a href="#v1-0-0-apis-graphql-sorting">GraphQL Sorting</a></li>
@@ -263,6 +264,7 @@ npm install && npm run build</code></pre>
         <strong>Dispatcher</strong>
         <ul>
           <li><a href="#v1-0-0-fundamentals-dispatcher-dispatcher">Dispatcher Deep Dive</a></li>
+          <li><a href="#v1-0-0-fundamentals-dispatcher-publish-once">PublishOnceAsync — Exactly-Once Event Emission</a></li>
           <li><a href="#v1-0-0-fundamentals-dispatcher-routing">Namespace-Based Routing</a></li>
           <li><a href="#v1-0-0-fundamentals-dispatcher-rpc-extraction">RPC Response Extraction</a></li>
         </ul>
@@ -284,6 +286,7 @@ npm install && npm run build</code></pre>
         <ul>
           <li><a href="#v1-0-0-fundamentals-identity-assembly-registry">Assembly Registry</a></li>
           <li><a href="#v1-0-0-fundamentals-identity-fuzzy-matching">MatchStrictness: Fuzzy Type Matching Control</a></li>
+          <li><a href="#v1-0-0-fundamentals-identity-pinned-type-ledger">Pinned-Type Ledger: Safe, Governed Type Renames</a></li>
           <li><a href="#v1-0-0-fundamentals-identity-time-provider">Time Provider</a></li>
           <li><a href="#v1-0-0-fundamentals-identity-type-formatting">TypeFormatter: Type Name Formatting Utility</a></li>
           <li><a href="#v1-0-0-fundamentals-identity-type-matching">TypeMatcher: Type Name Matching Utilities</a></li>
@@ -327,6 +330,12 @@ npm install && npm run build</code></pre>
         </ul>
       </li>
       <li>
+        <strong>Messaging</strong>
+        <ul>
+          <li><a href="#v1-0-0-fundamentals-messaging-collective-events">Collective Events</a></li>
+        </ul>
+      </li>
+      <li>
         <strong>Persistence</strong>
         <ul>
           <li><a href="#v1-0-0-fundamentals-persistence-observability">Observability &amp; Message Hops</a></li>
@@ -355,6 +364,7 @@ npm install && npm run build</code></pre>
           <li><a href="#v1-0-0-fundamentals-perspectives-temporal">Temporal Perspectives</a></li>
           <li><a href="#v1-0-0-fundamentals-perspectives-typed-associations">GetPerspectiveAssociations: Strongly-Typed Perspective Queries</a></li>
           <li><a href="#v1-0-0-fundamentals-perspectives-vector-fields">Vector Fields</a></li>
+          <li><a href="#v1-0-0-fundamentals-perspectives-versioned-apply">Versioned Apply — Strict Cross-Pod Ordering</a></li>
         </ul>
       </li>
       <li>
@@ -365,9 +375,17 @@ npm install && npm run build</code></pre>
         </ul>
       </li>
       <li>
+        <strong>Sagas</strong>
+        <ul>
+          <li><a href="#v1-0-0-fundamentals-sagas-completion-orchestration">Completion Orchestration &amp; Adaptive Watchdog</a></li>
+          <li><a href="#v1-0-0-fundamentals-sagas-whizbang-sagas">Whizbang.Sagas — Multi-Stream Saga Coordination</a></li>
+        </ul>
+      </li>
+      <li>
         <strong>Security</strong>
         <ul>
           <li><a href="#v1-0-0-fundamentals-security-audit-logging">Audit Logging</a></li>
+          <li><a href="#v1-0-0-fundamentals-security-http-security-headers">HTTP Security Headers &amp; Method Filtering</a></li>
           <li><a href="#v1-0-0-fundamentals-security-implementing-multi-tenancy">Implementing Multi-Tenancy</a></li>
           <li><a href="#v1-0-0-fundamentals-security-message-security">Message Security Context Propagation</a></li>
           <li><a href="#v1-0-0-fundamentals-security-multi-tenancy">Multi-Tenancy Patterns</a></li>
@@ -375,6 +393,15 @@ npm install && npm run build</code></pre>
           <li><a href="#v1-0-0-fundamentals-security-scoping">Scoping</a></li>
           <li><a href="#v1-0-0-fundamentals-security-security-context-propagation">Security Context Propagation</a></li>
           <li><a href="#v1-0-0-fundamentals-security-security">Security</a></li>
+        </ul>
+      </li>
+      <li>
+        <strong>Workers</strong>
+        <ul>
+          <li><a href="#v1-0-0-fundamentals-workers-instance-liveness">Instance Liveness — Advisory Lock + Heartbeat Fallback</a></li>
+          <li><a href="#v1-0-0-fundamentals-workers-perspective-worker-notify">PerspectiveWorker NOTIFY Wake</a></li>
+          <li><a href="#v1-0-0-fundamentals-workers-pinned-connection-pool">Pinned Worker Connection Pool</a></li>
+          <li><a href="#v1-0-0-fundamentals-workers-worker-classification">Worker Classification — A through F</a></li>
         </ul>
       </li>
     </ul>
@@ -473,6 +500,16 @@ npm install && npm run build</code></pre>
         </ul>
       </li>
       <li>
+        <strong>Dead Letter Queue</strong>
+        <ul>
+          <li><a href="#v1-0-0-operations-dead-letter-queue-internal-dlq">Internal DLQ (wh_dead_letters)</a></li>
+          <li><a href="#v1-0-0-operations-dead-letter-queue-operator-api">Operator HTTP API</a></li>
+          <li><a href="#v1-0-0-operations-dead-letter-queue-perspective-events">Perspective-event Dead-lettering</a></li>
+          <li><a href="#v1-0-0-operations-dead-letter-queue-recovery">Recovery Worker &amp; Policy Matrix</a></li>
+          <li><a href="#v1-0-0-operations-dead-letter-queue-transport-recovery">Transport DLQ Recovery</a></li>
+        </ul>
+      </li>
+      <li>
         <strong>Deployment</strong>
         <ul>
           <li><a href="#v1-0-0-operations-deployment-deployment-strategies">Deployment Strategies</a></li>
@@ -497,6 +534,8 @@ npm install && npm run build</code></pre>
           <li><a href="#v1-0-0-operations-diagnostics-whiz071">WHIZ071: Missing Pgvector Package</a></li>
           <li><a href="#v1-0-0-operations-diagnostics-whiz080">WHIZ080: Multiple Handlers for RPC Message</a></li>
           <li><a href="#v1-0-0-operations-diagnostics-whiz090">WHIZ090: MessageTag Parameter Naming</a></li>
+          <li><a href="#v1-0-0-operations-diagnostics-whiz120">WHIZ120: Pinned Type Renamed Without Ledger Acknowledgment</a></li>
+          <li><a href="#v1-0-0-operations-diagnostics-whiz121">WHIZ121: Pinned-Type Ledger Entry Has No Living Type</a></li>
           <li><a href="#v1-0-0-operations-diagnostics-whiz300">WHIZ300: Inconsistent Perspective Model Types</a></li>
           <li><a href="#v1-0-0-operations-diagnostics-whiz400">WHIZ400: Invalid Type Argument for ILensQuery</a></li>
           <li><a href="#v1-0-0-operations-diagnostics-whiz802">WHIZ802: VectorField Invalid Dimensions</a></li>
@@ -1867,6 +1906,49 @@ npm install && npm run build</code></pre>
 <ul><li><a href="setup.md">GraphQL Setup</a> - HotChocolate configuration</li>
 <li><a href="lens-integration.md">Lens Integration</a> - Exposing lenses via GraphQL</li>
 <li>JSON Serialization - AOT-compatible serialization</li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-apis-graphql-production-hardening" class="doc-section">
+  <h4>Production Hardening</h4>
+  <p class="doc-path"><code>v1.0.0/apis/graphql/production-hardening</code></p>
+  <p class="doc-description"><em>One-call production defaults for HotChocolate GraphQL services — disable introspection and strip exception details outside development, while keeping the full developer experience locally.</em></p>
+  <div class="doc-content">
+
+<h1>GraphQL Production Hardening</h1>
+
+<code>Whizbang.Transports.HotChocolate</code> provides a single opt-in call that applies production-safe GraphQL defaults:
+
+<p>``<code>csharp{title="Production hardening" description="Demonstrates applying GraphQL security defaults" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Security"]}</p>
+<p>builder.Services</p>
+<p>    .AddGraphQLServer()</p>
+<p>    .AddWhizbangLenses()</p>
+<p>    .AddWhizbangGraphQLSecurityDefaults(isProduction: !builder.Environment.IsDevelopment())</p>
+<p>    .AddQueryType<Query>();</p>
+<p></code>`<code></p>
+
+<h2>What it does</h2>
+
+<p>When </code>isProduction<code> is </code>true<code>:</p>
+
+<ul><li><strong>Introspection is disabled</strong> — </code>__schema<code> / </code>__type<code> queries are rejected, so the schema is not enumerable by anonymous callers.</li>
+<li><strong>Exception details are stripped</strong> — errors carry no stack traces or exception messages (</code>IncludeExceptionDetails = false<code>), preventing internal implementation details from leaking through the </code>errors<code> payload.</li>
+</ul>
+<p>When </code>isProduction<code> is </code>false<code> the call is a <strong>no-op</strong>: local development keeps introspection (Banana Cake Pop, IDE tooling) and full exception details.</p>
+
+<h2>Field suggestions</h2>
+
+<p>HotChocolate 15.x does not implement similar-name field suggestions ("Did you mean </code>userName<code>?") for unknown fields — an unknown-field error names only the field the client sent and the parent type. The Whizbang test suite pins this with a regression test so a future HotChocolate upgrade that introduces suggestion hints is caught at test time rather than in production.</p>
+
+<h2>Why a boolean parameter instead of environment sniffing</h2>
+
+<p>The extension deliberately takes </code>isProduction<code> rather than reading </code>IHostEnvironment<code> itself: "production" for this purpose usually means <em>every deployed environment</em> (staging included), which only the host application can decide. Pass </code>!builder.Environment.IsDevelopment()` for the common case.</p>
+
+<h2>See also</h2>
+
+<ul><li><a href="setup.md">GraphQL Setup</a> — base HotChocolate integration.</li>
+<li><a href="../../fundamentals/security/http-security-headers.md">HTTP Security Headers & Method Filtering</a> — transport-level response hardening for the same services.</li>
 </ul>  </div>
   <p><a href="#top">[Back to top]</a></p>
 </article>
@@ -21381,7 +21463,7 @@ npm install && npm run build</code></pre>
 <p>    <MessageRegistryFiles Include="$(IntermediateOutputPath)generated/<em></em>/*MessageRegistry.g.cs" /></p>
 <p>  </ItemGroup></p>
 
-<p>  <!-- Extract JSON from generated C# file and write to .whizbang/message-registry.json --></p>
+<p>  <!-- Extract JSON from generated C# file and write to .whizbang/cache/message-registry.json --></p>
 <p>  <Exec Command="dotnet run --project tools/extract-message-registry.csproj" /></p>
 <p></Target></p>
 <pre><code class="language-">
@@ -21392,7 +21474,7 @@ npm install && npm run build</code></pre>
 <p>using System.Text.RegularExpressions;</p>
 
 <p>var generatedFile = args[0];  // Path to MessageRegistry.g.cs</p>
-<p>var outputFile = ".whizbang/message-registry.json";</p>
+<p>var outputFile = ".whizbang/cache/message-registry.json";</p>
 
 <p>var content = File.ReadAllText(generatedFile);</p>
 
@@ -21408,7 +21490,7 @@ npm install && npm run build</code></pre>
 <strong>Run after build</strong>:
 <p></code></pre>bash{title="Extract JSON Script (2)" description="Run after build:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Extract", "JSON"]}</p>
 <p>dotnet build</p>
-<h1>Writes .whizbang/message-registry.json</h1>
+<h1>Writes .whizbang/cache/message-registry.json</h1>
 <pre><code class="language-">
 <hr>
 
@@ -21538,7 +21620,7 @@ npm install && npm run build</code></pre>
 <p></code></pre>xml{title="View Generated File" description="Or configured output:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}</p>
 <p><PropertyGroup></p>
 <p>  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles></p>
-<p>  <CompilerGeneratedFilesOutputPath>.whizbang-generated</CompilerGeneratedFilesOutputPath></p>
+<p>  <CompilerGeneratedFilesOutputPath>.whizbang/cache</CompilerGeneratedFilesOutputPath></p>
 <p></PropertyGroup></p>
 <pre><code class="language-">
 <h3>Validate JSON</h3>
@@ -21548,7 +21630,7 @@ npm install && npm run build</code></pre>
 <p>dotnet run --project tools/extract-message-registry.csproj</p>
 
 <h1>Validate JSON</h1>
-<p>cat .whizbang/message-registry.json | jq .</p>
+<p>cat .whizbang/cache/message-registry.json | jq .</p>
 
 <h1>Output:</h1>
 <p>{</p>
@@ -21569,7 +21651,7 @@ npm install && npm run build</code></pre>
 <li>See message registry loading and parsing</li>
 </ul>
 <p></code></pre></p>
-<p>[Whizbang] Loading message registry from .whizbang/message-registry.json</p>
+<p>[Whizbang] Loading message registry from .whizbang/cache/message-registry.json</p>
 <p>[Whizbang] Found 15 messages</p>
 <p>[Whizbang] Registered 42 CodeLens providers</p>
 <p>[Whizbang] Registry loaded successfully</p>
@@ -21583,7 +21665,7 @@ npm install && npm run build</code></pre>
 <ul><li>✅ <strong>Use ICommand and IEvent</strong> markers for all messages</li>
 <li>✅ <strong>Keep messages in dedicated folders</strong> (Commands/, Events/)</li>
 <li>✅ <strong>Use descriptive names</strong> (CreateOrder, not Order1)</li>
-<li>✅ <strong>Commit .whizbang/message-registry.json</strong> to source control (helps team)</li>
+<li>✅ <strong>Commit .whizbang/cache/message-registry.json</strong> to source control (helps team)</li>
 <li>✅ <strong>Rebuild after adding new messages</strong> (F5 in VSCode to reload extension)</li>
 </ul>
 <h3>DON'T ❌</h3>
@@ -21614,7 +21696,7 @@ npm install && npm run build</code></pre>
 <h1>2. Rebuild project (generates registry)</h1>
 <p>dotnet build</p>
 
-<h1>3. Check .whizbang/message-registry.json exists</h1>
+<h1>3. Check .whizbang/cache/message-registry.json exists</h1>
 <p>ls -la .whizbang/</p>
 
 <h1>4. Reload VSCode window</h1>
@@ -21634,7 +21716,7 @@ npm install && npm run build</code></pre>
 <p>dotnet clean && dotnet build</p>
 
 <h1>Check generated file</h1>
-<p>cat .whizbang/message-registry.json | jq '.messages[] | select(.type == "MyApp.Commands.CreateOrder")'</p>
+<p>cat .whizbang/cache/message-registry.json | jq '.messages[] | select(.type == "MyApp.Commands.CreateOrder")'</p>
 
 <h1>Verify receptor implements interface correctly</h1>
 <p>public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {</p>
@@ -22164,7 +22246,7 @@ npm install && npm run build</code></pre>
 <p></code></pre>xml{title="View Generated File" description="Or configured output:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}</p>
 <p><PropertyGroup></p>
 <p>  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles></p>
-<p>  <CompilerGeneratedFilesOutputPath>.whizbang-generated</CompilerGeneratedFilesOutputPath></p>
+<p>  <CompilerGeneratedFilesOutputPath>.whizbang/cache</CompilerGeneratedFilesOutputPath></p>
 <p></PropertyGroup></p>
 <pre><code class="language-">
 <h3>Build Diagnostics</h3>
@@ -23018,7 +23100,7 @@ npm install && npm run build</code></pre>
 <p></code></pre>xml{title="View Generated Files" description="Or optionally configured output folder:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}</p>
 <p><PropertyGroup></p>
 <p>  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles></p>
-<p>  <CompilerGeneratedFilesOutputPath>.whizbang-generated</CompilerGeneratedFilesOutputPath></p>
+<p>  <CompilerGeneratedFilesOutputPath>.whizbang/cache</CompilerGeneratedFilesOutputPath></p>
 <p></PropertyGroup></p>
 <pre><code class="language-">
 <h3>Build Diagnostics</h3>
@@ -23751,7 +23833,7 @@ npm install && npm run build</code></pre>
 <p></code></pre>xml{title="View Generated Files" description="Or optionally configured output folder:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}</p>
 <p><PropertyGroup></p>
 <p>  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles></p>
-<p>  <CompilerGeneratedFilesOutputPath>.whizbang-generated</CompilerGeneratedFilesOutputPath></p>
+<p>  <CompilerGeneratedFilesOutputPath>.whizbang/cache</CompilerGeneratedFilesOutputPath></p>
 <p></PropertyGroup></p>
 <pre><code class="language-">
 <h3>Build Diagnostics</h3>
@@ -26337,6 +26419,144 @@ npm install && npm run build</code></pre>
 
 <em>Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12</em>
   </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-fundamentals-dispatcher-publish-once" class="doc-section">
+  <h4>PublishOnceAsync — Exactly-Once Event Emission</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/dispatcher/publish-once</code></p>
+  <p class="doc-description"><em>Publish an event at most once per claim key under concurrent emitters. Replaces fragile read-then-check guards with an atomic claim primitive backed by a single Postgres INSERT.</em></p>
+  <div class="doc-content">
+
+<h1>PublishOnceAsync — Exactly-Once Event Emission</h1>
+
+<h2>When you need it</h2>
+
+<p>You have a logical event that should be emitted <strong>exactly once</strong>, but two or more concurrent callers might attempt to emit it.</p>
+
+<p>The motivating case: a saga that fans out to N per-item handlers, where the last item to finish emits a <code>SagaCompletedEvent</code>. When items 342, 343, 344, and 348 all complete within the same millisecond, four handlers all observe <code>CompletedItems == TotalItems</code>, all conclude "I'm the last one," and all call <code>PublishAsync(new SagaCompletedEvent { ... })</code>. The downstream system sees the saga complete 1–4× depending on the race outcome.</p>
+
+<p>The old pattern — <code>SELECT … WHERE already_emitted; INSERT IF NOT EXISTS</code> — has a check-to-commit window. Under high concurrency it collapses many duplicates to a few, but never to one.</p>
+
+<code>PublishOnceAsync</code> closes the window at the storage layer using <code>INSERT … ON CONFLICT DO NOTHING</code>. Exactly one caller wins the claim and emits; the rest intentionally no-op.
+
+<h2>API</h2>
+
+<p>``<code>csharp{title="PublishOnceAsync signature" category="Architecture" tags=["Dispatcher", "Idempotency"]}</p>
+<p>namespace Whizbang.Core;</p>
+
+<p>public interface IDispatcher {</p>
+<p>  // …existing methods…</p>
+
+<p>  Task<bool> PublishOnceAsync<TEvent>(</p>
+<p>      string claimKey,</p>
+<p>      TEvent eventData,</p>
+<p>      CancellationToken cancellationToken = default);</p>
+<p>}</p>
+<pre><code class="language-">
+<strong>Returns</strong> </code>true<code> if this caller won the claim and the event was published; </code>false<code> if another caller already won it for the same key.
+
+<p>The </code>claimKey<code> is opaque to the framework — choose any string unique within your domain. Convention for sagas is the saga id.</p>
+
+<h2>Worked example — saga completion</h2>
+
+<p>Before:</p>
+
+<p></code></pre>csharp{title="Before: read-then-check (racy)" category="Architecture" tags=["AntiPattern"]}</p>
+<p>public async Task TryEmitCompletionAsync(Guid sagaId, IDispatcher dispatcher, ISagaRepository repo) {</p>
+<p>  var saga = await repo.LoadAsync(sagaId);</p>
+<p>  if (saga.CompletionEventDispatched) {</p>
+<p>    return;  // Check-then-act window: another emitter may pass this check between here and PublishAsync.</p>
+<p>  }</p>
+<p>  if (await CompletionGuard.AlreadyEmittedAsync(sagaId)) {</p>
+<p>    return;  // Same problem one layer deeper.</p>
+<p>  }</p>
+<p>  await dispatcher.PublishAsync(new SagaCompletedEvent { SagaId = sagaId, … });</p>
+<p>}</p>
+<pre><code class="language-">
+<p>After:</p>
+
+<p></code></pre>csharp{title="After: atomic claim" category="Architecture" tags=["Idempotency", "PublishOnce"]}</p>
+<p>public async Task TryEmitCompletionAsync(Guid sagaId, IDispatcher dispatcher) {</p>
+<p>  await dispatcher.PublishOnceAsync(</p>
+<p>    claimKey: sagaId.ToString(),</p>
+<p>    eventData: new SagaCompletedEvent { SagaId = sagaId, … },</p>
+<p>    cancellationToken: CancellationToken.None);</p>
+<p>  // Multiple concurrent callers safely no-op. Exactly one event lands.</p>
+<p>}</p>
+<pre><code class="language-">
+<p>No projection-side flag, no read-then-check guard. The framework enforces the invariant at the dispatcher.</p>
+
+<h2>How the claim works</h2>
+
+<p></code>PublishOnceAsync<code> calls </code>IClaimedEmissionStore.TryClaimAsync(claimKey, …)<code>. The Postgres implementation runs:</p>
+
+<p></code></pre>sql</p>
+<p>INSERT INTO wh_unique_emission_claims (claim_key, claimed_by_event_id)</p>
+<p>VALUES (@key, @eventId)</p>
+<p>ON CONFLICT (claim_key) DO NOTHING;</p>
+<pre><code class="language-">
+<p>For a contested key, exactly one INSERT affects one row; the others affect zero. The caller whose </code>ExecuteNonQueryAsync<code> returns </code>1<code> proceeds to </code>PublishAsync<code>; the rest return </code>false<code>.</p>
+
+<h3>Schema</h3>
+
+<p>Migration </code>060_CreateUniqueEmissionClaims.sql<code> creates:</p>
+
+<p></code></pre>sql{title="wh_unique_emission_claims" category="Schema"}</p>
+<p>CREATE TABLE wh_unique_emission_claims (</p>
+<p>  claim_key            text         PRIMARY KEY,</p>
+<p>  claimed_at           timestamptz  NOT NULL DEFAULT now(),</p>
+<p>  claimed_by_event_id  uuid         NOT NULL,</p>
+<p>  expires_at           timestamptz  NOT NULL DEFAULT (now() + interval '30 minutes')</p>
+<p>);</p>
+
+<p>CREATE INDEX idx_wh_unique_emission_claims_expires</p>
+<p>  ON wh_unique_emission_claims (expires_at);</p>
+<pre><code class="language-">
+<ul><li><strong></code>claim_key<code></strong> — your idempotency key, opaque to the framework.</li>
+<li><strong></code>claimed_by_event_id<code></strong> — audit only; the framework writes it but never reads it.</li>
+<li><strong></code>expires_at<code></strong> — defaults to 30 minutes; the same prune sweep that clears </code>wh_outbox<code> / </code>wh_inbox<code> removes expired claims. Tuning is a deliberate decision tied to the prune cadence.</li>
+</ul>
+<h3>Transaction semantics</h3>
+
+<p>When the caller is inside an ambient transaction, the claim INSERT participates. <strong>Invariant:</strong> claim is taken iff the emission committed. A rollback of the outer scope releases the claim, so a downstream caller can re-attempt.</p>
+
+<p>When called outside a transaction, the claim commits independently. If the receptor crashes between claim and emission, the claim is "stranded" until </code>expires_at<code> releases it. The 30-minute default leaves time for ops to investigate before the next attempt is allowed.</p>
+
+<h2>DI registration</h2>
+
+<p>The Postgres driver registers </code>EFCoreClaimedEmissionStore<code> automatically. If you implement a custom store, register it scoped against the same DI scope as </code>PublishOnceAsync<code>'s callers (so it participates in their transactions):</p>
+
+<p></code></pre>csharp{title="Custom claim store registration" category="DI"}</p>
+<p>services.AddScoped<IClaimedEmissionStore, MyCustomClaimedEmissionStore>();</p>
+<p></code>`<code></p>
+
+<p>If no store is registered, </code>PublishOnceAsync<code> throws </code>InvalidOperationException<code> rather than silently degrading to </code>PublishAsync<code> — the framework's exactly-once guarantee would otherwise be a lie.</p>
+
+<h2>Telemetry</h2>
+
+<p>Two counters surface the race:</p>
+
+<p>| Counter | Meaning |</p>
+<p>|---|---|</p>
+<p>| </code>whizbang.dispatcher.publish_once.claims_won<code> | This caller won the claim and proceeded to emit. |</p>
+<p>| </code>whizbang.dispatcher.publish_once.claims_lost<code> | This caller lost the claim and intentionally no-opped. |</p>
+
+<p>Both are tagged with </code>message_type<code>. The expression </code>lost / (won + lost)<code> is the <strong>observed race rate</strong> for the gated emission.</p>
+
+<p>A persistently nonzero loss rate is expected for any saga completing under N concurrent terminal handlers. Spikes — particularly on a single event type — point at a specific concurrency source worth investigating.</p>
+
+<h2>When NOT to use it</h2>
+
+<ul><li><strong>Single-emitter cases.</strong> A regular command handler that emits one event has no race. </code>PublishAsync<code> is the right tool.</li>
+<li><strong>Throw-away or non-idempotent payloads.</strong> PublishOnce protects a specific logical emission, not a category. Don't reuse the same claim key for different payloads.</li>
+<li><strong>Fan-out where each emission is meaningful.</strong> Bulk-update events where every emission represents a distinct change should use </code>ICompositeEvent<code> or </code>ICollectiveEvent<code>, not PublishOnce.</li>
+</ul>
+<h2>Related</h2>
+
+<ul><li><a href="dispatcher">Dispatcher Deep Dive</a> — the broader </code>IDispatcher` API surface.</li>
+<li><a href="../messaging/collective-events">Collective Events</a> — when one event applies set-wise across many streams.</li>
+</ul>  </div>
   <p><a href="#top">[Back to top]</a></p>
 </article>
 
@@ -31686,6 +31906,137 @@ npm install && npm run build</code></pre>
   <p><a href="#top">[Back to top]</a></p>
 </article>
 
+<article id="v1-0-0-fundamentals-identity-pinned-type-ledger" class="doc-section">
+  <h4>Pinned-Type Ledger: Safe, Governed Type Renames</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/identity/pinned-type-ledger</code></p>
+  <p class="doc-description"><em>The pinned-type ledger is a committed lockfile of every [PinnedId] type's identity and rename history. It lets you rename event, command, and perspective types safely: a build-time gate (WHIZ120/WHIZ121) forces every rename to be acknowledged, the generators emit former-name aliases so events written under the old name still deserialize, and a ledger-aware startup reconcile heals the type registry in every environment.</em></p>
+  <div class="doc-content">
+
+<h1>Pinned-Type Ledger: Safe, Governed Type Renames</h1>
+
+<p>A pinned type's <strong>identity is its <code>[PinnedId]</code></strong> — a stable GUID — not its CLR name. The CLR name is a</p>
+<em>versioned label</em>. But messages are written into an append-only event store with the <strong>name of the day</strong>, and
+<p>name → <code>Type</code> resolution (<code>JsonContextRegistry.GetTypeInfoByName</code>) looks types up by that stored name. So if you</p>
+<p>rename <code>OrderCreatedEvent</code> to <code>OrderPlacedEvent</code> and do nothing else, every already-stored <code>OrderCreatedEvent</code></p>
+<p>becomes <strong>unreadable</strong> — the resolver returns <code>null</code> and deserialization throws.</p>
+
+<p>The <strong>pinned-type ledger</strong> makes renames safe and governed. It is a committed lockfile — <code>.whizbang/pinned-type-ledger.json</code>,</p>
+<p>committed at the <code>.whizbang/</code> root (the regenerable <code>message-registry.json</code> lives separately in the git-ignored</p>
+<code>.whizbang/cache/</code> subfolder) — that records, per pinned id, the type's current CLR name and every
+<strong>former</strong> name it has had:
+
+<pre><code class="language-json">{
+<p>  "version": 1,</p>
+<p>  "types": [</p>
+<p>    {</p>
+<p>      "pinnedId": "11111111-2222-3333-4444-555555555555",</p>
+<p>      "clrTypeName": "MyApp.Contracts.OrderPlacedEvent",</p>
+<p>      "kind": "event",</p>
+<p>      "formerNames": ["MyApp.Contracts.OrderCreatedEvent"]</p>
+<p>    }</p>
+<p>  ]</p>
+<p>}</p>
+<p></code></pre></p>
+
+<p>Like <code>package-lock.json</code>, it is generated by tooling, <strong>reviewed as a diff</strong>, and committed. Three build-time</p>
+<p>components read and maintain it — all AOT-safe, all opt-in.</p>
+
+<h2>The four components</h2>
+
+<h3>1. Ledger generator (bootstrap + monotonic merge)</h3>
+
+<code>PinnedTypeLedgerGenerator</code> discovers every <code>[PinnedId]</code> message and perspective type in the assembly, <strong>merges</strong>
+<p>it with the committed ledger, and emits the merged JSON as a C# constant (<code>PinnedTypeLedger.g.cs</code>). An MSBuild</p>
+<p>target extracts that constant to <code>.whizbang/pinned-type-ledger.json</code> after each build.</p>
+
+<p>The merge is a <strong>monotonic lockfile update</strong>:</p>
+
+<ul><li><strong>New</strong> pinned ids are added with the current name and empty <code>formerNames</code>, so every type is governed from birth.</li>
+<li><strong>Existing</strong> entries are preserved verbatim — their <code>clrTypeName</code> is <strong>never</strong> refreshed to the current name.</li>
+</ul><p>  That is deliberate: it is exactly what makes a rename detectable (see WHIZ120 below).</p>
+<ul><li><strong>Orphan</strong> entries (a pinned id with no living type) are retained; <a href="../../operations/diagnostics/whiz121">WHIZ121</a></li>
+</ul><p>  surfaces them for you to prune.</p>
+
+<p>The first build in a newly-adopting project <strong>bootstraps</strong> the file; commit it, and governance is active.</p>
+
+<h3>2. Governance gate (WHIZ120 / WHIZ121)</h3>
+
+<code>PinnedTypeRenameAnalyzer</code> diffs the compiled <code>[PinnedId]</code> types against the committed ledger:
+
+<ul><li><a href="../../operations/diagnostics/whiz120"><strong>WHIZ120</strong></a> (Error) — a pinned id's current CLR name is neither the</li>
+</ul><p>  ledger's recorded name nor one of its <code>formerNames</code>. That is an <strong>un-acknowledged rename</strong>; the build fails until</p>
+<p>  you record it.</p>
+<ul><li><a href="../../operations/diagnostics/whiz121"><strong>WHIZ121</strong></a> (Warning) — a ledger entry whose pinned id no longer exists</li>
+</ul><p>  in the compilation (a removed type or a changed id).</p>
+
+<p>The analyzer is <strong>inert</strong> when no ledger is present, so adoption is opt-in per project.</p>
+
+<h3>3. Alias resolution (former events still deserialize)</h3>
+
+<code>MessageJsonContextGenerator</code> reads the ledger and, for every former name a message type has had, emits an extra
+<code>JsonContextRegistry.RegisterTypeName("<former>, <assembly>", typeof(<current>), …)</code> (bare and
+<code>MessageEnvelope<T></code> forms). Events stored under the old name now resolve to the current type. Aliases are only
+<p>emitted for messages (events/commands) — perspective types are not deserialized from the log by name, so they need</p>
+<p>no alias (their rename is still gated by WHIZ120).</p>
+
+<h3>4. Registry reconcile (the catalog self-heals every environment)</h3>
+
+<p>Whizbang keeps a per-environment catalog of every pinned type in <code>wh_message_type_registry</code> (one row per pinned id,</p>
+<p>holding the CLR name that environment's data was last populated with). After a rename, that row lags: it still holds</p>
+<p>the old name. The startup reconcile (<code>reconcile_message_type_registry</code>) is now <strong>ledger-aware</strong> — the compile-time</p>
+<code>IMessageTypeCatalog</code> carries each type's <code>FormerNames</code> (attached by <code>MessageTypeCatalogGenerator</code> from the ledger),
+<p>and the reconcile function uses them:</p>
+
+<ul><li><strong>Acknowledged rename</strong> — the stored (old) name is a recorded former name → the row is updated <em></em>old → new in</li>
+</ul><p>  place<em></em> (action <code>renamed</code>). Because the rename was reviewed and committed to the ledger, healing it is safe.</p>
+<ul><li><strong>Unacknowledged drift</strong> — the stored name is <em>not</em> a recorded former name → the row is left untouched (action</li>
+</ul><p>  <code>drift_detected</code>, logged as a warning). An accidental or ungoverned rename must be recorded in the ledger first.</p>
+
+<p>This runs automatically on every service startup, so <strong>each environment self-heals</strong> — dev slots, staging, and</p>
+<p>production converge without a manual, per-environment step. It is <strong>non-destructive</strong> (only the registry's</p>
+<code>clr_type_name</code> is touched; stored event data is not rewritten, and the ledger remains the sole history) and
+<strong>idempotent</strong>. It is also backward-compatible during a rolling deploy in both directions (an old service against the
+<p>new function sends no former names and simply falls back to <code>drift_detected</code>; a new service against the old function</p>
+<p>has its extra field ignored).</p>
+
+<p>To <em>audit</em> drift ahead of a deploy, diff the committed ledger against a target environment's registry by pinned id:</p>
+<p>a name in the registry that is neither the ledger's current name nor a recorded former name is unacknowledged drift.</p>
+
+<h2>Renaming a type — the workflow</h2>
+
+<ul><li>Rename the type in code (e.g. <code>OrderCreatedEvent</code> → <code>OrderPlacedEvent</code>). Keep its <code>[PinnedId]</code>.</li>
+<li>Build. <strong>WHIZ120</strong> fails: the ledger still records <code>OrderCreatedEvent</code> for that pinned id.</li>
+<li>In <code>.whizbang/pinned-type-ledger.json</code>, add <code>MyApp.Contracts.OrderCreatedEvent</code> to that entry's <code>formerNames</code></li>
+</ul><p>   and set its <code>clrTypeName</code> to <code>MyApp.Contracts.OrderPlacedEvent</code>.</p>
+<ul><li>Build again. WHIZ120 clears, and the generator now emits the alias so old <code>OrderCreatedEvent</code> events deserialize</li>
+</ul><p>   to <code>OrderPlacedEvent</code>.</p>
+<ul><li>Commit the ledger change alongside the rename — the diff <em>is</em> the acknowledgment.</li>
+<li>Deploy. On startup each environment's registry reconcile sees the old name recorded as a former name and updates</li>
+</ul><p>   its <code>wh_message_type_registry</code> row <strong>old → new</strong> automatically — no per-environment cleanup.</p>
+
+<blockquote>The <a href="https://github.com/whizbang-lib">VSCode extension</a> reads the same <code>.whizbang/</code> files and can perform steps</blockquote>
+<blockquote>3 above inline, surfacing identity and rename history without a manual edit.</blockquote>
+
+<h2>Wiring & opt-out</h2>
+
+<p>The Whizbang generators package auto-includes the ledger as an <code>AdditionalFile</code> and registers the extraction target.</p>
+<p>Nothing else is required. To opt a project out, set:</p>
+
+<pre><code class="language-xml"><PropertyGroup>
+<p>  <WhizbangIncludePinnedTypeLedger>false</WhizbangIncludePinnedTypeLedger></p>
+<p></PropertyGroup></p>
+<p></code></pre></p>
+
+<h2>Why not just refresh the name automatically?</h2>
+
+<p>Because a silent refresh would erase the one signal that tells you an immutable event log now contains a name the</p>
+<p>running code no longer knows. The ledger is intentionally <strong>append-only for names</strong>: renames are cheap, but they are</p>
+<p>never invisible. See also <a href="type-formatting">Type Formatting</a> for the two canonical type-name forms the ledger and</p>
+<p>event store use.</p>
+  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
 <article id="v1-0-0-fundamentals-identity-time-provider" class="doc-section">
   <h4>Time Provider</h4>
   <p class="doc-path"><code>v1.0.0/fundamentals/identity/time-provider</code></p>
@@ -32365,7 +32716,18 @@ npm install && npm run build</code></pre>
 
 <p>// ✅ CORRECT: Use TypeFormatter with InvariantCulture</p>
 <p>var formatted = TypeFormatter.FormatType(type, TypeQualification.FullyQualifiedWithVersion);</p>
-<p>```</p>
+<p>``<code></p>
+
+<h2>Related: </code>TypeNameFormatter<code> (storage &amp; matching)</h2>
+
+<p>Don't confuse </code>TypeFormatter<code> (the flags-based utility above) with <strong></code>TypeNameFormatter<code></strong> (</code>Whizbang.Core<code>), the fixed-format helper the runtime uses to write and match the type-name strings persisted in the database. It exposes exactly <strong>two canonical forms</strong>, and every writer of a given column goes through the matching one so the strings are byte-identical across drivers and generators:</p>
+
+<p>| Method | Output | Used for |</p>
+<p>|--------|--------|----------|</p>
+<p>| </code>TypeNameFormatter.Format(type)<code> | </code>"Namespace.Outer+Nested, Assembly"<code> (assembly-qualified) | </code>wh_event_store.event_type<code>, </code>wh_outbox<code>/</code>wh_inbox.message_type<code>, </code>wh_message_associations<code>, message routing, JSON discriminators |</p>
+<p>| </code>TypeNameFormatter.FormatClrTypeName(type)<code> | </code>"Namespace.Outer+Nested"<code> (no assembly) | </code>wh_event_store.aggregate_type<code>, </code>wh_message_type_registry.clr_type_name<code>, </code>wh_perspective_registry.clr_type_name<code> |</p>
+
+<p>Both use </code>+<code> to separate a nested type from its declaring type (matching </code>Type.FullName<code> and the <a href="#nested-types">Nested Types</a> rule above). The source-generator mirrors are </code>TypeNameUtilities.FormatTypeNameForRuntime<code> (assembly-qualified) and </code>TypeNameUtilities.BuildClrTypeName<code> (no assembly), so compile-time registration and runtime lookup always agree. Read paths normalize an inbound assembly-qualified name (stripping </code>Version<code>/</code>Culture<code>/</code>PublicKeyToken<code>) via </code>EventTypeMatchingHelper.NormalizeTypeName<code> before comparing, so the short </code>Format<code> form matches every variant. Existing rows written with the older C#-display (</code>.<code>-nested) form are normalized by migration </code>063_NormalizeClrTypeNamesV2` — see <a href="../../operations/infrastructure/migrations.md#data-migrations-vs-schema-migrations">Migration Tracking → Data Migrations</a>.</p>
 
 <h2>See Also</h2>
 
@@ -32373,6 +32735,7 @@ npm install && npm run build</code></pre>
 <li><a href="fuzzy-matching.md">MatchStrictness</a> - Fuzzy matching with formatted types</li>
 <li><a href="type-matching.md">TypeMatcher</a> - Matching formatted type strings</li>
 <li><a href="../perspectives/perspectives.md">Perspectives</a> - Message associations using formatted types</li>
+<li><a href="../../operations/infrastructure/migrations.md">Migration Tracking</a> - Settings-gated data migrations (e.g. CLR type-name normalization)</li>
 </ul>  </div>
   <p><a href="#top">[Back to top]</a></p>
 </article>
@@ -43240,6 +43603,435 @@ npm install && npm run build</code></pre>
 </section>
 
 <section class="doc-category">
+  <h3 class="category-header">Messaging</h3>
+<article id="v1-0-0-fundamentals-messaging-collective-events" class="doc-section">
+  <h4>Collective Events</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/messaging/collective-events</code></p>
+  <div class="doc-content">
+
+<h1>Collective events</h1>
+
+<p>A first-class persistable event that mutates <strong>every stream in a scope</strong></p>
+<p>as a unit. The producer expresses scope + mutation; the projection</p>
+<p>runner applies it as <strong>one SQL UPDATE per affected projection table</strong></p>
+<p>whose <code>WHERE</code> clause is just the scope predicate. No per-row enumeration,</p>
+<p>no per-row tracking, no per-row tax.</p>
+
+<p>Canonical use cases:</p>
+
+<ul><li>"Archive every non-active job in tenant T"</li>
+<li>"Remove all jobs in tenant T"</li>
+<li>"Change state of every matching job"</li>
+<li>"Flag all entities older than Y" (where Y is captured on the event payload)</li>
+</ul>
+<p>When the producer expresses <strong>intent + scope</strong> rather than a list of</p>
+<p>events, this is the primitive — one event row, one SQL UPDATE, one</p>
+<p>category-level observed event.</p>
+
+<h2>When to reach for it</h2>
+
+<pre><code class="language-">Producer wants to mutate multiple streams in one operation
+<p>  │</p>
+<p>  ├─ Is the mutation uniform across all targeted streams?</p>
+<p>  │   ├─ NO  → ICompositeEvent (hand-crafted per-stream batch)</p>
+<p>  │   └─ YES</p>
+<p>  │       │</p>
+<p>  │       ├─ Does the producer want to name an explicit list of streams?</p>
+<p>  │       │   ├─ YES → ICompositeEvent (enumerate them)</p>
+<p>  │       │   └─ NO  → ICollectiveEvent ← THIS — scope IS the descriptor</p>
+<p></code></pre></p>
+
+<h2>Composite vs collective — pick one per producer intent</h2>
+
+<code>ICollectiveEvent</code> sits <strong>next to</strong> <code>ICompositeEvent</code> — additive, not a
+<p>replacement. They solve different problems and ship on different runtime</p>
+<p>paths.</p>
+
+<p>| Dimension | <code>ICompositeEvent</code> | <code>ICollectiveEvent</code> |</p>
+<p>|---|---|---|</p>
+<p>| Producer expresses | Explicit list of <code>(streamId, event)</code> pairs | Scope + uniform mutation |</p>
+<p>| Materialization | Receiver expands to N per-stream events | One event persists; one SQL UPDATE per projection |</p>
+<p>| Per-stream history | Each stream gets its own event row | Streams have no per-stream record |</p>
+<p>| Apply contract | Existing pure <code>Apply(model, evt)</code> per stream | New <code>Apply(evt) → ICollectiveSpec<TModel></code> per projection |</p>
+<p>| Replay path | Composite envelope never reaches replay; inner events do | Collective event itself replays; predicate re-evaluates at replay time |</p>
+<p>| Cost shape (10k matches) | 10k events, 10k Applies, 10k SignalR pushes | 1 event, 1 SQL UPDATE, 1 category-level push |</p>
+<p>| Right when | Hand-crafted heterogeneous batches | Uniform mutation across a scope |</p>
+
+<p>Both can coexist in the same workflow — a bulk import emits composite</p>
+<p>per-job events; a tenant cleanup emits a collective event. The two</p>
+<p>contracts share <strong>no inheritance</strong> — separate code paths end-to-end.</p>
+
+<h2>Determinism is at scope level, not stream level</h2>
+
+<p>This is the defining design choice and it deserves its own section.</p>
+
+<strong>The principle</strong>: a collective event is a <em>descriptor</em>. It says
+<p>"apply this mutation to everything in scope-X at this point in the event</p>
+<p>sequence." It does NOT enumerate the streams that happened to be in</p>
+<p>scope at the moment the producer emitted the event.</p>
+
+<p>Replay re-evaluates the predicate against the projection state at the</p>
+<p>moment the collective event is being processed. Because event sourcing</p>
+<p>guarantees that the projection state at any point in a replay is fully</p>
+<p>determined by the event sequence up to that point, the predicate's</p>
+<p>result is deterministic — <em></em>but it reflects the logically correct state,</p>
+<p>not the original execution's state<em></em>.</p>
+
+<h3>Why this is <em>better</em> than snapshot determinism</h3>
+
+<p>Consider a worked example:</p>
+
+<blockquote>A producer fires a collective event: "disable every job in tenant T."</blockquote>
+<blockquote>At the moment of the original write, 10 jobs are visible in the</blockquote>
+<blockquote>projection (<code>j₁</code>…<code>j₁₀</code>). A late-arriving event for an 11th job</blockquote>
+<blockquote>(<code>j₁₁</code>) had been emitted <em>before</em> the collective event in correct</blockquote>
+<blockquote>stream order, but its delivery was delayed by transport hiccups, so</blockquote>
+<blockquote>it hadn't materialized in the projection yet when the collective</blockquote>
+<blockquote>event fired. The original execution disabled 10 jobs.</blockquote>
+<blockquote>> Later, you replay the projection from scratch. Replay processes the</blockquote>
+<blockquote>event log in correct order: <code>j₁₁</code>'s event arrives at its logically</blockquote>
+<blockquote>correct position <strong>before</strong> the collective event. By the time the</blockquote>
+<blockquote>collective event is being applied during replay, <code>j₁₁</code> is visible</blockquote>
+<blockquote>in the projection. The predicate matches <code>j₁₁</code> too. Replay disables</blockquote>
+<blockquote><strong>11 jobs</strong>.</blockquote>
+
+<p>That's correct. The original execution was <em>temporarily wrong</em> because</p>
+<p>of out-of-order delivery; replay produces the result that should have</p>
+<p>happened if events had arrived in their logical order. The projection</p>
+<p>self-heals on replay.</p>
+
+<p>A snapshot model (where the event carries the captured <code>[j₁..j₁₀]</code> set)</p>
+<p>would lock in the original execution's mistake forever — replay would</p>
+<p>also disable only 10 jobs, leaving <code>j₁₁</code> in the wrong state.</p>
+
+<em></em>Determinism is at the scope level (tenant T) and the event-sequence
+<p>level. Not at the stream-enumeration level.<em></em> That's stricter, more</p>
+<p>correct, and simpler.</p>
+
+<h3>What this requires of the developer</h3>
+
+<p>The handler's predicate (encoded in <code>ICollectiveScopeResolver.ScopeFilter</code>)</p>
+<p>must be <em></em>a pure function of the projection's persistent state and the</p>
+<p>event payload<em></em>. No <code>DateTime.UtcNow</code>, no external lookups, no random</p>
+<p>numbers. The framework can't enforce this — it's the same discipline</p>
+<p>event-sourcing requires of regular <code>Apply</code> functions. If you need a</p>
+<p>moment-in-time threshold, capture it on the event payload at write time</p>
+<p>(e.g. <code>e.OlderThan = clock.GetUtcNow()</code>), not at apply time.</p>
+
+<h2>The event IS the descriptor</h2>
+
+<p>A collective event carries:</p>
+
+<ul><li><strong><code>Scope</code></strong> — the resolver lookup key (e.g. <code>TenantCollectiveScope("t-A")</code>) and the payload the resolver consumes to build its <code>WHERE</code> predicate</li>
+<li><strong>The event's own runtime type</strong> — dispatches to the matching handlers via the generator-emitted registry</li>
+<li><strong>The event's payload</strong> — fields the handler reads (e.g. <code>e.OccurredAt</code>, <code>e.NewStatus</code>, <code>e.OlderThan</code>)</li>
+</ul>
+<p>That's the entire descriptor. There is no captured matched-stream-id</p>
+<p>set. There is no per-row audit pointer. There is no per-stream</p>
+<p>amplification on the inbox. The event's identity (its <code>event_id</code>) plus</p>
+<p>the wh_event_store row is the complete audit trail — anyone wanting "did</p>
+<p>event E mutate row R" answers it by re-applying the predicate to the</p>
+<p>relevant projection snapshot.</p>
+
+<h2><code>EventFlags</code> — categorizing events without column churn</h2>
+
+<p>Whizbang categorizes events on <code>wh_event_store</code> / <code>wh_outbox</code> /</p>
+<code>wh_inbox</code> using a single <code>flags INTEGER NOT NULL DEFAULT 0</code> column
+<p>that's a bitmask of the <code>EventFlags</code> enum:</p>
+
+<pre><code class="language-csharp">[Flags]
+<p>public enum EventFlags {</p>
+<p>  None       = 0,</p>
+<p>  Collective = 1 << 0,</p>
+<p>  Composite  = 1 << 1,</p>
+<p>  // future categories add new flags without schema migrations</p>
+<p>}</p>
+<p></code></pre></p>
+
+<p>The dispatcher branches on <code>(envelope.Flags & EventFlags.Collective) != 0</code></p>
+<p>to route to the collective-event path. New event categories ship by</p>
+<p>adding a flag value — no boolean column per category, no migration tax.</p>
+
+<h2>Authoring a handler</h2>
+
+<pre><code class="language-csharp">[CollectiveApplyFor]
+<p>public ICollectiveSpec<JobModel> ArchiveJobs(ArchiveJobsCollectiveEvent e) =></p>
+<p>  new CollectiveSpec<JobModel>(s => s</p>
+<p>    .SetProperty(j => j.Status, "Archived")</p>
+<p>    .SetProperty(j => j.ArchivedAt, e.OccurredAt));</p>
+<p></code></pre></p>
+
+<p>The handler describes <strong>only the mutation</strong>. The <code>WHERE</code> clause that</p>
+<p>gates the SQL UPDATE is composed by the framework from the scope</p>
+<p>resolver's <code>ScopeFilter(evt.Scope)</code> — nothing else.</p>
+
+<code>SetProperty</code> overloads:
+
+<ul><li><strong><code>SetProperty(selector, value)</code></strong> — assign a constant or</li>
+</ul><p>  event-supplied value</p>
+<ul><li><strong><code>SetProperty(selector, computed)</code></strong> — assign an expression of the</li>
+</ul><p>  row's own current state (increment, timestamp-touch, conditional)</p>
+
+<h3>Worked examples</h3>
+
+<pre><code class="language-csharp">// 1. Constant — "archive every job in tenant T"
+<p>[CollectiveApplyFor]</p>
+<p>public ICollectiveSpec<JobModel> ArchiveJobs(ArchiveJobsCollectiveEvent e) =></p>
+<p>  new CollectiveSpec<JobModel>(s => s</p>
+<p>    .SetProperty(j => j.Status, "Archived")</p>
+<p>    .SetProperty(j => j.ArchivedAt, e.OccurredAt));</p>
+
+<p>// 2. Increment — "bump view count on every job in tenant T"</p>
+<p>[CollectiveApplyFor]</p>
+<p>public ICollectiveSpec<JobModel> BumpViewCount(BumpJobViewCountCollectiveEvent e) =></p>
+<p>  new CollectiveSpec<JobModel>(s => s</p>
+<p>    .SetProperty(j => j.ViewCount, j => j.ViewCount + 1)</p>
+<p>    .SetProperty(j => j.LastViewedAt, e.OccurredAt));</p>
+
+<p>// 3. Event-supplied delta — "credit X tokens to every matched user"</p>
+<p>[CollectiveApplyFor]</p>
+<p>public ICollectiveSpec<UserModel> CreditTokens(CreditTokensCollectiveEvent e) =></p>
+<p>  new CollectiveSpec<UserModel>(s => s</p>
+<p>    .SetProperty(u => u.TokenBalance, u => u.TokenBalance + e.Amount));</p>
+
+<p>// 4. Conditional flag — "mark stale if older than the captured threshold"</p>
+<p>//    Threshold is captured at write time on the event payload, NOT at apply time.</p>
+<p>[CollectiveApplyFor]</p>
+<p>public ICollectiveSpec<EntityModel> FlagStale(FlagStaleEntitiesCollectiveEvent e) =></p>
+<p>  new CollectiveSpec<EntityModel>(s => s</p>
+<p>    .SetProperty(x => x.IsStale, x => x.UpdatedAt < e.OlderThan));</p>
+
+<p>// 5. Opt-out for custom scope handling</p>
+<p>[CollectiveApplyFor(ScopeHandling = CollectiveScopeHandling.Custom)]</p>
+<p>public ICollectiveSpec<JobModel> ComplexUpdate(ComplexCollectiveEvent e) {</p>
+<p>  var ctx = ScopeContextAccessor.CurrentContext;</p>
+<p>  return /<em> full WHERE including scope, via the spec API </em>/;</p>
+<p>}</p>
+
+<p>// 6. Opt-out for raw SQL (jsonb merges too complex for the LINQ surface)</p>
+<p>[CollectiveApplyFor(SpecKind = CollectiveSpecKind.RawSql)]</p>
+<p>public ICollectiveSpec<JobModel> JsonbMerge(JsonbHeavyEvent e) =></p>
+<p>  new RawSqlCollectiveSpec(</p>
+<p>    "data = jsonb_set(data, '{X}', case when ... end)",</p>
+<p>    parameters: new { ... });</p>
+<p></code></pre></p>
+
+<h3>What the LINQ surface CAN express</h3>
+<ul><li>Scalar <code>SetProperty</code> to a constant or event-supplied value</li>
+<li>Scalar <code>SetProperty</code> to an expression of the row's own current</li>
+</ul><p>  properties (increment, decrement, arithmetic, string concat, date</p>
+<p>  arithmetic, boolean-from-other-property logic) — EF driver only in</p>
+<p>  v1.0</p>
+<ul><li>Multiple <code>SetProperty</code> calls in one spec — composed into a single SQL</li>
+</ul><p>  UPDATE</p>
+
+<h3>What the LINQ surface CANNOT express (use <code>SpecKind = RawSql</code>)</h3>
+<ul><li>Cross-row aggregates (window functions, CTEs)</li>
+<li>Subqueries against other tables</li>
+<li>Conditional updates whose target column depends on another column's</li>
+</ul><p>  <em>new</em> value (multi-step assignment ordering)</p>
+<ul><li>Nested jsonb path manipulation more complex than top-level property</li>
+</ul><p>  assignment</p>
+<ul><li>DELETE semantics — collective deletes are out of scope; model as</li>
+</ul><p>  <code>SetProperty(x => x.IsDeleted, true)</code> against a soft-delete schema</p>
+
+<p>The Dapper driver in v1.0 restricts further to <strong>constant-value</strong></p>
+<code>SetProperty</code> shapes — computed <code>j => j.X + 1</code> selectors throw
+<code>NotSupportedException</code> and need the raw-SQL escape hatch.
+
+<h2>Apply pipeline at runtime</h2>
+
+<pre><code class="language-mermaid">sequenceDiagram
+<p>  autonumber</p>
+<p>  participant P as Producer</p>
+<p>  participant OB as wh_outbox (flags)</p>
+<p>  participant TX as Transport</p>
+<p>  participant IB as wh_inbox (flags)</p>
+<p>  participant R as PerspectiveRunner</p>
+<p>  participant SR as Scope Resolver</p>
+<p>  participant REG as CollectiveApplyRegistry (generator-emitted)</p>
+<p>  participant H as Perspective handler</p>
+<p>  participant A as Executor + Adapter</p>
+<p>  participant DB as Projection table</p>
+
+<p>  P->>OB: Insert event (flags |= EventFlags.Collective)</p>
+<p>  OB->>TX: Outbox publish (flags preserved)</p>
+<p>  TX->>IB: Inbox receive (flags preserved)</p>
+<p>  IB->>R: Dispatch — runner sees flags & Collective != 0</p>
+<p>  R->>SR: Resolve by Scope.ScopeKind</p>
+<p>  SR-->>R: TenantCollectiveScopeResolver</p>
+<p>  R->>REG: Look up handlers for (TModel, TEvent)</p>
+<p>  REG-->>R: CollectiveApplyEntry[] { Invoker }</p>
+<p>  R->>SR: EnterContext(scope) → ambient ScopeContextAccessor</p>
+<p>  R->>H: Invoke handler.Apply(evt) → ICollectiveSpec<TModel></p>
+<p>  H-->>R: spec (mutation only)</p>
+<p>  R->>A: Compose ScopeFilter ⨯ Spec</p>
+<p>  A->>DB: ONE SQL UPDATE: SET data = jsonb_set(...) WHERE <scope filter></p>
+<p>  DB-->>A: Affected row count</p>
+<p></code></pre></p>
+
+<p>Note what's NOT in this diagram: no matched-id membership clause, no</p>
+<p>audit-pointer write, no expansion to per-stream markers.</p>
+
+<h2>Schema additions</h2>
+
+<p>The collective-events feature adds <strong>one column</strong>, total:</p>
+
+<ul><li><code>wh_event_store.flags INTEGER NOT NULL DEFAULT 0</code></li>
+<li><code>wh_outbox.flags INTEGER NOT NULL DEFAULT 0</code></li>
+<li><code>wh_inbox.flags INTEGER NOT NULL DEFAULT 0</code></li>
+</ul>
+<p>(All three are the same <code>EventFlags</code> enum value, preserved through</p>
+<p>transport.)</p>
+
+<p>No new columns on perspective tables (<code>wh_per_*</code>). No GIN index on a</p>
+<p>new array column. Perspectives that never receive collective events</p>
+<p>pay no schema tax.</p>
+
+<h2>Built-in scopes</h2>
+
+<h3><code>TenantCollectiveScope</code></h3>
+
+<p>Built-in <code>ICollectiveScope</code> for tenant-scoped collective mutations:</p>
+
+<pre><code class="language-csharp">var evt = new ArchiveJobsCollectiveEvent {
+<p>  Scope = new TenantCollectiveScope("t-1"),</p>
+<p>  OccurredAt = clock.GetUtcNow(),</p>
+<p>};</p>
+<p>await outbox.PublishAsync(evt);</p>
+<p></code></pre></p>
+
+<code>TenantCollectiveScopeResolver</code> auto-registers via DI and composes
+<code>row.Scope.TenantId == "t-1"</code> as the <code>WHERE</code> predicate.
+
+<h3>Custom scopes</h3>
+
+<p>To add a new scope kind (e.g. <code>OrganizationCollectiveScope</code>,</p>
+<code>RegionCollectiveScope</code>):
+
+<ul><li>Implement <code>ICollectiveScope</code> with a unique <code>ScopeKind</code> string.</li>
+<li>Implement <code>ICollectiveScopeResolver</code> for that kind — return the</li>
+</ul><p>   correct <code>Expression<Func<PerspectiveRow<TModel>, bool>></code> for your</p>
+<p>   <code>PerspectiveRow<TModel></code> shape.</p>
+<ul><li>Register the resolver in DI:</li>
+</ul><p>   <code>services.AddSingleton<ICollectiveScopeResolver, OrgCollectiveScopeResolver>();</code></p>
+
+<p>The runner indexes resolvers by <code>ScopeKind</code>. Registration conflicts</p>
+<p>(two resolvers claiming the same kind) are caught at registration time.</p>
+
+<h2>Observer model</h2>
+
+<p>A collective event surfaces as <strong>one observed event</strong> at the category</p>
+<p>level. Receptors, sagas, and SignalR pushes see a single</p>
+<code>ICollectiveEvent</code> and branch on type. No per-stream amplification on
+<p>the observer side.</p>
+
+<p>Consumers that genuinely need per-stream side effects subscribe at the</p>
+<p>projection-write hook — the same hook that fires for regular event</p>
+<p>applies — and observe the resulting row changes directly. This is the</p>
+<p>existing mechanism; there's no special expansion path for collective</p>
+<p>events.</p>
+
+<h2>Discovery and AOT story</h2>
+
+<code>[CollectiveApplyFor]</code> is read at compile time by
+<code>CollectiveApplyDiscoveryGenerator</code>. The generator emits a static
+<p>dispatch table per assembly:</p>
+
+<pre><code class="language-csharp">// Auto-generated
+<p>public static class CollectiveApplyRegistry {</p>
+<p>  public static readonly IReadOnlyList<CollectiveApplyEntry> Entries =</p>
+<p>    new CollectiveApplyEntry[] {</p>
+<p>      new CollectiveApplyEntry(</p>
+<p>        ModelType: typeof(JobModel),</p>
+<p>        EventType: typeof(ArchiveJobsCollectiveEvent),</p>
+<p>        HandlerType: typeof(JobCollectivePerspective),</p>
+<p>        MethodName: "ArchiveJobs",</p>
+<p>        ScopeHandling: CollectiveScopeHandling.Framework,</p>
+<p>        SpecKind: CollectiveSpecKind.Linq,</p>
+<p>        Invoker: static (handler, evt) =></p>
+<p>          ((JobCollectivePerspective)handler).ArchiveJobs((ArchiveJobsCollectiveEvent)evt)</p>
+<p>      ),</p>
+<p>    };</p>
+<p>}</p>
+<p></code></pre></p>
+
+<p>At runtime the projection runner indexes by <code>(ModelType, EventType)</code> and</p>
+<p>dispatches via the typed <code>Invoker</code> lambda — no reflection, AOT-clean by</p>
+<p>construction.</p>
+
+<p>Expression-tree LINQ is allowed because the compiler constructs the tree</p>
+<p>from the source literal; the EF adapter and Dapper compiler walk it with</p>
+<code>ExpressionVisitor</code>. The EF adapter emits <code>jsonb_set(...)</code> SQL via a
+<p>custom <code>EF.Functions.JsonbSet</code> translator (<code>WhizbangJsonDbFunctions</code> +</p>
+<code>JsonbSetTranslator</code>), so parameter binding, escaping, and type mapping
+<p>all flow through EF Core's normal pipeline — no raw SQL strings in C#.</p>
+
+<h2>Driver-specific notes</h2>
+
+<h3>EF Core (Postgres)</h3>
+
+<p>Implemented in <code>Whizbang.Data.EFCore.Postgres</code>. Translates the spec's</p>
+<p>LINQ into EF Core 10's <code>ExecuteUpdateAsync(UpdateSettersBuilder<>)</code>.</p>
+<p>The adapter composes:</p>
+
+<ul><li>Resolver's <code>ScopeFilter<TModel>(scope)</code> → outer <code>WHERE</code> predicate</li>
+<li>Spec's <code>Setters</code> → translated <code>SET data = jsonb_set(...)</code> chain via</li>
+</ul><p>  the custom <code>EF.Functions.JsonbSet</code> translator</p>
+
+<p>That's the entire query. No matched-id membership clause. No audit</p>
+<p>write.</p>
+
+<h3>Dapper (Postgres)</h3>
+
+<p>Implemented in <code>Whizbang.Data.Dapper.Postgres.Collective</code>. The</p>
+<code>DapperCollectiveSpecCompiler<TModel>.Compile(spec, jsonOptions)</code> returns
+<p>a <code>CompiledSetClause</code>:</p>
+
+<ul><li><code>SqlFragment</code>: <code>data = jsonb_set(jsonb_set(data, '{A}', @set_0_a::jsonb), '{B}', @set_1_b::jsonb)</code></li>
+<li><code>Parameters</code>: <code>{ "set_0_a": "<json>", "set_1_b": "<json>" }</code></li>
+</ul>
+<p>Restricted to scalar constant-value <code>SetProperty</code> in v1.0; computed</p>
+<p>expressions (<code>j => j.X + 1</code>) and nested paths (<code>j => j.Nested.X</code>) throw</p>
+<code>NotSupportedException</code> with a pointer to <code>SpecKind = RawSql</code>.
+
+<h2>Failure semantics</h2>
+
+<ul><li>The SQL UPDATE either commits or rolls back — no per-row soft-fail</li>
+</ul><p>  (unlike per-stream <code>ApplyResult.Delete</code>/<code>Purge</code>).</p>
+<ul><li>If the resolver rejects the perspective (<code>AcceptsPerspective<TModel>()</code></li>
+</ul><p>  returns false), the runner skips the handler and logs a structured</p>
+<p>  rejection.</p>
+<ul><li>If the resolver's <code>EnterContext</code> throws, the runner surfaces the</li>
+</ul><p>  exception and the event remains un-acked (will be retried).</p>
+
+<h2>Out of scope (v1.0)</h2>
+
+<ul><li><strong>Cross-projection atomic coordination</strong> — a collective event that</li>
+</ul><p>  mutates multiple projection tables in lockstep. Likely a follow-up if</p>
+<p>  needed.</p>
+<ul><li><strong>Computed expressions on the Dapper driver</strong> — constant-value only</li>
+</ul><p>  in v1.0; the LINQ surface that EF supports comes later.</p>
+<ul><li><strong>Replacing existing receptor / composite-event paths</strong> —</li>
+</ul><p>  <code>ICollectiveEvent</code> is an additional primitive, not a replacement.</p>
+<ul><li><strong>Complex jsonb manipulation in the typed LINQ API</strong> — escape hatch via</li>
+</ul><p>  <code>SpecKind = RawSql</code> until a future iteration adds richer expression</p>
+<p>  translation.</p>
+
+<h2>Sample project</h2>
+
+<p>A self-contained walkthrough lives at</p>
+<a href="https://github.com/a consumer application/whizbang/tree/main/samples/CollectiveEvents"><code>samples/CollectiveEvents/</code></a>
+<p>in the library repo. It shows a tiny <code>JobModel</code>, two collective events</p>
+<p>(constant-value + computed-value), the handler with two</p>
+<code>[CollectiveApplyFor]</code> methods, and the DI registration.
+  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+</section>
+
+<section class="doc-category">
   <h3 class="category-header">Persistence</h3>
 <article id="v1-0-0-fundamentals-persistence-observability" class="doc-section">
   <h4>Observability &amp; Message Hops</h4>
@@ -51480,6 +52272,96 @@ npm install && npm run build</code></pre>
   <p><a href="#top">[Back to top]</a></p>
 </article>
 
+<article id="v1-0-0-fundamentals-perspectives-versioned-apply" class="doc-section">
+  <h4>Versioned Apply — Strict Cross-Pod Ordering</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/perspectives/versioned-apply</code></p>
+  <p class="doc-description"><em>Opt-in marker that gates a perspective model's UPSERT on UUIDv7 EventId ordering. Stops stale-read cross-pod writes from overwriting a row that a newer event already advanced — the strand-prevention guard SagaItemModel needed beyond v0.740's stream-affinity gate.</em></p>
+  <div class="doc-content">
+
+<h1>Versioned Apply — Strict Cross-Pod Ordering</h1>
+
+<h2>When you need it</h2>
+
+<p>Two pods are processing the same per-item stream. Each loads the projection row at roughly the same time and both see "no row" (or an earlier state). Each applies its own event and writes back. The writes go through independent transactions. If the staler write commits <em>last</em>, the row regresses — Pod A's <code>Completed</code> write gets overwritten by Pod B's stale-read <code>Running</code> write a few milliseconds later.</p>
+
+<p>This race was the production <code>019f000e</code> saga's per-item strand on 2026-06-25 and survived into the v0.755 re-run on 2026-06-26 (2 of 350 items stranded at <code>Running</code> even though both their <code>SagaItemStartedEvent</code> and <code>SagaItemCompletedEvent</code> were durably committed to <code>wh_event_store</code>). The framework reconciler healed the saga, but the projection itself stayed wrong.</p>
+
+<p>The default storage contract is <strong>deliberately permissive</strong> for this case — see <a href="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/CrossPodStaleReadRegressionRaceTests.cs"><code>CrossPodStaleReadRegressionRaceTests</code></a>. Whizbang's chosen v0.740 solution was upstream: <code>PerspectiveWorker</code>'s <code>(streamId, perspectiveName)</code> affinity gate plus <code>wh_active_streams</code> cross-pod ownership. Together they pin a stream to one pod at a time. But the gate has narrow windows where the strand can still form (lease handoff during pod restarts, the gap between <code>wh_active_streams</code> row expiry and the next pod's claim, etc.).</p>
+
+<code>IVersionedApplyTarget</code> is the <strong>opt-in</strong> marker that closes those windows for models that can't tolerate them. It adds a strict-greater UUIDv7 EventId check to the UPSERT <code>WHERE</code> clause: a stale write whose <code>metadata.EventId</code> is lexicographically older than what's already on the row is silently dropped.
+
+<h2>How it works</h2>
+
+<p>``<code>csharp{title="Opt in"}</p>
+<p>using Whizbang.Core.Perspectives;</p>
+
+<p>public class SagaItemModel : ISagaItem, IVersionedApplyTarget {</p>
+<p>  // ... model fields unchanged</p>
+<p>}</p>
+<pre><code class="language-">
+<p>The Postgres atomic UPSERT path detects the marker at compile-time-pinned runtime check and substitutes the WHERE clause:</p>
+
+<p></code></pre>sql</p>
+<p>-- Default (non-opted-in models)</p>
+<p>WHERE wh_per_X.metadata->>'CommitSequence' IS NULL</p>
+<p>   OR EXCLUDED.metadata->>'CommitSequence' IS NULL</p>
+<p>   OR (EXCLUDED.metadata->>'CommitSequence')::bigint >=</p>
+<p>      (wh_per_X.metadata->>'CommitSequence')::bigint</p>
+
+<p>-- IVersionedApplyTarget opt-in</p>
+<p>WHERE wh_per_X.metadata->>'EventId' IS NULL</p>
+<p>   OR EXCLUDED.metadata->>'EventId' > wh_per_X.metadata->>'EventId'</p>
+<p></code>`<code></p>
+
+<p>UUIDv7 from </code>TrackedGuid.NewMedo()<code> orders lexicographically by emission time. "Newer event wins" is the simple, total ordering rule. <strong>Same EventId</strong> (a transport redelivery, a consumer retry) is a strict-greater fail → the redundant UPDATE is skipped → </code>version<code> stays at the previous value → the Apply is idempotent.</p>
+
+<h2>Behavior summary</h2>
+
+<p>| Scenario | Default contract | Opt-in (</code>IVersionedApplyTarget<code>) |</p>
+<p>|---|---|---|</p>
+<p>| Newer event applied later | Wins | Wins |</p>
+<p>| Stale event applied later (older EventId) | <strong>Wins (overwrites the row)</strong> | <strong>Skipped</strong> |</p>
+<p>| Same EventId re-applied | Wins (bumps </code>version<code>) | Skipped (</code>version<code> unchanged) |</p>
+<p>| Null </code>metadata.CommitSequence<code> on both sides | Last-writer-wins (current contract) | Falls back to EventId comparison |</p>
+<p>| Null </code>metadata.EventId<code> on existing row | Initial write proceeds | Initial write proceeds |</p>
+
+<h2>When to opt in</h2>
+
+<p>Opt in when <strong>all</strong> of:</p>
+
+<ul><li>The model is updated from a per-item or other narrow stream where two pods can briefly race on the same row.</li>
+<li>The Apply transitions are state-machine-like — once advanced to a terminal state, regressing is wrong (e.g., a </code>SagaItemModel<code> going from </code>Completed<code> back to </code>Running<code>).</li>
+<li>Stamper-lag forwarding doesn't apply — the model's writes ship with </code>metadata.CommitSequence = null<code> and you can't rely on the CommitSequence-based legacy guard.</li>
+</ul>
+<p>The first opt-in is </code>Whizbang.Sagas.Models.SagaItemModel<code> (2026-06-26 release). Other model authors can add the marker on the same release without further changes.</p>
+
+<h2>When NOT to opt in</h2>
+
+<p>Don't opt in for:</p>
+
+<ul><li><strong>Replay-driven models that depend on stamper-lag forwarding.</strong> The forwarding contract assumes the storage layer is permissive when CommitSequence is null. Pinning to strict EventId ordering breaks that.</li>
+<li><strong>Models with concurrent Apply paths that don't share a stream id.</strong> EventId ordering across distinct streams isn't meaningful — newer EventId can be a totally unrelated event.</li>
+<li><strong>Aggregations / global perspectives.</strong> These typically need event coalescing logic that EventId ordering doesn't express.</li>
+</ul>
+<p>If in doubt, leave the marker off. The default contract is the documented, locked-in behavior; the opt-in is the safety upgrade for the narrow class of streams that need it.</p>
+
+<h2>Why opt-in, not default</h2>
+
+<p>The opt-in design preserves backward compatibility with three deliberate behaviors:</p>
+
+<ul><li><strong>Stamper-lag forwarding.</strong> Existing consumers depend on the storage layer accepting null-CommitSequence writes so the runner's idempotency logic can decide whether to forward.</li>
+<li><strong>Order-independent forward progress.</strong> Two unrelated forward writes (e.g., </code>Running<code> first, </code>Completed<code> second) must converge to the most-advanced state regardless of arrival order. The default contract preserves this.</li>
+<li><strong>Last-writer-wins regression test lock-ins</strong> (</code>CrossPodStaleReadRegressionRaceTests<code>). A regression here would silently break consumers; the opt-in surfaces deliberate intent and isolates the change.</li>
+</ul>
+<h2>Related</h2>
+
+<ul><li><a href="../sagas/completion-orchestration">Completion Orchestration & Adaptive Watchdog</a> — covers the saga-side framework that depends on </code>SagaItemModel<code>'s strict ordering for cross-pod strand prevention.</li>
+<li><a href="../dispatcher/publish-once">PublishOnceAsync</a> — the dispatcher-level exactly-once primitive sagas use for terminal-event emission.</li>
+<li></code>Whizbang.Data.EFCore.Postgres.Tests/CrossPodStaleReadRegressionRaceTests.cs` — the lock-in tests for the <strong>default</strong> non-strict contract this opt-in deliberately bypasses.</li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
 </section>
 
 <section class="doc-category">
@@ -53938,6 +54820,389 @@ npm install && npm run build</code></pre>
 </section>
 
 <section class="doc-category">
+  <h3 class="category-header">Sagas</h3>
+<article id="v1-0-0-fundamentals-sagas-completion-orchestration" class="doc-section">
+  <h4>Completion Orchestration &amp; Adaptive Watchdog</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/sagas/completion-orchestration</code></p>
+  <p class="doc-description"><em>How Whizbang.Sagas closes a saga. The per-item event-driven completion path is primary; the watchdog is a safety net that uses progress-rate-based adaptive scheduling, not a fixed exponential schedule.</em></p>
+  <div class="doc-content">
+
+<h1>Completion Orchestration & Adaptive Watchdog</h1>
+
+<h2>When you need it</h2>
+
+<p>You have a saga that fans out N items to per-item handlers. When the saga is healthy, the last item to terminate fires <code>SagaItemCompletedEvent</code> → receptor → <code>TryRecoverViaWatchdogAsync</code> → <code>SagaCompletedEvent</code>. The whole thing closes on the same event flow that processed the items — no timer involved.</p>
+
+<p>But that path can drop. A per-item terminal event can get lost in transport. A pod can die mid-receptor between writing the terminal event and updating the per-item projection row. The framework reconciler can be needed for a cross-pod-stranded row but the watchdog has to fire to trigger it.</p>
+
+<p>The <strong>completion watchdog</strong> is the safety net. It fires on a budgeted schedule, calls <code>TryRecoverViaWatchdogAsync</code>, and either drives <code>SagaCompletedEvent</code> from event-store truth or re-arms with an adaptive next-tick interval. After enough consecutive ticks observe no progress, it emits <code>SagaCompletionAbandonedEvent</code> for operator triage instead of re-arming forever.</p>
+
+<h2>The two completion paths</h2>
+
+<pre><code class="language-">┌─────────────────────────────────────────────────────────────────┐
+<p>│ PRIMARY: event-driven completion                                │</p>
+<p>│                                                                 │</p>
+<p>│   per-item terminal event → SagaItemCompletedHandler →          │</p>
+<p>│   TryRecoverViaWatchdogAsync → CompleteSagaAsync (one-shot)     │</p>
+<p>│                                                                 │</p>
+<p>│ Last item to terminate sees agg.Total == TotalItems, the        │</p>
+<p>│ reconciler agrees with the event store, exactly-one             │</p>
+<p>│ SagaCompletedEvent emits via PublishOnceAsync.                  │</p>
+<p>└─────────────────────────────────────────────────────────────────┘</p>
+<p>                              ↓ if dropped</p>
+<p>┌─────────────────────────────────────────────────────────────────┐</p>
+<p>│ SAFETY NET: time-driven completion                              │</p>
+<p>│                                                                 │</p>
+<p>│   watchdog tick (scheduled_for in outbox) →                     │</p>
+<p>│   TryRecoverViaWatchdogTickAsync →                              │</p>
+<p>│       recovered          → exit                                 │</p>
+<p>│       progress observed  → next tick at ETA + safety            │</p>
+<p>│       no progress        → stall counter increments             │</p>
+<p>│       max stalls reached → SagaCompletionAbandonedEvent         │</p>
+<p>└─────────────────────────────────────────────────────────────────┘</p>
+<p></code></pre></p>
+
+<h2>The cascade bug (motivating production incident, 2026-06-25)</h2>
+
+<code>Dispatcher.PublishAsync(event, DispatchOptions)</code> used to honor <code>ScheduledFor</code> on the outbox row's <code>scheduled_for</code> column but invoke the in-process local receptor inline regardless. That made watchdog re-arm look like this:
+
+<pre><code class="language-">T+0ms     SagaInitiatedEvent published
+<p>T+15ms    Initial watchdog tick fires inline (should be T+~65s for 350 items)</p>
+<p>T+~30ms   Re-arm publishes next tick "for T+30s", fires inline immediately</p>
+<p>T+~50ms   Re-arm publishes next tick, fires inline immediately</p>
+<p>T+~70ms   Re-arm publishes next tick, fires inline immediately</p>
+<p>T+86ms    SagaCompletionAbandonedEvent emitted (schedule exhausted)</p>
+<p>T+4s      Item 1's SagaItemCompletedEvent arrives… but the saga is already</p>
+<p>          abandoned, so the per-item recovery path no-ops.</p>
+<p></code></pre></p>
+
+<p>The fix is at the dispatcher: <code>PublishAsync</code> now gates the local receptor on <code>ScheduledFor</code> the same way it gates the outbox pickup. Future <code>ScheduledFor</code> defers the local receptor to the outbox-pickup path (mig 040). Past or null <code>ScheduledFor</code> preserves immediate-dispatch semantics.</p>
+
+<h2>Adaptive watchdog scheduling</h2>
+
+<p>The watchdog used to follow a fixed <code>[30s, 2m, 8m, 30m]</code> exponential. That works for the average case but ignores what the saga is actually doing — a 10,000-item saga and a 5-item saga ride the same schedule, and a saga that's actively making progress backs off the same way as one that's truly stuck.</p>
+
+<p>The current scheduler is <strong>progress-aware</strong>. Each watchdog tick captures a snapshot on the next tick event and the next tick computes its delay from observed completion rate:</p>
+
+<pre><code class="language-">on tick:
+<p>  recovered = TryRecoverViaWatchdogAsync(ctx)</p>
+<p>  if recovered: return Recovered</p>
+
+<p>  current = ItemRepository.GetAggregateForSagaAsync(sagaId)</p>
+<p>  delta   = (current.Completed + current.Failed)</p>
+<p>            - (tick.LastObservedCompleted + tick.LastObservedFailed)</p>
+
+<p>  if tick.LastObservedAt is null:</p>
+<p>    # First re-arm — no prior measurement</p>
+<p>    next_delay = ComputeInitialWatchdogBudget(current.Total)</p>
+<p>    next_stall = 0</p>
+
+<p>  elif delta > 0:</p>
+<p>    # Progress observed — ETA-based</p>
+<p>    elapsed   = now - tick.LastObservedAt</p>
+<p>    rate      = delta / elapsed.TotalSeconds</p>
+<p>    remaining = current.Total - (current.Completed + current.Failed)</p>
+<p>    next_delay = remaining / rate + WatchdogSafetyMargin</p>
+<p>    next_stall = 0</p>
+
+<p>  else:</p>
+<p>    # No progress between ticks — stall</p>
+<p>    next_stall = tick.ConsecutiveStallCount + 1</p>
+<p>    if next_stall >= MaxConsecutiveStalls:</p>
+<p>      emit SagaCompletionAbandonedEvent</p>
+<p>      return Abandoned</p>
+<p>    next_delay = MinWatchdogDelay * StallBackoffMultiplier^next_stall</p>
+
+<p>  next_delay = clamp(next_delay, MinWatchdogDelay, MaxWatchdogDelay)</p>
+<p>  emit SagaCompletionWatchdogTickEvent {</p>
+<p>    RescheduleCount = tick.RescheduleCount + 1,</p>
+<p>    LastObservedAt = now,</p>
+<p>    LastObservedCompleted = current.Completed,</p>
+<p>    LastObservedFailed = current.Failed,</p>
+<p>    ConsecutiveStallCount = next_stall,</p>
+<p>  } scheduled_for now + next_delay</p>
+<p>  return ReArmed</p>
+<p></code></pre></p>
+
+<p>The snapshot lives on the tick event itself — no new table, no per-pod in-memory state to fragment across instances.</p>
+
+<h2>Configuration</h2>
+
+<p>Five knobs on <code>SagaOptions</code>:</p>
+
+<p>``<code>csharp{title="Adaptive scheduler config"}</p>
+<p>services.AddWhizbangSagas(opts => {</p>
+<p>  opts.MinWatchdogDelay        = TimeSpan.FromSeconds(30); // floor</p>
+<p>  opts.MaxWatchdogDelay        = TimeSpan.FromMinutes(30); // ceiling</p>
+<p>  opts.WatchdogSafetyMargin    = TimeSpan.FromSeconds(30); // added to ETA</p>
+<p>  opts.MaxConsecutiveStalls    = 4;                        // abandon threshold</p>
+<p>  opts.StallBackoffMultiplier  = 2.0;                      // exponential on stall</p>
+<p>});</p>
+<pre><code class="language-">
+<p>| Knob | Default | Effect |</p>
+<p>|---|---|---|</p>
+<p>| </code>MinWatchdogDelay<code> | 30s | Floor on the next-tick delay. A fast burst observed rate can't trigger a tight re-arm loop. |</p>
+<p>| </code>MaxWatchdogDelay<code> | 30 min | Ceiling on the next-tick delay. A near-zero rate (one trailing item) can't push the tick hours into the future. |</p>
+<p>| </code>WatchdogSafetyMargin<code> | 30s | Added on top of the ETA when progress was observed, so the next tick lands a bit past the projected completion moment. |</p>
+<p>| </code>MaxConsecutiveStalls<code> | 4 | Number of consecutive zero-progress ticks before abandon. Progress between ticks resets the counter — slow sagas don't trigger abandon, stuck ones do. |</p>
+<p>| </code>StallBackoffMultiplier<code> | 2.0 | Exponential factor on stall: </code>MinDelay × Multiplier^stallCount<code>. Stall 1 = 60s, stall 2 = 120s, stall 3 = 240s, then abandon. |</p>
+
+<h2>When the watchdog is structurally redundant</h2>
+
+<p>After the cascade fix, the watchdog is a <strong>safety net</strong>. During healthy fan-out:</p>
+
+<ul><li>The initial watchdog tick fires at </code>T + ComputeInitialWatchdogBudget(items)<code> — roughly </code>30s + items × 100ms<code>.</li>
+<li>By then, most items have already terminated; per-item recovery receptors have been firing inline on every </code>SagaItemCompletedEvent<code>.</li>
+<li>The watchdog observes either a near-zero remaining count (re-arms close to actual completion) or a recovered saga (exits).</li>
+</ul>
+<p>You only need the watchdog when the event-driven path didn't close — a per-item terminal event got lost in transport, a pod died mid-receptor, or the framework reconciler needs the event-store slow-path for a stranded projection row.</p>
+
+<h2>Stall detection vs abandon</h2>
+
+<p>Progress between ticks resets </code>ConsecutiveStallCount<code> to zero. A genuinely slow saga (one item taking minutes, others trickling in) keeps the counter at zero indefinitely — the watchdog will keep re-arming at clamped intervals until everything completes.</p>
+
+<p>A stuck saga (transport-lost terminal event, projection-store wedged, an item caught in an infinite retry loop without emitting terminal) increments the counter on every tick that observes zero progress. After </code>MaxConsecutiveStalls<code>:</p>
+
+<p></code></pre>csharp{title="SagaCompletionAbandonedEvent"}</p>
+<p>public sealed class SagaCompletionAbandonedEvent : SagaEventBase {</p>
+<p>  public string SagaName { get; set; }</p>
+<p>  public Guid EntityId { get; set; }</p>
+<p>  public int RescheduleCount { get; set; }  // count of the last tick</p>
+<p>}</p>
+<p></code>`<code></p>
+
+<p>This is the operator-triage signal. Subscribe a consumer-side receptor to it for alerting / paging. The framework does NOT automatically retry or re-initiate the saga — the assumption is that anything reaching abandon needs human inspection.</p>
+
+<h2>Related</h2>
+
+<ul><li><a href="./whizbang-sagas">Whizbang.Sagas overview</a> — the application block this is part of.</li>
+<li><a href="../perspectives/versioned-apply">Versioned Apply</a> — the opt-in storage-layer guard that closes the cross-pod strand on </code>SagaItemModel<code> beyond the v0.740 stream-affinity gate.</li>
+<li><a href="../dispatcher/publish-once">PublishOnceAsync</a> — the exactly-once primitive </code>CompleteSagaAsync<code> rides on.</li>
+<li><a href="../dispatcher/dispatcher">Dispatcher Deep Dive</a> — the </code>Dispatcher.PublishAsync(event, DispatchOptions)` semantics that the cascade fix corrected.</li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-fundamentals-sagas-whizbang-sagas" class="doc-section">
+  <h4>Whizbang.Sagas — Multi-Stream Saga Coordination</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/sagas/whizbang-sagas</code></p>
+  <p class="doc-description"><em>Long-running multi-item workflows on top of Whizbang.Core. One attribute generates the events + service; per-item streams give race-free fan-out; PublishOnceAsync collapses the terminal-emission race; SagaItemCompletionReconciler rescues stranded sagas from cross-pod lost-updates.</em></p>
+  <div class="doc-content">
+
+<h1>Whizbang.Sagas — Multi-Stream Saga Coordination</h1>
+
+<h2>When you need it</h2>
+
+<p>You have a long-running workflow that processes many items, may take minutes or hours, can fail mid-flight on individual items, and needs to surface live progress to a UI. Classic cases:</p>
+
+<ul><li><strong>Bulk import</strong>: 350 jobs imported from a CSV; each job is a separate work unit; some fail; dashboard renders progress.</li>
+<li><strong>Multi-step orchestration</strong>: archive a tenant's jobs, then run an embedding backfill across all employee records, then notify subscribers.</li>
+<li><strong>Periodic backfill</strong>: walk every row in a 10k-row table, recompute a derived field, track completion.</li>
+</ul>
+<p>The bare event-sourcing primitives (<code>PublishAsync</code>, perspective projection) are correct but require every consumer to re-implement: per-item state tracking, progress aggregation, completion detection, race-free terminal-event emission, cross-pod consistency recovery, and dashboard resolvers. <code>Whizbang.Sagas</code> ships those pieces as one application block on top of <code>Whizbang.Core</code>.</p>
+
+<h2>One-line consumer surface</h2>
+
+<p>``<code>csharp{title="Declare a saga"}</p>
+<p>using Whizbang.Sagas;</p>
+
+<p>namespace AcmeCorp.Sagas;</p>
+
+<p>[Saga<AcmeEventBase>("BulkOrderImport")]</p>
+<p>public partial class BulkOrderImportSaga;</p>
+<pre><code class="language-">
+<p>That's it. The </code>[Saga<T>("Name")]<code> source generator emits, into a sibling </code>.g.cs<code> file:</p>
+
+<ul><li></code>SagaName<code> const</li>
+<li>Nine sealed partial nested event classes (</code>InitiatedEvent<code>, </code>ItemsDispatchedEvent<code>, </code>ItemStartedEvent<code>, </code>ItemCompletedEvent<code>, </code>ItemFailedEvent<code>, </code>CompletedEvent<code>, </code>ResetEvent<code>, </code>HookStartedEvent<code>, </code>HookCompletedEvent<code>) — each inherits </code>AcmeEventBase<code> and implements the matching </code>Whizbang.Sagas.Contracts<code> interface</li>
+<li>A typed </code>Service<code> class derived from </code>BaseSagaService<...><code> with all factory methods filled in</li>
+<li>An </code>AddBulkOrderImportSaga()<code> DI extension method registering the </code>Service<code> as Scoped</li>
+</ul>
+<strong>Without a project event base?</strong> Use </code>[Saga("Name")]<code> (no generic argument). The generator inherits from the framework's default </code>SagaEventBase<code> (carries </code>MessageId<code>, </code>OccurredAt<code>, </code>CorrelationId<code>, </code>CausationId<code>, </code>OperationName<code>).
+
+<strong>Consumer usage:</strong>
+
+<p></code></pre>csharp{title="Consume the generated service"}</p>
+<p>public class BulkOrderImportReceptor(BulkOrderImportSaga.Service saga) : IReceptor<StartBulkOrderImport> {</p>
+<p>  public async ValueTask HandleAsync(StartBulkOrderImport cmd, CancellationToken ct) {</p>
+<p>    var context = new SagaContext(SagaId: cmd.OperationId, EntityId: cmd.TenantId);</p>
+<p>    await saga.InitiateSagaAsync(context, itemIdentifiers: cmd.OrderIds.Select(id => id.ToString()).ToList(), hookNames: null, ct);</p>
+<p>    foreach (var orderId in cmd.OrderIds) {</p>
+<p>      await saga.UpdateItemAsync(context, orderId.ToString(), SagaItemState.Running, displayName: null, ct);</p>
+<p>      try {</p>
+<p>        await ProcessOrderAsync(orderId, ct);</p>
+<p>        await saga.UpdateItemAsync(context, orderId.ToString(), SagaItemState.Completed, displayName: null, ct);</p>
+<p>      } catch (Exception ex) {</p>
+<p>        await saga.FailItemAsync(context, orderId.ToString(), ex.Message, ex.ToString(), displayName: null, ct);</p>
+<p>      }</p>
+<p>    }</p>
+<p>  }</p>
+<p>}</p>
+
+<p>services.AddWhizbangSagas();</p>
+<p>services.AddBulkOrderImportSaga();</p>
+<pre><code class="language-">
+<h2>What you get under the covers</h2>
+
+<h3>Per-item streams (cross-pod-safe fan-out)</h3>
+
+<p>Per-item events (</code>ItemStartedEvent<code>, </code>ItemCompletedEvent<code>, </code>ItemFailedEvent<code>) ride a <strong>per-item stream</strong> derived from the saga id and the item identifier via </code>SagaItemStreams.Of(sagaId, itemIdentifier)<code>. Concurrent items don't contend for the saga's stream lease — N pods can process N items in parallel without lost-update races on a single aggregate.</p>
+
+<p></code>SagaItemStreams<code> uses an RFC 4122 v5 UUID (SHA-1 over </code>{namespace_bytes || utf8("{sagaId:D}/{itemIdentifier}")}<code>). The default namespace is </code>acb2e0cf-92d5-4f1b-8c5e-2d7f4a5e8b3a<code>. Override at startup for consumers migrating from a pre-Whizbang scheme:</p>
+
+<p></code></pre>csharp{title="Migration override"}</p>
+<p>services.AddWhizbangSagas(opts =></p>
+<p>  opts.PerItemStreamNamespace = Guid.Parse("0b36f8d4-3884-4c3c-b92b-fc6ec74775ea"));</p>
+<pre><code class="language-">
+<p>A matching PostgreSQL </code>saga_item_stream_id(uuid, text)<code> function reproduces the derivation byte-for-byte (handy for backfills).</p>
+
+<h3>Atomic terminal-event emission</h3>
+
+<p>When all items reach a terminal state, <strong>N concurrent terminal handlers</strong> may each conclude "I'm the last one" and try to emit </code>CompletedEvent<code>. The naive </code>if (!alreadyEmitted) PublishAsync(...)<code> has a check-to-commit window that collapses N duplicates to a few — but never to one.</p>
+
+<p></code>BaseSagaService.CompleteSagaAsync<code> routes through </code>SagaCompletionGuard.EmitOnceAsync<code>, which calls </code>IDispatcher.PublishOnceAsync(claimKey, evt, ct)<code> with the convention </code>"saga-completed:{sagaName}:{sagaId}"<code>. The dispatcher's atomic </code>INSERT … ON CONFLICT DO NOTHING<code> against </code>wh_unique_emission_claims<code> gives <strong>exactly-one</strong> emission by construction. See <a href="../dispatcher/publish-once">PublishOnceAsync</a> for the underlying mechanism.</p>
+
+<h3>Stranded-row reconciliation</h3>
+
+<p>Per-item projection rows can still be left in a non-terminal state by a cross-pod lost-update: two pods apply the same per-item stream and a stale </code>ItemStartedEvent<code> write lands after the </code>ItemCompletedEvent<code> write, reverting the row to </code>Running<code> even though the terminal event committed to </code>wh_event_store<code>.</p>
+
+<p></code>SagaItemCompletionReconciler.ResolveCompletionCountsAsync<code> walks the projection's non-terminal items and consults the durable event store via </code>ISagaItemTerminalReader<code>. If every item is terminal in the store, it returns the reconciled </code>(completed, failed)<code> counts; otherwise null (genuinely in progress). Saga completion handlers should call this on the slow path so a single stranded row doesn't strand the entire saga forever.</p>
+
+<h3>Dashboard live-progress resolvers</h3>
+
+<p></code>SagaLiveProgressResolvers<code> ships three helpers backing every saga dashboard's </code>processedCount<code> / </code>failedCount<code> / </code>progressPercent<code> GraphQL/REST resolvers:</p>
+
+<p></code></pre>csharp</p>
+<p>// In a HotChocolate / projection-side resolver:</p>
+<p>public Task<int> GetProcessedCountAsync(</p>
+<p>    Guid sagaId, SagaStatus status, int storedCompletedItems,</p>
+<p>    [Service] ISagaItemRepository repo, CancellationToken ct) =></p>
+<p>  SagaLiveProgressResolvers.ResolveProcessedCountAsync(sagaId, status, storedCompletedItems, repo, ct);</p>
+<pre><code class="language-">
+<p>While running, stored counters on the saga row are still 0; the resolver reads the live GROUP BY aggregate. Once terminal, stored counters are authoritative and the resolver short-circuits (no DB round-trip on every refresh). All resolvers take an explicit </code>sagaId<code> parameter so projection-level shadowing of </code>BaseSagaModel.Id<code> (</code>[StreamId] public new Guid Id<code>) doesn't silently return zero.</p>
+
+<h3>Apply helpers</h3>
+
+<p></code>SagaApplyHelper<code> (</code>TrackCompleted<code>, </code>TrackFailed<code>, </code>TrackFailedFast<code>) and </code>SagaHookApplyHelper<code> (</code>DeclareHooks<code>, </code>TrackHookStarted<code>, </code>TrackHookCompleted<code>) consolidate the find-or-create + </code>IsTerminal<code>-dedup + counter-bump pattern that every saga projection's Apply methods otherwise re-implement. They take a caller-supplied timestamp — Apply stays pure, replays reconstruct exact original timestamps.</p>
+
+<h3>Metrics</h3>
+
+<p></code>SagaMetrics<code> (meter </code>Whizbang.Sagas<code>) ships nine instruments tagged with </code>saga_name<code>:</p>
+
+<p>| Instrument | Type | Use |</p>
+<p>|---|---|---|</p>
+<p>| </code>whizbang.sagas.initiated<code> | Counter | Sagas initiated |</p>
+<p>| </code>whizbang.sagas.completed<code> | Counter | Sagas reached terminal completion |</p>
+<p>| </code>whizbang.sagas.failed<code> | Counter | Sagas fail-fasted |</p>
+<p>| </code>whizbang.sagas.duration<code> | Histogram | End-to-end saga duration (seconds) |</p>
+<p>| </code>whizbang.sagas.items_completed<code> | Histogram | Items completed per saga |</p>
+<p>| </code>whizbang.sagas.items_failed<code> | Histogram | Items failed per saga |</p>
+<p>| </code>whizbang.sagas.hooks_completed<code> | Counter | Hook executions that succeeded |</p>
+<p>| </code>whizbang.sagas.hooks_failed<code> | Counter | Hook executions that failed |</p>
+<p>| </code>whizbang.sagas.items_reset<code> | Counter | Saga items reset via </code>SagaResetEvent<code> |</p>
+
+<p>Add to your OpenTelemetry exporter wiring alongside </code>Whizbang.Dispatcher<code>.</p>
+
+<h2>Customization</h2>
+
+<p></code></pre>csharp{title="Skip hooks"}</p>
+<p>[Saga<AcmeEventBase>("BulkOrderImport", IncludeHooks = false)]</p>
+<p>public partial class BulkOrderImportSaga;</p>
+<p>// Generator omits HookStartedEvent + HookCompletedEvent, stubs the</p>
+<p>// Service's BuildHook*Event overrides to throw InvalidOperationException.</p>
+<pre><code class="language-">
+<p></code></pre>csharp{title="Custom Service class"}</p>
+<p>[Saga<AcmeEventBase>("BulkOrderImport", GenerateService = false)]</p>
+<p>public partial class BulkOrderImportSaga {</p>
+<p>  public sealed class Service(ISagaEventEmitter emitter, ILogger<Service> log) :</p>
+<p>    BaseSagaService<InitiatedEvent, ItemsDispatchedEvent, ItemStartedEvent, ItemCompletedEvent,</p>
+<p>                    ItemFailedEvent, CompletedEvent, ResetEvent, HookStartedEvent, HookCompletedEvent>(</p>
+<p>      SagaName, emitter, log) {</p>
+<p>    // Custom factory overrides, e.g. populating tenant context onto every event.</p>
+<p>    protected override InitiatedEvent BuildInitiatedEvent(SagaContext ctx, IReadOnlyList<string> items, IReadOnlyList<string>? hooks, DateTimeOffset sentAt) =></p>
+<p>      new() { EntityId = ctx.EntityId, ItemIdentifiers = items, TotalItems = items.Count, HookNames = hooks, TenantId = TenantContext.Current };</p>
+<p>    // ... 8 more</p>
+<p>  }</p>
+<p>}</p>
+<pre><code class="language-">
+<p></code></pre>csharp{title="Extra per-event payload via partial class"}</p>
+<p>[Saga<AcmeEventBase>("BulkOrderImport")]</p>
+<p>public partial class BulkOrderImportSaga {</p>
+<p>  // Consumer extends the generated CompletedEvent with domain payload:</p>
+<p>  public sealed partial class CompletedEvent {</p>
+<p>    public int DraftsCreated { get; set; }</p>
+<p>    public string? WarningCode { get; set; }</p>
+<p>  }</p>
+<p>}</p>
+<pre><code class="language-">
+<h2>Patterns</h2>
+
+<h3>Nested / hierarchical sagas</h3>
+
+<p>The item-identifier mechanism already supports nesting. A parent saga's </code>ItemIdentifier<code> is a child saga's id; when the child completes, a cross-saga receptor calls </code>parent.CompleteItem(parentSagaId, childId)<code>:</p>
+
+<p></code></pre>csharp{title="Parent observes children"}</p>
+<p>public class ChildSagaCompletedReceptor(ParentSaga.Service parent) :</p>
+<p>    IReceptor<ChildSaga.CompletedEvent> {</p>
+<p>  public async ValueTask HandleAsync(ChildSaga.CompletedEvent e, CancellationToken ct) {</p>
+<p>    var parentSagaId = ResolveParent(e.SagaId);</p>
+<p>    var parentCtx = new SagaContext(parentSagaId, parentEntityId);</p>
+<p>    if (e.FinalStatus is SagaStatus.Completed) {</p>
+<p>      await parent.UpdateItemAsync(parentCtx, e.SagaId.ToString(), SagaItemState.Completed, displayName: null, ct);</p>
+<p>    } else {</p>
+<p>      await parent.FailItemAsync(parentCtx, e.SagaId.ToString(), $"Child saga {e.FinalStatus}", null, displayName: null, ct);</p>
+<p>    }</p>
+<p>  }</p>
+<p>}</p>
+<pre><code class="language-">
+<p>No framework-level child concept is required. Each level uses the same </code>BaseSagaService<code> API. </code>SagaItemCompletionReconciler<code> handles "did the child actually finish?" via event-store truth at each level.</p>
+
+<h3>Compensation</h3>
+
+<p>Whizbang.Sagas ships an </code>ISagaCompensatingEvent<code> marker interface but does NOT automatically execute compensation — the right ordering is irreducibly domain-specific (refund before un-archive, or vice versa, depends on the workflow). Mark your compensation events with the interface so visualization and audit tooling can group them, then wire your own </code>IReceptor<MyCompensatingEvent><code> chain:</p>
+
+<p></code></pre>csharp</p>
+<p>public class RefundPaymentEvent : AcmeEventBase, ISagaCompensatingEvent {</p>
+<p>  public Guid CompensatingForSagaId { get; set; }</p>
+<p>  public decimal Amount { get; set; }</p>
+<p>  // ... domain payload</p>
+<p>}</p>
+<pre><code class="language-">
+<h3>Hook bookends (Rule 17)</h3>
+
+<p>Long-running setup or teardown work (warm a cache, write a manifest, send a notification) sits alongside items as first-class "hook" entries on the saga projection:</p>
+
+<p></code></pre>csharp{title="Run a hook"}</p>
+<p>await saga.TryRunHookAsync(</p>
+<p>  ctx, sagaProjection: maybeLoadedProjection,</p>
+<p>  hookName: "warm-cache", displayName: "Warm response cache",</p>
+<p>  work: async (ct) => await _cache.WarmAsync(ct),</p>
+<p>  ct);</p>
+<p></code>`<code></p>
+
+<p>The framework publishes </code>HookStartedEvent<code> before </code>work()<code> runs and </code>HookCompletedEvent<code> after (or on failure, with the exception captured before rethrow). Hook idempotency: </code>TryRunHookAsync<code> skips when the projection already shows the hook in a terminal state.</p>
+
+<h2>Architecture invariants</h2>
+
+<p>Whizbang.Sagas is built on Whizbang.Core's purity contract:</p>
+
+<ul><li><strong>Apply stays pure.</strong> Every helper takes the caller's timestamp; no </code>DateTimeOffset.UtcNow<code> leakage. Replay reconstructs exact original state.</li>
+<li><strong>Receptors do side effects.</strong> </code>BaseSagaService<code> lifecycle methods (</code>InitiateSagaAsync<code>, </code>UpdateItemAsync<code>, etc.) are explicitly receptor-time operations — they call </code>ISagaEventEmitter.PublishAsync<code>. Apply methods just project.</li>
+<li><strong>Exactly-once emission lives at the dispatcher.</strong> </code>CompleteSagaAsync<code> is the only method that uses </code>PublishOnceAsync<code> — and only because the saga-completion race is the precise scenario the dispatcher's claim primitive was designed for.</li>
+</ul>
+<h2>Related</h2>
+
+<ul><li><a href="./completion-orchestration">Completion Orchestration & Adaptive Watchdog</a> — how a saga actually closes: per-item event-driven completion path + the progress-rate-based watchdog safety net.</li>
+<li><a href="../dispatcher/publish-once">PublishOnceAsync</a> — the dispatcher-level exactly-once primitive </code>SagaCompletionGuard<code> wraps.</li>
+<li><a href="../dispatcher/dispatcher">Dispatcher Deep Dive</a> — the broader </code>IDispatcher` API surface.</li>
+<li><a href="../messaging/collective-events">Collective Events</a> — for the orthogonal "one event mutates a set of streams" pattern.</li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+</section>
+
+<section class="doc-category">
   <h3 class="category-header">Security</h3>
 <article id="v1-0-0-fundamentals-security-audit-logging" class="doc-section">
   <h4>Audit Logging</h4>
@@ -54442,6 +55707,77 @@ npm install && npm run build</code></pre>
 
 <em>Version 1.0.0 - Foundation Release | Last Updated: 2025-01-22</em>
   </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-fundamentals-security-http-security-headers" class="doc-section">
+  <h4>HTTP Security Headers &amp; Method Filtering</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/security/http-security-headers</code></p>
+  <p class="doc-description"><em>Turnkey ASP.NET Core middleware that applies hardened HTTP response headers (HSTS, X-Frame-Options, CSP frame-ancestors, nosniff, Referrer-Policy, Permissions-Policy) and can reject unexpected HTTP methods with 405.</em></p>
+  <div class="doc-content">
+
+<h1>HTTP Security Headers & Method Filtering</h1>
+
+<code>Whizbang.Hosting.AspNet</code> hardens every HTTP response a service emits — REST (FastEndpoints), GraphQL (HotChocolate), health probes, and framework-generated errors (401/404/405) alike.
+
+<p>It is <strong>turnkey</strong>: <code>AddWhizbangAspNet()</code> auto-wires the middleware via an <code>IStartupFilter</code> (the same mechanism as correlation capture), so a service gets the hardened headers with no explicit pipeline call — and picks them up automatically on a framework upgrade.</p>
+
+<p>``<code>csharp{title="Turnkey security headers" description="Demonstrates the automatic wiring" category="Security" difficulty="BEGINNER" tags=["Security", "Headers", "Middleware"]}</p>
+<p>// Program.cs — nothing to add; AddWhizbangAspNet() wires the headers for you.</p>
+<p>builder.Services.AddWhizbangAspNet();</p>
+<pre><code class="language-">
+<p>This is safe to auto-enable because the headers are <strong>idempotent</strong> (an edge-set header is never overwritten), HSTS is emitted only over TLS/forwarded-TLS, and <strong>method filtering is off by default</strong> (see below). A service that manages its own headers can opt out with </code>Enabled = false<code>.</p>
+
+<p>You can still call </code>UseWhizbangSecurityHeaders(...)<code> explicitly if you need to control the exact pipeline position, but it is not required.</p>
+
+<h2>Default headers</h2>
+
+<p>| Header | Default value |</p>
+<p>|--------|---------------|</p>
+<p>| </code>Strict-Transport-Security<code> | </code>max-age=31536000; includeSubDomains; preload<code> — <strong>only on HTTPS requests</strong> (or </code>X-Forwarded-Proto: https<code>) |</p>
+<p>| </code>X-Content-Type-Options<code> | </code>nosniff<code> |</p>
+<p>| </code>X-Frame-Options<code> | </code>DENY<code> |</p>
+<p>| </code>Content-Security-Policy<code> | </code>frame-ancestors 'none'<code> |</p>
+<p>| </code>Referrer-Policy<code> | </code>strict-origin-when-cross-origin<code> |</p>
+<p>| </code>Permissions-Policy<code> | </code>camera=(), microphone=(), geolocation=()<code> |</p>
+
+<p>Every value is overridable (set to </code>null<code> to suppress a header entirely). Configure the turnkey middleware through options:</p>
+
+<p></code></pre>csharp{title="Customize headers" description="Demonstrates overriding header defaults" category="Security" difficulty="INTERMEDIATE" tags=["Security", "Headers", "Options"]}</p>
+<p>builder.Services.Configure<WhizbangSecurityHeadersOptions>(options => {</p>
+<p>  options.ContentSecurityPolicy = "frame-ancestors 'self'";</p>
+<p>  options.PermissionsPolicy = null;              // don't emit</p>
+<p>  // Opt in to method filtering (off by default) — reject anything outside this list with 405:</p>
+<p>  options.AllowedMethods.Add("GET");</p>
+<p>  options.AllowedMethods.Add("HEAD");</p>
+<p>  options.AllowedMethods.Add("POST");</p>
+<p>  options.AllowedMethods.Add("OPTIONS");</p>
+<p>});</p>
+<pre><code class="language-">
+<h2>Behavior guarantees</h2>
+
+<ul><li><strong>Idempotent</strong> — a header already present on the response (for example, set by an edge proxy such as Azure Front Door or Application Gateway) is <strong>never overwritten</strong>. The edge wins; the middleware only fills gaps. Origin + edge = defense-in-depth.</li>
+<li><strong>HSTS is TLS-aware</strong> — pods typically listen on plain HTTP behind a TLS-terminating edge. HSTS is emitted only when </code>Request.IsHttps<code> is true <strong>or</strong> the request carries </code>X-Forwarded-Proto: https<code>. Emitting HSTS on plain HTTP is meaningless and can mask misconfiguration.</li>
+<li><strong>Method filtering (opt-in)</strong> — </code>AllowedMethods<code> is <strong>empty by default</strong>, so every verb passes. This keeps the turnkey wiring safe: auto-enabling a </code>GET, HEAD, POST, OPTIONS<code> allowlist would 405 every service that legitimately serves PUT/PATCH/DELETE. Populate </code>AllowedMethods<code> on a service that should reject other verbs at the origin — then requests outside the list are short-circuited with <strong>405 Method Not Allowed</strong> and an </code>Allow<code> header before routing.</li>
+<li><strong>Opt-out</strong> — set </code>Enabled = false<code> to make the middleware a transparent pass-through (no headers, no filtering) for a service that manages its own response headers.</li>
+<li><strong>Reflection-free / AOT-safe</strong> — headers are applied via </code>HttpResponse.OnStarting<code>; no reflection, no dynamic types (Whizbang Key Principles 1–2).</li>
+</ul>
+<h2>Suppressing the Kestrel </code>Server<code> header</h2>
+
+<p>Response header hardening usually pairs with removing the </code>Server: Kestrel<code> banner. Use the Kestrel helper:</p>
+
+<p></code></pre>csharp{title="Suppress Server header" description="Demonstrates removing the Server response header" category="Security" difficulty="BEGINNER" tags=["Security", "Kestrel", "Server"]}</p>
+<p>builder.WebHost.UseWhizbangKestrelSecurityDefaults();   // sets AddServerHeader = false</p>
+<p></code>`<code></p>
+
+<h2>When to use</h2>
+
+<p>Nothing to enable — any service calling </code>AddWhizbangAspNet()<code> gets the headers automatically. If an edge layer already injects these headers, the turnkey middleware still adds value: the idempotence guarantee means the origin only covers responses the edge misses (direct pod access, internal calls, edge misconfiguration). Opt out per service with </code>Enabled = false<code>, and opt <strong>in</strong> to method filtering by populating </code>AllowedMethods`.</p>
+
+<h2>See also</h2>
+
+<ul><li><a href="../../apis/graphql/production-hardening.md">GraphQL Production Hardening</a> — introspection and error-detail hardening for HotChocolate services.</li>
+</ul>  </div>
   <p><a href="#top">[Back to top]</a></p>
 </article>
 
@@ -58733,6 +60069,395 @@ npm install && npm run build</code></pre>
 
 </section>
 
+<section class="doc-category">
+  <h3 class="category-header">Workers</h3>
+<article id="v1-0-0-fundamentals-workers-instance-liveness" class="doc-section">
+  <h4>Instance Liveness — Advisory Lock + Heartbeat Fallback</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/workers/instance-liveness</code></p>
+  <p class="doc-description"><em>Dual-signal liveness scheme — session-level advisory lock on the direct LISTEN conn (primary) plus the heartbeat-table fallback (legacy). Adaptive HeartbeatWorker cadence preserves the 30 s recovery guarantee.</em></p>
+  <div class="doc-content">
+
+<h1>Instance liveness — advisory lock + heartbeat fallback</h1>
+
+<p>Whizbang has two independent signals for "this instance is alive," wired in slice 7b. Operators reading this page need to understand both signals because the slow heartbeat cadence is only safe when the lock signal is healthy.</p>
+
+<h2>Two signals</h2>
+
+<p>| Signal | Source | Latency | When used |</p>
+<p>|---|---|---|---|</p>
+<p>| <strong>Advisory lock</strong> (primary) | Session-level lock claimed by <code>PgSharedNotifyConnection</code> on its direct (non-pgbouncer) LISTEN conn at open. Released by PostgreSQL when the session ends — TCP close, pod death, network reset. | Sub-second (TCP keepalive timeout, typically 10–30 s) | Available when the direct conn is wired. |</p>
+<p>| <strong>Heartbeat table</strong> (fallback) | <code>wh_service_instances.last_heartbeat_at</code> updated by <code>HeartbeatWorker</code> on its cadence. Stale rows removed by <code>cleanup_stale_instances</code> after <code>p_stale_cutoff</code>. | 30 s (heartbeat cadence × 6 + cutoff buffer) | Always available — the table write is the universal fallback. |</p>
+
+<p>The new SQL function <code>is_instance_alive(instance_id, threshold_seconds)</code> returns TRUE if EITHER signal indicates alive:</p>
+
+<pre><code class="language-sql">-- migration 055
+<p>SELECT is_instance_alive('11111111-...'::uuid, 30);</p>
+<p></code></pre></p>
+
+<h2>Adaptive HeartbeatWorker cadence</h2>
+
+<code>HeartbeatWorkerOptions.LivenessSourceMode</code> controls the cadence decision:
+
+<p>| Mode | Behaviour |</p>
+<p>|---|---|</p>
+<p>| <code>AdvisoryLockWhenAvailable</code> (default) | Use <code>SlowIntervalSeconds</code> (60 s) when the lock is held; fall back to <code>IntervalSeconds</code> (30 s) when not. |</p>
+<p>| <code>HeartbeatTableOnly</code> | Always use <code>IntervalSeconds</code>. Legacy / opt-out for environments that don't trust the adaptive behaviour. |</p>
+
+<p>Per-tick resolution means:</p>
+
+<ul><li><strong>Reconnect</strong> (lock acquired) → next tick uses slow cadence.</li>
+<li><strong>Disconnect</strong> (lock released) → next tick reverts to fast cadence.</li>
+</ul>
+<p>The 30 s <code>cleanup_stale_instances</code> recovery guarantee is preserved in both cases because:</p>
+
+<ul><li><strong>Lock-held path</strong>: TCP keepalive detects pod death within 10–30 s. <code>cleanup_stale_instances</code> (updated in slice 7b) also skips rows whose advisory lock is still held, so the slow heartbeat write doesn't trip false cleanups.</li>
+<li><strong>Lock-not-held path</strong>: HeartbeatWorker reverts to fast cadence automatically; <code>cleanup_stale_instances</code> 30 s cutoff catches stale rows on schedule.</li>
+</ul>
+<h2>Migration touch points</h2>
+
+<p>| Migration | What changed |</p>
+<p>|---|---|</p>
+<p>| <strong>055</strong> (new) | <code>claim_instance_alive_lock(uuid) → bool</code> and <code>is_instance_alive(uuid, threshold) → bool</code> |</p>
+<p>| <strong>011</strong> (modified) | <code>cleanup_stale_instances</code> skip-while-locked clause added |</p>
+
+<h2>Operator notes</h2>
+
+<ul><li>The lock acquisition is non-fatal: if it returns <code>false</code> (duplicate-startup race) or throws (migration 055 not yet applied), the heartbeat-table fallback continues to work.</li>
+<li><code>IsAliveLockHeld</code> is observable on <code>IInstanceAliveLockSource</code> (implemented by <code>PgSharedNotifyConnection</code>). The HeartbeatWorker reads it every tick — no eventing/cache invalidation needed.</li>
+<li>DI: HeartbeatWorker takes <code>IInstanceAliveLockSource?</code> as an optional ctor param. When not registered, the worker behaves bit-for-bit like pre-v0.681.</li>
+</ul>
+<h2>Verification</h2>
+
+<pre><code class="language-sql">-- Inspect held alive-locks (one row per active instance)
+<p>SELECT * FROM pg_locks</p>
+<p>WHERE locktype = 'advisory'</p>
+<p>  AND classid + objid <> 0;</p>
+<p></code></pre></p>
+
+<p>After deploy + restart, the heartbeat UPDATE call count in <code>pg_stat_statements</code> should drop ~5×–12× (depending on how long pods stay alive holding the lock). <code>pg_stat_database.xact_commit</code> for the same DB should drop proportionally.</p>
+
+<h2>Related</h2>
+
+<ul><li><a href="./pinned-connection-pool.md">Pinned connection pool</a> — also uses direct conn(s); future work may add a per-pinned-conn lock for redundancy.</li>
+<li><a href="./worker-classification.md">Worker classification</a> — HeartbeatWorker is classified <code>E</code> (timed) with an adaptive twist.</li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-fundamentals-workers-perspective-worker-notify" class="doc-section">
+  <h4>PerspectiveWorker NOTIFY Wake</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/workers/perspective-worker-notify</code></p>
+  <p class="doc-description"><em>PerspectiveWorker subscribes to WorkSignalCategory.Perspective NOTIFY signals to eliminate idle polling. Polling stays as a safety-net cadence.</em></p>
+  <div class="doc-content">
+
+<h1>PerspectiveWorker NOTIFY wake</h1>
+
+<code>WorkSignalCategory.Perspective</code> already fires from the database on every <code>wh_perspective_events</code> insert — the producer trigger has been live for releases. Until v0.681 the signal had no consumer, so <code>PerspectiveWorker</code> spun on a 1 s default poll loop regardless of actual perspective_event arrival.
+
+<p>This page documents the consumer subscription added in slice 7a.</p>
+
+<h2>Wake mechanism</h2>
+
+<pre><code class="language-mermaid">graph LR
+<p>  Producer[Producer commits<br/>wh_perspective_events row] -->|trigger fires| PG[(PostgreSQL<br/>NOTIFY 'perspective')]</p>
+<p>  PG -->|LISTEN dispatch| Listener[IWorkNotificationListener]</p>
+<p>  Listener -->|OnSignal(Perspective)| Worker[PerspectiveWorker._wake.Release]</p>
+<p>  Worker -->|Task.WhenAny wins| Drain[Scan + drain]</p>
+<p></code></pre></p>
+
+<p>The worker's main <code>Task.WhenAny</code> now races the standard channel-readers, the safety-net <code>Task.Delay</code>, AND the wake semaphore. Whichever completes first triggers the drain.</p>
+
+<h2>Options</h2>
+
+<p>| Property | Default | Used when |</p>
+<p>|---|---|---|</p>
+<p>| <code>PollingIntervalMilliseconds</code> | <code>1000</code> | NOTIFY listener is null / disabled — the worker falls back to this cadence so an outage doesn't introduce latency |</p>
+<p>| <code>NotifyHealthyPollingIntervalMilliseconds</code> | <code>30000</code> | NOTIFY listener is wired — relaxed safety-net cadence (signal does the actual wake) |</p>
+
+<p>The worker picks the max of the two when a listener is wired, so setting <code>NotifyHealthyPollingIntervalMilliseconds = PollingIntervalMilliseconds</code> disables the relaxed cadence entirely.</p>
+
+<h2>Operator notes</h2>
+
+<ul><li>When no <code>IWorkNotificationListener</code> is registered (legacy / no-direct-conn hosts), behaviour is bit-for-bit identical to pre-v0.681.</li>
+<li>The signal handler filters by <code>category == Perspective</code>; Outbox/Inbox/OrphanRedistribute don't wake this worker.</li>
+<li><code>StopAsync</code> unsubscribes symmetrically; a host restart doesn't double-subscribe.</li>
+</ul>
+<h2>Verification</h2>
+
+<p>After deploy, <code>pg_stat_statements</code> filtered to production should show the <code>fetch_perspective_events</code>-shaped query call count drop sharply during idle periods (was ~4 calls/sec on poll-only; expect ~0.03/sec on safety-net cadence). The new tick attribute on <code>whizbang.perspective.tick.duration</code> carries <code>triggered_by={notify,safety_net}</code> so observability dashboards can confirm the wake path is actually NOTIFY-driven.</p>
+
+<h2>Related</h2>
+
+<ul><li><a href="../work-coordinator/notifications-and-pgbouncer.md">Notifications & pgbouncer</a> — overall LISTEN/NOTIFY topology.</li>
+<li><a href="./worker-classification.md">Worker classification</a> — which workers are NOTIFY-driven, channel-driven, or timer-driven.</li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-fundamentals-workers-pinned-connection-pool" class="doc-section">
+  <h4>Pinned Worker Connection Pool</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/workers/pinned-connection-pool</code></p>
+  <p class="doc-description"><em>Optional dedicated pool of long-lived PostgreSQL connections held by the hot-path background workers, bypassing pgbouncer to eliminate per-transaction DISCARD ALL overhead.</em></p>
+  <div class="doc-content">
+
+<h1>Pinned Worker Connection Pool</h1>
+
+<p>Whizbang background workers normally share the pgbouncer-fronted connection pool with application traffic. Each transaction's return to the pool triggers <code>DISCARD ALL</code> to reset session state — a cheap call individually (~60 µs) but one that fires on <em>every</em> transaction, including the hot polling loops.</p>
+
+<p>On a measured production-shaped workload (production dev, alpha <code>0.674.1-alpha.32</code>, 16,759-event import), <code>DISCARD ALL</code> accounted for <strong>22.5 % of total database time</strong>. The pinned worker connection pool eliminates that overhead for the workers that actually drive the hot path.</p>
+
+<h2>When to enable</h2>
+
+<p>The pinned pool is <strong>opt-in</strong> and <strong>off by default</strong>. Enable it when:</p>
+
+<ul><li>Hot worker <code>DISCARD ALL</code> cost is observably eating a meaningful slice of DB time (use <code>pg_stat_statements</code>, filtered by <code>dbid</code> to isolate your service's database).</li>
+<li>You have a way to provide a direct PostgreSQL connection string that bypasses pgbouncer (typically pointing at port <code>5432</code> rather than the pgbouncer port <code>6432</code>).</li>
+<li>The host environment can spare the extra direct PG connections — see <a href="#connection-budget">Connection budget</a> below.</li>
+</ul>
+<p>Leave it off for development, single-instance deployments, or any environment where the pgbouncer hop is already low-latency and the worker fleet is small.</p>
+
+<h2>How it works</h2>
+
+<pre><code class="language-mermaid">graph LR
+<p>  Worker[Background worker<br/>tier-1+2 eligible] -->|Borrow| Pool[Pinned pool<br/>Size=1..N]</p>
+<p>  Pool -->|Direct| PG[(PostgreSQL<br/>port 5432)]</p>
+
+<p>  RegularCode[Application code<br/>+ ineligible workers] -->|Pool acquire| PgBouncer[pgbouncer<br/>port 6432]</p>
+<p>  PgBouncer -.->|DISCARD ALL<br/>per txn| PG</p>
+
+<p>  Listener[NOTIFY listener<br/>1 per pod] -->|Direct LISTEN| PG</p>
+<p></code></pre></p>
+
+<p>Eligible workers borrow a connection from the pinned pool for the duration of their transaction, then return it. The connection itself stays open for <code>ConnectionLifetimeSeconds</code> (default 30 min) before being recycled. No <code>DISCARD ALL</code> fires because the connection never re-enters a multi-tenant pool.</p>
+
+<h2>Worker eligibility (tiers)</h2>
+
+<p>Eligibility is <strong>tier-driven</strong>, not per-worker config. The tiers reflect measured DB pressure, not arbitrary categorization.</p>
+
+<h3>Tier 1 — always pinned when enabled</h3>
+
+<p>| Worker | Why it's tier 1 |</p>
+<p>|---|---|</p>
+<p>| <code>ClaimWorker</code> | Hot poll loop — calls <code>claim_work</code> + 3× <code>claim_orphaned_*</code> per wake; biggest single DB-time consumer |</p>
+<p>| <code>OutboxPublishWorker</code> | Polls <code>fetch_outbox_batch</code>, publishes, flushes completions |</p>
+<p>| <code>HeartbeatWorker</code> | Upserts <code>wh_service_instances</code> every ~5 s; always-on |</p>
+<p>| <code>LeaseRenewalWorker</code> | Updates <code>wh_active_streams.lease_expiry</code> every ~10 s; always-on |</p>
+
+<h3>Tier 2 — flush channels (opt-in, default on)</h3>
+
+<p>Controlled by <code>IncludeFlushWorkers</code> (default <code>true</code> once <code>Enabled=true</code>).</p>
+
+<p>| Worker | What it flushes |</p>
+<p>|---|---|</p>
+<p>| <code>InboxHandlerWorker</code> | Calls <code>commit_handler_batch</code> (the two-tier handler-commit orchestrator) |</p>
+<p>| <code>OutboxCompletionFlushWorker</code> | Calls <code>complete_outbox_published</code> for completed sends |</p>
+<p>| <code>PerspectiveCompletionFlushWorker</code> | Calls <code>process_perspective_event_completions</code> for projected events |</p>
+<p>| <code>FailureFlushWorker</code> | Calls <code>report_failures</code> for batched failure rollups |</p>
+
+<h3>Not eligible</h3>
+
+<p>These workers do not borrow from the pinned pool — pinning them would cost a connection slot for marginal benefit.</p>
+
+<ul><li><code>TransportConsumerWorker</code>, <code>ServiceBusConsumerWorker</code> — transport I/O dominates; DB time is a small share.</li>
+<li><code>PerspectiveMigrationWorker</code> — one-shot at startup.</li>
+<li><code>MaintenanceWorker</code>, <code>BackupTickCoordinator</code>, <code>WhizbangShutdownService</code>, <code>IdleActivityTouchHookBinder</code> — periodic at minute-scale or lifecycle-only.</li>
+<li><code>OrphanInboxJanitor</code>, <code>DeadLetterRecoveryWorker</code>, <code>RecentlyProcessedEventCacheSweepWorker</code> — periodic at minute-scale, marginal benefit.</li>
+</ul>
+<h3>Opting in a custom worker</h3>
+
+<p>Consumer code (typically inside a service that defines its own background worker) can add custom workers to the eligibility set:</p>
+
+<pre><code class="language-csharp">services.AddHostedService<MyBulkImportPollingWorker>();
+<p>services.AddPinnedWorker<MyBulkImportPollingWorker>();</p>
+<p></code></pre></p>
+
+<p>The opt-in is additive; the tier-1+2 defaults remain in effect. Use <code>ExcludeWorkers</code> (below) to remove a tier-default worker by short name.</p>
+
+<h2>Configuration</h2>
+
+<p>The options class is <code>WhizbangPinnedPoolOptions</code>. The registration helper takes a configure callback so the consumer can bind from any configuration source — typically <code>Whizbang:Workers:PinnedPool</code> in <code>appsettings.json</code> / env vars (kept consistent with devops conventions), but the binding itself happens in the consumer (matches the pattern used by <code>AddWhizbangAzureBlobOffload</code> and keeps <code>Whizbang.Core</code> AOT-clean).</p>
+
+<p>| Property | Type | Default | Description |</p>
+<p>|---|---|---|---|</p>
+<p>| <code>ConnectionStringName</code> | string? | <code>null</code> | <strong>Preferred.</strong> Name of a key under standard <code>ConnectionStrings:*</code> configuration to resolve the direct conn string from (e.g. <code>"appservice-db-direct"</code>). Wins over <code>ConnectionString</code> when both are set. |</p>
+<p>| <code>ConnectionString</code> | string? | <code>null</code> | Inline direct (non-pgbouncer) PG conn string. Fallback when <code>ConnectionStringName</code> is unset or unresolved. At least one of the two sources must resolve for the pool to take effect. |</p>
+<p>| <code>Enabled</code> | bool | <code>false</code> | Master switch. <code>false</code> → workers stay on pgbouncer. |</p>
+<p>| <code>Size</code> | int | <code>1</code> | Number of pinned connections held open. |</p>
+<p>| <code>IncludeFlushWorkers</code> | bool | <code>true</code> | Whether tier-2 flush workers also pin. |</p>
+<p>| <code>ExcludeWorkers</code> | string[] | <code>[]</code> | CLR short names of workers to skip. Escape hatch. |</p>
+<p>| <code>ConnectionLifetimeSeconds</code> | int | <code>1800</code> | Auto-recycle a connection after this many seconds. |</p>
+<p>| <code>BorrowTimeoutMilliseconds</code> | int | <code>5000</code> | How long a worker waits to borrow before throwing. |</p>
+
+<h3>Connection-string source: name vs inline</h3>
+
+<p>The pool resolves its connection string in this order:</p>
+
+<ul><li><strong><code>ConnectionStringName</code></strong> — looked up via <code>IConfiguration.GetConnectionString(name)</code>. Recommended for production because it keeps the secret-bearing string under standard <code>ConnectionStrings:*</code> configuration alongside the rest of the app's database secrets — key-vault, env-var, and log-redaction conventions all apply uniformly.</li>
+<li><strong><code>ConnectionString</code></strong> — used when <code>ConnectionStringName</code> is unset OR the named key doesn't resolve. Convenient for tests / dev rigs / single-line registration.</li>
+<li>Neither set → silent no-op (pool returns <code>NoOpPinnedConnectionPool</code>, workers stay on pgbouncer). Matches <code>Enabled=false</code> behaviour so the registration is safe to call unconditionally.</li>
+</ul>
+<p>When configuring a real service, the typical pattern is a sibling under <code>ConnectionStrings:*</code>:</p>
+
+<pre><code class="language-jsonc">// appsettings.json
+<p>{</p>
+<p>  "ConnectionStrings": {</p>
+<p>    "appservice-db":        "Host=…;Port=6432;…", // pgbouncer (existing)</p>
+<p>    "appservice-db-direct": "Host=…;Port=5432;…"  // direct (new)</p>
+<p>  },</p>
+<p>  "Whizbang": {</p>
+<p>    "Workers": {</p>
+<p>      "PinnedPool": {</p>
+<p>        "Enabled": true,</p>
+<p>        "ConnectionStringName": "appservice-db-direct"</p>
+<p>      }</p>
+<p>    }</p>
+<p>  }</p>
+<p>}</p>
+<p></code></pre></p>
+
+<h3>Minimal registration</h3>
+
+<pre><code class="language-csharp">services.AddWhizbangPinnedWorkerPool(opts => {
+<p>  // Bind everything from the configured section — both ConnectionStringName</p>
+<p>  // and any other settings come through this single call.</p>
+<p>  builder.Configuration.GetSection("Whizbang:Workers:PinnedPool").Bind(opts);</p>
+<p>});</p>
+<p></code></pre></p>
+
+<p>The simpler "everything in code" shape, when you don't want config-driven values (test/dev):</p>
+
+<pre><code class="language-csharp">services.AddWhizbangPinnedWorkerPool(opts => {
+<p>  opts.ConnectionString = builder.Configuration.GetConnectionString("WorkerDirect");</p>
+<p>  opts.Enabled = true;</p>
+<p>});</p>
+<p></code></pre></p>
+
+<h3>Tuning size</h3>
+
+<pre><code class="language-csharp">services.AddWhizbangPinnedWorkerPool(opts => {
+<p>  opts.ConnectionString = builder.Configuration.GetConnectionString("WorkerDirect");</p>
+<p>  opts.Enabled = true;</p>
+<p>  opts.Size = 2;                                // splits ClaimWorker from flush workers</p>
+<p>  opts.IncludeFlushWorkers = true;</p>
+<p>});</p>
+<p></code></pre></p>
+
+<h3>Surgical exclusion</h3>
+
+<pre><code class="language-csharp">services.AddWhizbangPinnedWorkerPool(opts => {
+<p>  opts.ConnectionString = builder.Configuration.GetConnectionString("WorkerDirect");</p>
+<p>  opts.Enabled = true;</p>
+<p>  opts.Size = 1;</p>
+<p>  opts.ExcludeWorkers = new[] { "HeartbeatWorker" };  // investigating heartbeat under pinning</p>
+<p>});</p>
+<p></code></pre></p>
+
+<h2>Connection budget</h2>
+
+<p>The total direct PG connections per pod increases by <code>Size</code>. Sizing math:</p>
+
+<pre><code class="language-">direct_pg_conns_per_pod = 1 (LISTEN)
+<p>                       + Size (pinned pool)</p>
+<p>total_direct_pg_conns   = num_pods × direct_pg_conns_per_pod</p>
+<p></code></pre></p>
+
+<p>At <code>Size=1</code> and 50 pods, that's <strong>100 direct PG conns</strong> plus whatever pgbouncer is using. Match this against your PostgreSQL <code>max_connections</code> and pgbouncer's <code>default_pool_size</code>. If you have headroom for more direct conns, raising <code>Size</code> is reasonable.</p>
+
+<code>Size=1</code> is the right starting point. Raise to <code>2</code> if you observe pinned-pool borrow timeouts in logs (worker queuing on a single wire is hurting flush latency).
+
+<h2>Validation</h2>
+
+<p>When <code>Enabled=true</code>, the registration extension validates <code>Size > 0</code> at startup. If neither <code>ConnectionStringName</code> nor <code>ConnectionString</code> resolves to a non-empty string, the feature silently no-ops — workers continue using pgbouncer. This is intentional: it lets you ship the registration code into all environments and toggle on per-environment via configuration.</p>
+
+<h2>Observability</h2>
+
+<p>Two metrics surface the pinned pool's behaviour:</p>
+
+<p>| Metric | Type | Tags | What it shows |</p>
+<p>|---|---|---|---|</p>
+<p>| <code>whizbang.workers.pinned_pool.borrow.duration</code> | histogram (ms) | <code>worker_name</code> | Time from borrow request to connection handed out — should be near-zero in steady state. |</p>
+<p>| <code>whizbang.workers.pinned_pool.borrow.timeouts</code> | counter | <code>worker_name</code> | Borrow-timeout count — if non-zero, raise <code>Size</code> or investigate which worker is holding too long. |</p>
+
+<p>Pair these with the <code>pg_stat_statements</code> query in <a href="#connection-budget">Connection budget</a> to confirm the post-enable <code>DISCARD ALL</code> share has dropped.</p>
+
+<h2>Migration from un-pinned</h2>
+
+<p>The feature is purely additive — no code changes required in workers. Worker classes don't know they're being pinned; the borrow is plumbed through the existing <code>IWorkCoordinator</code> resolution path. Toggling <code>Enabled</code> between <code>true</code> and <code>false</code> is safe at any time (a rolling deploy is sufficient — no migration window required).</p>
+
+<h2>Related</h2>
+
+<ul><li><a href="../work-coordinator/notifications-and-pgbouncer.md">pgbouncer topology overview</a> — how NOTIFY + worker traffic split across direct and pooled connections.</li>
+<li><a href="../../proposals/production-perf-baseline.md">production perf measurement (2026-06-10)</a> — the measurement that motivated this feature.</li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-fundamentals-workers-worker-classification" class="doc-section">
+  <h4>Worker Classification — A through F</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/workers/worker-classification</code></p>
+  <p class="doc-description"><em>Reference table for which Whizbang background workers are NOTIFY-driven, channel-driven, transport-driven, timer-driven, or one-shot lifecycle.</em></p>
+  <div class="doc-content">
+
+<h1>Worker classification</h1>
+
+<p>Every Whizbang background worker falls into one of six classes. The class tells operators "what wakes this worker?" and tells contributors "what should I touch when changing this worker's cadence?"</p>
+
+<h2>Legend</h2>
+
+<p>| Class | Meaning |</p>
+<p>|---|---|</p>
+<p>| <strong>A — NOTIFY-driven</strong> | Subscribes to <code>IWorkNotificationListener.OnSignal</code> for its primary wake. Polling may still exist as a safety-net. |</p>
+<p>| <strong>B — Channel-driven</strong> | Wakes on a <code>Channel<T></code> / <code>BatchFlusher<T></code> write from an in-process producer. No DB polling. |</p>
+<p>| <strong>C — Transport-driven</strong> | Wakes on a broker (RabbitMQ / ASB) message arrival. Not a DB concern. |</p>
+<p>| <strong>D — Polling, NOTIFY-eligible</strong> | Has a <code>Task.Delay</code> / <code>PeriodicTimer</code> loop AND a NOTIFY signal would semantically apply if wired. Highest-value conversion candidates. |</p>
+<p>| <strong>E — Necessarily timed</strong> | Heartbeat / TTL sweep / scheduled maintenance — must be timer-driven by definition. NOTIFY doesn't apply. |</p>
+<p>| <strong>F — One-shot / lifecycle</strong> | Runs once at start / shutdown / migration. Not a polling concern. |</p>
+
+<p>After v0.681 (this PR), zero D-class workers remain — every previously-polling worker either converted to A (NOTIFY-driven) or stayed at the only-makes-sense-as-timed E class.</p>
+
+<h2>Per-worker table</h2>
+
+<p>| Worker | Class | Cadence / driver | Notes |</p>
+<p>|---|---|---|---|</p>
+<p>| <code>ClaimWorker</code> | A | <code>OnSignal</code> + 30 s safety-net | Outbox/Inbox/Perspective/OrphanRedistribute via <code>_onSignal</code> |</p>
+<p>| <code>PerspectiveWorker</code> | A | <code>WorkSignalCategory.Perspective</code> + <code>NotifyHealthyPollingIntervalMilliseconds</code> safety-net (30 s default) | v0.681 slice 7a wired the previously-unused signal |</p>
+<p>| <code>DeadLetterRecoveryWorker</code> | A | <code>WorkSignalCategory.DeadLetterReady</code> + <code>ScanIntervalMinutes</code> backstop (10 min) | v0.681 slice 7c added the AFTER INSERT trigger |</p>
+<p>| <code>TransportDeadLetterDrainWorker</code> | A (mixed) | Broker push subscription (when transport overrides <code>SubscribeToDeadLetterAsync</code>) + polling fallback | v0.681 slice 7d added the contract; per-transport push implementations follow up |</p>
+<p>| <code>OutboxPublishWorker</code> | B | <code>IWorkChannelWriter</code> | Drained when ClaimWorker dispatches |</p>
+<p>| <code>InboxHandlerWorker</code> | B | <code>BatchFlusher<HandlerCommitRequest></code> | |</p>
+<p>| <code>InboxDispatchWorker</code> | B | <code>IInboxChannelWriter</code> | |</p>
+<p>| <code>InboxDrainWorker</code> | B | <code>IInboxDrainChannel</code> | |</p>
+<p>| <code>OutboxDrainWorker</code> | B | <code>IOutboxDrainChannel</code> | |</p>
+<p>| <code>OutboxCompletionFlushWorker</code> | B | <code>BatchFlusher<Guid></code> | |</p>
+<p>| <code>PerspectiveCompletionFlushWorker</code> | B | <code>BatchFlusher</code> | |</p>
+<p>| <code>FailureFlushWorker</code> | B | <code>BatchFlusher</code> | |</p>
+<p>| <code>LeaseRenewalWorker</code> | B | <code>BatchFlusher<RenewalRequest></code> | |</p>
+<p>| <code>TransportConsumerWorker</code> | C | Transport subscription | |</p>
+<p>| <code>ServiceBusConsumerWorker</code> | C | ASB receiver loop | |</p>
+<p>| <code>HeartbeatWorker</code> | E | 30 s default; adaptive 60 s when alive-lock held (slice 7b) | See <a href="./instance-liveness.md">instance liveness</a> |</p>
+<p>| <code>MaintenanceWorker</code> | E | 5 min | Full-table scan; not event-driven |</p>
+<p>| <code>RecentlyProcessedEventCacheSweepWorker</code> | E | 60 s | In-memory TTL eviction |</p>
+<p>| <code>OrphanInboxJanitor</code> | F | StartAsync once | |</p>
+<p>| <code>PerspectiveMigrationWorker</code> | F | On-demand rebuild | |</p>
+
+<h2>When to read this page</h2>
+
+<ul><li>Adding a new worker → pick the right class and cite the existing examples.</li>
+<li>Reviewing a worker's cadence → confirm the class is honoured (e.g. an A-class worker MUST have a NOTIFY subscription, not just a backstop poll).</li>
+<li>Investigating a "why isn't this worker waking" → start with the column "Cadence / driver" and trace it to the source.</li>
+</ul>
+<h2>Related</h2>
+
+<ul><li><a href="./perspective-worker-notify.md">PerspectiveWorker NOTIFY wake</a></li>
+<li><a href="./instance-liveness.md">Instance liveness</a></li>
+<li><a href="./pinned-connection-pool.md">Pinned connection pool</a></li>
+<li><a href="../work-coordinator/notifications-and-pgbouncer.md">Notifications & pgbouncer</a></li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+</section>
+
 </section>
 
 <section class="doc-category">
@@ -59093,7 +60818,7 @@ npm install && npm run build</code></pre>
 <p>  <PropertyGroup></p>
 <p>    <!-- Source Generator Settings --></p>
 <p>    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles></p>
-<p>    <CompilerGeneratedFilesOutputPath>$(MSBuildProjectDirectory)/.whizbang-generated</CompilerGeneratedFilesOutputPath></p>
+<p>    <CompilerGeneratedFilesOutputPath>$(MSBuildProjectDirectory)/.whizbang/cache</CompilerGeneratedFilesOutputPath></p>
 <p>  </PropertyGroup></p>
 <p></Project></p>
 <pre><code class="language-">
@@ -59179,7 +60904,7 @@ npm install && npm run build</code></pre>
 <p>   - Check "Enable source generators"</p>
 <ul><li><strong>View Generated Files</strong>:</li>
 </ul><p>   - Solution Explorer → Show All Files</p>
-<p>   - Expand <code>.whizbang-generated/</code> folder</p>
+<p>   - Expand <code>.whizbang/cache/</code> folder</p>
 
 <h3>Visual Studio Code</h3>
 
@@ -59227,7 +60952,7 @@ npm install && npm run build</code></pre>
 <h3>2. Check Source Generators</h3>
 
 <p></code></pre>bash{title="Check Source Generators" description="Check Source Generators" category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "Bash", "Check", "Source", "Generators"]}</p>
-<p>ls .whizbang-generated/</p>
+<p>ls .whizbang/cache/</p>
 <pre><code class="language-">
 <strong>Expected files</strong> (after adding receptors):
 <p></code></pre></p>
@@ -59248,7 +60973,7 @@ npm install && npm run build</code></pre>
 
 <h3>Issue: Source Generators Not Running</h3>
 
-<strong>Symptoms</strong>: No files in <code>.whizbang-generated/</code>
+<strong>Symptoms</strong>: No files in <code>.whizbang/cache/</code>
 
 <strong>Solutions</strong>:
 <ul><li>Rebuild solution: <code>dotnet clean && dotnet build</code></li>
@@ -59928,7 +61653,7 @@ npm install && npm run build</code></pre>
 <p>  <PropertyGroup></p>
 <p>    <!-- Source Generator Settings --></p>
 <p>    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles></p>
-<p>    <CompilerGeneratedFilesOutputPath>$(MSBuildProjectDirectory)/.whizbang-generated</CompilerGeneratedFilesOutputPath></p>
+<p>    <CompilerGeneratedFilesOutputPath>$(MSBuildProjectDirectory)/.whizbang/cache</CompilerGeneratedFilesOutputPath></p>
 <p>  </PropertyGroup></p>
 <p></Project></p>
 <pre><code class="language-">
@@ -60877,7 +62602,7 @@ npm install && npm run build</code></pre>
 <p>   builder.Services.AddWhizbangCore();</p>
 <p>   builder.Services.AddDiscoveredReceptors(); // Auto-registers all IReceptor implementations</p>
 <p>   <pre><code class="language-">4. Rebuild: </code>dotnet build<code></p>
-<ul><li>Check </code>.whizbang-generated/ReceptorRegistrations.g.cs<code> for generated code</li>
+<ul><li>Check </code>.whizbang/cache/ReceptorRegistrations.g.cs<code> for generated code</li>
 </ul>
 <strong>Benefits</strong>:
 <ul><li>No manual registration needed</li>
@@ -61109,7 +62834,7 @@ npm install && npm run build</code></pre>
 <p>   <pre><code class="language-"></p>
 <h3>Issue: Generated files not appearing</h3>
 
-<strong>Symptom</strong>: Source generators not creating files in </code>.whizbang-generated/<code>
+<strong>Symptom</strong>: Source generators not creating files in </code>.whizbang/cache/<code>
 
 <strong>Solution</strong>:
 <ul><li>Ensure </code>Whizbang.Generators<code> package is referenced</li>
@@ -61117,7 +62842,7 @@ npm install && npm run build</code></pre>
 </ul><p>   </code></pre>xml</p>
 <p>   <PropertyGroup></p>
 <p>     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles></p>
-<p>     <CompilerGeneratedFilesOutputPath>$(MSBuildProjectDirectory)/.whizbang-generated</CompilerGeneratedFilesOutputPath></p>
+<p>     <CompilerGeneratedFilesOutputPath>$(MSBuildProjectDirectory)/.whizbang/cache</CompilerGeneratedFilesOutputPath></p>
 <p>   </PropertyGroup></p>
 <p>   <pre><code class="language-">3. Rebuild:</p>
 <p>   </code></pre>bash</p>
@@ -79049,8 +80774,8 @@ npm install && npm run build</code></pre>
 <p>dotnet clean</p>
 <p>dotnet build /p:TransportProvider=RabbitMQ  # or AzureServiceBus</p>
 
-<h1>Check generated symbols in .whizbang-generated folder</h1>
-<p>grep -r "RABBITMQ\|AZURESERVICEBUS" ECommerce.InventoryWorker/.whizbang-generated</p>
+<h1>Check generated symbols in .whizbang/cache folder</h1>
+<p>grep -r "RABBITMQ\|AZURESERVICEBUS" ECommerce.InventoryWorker/.whizbang/cache</p>
 <pre><code class="language-">
 <hr>
 
@@ -84388,6 +86113,615 @@ npm install && npm run build</code></pre>
 <ul><li><a href="../../fundamentals/messages/message-tags">Message Tags</a> - Complete tag processing guide</li>
 <li><a href="../../fundamentals/lifecycle/lifecycle-stages">Lifecycle Stages</a> - Pipeline timing reference</li>
 <li><a href="../../fundamentals/dispatcher/dispatcher">Dispatcher</a> - Message dispatch and routing</li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+</section>
+
+<section class="doc-category">
+  <h3 class="category-header">Dead Letter Queue</h3>
+<article id="v1-0-0-operations-dead-letter-queue-internal-dlq" class="doc-section">
+  <h4>Internal DLQ (wh_dead_letters)</h4>
+  <p class="doc-path"><code>v1.0.0/operations/dead-letter-queue/internal-dlq</code></p>
+  <p class="doc-description"><em>How Whizbang's internal wh_dead_letters table works — the schema, the IDeadLetterStore.MoveAsync atomic move boundary, and which workers populate it.</em></p>
+  <div class="doc-content">
+
+<h1>Internal DLQ — <code>wh_dead_letters</code></h1>
+
+<p>The internal DLQ is a single PostgreSQL table that holds a forensic snapshot</p>
+<p>of every work-table row Whizbang decided to permanently fail. It's the</p>
+<p>landing zone for policy-driven recovery — operators (or the</p>
+<code>DeadLetterRecoveryWorker</code>) act on these rows, not on the raw
+<code>wh_outbox</code> / <code>wh_inbox</code> / <code>wh_perspective_events</code> tables.
+
+<h2>Schema</h2>
+
+<code>wh_dead_letters</code> (migration <code>050_WhDeadLetters.sql</code>):
+
+<pre><code class="language-sql">CREATE TABLE wh_dead_letters (
+<p>  dead_letter_id     UUID NOT NULL PRIMARY KEY,</p>
+<p>  source_table       TEXT NOT NULL,    -- 'wh_outbox' | 'wh_inbox' | 'wh_perspective_events'</p>
+<p>  source_id          UUID NOT NULL,    -- original message_id or event_work_id</p>
+<p>  stream_id          UUID,</p>
+<p>  message_type       TEXT,</p>
+<p>  envelope_type      TEXT,</p>
+<p>  event_data         TEXT,             -- forensic snapshot of the payload</p>
+<p>  metadata           JSONB,</p>
+<p>  scope              JSONB,</p>
+<p>  failure_reason     SMALLINT NOT NULL,</p>
+<p>  attempts_when_dlq  INTEGER NOT NULL,</p>
+<p>  error_text         TEXT,</p>
+<p>  dead_lettered_at   TIMESTAMPTZ NOT NULL,</p>
+<p>  instance_id        UUID,</p>
+<p>  generation         TEXT NOT NULL,    -- e.g. "0.502.0-alpha.1"</p>
+
+<p>  recovery_status              SMALLINT NOT NULL DEFAULT 0,</p>
+<p>  recovery_attempts            INTEGER NOT NULL DEFAULT 0,</p>
+<p>  last_recovery_attempt_at     TIMESTAMPTZ,</p>
+<p>  next_recovery_attempt_at     TIMESTAMPTZ,</p>
+<p>  retried_on_generations       TEXT[] NOT NULL DEFAULT '{}',</p>
+<p>  operator_disposition         SMALLINT NOT NULL DEFAULT 0</p>
+<p>);</p>
+<p></code></pre></p>
+
+<p>The columns split into three groups:</p>
+
+<ul><li><strong>Snapshot</strong> (<code>source_*</code>, <code>event_data</code>, <code>metadata</code>, <code>scope</code>, <code>failure_reason</code>,</li>
+</ul><p>   <code>error_text</code>) — captured at the move boundary so the original row can be</p>
+<p>   reconstructed if recovery succeeds.</p>
+<ul><li><strong>Generation</strong> (<code>generation</code>, <code>retried_on_generations</code>) — used by the</li>
+</ul><p>   "we-shipped-a-fix" auto-replay: on every deploy, any row whose current</p>
+<p>   generation isn't in <code>retried_on_generations</code> gets one free retry attempt.</p>
+<ul><li><strong>State</strong> (<code>recovery_status</code>, <code>recovery_attempts</code>, <code>next_recovery_attempt_at</code>,</li>
+</ul><p>   <code>operator_disposition</code>) — the recovery worker's bookkeeping.</p>
+
+<h2>The <code>MoveAsync</code> boundary</h2>
+
+<p>Any worker that detects a permanent failure calls</p>
+<code>IDeadLetterStore.MoveAsync(...)</code>:
+
+<pre><code class="language-csharp">public interface IDeadLetterStore {
+<p>  Task<Guid?> MoveAsync(</p>
+<p>    Guid deadLetterId,</p>
+<p>    string sourceTable,</p>
+<p>    Guid sourceId,</p>
+<p>    MessageFailureReason failureReason,</p>
+<p>    string? errorText,</p>
+<p>    Guid instanceId,</p>
+<p>    string generation,</p>
+<p>    CancellationToken ct = default);</p>
+<p>}</p>
+<p></code></pre></p>
+
+<p>The SQL function <code>move_to_dead_letters()</code> (mig 050) runs the INSERT into</p>
+<code>wh_dead_letters</code> and the DELETE from the source table in a single transaction
+<p>so partial-failure crashes leave the system consistent. It's idempotent: when</p>
+<p>the source row is already gone (e.g. two failure paths raced), it returns</p>
+<code>NULL</code> and the caller treats that as "someone else moved it first."
+
+<p>Callers:</p>
+
+<p>| Caller | Trigger | Cap option |</p>
+<p>|---|---|---|</p>
+<p>| <code>InboxDispatchWorker._processOneInnerAsync</code> | <code>attempts > MaxInboxAttempts</code> | <code>MaxInboxAttempts</code> (default 10) |</p>
+<p>| <code>OutboxDrainWorker</code> per-row check | <code>attempts > MaxOutboxAttempts</code> | <code>MaxOutboxAttempts</code> (default 10) |</p>
+<p>| <code>PerspectiveWorker.FilterDeadLetteredAsync</code> | <code>attempts > MaxPerspectiveEventAttempts</code> | <code>MaxPerspectiveEventAttempts</code> (default 10) |</p>
+
+<p>The perspective check runs at the drainer's <strong>pre-deserialization</strong> boundary</p>
+<p>so the typed-envelope parse + apply cost is avoided for rows that are already</p>
+<p>known-doomed. All three callers use one-based attempts semantics:</p>
+<code>attempts=N</code> on the Nth attempt, so <code>Max…Attempts=10</code> permits 10 attempts and
+<p>dead-letters on the 11th.</p>
+
+<h2>What if <code>MoveAsync</code> throws?</h2>
+
+<p>Every caller has the same fallback: log a warning and leave the row in its</p>
+<p>source table. The next claim cycle will re-pick-it up and the check runs</p>
+<p>again. This keeps <code>wh_dead_letters</code> from silently swallowing rows when the</p>
+<p>DLQ surface itself is broken (DB unhealthy, schema mismatch, etc.). The</p>
+<p>retry budget is already exhausted, so a stuck row at this stage represents</p>
+<p>a partial-availability state worth surfacing — not a correctness issue.</p>
+
+<h2>Defaults</h2>
+
+<p>| Worker | Option | Default | Override semantics |</p>
+<p>|---|---|---|---|</p>
+<p>| Inbox | <code>InboxDispatchWorkerOptions.MaxInboxAttempts</code> | 10 | Set to <code>null</code> to disable dead-lettering (legacy v0.501 behavior). |</p>
+<p>| Outbox | <code>OutboxDrainWorkerOptions.MaxOutboxAttempts</code> | 10 | Same — <code>null</code> disables. |</p>
+<p>| Perspective | <code>PerspectiveWorkerOptions.MaxPerspectiveEventAttempts</code> | 10 | Same — <code>null</code> disables. |</p>
+
+<p>The v0.501 defaults were <code>null</code> (unbounded retries). v0.502 ships the 10-attempt</p>
+<p>cap as the floor and the DLQ pipeline as the path of recovery. To disable on</p>
+<p>a per-worker basis, set the option to <code>null</code> explicitly in <code>appsettings.json</code>:</p>
+
+<pre><code class="language-json">{
+<p>  "Whizbang": {</p>
+<p>    "InboxDispatchWorker": { "MaxInboxAttempts": null }</p>
+<p>  }</p>
+<p>}</p>
+<p></code></pre></p>
+
+<h2>See also</h2>
+
+<ul><li><a href="./recovery">Recovery worker + policy matrix</a></li>
+<li><a href="./operator-api">Operator HTTP API</a></li>
+<li><a href="./perspective-events">Perspective-event dead-lettering</a></li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-operations-dead-letter-queue-operator-api" class="doc-section">
+  <h4>Operator HTTP API</h4>
+  <p class="doc-path"><code>v1.0.0/operations/dead-letter-queue/operator-api</code></p>
+  <p class="doc-description"><em>HTTP endpoints in Whizbang.Hosting.AspNet for inspecting and acting on wh_dead_letters from operator tooling — list, retry, hold, give-up, manual generation sweep.</em></p>
+  <div class="doc-content">
+
+<h1>Operator HTTP API</h1>
+
+<code>MapWhizbangDeadLetterEndpoints</code> mounts five routes that wrap the SQL
+<p>functions from migrations 050 + 051. Operators get a JSON surface for</p>
+<p>inspecting <code>wh_dead_letters</code> and driving recovery — no psql / raw SQL</p>
+<p>required.</p>
+
+<h2>Mounting</h2>
+
+<pre><code class="language-csharp">using Whizbang.Hosting.AspNet;
+
+<p>var app = builder.Build();</p>
+<p>// ...</p>
+<p>app.MapWhizbangDeadLetterEndpoints();              // default path "/whizbang/dlq"</p>
+<p>app.MapWhizbangDeadLetterEndpoints("/admin/dlq");  // custom prefix</p>
+<p></code></pre></p>
+
+<p>The method returns the <code>RouteGroupBuilder</code> so you can chain authorization,</p>
+<p>host filters, and rate limits — recommended before exposing publicly:</p>
+
+<pre><code class="language-csharp">app.MapWhizbangDeadLetterEndpoints()
+<p>   .RequireAuthorization("WhizbangOperator")</p>
+<p>   .RequireHost("admin.example.com");</p>
+<p></code></pre></p>
+
+<h2>Endpoints</h2>
+
+<p>All responses are JSON; mutation endpoints return <code>204 No Content</code> on success.</p>
+
+<h3><code>GET /whizbang/dlq/due?max=200</code></h3>
+
+<p>Returns up to <code>max</code> rows ready for recovery (skips terminal states</p>
+<code>Recovered</code>, <code>PermanentlyFailed</code>, <code>HoldForReview</code> and rows whose
+<code>operator_disposition</code> is <code>HoldIndefinitely</code> / <code>MarkPermanentlyFailed</code>).
+<p>Default <code>max=200</code>.</p>
+
+<p>Response shape (<code>DeadLetterEntry</code> array):</p>
+
+<pre><code class="language-json">[
+<p>  {</p>
+<p>    "deadLetterId": "019e8b1d-7e90-77cc-a3c7-ff3469de0f33",</p>
+<p>    "sourceTable": "wh_inbox",</p>
+<p>    "sourceId": "019e8b1d-7e90-77cc-a3d6-0a826384b4fd",</p>
+<p>    "streamId": null,</p>
+<p>    "messageType": "MyApp.InventoryAdjustCommand",</p>
+<p>    "failureReason": 5,</p>
+<p>    "attemptsWhenDlq": 10,</p>
+<p>    "deadLetteredAt": "2026-06-02T12:34:56Z",</p>
+<p>    "recoveryStatus": 0,</p>
+<p>    "recoveryAttempts": 0,</p>
+<p>    "generation": "0.502.0-alpha.1"</p>
+<p>  }</p>
+<p>]</p>
+<p></code></pre></p>
+
+<code>failureReason</code> is the integer value of <code>MessageFailureReason</code>
+<p>(e.g. <code>5 = MaxAttemptsExceeded</code>, <code>8 = Throttled</code>). Consumers should</p>
+<p>map the enum on the client side.</p>
+
+<h3><code>POST /whizbang/dlq/{id}/retry</code></h3>
+
+<p>Schedules the row for immediate retry (<code>next_recovery_attempt_at = NOW()</code>).</p>
+<p>The <code>DeadLetterRecoveryWorker</code> picks it up on the next tick. Idempotent —</p>
+<p>re-issuing the call just re-sets the timestamp.</p>
+
+<h3><code>POST /whizbang/dlq/{id}/hold</code></h3>
+
+<p>Marks the row <code>HoldForReview</code> (terminal). The recovery worker skips it</p>
+<p>until an operator explicitly re-issues <code>retry</code>. Use when you've identified</p>
+<p>a bug that needs a code fix before the row can succeed.</p>
+
+<h3><code>POST /whizbang/dlq/{id}/give-up</code></h3>
+
+<p>Marks the row <code>PermanentlyFailed</code> (terminal). Use when you've decided the</p>
+<p>row is truly unrecoverable. Forensic snapshot stays in the table.</p>
+
+<h3><code>POST /whizbang/dlq/scan-now?generation=…</code></h3>
+
+<p>Manual generation-replay sweep. Schedules every non-terminal DLQ row whose</p>
+<p>current generation hasn't seen the supplied generation for immediate</p>
+<p>retry. When the query parameter is absent, the configured</p>
+<code>IGenerationProvider.GetGeneration()</code> is used — typically the running
+<p>build's identity.</p>
+
+<p>Response:</p>
+
+<pre><code class="language-json">{ "generation": "0.502.0-alpha.1", "scheduled": 42 }
+<p></code></pre></p>
+
+<code>scheduled</code> is the number of rows whose <code>next_recovery_attempt_at</code> got
+<p>reset. Idempotent: rows already in <code>retried_on_generations</code> for this</p>
+<p>generation are skipped.</p>
+
+<h2>AOT compatibility</h2>
+
+<p>The endpoints use a source-generated <code>JsonSerializerContext</code></p>
+<p>(<code>DeadLetterOperatorJsonContext</code>) — no reflection-based JSON serialization,</p>
+<p>so they're safe for Native AOT publication. Custom response types added to</p>
+<p>the endpoint group need to be added to the context too.</p>
+
+<h2>See also</h2>
+
+<ul><li><a href="./internal-dlq">Internal DLQ table</a></li>
+<li><a href="./recovery">Recovery worker + policy matrix</a></li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-operations-dead-letter-queue-perspective-events" class="doc-section">
+  <h4>Perspective-event Dead-lettering</h4>
+  <p class="doc-path"><code>v1.0.0/operations/dead-letter-queue/perspective-events</code></p>
+  <p class="doc-description"><em>How wh_perspective_events rows that exceed MaxPerspectiveEventAttempts get moved to wh_dead_letters before deserialization + apply runs.</em></p>
+  <div class="doc-content">
+
+<h1>Perspective-event Dead-lettering</h1>
+
+<p>The perspective-event DLQ check runs at the drainer's</p>
+<strong>pre-deserialization</strong> boundary — earlier than inbox or outbox checks.
+<p>That's deliberate: typed-envelope deserialization + apply is the most</p>
+<p>expensive part of the perspective pipeline, and there's no point paying</p>
+<p>that cost for a row we already know is doomed.</p>
+
+<h2>Flow</h2>
+
+<pre><code class="language-">get_stream_events SQL fn
+<p>  → returns rows with (event_work_id, event_id, attempts, ...)</p>
+
+<p>PerspectiveWorker.FilterDeadLetteredAsync(rawEvents)</p>
+<p>  for each row:</p>
+<p>    if attempts > MaxPerspectiveEventAttempts:</p>
+<p>      IDeadLetterStore.MoveAsync(</p>
+<p>        sourceTable = "wh_perspective_events",</p>
+<p>        sourceId = event_work_id,</p>
+<p>        failureReason = MaxAttemptsExceeded)</p>
+<p>      // SQL fn atomically deletes the wh_perspective_events row</p>
+<p>      // and inserts into wh_dead_letters</p>
+<p>      continue (drop from apply set)</p>
+<p>    else:</p>
+<p>      survivors.Add(row)</p>
+
+<p>DeserializeStreamEvents(survivors)</p>
+<p>  → typed envelopes</p>
+<p>  → apply runs</p>
+<p></code></pre></p>
+
+<h2>How attempts are counted</h2>
+
+<code>wh_perspective_events.attempts</code> is bumped by SQL — never by C#:
+
+<ul><li><code>get_stream_events</code> (mig 038) bumps <code>attempts</code> when claiming an unowned</li>
+</ul><p>  or expired-lease row.</p>
+<ul><li><code>claim_and_fetch_pending_perspective_events</code> (mig 042) same.</li>
+<li><code>claim_orphaned_perspective_events</code> (mig 027) bumps when re-claiming</li>
+</ul><p>  rows from a dead instance.</p>
+
+<p>One-based semantic: <code>attempts=N</code> means the row has been claimed <code>N</code></p>
+<p>times. So <code>MaxPerspectiveEventAttempts=10</code> permits 10 attempts and</p>
+<p>dead-letters on the 11th claim. The check uses strict <code>></code> not <code>>=</code>.</p>
+
+<h2>What <code>MoveAsync</code> does</h2>
+
+<p>The SQL function <code>move_to_dead_letters()</code> (mig 050) runs both halves of</p>
+<p>the move in a single transaction:</p>
+
+<pre><code class="language-sql">WITH src AS (
+<p>  DELETE FROM wh_perspective_events</p>
+<p>  WHERE event_work_id = $sourceId</p>
+<p>  RETURNING stream_id, event_id, perspective_name, attempts, ...</p>
+<p>)</p>
+<p>INSERT INTO wh_dead_letters</p>
+<p>  (dead_letter_id, source_table, source_id, stream_id, ...)</p>
+<p>SELECT $deadLetterId, 'wh_perspective_events', $sourceId, src.stream_id, ...</p>
+<p>FROM src;</p>
+<p></code></pre></p>
+
+<p>Atomic — partial-failure crashes leave the system consistent. Idempotent</p>
+<p>— if the row is already gone (another worker beat us to it), <code>MoveAsync</code></p>
+<p>returns <code>NULL</code> and the caller treats it as a no-op.</p>
+
+<h2>What if <code>MoveAsync</code> throws?</h2>
+
+<p>The row stays in the apply set. The next claim cycle re-bumps <code>attempts</code></p>
+<p>and the check runs again. Same fallback as inbox / outbox — the retry</p>
+<p>budget is exhausted, but we'd rather visibly keep failing than silently</p>
+<p>swallow rows when the DLQ surface itself is broken.</p>
+
+<h2>Interaction with the cooldown cache</h2>
+
+<p>The cooldown cache (<code>RecentlyProcessedEventCache</code>) and the DLQ check</p>
+<p>operate independently:</p>
+
+<ul><li>Cooldown filter runs BEFORE the DLQ check (cheaper — pure in-memory</li>
+</ul><p>   lookup).</p>
+<ul><li>If a row is in the cooldown cache, it's dropped from the apply set</li>
+</ul><p>   entirely and the DLQ check never sees it.</p>
+<ul><li>If a row survives cooldown, the DLQ check runs.</li>
+</ul>
+<p>A row that's been dead-lettered won't reappear in <code>get_stream_events</code></p>
+<p>results (the SQL function deleted it), so the cooldown cache never sees</p>
+<p>a stale entry pointing at a DLQ'd row.</p>
+
+<h2>Disabling</h2>
+
+<pre><code class="language-json">{
+<p>  "Whizbang": {</p>
+<p>    "PerspectiveWorker": { "MaxPerspectiveEventAttempts": null }</p>
+<p>  }</p>
+<p>}</p>
+<p></code></pre></p>
+
+<p>Restores v0.501 behavior: rows accumulate in <code>wh_perspective_events</code></p>
+<p>indefinitely. Use only if you have an external janitor that purges old</p>
+<p>rows, or if your perspectives are idempotent enough that infinite retry</p>
+<p>is acceptable.</p>
+
+<h2>See also</h2>
+
+<ul><li><a href="./internal-dlq">Internal DLQ table</a></li>
+<li><a href="./recovery">Recovery worker + policy matrix</a></li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-operations-dead-letter-queue-recovery" class="doc-section">
+  <h4>Recovery Worker &amp; Policy Matrix</h4>
+  <p class="doc-path"><code>v1.0.0/operations/dead-letter-queue/recovery</code></p>
+  <p class="doc-description"><em>How DeadLetterRecoveryWorker drives wh_dead_letters back through the work tables — per-MessageFailureReason policy defaults, generation-tagged auto-replay, and how to register a custom IDeadLetterRecoveryPolicy.</em></p>
+  <div class="doc-content">
+
+<h1>Recovery Worker & Policy Matrix</h1>
+
+<code>DeadLetterRecoveryWorker</code> is the policy engine for <code>wh_dead_letters</code>. On a
+<p>backstop cadence (default 10 min) it scans for due rows, consults the</p>
+<p>configured <code>IDeadLetterRecoveryPolicy</code> for each, and either re-emits the row</p>
+<p>onto its source work table, holds it for review, or marks it permanently</p>
+<p>failed.</p>
+
+<h2>Default policy by failure reason</h2>
+
+<code>DeadLetterRecoveryOptions.PolicyByReason</code> ships with this matrix:
+
+<p>| <code>MessageFailureReason</code> | Policy | Max retries | Cooldown | After exhaustion |</p>
+<p>|---|---|---|---|---|</p>
+<p>| <code>Throttled</code> | AggressiveRetry | 3 | 30 min | Pending (keep retrying) |</p>
+<p>| <code>TransportException</code> | MediumRetry | 3 | 1 h | Pending |</p>
+<p>| <code>LeaseExpired</code> | AggressiveRetry | 5 | immediate | Pending |</p>
+<p>| <code>MaxAttemptsExceeded</code> | ConservativeRetry | 1 | 6 h | HoldForReview |</p>
+<p>| <code>EventStorageFailure</code> | HoldForReview | 0 | — | HoldForReview |</p>
+<p>| <code>ValidationError</code> | HoldForReview | 0 | — | HoldForReview |</p>
+<p>| <code>SerializationError</code> | HoldForReview | 0 | — | HoldForReview |</p>
+<p>| <code>TransportNotReady</code> | MediumRetry | 3 | 30 min | Pending |</p>
+<p>| <code>Unknown</code> | OneShotThenHold | 1 | 1 h | HoldForReview |</p>
+
+<p>Reasons that indicate <strong>data corruption or schema mismatch</strong></p>
+<p>(<code>ValidationError</code>, <code>SerializationError</code>, <code>EventStorageFailure</code>) skip recovery</p>
+<p>entirely — they're held for an operator to look at. Reasons that indicate</p>
+<strong>transient broker stress</strong> (<code>Throttled</code>, <code>TransportException</code>) retry
+<p>aggressively. <code>MaxAttemptsExceeded</code> gets one careful retry after a 6-hour</p>
+<p>cooldown — long enough that whatever caused the original attempt to fail</p>
+<p>has likely passed.</p>
+
+<h2>Custom policy</h2>
+
+<p>Operators that need finer control replace the default policy via DI:</p>
+
+<pre><code class="language-csharp">services.AddSingleton<IDeadLetterRecoveryPolicy, MyCustomPolicy>();
+
+<p>public sealed class MyCustomPolicy : IDeadLetterRecoveryPolicy {</p>
+<p>  public RecoveryPolicy GetPolicy(DeadLetterEntry entry) {</p>
+<p>    if (entry.MessageType.Contains("InventoryAdjust")) {</p>
+<p>      return new("InventorySpecific", MaxRetries: 5, Cooldown: TimeSpan.FromHours(2),</p>
+<p>                 HoldForReviewAfterExhaustion: true);</p>
+<p>    }</p>
+<p>    return DefaultDeadLetterRecoveryPolicy.Default.GetPolicy(entry);</p>
+<p>  }</p>
+
+<p>  public StreamRecoveryMode GetStreamMode(DeadLetterEntry entry)</p>
+<p>    => entry.StreamId is null ? StreamRecoveryMode.PerMessage</p>
+<p>                              : StreamRecoveryMode.TailAware;</p>
+
+<p>  public bool ShouldRecover(DeadLetterEntry entry) {</p>
+<p>    if (entry.RecoveryStatus == DeadLetterRecoveryStatus.HoldForReview) return false;</p>
+<p>    return true;</p>
+<p>  }</p>
+<p>}</p>
+<p></code></pre></p>
+
+<h2>Stream recovery modes</h2>
+
+<code>StreamRecoveryMode</code> controls how sibling DLQ entries on the same <code>stream_id</code>
+<p>are coordinated:</p>
+
+<ul><li><strong><code>PerMessage</code></strong> — recover each row independently. Default for any DLQ row</li>
+</ul><p>  without a <code>stream_id</code>. Faster but doesn't preserve original event ordering</p>
+<p>  if multiple entries on the same stream all need recovery.</p>
+<ul><li><strong><code>TailAware</code></strong> — gather all sibling entries for the same <code>stream_id</code>, sort</li>
+</ul><p>  by original event order, and re-emit them together. FIFO preserved when</p>
+<p>  every recovery succeeds. When any one fails, the rest stay in DLQ; ordering</p>
+<p>  is best-effort.</p>
+
+<p>Use <code>TailAware</code> for streams that drive aggregate-mutation receptors or</p>
+<p>perspectives where re-applying out of order would surface a temporary bad</p>
+<p>state.</p>
+
+<h2>Generation-tagged auto-replay</h2>
+
+<p>Every DLQ row records the <code>generation</code> (typically the Whizbang+app version</p>
+<p>combo) it dead-lettered under. On every deploy:</p>
+
+<ul><li>The <code>DeadLetterRecoveryWorker</code> runs one extra scan at startup.</li>
+<li>For every row whose current generation is NOT in</li>
+</ul><p>   <code>retried_on_generations</code>, <code>next_recovery_attempt_at</code> is reset to <code>NOW()</code>.</p>
+<ul><li>Row is appended to <code>retried_on_generations</code> so the next deploy doesn't</li>
+</ul><p>   re-trigger it.</p>
+
+<p>This implements the "we shipped a fix — try again" semantic. Operators don't</p>
+<p>need to manually trigger a sweep after a hotfix; the row gets a free attempt</p>
+<p>on the new generation. If the fix didn't address it, the row falls back to</p>
+<p>its normal recovery cadence.</p>
+
+<p>Disable globally via:</p>
+
+<pre><code class="language-json">{
+<p>  "Whizbang": {</p>
+<p>    "DeadLetterRecovery": { "EnableGenerationReplay": false }</p>
+<p>  }</p>
+<p>}</p>
+<p></code></pre></p>
+
+<h2>See also</h2>
+
+<ul><li><a href="./internal-dlq">Internal DLQ table</a></li>
+<li><a href="./operator-api">Operator HTTP API</a> — manual operator actions</li>
+<li><a href="./transport-recovery">Transport DLQ recovery</a> — the broker-side flow</li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-operations-dead-letter-queue-transport-recovery" class="doc-section">
+  <h4>Transport DLQ Recovery</h4>
+  <p class="doc-path"><code>v1.0.0/operations/dead-letter-queue/transport-recovery</code></p>
+  <p class="doc-description"><em>How TransportDeadLetterDrainWorker drains the broker's own dead-letter queue (ASB $DeadLetterQueue, RMQ DLX queue) back onto the normal receive path. Distinct from Whizbang's internal wh_dead_letters flow.</em></p>
+  <div class="doc-content">
+
+<h1>Transport DLQ Recovery</h1>
+
+<p>The transport DLQ flow is independent of the internal <code>wh_dead_letters</code></p>
+<p>table. It exists to keep broker-side dead-letter queues from growing</p>
+<p>unbounded when a transient delivery issue caused the broker itself to</p>
+<p>drop messages.</p>
+
+<h2>Why a separate flow?</h2>
+
+<p>Whizbang's event store is source of truth. When a broker DLQs a message,</p>
+<p>the underlying event still replays from <code>wh_event_store</code> via the normal</p>
+<p>claim path — no data is lost. But the broker's DLQ doesn't know that. It</p>
+<p>holds onto messages forever (or up to the broker's retention cap), pages</p>
+<p>PRs about queue depth, and ultimately needs an operator to drain it.</p>
+
+<code>TransportDeadLetterDrainWorker</code> does that drain automatically on a
+<p>backstop interval (default 10 min). Each registered</p>
+<code>ITransportDeadLetterDrainer</code> reads up to <code>MaxPerTick</code> (default 500)
+<p>messages from its broker's DLQ and re-publishes them onto the normal</p>
+<p>receive path. If the underlying failure is permanent the message lands</p>
+<p>back in DLQ; the next sweep re-tries it. The cadence is intentionally</p>
+<p>slow — broker DLQ recovery isn't latency-sensitive.</p>
+
+<h2>Defaults</h2>
+
+<pre><code class="language-json">{
+<p>  "Whizbang": {</p>
+<p>    "TransportDeadLetterDrainWorker": {</p>
+<p>      "Enabled": true,</p>
+<p>      "IntervalMinutes": 10,</p>
+<p>      "MaxPerTick": 500</p>
+<p>    }</p>
+<p>  }</p>
+<p>}</p>
+<p></code></pre></p>
+
+<code>Enabled = false</code> is the killswitch — broker DLQs stay full until an
+<p>operator drains them manually via broker-side tooling.</p>
+
+<h2>Azure Service Bus</h2>
+
+<code>AzureServiceBusDeadLetterDrainer</code> reads from
+<code><topic>/Subscriptions/<sub>/$DeadLetterQueue</code> and re-sends each message
+<p>back to <code><topic></code> using a fresh <code>ServiceBusMessage</code>. Body, application</p>
+<p>properties, and routing fields (<code>subject</code>, <code>correlationId</code>, <code>messageId</code>,</p>
+<code>sessionId</code>, <code>partitionKey</code>) are copied; <code>DeliveryCount</code> resets on the
+<p>new message.</p>
+
+<p>Registration (one per subscription):</p>
+
+<pre><code class="language-csharp">services.AddSingleton<ITransportDeadLetterDrainer>(sp =>
+<p>  new AzureServiceBusDeadLetterDrainer(</p>
+<p>    client: sp.GetRequiredService<ServiceBusClient>(),</p>
+<p>    topicName: "orders",</p>
+<p>    subscriptionName: "inventory-svc",</p>
+<p>    logger: sp.GetRequiredService<ILogger<AzureServiceBusDeadLetterDrainer>>()));</p>
+<p></code></pre></p>
+
+<code>TransportName</code> becomes <code>asb:orders/inventory-svc</code> — used as the
+<code>transport</code> dimension on the <code>whizbang.transport_dlq.drained</code> counter.
+
+<h2>RabbitMQ</h2>
+
+<code>RabbitMqDeadLetterDrainer</code> reads from the configured DLQ via
+<code>BasicGetAsync</code>, resolves the original <code>(exchange, routing-key)</code> from the
+<code>x-death</code> header that RabbitMQ attaches when a message enters DLQ, and
+<p>re-publishes via <code>BasicPublishAsync</code>. Falls back to a configured default</p>
+<p>exchange + the message's current routing key when the header is missing</p>
+<p>(rare; only happens if the broker stripped it).</p>
+
+<p>Registration:</p>
+
+<pre><code class="language-csharp">services.AddSingleton<ITransportDeadLetterDrainer>(sp =>
+<p>  new RabbitMqDeadLetterDrainer(</p>
+<p>    connection: sp.GetRequiredService<IConnection>(),</p>
+<p>    dlqName: "orders.dlq",</p>
+<p>    fallbackExchange: "orders",</p>
+<p>    logger: sp.GetRequiredService<ILogger<RabbitMqDeadLetterDrainer>>()));</p>
+<p></code></pre></p>
+
+<code>TransportName</code> becomes <code>rmq:orders.dlq</code>.
+
+<h2>Failure handling</h2>
+
+<p>Both implementations are best-effort:</p>
+
+<ul><li>ASB: if <code>SendMessageAsync</code> or <code>CompleteMessageAsync</code> throws, the</li>
+</ul><p>  message is <code>AbandonMessageAsync</code>-ed back to DLQ for the next sweep.</p>
+<ul><li>RMQ: if <code>BasicPublishAsync</code> or <code>BasicAckAsync</code> throws, the message is</li>
+</ul><p>  <code>BasicNack</code>-ed with <code>requeue=true</code> so it stays in DLQ.</p>
+
+<p>A single drainer failing doesn't stop the others — the worker continues</p>
+<p>through the remaining drainers on the current tick.</p>
+
+<h2>On-demand drain</h2>
+
+<p>The worker exposes <code>DrainOnceAsync(CancellationToken)</code> publicly so</p>
+<p>operator endpoints can trigger an immediate sweep without waiting for</p>
+<p>the next interval:</p>
+
+<pre><code class="language-csharp">app.MapPost("/admin/transport-dlq/drain-now", async (
+<p>    TransportDeadLetterDrainWorker worker,</p>
+<p>    CancellationToken ct) => {</p>
+<p>  await worker.DrainOnceAsync(ct);</p>
+<p>  return Results.NoContent();</p>
+<p>}).RequireAuthorization("WhizbangOperator");</p>
+<p></code></pre></p>
+
+<h2>Telemetry</h2>
+
+<p>| Metric | Type | Dimensions |</p>
+<p>|---|---|---|</p>
+<p>| <code>whizbang.transport_dlq.drained</code> | counter | <code>transport</code> (e.g. <code>asb:orders/inventory-svc</code>) |</p>
+
+<p>Worker also exposes <code>TotalDrained</code> (a <code>long</code>) for in-process introspection</p>
+<p>— useful for tests and health endpoints.</p>
+
+<h2>See also</h2>
+
+<ul><li><a href="./internal-dlq">Internal DLQ table</a> — the policy-driven sibling flow</li>
+<li><a href="./recovery">Recovery worker + policy matrix</a></li>
 </ul>  </div>
   <p><a href="#top">[Back to top]</a></p>
 </article>
@@ -90117,6 +92451,127 @@ npm install && npm run build</code></pre>
   <p><a href="#top">[Back to top]</a></p>
 </article>
 
+<article id="v1-0-0-operations-diagnostics-whiz120" class="doc-section">
+  <h4>WHIZ120: Pinned Type Renamed Without Ledger Acknowledgment</h4>
+  <p class="doc-path"><code>v1.0.0/operations/diagnostics/whiz120</code></p>
+  <p class="doc-description"><em>Error diagnostic when a [PinnedId] type's CLR name changed but the change was not acknowledged in the committed pinned-type ledger — an un-acknowledged rename that would break deserialization of stored events.</em></p>
+  <div class="doc-content">
+
+<h1>WHIZ120: Pinned Type Renamed Without Ledger Acknowledgment</h1>
+
+<strong>Severity</strong>: Error
+<strong>Category</strong>: Identity / Type Rename
+
+<h2>Description</h2>
+
+<p>A type carrying <code>[PinnedId]</code> has a CLR name that is <strong>neither</strong> the name recorded in the committed</p>
+<a href="../../fundamentals/identity/pinned-type-ledger">pinned-type ledger</a> for its pinned id <strong>nor</strong> one of that entry's
+<code>formerNames</code>. In other words, the type was <strong>renamed</strong>, and the rename has not been acknowledged.
+
+<p>This matters because messages are stored in the append-only event log under the <strong>name of the day</strong>. If the running</p>
+<p>code no longer knows the old name, every event stored under it becomes unreadable. WHIZ120 fails the build so the</p>
+<p>rename is recorded — as a former-name alias — before it can silently break stored-event deserialization.</p>
+
+<p>The analyzer is <strong>inert</strong> when no ledger is present, so this diagnostic only fires once a project has adopted the</p>
+<p>ledger.</p>
+
+<h2>Diagnostic Message</h2>
+
+<pre><code class="language-">Pinned type '{SimpleName}' (id {PinnedId}) has CLR name '{CurrentName}' but the pinned-type ledger records
+<p>'{LedgerName}'. This is a rename: in .whizbang/pinned-type-ledger.json, add '{LedgerName}' to this entry's</p>
+<p>formerNames and set its clrTypeName to '{CurrentName}' so old stored events still resolve to this type.</p>
+<p></code></pre></p>
+
+<h2>Common Causes</h2>
+
+<ul><li><strong>Renaming an event, command, or perspective type</strong> without updating the ledger.</li>
+<li><strong>Moving a type to a different namespace</strong> (the CLR name includes the namespace).</li>
+<li><strong>Nesting or un-nesting a type</strong> (nested types use <code>+</code> in the CLR name).</li>
+</ul>
+<h2>How to Fix</h2>
+
+<p>In <code>.whizbang/pinned-type-ledger.json</code>, find the entry for the reported pinned id and:</p>
+
+<ul><li>Add the ledger's currently-recorded name to that entry's <code>formerNames</code>.</li>
+<li>Set the entry's <code>clrTypeName</code> to the new (current) name.</li>
+</ul>
+<pre><code class="language-json">{
+<p>  "pinnedId": "11111111-2222-3333-4444-555555555555",</p>
+<p>  "clrTypeName": "MyApp.Contracts.OrderPlacedEvent",</p>
+<p>  "kind": "event",</p>
+<p>  "formerNames": ["MyApp.Contracts.OrderCreatedEvent"]</p>
+<p>}</p>
+<p></code></pre></p>
+
+<p>Rebuild. WHIZ120 clears, and <code>MessageJsonContextGenerator</code> now emits an alias so events stored under the former name</p>
+<p>still deserialize to the current type. Commit the ledger change alongside the rename — the diff is the acknowledgment.</p>
+
+<p>The <a href="https://github.com/whizbang-lib">VSCode extension</a> can apply this edit inline.</p>
+
+<h2>When It Is Intentional</h2>
+
+<p>If you are genuinely retiring a pinned id (not renaming), remove the type and prune its ledger entry — see</p>
+<a href="whiz121">WHIZ121</a>. Renaming is not the same as replacing: to <em>replace</em> a type, create a new type with a <strong>new</strong>
+<code>[PinnedId]</code>.
+
+<h2>Related</h2>
+
+<ul><li><a href="../../fundamentals/identity/pinned-type-ledger">Pinned-Type Ledger</a></li>
+<li><a href="whiz121">WHIZ121: Ledger Entry Has No Living Type</a></li>
+<li><a href="../../fundamentals/identity/type-formatting">Type Formatting</a></li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-operations-diagnostics-whiz121" class="doc-section">
+  <h4>WHIZ121: Pinned-Type Ledger Entry Has No Living Type</h4>
+  <p class="doc-path"><code>v1.0.0/operations/diagnostics/whiz121</code></p>
+  <p class="doc-description"><em>Warning diagnostic when the committed pinned-type ledger records a pinned id that no [PinnedId] type in the compilation carries — a removed type or a changed pinned id, whose aliases would register against nothing.</em></p>
+  <div class="doc-content">
+
+<h1>WHIZ121: Pinned-Type Ledger Entry Has No Living Type</h1>
+
+<strong>Severity</strong>: Warning
+<strong>Category</strong>: Identity / Type Rename
+
+<h2>Description</h2>
+
+<p>The committed <a href="../../fundamentals/identity/pinned-type-ledger">pinned-type ledger</a> records an entry whose <code>pinnedId</code></p>
+<p>matches <strong>no</strong> <code>[PinnedId]</code> type in the current compilation. The ledger should track exactly the pinned types in the</p>
+<p>assembly; an entry with no living type indicates a <strong>removed type</strong> or a <strong>changed pinned id</strong>. Any former-name</p>
+<p>aliases on that entry would register against nothing.</p>
+
+<p>Unlike <a href="whiz120">WHIZ120</a>, this is a <strong>warning</strong>, not an error — a stale entry is harmless to correctness (it just</p>
+<p>carries dead history), but it is noise that should be reconciled.</p>
+
+<h2>Diagnostic Message</h2>
+
+<pre><code class="language-">The pinned-type ledger records id {PinnedId} ('{ClrTypeName}') but no [PinnedId] type with that id exists in this
+<p>compilation. The type was removed or its PinnedId changed; prune or reconcile the ledger entry.</p>
+<p></code></pre></p>
+
+<h2>Common Causes</h2>
+
+<ul><li><strong>A type was deleted</strong> but its ledger entry was left behind.</li>
+<li><strong>A <code>[PinnedId]</code> value was changed</strong> (which you should almost never do — the pinned id is the identity).</li>
+<li><strong>A type moved to a different assembly</strong>, so it is no longer part of this compilation's ledger.</li>
+</ul>
+<h2>How to Fix</h2>
+
+<ul><li><strong>Removed type</strong> — delete the stale entry from <code>.whizbang/pinned-type-ledger.json</code> (but only once you are sure no</li>
+</ul><p>  stored events still need its aliases; if they do, keep the entry so old events keep resolving).</p>
+<ul><li><strong>Changed pinned id</strong> — restore the original <code>[PinnedId]</code>. Changing a pinned id breaks identity; treat it as a bug,</li>
+</ul><p>  not a rename.</p>
+<ul><li><strong>Moved to another assembly</strong> — move the ledger entry to that assembly's ledger.</li>
+</ul>
+<h2>Related</h2>
+
+<ul><li><a href="../../fundamentals/identity/pinned-type-ledger">Pinned-Type Ledger</a></li>
+<li><a href="whiz120">WHIZ120: Pinned Type Renamed Without Ledger Acknowledgment</a></li>
+</ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
 <article id="v1-0-0-operations-diagnostics-whiz300" class="doc-section">
   <h4>WHIZ300: Inconsistent Perspective Model Types</h4>
   <p class="doc-path"><code>v1.0.0/operations/diagnostics/whiz300</code></p>
@@ -92127,7 +94582,7 @@ npm install && npm run build</code></pre>
 <article id="v1-0-0-operations-infrastructure-migrations" class="doc-section">
   <h4>Migration Tracking</h4>
   <p class="doc-path"><code>v1.0.0/operations/infrastructure/migrations</code></p>
-  <p class="doc-description"><em>Hash-based migration tracking with per-perspective change detection, blue-green table swaps, preview/rollback, and version auditing</em></p>
+  <p class="doc-description"><em>Hash-based migration tracking with per-perspective change detection, blue-green table swaps, preview/rollback, version auditing, and settings-gated data migrations</em></p>
   <div class="doc-content">
 
 <h1>Migration Tracking</h1>
@@ -92216,16 +94671,51 @@ npm install && npm run build</code></pre>
 <p></code></pre>csharp{title="Backup Cleanup" description="Remove old backup tables:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Backup", "Cleanup"]}</p>
 <p>var dropped = await initializer.CleanupBackupsAsync(olderThanDays: 30);</p>
 <p>// Drops tables matching <em>_bak_</em> with dates older than threshold</p>
-<p></code>`<code></p>
-
+<pre><code class="language-">
 <h2>Version Auditing</h2>
 
 <p>Both the Whizbang library version and the consuming application version are recorded:</p>
 
 <ul><li><strong>library_version</strong>: The Whizbang NuGet package version (e.g., </code>0.9.4<code>)</li>
-<li><strong>application_version</strong>: The consuming app's assembly name and version (e.g., </code>MyApp.OrderService/1.0.0`)</li>
+<li><strong>application_version</strong>: The consuming app's assembly name and version (e.g., </code>MyApp.OrderService/1.0.0<code>)</li>
 </ul>
 <p>This lets you query which app version last applied migrations to a database.</p>
+
+<h2>Data Migrations vs. Schema Migrations</h2>
+
+<p>Hash tracking answers <strong>"did the DDL / object <em>shape</em> change?"</strong> — the SHA-256 is over the migration's SQL text, which for schema migrations mirrors the object it defines. That is exactly the wrong question for a <strong>pure data migration</strong> that rewrites <em>rows</em> without changing any table's shape: the hash can't tell whether the data still needs the fix, and re-scanning a large table on every startup is wasteful.</p>
+
+<p>For those, gate the work on a <strong>version marker row in </code>wh_settings<code></strong> instead of the migration hash:</p>
+
+<p></code></pre>sql{title="Settings-gated data migration" description="Gate a one-time data rewrite on a wh_settings version, not the migration hash" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Data-Migration", "Settings"]}</p>
+<p>DO $migrate$</p>
+<p>DECLARE v_version INTEGER;</p>
+<p>BEGIN</p>
+<p>  SELECT setting_value::INTEGER INTO v_version</p>
+<p>  FROM __SCHEMA__.wh_settings WHERE setting_key = 'my_data_format_version';</p>
+<p>  IF COALESCE(v_version, 1) >= 2 THEN</p>
+<p>    RETURN;                       -- O(1) check; already migrated, no table scan</p>
+<p>  END IF;</p>
+
+<p>  -- ... one-time UPDATE(s) to normalize existing rows ...</p>
+
+<p>  INSERT INTO __SCHEMA__.wh_settings (setting_key, setting_value, value_type, description)</p>
+<p>  VALUES ('my_data_format_version', '2', 'integer', 'Encoding version of <column>.')</p>
+<p>  ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = NOW();</p>
+<p>END</p>
+<p>$migrate$;</p>
+<p></code>`<code></p>
+
+<p>The canonical example is </code>063_NormalizeClrTypeNamesV2.sql<code>, which normalizes stored CLR type names (both message and perspective types) to their </code>+<code>-nested form and records </code>clr_type_name_format_version = 3<code>. Because the migration file still ships and runs through the normal chain, the marker — not the file hash — is the source of truth for <em>data</em> state; bumping the marker (e.g. </code>2 → 3<code> when the normalization was extended to cover perspective types) makes the pass re-run once on already-migrated databases, and re-running after the current version is a cheap no-op.</p>
+
+<h3>The </code>wh_settings<code> table</h3>
+
+<p></code>wh_settings<code> (a </code>setting_key<code> / </code>setting_value<code> / </code>value_type<code> / </code>description<code> key-value table) is the home for two kinds of SQL-side entries:</p>
+
+<ul><li><strong>Data-format version markers</strong> — e.g. </code>clr_type_name_format_version<code> (above).</li>
+<li><strong>Operational tuning knobs</strong> read by SQL functions — e.g. </code>perform_maintenance<code> reads </code>debug_mode<code>, </code>dedup_retention_days<code>, </code>stuck_inbox_retention_days<code>, and </code>abandoned_stream_hours<code> (the idle grace before an owner-less </code>wh_active_streams<code> row is purged).</li>
+</ul>
+<p>Settings are seeded by migrations with </code>ON CONFLICT (setting_key) DO NOTHING` (so operator overrides survive re-runs). Keep C#-worker-coupled timing constants (retry backoff, work leases, liveness thresholds) <em>out</em> of this table — tuning them independently of the workers that assume them causes drift.</p>
 
 <h2>Pre-v1.0 Note</h2>
 

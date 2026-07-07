@@ -41,7 +41,8 @@ rename `OrderCreatedEvent` to `OrderPlacedEvent` and do nothing else, every alre
 becomes **unreadable** — the resolver returns `null` and deserialization throws.
 
 The **pinned-type ledger** makes renames safe and governed. It is a committed lockfile — `.whizbang/pinned-type-ledger.json`,
-a sibling of `.whizbang/message-registry.json` — that records, per pinned id, the type's current CLR name and every
+committed at the `.whizbang/` root (the regenerable `message-registry.json` lives separately in the git-ignored
+`.whizbang/cache/` subfolder) — that records, per pinned id, the type's current CLR name and every
 **former** name it has had:
 
 ```json
