@@ -147,7 +147,14 @@ Whizbang categorizes events on `wh_event_store` / `wh_outbox` /
 `wh_inbox` using a single `flags INTEGER NOT NULL DEFAULT 0` column
 that's a bitmask of the `EventFlags` enum:
 
-```csharp
+```csharp{
+title: "EventFlags bitmask for categorizing events without column churn"
+description: "The [Flags] enum stored in a single flags column on wh_event_store/wh_outbox/wh_inbox that lets the dispatcher route collective and composite events without adding a boolean column per category."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["collective-events", "event-flags", "bitmask", "routing", "schema"]
+}
 [Flags]
 public enum EventFlags {
   None       = 0,
@@ -163,7 +170,14 @@ adding a flag value — no boolean column per category, no migration tax.
 
 ## Authoring a handler
 
-```csharp
+```csharp{
+title: "Author a collective-event handler with [CollectiveApplyFor]"
+description: "A CollectiveSpec handler that describes only the uniform mutation (set Status and ArchivedAt) while the framework composes the scope resolver's WHERE clause for the single SQL UPDATE."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["collective-events", "collective-apply-for", "collective-spec", "set-property", "scope"]
+}
 [CollectiveApplyFor]
 public ICollectiveSpec<JobModel> ArchiveJobs(ArchiveJobsCollectiveEvent e) =>
   new CollectiveSpec<JobModel>(s => s
@@ -184,7 +198,14 @@ resolver's `ScopeFilter(evt.Scope)` — nothing else.
 
 ### Worked examples
 
-```csharp
+```csharp{
+title: "Collective handler patterns: constant, increment, event-delta, conditional, and opt-outs"
+description: "Worked [CollectiveApplyFor] handlers spanning constant SetProperty, self-referential increment, event-supplied delta, captured-threshold conditional flag, and custom-scope and raw-SQL opt-outs for scope-wide uniform mutations."
+framework: "NET10"
+category: "Messaging"
+difficulty: "ADVANCED"
+tags: ["collective-events", "collective-apply-for", "set-property", "raw-sql", "scope-handling"]
+}
 // 1. Constant — "archive every job in tenant T"
 [CollectiveApplyFor]
 public ICollectiveSpec<JobModel> ArchiveJobs(ArchiveJobsCollectiveEvent e) =>
@@ -252,7 +273,7 @@ The Dapper driver in v1.0 restricts further to **constant-value**
 
 ## Apply pipeline at runtime
 
-```mermaid
+```mermaid{title="Collective-event apply pipeline from producer to projection UPDATE" description="Sequence diagram tracing a collective event through outbox, transport, and inbox into the perspective runner, scope resolver, and the single scope-filtered SQL UPDATE."}
 sequenceDiagram
   autonumber
   participant P as Producer
@@ -306,7 +327,14 @@ pay no schema tax.
 
 Built-in `ICollectiveScope` for tenant-scoped collective mutations:
 
-```csharp
+```csharp{
+title: "Emit a collective event scoped by TenantCollectiveScope"
+description: "Publishes an ArchiveJobsCollectiveEvent carrying a TenantCollectiveScope so the auto-registered resolver composes a tenant-id WHERE predicate for the single scope-wide UPDATE."
+framework: "NET10"
+category: "Messaging"
+difficulty: "BEGINNER"
+tags: ["collective-events", "tenant-scope", "collective-scope", "publish", "scope-resolver"]
+}
 var evt = new ArchiveJobsCollectiveEvent {
   Scope = new TenantCollectiveScope("t-1"),
   OccurredAt = clock.GetUtcNow(),
@@ -351,7 +379,14 @@ events.
 `CollectiveApplyDiscoveryGenerator`. The generator emits a static
 dispatch table per assembly:
 
-```csharp
+```csharp{
+title: "Generator-emitted CollectiveApplyRegistry dispatch table"
+description: "The static, per-assembly registry emitted by CollectiveApplyDiscoveryGenerator that maps (ModelType, EventType) to a typed Invoker lambda, enabling reflection-free, AOT-clean collective-event dispatch."
+framework: "NET10"
+category: "Messaging"
+difficulty: "ADVANCED"
+tags: ["collective-events", "source-generator", "aot", "dispatch-registry", "collective-apply-for"]
+}
 // Auto-generated
 public static class CollectiveApplyRegistry {
   public static readonly IReadOnlyList<CollectiveApplyEntry> Entries =

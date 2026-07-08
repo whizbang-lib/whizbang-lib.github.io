@@ -20,7 +20,14 @@ codeReferences:
 
 ## Registration
 
-```csharp
+```csharp{
+title: "Register the in-memory body-offload provider"
+description: "Wires the process-local in-memory body store as a named offload provider for dev/test round-trips without standing up external blob storage."
+framework: "NET10"
+category: "Offloads"
+difficulty: "BEGINNER"
+tags: ["body-offload", "in-memory", "testing", "claim-check", "dependency-injection"]
+}
 services.AddWhizbangInMemoryOffload("memory-dev");
 
 services.AddWhizbangBodyOffload();

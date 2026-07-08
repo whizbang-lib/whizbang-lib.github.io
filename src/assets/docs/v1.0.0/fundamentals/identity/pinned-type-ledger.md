@@ -48,7 +48,13 @@ committed at the `.whizbang/` root (the regenerable `message-registry.json` live
 `.whizbang/cache/` subfolder) — that records, per pinned id, the type's current CLR name and every
 **former** name it has had:
 
-```json
+```json{
+title: "Pinned-type ledger entry with a former name"
+description: "Shows the committed .whizbang/pinned-type-ledger.json lockfile recording a pinned id's current CLR name plus every former name, so renamed events still deserialize."
+category: "Identity"
+difficulty: "INTERMEDIATE"
+tags: ["pinned-id", "type-rename", "ledger", "lockfile", "former-names"]
+}
 {
   "version": 1,
   "types": [
@@ -157,7 +163,13 @@ Information, drift at Warning).
 The Whizbang generators package auto-includes the ledger as an `AdditionalFile` and registers the extraction target.
 Nothing else is required. To opt a project out, set:
 
-```xml
+```xml{
+title: "Opt a project out of the pinned-type ledger"
+description: "Sets the WhizbangIncludePinnedTypeLedger MSBuild property to false so the generators package stops emitting and gating the ledger for this project."
+category: "Identity"
+difficulty: "ADVANCED"
+tags: ["pinned-id", "ledger", "msbuild", "opt-out", "generators"]
+}
 <PropertyGroup>
   <WhizbangIncludePinnedTypeLedger>false</WhizbangIncludePinnedTypeLedger>
 </PropertyGroup>
