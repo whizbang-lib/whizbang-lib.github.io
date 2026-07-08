@@ -146,12 +146,18 @@ Singleton strategies (Interval, Batch) require `IWorkChannelWriter` for outbox p
 
 The `WorkCoordinatorStrategyFactory` provides AOT-safe strategy creation using direct `new` calls (no reflection).
 
-## FlushMode
+## Two Flush Methods
 
-All strategies support `FlushMode` on `FlushAsync`:
+`IWorkCoordinatorStrategy` exposes two flush methods. Which one you call is a caller-side decision based on whether you need the resulting `WorkBatch`:
 
-- **`Required`** (default): Must flush now and return results.
-- **`BestEffort`**: Strategy decides when to flush. Interval/Batch defer to their triggers; Scoped flushes immediately anyway.
+| Method | Returns | Semantics |
+|--------|---------|-----------|
+| **`FlushAsync(flags, ct)`** | `Task` | Fire-and-forget signal. The strategy decides when to flush: Immediate and Scoped flush now; Interval defers to its timer; Batch defers to its debounce or batch-size trigger. Used by Dispatcher for all automatic outbox routing (cascade-to-outbox, routed publish, routed send) — those paths don't consume the `WorkBatch`. |
+| **`FlushAndGetBatchAsync(flags, ct)`** | `Task<WorkBatch>` | Force flush now and return the batch, bypassing any batching window. Used by inbox consumers that filter the returned `WorkBatch` by `MessageId` for deduplication, and by `IWorkFlusher` (end-of-request middleware) that must persist before the response completes. |
+
+:::updated{version="1.0.0" type="breaking"}
+**API changed in pre-v1.0:** the single `FlushAsync(flags, mode, ct)` method with a `FlushMode` enum was replaced by the two methods above. `FlushMode` no longer exists. Callers that previously passed `FlushMode.Required` should use `FlushAndGetBatchAsync`; callers that previously passed `FlushMode.BestEffort` should use `FlushAsync`. This split is structural — a caller that doesn't need the `WorkBatch` can't accidentally force a synchronous flush against an Interval or Batch strategy (the cause of the 2026-03-12 cascade-batching regression).
+:::
 
 ## Manual Flushing
 
@@ -169,7 +175,7 @@ public class ImportService(IWorkFlusher flusher) {
 }
 ```
 
-`IWorkFlusher` is registered as **scoped** and resolves to the same strategy instance as `IWorkCoordinatorStrategy`. Calling `FlushAsync` is equivalent to calling the strategy's `FlushAsync` with `FlushMode.Required`.
+`IWorkFlusher` is registered as **scoped** and resolves to the same strategy instance as `IWorkCoordinatorStrategy`. Calling `FlushAsync` on it delegates to the strategy's `FlushAndGetBatchAsync` — a forced flush that bypasses any batching window, because end-of-request middleware cannot defer persistence past the HTTP response.
 
 This is useful when:
 - You need to ensure messages are persisted before returning a response
