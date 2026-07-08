@@ -41,14 +41,26 @@ When an instance owns a stream (present in `wh_active_streams.assigned_instance_
 
 Migration 029 (`process_work_batch`) tracks a refresh threshold alongside the computed expiry:
 
-```sql
+```sql{
+title: "Compute lease expiry and refresh threshold"
+description: "Derive the new lease_expiry and the one-third refresh threshold inside process_work_batch so leases are only rewritten near expiry."
+category: "Workers"
+difficulty: "ADVANCED"
+tags: ["work-coordinator", "lease-renewal", "process-work-batch", "refresh-threshold", "sql"]
+}
 v_lease_expiry      := p_now + (p_lease_duration_seconds          || ' seconds')::INTERVAL;
 v_refresh_threshold := p_now + ((p_lease_duration_seconds / 3)    || ' seconds')::INTERVAL;
 ```
 
 and guards the end-of-tick UPDATE:
 
-```sql
+```sql{
+title: "Guard the end-of-tick lease refresh UPDATE"
+description: "Refresh lease_expiry only for owned streams within the refresh threshold, cutting per-tick UPDATE volume without changing the orphan-detection SLA."
+category: "Workers"
+difficulty: "ADVANCED"
+tags: ["work-coordinator", "lease-renewal", "conditional-refresh", "wh_active_streams", "orphan-claim", "sql"]
+}
 UPDATE wh_active_streams
 SET lease_expiry = v_lease_expiry
 WHERE assigned_instance_id = p_instance_id
@@ -79,7 +91,13 @@ The guard only affects *refresh* — it does not affect *expiry*. When an instan
 
 Migration 010 now skips the UPDATE side of the UPSERT when the existing heartbeat is already fresh:
 
-```sql
+```sql{
+title: "Skip the heartbeat UPDATE when it is already fresh"
+description: "Guard the register_instance_heartbeat UPSERT so last_heartbeat_at is only rewritten when older than 10s, cutting per-pod heartbeat writes ~40x while staying inside the stale cutoff."
+category: "Workers"
+difficulty: "ADVANCED"
+tags: ["work-coordinator", "heartbeat", "conditional-refresh", "wh_service_instances", "instance-stickiness", "sql"]
+}
 ON CONFLICT (instance_id) DO UPDATE SET
   last_heartbeat_at = p_now,
   metadata          = COALESCE(EXCLUDED.metadata, wh_service_instances.metadata)

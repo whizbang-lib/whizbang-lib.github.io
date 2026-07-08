@@ -759,7 +759,7 @@
     "version": "v1.0.0",
     "readingTime": 5,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/publish-once.md",
-    "wordCount": 897
+    "wordCount": 949
   },
   {
     "slug": "v1.0.0/fundamentals/dispatcher/routing",
@@ -793,9 +793,9 @@
     "description": "The CT-only LocalInvokeAndSyncAsync(message, SyncMode, ct) overload — explicit read-after-write expectation at every callsite; no implicit timeouts.",
     "tags": "dispatcher, sync, cqrs, read-after-write, sync-mode",
     "version": "v1.0.0",
-    "readingTime": 4,
+    "readingTime": 5,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/sync-mode.md",
-    "wordCount": 676
+    "wordCount": 902
   },
   {
     "slug": "v1.0.0/fundamentals/events/event-store-query",
@@ -915,7 +915,7 @@
     "version": "v1.0.0",
     "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/identity/pinned-type-ledger.md",
-    "wordCount": 1247
+    "wordCount": 1329
   },
   {
     "slug": "v1.0.0/fundamentals/identity/time-provider",
@@ -1225,9 +1225,9 @@
     "description": "\n# Collective events\n\nA first-class persistable event that mutates **every stream in a scope**\nas a unit. The producer expresses scope + mutation; the projection\nrunner applies it as **one SQL UPDATE per affected projection table**\nwhose `WHERE` clause is just the scope predicate. No per-row enumeration,\nno per-row tracking, no per-row tax.\n\nCanonical use cases:\n\n- \"Archive every non-active job in tenant T\"\n- \"Remove all jobs in tenant T\"\n- \"Change state of every matching job\"\n- \"Flag all entities older than Y\" (where Y is captured on the event payload)\n\nWhen the producer expresses **intent + scope** rather than a list of\nevents, this is the primitive — one event row, one SQL UPDATE, one\ncategory-level observed event.\n\n## When to reach for it\n\n```\nProducer wants to mutate multiple streams in one operation\n  │\n  ├─ Is the mutation uniform across all targeted streams?\n  │   ├─ NO  → ICompositeEvent (hand-crafted per-stream batch)\n  │   └─ YES\n  │       │\n  │       ├─ Does the producer want to name an explicit list of streams?\n  │       │   ├─ YES → ICompositeEvent (enumerate them)\n  │       │   └─ NO  → ICollectiveEvent ← THIS — scope IS the descriptor\n```\n\n## Composite vs collective — pick one per producer intent\n\n`ICollectiveEvent` sits **next to** `ICompositeEvent` — additive, not a\nreplacement. They solve different problems and ship on different runtime\npaths.\n\n| Dimension | `ICompositeEvent` | `ICollectiveEvent` |\n|",
     "tags": [],
     "version": "v1.0.0",
-    "readingTime": 12,
+    "readingTime": 14,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
-    "wordCount": 2361
+    "wordCount": 2617
   },
   {
     "slug": "v1.0.0/fundamentals/offloads/message-body-store",
@@ -1239,7 +1239,7 @@
     "version": "v1.0.0",
     "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/offloads/message-body-store.md",
-    "wordCount": 1041
+    "wordCount": 1130
   },
   {
     "slug": "v1.0.0/fundamentals/offloads/providers/azure-blob",
@@ -1251,7 +1251,7 @@
     "version": "v1.0.0",
     "readingTime": 4,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
-    "wordCount": 639
+    "wordCount": 769
   },
   {
     "slug": "v1.0.0/fundamentals/offloads/providers/in-memory",
@@ -1263,7 +1263,7 @@
     "version": "v1.0.0",
     "readingTime": 2,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/offloads/providers/in-memory.md",
-    "wordCount": 309
+    "wordCount": 349
   },
   {
     "slug": "v1.0.0/fundamentals/persistence/observability",
@@ -1299,7 +1299,7 @@
     "version": "v1.0.0",
     "readingTime": 3,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/apply-exactly-once.md",
-    "wordCount": 525
+    "wordCount": 579
   },
   {
     "slug": "v1.0.0/fundamentals/perspectives/association-info",
@@ -1539,7 +1539,7 @@
     "version": "v1.0.0",
     "readingTime": 5,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/versioned-apply.md",
-    "wordCount": 858
+    "wordCount": 904
   },
   {
     "slug": "v1.0.0/fundamentals/receptors/exactly-once-firing",
@@ -1597,9 +1597,9 @@
     "description": "Long-running multi-item workflows on top of Whizbang.Core. One attribute generates the events + service; per-item streams give race-free fan-out; PublishOnceAsync collapses the terminal-emission race; SagaItemCompletionReconciler rescues stranded sagas from cross-pod lost-updates.",
     "tags": "sagas, workflows, event-sourcing, per-item-streams, exactly-once",
     "version": "v1.0.0",
-    "readingTime": 8,
+    "readingTime": 9,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md",
-    "wordCount": 1525
+    "wordCount": 1617
   },
   {
     "slug": "v1.0.0/fundamentals/security/audit-logging",
@@ -1717,9 +1717,9 @@
     "description": "Dual-signal liveness scheme — session-level advisory lock on the direct LISTEN conn (primary) plus the heartbeat-table fallback (legacy). Adaptive HeartbeatWorker cadence preserves the 30 s recovery guarantee.",
     "tags": "liveness, heartbeat, advisory-lock, recovery, workers",
     "version": "v1.0.0",
-    "readingTime": 3,
+    "readingTime": 4,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/workers/instance-liveness.md",
-    "wordCount": 566
+    "wordCount": 648
   },
   {
     "slug": "v1.0.0/fundamentals/workers/perspective-worker-notify",
@@ -1741,9 +1741,9 @@
     "description": "Optional dedicated pool of long-lived PostgreSQL connections held by the hot-path background workers, bypassing pgbouncer to eliminate per-transaction DISCARD ALL overhead.",
     "tags": "workers, connections, pgbouncer, performance, throughput",
     "version": "v1.0.0",
-    "readingTime": 7,
+    "readingTime": 9,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md",
-    "wordCount": 1378
+    "wordCount": 1637
   },
   {
     "slug": "v1.0.0/fundamentals/workers/worker-classification",
@@ -2005,9 +2005,9 @@
     "description": "Wire-only fan-out optimization — emit one envelope carrying N inner events; the receiver expands it before invoking receptors and writing the event store. Composite types are never persisted; only the expanded inner events are recorded.",
     "tags": "composite, events, bulk, fan-out, batched-append",
     "version": "v1.0.0",
-    "readingTime": 5,
+    "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/composite-events.md",
-    "wordCount": 907
+    "wordCount": 1037
   },
   {
     "slug": "v1.0.0/messaging/failure-handling",
@@ -2319,7 +2319,7 @@
     "version": "v1.0.0",
     "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
-    "wordCount": 1237
+    "wordCount": 1278
   },
   {
     "slug": "v1.0.0/operations/configuration/lens-services",
@@ -2391,7 +2391,7 @@
     "version": "v1.0.0",
     "readingTime": 4,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dead-letter-queue/internal-dlq.md",
-    "wordCount": 667
+    "wordCount": 780
   },
   {
     "slug": "v1.0.0/operations/dead-letter-queue/operator-api",
@@ -2403,7 +2403,7 @@
     "version": "v1.0.0",
     "readingTime": 3,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dead-letter-queue/operator-api.md",
-    "wordCount": 431
+    "wordCount": 588
   },
   {
     "slug": "v1.0.0/operations/dead-letter-queue/perspective-events",
@@ -2413,9 +2413,9 @@
     "description": "How wh_perspective_events rows that exceed MaxPerspectiveEventAttempts get moved to wh_dead_letters before deserialization + apply runs.",
     "tags": "dead-letter-queue, PerspectiveWorker, MaxPerspectiveEventAttempts, FilterDeadLetteredAsync, perspective-events",
     "version": "v1.0.0",
-    "readingTime": 3,
+    "readingTime": 4,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dead-letter-queue/perspective-events.md",
-    "wordCount": 518
+    "wordCount": 605
   },
   {
     "slug": "v1.0.0/operations/dead-letter-queue/recovery",
@@ -2427,7 +2427,7 @@
     "version": "v1.0.0",
     "readingTime": 4,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dead-letter-queue/recovery.md",
-    "wordCount": 616
+    "wordCount": 700
   },
   {
     "slug": "v1.0.0/operations/dead-letter-queue/transport-recovery",
@@ -2437,9 +2437,9 @@
     "description": "How TransportDeadLetterDrainWorker drains the broker's own dead-letter queue (ASB $DeadLetterQueue, RMQ DLX queue) back onto the normal receive path. Distinct from Whizbang's internal wh_dead_letters flow.",
     "tags": "dead-letter-queue, transport-recovery, ITransportDeadLetterDrainer, TransportDeadLetterDrainWorker, ASB, RabbitMQ, broker-DLQ",
     "version": "v1.0.0",
-    "readingTime": 3,
+    "readingTime": 4,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dead-letter-queue/transport-recovery.md",
-    "wordCount": 561
+    "wordCount": 719
   },
   {
     "slug": "v1.0.0/operations/deployment/deployment-strategies",
@@ -2720,7 +2720,7 @@
     "version": "v1.0.0",
     "readingTime": 3,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz120.md",
-    "wordCount": 451
+    "wordCount": 493
   },
   {
     "slug": "v1.0.0/operations/diagnostics/whiz121",
@@ -2953,9 +2953,9 @@
     "description": "Structural canary that surfaces wh_outbox / wh_inbox rows claimed past MaxOutboxAttempts but never drained — catches any silent-stuck bug regardless of root cause.",
     "tags": "observability, maintenance, dead-letter, stuck-rows, sentinel, monitoring",
     "version": "v1.0.0",
-    "readingTime": 6,
+    "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
-    "wordCount": 1111
+    "wordCount": 1267
   },
   {
     "slug": "v1.0.0/operations/observability/tracing",
@@ -3049,8 +3049,8 @@
     "description": "How WorkCoordinatorPublisherWorker paces its ticks and when it refreshes stream leases and instance heartbeats. Covers the conditional-refresh guards, the adaptive poll-interval backoff, tuning knobs, and failover SLAs.",
     "tags": "work-coordinator, process-work-batch, lease-renewal, heartbeat, polling, backoff, wal, instance-stickiness, orphan-claim",
     "version": "v1.0.0",
-    "readingTime": 5,
+    "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/process-work-batch-lease-semantics.md",
-    "wordCount": 978
+    "wordCount": 1101
   }
 ]

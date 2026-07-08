@@ -27,7 +27,13 @@ Whizbang has two independent signals for "this instance is alive," wired in slic
 
 The new SQL function `is_instance_alive(instance_id, threshold_seconds)` returns TRUE if EITHER signal indicates alive:
 
-```sql
+```sql{
+title: "Check whether an instance is alive"
+description: "Calls the migration-055 is_instance_alive function, which returns TRUE if either the advisory lock or a fresh heartbeat row indicates the instance is still live."
+category: "Workers"
+difficulty: "INTERMEDIATE"
+tags: ["liveness", "advisory-lock", "heartbeat", "postgres", "migration-055"]
+}
 -- migration 055
 SELECT is_instance_alive('11111111-...'::uuid, 30);
 ```
@@ -66,7 +72,13 @@ The 30 s `cleanup_stale_instances` recovery guarantee is preserved in both cases
 
 ## Verification
 
-```sql
+```sql{
+title: "Inspect held instance alive-locks"
+description: "Queries pg_locks for the session-level advisory locks each live instance holds on its direct LISTEN connection, giving one row per active instance."
+category: "Workers"
+difficulty: "ADVANCED"
+tags: ["liveness", "advisory-lock", "pg-locks", "postgres", "verification"]
+}
 -- Inspect held alive-locks (one row per active instance)
 SELECT * FROM pg_locks
 WHERE locktype = 'advisory'

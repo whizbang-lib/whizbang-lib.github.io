@@ -93,7 +93,13 @@ The sentinel is designed to be effectively free in steady state.
 
 Migration `054_StuckRowSentinel.sql` creates two partial indexes:
 
-```sql
+```sql{
+title: "Partial indexes for the stuck-row sentinel"
+description: "Create the attempts>5 partial indexes on wh_outbox and wh_inbox that keep the sentinel scan effectively free in steady state."
+category: "Observability"
+difficulty: "ADVANCED"
+tags: ["stuck-row", "sentinel", "partial-index", "wh_outbox", "wh_inbox", "sql"]
+}
 CREATE INDEX idx_outbox_stuck_sentinel
   ON wh_outbox (attempts)
   WHERE processed_at IS NULL AND attempts > 5;
@@ -124,7 +130,13 @@ When a `Warning: Stuck outbox row sentinel` fires:
 1. **Correlate timing** — Check `since` against your recent deploy timeline. A row stuck since the last deploy is likely a regression in code that shipped. A row stuck longer is likely accumulating from an existing producer bug.
 2. **Group by type** — Multiple Warnings naming the same `MessageType` mean a specific producer is the source. Search the producer's codebase for that type's call site.
 3. **Investigate the row directly** — Query `wh_outbox` for the `message_id`:
-   ```sql
+   ```sql{
+title: "Inspect a stuck outbox row by message_id"
+description: "Pull the full forensic column set for a sentinel-flagged wh_outbox row so an operator can diagnose why it never drained."
+category: "Observability"
+difficulty: "INTERMEDIATE"
+tags: ["stuck-row", "sentinel", "forensics", "wh_outbox", "operator", "sql"]
+}
    SELECT message_type, stream_id, attempts, status, failure_reason,
           error, instance_id, lease_expiry, created_at
    FROM wh_outbox
@@ -140,7 +152,13 @@ When a `Warning: Stuck outbox row sentinel` fires:
 
 ### Per-type stuck-row rates
 
-```sql
+```sql{
+title: "Aggregate stuck outbox rows by message type"
+description: "Group sentinel-flagged wh_outbox rows by message_type to reveal which producer is the source of a silent-stuck symptom."
+category: "Observability"
+difficulty: "INTERMEDIATE"
+tags: ["stuck-row", "sentinel", "telemetry", "message-type", "aggregation", "sql"]
+}
 SELECT message_type, COUNT(*) AS stuck_count, MAX(attempts) AS max_attempts
 FROM wh_outbox
 WHERE attempts > 10 AND processed_at IS NULL
@@ -150,7 +168,13 @@ ORDER BY stuck_count DESC;
 
 ### Time-since-stuck distribution
 
-```sql
+```sql{
+title: "Compute the time-since-stuck distribution"
+description: "Summarize oldest, newest, and average attempts of stuck wh_outbox rows per message_type to frame urgency and correlate with deploy windows."
+category: "Observability"
+difficulty: "INTERMEDIATE"
+tags: ["stuck-row", "sentinel", "telemetry", "distribution", "deploy-correlation", "sql"]
+}
 SELECT
   message_type,
   MIN(created_at) AS oldest_stuck,

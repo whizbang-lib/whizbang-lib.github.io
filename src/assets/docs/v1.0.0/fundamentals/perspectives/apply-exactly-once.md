@@ -32,7 +32,14 @@ For every tuple of (`streamId`, `perspectiveName`, `eventId`), the generated `IP
 
 A projection writer should treat `Apply` as a write to collection state with no pre-existing dedup:
 
-```csharp
+```csharp{
+title: "Write a non-idempotent perspective Apply that relies on exactly-once dispatch"
+description: "A projection Apply method that blindly appends a collection row without a dedup check, correct because the framework guarantees Apply runs exactly once per event per perspective per stream."
+framework: "NET10"
+category: "Perspectives"
+difficulty: "ADVANCED"
+tags: ["perspectives", "apply", "exactly-once", "idempotency", "projection"]
+}
 public UberDraftJobModel Apply(UberDraftJobModel current, DraftJobEssentialFunctionRowAddedEvent evt) {
   current.EssentialFunctionRows.Add(new EssentialFunctionRow { RowId = evt.RowId, /* … */ });
   return current;

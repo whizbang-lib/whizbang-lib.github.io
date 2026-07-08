@@ -34,7 +34,14 @@ Use the [body offload feature](/docs/fundamentals/offloads/message-body-store) a
 
 ## The contract
 
-```csharp
+```csharp{
+title: "The ICompositeEvent contract"
+description: "Defines the composite-event marker interface that yields inner events and caps the count, letting the dispatcher and consumer worker detect and expand a bulk envelope."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["composite-events", "fan-out", "bulk", "inner-events", "contract"]
+}
 public interface ICompositeEvent : IMessage {
   /// Yields the inner events this composite expands into. Receivers
   /// enumerate this exactly once at receive time.
@@ -80,7 +87,14 @@ The expander counts as it iterates. Reaching `MaxInnerEventsAllowed + 1` throws 
 
 To raise the cap for a specific composite type, override the property:
 
-```csharp
+```csharp{
+title: "Raise the inner-event cap for a composite type"
+description: "Overrides MaxInnerEventsAllowed on a concrete composite so a known large bulk operation can expand past the default 10,000 inner-event safety limit."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["composite-events", "max-inner-events", "bulk", "cap", "fan-out"]
+}
 public class LargeBulkComposite : ICompositeEvent {
   public IEnumerable<IMessage> InnerEvents => /* … */;
   public int MaxInnerEventsAllowed => 50_000;
@@ -91,7 +105,14 @@ public class LargeBulkComposite : ICompositeEvent {
 
 For composite expansion at scale (5K inner events), looping `IEventStore.AppendAsync` per inner event would be O(N) round-trips. `IEventStore.AppendBatchAsync<TMessage>` provides a single-call batch entry point:
 
-```csharp
+```csharp{
+title: "Batched event-store append signature"
+description: "The AppendBatchAsync entry point that writes all expanded inner events in one call, avoiding O(N) round-trips when a composite expands into thousands of events."
+framework: "NET10"
+category: "Messaging"
+difficulty: "ADVANCED"
+tags: ["composite-events", "event-store", "batched-append", "performance", "fan-out"]
+}
 Task AppendBatchAsync<TMessage>(
     IReadOnlyList<(Guid streamId, MessageEnvelope<TMessage> envelope)> entries,
     CancellationToken cancellationToken = default);
