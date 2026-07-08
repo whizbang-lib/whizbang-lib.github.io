@@ -1,0 +1,44 @@
+sequenceDiagram
+    autonumber
+    participant Producer as Inbox dispatch
+    participant Channel as IInboxHandlerCommitChannel
+    participant Worker as InboxHandlerWorker
+    participant Coord as IWorkCoordinator
+    participant DB as Postgres
+
+    Note over Producer,Channel: 5 handlers complete in close succession
+    Producer->>Channel: EnqueueAsync(handler1 result)
+    Producer->>Channel: EnqueueAsync(handler2 result)
+    Producer->>Channel: EnqueueAsync(handler3 result)
+    Producer->>Channel: EnqueueAsync(handler4 result)
+    Producer->>Channel: EnqueueAsync(handler5 result)
+
+    Note over Worker: BatchFlusher coalesces (25ms window OR 100 max OR 50 immediate threshold)
+    Worker->>Worker: Drain channel into batch
+    Worker->>Coord: CommitHandlerBatchAsync([5 results])
+    Coord->>DB: SELECT * FROM commit_handler_batch($jsonb)
+
+    Note over DB: Single outer transaction
+    loop For each handler in array
+        DB->>DB: BEGIN (implicit savepoint)
+        alt Handler succeeds
+            DB->>DB: process_inbox_completions + store_outbox + event_store + perspective_event auto-create
+            DB->>DB: RELEASE SAVEPOINT
+            DB->>DB: RETURN ROW(handler_id, true, NULL)
+        else Handler throws
+            DB->>DB: ROLLBACK TO SAVEPOINT (siblings unaffected)
+            DB->>DB: RETURN ROW(handler_id, false, SQLERRM)
+        end
+    end
+
+    DB->>DB: COMMIT (single fsync covers all successes)
+    opt Any inserts emitted
+        DB->>DB: pg_notify('wh_work', '<category>') fires post-COMMIT (deduped)
+    end
+    DB-->>Coord: 5 result rows
+
+    Coord-->>Worker: IReadOnlyList<HandlerBatchResult>
+    Note over Worker: Per-result fan-out
+    loop For each failed result
+        Worker->>Worker: Route to IFailureChannel for retry
+    end

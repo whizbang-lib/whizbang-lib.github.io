@@ -343,9 +343,9 @@
     "description": "Strategy pattern for controlling message flush behavior from in-memory queues to the database. Covers Immediate, Scoped, Interval, and Batch strategies with trade-offs between latency, throughput, and database load.",
     "tags": "work-coordinator, flush-strategy, batch, scoped, interval, process-work-batch",
     "version": "v1.0.0",
-    "readingTime": 6,
+    "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/data/work-coordinator-strategies.md",
-    "wordCount": 1103
+    "wordCount": 1291
   },
   {
     "slug": "v1.0.0/extending/attributes/auto-populate",
@@ -582,6 +582,18 @@
     "wordCount": 832
   },
   {
+    "slug": "v1.0.0/extending/internals/event-ordering-invariant",
+    "title": "Event Ordering Invariant",
+    "category": "Architecture",
+    "order": 2,
+    "description": "Every batch boundary in Whizbang's pump-then-process pipeline delivers event_id-sorted output. This is the invariant that lets cursor-by-event_id comparisons remain correct under parallel emission and cross-process saga fan-out.",
+    "tags": "architecture, ordering, sliding-window, cursor-inversion, perspective-apply, event-sourcing, uuidv7",
+    "version": "v1.0.0",
+    "readingTime": 9,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/internals/event-ordering-invariant.md",
+    "wordCount": 1764
+  },
+  {
     "slug": "v1.0.0/extending/internals/json-serialization-customizations",
     "title": "JSON Serialization Customizations",
     "category": "Internals",
@@ -627,7 +639,7 @@
     "version": "v1.0.0",
     "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/attribute-utilities.md",
-    "wordCount": 1329
+    "wordCount": 1321
   },
   {
     "slug": "v1.0.0/extending/source-generators/configuration",
@@ -772,6 +784,18 @@
     "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/rpc-extraction.md",
     "wordCount": 1236
+  },
+  {
+    "slug": "v1.0.0/fundamentals/dispatcher/sync-mode",
+    "title": "SyncMode — Read-After-Write Dispatch",
+    "category": "Fundamentals",
+    "order": 5,
+    "description": "The CT-only LocalInvokeAndSyncAsync(message, SyncMode, ct) overload — explicit read-after-write expectation at every callsite; no implicit timeouts.",
+    "tags": "dispatcher, sync, cqrs, read-after-write, sync-mode",
+    "version": "v1.0.0",
+    "readingTime": 4,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/sync-mode.md",
+    "wordCount": 676
   },
   {
     "slug": "v1.0.0/fundamentals/events/event-store-query",
@@ -1177,9 +1201,9 @@
     "description": "Declarative cross-cutting concerns via message tag attributes and hooks - notifications, telemetry, metrics, and audit logging without polluting business logic",
     "tags": "tags, attributes, hooks, notifications, telemetry, metrics, cross-cutting",
     "version": "v1.0.0",
-    "readingTime": 33,
+    "readingTime": 36,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-    "wordCount": 6538
+    "wordCount": 7124
   },
   {
     "slug": "v1.0.0/fundamentals/messages/messages",
@@ -1206,6 +1230,42 @@
     "wordCount": 2361
   },
   {
+    "slug": "v1.0.0/fundamentals/offloads/message-body-store",
+    "title": "Body Offload (Claim-Check Pattern)",
+    "category": "Fundamentals",
+    "order": 1,
+    "description": "Transparent claim-check pattern for messages that exceed transport wire-size ceilings — upload the body to a registered IMessageBodyStore, send a small claim envelope on the wire, rehydrate on receive.",
+    "tags": "offload, claim-check, messaging, transports, body-size",
+    "version": "v1.0.0",
+    "readingTime": 6,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/offloads/message-body-store.md",
+    "wordCount": 1041
+  },
+  {
+    "slug": "v1.0.0/fundamentals/offloads/providers/azure-blob",
+    "title": "Azure Blob Body Store",
+    "category": "Fundamentals",
+    "order": 2,
+    "description": "Production body-store provider backed by Azure Blob Storage. Works identically against the Azurite emulator and live Azure Blob via standard connection-string conventions.",
+    "tags": "offload, providers, azure-blob, azurite, production",
+    "version": "v1.0.0",
+    "readingTime": 4,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
+    "wordCount": 639
+  },
+  {
+    "slug": "v1.0.0/fundamentals/offloads/providers/in-memory",
+    "title": "InMemory Body Store",
+    "category": "Fundamentals",
+    "order": 1,
+    "description": "Dev/test/fixture provider — bodies live in a process-local ConcurrentDictionary; disappears on restart.",
+    "tags": "offload, providers, in-memory, testing",
+    "version": "v1.0.0",
+    "readingTime": 2,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/offloads/providers/in-memory.md",
+    "wordCount": 309
+  },
+  {
     "slug": "v1.0.0/fundamentals/persistence/observability",
     "title": "Observability & Message Hops",
     "category": "Core Concepts",
@@ -1228,6 +1288,18 @@
     "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/persistence/persistence.md",
     "wordCount": 1399
+  },
+  {
+    "slug": "v1.0.0/fundamentals/perspectives/apply-exactly-once",
+    "title": "Apply Exactly-Once Contract",
+    "category": "Core Concepts",
+    "order": 21,
+    "description": "The Apply dispatch contract for perspective runners — Apply(TModel, TEvent) is invoked exactly once per event per perspective per stream. Projection Apply methods never need to be self-idempotent.",
+    "tags": "perspectives, apply, dispatch, exactly-once, idempotency, drain-mode, perspective-runner, doubling",
+    "version": "v1.0.0",
+    "readingTime": 3,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/apply-exactly-once.md",
+    "wordCount": 525
   },
   {
     "slug": "v1.0.0/fundamentals/perspectives/association-info",
@@ -1468,6 +1540,18 @@
     "readingTime": 5,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/versioned-apply.md",
     "wordCount": 858
+  },
+  {
+    "slug": "v1.0.0/fundamentals/receptors/exactly-once-firing",
+    "title": "Exactly-Once Receptor Firing",
+    "category": "Core Concepts",
+    "order": 11,
+    "description": "The firing contract for Whizbang receptors — exactly once per receptor per message, unless explicitly declared idempotent — plus the guardrail that enforces it and the opt-out for legitimate multi-fire scenarios",
+    "tags": "receptors, firing contract, idempotency, guardrail, dedup, ReceptorIdempotent, double fire, at-most-once",
+    "version": "v1.0.0",
+    "readingTime": 6,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/receptors/exactly-once-firing.md",
+    "wordCount": 1140
   },
   {
     "slug": "v1.0.0/fundamentals/receptors/lifecycle-receptors",
@@ -1914,6 +1998,18 @@
     "wordCount": 1848
   },
   {
+    "slug": "v1.0.0/messaging/composite-events",
+    "title": "Composite Events",
+    "category": "Messaging",
+    "order": 12,
+    "description": "Wire-only fan-out optimization — emit one envelope carrying N inner events; the receiver expands it before invoking receptors and writing the event store. Composite types are never persisted; only the expanded inner events are recorded.",
+    "tags": "composite, events, bulk, fan-out, batched-append",
+    "version": "v1.0.0",
+    "readingTime": 5,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/composite-events.md",
+    "wordCount": 907
+  },
+  {
     "slug": "v1.0.0/messaging/failure-handling",
     "title": "Failure Handling",
     "category": "Messaging",
@@ -2212,6 +2308,18 @@
     "readingTime": 3,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/configuration/all-services.md",
     "wordCount": 423
+  },
+  {
+    "slug": "v1.0.0/operations/configuration/empty-stream-id-policy",
+    "title": "Empty Stream ID Policy",
+    "category": "Configuration",
+    "order": 8,
+    "description": "Configure how Whizbang handles outbox / inbox / perspective rows with stream_id = Guid.Empty — the producer-side bug that causes silent stuck rows.",
+    "tags": "configuration, options, stream-id, empty-stream-id, producer, dead-letter, sentinel",
+    "version": "v1.0.0",
+    "readingTime": 7,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
+    "wordCount": 1237
   },
   {
     "slug": "v1.0.0/operations/configuration/lens-services",
@@ -2838,6 +2946,18 @@
     "wordCount": 1391
   },
   {
+    "slug": "v1.0.0/operations/observability/stuck-row-sentinel",
+    "title": "Stuck Row Sentinel",
+    "category": "Observability",
+    "order": 8,
+    "description": "Structural canary that surfaces wh_outbox / wh_inbox rows claimed past MaxOutboxAttempts but never drained — catches any silent-stuck bug regardless of root cause.",
+    "tags": "observability, maintenance, dead-letter, stuck-rows, sentinel, monitoring",
+    "version": "v1.0.0",
+    "readingTime": 6,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
+    "wordCount": 1111
+  },
+  {
     "slug": "v1.0.0/operations/observability/tracing",
     "title": "Tracing",
     "category": "Observability",
@@ -2920,5 +3040,17 @@
     "readingTime": 25,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
     "wordCount": 4859
+  },
+  {
+    "slug": "v1.0.0/operations/workers/process-work-batch-lease-semantics",
+    "title": "Process Work Batch — Lease & Heartbeat Semantics",
+    "category": "Workers",
+    "order": 4,
+    "description": "How WorkCoordinatorPublisherWorker paces its ticks and when it refreshes stream leases and instance heartbeats. Covers the conditional-refresh guards, the adaptive poll-interval backoff, tuning knobs, and failover SLAs.",
+    "tags": "work-coordinator, process-work-batch, lease-renewal, heartbeat, polling, backoff, wal, instance-stickiness, orphan-claim",
+    "version": "v1.0.0",
+    "readingTime": 5,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/process-work-batch-lease-semantics.md",
+    "wordCount": 978
   }
 ]

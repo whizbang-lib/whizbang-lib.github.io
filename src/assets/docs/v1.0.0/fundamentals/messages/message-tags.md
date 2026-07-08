@@ -22,7 +22,10 @@ codeReferences:
   - src/Whizbang.Core/Attributes/NotificationTagAttribute.cs
   - src/Whizbang.Core/Attributes/TelemetryTagAttribute.cs
   - src/Whizbang.Core/Attributes/MetricTagAttribute.cs
+  - src/Whizbang.Core/Attributes/AttributeArgNamingAttribute.cs
+  - src/Whizbang.Core/Attributes/AttributeArgNamingConvention.cs
   - src/Whizbang.Generators/MessageTagDiscoveryGenerator.cs
+  - src/Whizbang.Generators/Utilities/AttributeArgNamingHelper.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -80,7 +83,7 @@ dispatcher.Dispatch(new OrderCreatedEvent(...));
   // → _processTagsIfEnabledAsync() called
   //   → MessageTagRegistry.GetTagsFor(typeof(OrderCreatedEvent))
   //   → For each registration:
-  //     → Build payload from Properties/IncludeEvent/ExtraJson
+  //     → Build payload from Properties/ExtraJson
   //     → Invoke matching hooks in priority order
 
 // 3. Hooks process the tagged message
@@ -332,17 +335,21 @@ The `LifecycleStage` enum has 20 values. The special value `AfterReceptorComplet
 
 ### Payload Structure
 
-The payload is built from three sources:
+The payload is a flat JSON object built from two sources:
 
-1. **Extracted Properties**: Properties listed in `Properties` array
-2. **Full Event**: Entire event under `"__event"` key when `IncludeEvent = true`
-3. **Extra JSON**: Merged content from `ExtraJson` property
+1. **Extracted Properties**: Fields listed in the `Properties` array
+2. **Extra JSON**: Merged content from the `ExtraJson` property
 
-```csharp{title="Understanding Payload Structure" description="How tag payloads are constructed from different sources" category="Internals" difficulty="INTERMEDIATE" tags=["Tags", "Payload", "JSON"]}
+`Properties` controls what lands in the payload:
+
+- **Explicit array** like `["OrderId", "CustomerId"]` — only those fields are extracted.
+- **Explicit empty array** `[]` — no fields are extracted; the tag fires with just a tag name and any `ExtraJson`. Use this when the tag itself (not its data) is the signal.
+- **Omitted** (null) — the generator falls back to every public property on the event type. Preserved for backward compat; **not recommended** because payloads travel over real-time transports and oversized payloads are easy to create by accident.
+
+```csharp{title="Understanding Payload Structure" description="How tag payloads are constructed" category="Internals" difficulty="INTERMEDIATE" tags=["Tags", "Payload", "JSON"]}
 [NotificationTag(
     Tag = "order-created",
     Properties = ["OrderId", "CustomerId"],
-    IncludeEvent = true,
     ExtraJson = """{"source": "api", "version": 2}""")]
 public record OrderCreatedEvent(Guid OrderId, Guid CustomerId, decimal Total, string InternalNote);
 
@@ -351,12 +358,6 @@ public record OrderCreatedEvent(Guid OrderId, Guid CustomerId, decimal Total, st
 // {
 //   "OrderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
 //   "CustomerId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
-//   "__event": {
-//     "OrderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-//     "CustomerId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
-//     "Total": 99.99,
-//     "InternalNote": "Internal note"
-//   },
 //   "source": "api",
 //   "version": 2
 // }
@@ -375,20 +376,38 @@ public async ValueTask<JsonElement?> OnTaggedMessageAsync(
   var orderId = payload.GetProperty("OrderId").GetGuid();
   var customerId = payload.GetProperty("CustomerId").GetGuid();
 
-  // Access full event if IncludeEvent was true
-  if (payload.TryGetProperty("__event", out var eventElement)) {
-    var total = eventElement.GetProperty("Total").GetDecimal();
-    var internalNote = eventElement.GetProperty("InternalNote").GetString();
-  }
-
-  // Access extra JSON
+  // Access extra JSON (merged into the same flat object)
   if (payload.TryGetProperty("source", out var source)) {
     var sourceValue = source.GetString(); // "api"
+  }
+
+  // Need a field that wasn't in Properties? Read it from the strongly-typed
+  // Message instead — the full event is on TagContext.Message.
+  if (context.Message is OrderCreatedEvent evt) {
+    var total = evt.Total;
   }
 
   return null;
 }
 ```
+
+### Payload Size Thresholds
+
+The processor measures each built payload and flags oversized ones via `TagOptions`:
+
+| Option | Default | Behavior |
+|--------|---------|----------|
+| `PayloadSizeWarningThresholdBytes` | `8192` | Logs a warning with message type, tag, and size |
+| `PayloadSizeErrorThresholdBytes` | `null` (disabled) | Throws `InvalidOperationException`; the hook does not fire |
+
+```csharp{title="Configuring payload size thresholds" description="Catch runaway tag payloads before they ship" category="Configuration" difficulty="BEGINNER" tags=["Tags", "Configuration"]}
+services.AddWhizbang(options => {
+  options.Tags.PayloadSizeWarningThresholdBytes = 4096;
+  options.Tags.PayloadSizeErrorThresholdBytes = 65_536;
+});
+```
+
+Typical root cause when this fires: a tag attribute omitted `Properties`, so the generator extracted every public property on the event — including fields the hook does not need.
 
 ## Built-in Tag Attributes {#built-in-tags}
 
@@ -405,8 +424,7 @@ All tag attributes inherit from `MessageTagAttribute` and support these base pro
 | Property | Type | Description |
 |----------|------|-------------|
 | `Tag` | `string` (required) | Unique identifier for this tag |
-| `Properties` | `string[]?` | Property names to extract into payload |
-| `IncludeEvent` | `bool` | Include full event under `"__event"` key |
+| `Properties` | `string[]?` | Property names to extract into payload. `null` = every public property (backward-compat fallback), `[]` = no fields extracted |
 | `ExtraJson` | `string?` | Additional JSON to merge into payload |
 
 ### NotificationTagAttribute {#notification-tag}
@@ -419,7 +437,6 @@ Tags messages for real-time notification delivery through SignalR, WebSockets, o
     Properties = ["OrderId", "TrackingNumber"],  // Properties to extract into payload
     Group = "customer-{CustomerId}",    // Target group with {PropertyName} placeholders
     Priority = NotificationPriority.High, // Delivery priority
-    IncludeEvent = false,               // Don't include full event (default)
     ExtraJson = """{"category": "shipping"}"""  // Extra metadata
 )]
 public record OrderShippedEvent(
@@ -436,8 +453,7 @@ public record OrderShippedEvent(
 | `Tag` | `string` | (required) | Unique identifier for the notification |
 | `Group` | `string?` | `null` | Target group/channel, supports `{PropertyName}` placeholders |
 | `Priority` | `NotificationPriority` | `Normal` | Notification priority level |
-| `Properties` | `string[]?` | `null` | Properties to extract from message |
-| `IncludeEvent` | `bool` | `false` | Include full event in payload |
+| `Properties` | `string[]?` | `null` | Properties to extract from message (see Payload Structure for null vs `[]` semantics) |
 | `ExtraJson` | `string?` | `null` | Additional JSON to merge |
 
 **Group Templates**:
@@ -513,8 +529,7 @@ public record PaymentProcessedEvent(Guid PaymentId, decimal Amount, string Curre
 | `SpanName` | `string?` | `Tag` value | OpenTelemetry span name (defaults to Tag if not specified) |
 | `Kind` | `SpanKind` | `Internal` | Span kind for distributed tracing |
 | `RecordAsEvent` | `bool` | `true` | Record message as span event with properties |
-| `Properties` | `string[]?` | `null` | Properties to include as span attributes |
-| `IncludeEvent` | `bool` | `false` | Include full event in span data |
+| `Properties` | `string[]?` | `null` | Properties to include as span attributes (see Payload Structure for null vs `[]` semantics) |
 | `ExtraJson` | `string?` | `null` | Additional metadata |
 
 #### SpanKind {#span-kind}
@@ -597,8 +612,7 @@ public record OrderQueueDepthEvent(int QueueDepth, string QueueName);
 | `Type` | `MetricType` | `Counter` | Type of metric to record |
 | `ValueProperty` | `string?` | `null` | Property name to use as metric value (required for Histogram/Gauge) |
 | `Unit` | `string?` | `null` | Unit of measurement (e.g., "ms", "bytes", "USD") |
-| `Properties` | `string[]?` | `null` | Properties to use as metric dimensions/labels |
-| `IncludeEvent` | `bool` | `false` | Include full event in metric metadata |
+| `Properties` | `string[]?` | `null` | Properties to use as metric dimensions/labels (see Payload Structure for null vs `[]` semantics) |
 | `ExtraJson` | `string?` | `null` | Additional metadata |
 
 #### MetricType {#metric-type}
@@ -829,7 +843,6 @@ Each `MessageTagRegistration` contains metadata for a tagged message type:
 | `AttributeType` | `Type` | The tag attribute type (e.g., `NotificationTagAttribute`) |
 | `Tag` | `string` | The tag value from the attribute |
 | `Properties` | `string[]?` | Property names to extract |
-| `IncludeEvent` | `bool` | Whether to include full event under `"__event"` |
 | `ExtraJson` | `string?` | Additional JSON to merge |
 | `PayloadBuilder` | `Func<object, JsonElement>` | Compiled delegate for building payload (zero reflection) |
 | `AttributeFactory` | `Func<MessageTagAttribute>` | Factory for creating attribute instance |
@@ -880,7 +893,6 @@ public record UserLoginEvent(Guid UserId, string IpAddress, DateTime Timestamp) 
     Category = "Compliance",
     Severity = AuditSeverity.Warning,
     Properties = ["PaymentId", "Amount", "Reason"],
-    IncludeEvent = true,  // Include full event for compliance review
     Archive = true)]
 public record PaymentFailedEvent(Guid PaymentId, decimal Amount, string Reason) : IEvent;
 
@@ -935,6 +947,75 @@ services.AddWhizbang(options => {
 });
 ```
 
+### Positional Constructor Arguments {#positional-ctor-args}
+
+:::new
+**v1.0.0**: `MessageTagDiscoveryGenerator` now preserves positional constructor args when reconstructing tag-attribute instances. Previously these were silently dropped — only `Tag` and named arguments survived the round-trip through the generated `AttributeFactory`, so any value passed to a positional ctor parameter (like `tagValue` or `propertyName`) was reset to its default at runtime.
+:::
+
+Tag attributes commonly accept positional constructor arguments alongside `Tag`:
+
+```csharp{title="Tag Attribute With Positional Ctor Args" description="A tag attribute whose ctor takes (tag, tagValue) — both are preserved by the generator" category="Extensibility" difficulty="INTERMEDIATE" tags=["Tags", "Custom-Attributes"]}
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = true)]
+public class NotificationTagAttribute : MessageTagAttribute {
+  public string? TagValue { get; init; }   // Must be init-settable for the generator's factory.
+
+  public NotificationTagAttribute() { Tag = string.Empty; TagValue = null; }
+
+  public NotificationTagAttribute(string tag, string tagValue) {
+    Tag = tag;
+    TagValue = tagValue;
+  }
+}
+
+// Usage:
+[NotificationTag("user-tabs", "{UserID}")]
+public class TabUpdatedEvent : IEvent {
+  public Guid UserID { get; init; }
+}
+```
+
+The generator emits an `AttributeFactory` that initializes BOTH `Tag` and `TagValue`, so the hook receives `context.Attribute.TagValue == "{UserID}"` and can substitute the placeholder against the payload.
+
+**Requirements:**
+- Properties storing positional ctor args must be **`init`-settable** (not getter-only) so the generator's object initializer can write them.
+- Constructor parameter names must follow your declared naming convention (default: PascalCase). Parameter `tagValue` initializes property `TagValue`, `propertyName` → `PropertyName`, etc.
+
+### AttributeArgNaming Convention {#arg-naming-convention}
+
+When constructor parameter names don't follow the default PascalCase convention (e.g., parameter is already `TagValue`, or you want camelCase / snake_case property names), declare an explicit convention with `[AttributeArgNaming]`:
+
+```csharp{title="Custom Naming Convention" description="Override the parameter→property mapping" category="Extensibility" difficulty="ADVANCED" tags=["Tags", "Custom-Attributes", "Conventions"]}
+using Whizbang.Core.Attributes;
+
+[AttributeArgNaming(AttributeArgNamingConvention.Identity)]   // No transform.
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public class IdTagAttribute : MessageTagAttribute {
+  public string? PropertyName { get; init; }
+
+  public IdTagAttribute() { Tag = string.Empty; }
+
+  // Parameter is already PascalCase — Identity preserves it verbatim.
+  public IdTagAttribute(string tag, string PropertyName) {
+    Tag = tag;
+    this.PropertyName = PropertyName;
+  }
+}
+```
+
+**Available conventions** (`AttributeArgNamingConvention`):
+
+| Convention | Input → Output | Use case |
+|---|---|---|
+| `PascalCase` (default) | `tagValue` → `TagValue` | Standard C# (camelCase params, PascalCase props) |
+| `Identity` | `TagValue` → `TagValue` | Parameter already matches property |
+| `CamelCase` | `TagValue` → `tagValue` | Properties follow camelCase |
+| `SnakeCase` | `tagValue` → `tag_value` | Properties follow snake_case |
+| `KebabCase` | `tagValue` → `tag-value` | Properties follow kebab-case |
+| `UpperSnake` | `tagValue` → `TAG_VALUE` | Properties follow UPPER_SNAKE |
+
+The `[AttributeArgNaming]` attribute is inherited — declaring it on a base tag attribute applies to all subclasses. The convention only affects positional ctor args; named arguments use their declared names verbatim regardless.
+
 ### Advanced Custom Tag Example
 
 Create a Slack notification tag with rich formatting options:
@@ -971,8 +1052,7 @@ public record DeploymentStartedEvent(string Version, string Environment) : IEven
     Emoji = ":rotating_light:",
     Color = SlackColor.Danger,
     MentionOnCall = true,
-    Properties = ["Version", "Environment", "Error"],
-    IncludeEvent = true)]
+    Properties = ["Version", "Environment", "Error"])]
 public record DeploymentFailedEvent(string Version, string Environment, string Error) : IEvent;
 
 // Hook implementation
@@ -1025,7 +1105,6 @@ public class SlackNotificationHook : IMessageTagHook<SlackNotificationAttribute>
   private SlackField[] _buildFields(JsonElement payload) {
     var fields = new List<SlackField>();
     foreach (var prop in payload.EnumerateObject()) {
-      if (prop.Name == "__event") continue;
       fields.Add(new SlackField {
         Title = prop.Name,
         Value = prop.Value.ToString(),
@@ -1585,7 +1664,7 @@ file static class ModuleInitializer {
 1. ✅ Verify property names in `Properties` array match event property names (case-sensitive)
 2. ✅ Check that properties are public
 3. ✅ Ensure properties have getters
-4. ✅ Confirm `IncludeEvent = true` if you need the full event
+4. ✅ If you need a field that isn't in `Properties`, read it from `TagContext.Message` directly rather than from `Payload`
 
 **Diagnostic**:
 

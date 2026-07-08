@@ -1,0 +1,41 @@
+sequenceDiagram
+    autonumber
+    participant App as App code (handler emit, etc.)
+    participant Coord as IWorkCoordinator
+    participant DB as Postgres
+    participant PgB as pgbouncer (transaction-pooling)
+    participant Listener as PgWorkNotificationListener
+    participant CW as ClaimWorker
+
+    Note over App,DB: Producer side — through pgbouncer
+    App->>Coord: CommitHandlerResultAsync(...)
+    Coord->>PgB: SQL (pooled connection)
+    PgB->>DB: forwarded
+    DB->>DB: INSERT INTO wh_outbox/wh_inbox/wh_perspective_events
+    DB->>DB: pg_notify('wh_work', 'outbox')<br/>pg_notify('wh_work', 'inbox')<br/>pg_notify('wh_work', 'perspective')
+    Note over DB: Notifications buffered until COMMIT;<br/>(channel, payload) pairs deduped
+    DB->>DB: COMMIT — at most 3 distinct notifications delivered
+    DB-->>PgB: ack
+    PgB-->>Coord: ack
+    Coord-->>App: result
+
+    Note over Listener,DB: Consumer side — direct connection (1 per pod, bypasses pgbouncer)
+    DB-)Listener: NOTIFY wh_work / payload=outbox
+    Listener->>Listener: OnSignal(WorkSignalCategory.Outbox)
+    Listener-)CW: event handler
+
+    CW->>CW: RequestImmediatePoll()
+    Note over CW: Wake semaphore released → next loop iteration runs ClaimWorkAsync
+
+    Note over Listener: Health monitoring
+    loop Every ListenKeepaliveInterval (30s default)
+        Listener->>DB: SELECT 1
+        alt OK
+            Listener->>Listener: IsHealthy = true
+        else Failure / disconnect
+            Listener->>Listener: IsHealthy = false
+            Listener-)CW: OnHealthChanged(false)
+            CW->>CW: Tighten polling cap (fall back to fast polling)
+            Listener->>Listener: Exponential reconnect (1s → 30s cap)
+        end
+    end
