@@ -506,7 +506,7 @@ Or configured output:
 ```xml{title="View Generated File" description="Or configured output:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
 <PropertyGroup>
   <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-  <CompilerGeneratedFilesOutputPath>.whizbang-generated</CompilerGeneratedFilesOutputPath>
+  <CompilerGeneratedFilesOutputPath>.whizbang/cache</CompilerGeneratedFilesOutputPath>
 </PropertyGroup>
 ```
 

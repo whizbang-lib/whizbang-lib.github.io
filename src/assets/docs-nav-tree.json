@@ -205,6 +205,11 @@
               "order": 2
             },
             {
+              "slug": "v1.0.0/fundamentals/dispatcher/publish-once",
+              "title": "PublishOnceAsync — Exactly-Once Event Emission",
+              "order": 4
+            },
+            {
               "slug": "v1.0.0/fundamentals/dispatcher/rpc-extraction",
               "title": "RPC Response Extraction",
               "order": 18
@@ -266,6 +271,19 @@
           "children": []
         },
         {
+          "name": "messaging",
+          "title": "Messaging",
+          "order": 4,
+          "pages": [
+            {
+              "slug": "v1.0.0/fundamentals/messaging/collective-events",
+              "title": "Collective Events",
+              "order": 7
+            }
+          ],
+          "children": []
+        },
+        {
           "name": "receptors",
           "title": "Receptors",
           "order": 4,
@@ -316,6 +334,11 @@
             {
               "slug": "v1.0.0/fundamentals/perspectives/perspectives-with-actions",
               "title": "Perspectives with Actions",
+              "order": 5
+            },
+            {
+              "slug": "v1.0.0/fundamentals/perspectives/versioned-apply",
+              "title": "Versioned Apply — Strict Cross-Pod Ordering",
               "order": 5
             },
             {
@@ -382,6 +405,24 @@
               "slug": "v1.0.0/fundamentals/perspectives/vector-fields",
               "title": "Vector Fields",
               "order": 999
+            }
+          ],
+          "children": []
+        },
+        {
+          "name": "sagas",
+          "title": "Sagas",
+          "order": 5,
+          "pages": [
+            {
+              "slug": "v1.0.0/fundamentals/sagas/whizbang-sagas",
+              "title": "Whizbang.Sagas — Multi-Stream Saga Coordination",
+              "order": 1
+            },
+            {
+              "slug": "v1.0.0/fundamentals/sagas/completion-orchestration",
+              "title": "Completion Orchestration & Adaptive Watchdog",
+              "order": 2
             }
           ],
           "children": []
@@ -496,6 +537,11 @@
               "slug": "v1.0.0/fundamentals/identity/time-provider",
               "title": "Time Provider",
               "order": 30
+            },
+            {
+              "slug": "v1.0.0/fundamentals/identity/pinned-type-ledger",
+              "title": "Pinned-Type Ledger: Safe, Governed Type Renames",
+              "order": 31
             }
           ],
           "children": []
@@ -536,6 +582,11 @@
               "order": 9
             },
             {
+              "slug": "v1.0.0/fundamentals/security/http-security-headers",
+              "title": "HTTP Security Headers & Method Filtering",
+              "order": 10
+            },
+            {
               "slug": "v1.0.0/fundamentals/security/message-security",
               "title": "Message Security Context Propagation",
               "order": 10
@@ -562,6 +613,34 @@
               "slug": "v1.0.0/fundamentals/persistence",
               "title": "Persistence",
               "order": 12
+            }
+          ],
+          "children": []
+        },
+        {
+          "name": "workers",
+          "title": "Workers",
+          "order": 999,
+          "pages": [
+            {
+              "slug": "v1.0.0/fundamentals/workers/pinned-connection-pool",
+              "title": "Pinned Worker Connection Pool",
+              "order": 6
+            },
+            {
+              "slug": "v1.0.0/fundamentals/workers/perspective-worker-notify",
+              "title": "PerspectiveWorker NOTIFY Wake",
+              "order": 7
+            },
+            {
+              "slug": "v1.0.0/fundamentals/workers/instance-liveness",
+              "title": "Instance Liveness — Advisory Lock + Heartbeat Fallback",
+              "order": 8
+            },
+            {
+              "slug": "v1.0.0/fundamentals/workers/worker-classification",
+              "title": "Worker Classification — A through F",
+              "order": 9
             }
           ],
           "children": []
@@ -801,6 +880,11 @@
               "slug": "v1.0.0/apis/graphql/scoping",
               "title": "GraphQL Scoping",
               "order": 7
+            },
+            {
+              "slug": "v1.0.0/apis/graphql/production-hardening",
+              "title": "Production Hardening",
+              "order": 8
             }
           ],
           "children": []
@@ -969,6 +1053,39 @@
           "children": []
         },
         {
+          "name": "dead-letter-queue",
+          "title": "Dead-Letter Queue",
+          "order": 4,
+          "pages": [
+            {
+              "slug": "v1.0.0/operations/dead-letter-queue/internal-dlq",
+              "title": "Internal DLQ (wh_dead_letters)",
+              "order": 1
+            },
+            {
+              "slug": "v1.0.0/operations/dead-letter-queue/recovery",
+              "title": "Recovery Worker & Policy Matrix",
+              "order": 2
+            },
+            {
+              "slug": "v1.0.0/operations/dead-letter-queue/operator-api",
+              "title": "Operator HTTP API",
+              "order": 3
+            },
+            {
+              "slug": "v1.0.0/operations/dead-letter-queue/transport-recovery",
+              "title": "Transport DLQ Recovery",
+              "order": 4
+            },
+            {
+              "slug": "v1.0.0/operations/dead-letter-queue/perspective-events",
+              "title": "Perspective-event Dead-lettering",
+              "order": 5
+            }
+          ],
+          "children": []
+        },
+        {
           "name": "workers",
           "title": "Workers",
           "order": 4,
@@ -1062,6 +1179,16 @@
             {
               "slug": "v1.0.0/operations/diagnostics/whiz090",
               "title": "WHIZ090: MessageTag Parameter Naming",
+              "order": 999
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz120",
+              "title": "WHIZ120: Pinned Type Renamed Without Ledger Acknowledgment",
+              "order": 999
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz121",
+              "title": "WHIZ121: Pinned-Type Ledger Entry Has No Living Type",
               "order": 999
             },
             {

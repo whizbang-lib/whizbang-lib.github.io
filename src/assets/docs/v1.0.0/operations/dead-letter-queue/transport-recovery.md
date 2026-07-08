@@ -1,0 +1,144 @@
+---
+title: Transport DLQ Recovery
+version: 1.0.0
+category: Dead-Letter Queue
+order: 4
+description: >-
+  How TransportDeadLetterDrainWorker drains the broker's own dead-letter
+  queue (ASB $DeadLetterQueue, RMQ DLX queue) back onto the normal
+  receive path. Distinct from Whizbang's internal wh_dead_letters flow.
+tags: >-
+  dead-letter-queue, transport-recovery, ITransportDeadLetterDrainer,
+  TransportDeadLetterDrainWorker, ASB, RabbitMQ, broker-DLQ
+codeReferences:
+  - src/Whizbang.Core/Transports/ITransportDeadLetterDrainer.cs
+  - src/Whizbang.Core/Workers/TransportDeadLetterDrainWorker.cs
+  - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusDeadLetterDrainer.cs
+  - src/Whizbang.Transports.RabbitMQ/RabbitMqDeadLetterDrainer.cs
+---
+
+# Transport DLQ Recovery
+
+The transport DLQ flow is independent of the internal `wh_dead_letters`
+table. It exists to keep broker-side dead-letter queues from growing
+unbounded when a transient delivery issue caused the broker itself to
+drop messages.
+
+## Why a separate flow?
+
+Whizbang's event store is source of truth. When a broker DLQs a message,
+the underlying event still replays from `wh_event_store` via the normal
+claim path — no data is lost. But the broker's DLQ doesn't know that. It
+holds onto messages forever (or up to the broker's retention cap), pages
+PRs about queue depth, and ultimately needs an operator to drain it.
+
+`TransportDeadLetterDrainWorker` does that drain automatically on a
+backstop interval (default 10 min). Each registered
+`ITransportDeadLetterDrainer` reads up to `MaxPerTick` (default 500)
+messages from its broker's DLQ and re-publishes them onto the normal
+receive path. If the underlying failure is permanent the message lands
+back in DLQ; the next sweep re-tries it. The cadence is intentionally
+slow — broker DLQ recovery isn't latency-sensitive.
+
+## Defaults
+
+```json
+{
+  "Whizbang": {
+    "TransportDeadLetterDrainWorker": {
+      "Enabled": true,
+      "IntervalMinutes": 10,
+      "MaxPerTick": 500
+    }
+  }
+}
+```
+
+`Enabled = false` is the killswitch — broker DLQs stay full until an
+operator drains them manually via broker-side tooling.
+
+## Azure Service Bus
+
+`AzureServiceBusDeadLetterDrainer` reads from
+`<topic>/Subscriptions/<sub>/$DeadLetterQueue` and re-sends each message
+back to `<topic>` using a fresh `ServiceBusMessage`. Body, application
+properties, and routing fields (`subject`, `correlationId`, `messageId`,
+`sessionId`, `partitionKey`) are copied; `DeliveryCount` resets on the
+new message.
+
+Registration (one per subscription):
+
+```csharp
+services.AddSingleton<ITransportDeadLetterDrainer>(sp =>
+  new AzureServiceBusDeadLetterDrainer(
+    client: sp.GetRequiredService<ServiceBusClient>(),
+    topicName: "orders",
+    subscriptionName: "inventory-svc",
+    logger: sp.GetRequiredService<ILogger<AzureServiceBusDeadLetterDrainer>>()));
+```
+
+`TransportName` becomes `asb:orders/inventory-svc` — used as the
+`transport` dimension on the `whizbang.transport_dlq.drained` counter.
+
+## RabbitMQ
+
+`RabbitMqDeadLetterDrainer` reads from the configured DLQ via
+`BasicGetAsync`, resolves the original `(exchange, routing-key)` from the
+`x-death` header that RabbitMQ attaches when a message enters DLQ, and
+re-publishes via `BasicPublishAsync`. Falls back to a configured default
+exchange + the message's current routing key when the header is missing
+(rare; only happens if the broker stripped it).
+
+Registration:
+
+```csharp
+services.AddSingleton<ITransportDeadLetterDrainer>(sp =>
+  new RabbitMqDeadLetterDrainer(
+    connection: sp.GetRequiredService<IConnection>(),
+    dlqName: "orders.dlq",
+    fallbackExchange: "orders",
+    logger: sp.GetRequiredService<ILogger<RabbitMqDeadLetterDrainer>>()));
+```
+
+`TransportName` becomes `rmq:orders.dlq`.
+
+## Failure handling
+
+Both implementations are best-effort:
+
+- ASB: if `SendMessageAsync` or `CompleteMessageAsync` throws, the
+  message is `AbandonMessageAsync`-ed back to DLQ for the next sweep.
+- RMQ: if `BasicPublishAsync` or `BasicAckAsync` throws, the message is
+  `BasicNack`-ed with `requeue=true` so it stays in DLQ.
+
+A single drainer failing doesn't stop the others — the worker continues
+through the remaining drainers on the current tick.
+
+## On-demand drain
+
+The worker exposes `DrainOnceAsync(CancellationToken)` publicly so
+operator endpoints can trigger an immediate sweep without waiting for
+the next interval:
+
+```csharp
+app.MapPost("/admin/transport-dlq/drain-now", async (
+    TransportDeadLetterDrainWorker worker,
+    CancellationToken ct) => {
+  await worker.DrainOnceAsync(ct);
+  return Results.NoContent();
+}).RequireAuthorization("WhizbangOperator");
+```
+
+## Telemetry
+
+| Metric | Type | Dimensions |
+|---|---|---|
+| `whizbang.transport_dlq.drained` | counter | `transport` (e.g. `asb:orders/inventory-svc`) |
+
+Worker also exposes `TotalDrained` (a `long`) for in-process introspection
+— useful for tests and health endpoints.
+
+## See also
+
+- [Internal DLQ table](./internal-dlq) — the policy-driven sibling flow
+- [Recovery worker + policy matrix](./recovery)

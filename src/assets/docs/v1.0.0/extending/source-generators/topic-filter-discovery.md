@@ -392,7 +392,7 @@ Or optionally configured output folder:
 ```xml{title="View Generated Files" description="Or optionally configured output folder:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
 <PropertyGroup>
   <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-  <CompilerGeneratedFilesOutputPath>.whizbang-generated</CompilerGeneratedFilesOutputPath>
+  <CompilerGeneratedFilesOutputPath>.whizbang/cache</CompilerGeneratedFilesOutputPath>
 </PropertyGroup>
 ```
 
