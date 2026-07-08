@@ -66,7 +66,13 @@ dead-letters on the 11th claim. The check uses strict `>` not `>=`.
 The SQL function `move_to_dead_letters()` (mig 050) runs both halves of
 the move in a single transaction:
 
-```sql
+```sql{
+title: "Atomic move of a perspective-event row to the DLQ"
+description: "The move_to_dead_letters CTE deletes the wh_perspective_events row and inserts the snapshot into wh_dead_letters in one transaction for a consistent, idempotent move."
+category: "Dead Letter Queue"
+difficulty: "ADVANCED"
+tags: ["dead-letter", "perspective-events", "move_to_dead_letters", "atomic-move", "postgres"]
+}
 WITH src AS (
   DELETE FROM wh_perspective_events
   WHERE event_work_id = $sourceId
@@ -106,7 +112,13 @@ a stale entry pointing at a DLQ'd row.
 
 ## Disabling
 
-```json
+```json{
+title: "Disable perspective-event dead-lettering"
+description: "Sets MaxPerspectiveEventAttempts to null so wh_perspective_events rows retry indefinitely instead of moving to the DLQ — only safe with an external janitor or idempotent perspectives."
+category: "Dead Letter Queue"
+difficulty: "BEGINNER"
+tags: ["dead-letter", "perspective-events", "MaxPerspectiveEventAttempts", "configuration"]
+}
 {
   "Whizbang": {
     "PerspectiveWorker": { "MaxPerspectiveEventAttempts": null }

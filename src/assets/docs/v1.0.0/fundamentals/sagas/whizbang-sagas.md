@@ -103,7 +103,14 @@ Per-item projection rows can still be left in a non-terminal state by a cross-po
 
 `SagaLiveProgressResolvers` ships three helpers backing every saga dashboard's `processedCount` / `failedCount` / `progressPercent` GraphQL/REST resolvers:
 
-```csharp
+```csharp{
+title: "Wire a saga live-progress resolver"
+description: "Delegates a dashboard's processedCount resolver to SagaLiveProgressResolvers, which reads the live GROUP BY aggregate while running and short-circuits to stored counters once the saga is terminal."
+framework: "NET10"
+category: "Sagas"
+difficulty: "INTERMEDIATE"
+tags: ["sagas", "dashboard", "live-progress", "resolvers", "graphql"]
+}
 // In a HotChocolate / projection-side resolver:
 public Task<int> GetProcessedCountAsync(
     Guid sagaId, SagaStatus status, int storedCompletedItems,
@@ -197,7 +204,14 @@ No framework-level child concept is required. Each level uses the same `BaseSaga
 
 Whizbang.Sagas ships an `ISagaCompensatingEvent` marker interface but does NOT automatically execute compensation — the right ordering is irreducibly domain-specific (refund before un-archive, or vice versa, depends on the workflow). Mark your compensation events with the interface so visualization and audit tooling can group them, then wire your own `IReceptor<MyCompensatingEvent>` chain:
 
-```csharp
+```csharp{
+title: "Mark a saga compensation event"
+description: "Tags a domain event with ISagaCompensatingEvent so audit and visualization tooling can group compensation actions, while the domain wires its own receptor chain to execute them."
+framework: "NET10"
+category: "Sagas"
+difficulty: "ADVANCED"
+tags: ["sagas", "compensation", "saga-orchestration", "events", "audit"]
+}
 public class RefundPaymentEvent : AcmeEventBase, ISagaCompensatingEvent {
   public Guid CompensatingForSagaId { get; set; }
   public decimal Amount { get; set; }
