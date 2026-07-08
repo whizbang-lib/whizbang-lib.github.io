@@ -352,9 +352,9 @@
         "description": "Strategy pattern for controlling message flush behavior from in-memory queues to the database. Covers Immediate, Scoped, Interval, and Batch strategies with trade-offs between latency, throughput, and database load.",
         "tags": "work-coordinator, flush-strategy, batch, scoped, interval, process-work-batch",
         "version": "v1.0.0",
-        "readingTime": 6,
+        "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/data/work-coordinator-strategies.md",
-        "wordCount": 1103
+        "wordCount": 1291
       },
       {
         "slug": "v1.0.0/extending/attributes/auto-populate",
@@ -591,6 +591,18 @@
         "wordCount": 832
       },
       {
+        "slug": "v1.0.0/extending/internals/event-ordering-invariant",
+        "title": "Event Ordering Invariant",
+        "category": "Architecture",
+        "order": 2,
+        "description": "Every batch boundary in Whizbang's pump-then-process pipeline delivers event_id-sorted output. This is the invariant that lets cursor-by-event_id comparisons remain correct under parallel emission and cross-process saga fan-out.",
+        "tags": "architecture, ordering, sliding-window, cursor-inversion, perspective-apply, event-sourcing, uuidv7",
+        "version": "v1.0.0",
+        "readingTime": 9,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/internals/event-ordering-invariant.md",
+        "wordCount": 1764
+      },
+      {
         "slug": "v1.0.0/extending/internals/json-serialization-customizations",
         "title": "JSON Serialization Customizations",
         "category": "Internals",
@@ -636,7 +648,7 @@
         "version": "v1.0.0",
         "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/attribute-utilities.md",
-        "wordCount": 1329
+        "wordCount": 1321
       },
       {
         "slug": "v1.0.0/extending/source-generators/configuration",
@@ -781,6 +793,18 @@
         "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/rpc-extraction.md",
         "wordCount": 1236
+      },
+      {
+        "slug": "v1.0.0/fundamentals/dispatcher/sync-mode",
+        "title": "SyncMode — Read-After-Write Dispatch",
+        "category": "Fundamentals",
+        "order": 5,
+        "description": "The CT-only LocalInvokeAndSyncAsync(message, SyncMode, ct) overload — explicit read-after-write expectation at every callsite; no implicit timeouts.",
+        "tags": "dispatcher, sync, cqrs, read-after-write, sync-mode",
+        "version": "v1.0.0",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/sync-mode.md",
+        "wordCount": 676
       },
       {
         "slug": "v1.0.0/fundamentals/events/event-store-query",
@@ -1186,9 +1210,9 @@
         "description": "Declarative cross-cutting concerns via message tag attributes and hooks - notifications, telemetry, metrics, and audit logging without polluting business logic",
         "tags": "tags, attributes, hooks, notifications, telemetry, metrics, cross-cutting",
         "version": "v1.0.0",
-        "readingTime": 33,
+        "readingTime": 36,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-        "wordCount": 6538
+        "wordCount": 7124
       },
       {
         "slug": "v1.0.0/fundamentals/messages/messages",
@@ -1215,6 +1239,42 @@
         "wordCount": 2361
       },
       {
+        "slug": "v1.0.0/fundamentals/offloads/message-body-store",
+        "title": "Body Offload (Claim-Check Pattern)",
+        "category": "Fundamentals",
+        "order": 1,
+        "description": "Transparent claim-check pattern for messages that exceed transport wire-size ceilings — upload the body to a registered IMessageBodyStore, send a small claim envelope on the wire, rehydrate on receive.",
+        "tags": "offload, claim-check, messaging, transports, body-size",
+        "version": "v1.0.0",
+        "readingTime": 6,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/offloads/message-body-store.md",
+        "wordCount": 1041
+      },
+      {
+        "slug": "v1.0.0/fundamentals/offloads/providers/azure-blob",
+        "title": "Azure Blob Body Store",
+        "category": "Fundamentals",
+        "order": 2,
+        "description": "Production body-store provider backed by Azure Blob Storage. Works identically against the Azurite emulator and live Azure Blob via standard connection-string conventions.",
+        "tags": "offload, providers, azure-blob, azurite, production",
+        "version": "v1.0.0",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
+        "wordCount": 639
+      },
+      {
+        "slug": "v1.0.0/fundamentals/offloads/providers/in-memory",
+        "title": "InMemory Body Store",
+        "category": "Fundamentals",
+        "order": 1,
+        "description": "Dev/test/fixture provider — bodies live in a process-local ConcurrentDictionary; disappears on restart.",
+        "tags": "offload, providers, in-memory, testing",
+        "version": "v1.0.0",
+        "readingTime": 2,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/offloads/providers/in-memory.md",
+        "wordCount": 309
+      },
+      {
         "slug": "v1.0.0/fundamentals/persistence/observability",
         "title": "Observability & Message Hops",
         "category": "Core Concepts",
@@ -1237,6 +1297,18 @@
         "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/persistence/persistence.md",
         "wordCount": 1399
+      },
+      {
+        "slug": "v1.0.0/fundamentals/perspectives/apply-exactly-once",
+        "title": "Apply Exactly-Once Contract",
+        "category": "Core Concepts",
+        "order": 21,
+        "description": "The Apply dispatch contract for perspective runners — Apply(TModel, TEvent) is invoked exactly once per event per perspective per stream. Projection Apply methods never need to be self-idempotent.",
+        "tags": "perspectives, apply, dispatch, exactly-once, idempotency, drain-mode, perspective-runner, doubling",
+        "version": "v1.0.0",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/apply-exactly-once.md",
+        "wordCount": 525
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/association-info",
@@ -1477,6 +1549,18 @@
         "readingTime": 5,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/versioned-apply.md",
         "wordCount": 858
+      },
+      {
+        "slug": "v1.0.0/fundamentals/receptors/exactly-once-firing",
+        "title": "Exactly-Once Receptor Firing",
+        "category": "Core Concepts",
+        "order": 11,
+        "description": "The firing contract for Whizbang receptors — exactly once per receptor per message, unless explicitly declared idempotent — plus the guardrail that enforces it and the opt-out for legitimate multi-fire scenarios",
+        "tags": "receptors, firing contract, idempotency, guardrail, dedup, ReceptorIdempotent, double fire, at-most-once",
+        "version": "v1.0.0",
+        "readingTime": 6,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/receptors/exactly-once-firing.md",
+        "wordCount": 1140
       },
       {
         "slug": "v1.0.0/fundamentals/receptors/lifecycle-receptors",
@@ -1923,6 +2007,18 @@
         "wordCount": 1848
       },
       {
+        "slug": "v1.0.0/messaging/composite-events",
+        "title": "Composite Events",
+        "category": "Messaging",
+        "order": 12,
+        "description": "Wire-only fan-out optimization — emit one envelope carrying N inner events; the receiver expands it before invoking receptors and writing the event store. Composite types are never persisted; only the expanded inner events are recorded.",
+        "tags": "composite, events, bulk, fan-out, batched-append",
+        "version": "v1.0.0",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/composite-events.md",
+        "wordCount": 907
+      },
+      {
         "slug": "v1.0.0/messaging/failure-handling",
         "title": "Failure Handling",
         "category": "Messaging",
@@ -2221,6 +2317,18 @@
         "readingTime": 3,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/configuration/all-services.md",
         "wordCount": 423
+      },
+      {
+        "slug": "v1.0.0/operations/configuration/empty-stream-id-policy",
+        "title": "Empty Stream ID Policy",
+        "category": "Configuration",
+        "order": 8,
+        "description": "Configure how Whizbang handles outbox / inbox / perspective rows with stream_id = Guid.Empty — the producer-side bug that causes silent stuck rows.",
+        "tags": "configuration, options, stream-id, empty-stream-id, producer, dead-letter, sentinel",
+        "version": "v1.0.0",
+        "readingTime": 7,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
+        "wordCount": 1237
       },
       {
         "slug": "v1.0.0/operations/configuration/lens-services",
@@ -2847,6 +2955,18 @@
         "wordCount": 1391
       },
       {
+        "slug": "v1.0.0/operations/observability/stuck-row-sentinel",
+        "title": "Stuck Row Sentinel",
+        "category": "Observability",
+        "order": 8,
+        "description": "Structural canary that surfaces wh_outbox / wh_inbox rows claimed past MaxOutboxAttempts but never drained — catches any silent-stuck bug regardless of root cause.",
+        "tags": "observability, maintenance, dead-letter, stuck-rows, sentinel, monitoring",
+        "version": "v1.0.0",
+        "readingTime": 6,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
+        "wordCount": 1111
+      },
+      {
         "slug": "v1.0.0/operations/observability/tracing",
         "title": "Tracing",
         "category": "Observability",
@@ -2929,6 +3049,18 @@
         "readingTime": 25,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
         "wordCount": 4859
+      },
+      {
+        "slug": "v1.0.0/operations/workers/process-work-batch-lease-semantics",
+        "title": "Process Work Batch — Lease & Heartbeat Semantics",
+        "category": "Workers",
+        "order": 4,
+        "description": "How WorkCoordinatorPublisherWorker paces its ticks and when it refreshes stream leases and instance heartbeats. Covers the conditional-refresh guards, the adaptive poll-interval backoff, tuning knobs, and failover SLAs.",
+        "tags": "work-coordinator, process-work-batch, lease-renewal, heartbeat, polling, backoff, wal, instance-stickiness, orphan-claim",
+        "version": "v1.0.0",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/process-work-batch-lease-semantics.md",
+        "wordCount": 978
       }
     ]
   },
@@ -2971,6 +3103,102 @@
         "wordCount": 959
       },
       {
+        "slug": "drafts/contributing/data-engines/implementing-icapabilities",
+        "title": "Implementing IWorkCoordinatorCapabilities",
+        "category": "contributing",
+        "order": 3,
+        "description": "\n# Implementing `IWorkCoordinatorCapabilities`\n\n`IWorkCoordinatorCapabilities` declares which optional features your engine supports. Whizbang queries it at startup and adapts: features your engine doesn't have fall back to slower-but-correct alternatives.\n\n## The capability matrix\n\n| Capability | Postgres | SQL Server (future) | MySQL (future) | SQLite (future) |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/implementing-icapabilities.md",
+        "wordCount": 635
+      },
+      {
+        "slug": "drafts/contributing/data-engines/implementing-iworkcoordinator",
+        "title": "Implementing IWorkCoordinator",
+        "category": "contributing",
+        "order": 2,
+        "description": "\n# Implementing `IWorkCoordinator`\n\n`IWorkCoordinator` is the central contract between Whizbang's worker layer and your engine. 11 methods, each a thin wrapper around a SQL function.\n\n## Method-by-method\n\n| Method | Calls SQL function | Notes |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/implementing-iworkcoordinator.md",
+        "wordCount": 528
+      },
+      {
+        "slug": "drafts/contributing/data-engines/implementing-notifications",
+        "title": "Implementing notifications",
+        "category": "contributing",
+        "order": 5,
+        "description": "\n# Implementing notifications\n\nIf your engine supports server-side pub/sub, implement `IWorkNotificationListener` to wake C# workers immediately when new work arrives. If not, set `SupportsServerSideNotifications = false` and Whizbang's polling fallback handles correctness.\n\n## The contract\n\n```csharp\npublic interface IWorkNotificationListener {\n  bool IsHealthy { get; }\n  DateTimeOffset? LastSignalAt { get; }\n  event Action<WorkSignalCategory>? OnSignal;\n  event Action<bool>? OnHealthChanged;\n}\n```\n\nThe listener is a `BackgroundService` that:\n1. Opens a long-lived connection that bypasses any session-state-breaking pooler.\n2. Subscribes to the engine's pub/sub mechanism for the `wh_work` channel (or equivalent).\n3. Dispatches received notifications to `OnSignal(WorkSignalCategory)`.\n4. Reconnects with exponential backoff on disconnect.\n5. Surfaces health via `IsHealthy` + `OnHealthChanged`.\n\n## Postgres reference\n\n`Whizbang.Data.Postgres/Notifications/PgWorkNotificationListener.cs` is the reference. ~120 lines:\n\n```csharp\npublic sealed partial class PgWorkNotificationListener : BackgroundService, IWorkNotificationListener {\n  protected override async Task ExecuteAsync(CancellationToken stoppingToken) {\n    if (string.IsNullOrWhiteSpace(_options.DirectConnectionString) || _options.DisableNotifications) {\n      return;  // NoOp mode\n    }\n\n    var attempt = 0;\n    while (!stoppingToken.IsCancellationRequested) {\n      try {\n        await using var conn = new NpgsqlConnection(_options.DirectConnectionString);\n        conn.Notification += _onNotification;\n        await conn.OpenAsync(stoppingToken);\n\n        await using (var cmd = new NpgsqlCommand(\"LISTEN wh_work\", conn)) {\n          await cmd.ExecuteNonQueryAsync(stoppingToken);\n        }\n\n        _setHealthy(true);\n        attempt = 0;\n\n        while (!stoppingToken.IsCancellationRequested) {\n          // WaitAsync blocks until a notification arrives or keepalive timeout.\n          // On keepalive: SELECT 1 to prove the connection is alive.\n        }\n      } catch (Exception ex) when (ex is not OperationCanceledException) {\n        _setHealthy(false);\n        attempt++;\n        var delay = _computeBackoff(attempt);\n        await Task.Delay(delay, stoppingToken);\n      }\n    }\n  }\n}\n```\n\n## Engine equivalents\n\n| Engine | Mechanism | Bypass requirement |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/implementing-notifications.md",
+        "wordCount": 633
+      },
+      {
+        "slug": "drafts/contributing/data-engines/overview",
+        "title": "Overview",
+        "category": "contributing",
+        "order": 1,
+        "description": "\n# Adding a data engine to Whizbang\n\nWhizbang separates \"engine\" (the database) from \"ORM\" (the .NET data access layer). Each axis extends independently.\n\n## Project layout\n\n```\nWhizbang.Core/                          Engine-agnostic interfaces & types\n  Messaging/IWorkCoordinator.cs         The 11-method contract\n  Messaging/IWorkCoordinatorCapabilities.cs\n  Messaging/<DTOs>.cs                   Per-method request/result records\n  Notifications/IWorkNotificationListener.cs\n\nWhizbang.Data.<Engine>/                 Engine-specific shared layer\n  Migrations/*.sql                      SQL functions (single source of truth)\n  Notifications/Pg<...>NotificationListener.cs   Engine's notification listener\n\nWhizbang.Data.<ORM>.<Engine>/           Binding layer per ORM × engine combo\n  <ORM><Engine>WorkCoordinator.cs       Implements IWorkCoordinator\n  <ORM><Engine>Capabilities.cs          Implements IWorkCoordinatorCapabilities\n  <ORM><Engine>Extensions.cs            DI registration: AddWhizbang<ORM><Engine>()\n```\n\nToday's shipping shape:\n\n| Engine | ORM packages |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/overview.md",
+        "wordCount": 490
+      },
+      {
+        "slug": "drafts/contributing/data-engines/sql-function-contracts",
+        "title": "SQL function contracts",
+        "category": "contributing",
+        "order": 4,
+        "description": "\n# SQL function contracts\n\nEach engine implements 11 SQL functions that Whizbang's C# layer calls. These are the contract — the test suite validates conformance.\n\n## Function summary\n\n| Function | Hot path? | Atomicity | Purpose |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/sql-function-contracts.md",
+        "wordCount": 957
+      },
+      {
+        "slug": "drafts/contributing/data-engines/testing-a-new-engine",
+        "title": "Testing a new engine",
+        "category": "contributing",
+        "order": 6,
+        "description": "",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/testing-a-new-engine.md",
+        "wordCount": 647
+      },
+      {
+        "slug": "drafts/contributing/data-engines/worked-example-sqlite",
+        "title": "Worked example - SQLite (polling-only, minimum-capability)",
+        "category": "contributing",
+        "order": 8,
+        "description": "\n# Worked example: SQLite engine (polling-only)\n\nA walk-through of adding a SQLite engine to Whizbang. SQLite is the **minimum-capability** test case — no server-side notifications, no advisory locks, no bulk copy, no native arrays. The system still works, just on the polling-only path.\n\nThis example demonstrates that an engine doesn't need to be feature-complete to host Whizbang.\n\n## Capability declaration\n\n```csharp\npublic sealed class SqliteCapabilities : IWorkCoordinatorCapabilities {\n  public string EngineName => \"sqlite\";\n  public bool SupportsServerSideNotifications => false;  // No native pub/sub\n  public bool SupportsBulkCopy => false;                  // No COPY equivalent\n  public bool SupportsAdvisoryLocks => false;             // No advisory locks\n  public bool SupportsNativeArrayParameters => false;     // No array type\n  public bool SupportsListenOverPooler => false;          // Notifications disabled anyway\n  public bool SupportsSavepoints => true;                 // SQLite supports SAVEPOINT\n}\n```\n\n## What changes vs Postgres\n\n### No notifications\n\n`Whizbang.Data.Sqlite` doesn't ship a `SqliteWorkNotificationListener`. DI binds `NoOpWorkNotificationListener` automatically. ClaimWorker sees `IsHealthy = false` permanently and stays on aggressive polling cadence.\n\nThis is **fully correct** — polling fallback discovers all work. Idle CPU is higher than Postgres-with-notifications, but that's expected for SQLite (typically embedded / single-process scenarios where idle CPU isn't the binding constraint).\n\n### No native arrays\n\nThe Postgres `claim_work` accepts `UUID[]`. SQLite has no array type. Two options:\n\n1. **Pass JSON arrays**: change function signatures to accept `TEXT` (JSON-encoded array), parse inside the function via `json_each`.\n2. **One id per call**: collapse arrays to single calls. Slower per round-trip but simplest.\n\nFor a SQLite implementation targeting low-throughput single-process apps, single-id-per-call is fine.\n\n### No COPY\n\nSame reasoning as arrays — for SQLite's typical workload, parameterized `UPDATE ... WHERE id IN (?, ?, ...)` is acceptable. Batched flushers will use parameterized arrays via the JSON or single-call approach.\n\n### No advisory locks\n\nThe deadlock-safety fence in `claim_work` falls back to deterministic row-level lock ordering (the primary mechanism Whizbang uses anyway). SQLite's `BEGIN IMMEDIATE` provides the same guarantee with even simpler semantics.\n\n### Savepoints supported\n\nSQLite supports `SAVEPOINT` natively. `commit_handler_batch` works as documented — per-handler isolation, single fsync at outer commit.\n\n## SQL function differences\n\nSQLite syntax differs from Postgres in several places:\n\n| Concept | Postgres | SQLite |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/worked-example-sqlite.md",
+        "wordCount": 748
+      },
+      {
+        "slug": "drafts/contributing/data-engines/worked-example-sqlserver",
+        "title": "Worked example - SQL Server (high-capability)",
+        "category": "contributing",
+        "order": 7,
+        "description": "\n# Worked example: SQL Server engine\n\nA walk-through of adding SQL Server as a Whizbang engine. SQL Server is the **high-capability** test case — it has equivalents for nearly all of Postgres's features, just expressed differently.\n\n## Capability declaration\n\n```csharp\npublic sealed class SqlServerCapabilities : IWorkCoordinatorCapabilities {\n  public string EngineName => \"sqlserver\";\n  public bool SupportsServerSideNotifications => true;   // Service Broker\n  public bool SupportsBulkCopy => true;                   // BULK INSERT / SqlBulkCopy\n  public bool SupportsAdvisoryLocks => true;              // sp_getapplock\n  public bool SupportsNativeArrayParameters => false;     // No array type — TVPs instead\n  public bool SupportsListenOverPooler => true;            // Service Broker has its own session model\n  public bool SupportsSavepoints => true;                  // SAVE TRANSACTION\n}\n```\n\n## Engine equivalents\n\n| Postgres | SQL Server | Notes |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 6,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/worked-example-sqlserver.md",
+        "wordCount": 1006
+      },
+      {
         "slug": "drafts/core-concepts/cascade-context",
         "title": "Cascade Context",
         "category": "Core Concepts",
@@ -2993,6 +3221,174 @@
         "readingTime": 9,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/core-concepts/model-action.md",
         "wordCount": 1715
+      },
+      {
+        "slug": "drafts/decisions/work-pump-decomposition/dual-connection-notifications",
+        "title": "Dual Connection Notifications",
+        "category": "decisions",
+        "order": 999,
+        "description": "# Dual-connection notifications: LISTEN bypasses pgbouncer\n\n## Status\nAccepted (2026-04-26)\n\n## Context\n\nWhizbang needs server-push notifications so workers can wake on new work without paying the cost of constant polling. Postgres `LISTEN/NOTIFY` is the natural primitive, but the JDNext production deployment runs pgbouncer in **transaction-pooling mode** between the application and Postgres.\n\nLISTEN doesn't survive transaction pooling: the listening session can be handed to a different client between transactions, breaking the `(connection, channel)` subscription. Pgbouncer documentation explicitly warns against using LISTEN through it.\n\nConstraints:\n- ~5 pods × 11 services × multiple environments = hundreds of pods total. Each pod cannot afford a fleet of bypass-pool connections — that defeats pgbouncer's whole purpose.\n- Network policy in production permits both the pgbouncer port (6432) and the postgres-direct port (5432) from each pod, but auditors care about the count.\n\n## Decision\n\n**Exactly one direct connection per pod for LISTEN. Everything else through pgbouncer.**\n\n| Consumer | Connection model | Connections per pod |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/decisions/work-pump-decomposition/dual-connection-notifications.md",
+        "wordCount": 513
+      },
+      {
+        "slug": "drafts/decisions/work-pump-decomposition/engine-orm-extension-model",
+        "title": "Engine Orm Extension Model",
+        "category": "decisions",
+        "order": 999,
+        "description": "# Engine + ORM extension model\n\n## Status\nAccepted (2026-04-26)\n\n## Context\n\nWhizbang ships with a Postgres + EFCore reference implementation, but the architecture must accommodate other engines (SQL Server, MySQL, SQLite) and other ORMs (Dapper, future LINQ providers) without forcing every backend to support every feature.\n\nCapabilities differ widely:\n- Postgres: NOTIFY, COPY, advisory locks, native arrays, savepoints — all yes.\n- SQL Server: Service Broker for notifications, BULK INSERT, sp_getapplock, savepoints — yes; native arrays — no (TVP fallback).\n- SQLite: no notifications, no advisory locks, no bulk copy, no native arrays — but savepoints yes.\n\nThe extension model needs to let an engine declare what it supports, let Whizbang fall back gracefully when a feature isn't available, and not force contributors to implement features they can't.\n\n## Decision\n\nThree-axis decomposition:\n\n1. **`IWorkCoordinator`** — 10 focused methods, one per SQL function. Each method has a default-throws body on the interface so existing implementers opt in incrementally. New engines implement what they can; the rest stays NotImplemented until needed.\n\n2. **`IWorkCoordinatorCapabilities`** — declarative capability flags. Workers query at startup and choose the right path. No exception-driven fallbacks.\n\n   | Capability | Required for production? | Fallback when false |\n   |",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/decisions/work-pump-decomposition/engine-orm-extension-model.md",
+        "wordCount": 563
+      },
+      {
+        "slug": "drafts/decisions/work-pump-decomposition/perspective-process-worker-refactor",
+        "title": "Perspective Process Worker Refactor",
+        "category": "decisions",
+        "order": 999,
+        "description": "# PerspectiveProcessWorker — refactor plan\n\n## Status\nDesigned (2026-04-26). Implementation deferred to a dedicated session.\n\n## Context\n\n`PerspectiveWorker` is the last worker that polls `IWorkCoordinator.ProcessWorkBatchAsync` directly. Phase C migrated outbox/inbox traffic to the new claim/commit/flush channel architecture; perspective traffic still uses the legacy SQL function. This worker must migrate so the legacy `process_work_batch` can be retired.\n\nThe worker is 3044 lines with 21 `IWorkCoordinator` references and 12 test classes (108 tests). Refactor is genuinely all-or-nothing — `ProcessWorkBatchAsync` couples claim + complete + lease-renew in one transaction, so partial migration leaves the buffer-and-completion state machine in an undefined state.\n\n## Decision: file-level plan\n\n### What stays bit-for-bit\n\n- **The 7-stage handler chain** (PrePerspectiveDetached → PrePerspectiveInline → handler → ImmediateDetached → PostPerspectiveInline → PostPerspectiveDetached → PostLifecycle*). All inline/detached classifications preserved.\n- **Drain-mode subsystem** (6 methods, ~400 lines). Triggered when incoming work has `PerspectiveStreamIds`. Unchanged.\n- **Completion strategies** (`BatchedCompletionStrategy`, `InstantCompletionStrategy`). Kept pluggable.\n- **Security context propagation** through detached stages.\n- **Telemetry, metrics, tracing** — all `PerspectiveMetrics` calls and `Activity` tags unchanged.\n\n### What changes\n\n| Method | Action | Notes |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/decisions/work-pump-decomposition/perspective-process-worker-refactor.md",
+        "wordCount": 751
+      },
+      {
+        "slug": "drafts/decisions/work-pump-decomposition/savepoint-batched-handler-commit",
+        "title": "Savepoint Batched Handler Commit",
+        "category": "decisions",
+        "order": 999,
+        "description": "",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/decisions/work-pump-decomposition/savepoint-batched-handler-commit.md",
+        "wordCount": 469
+      },
+      {
+        "slug": "drafts/decisions/work-pump-decomposition/sql-function-decomposition",
+        "title": "Sql Function Decomposition",
+        "category": "decisions",
+        "order": 999,
+        "description": "# Decomposing `process_work_batch` into focused SQL functions\n\n## Status\nAccepted (2026-04-25 → 2026-04-26)\n\n## Context\n\n`process_work_batch` was a 1409-line PL/pgSQL function with 25 parameters. A live diagnostic on the JDNext dev environment found:\n\n- ~22 calls/sec **per service** × 11 service DBs ≈ 242 calls/sec stack-wide\n- Every idle call returned 0 rows but cost ~17 ms postgres CPU\n- Structural floor: heartbeat + 4 orphan-claim scans + 5 result CTEs all fired even when queues were empty\n- Idle stack consumed ~45% postgres container CPU\n\nThe monolith mixed three workloads with different transactional needs:\n1. **Genuinely transactional bundles** — handler completion + emitted outbox messages, outbox storage + event_store + perspective auto-create\n2. **Pure maintenance** — heartbeat, stale cleanup, orphan reclaim\n3. **Pure writes** — completions, lease renewals\n\nMixing these forced every call to pay the worst-case cost.\n\n## Decision\n\nSplit into 10 focused functions, each with a single transactional responsibility:\n\n| Function | Responsibility | Cost on empty |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/decisions/work-pump-decomposition/sql-function-decomposition.md",
+        "wordCount": 570
+      },
+      {
+        "slug": "drafts/fundamentals/work-coordinator/app-signals",
+        "title": "App signals",
+        "category": "Fundamentals",
+        "order": 6,
+        "description": "\n# App signals\n\nWhizbang exposes its NOTIFY/LISTEN infrastructure to application code via `IAppSignalChannel`. Use it for ad-hoc cross-pod pub/sub: cache invalidations, feature-flag refresh hints, custom workflow signals — anything where you'd otherwise reach for a separate message bus or polling loop for a low-volume signal.\n\n## API\n\n```csharp\npublic interface IAppSignalChannel {\n  Task PublishAsync(string topic, string payload, CancellationToken ct = default);\n  IDisposable Subscribe(string topic, Func<string, CancellationToken, Task> handler);\n}\n```\n\n`topic` is your application's identifier. `payload` is an arbitrary string (often JSON).\n\n## Topic naming rules\n\nTopics must match `^[a-z][a-z0-9_]{0,62}$`. The `wh_` prefix is reserved for Whizbang internal signals — `AppSignalTopicValidator` rejects topics starting with `wh_` at publish/subscribe time:\n\n```csharp\nawait channel.PublishAsync(\"user_signed_up\", json);   // OK\nawait channel.PublishAsync(\"wh_internal\", json);      // throws ArgumentException\nawait channel.PublishAsync(\"UserSignedUp\", json);     // throws (uppercase not allowed)\nawait channel.PublishAsync(\"1signup\", json);          // throws (must start with letter)\n```\n\n## Isolation from internal signals\n\nApp topics live on dedicated postgres channels named `wh_app_<topic>`. Whizbang's internal listeners (`PgWorkNotificationListener`) only listen on `wh_work` and ignore everything else. App subscribers get only the `wh_app_*` channels they subscribed to.\n\nThis means:\n\n- App code **cannot** publish to or subscribe to internal `wh_work` signals.\n- Internal listeners **cannot** see app traffic.\n- Reserved-prefix validation is enforced in C#; you cannot bypass it.\n\n## Usage example\n\n```csharp\n// In your service:\npublic class FeatureFlagRefreshSubscriber : BackgroundService {\n  public FeatureFlagRefreshSubscriber(IAppSignalChannel signals, IFeatureFlagCache cache) {\n    _subscription = signals.Subscribe(\"feature_flag_refresh\", async (payload, ct) => {\n      await cache.RefreshAsync(ct);\n    });\n  }\n  // ... dispose _subscription on shutdown\n}\n\n// Anywhere that wants to broadcast a refresh:\nawait appSignalChannel.PublishAsync(\"feature_flag_refresh\", \"\");\n```\n\n## Transactional publish\n\n`PublishAsync` issues `SELECT pg_notify(...)` on a postgres connection. Notifications queue and deliver at COMMIT — so if you call `PublishAsync` inside a transaction (via your DbContext or a shared connection), the signal is naturally tied to the transaction. Rollback → no signal. Commit → signal delivered.\n\nFor ad-hoc fire-and-forget without a transaction context, `PublishAsync` opens a short-lived connection, executes, returns. The notification commits with that short-lived transaction.\n\n## Limitations\n\n- **At-most-once with bounded latency**: notifications are best-effort. If the listener is disconnected when the notify fires, the signal is lost. Use this for \"wake up and check\" semantics, not for durable pub/sub.\n- **No payload size enforcement** beyond postgres's 8 KB notify limit. Large payloads are an anti-pattern — pass an id and let subscribers fetch.\n- **Single LISTEN connection per pod** (shared with internal listener). High-throughput app pub/sub may saturate this connection; for that, prefer a dedicated message bus (Service Bus, RabbitMQ).\n\n## NoOp mode\n\nWhen `WhizbangNotificationOptions.DirectConnectionString` is unset, `IAppSignalChannel` is bound to `NoOpAppSignalChannel`. Publish is a no-op (after topic validation); subscribers never fire.\n\nThis means app code that uses `IAppSignalChannel` works without modification in environments without notifications configured — it just becomes silent.\n\n## When to use, when not to\n\n| Use IAppSignalChannel | Don't use IAppSignalChannel |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/app-signals.md",
+        "wordCount": 534
+      },
+      {
+        "slug": "drafts/fundamentals/work-coordinator/batched-flushers",
+        "title": "Batched flushers",
+        "category": "Fundamentals",
+        "order": 4,
+        "description": "\n# Batched flushers\n\nFour batched flush workers turn high-frequency completion writes into coalesced batches with one fsync per batch. All built on the same `BatchFlusher<T>` primitive (Nagle pattern over a bounded channel).\n\n## The pattern\n\n```\nProducer enqueues item     ─┐\n                            ├──►  BatchFlusher<T> (bounded channel)\nProducer enqueues item     ─┤      ─ wait for first item\nProducer enqueues item     ─┘      ─ then coalesce additional items for CoalesceWindowMs\n                                   ─ OR until MaxBatchSize OR ImmediateFlushThreshold\n                                                  │\n                                                  ▼\n                                          await FlushAsync(IReadOnlyList<T>, ct)\n                                                  │\n                                                  ▼\n                                          IWorkCoordinator.<MethodPerCategory>(batch)\n```\n\n## The four batched flush workers\n\n| Worker | Channel item | SQL function | Default tuning |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/batched-flushers.md",
+        "wordCount": 502
+      },
+      {
+        "slug": "drafts/fundamentals/work-coordinator/claim-loop",
+        "title": "Claim loop",
+        "category": "Fundamentals",
+        "order": 2,
+        "description": "\n# Claim loop\n\n`ClaimWorker` is the only worker that polls the database. Every other worker is producer/consumer-driven (channel reads, bounded buffers, on-demand). This page describes the claim loop's design and tunables.\n\n## What it does\n\n```\nloop:\n  await wake (semaphore released by NOTIFY signal | local channel produce | adaptive timeout)\n  workBatch = await coordinator.ClaimWorkAsync(req, ct)\n  if workBatch.OutboxWork ∪ InboxWork ∪ PerspectiveStreamIds is non-empty:\n    consecutiveEmptyPolls = 0\n    OnBatchClaimed(workBatch)         ← downstream wiring (channels)\n  else:\n    consecutiveEmptyPolls++\n  await semaphore.WaitAsync(adaptivePollWaitMs)\n```\n\nThree things make this efficient:\n\n1. **Empty-call short-circuit in `claim_work` SQL** — when no work exists, the function returns in ≤ 1 ms (vs the legacy 17 ms floor).\n2. **Adaptive backoff** — empty polls double the wait until `PollingMaxIntervalMilliseconds` (10 s default).\n3. **Wake semaphore** — `RequestImmediatePoll()` releases the wait so notifications and local producers wake the worker immediately.\n\n## Adaptive backoff\n\n```\nempty-poll #0 → wait base (250 ms)\nempty-poll #1 → wait 250 ms     (no backoff yet — first non-empty resets)\nempty-poll #2 → wait 500 ms\nempty-poll #3 → wait 1000 ms\nempty-poll #4 → wait 2000 ms\nempty-poll #5 → wait 4000 ms\nempty-poll #6+ → wait 10 000 ms (cap)\n\nANY non-empty result → reset to base (250 ms)\n```\n\nThe adaptive cap is auto-clamped at startup to `AbandonStaleInstanceThresholdSeconds × 1000 / 3` so the heartbeat budget stays satisfied.\n\n## Wake signals\n\nThree sources can release the wake semaphore:\n\n| Source | When |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/claim-loop.md",
+        "wordCount": 626
+      },
+      {
+        "slug": "drafts/fundamentals/work-coordinator/configuration-reference",
+        "title": "Configuration reference",
+        "category": "Fundamentals",
+        "order": 7,
+        "description": "\n# Configuration reference\n\nEvery option that affects the work coordinator. All bind via standard `IConfiguration` (appsettings.json, env vars, k8s ConfigMap, vault, etc.).\n\n## Connection strings\n\nWhizbang reuses the connection string of your registered DbContext — **no duplicate Whizbang connection key**.\n\n| Key | Required | Purpose | Env var |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/configuration-reference.md",
+        "wordCount": 606
+      },
+      {
+        "slug": "drafts/fundamentals/work-coordinator/failure-and-recovery",
+        "title": "Failure and recovery",
+        "category": "Fundamentals",
+        "order": 9,
+        "description": "",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/failure-and-recovery.md",
+        "wordCount": 702
+      },
+      {
+        "slug": "drafts/fundamentals/work-coordinator/handler-commit",
+        "title": "Handler commit",
+        "category": "Fundamentals",
+        "order": 3,
+        "description": "\n# Handler commit\n\nThe handler commit is the only true transactional unit in Whizbang. When an inbox handler runs successfully and emits new outbox messages, those writes must commit together with the inbox completion — otherwise crashes between the two produce duplicates or lost messages.\n\n## The atomic bundle\n\n`commit_handler_result` (and its batched cousin `commit_handler_batch`) carry the full handler result:\n\n```\nAtomic transaction:\n  ┌──────────────────────────────────────────┐\n  │  Mark inbox row M as processed           │  ← inbox completion\n  │  INSERT outbox rows [O1, O2, ...]        │  ← messages handler emitted\n  │  INSERT inbox rows [I1, I2, ...] (rare)  │  ← inbox messages handler emitted\n  │  INSERT event_store rows for new events  │  ← (auto, downstream of outbox storage)\n  │  INSERT perspective_event rows           │  ← (auto, from message_associations)\n  │  pg_notify('wh_work', 'outbox')          │  ← if any outbox rows inserted\n  │  pg_notify('wh_work', 'inbox')           │  ← if any inbox rows inserted\n  │  pg_notify('wh_work', 'perspective')     │  ← if any perspective rows created\n  └──────────────────────────────────────────┘\n```\n\nIf any step fails, the whole bundle rolls back. The inbox row stays unprocessed; the next claim re-delivers it.\n\n## Why atomic matters\n\nWithout atomicity, two failure scenarios produce silent corruption:\n\n1. **Crash after outbox stored, before inbox completion**: next claim re-runs handler M, emits O1', O2' duplicates of O1, O2. Downstream consumers see duplicates.\n2. **Crash after inbox completion, before outbox stored**: handler effects (the emitted O1, O2) are lost. Downstream never sees them.\n\nBoth are eliminated when the bundle commits in one transaction.\n\n## Single-handler vs batched\n\n| Method | Use when |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/handler-commit.md",
+        "wordCount": 592
+      },
+      {
+        "slug": "drafts/fundamentals/work-coordinator/notifications-and-pgbouncer",
+        "title": "Notifications and pgbouncer",
+        "category": "Fundamentals",
+        "order": 5,
+        "description": "\n# Notifications and pgbouncer\n\nWhizbang's work coordinator uses postgres `NOTIFY` / `LISTEN` to wake idle workers immediately when new work appears, dropping idle SQL traffic toward zero. This page explains how the shared-connection design works, why it's necessary with pgbouncer, how the signaling gate decides whether to use NOTIFY at all, and how to operate the system.\n\n## The problem with pgbouncer + LISTEN\n\nPostgreSQL's `LISTEN` registration is **session-scoped**: a session declares \"I want notifications on channel X\" and the server delivers them on that session. pgbouncer in transaction-pooling mode (the most common Azure / RDS setup) returns a connection to the pool after each transaction, breaking session affinity. So `LISTEN wh_work` issued through pgbouncer in transaction mode loses its registration almost immediately — the next time pgbouncer hands the same client a different backend connection, the LISTEN is gone.\n\n## Solution: one shared direct connection per pod\n\nEach pod opens **exactly one** direct connection (bypasses pgbouncer) and multiplexes every per-channel subscription onto it. Everything else — claim, commit, flush, heartbeat — goes through pgbouncer normally.\n\n```\n┌─────────────────────────────────────────────────────────────────────────┐\n│                          POD (per service replica)                      │\n│                                                                         │\n│   ┌────────────────────────────┐   ┌─────────────────────────────────┐  │\n│   │  Whizbang workers          │   │  PgSharedNotifyConnection       │  │\n│   │  (claim/flush/heartbeat)   │   │   • implements                  │  │\n│   │                            │   │     INotifySignalingGate        │  │\n│   │  uses Npgsql connection    │   │     (IsAvailable killswitch)    │  │\n│   │  pool                      │   │   • implements                  │  │\n│   └────────────┬───────────────┘   │     ISharedNotifyConnection     │  │\n│                │                   │     (subscription registry)     │  │\n│                │                   │   • runs self-test probe        │  │\n│                │                   │   • dispatches to subscribers   │  │\n│                │                   │     by channel name             │  │\n│                │                   │                                 │  │\n│                │                   │  uses ONE Npgsql connection     │  │\n│                │                   │  ┌───────────────────────────┐  │  │\n│                │                   │  │ Subscribers:              │  │  │\n│                │                   │  │   PgWorkNotificationListener  │\n│                │                   │  │   PgCommitOrderStamperWorker  │\n│                │                   │  │   PgAppSignalChannel      │  │  │\n│                │                   │  └───────────────────────────┘  │  │\n│                │                   └─────────────────┬───────────────┘  │\n│                │                                     │                  │\n└────────────────┼─────────────────────────────────────┼──────────────────┘\n                 │                                     │\n           via pgbouncer (port 6432)             direct (port 5432)\n                 │                                     │\n                 ▼                                     ▼\n           ┌──────────────────────────────────────────────────┐\n           │                  PostgreSQL                      │\n           └──────────────────────────────────────────────────┘\n```\n\n**Total bypass-pool connections per pod: 1.** Multiple subscribers (work signals, commit-order stamping, app signals, future channels) all share that single direct conn. Pre-slice-33 design opened one direct connection per listener type (3 per pod). With horizontal scaling — N pods × M services × E environments — that adds up fast on the Postgres `max_connections` budget.\n\n## The signaling gate\n\n`INotifySignalingGate` is the **single source of truth** for \"is NOTIFY actually working in this process right now?\". Every consumer that depends on NOTIFY consults the gate instead of making its own decision.\n\n```csharp\npublic interface INotifySignalingGate {\n  bool IsAvailable { get; }\n  DateTimeOffset? LastVerifiedAt { get; }\n  DateTimeOffset? LastFailureAt { get; }\n  string? LastFailureReason { get; }\n  event Action<bool>? OnAvailabilityChanged;\n  Task<bool> ProbeNowAsync(CancellationToken cancellationToken = default);\n}\n```\n\n`IsAvailable = true` only when the most recent **self-test probe** round-tripped successfully AND the shared connection is currently usable. The probe catches configurations that \"is the connection string set?\" would miss — pgbouncer in transaction-pooling mode, broken producer-side `pg_notify` SQL functions, firewall rules that allow SQL but drop NOTIFY traffic, etc.\n\n### Probe mechanics\n\nOn startup (and periodically thereafter via `PeriodicReprobeInterval`, default 5 min, while unavailable):\n\n1. Open the shared direct connection.\n2. `LISTEN` on `wh_selftest_{instanceId}_{nonce}` (single-use channel, fresh UUIDv7 nonce per probe).\n3. Open a second ephemeral connection. `SELECT pg_notify('wh_selftest_{instanceId}_{nonce}', 'ping')`. Close it. This second connection exists because Postgres's LISTENing backend doesn't observe its own pre-commit `NOTIFY` on the same backend.\n4. Wait up to `SelfTestTimeout` (default 2 s) for the notification to arrive on the shared connection.\n5. On success → `IsAvailable = true`, drop the self-test channel.\n6. On timeout → `IsAvailable = false`, schedule the next periodic re-probe.\n\n`ProbeNowAsync()` is the ops escape hatch — forces an immediate re-probe without waiting for the periodic schedule.\n\n## How signals flow\n\n1. Some service commits new work via `commit_handler_result`. Inside the SQL function:\n   ```sql\n   IF v_outbox_inserted_count > 0 THEN PERFORM pg_notify('wh_work_i_{owner}', 'outbox'); END IF;\n   IF v_inbox_inserted_count > 0  THEN PERFORM pg_notify('wh_work_i_{owner}', 'inbox');  END IF;\n   ```\n2. Postgres queues notifications. **Dedup at COMMIT**: 10 000 inserts that all `pg_notify('wh_work_i_{owner}', 'outbox')` collapse to **one** delivered notification per `(channel, payload)` tuple — postgres handles this automatically.\n3. On COMMIT, the owning instance's `PgSharedNotifyConnection` is in `WaitAsync` on its direct connection. The notification fires its handler. The handler looks up the channel name in the subscription registry and invokes each subscriber's `OnNotification(payload)` callback synchronously.\n4. `PgWorkNotificationListener` (a thin subscriber) parses the payload and fires `OnSignal(WorkSignalCategory.Outbox)`.\n5. `ClaimWorker` is subscribed to `OnSignal`; it calls `RequestImmediatePoll()` which releases the wake semaphore.\n6. The claim worker's loop returns from its sleep early and immediately polls `claim_work`.\n\nEnd-to-end latency from \"transport delivers a message\" to \"another service starts handling it\" is now governed by network + listener-connection wait + `claim_work` execution — measured in tens of milliseconds even at idle.\n\n## Health monitoring + auto-fallback\n\nWhen the shared connection fails:\n- The gate flips `IsAvailable = false`. `OnAvailabilityChanged` fires; subscribers (notably `ClaimWorker`) react.\n- Reconnect with exponential backoff (1 s → 2 s → 4 s → ... → 30 s cap).\n- After `FailuresBeforeFallback` consecutive failures (default 5), the backoff stretches to `PeriodicReprobeInterval` (default 5 min) — stops hammering a broken connection while still re-probing periodically so the system heals when the underlying problem is fixed out-of-band.\n- When the connection comes back AND the probe succeeds: `OnAvailabilityChanged(true)` fires; `ClaimWorker.RequestImmediatePoll()` runs so any work that accumulated during the unavailable window doesn't wait out the next adaptive-backoff tick.\n\n`ClaimWorker`'s adaptive polling cadence reacts to the gate:\n- When gate `IsAvailable = true`: empty-poll streaks let the wait grow up to `PollingMaxIntervalMilliseconds` (10 s default). The NOTIFY wakes the worker when work arrives, so longer waits are fine.\n- When gate `IsAvailable = false`: the adaptive backoff is clamped to `PollingIntervalMilliseconds` (250 ms default). NOTIFY won't wake us, so we MUST keep polling tight.\n\nPolling stays first-class. Notifications are an accelerator; correctness never depends on them.\n\n## Configuration\n\nEach service has two connection strings:\n\n```json\n{\n  \"ConnectionStrings\": {\n    \"bffservice-db\":         \"Host=postgres-pgbouncer:6432;Database=bffservice-db;...\",\n    \"bffservice-db-direct\":  \"Host=postgres-primary:5432;Database=bffservice-db;...\"\n  }\n}\n```\n\nThe `-direct` suffix is convention. Same DB, different port, no pooler.\n\nWhen `<dbname>-direct` is unset, the gate reports `IsAvailable = false` and the system runs polling-only. The system stays correct — polling fallback at the configured base interval (250 ms default) catches any work that would otherwise be discovered by NOTIFY.\n\n### `WhizbangNotificationOptions`\n\nBound from the `Whizbang:Database` section in `IConfiguration`:\n\n| Option | Default | Description |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 10,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "wordCount": 1902
+      },
+      {
+        "slug": "drafts/fundamentals/work-coordinator/overview",
+        "title": "Overview",
+        "category": "Fundamentals",
+        "order": 1,
+        "description": "\n# Work coordinator overview\n\nThe work coordinator pumps messages through three queues — outbox (transport publishes), inbox (handler dispatch), and perspective_events (projection processing). It's built around a focused-function architecture: one SQL function per concern, one C# method per SQL function, one worker per active loop.\n\n## High-level flow\n\n```\n                    ┌──────────────────────────────────────────────┐\n                    │                                              │\n   ┌──────────┐     │     ┌───────────┐    ┌────────────────┐      │\n   │ External │─────┼────►│  inbox    │───►│ Inbox handler  │      │\n   │ transport│     │     │  table    │    │ (your code)    │      │\n   └──────────┘     │     └───────────┘    └───────┬────────┘      │\n                    │                              │                │\n                    │     ┌───────────┐            │ emits          │\n                    │     │  outbox   │◄───────────┘ outbox msgs    │\n                    │     │  table    │                             │\n                    │     └─────┬─────┘                             │\n                    │           │                                   │\n   ┌────────────┐   │           ▼                                   │\n   │  Transport │◄──┼────  OutboxPublishWorker                      │\n   │  (publish) │   │                                               │\n   └────────────┘   │     ┌───────────┐   ┌────────────────┐        │\n                    │     │perspective│──►│ Perspective    │        │\n                    │     │  _events  │   │ projection     │        │\n                    │     │   table   │   │ (your code)    │        │\n                    │     └───────────┘   └────────────────┘        │\n                    │                                               │\n                    │   ClaimWorker (the only poller, calls         │\n                    │   claim_work) distributes work to channels    │\n                    │                                               │\n                    └───────────────────────────────────────────────┘\n```\n\n## The 8 workers\n\n| Worker | Role |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/overview.md",
+        "wordCount": 591
+      },
+      {
+        "slug": "drafts/fundamentals/work-coordinator/performance-tuning",
+        "title": "Performance tuning",
+        "category": "Fundamentals",
+        "order": 8,
+        "description": "",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/performance-tuning.md",
+        "wordCount": 663
       },
       {
         "slug": "drafts/metrics/components",
@@ -3041,6 +3437,18 @@
         "readingTime": 6,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/metrics/overview.md",
         "wordCount": 1003
+      },
+      {
+        "slug": "drafts/operations/work-pump-smoke-test",
+        "title": "Work-pump decomposition smoke test",
+        "category": "Operations & Configuration",
+        "order": 90,
+        "description": "\n# Work-pump decomposition smoke test (Phase F)\n\nRunbook for verifying that a multi-service deployment is benefiting from the work-pump\ndecomposition (Phases A-E). Run this after upgrading services to a Whizbang version that\nincludes the new SQL function family + worker pipeline.\n\n## Prerequisites\n\n1. **All services upgraded** to the Whizbang version that ships the new SQL functions:\n   `claim_work`, `commit_handler_result`, `commit_handler_batch`, `complete_outbox_published`,\n   `record_heartbeat`, `complete_perspective`, `report_failures`, `renew_leases`,\n   `flush_completions`, `resolve_sync_inquiries`, plus `_emit_event_store_chain`.\n2. **Migrations applied** to each service database. Check by running `\\df claim_work` in psql.\n3. **`AddWhizbang()` called** in each service's `Program.cs` — the worker pipeline\n   (HeartbeatWorker, ClaimWorker, BatchFlusher-based flushers, etc.) registers automatically\n   via `AddWhizbangWorkers()` invoked from `AddWhizbang()`.\n\n## Connection-string provisioning\n\nEach service needs **one new connection string** named `<dbname>-direct` for the LISTEN\nconnection that bypasses pgbouncer. Existing pooled connection strings stay unchanged.\n\n| Service | Existing (no change) | New (provision per environment) |\n|",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/operations/work-pump-smoke-test.md",
+        "wordCount": 657
       },
       {
         "slug": "drafts/test-error-display",
