@@ -5,6 +5,11 @@ category: Migration Guide
 order: 10
 description: Complete checklist for migrating from Marten/Wolverine to Whizbang
 tags: 'migration, checklist, verification, validation'
+codeReferences:
+  - src/Whizbang.Core/ServiceCollectionExtensions.cs
+  - src/Whizbang.Core/IDispatcher.cs
+  - src/Whizbang.Core/ICommand.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Migration Checklist
@@ -225,7 +230,7 @@ For each projection:
 
 ### Namespace Changes
 
-```csharp{title="Namespace Changes" description="Demonstrates namespace Changes" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Namespace", "Changes"]}
+```csharp{title="Namespace Changes" description="Namespace Changes" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Namespace", "Changes"]}
 // Remove
 using Marten;
 using Marten.Events;
@@ -256,7 +261,7 @@ using Whizbang.Core.Perspectives;
 
 Use `whizbang-migrate` to automate common transformations:
 
-```bash{title="Automated Migration Tool" description="Use whizbang-migrate to automate common transformations:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Automated", "Migration", "Tool"]}
+```bash{title="Automated Migration Tool" description="Use whizbang-migrate to automate common transformations:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "Bash", "Automated", "Migration", "Tool"]}
 # Install
 dotnet tool install -g whizbang-migrate
 

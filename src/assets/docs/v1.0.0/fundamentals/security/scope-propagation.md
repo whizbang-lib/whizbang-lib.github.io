@@ -6,6 +6,13 @@ order: 8
 description: >-
   Delta-based scope propagation across message hops with explicit tenant strategy enforcement for system and impersonation operations.
 tags: 'security, scope, tenant, multi-tenancy, system-operations, impersonation, delta, wire-format'
+codeReferences:
+  - src/Whizbang.Core/Security/ScopeDelta.cs
+  - src/Whizbang.Core/Security/ScopePropJsonConverter.cs
+  - src/Whizbang.Core/Dispatch/DispatcherSecurityExtensions.cs
+  - src/Whizbang.Core/Dispatch/SystemDispatcherBuilder.cs
+  - src/Whizbang.Core/Dispatch/ImpersonationDispatcherBuilder.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Scope Propagation
@@ -166,7 +173,7 @@ All scope-related types use abbreviated JSON property names for minimal wire siz
 
 ### Wire Format Examples
 
-```json{title="Wire Format Examples" description="Demonstrates wire Format Examples" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Wire", "Format"]}
+```json{title="Wire Format Examples" description="Wire Format Examples" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Wire", "Format"]}
 // Change TenantId only:
 {"v":{"Sc":{"t":"new-tenant"}}}
 

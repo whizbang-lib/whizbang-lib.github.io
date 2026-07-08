@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Core/IReceptor.cs
   - src/Whizbang.Core/IPerspectiveOf.cs
   - README.md
+lastMaintainedCommit: '01f07906'
 ---
 
 # Introduction to Whizbang
@@ -33,7 +34,7 @@ Whizbang provides a complete foundation for building modern, scalable applicatio
 
 Every feature in Whizbang is built without runtime reflection:
 
-```csharp{title="Zero Reflection" description="Every feature in Whizbang is built without runtime reflection:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Zero", "Reflection"]}
+```csharp{title="Zero Reflection" description="Every feature in Whizbang is built without runtime reflection:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Zero", "Reflection"]}
 // Source generators discover this at compile time
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
@@ -75,7 +76,7 @@ Built around three core patterns:
 2. **Perspectives**: Event listeners that maintain read models
 3. **Lenses**: Query interfaces for optimized data access
 
-```csharp{title="Event-Driven Architecture" description="Demonstrates event-Driven Architecture" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Event-Driven", "Architecture"]}
+```csharp{title="Event-Driven Architecture" description="Event-Driven Architecture" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Event-Driven", "Architecture"]}
 // Receptor: Receives command, produces event
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> { }
 

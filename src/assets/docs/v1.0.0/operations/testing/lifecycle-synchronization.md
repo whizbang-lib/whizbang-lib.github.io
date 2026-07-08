@@ -15,6 +15,7 @@ codeReferences:
   - >-
     samples/ECommerce/tests/ECommerce.Integration.Tests/Fixtures/LifecycleReceptorTestExtensions.cs
   - src/Whizbang.Core/Messaging/ILifecycleReceptorRegistry.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Lifecycle Synchronization
@@ -67,7 +68,7 @@ sequenceDiagram
 
 ### Test Failures
 
-```csharp{title="Test Failures" description="Demonstrates test Failures" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Failures"]}
+```csharp{title="Test Failures" description="Test Failures" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Failures"]}
 [Test]
 public async Task CreateProduct_UpdatesProductCatalog_FailsRandomlyAsync() {
   // Arrange
@@ -133,7 +134,7 @@ sequenceDiagram
 
 ### Step 1: Create Completion Receptor
 
-```csharp{title="Step 1: Create Completion Receptor" description="Demonstrates step 1: Create Completion Receptor" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Step", "Create"]}
+```csharp{title="Step 1: Create Completion Receptor" description="Step 1: Create Completion Receptor" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Step", "Create"]}
 using Whizbang.Core;
 using Whizbang.Core.Messaging;
 
@@ -172,7 +173,7 @@ public sealed class PerspectiveCompletionReceptor<TEvent> : IReceptor<TEvent>
 
 ### Step 2: Register at Runtime
 
-```csharp{title="Step 2: Register at Runtime" description="Demonstrates step 2: Register at Runtime" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Step", "Register"]}
+```csharp{title="Step 2: Register at Runtime" description="Step 2: Register at Runtime" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Step", "Register"]}
 [Test]
 public async Task CreateProduct_UpdatesProductCatalog_DeterministicallyAsync() {
   // Arrange
@@ -255,7 +256,7 @@ public static class LifecycleReceptorTestExtensions {
 
 ### Simplified Test Usage
 
-```csharp{title="Simplified Test Usage" description="Demonstrates simplified Test Usage" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Simplified", "Test"]}
+```csharp{title="Simplified Test Usage" description="Simplified Test Usage" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Simplified", "Test"]}
 [Test]
 public async Task CreateProduct_UpdatesProductCatalog_SimpleAsync() {
   // Arrange
@@ -349,7 +350,7 @@ public static async Task WaitForMultiplePerspectiveCompletionsAsync(
 ```
 
 **Usage**:
-```csharp{title="Pattern 1: Multiple Event Types (2)" description="Demonstrates pattern 1: Multiple Event Types" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Pattern", "Multiple"]}
+```csharp{title="Pattern 1: Multiple Event Types (2)" description="Pattern 1: Multiple Event Types" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Pattern", "Multiple"]}
 [Test]
 public async Task UpdateInventory_UpdatesMultiplePerspectives_DeterministicallyAsync() {
   // Arrange
@@ -490,7 +491,7 @@ public async Task Command_TriggersOneOfSeveralEvents_FlexiblyAsync() {
 
 ### Base Fixture Setup
 
-```csharp{title="Base Fixture Setup" description="Demonstrates base Fixture Setup" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Base", "Fixture"]}
+```csharp{title="Base Fixture Setup" description="Base Fixture Setup" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Base", "Fixture"]}
 public class ServiceBusIntegrationFixture : IAsyncDisposable {
   protected IHost _inventoryHost = null!;
   protected IHost _bffHost = null!;
@@ -536,7 +537,7 @@ public class ServiceBusIntegrationFixture : IAsyncDisposable {
 
 ### Test Class Usage
 
-```csharp{title="Test Class Usage" description="Demonstrates test Class Usage" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Class"]}
+```csharp{title="Test Class Usage" description="Test Class Usage" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Class"]}
 public class CreateProductWorkflowTests : ServiceBusIntegrationFixture {
 
   [Test]
@@ -580,7 +581,7 @@ public class CreateProductWorkflowTests : ServiceBusIntegrationFixture {
 4. **Message routing issue** - Event not reaching perspective
 
 **Debugging**:
-```csharp{title="Problem: TimeoutException" description="Demonstrates problem: TimeoutException" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Problem:", "TimeoutException"]}
+```csharp{title="Problem: TimeoutException" description="Problem: TimeoutException" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Problem:", "TimeoutException"]}
 // Check pending work items
 var pendingWork = await _dbContext.WorkItems.ToListAsync();
 Console.WriteLine($"Pending work: {pendingWork.Count}");
@@ -607,7 +608,7 @@ Console.WriteLine($"ProductCreatedEvent count: {events.Count}");
 3. **Async stage instead of Inline** - Use `PostPerspectiveInline`, not `PostPerspectiveAsync`
 
 **Fix**:
-```csharp{title="Problem: Test Passes But Assertions Fail" description="Demonstrates problem: Test Passes But Assertions Fail" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Test"]}
+```csharp{title="Problem: Test Passes But Assertions Fail" description="Problem: Test Passes But Assertions Fail" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Test"]}
 // ❌ WRONG: PostPerspectiveAsync (non-blocking, no guarantee)
 [FireAt(LifecycleStage.PostPerspectiveAsync)]
 public class CompletionReceptor : IReceptor<ProductCreatedEvent> { }
@@ -628,7 +629,7 @@ public class CompletionReceptor : IReceptor<ProductCreatedEvent> { }
 4. **Perspective name filter excludes event** - Check filter logic
 
 **Debugging**:
-```csharp{title="Problem: Receptor Not Firing" description="Demonstrates problem: Receptor Not Firing" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Receptor"]}
+```csharp{title="Problem: Receptor Not Firing" description="Problem: Receptor Not Firing" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Receptor"]}
 // Add logging to receptor
 public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
   Console.WriteLine($"RECEPTOR FIRED: {evt.GetType().Name}");
@@ -672,7 +673,7 @@ services
 
 ### Timeout Recommendations
 
-```csharp{title="Timeout Recommendations" description="Demonstrates timeout Recommendations" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Timeout", "Recommendations"]}
+```csharp{title="Timeout Recommendations" description="Timeout Recommendations" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Timeout", "Recommendations"]}
 // Local development (fast)
 timeoutMilliseconds: 5000   // 5 seconds
 
@@ -689,7 +690,7 @@ timeoutMilliseconds: 30000  // 30 seconds
 
 ### Before: Polling-Based Tests
 
-```csharp{title="Before: Polling-Based Tests" description="Demonstrates before: Polling-Based Tests" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Before:", "Polling-Based"]}
+```csharp{title="Before: Polling-Based Tests" description="Before: Polling-Based Tests" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Before:", "Polling-Based"]}
 [Test]
 public async Task OldTest_UsesPollingSyncAsync() {
   // Arrange
@@ -717,7 +718,7 @@ private async Task WaitForEventProcessingAsync() {
 
 ### After: Lifecycle Synchronization
 
-```csharp{title="After: Lifecycle Synchronization" description="Demonstrates after: Lifecycle Synchronization" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "After:", "Lifecycle"]}
+```csharp{title="After: Lifecycle Synchronization" description="After: Lifecycle Synchronization" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "After:", "Lifecycle"]}
 [Test]
 public async Task NewTest_UsesLifecycleSyncAsync() {
   // Arrange

@@ -1,3 +1,19 @@
+---
+title: "Implementing Multi-Tenancy"
+version: 1.0.0
+category: "Core Concepts"
+order: 9
+description: >-
+  Step-by-step guide to implementing multi-tenancy in Whizbang applications,
+  covering tenant isolation, role-based security options, scope filters, and
+  group-based sharing patterns.
+tags: 'multi-tenancy, tenant-isolation, security-options, scope-filters, rbac, saas, data-isolation'
+codeReferences:
+  - src/Whizbang.Core/Security/SecurityOptions.cs
+  - src/Whizbang.Core/Security/IPermissionExtractor.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # Implementing Multi-Tenancy
 
 This guide walks through implementing multi-tenancy in a Whizbang application, from basic tenant isolation to advanced group-based sharing.
@@ -12,7 +28,7 @@ This guide walks through implementing multi-tenancy in a Whizbang application, f
 
 First, configure the security system with roles and permission extraction.
 
-```csharp{title="Step 1: Configure Security Options" description="First, configure the security system with roles and permission extraction." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Configure"]}
+```csharp{title="Step 1: Configure Security Options" description="First, configure the security system with roles and permission extraction." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Configure"]}
 // Program.cs
 builder.Services.AddSingleton(new SecurityOptions()
   // Define roles with permissions

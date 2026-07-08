@@ -1,3 +1,19 @@
+---
+title: "Vector Similarity Search"
+version: 1.0.0
+category: "Lenses"
+order: 7
+description: >-
+  Whizbang supports pgvector similarity queries for semantic search, embeddings, and AI/ML workloads.
+  Provides turnkey setup with automatic NpgsqlDataSource and DbContext configuration when perspectives
+  use VectorField attributes, plus cosine, L2, and inner product distance functions.
+tags: 'vector-search, pgvector, similarity-search, embeddings, semantic-search, ai-ml'
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres/VectorSearchExtensions.cs
+  - src/Whizbang.Core/Lenses/VectorSearchResult.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # Vector Similarity Search
 
 Whizbang supports pgvector similarity queries for semantic search, embeddings, and AI/ML workloads.
@@ -202,7 +218,7 @@ You cannot chain `.OrderBy(r => r.Distance)` or `.Where(r => r.Distance < x)` af
 `OrderByCosineDistance` and `WithinCosineDistance` for SQL-side operations first.
 :::
 
-```csharp{title="Pattern 5: Combined Filter + Sort + Project" description=":::updated Important: WithCosineDistance must be used as the final projection before ToListAsync()." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Combined"]}
+```csharp{title="Pattern 5: Combined Filter + Sort + Project" description="Pattern 5: Combined Filter + Sort + Project" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Combined"]}
 var searchEmbedding = await embeddingService.EmbedAsync(userQuery);
 
 // Filter -> Sort -> Project with scores
@@ -259,7 +275,7 @@ double innerProduct = VectorSearchExtensions.CalculateInnerProductDistance(vecto
 
 ## Complete Example: Semantic Search with Ranking
 
-```csharp{title="Complete Example: Semantic Search with Ranking" description="Demonstrates complete Example: Semantic Search with Ranking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Complete", "Example:"]}
+```csharp{title="Complete Example: Semantic Search with Ranking" description="Complete Example: Semantic Search with Ranking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Complete", "Example:"]}
 public class SearchService {
   private readonly ILensQueryFactory<DocumentModel> _documentLens;
   private readonly IEmbeddingService _embeddingService;

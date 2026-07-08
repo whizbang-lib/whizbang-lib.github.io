@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Tracing/TraceVerbosity.cs
   - src/Whizbang.Core/Tracing/ITracer.cs
   - src/Whizbang.Core/Tracing/WhizbangTraceAttribute.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Tracing
@@ -348,7 +349,7 @@ When handlers fail, the span records:
 
 ### Production Configuration
 
-```csharp{title="Production Tracing" description="Recommended production tracing configuration" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Tracing", "Production", "Best-Practices"]}
+```csharp{title="Production Tracing" description="Recommended production tracing configuration" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Observability", "C#", "Production", "Tracing"]}
 services.AddWhizbang(options => {
   options.Tracing.Verbosity = TraceVerbosity.Minimal;
   options.Tracing.Components = TraceComponents.Production;
@@ -363,7 +364,7 @@ services.AddWhizbang(options => {
 
 ### Development Configuration
 
-```csharp{title="Development Tracing" description="Verbose tracing for development" category="Best-Practices" difficulty="BEGINNER" tags=["Tracing", "Development", "Best-Practices"]}
+```csharp{title="Development Tracing" description="Verbose tracing for development" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Observability", "C#", "Development", "Tracing"]}
 services.AddWhizbang(options => {
   options.Tracing.Verbosity = TraceVerbosity.Debug;
   options.Tracing.Components = TraceComponents.AllWithoutWorkers;

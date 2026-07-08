@@ -6,6 +6,12 @@ order: 7
 description: >-
   End-to-end security context flow across service boundaries, from HTTP requests through message processing, with automatic propagation and audit trails.
 tags: 'security, message-security, scoping, distributed-systems, audit, context-propagation'
+codeReferences:
+  - src/Whizbang.Core/Messaging/SecurityContextEventStoreDecorator.cs
+  - src/Whizbang.Core/Security/SecurityContextHelper.cs
+  - src/Whizbang.Core/Security/IMessageSecurityContextProvider.cs
+  - src/Whizbang.Core/Transports/ServiceBusTransportMetadata.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Security Context Propagation
@@ -140,7 +146,7 @@ No manual context passing required - the dispatcher finds it via `IScopeContextA
 
 The dispatcher attaches security context to the message's hop:
 
-```csharp{title="Step 3: Security Context Attached to MessageHop" description="The dispatcher attaches security context to the message's hop:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Context"]}
+```csharp{title="Step 3: Security Context Attached to MessageHop" description="The dispatcher attaches security context to the message's hop:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Context"]}
 // Inside Dispatcher.SendAsync()
 var scopeContext = _scopeContextAccessor.Current;
 
@@ -213,7 +219,7 @@ await _dispatcher.LocalInvokeAsync(envelope.Payload, cancellationToken);
 
 The `MessageHopSecurityExtractor` reads the security context from the hop chain:
 
-```csharp{title="Step 6: Security Context Extracted from Hops" description="The MessageHopSecurityExtractor reads the security context from the hop chain:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Context"]}
+```csharp{title="Step 6: Security Context Extracted from Hops" description="The MessageHopSecurityExtractor reads the security context from the hop chain:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Context"]}
 public class MessageHopSecurityExtractor : ISecurityContextExtractor {
   public int Priority => 100; // Runs first
 
@@ -311,7 +317,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder> {
 
 ### Enable/Disable Globally
 
-```csharp{title="Enable/Disable Globally" description="Demonstrates enable/Disable Globally" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enable", "Disable"]}
+```csharp{title="Enable/Disable Globally" description="Enable/Disable Globally" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enable", "Disable"]}
 services.AddWhizbangMessageSecurity(options => {
   // Enable/disable propagation globally
   options.PropagateToOutgoingMessages = true; // default
@@ -320,7 +326,7 @@ services.AddWhizbangMessageSecurity(options => {
 
 ### Per-Context Control
 
-```csharp{title="Per-Context Control" description="Demonstrates per-Context Control" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Per-Context", "Control"]}
+```csharp{title="Per-Context Control" description="Per-Context Control" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Per-Context", "Control"]}
 // Create context with propagation enabled
 var extraction = new SecurityExtraction { /* ... */ };
 var propagate = new ImmutableScopeContext(extraction, shouldPropagate: true);

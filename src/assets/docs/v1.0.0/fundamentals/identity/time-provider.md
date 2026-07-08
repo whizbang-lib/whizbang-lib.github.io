@@ -9,6 +9,7 @@ tags: 'time, testing, dependency-injection, aot'
 codeReferences:
   - src/Whizbang.Core/ITimeProvider.cs
   - src/Whizbang.Core/SystemTimeProvider.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Time Provider
@@ -25,7 +26,7 @@ The time provider abstraction solves common challenges:
 
 ## ITimeProvider Interface {#itimeprovider}
 
-```csharp{title="ITimeProvider Interface" description="Demonstrates iTimeProvider Interface" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "ITimeProvider", "Interface"]}
+```csharp{title="ITimeProvider Interface" description="ITimeProvider Interface" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "ITimeProvider", "Interface"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -104,7 +105,7 @@ services.AddWhizbang();
 
 ### Basic Usage
 
-```csharp{title="Basic Usage" description="Demonstrates basic Usage" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Usage"]}
+```csharp{title="Basic Usage" description="Basic Usage" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Usage"]}
 public class OrderService {
   private readonly ITimeProvider _timeProvider;
 
@@ -125,7 +126,7 @@ public class OrderService {
 
 ### Measuring Elapsed Time
 
-```csharp{title="Measuring Elapsed Time" description="Demonstrates measuring Elapsed Time" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Measuring", "Elapsed"]}
+```csharp{title="Measuring Elapsed Time" description="Measuring Elapsed Time" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Measuring", "Elapsed"]}
 public async Task ProcessBatchAsync(IEnumerable<Order> orders) {
   var startTimestamp = _timeProvider.GetTimestamp();
 
@@ -140,7 +141,7 @@ public async Task ProcessBatchAsync(IEnumerable<Order> orders) {
 
 ### Testing with Mock Time
 
-```csharp{title="Testing with Mock Time" description="Demonstrates testing with Mock Time" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Testing", "Mock"]}
+```csharp{title="Testing with Mock Time" description="Testing with Mock Time" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Testing", "Mock"]}
 public class FakeTimeProvider : ITimeProvider {
   private DateTimeOffset _currentTime = DateTimeOffset.UtcNow;
 

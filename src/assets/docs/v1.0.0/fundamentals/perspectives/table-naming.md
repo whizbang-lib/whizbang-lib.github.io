@@ -1,3 +1,19 @@
+---
+title: "Perspective Table Naming"
+version: 1.0.0
+category: "Perspectives"
+order: 7
+description: >-
+  Whizbang automatically generates database table names for perspectives using configurable
+  naming conventions. Strips common suffixes like Projection, Model, and Dto by default,
+  and supports MSBuild properties for customizing suffix stripping behavior.
+tags: 'table-naming, naming-conventions, snake-case, suffix-stripping, perspectives, schema'
+codeReferences:
+  - src/Whizbang.Generators.Shared/Utilities/NamingConventionUtilities.cs
+  - src/Whizbang.Generators.Shared/Models/TableNameConfig.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # Perspective Table Naming
 
 Whizbang automatically generates database table names for your perspectives using configurable naming conventions. By default, common suffixes like `Projection`, `Model`, and `Dto` are stripped to create cleaner, shorter table names.
@@ -137,14 +153,14 @@ When you rename a perspective class, the [perspective registry](registry.md) aut
 
 ### Before
 
-```csharp{title="Before" description="Demonstrates before" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Before"]}
+```csharp{title="Before" description="Before" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Before"]}
 public class CustomerDataProjection : IPerspectiveFor<CustomerData, CustomerEvent> { }
 // Table: wh_per_customer_data
 ```
 
 ### After
 
-```csharp{title="After" description="Demonstrates after" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "After"]}
+```csharp{title="After" description="After" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "After"]}
 public class CustomerProjection : IPerspectiveFor<CustomerData, CustomerEvent> { }
 // Table: wh_per_customer
 ```

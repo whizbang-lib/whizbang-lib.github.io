@@ -1,3 +1,19 @@
+---
+title: "Event Store"
+version: 1.0.0
+category: "Core Concepts"
+order: 9
+description: >-
+  The IEventStore interface provides append-only event storage for event sourcing in Whizbang.
+  Supports stream-based storage with automatic sequence numbering, polymorphic reads,
+  and synchronous verification via AppendAndWaitAsync.
+tags: 'event-store, event-sourcing, append-only, streams, IEventStore, persistence'
+codeReferences:
+  - src/Whizbang.Core/Messaging/IEventStore.cs
+  - src/Whizbang.Core/Messaging/AppendAndWaitEventStoreDecorator.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # Event Store
 
 The `IEventStore` interface provides append-only event storage for event sourcing patterns. It supports stream-based storage with automatic sequence numbering, polymorphic reads, and synchronous verification via `AppendAndWaitAsync`.
@@ -16,7 +32,7 @@ Whizbang's event store is designed for:
 
 ### Appending Events
 
-```csharp{title="Appending Events" description="Demonstrates appending Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Appending"]}
+```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Appending"]}
 public class OrderHandler {
   private readonly IEventStore _eventStore;
 
@@ -32,7 +48,7 @@ public class OrderHandler {
 
 ### Reading Events
 
-```csharp{title="Reading Events" description="Demonstrates reading Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Reading"]}
+```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Reading"]}
 // Read all events of a specific type
 await foreach (var envelope in _eventStore.ReadAsync<OrderCreatedEvent>(orderId, fromSequence: 0)) {
   var evt = envelope.Payload;
@@ -62,7 +78,7 @@ The decorator is automatically applied when using `DecorateEventStoreWithSyncTra
 
 ### Usage
 
-```csharp{title="Usage" description="Demonstrates usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Usage"]}
+```csharp{title="Usage" description="Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Usage"]}
 var syncResult = await _eventStore.AppendAndWaitAsync<OrderCreatedEvent, OrderProjection>(
     streamId: orderId,
     message: new OrderCreatedEvent(orderId, customerId, items),
@@ -78,7 +94,24 @@ var syncResult = await _eventStore.AppendAndWaitAsync<OrderCreatedEvent, OrderPr
 | `streamId` | `Guid` | The stream/aggregate ID |
 | `message` | `TMessage` | The event to append |
 | `timeout` | `TimeSpan?` | Maximum wait time (default: 30 seconds) |
+| `onWaiting` | `Action<SyncWaitingContext>?` | Optional callback invoked when waiting begins (only if there are events to wait for) |
+| `onDecisionMade` | `Action<SyncDecisionContext>?` | Optional callback always invoked when the sync decision is made, regardless of outcome |
 | `cancellationToken` | `CancellationToken` | Cancellation token |
+
+### Waiting for All Perspectives {#append-and-wait-all}
+
+The single-type-parameter overload `AppendAndWaitAsync<TMessage>` waits for **all** registered perspectives to process the event, rather than a specific one:
+
+```csharp{title="Wait for All Perspectives" description="Append and wait for all perspectives to process" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "AppendAndWait", "All"]}
+var syncResult = await _eventStore.AppendAndWaitAsync(
+    streamId: orderId,
+    message: new OrderCreatedEvent(orderId, customerId, items),
+    timeout: TimeSpan.FromSeconds(10));
+
+// Event has been appended AND all perspectives have processed it
+```
+
+This uses `IEventCompletionAwaiter` internally to wait for all perspectives.
 
 ### SyncResult
 
@@ -149,7 +182,7 @@ await _eventStore.AppendAsync(orderId, evt);
 
 ## IEventStore Interface
 
-```csharp{title="IEventStore Interface" description="Demonstrates iEventStore Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "IEventStore", "Interface"]}
+```csharp{title="IEventStore Interface" description="IEventStore Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "IEventStore", "Interface"]}
 public interface IEventStore {
   // Append with envelope (full control)
   Task AppendAsync<TMessage>(Guid streamId, MessageEnvelope<TMessage> envelope, CancellationToken ct = default);
@@ -158,11 +191,22 @@ public interface IEventStore {
   Task AppendAsync<TMessage>(Guid streamId, TMessage message, CancellationToken ct = default)
       where TMessage : notnull;
 
-  // Append and wait for perspective sync
+  // Append and wait for specific perspective sync
   Task<SyncResult> AppendAndWaitAsync<TMessage, TPerspective>(
-      Guid streamId, TMessage message, TimeSpan? timeout = null, CancellationToken ct = default)
+      Guid streamId, TMessage message, TimeSpan? timeout = null,
+      Action<SyncWaitingContext>? onWaiting = null,
+      Action<SyncDecisionContext>? onDecisionMade = null,
+      CancellationToken ct = default)
       where TMessage : notnull
       where TPerspective : class;
+
+  // Append and wait for ALL perspectives to process
+  Task<SyncResult> AppendAndWaitAsync<TMessage>(
+      Guid streamId, TMessage message, TimeSpan? timeout = null,
+      Action<SyncWaitingContext>? onWaiting = null,
+      Action<SyncDecisionContext>? onDecisionMade = null,
+      CancellationToken ct = default)
+      where TMessage : notnull;
 
   // Read by sequence number
   IAsyncEnumerable<MessageEnvelope<TMessage>> ReadAsync<TMessage>(
@@ -176,9 +220,14 @@ public interface IEventStore {
   IAsyncEnumerable<MessageEnvelope<IEvent>> ReadPolymorphicAsync(
       Guid streamId, Guid? fromEventId, IReadOnlyList<Type> eventTypes, CancellationToken ct = default);
 
-  // Get events between checkpoints
+  // Get events between checkpoints (single type)
   Task<List<MessageEnvelope<TMessage>>> GetEventsBetweenAsync<TMessage>(
       Guid streamId, Guid? afterEventId, Guid upToEventId, CancellationToken ct = default);
+
+  // Get events between checkpoints (polymorphic - multiple event types)
+  Task<List<MessageEnvelope<IEvent>>> GetEventsBetweenPolymorphicAsync(
+      Guid streamId, Guid? afterEventId, Guid upToEventId,
+      IReadOnlyList<Type> eventTypes, CancellationToken ct = default);
 
   // Get last sequence number
   Task<long> GetLastSequenceAsync(Guid streamId, CancellationToken ct = default);

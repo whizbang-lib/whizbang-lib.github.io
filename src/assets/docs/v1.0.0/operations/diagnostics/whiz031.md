@@ -10,6 +10,10 @@ tags:
   - perspectives
   - streamkey
   - source-generator
+codeReferences:
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ031: Multiple StreamKey Attributes

@@ -1,3 +1,20 @@
+---
+title: "Temporal Perspectives"
+version: 1.0.0
+category: "Perspectives"
+order: 8
+description: >-
+  Temporal perspectives create append-only logs where each event creates a new row rather than
+  updating existing rows. Ideal for activity feeds, audit logs, and full history tracking
+  using the ITemporalPerspectiveFor interface.
+tags: 'temporal-perspectives, append-only, audit-log, activity-feed, history, ITemporalPerspectiveFor'
+codeReferences:
+  - src/Whizbang.Core/Perspectives/ITemporalPerspectiveFor.cs
+  - src/Whizbang.Core/Perspectives/ITemporalPerspectiveStore.cs
+  - src/Whizbang.Core/Perspectives/TemporalActionType.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # Temporal Perspectives
 
 Temporal perspectives create append-only logs where each event creates a NEW row rather than updating existing rows. This pattern is ideal for activity feeds, audit logs, and full history tracking.
@@ -11,7 +28,7 @@ Temporal perspectives create append-only logs where each event creates a NEW row
 
 ## Defining a Temporal Perspective
 
-```csharp{title="Defining a Temporal Perspective" description="Demonstrates defining a Temporal Perspective" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Defining", "Temporal"]}
+```csharp{title="Defining a Temporal Perspective" description="Defining a Temporal Perspective" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Defining", "Temporal"]}
 public class ActivityPerspective :
     ITemporalPerspectiveFor<ActivityEntry, OrderCreatedEvent, OrderUpdatedEvent> {
 
@@ -65,7 +82,7 @@ public class TemporalPerspectiveRow<TModel> {
 
 ### All History
 
-```csharp{title="All History" description="Demonstrates all History" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "All", "History"]}
+```csharp{title="All History" description="All History" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "All", "History"]}
 var allHistory = await temporalLens
     .TemporalAll()
     .Where(r => r.StreamId == orderId)
@@ -75,7 +92,7 @@ var allHistory = await temporalLens
 
 ### Latest Per Stream
 
-```csharp{title="Latest Per Stream" description="Demonstrates latest Per Stream" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Latest", "Per"]}
+```csharp{title="Latest Per Stream" description="Latest Per Stream" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Latest", "Per"]}
 var latestStates = await temporalLens
     .LatestPerStream()
     .ToListAsync();
@@ -83,7 +100,7 @@ var latestStates = await temporalLens
 
 ### Point-in-Time Query (As Of)
 
-```csharp{title="Point-in-Time Query (As Of)" description="Demonstrates point-in-Time Query (As Of)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Point-in-Time", "Query"]}
+```csharp{title="Point-in-Time Query (As Of)" description="Point-in-Time Query (As Of)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Point-in-Time", "Query"]}
 var stateLastWeek = await temporalLens
     .TemporalAsOf(DateTimeOffset.UtcNow.AddDays(-7))
     .ToListAsync();
@@ -91,7 +108,7 @@ var stateLastWeek = await temporalLens
 
 ### Time Range Queries
 
-```csharp{title="Time Range Queries" description="Demonstrates time Range Queries" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Time", "Range"]}
+```csharp{title="Time Range Queries" description="Time Range Queries" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Time", "Range"]}
 // Rows active during a range
 var activeRows = await temporalLens
     .TemporalFromTo(startTime, endTime)
@@ -105,7 +122,7 @@ var containedRows = await temporalLens
 
 ### Convenience Methods
 
-```csharp{title="Convenience Methods" description="Demonstrates convenience Methods" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Convenience", "Methods"]}
+```csharp{title="Convenience Methods" description="Convenience Methods" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Convenience", "Methods"]}
 // Recent activity for a stream
 var orderActivity = await temporalLens
     .RecentActivityForStream(orderId, limit: 20)
@@ -119,15 +136,21 @@ var userActivity = await temporalLens
 
 ## Action Types
 
-The `TemporalActionType` enum tracks what happened:
+The `TemporalActionType` enum tracks what happened to the entity. Each temporal row includes an `ActionType` that indicates the kind of change:
 
 ```csharp{title="Action Types" description="The TemporalActionType enum tracks what happened:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Action", "Types"]}
 public enum TemporalActionType {
-  Insert,   // New entity created
-  Update,   // Entity modified
-  Delete    // Entity removed/soft-deleted
+  Insert = 0,   // New entity was created (first entry in temporal history)
+  Update = 1,   // Existing entity was modified
+  Delete = 2    // Entity was soft-deleted or removed
 }
 ```
+
+| Value | Name | Description |
+|-------|------|-------------|
+| `0` | `Insert` | New entity was created. This is the first entry in the temporal history for a stream. |
+| `1` | `Update` | Existing entity was modified. The entity already existed and its state has changed. |
+| `2` | `Delete` | Entity was soft-deleted or removed. The entity still exists in history but is no longer active. |
 
 ## Filtering Events
 

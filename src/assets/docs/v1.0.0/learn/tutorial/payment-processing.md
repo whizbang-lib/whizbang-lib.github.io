@@ -9,6 +9,14 @@ description: >-
 tags: >-
   tutorial, payment-service, distributed-transactions, saga-pattern,
   compensation
+codeReferences:
+  - samples/ECommerce/ECommerce.PaymentWorker/Program.cs
+  - >-
+    samples/ECommerce/ECommerce.PaymentWorker/Receptors/ProcessPaymentReceptor.cs
+  - samples/ECommerce/ECommerce.Contracts/Commands/ProcessPaymentCommand.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/PaymentProcessedEvent.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/PaymentFailedEvent.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Payment Processing Service
@@ -808,7 +816,7 @@ var paymentWorker = builder.AddProject<Projects.ECommerce_PaymentWorker>("paymen
 
 ### 2. Create Order (Full Flow)
 
-```bash{title="Create Order (Full Flow)" description="Demonstrates create Order (Full Flow)" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
+```bash{title="Create Order (Full Flow)" description="Create Order (Full Flow)" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{
@@ -836,7 +844,7 @@ Aspire Dashboard shows:
 
 ### 4. Verify Payment
 
-```sql{title="Verify Payment" description="Demonstrates verify Payment" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Payment"]}
+```sql{title="Verify Payment" description="Verify Payment" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Payment"]}
 SELECT * FROM payments WHERE order_id = '<order-id>';
 ```
 
@@ -887,7 +895,7 @@ SELECT * FROM payments WHERE order_id = '<order-id>';
 
 ### Retry Logic with Polly
 
-```csharp{title="Retry Logic with Polly" description="Demonstrates retry Logic with Polly" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Retry", "Logic"]}
+```csharp{title="Retry Logic with Polly" description="Retry Logic with Polly" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Retry", "Logic"]}
 // Exponential backoff: 2s, 4s, 8s
 Policy
   .Handle<HttpRequestException>()
@@ -905,7 +913,7 @@ Policy
 
 ### Circuit Breaker
 
-```csharp{title="Circuit Breaker" description="Demonstrates circuit Breaker" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Circuit", "Breaker"]}
+```csharp{title="Circuit Breaker" description="Circuit Breaker" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Circuit", "Breaker"]}
 // Open circuit after 5 failures, half-open after 30s
 Policy
   .Handle<HttpRequestException>()
@@ -926,7 +934,7 @@ Policy
 
 ### Unit Test - Successful Payment
 
-```csharp{title="Unit Test - Successful Payment" description="Demonstrates unit Test - Successful Payment" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Successful Payment" description="Unit Test - Successful Payment" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task ProcessPayment_ValidCard_ChargesAndPublishesEventAsync() {
   // Arrange
@@ -953,7 +961,7 @@ public async Task ProcessPayment_ValidCard_ChargesAndPublishesEventAsync() {
 
 ### Unit Test - Payment Failure
 
-```csharp{title="Unit Test - Payment Failure" description="Demonstrates unit Test - Payment Failure" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Payment Failure" description="Unit Test - Payment Failure" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task ProcessPayment_InvalidCard_PublishesPaymentFailedEventAsync() {
   // Arrange

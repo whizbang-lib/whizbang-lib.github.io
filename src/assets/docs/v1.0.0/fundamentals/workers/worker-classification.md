@@ -7,6 +7,19 @@ description: >-
   Reference table for which Whizbang background workers are NOTIFY-driven,
   channel-driven, transport-driven, timer-driven, or one-shot lifecycle.
 tags: 'workers, notify, polling, classification, reference'
+codeReferences:
+  - src/Whizbang.Core/Workers/ClaimWorker.cs
+  - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
+  - src/Whizbang.Core/Workers/InboxDrainWorker.cs
+  - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
+  - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
+  - src/Whizbang.Core/Workers/DeadLetterRecoveryWorker.cs
+  - src/Whizbang.Core/Workers/HeartbeatWorker.cs
+  - src/Whizbang.Core/Workers/LeaseRenewalWorker.cs
+  - src/Whizbang.Core/Workers/MaintenanceWorker.cs
+  - src/Whizbang.Core/Workers/FailureFlushWorker.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerTests.cs
 ---
 
 # Worker classification

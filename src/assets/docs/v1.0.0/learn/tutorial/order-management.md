@@ -7,6 +7,15 @@ description: >-
   Build the Order Service - HTTP API, command handling, event publishing, and
   PostgreSQL persistence
 tags: 'tutorial, order-service, commands, events, http-api'
+codeReferences:
+  - samples/ECommerce/ECommerce.OrderService.API/Program.cs
+  - >-
+    samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
+  - >-
+    samples/ECommerce/ECommerce.OrderService.API/Endpoints/Orders/CreateOrderEndpoint.cs
+  - samples/ECommerce/ECommerce.Contracts/Commands/CreateOrderCommand.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/OrderCreatedEvent.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Order Management Service
@@ -226,7 +235,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     _logger = logger;
   }
 
-  public async Task<OrderCreated> HandleAsync(
+  public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder command,
     CancellationToken ct = default
   ) {
@@ -378,7 +387,7 @@ public class OrdersController : ControllerBase {
     CancellationToken ct
   ) {
     try {
-      var result = await _dispatcher.DispatchAsync(command, ct);
+      var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
 
       return CreatedAtAction(
         nameof(GetOrder),
@@ -550,7 +559,7 @@ builder.Build().Run();
 
 ### 1. Start Aspire
 
-```bash{title="Start Aspire" description="Demonstrates start Aspire" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Start", "Aspire"]}
+```bash{title="Start Aspire" description="Start Aspire" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Start", "Aspire"]}
 cd ECommerce.AppHost
 dotnet run
 ```
@@ -559,7 +568,7 @@ Open Aspire Dashboard: `http://localhost:15000`
 
 ### 2. Create Order
 
-```bash{title="Create Order" description="Demonstrates create Order" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
+```bash{title="Create Order" description="Create Order" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{
@@ -620,7 +629,7 @@ curl -X POST http://localhost:5000/api/orders \
 
 ### 3. Verify Database
 
-```sql{title="Verify Database" description="Demonstrates verify Database" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Verify", "Database"]}
+```sql{title="Verify Database" description="Verify Database" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Verify", "Database"]}
 -- Connect to PostgreSQL
 psql -h localhost -U postgres -d orders
 
@@ -682,7 +691,7 @@ Check Aspire Dashboard:
 
 ### Message Context
 
-```csharp{title="Message Context" description="Demonstrates message Context" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Message", "Context"]}
+```csharp{title="Message Context" description="Message Context" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Message", "Context"]}
 public interface IMessageContext {
   Guid MessageId { get; }           // Unique ID for this message
   Guid? CorrelationId { get; }      // Business transaction ID
@@ -758,7 +767,7 @@ public class CreateOrderReceptorTests {
 
 ### Integration Test
 
-```csharp{title="Integration Test" description="Demonstrates integration Test" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Integration", "Test"]}
+```csharp{title="Integration Test" description="Integration Test" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Integration", "Test"]}
 [Test]
 public async Task CreateOrder_EndToEnd_PublishesEvent() {
   // Arrange

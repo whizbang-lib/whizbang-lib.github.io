@@ -11,6 +11,7 @@ codeReferences:
   - src/Whizbang.Core/Lenses/FactoryOwnedLensQuery.cs
   - src/Whizbang.Data.EFCore.Postgres/ScopedDbContextFactory.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreLensQueryFactory.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Lens Query Factory

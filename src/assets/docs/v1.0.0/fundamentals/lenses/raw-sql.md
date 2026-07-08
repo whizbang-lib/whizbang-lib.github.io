@@ -1,3 +1,18 @@
+---
+title: "Raw SQL and Connection Access"
+version: 1.0.0
+category: "Lenses"
+order: 6
+description: >-
+  Escape hatches for raw SQL execution and direct database connection access in Whizbang lenses.
+  Covers ExecuteSqlAsync with SQL injection protection, direct DbConnection access for bulk
+  operations, and Npgsql binary import for high-performance data loading.
+tags: 'raw-sql, sql, connection-access, bulk-operations, npgsql, lenses'
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres/LensQueryConnectionExtensions.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # Raw SQL and Connection Access
 
 For advanced scenarios where LINQ extensions are insufficient, Whizbang provides escape hatches for raw SQL execution and direct database connection access.
@@ -68,7 +83,7 @@ await command.ExecuteNonQueryAsync();
 
 ### Stored Procedures
 
-```csharp{title="Stored Procedures" description="Demonstrates stored Procedures" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Stored", "Procedures"]}
+```csharp{title="Stored Procedures" description="Stored Procedures" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Stored", "Procedures"]}
 await using var connection = await lensQuery.GetConnectionAsync<Product>();
 await using var command = connection.CreateCommand();
 command.CommandText = "CALL update_inventory(@product_id, @quantity)";
@@ -79,7 +94,7 @@ await command.ExecuteNonQueryAsync();
 
 ### Bulk Import (Npgsql Binary COPY)
 
-```csharp{title="Bulk Import (Npgsql Binary COPY)" description="Demonstrates bulk Import (Npgsql Binary COPY)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Bulk", "Import"]}
+```csharp{title="Bulk Import (Npgsql Binary COPY)" description="Bulk Import (Npgsql Binary COPY)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Bulk", "Import"]}
 await using var connection = await lensQuery.GetConnectionAsync<Product>();
 
 await using var writer = await ((NpgsqlConnection)connection)
@@ -97,7 +112,7 @@ await writer.CompleteAsync();
 
 ### Materialized View Refresh
 
-```csharp{title="Materialized View Refresh" description="Demonstrates materialized View Refresh" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Materialized", "View"]}
+```csharp{title="Materialized View Refresh" description="Materialized View Refresh" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Materialized", "View"]}
 await using var connection = await lensQuery.GetConnectionAsync<Analytics>();
 await using var command = connection.CreateCommand();
 command.CommandText = "REFRESH MATERIALIZED VIEW CONCURRENTLY sales_summary";
@@ -106,7 +121,7 @@ await command.ExecuteNonQueryAsync();
 
 ### Database-Specific Functions
 
-```csharp{title="Database-Specific Functions" description="Demonstrates database-Specific Functions" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Database-Specific", "Functions"]}
+```csharp{title="Database-Specific Functions" description="Database-Specific Functions" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Database-Specific", "Functions"]}
 // PostgreSQL full-text search
 var searchResults = await lensQuery.ExecuteSqlAsync<Document, SearchResult>(
     $@"SELECT id, title, ts_rank(search_vector, query) AS rank

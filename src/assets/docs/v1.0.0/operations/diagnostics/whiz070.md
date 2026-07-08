@@ -11,6 +11,11 @@ tags:
   - pgvector
   - efcore
   - package-reference
+codeReferences:
+  - src/Whizbang.Generators/VectorDependencyAnalyzer.cs
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/VectorFieldPackageReferenceAnalyzer.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ070: Missing Pgvector.EntityFrameworkCore Package
@@ -40,19 +45,19 @@ Add the `Pgvector.EntityFrameworkCore` package reference to your project:
 
 ### Using .NET CLI
 
-```bash{title="Using .NET CLI" description="Demonstrates using .NET CLI" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", ".NET"]}
+```bash{title="Using .NET CLI" description="Using .NET CLI" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", ".NET"]}
 dotnet add package Pgvector.EntityFrameworkCore
 ```
 
 ### Using Package Manager Console
 
-```powershell{title="Using Package Manager Console" description="Demonstrates using Package Manager Console" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Package"]}
+```powershell{title="Using Package Manager Console" description="Using Package Manager Console" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Package"]}
 Install-Package Pgvector.EntityFrameworkCore
 ```
 
 ### Using PackageReference in .csproj
 
-```xml{title="Using PackageReference in .csproj" description="Demonstrates using PackageReference in .csproj" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "PackageReference"]}
+```xml{title="Using PackageReference in .csproj" description="Using PackageReference in .csproj" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "PackageReference"]}
 <ItemGroup>
   <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
 </ItemGroup>
@@ -80,7 +85,7 @@ In your project file:
 
 ### Before (causes WHIZ070)
 
-```csharp{title="Before (causes WHIZ070)" description="Demonstrates before (causes WHIZ070)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
+```csharp{title="Before (causes WHIZ070)" description="Before (causes WHIZ070)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
 // Missing: <PackageReference Include="Pgvector.EntityFrameworkCore" />
 
 public record ProductDto {
@@ -94,7 +99,7 @@ public record ProductDto {
 
 ### After (compiles successfully)
 
-```csharp{title="After (compiles successfully)" description="Demonstrates after (compiles successfully)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Compiles"]}
+```csharp{title="After (compiles successfully)" description="After (compiles successfully)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Compiles"]}
 // Added: <PackageReference Include="Pgvector.EntityFrameworkCore" />
 
 public record ProductDto {

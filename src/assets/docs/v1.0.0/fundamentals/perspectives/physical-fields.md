@@ -2,6 +2,13 @@
 title: Physical Fields
 version: 1.0.0
 category: Perspectives
+codeReferences:
+  - src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs
+  - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Physical Fields
@@ -105,6 +112,22 @@ optionsBuilder
 
 This registers the `PhysicalFieldQueryInterceptor` which automatically translates queries on physical fields.
 
+## PerspectiveStorageAttribute {#PerspectiveStorageAttribute}
+
+The `[PerspectiveStorage]` attribute is applied to the **model class** (not the perspective class) to configure how physical fields are stored relative to JSONB. If omitted, the model defaults to `FieldStorageMode.JsonOnly` for backwards compatibility.
+
+```csharp{title="PerspectiveStorageAttribute" description="Configures how physical fields are stored relative to JSONB" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "PerspectiveStorageAttribute"]}
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct,
+    AllowMultiple = false, Inherited = false)]
+public sealed class PerspectiveStorageAttribute(FieldStorageMode mode) : Attribute {
+    public FieldStorageMode Mode { get; }
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Mode` | `FieldStorageMode` | The storage mode for physical fields in this model |
+
 ## FieldStorageMode {#FieldStorageMode}
 
 `FieldStorageMode` defines how physical fields are stored relative to JSONB in a perspective. Configure it using the `[PerspectiveStorage]` attribute on your model class.
@@ -117,7 +140,7 @@ This registers the `PhysicalFieldQueryInterceptor` which automatically translate
 
 ### JsonOnly (Default)
 
-```csharp{title="JsonOnly (Default)" description="Demonstrates jsonOnly (Default)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "JsonOnly", "Default"]}
+```csharp{title="JsonOnly (Default)" description="JsonOnly (Default)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "JsonOnly", "Default"]}
 // No attribute needed - this is the default
 public record ProductDto {
     public decimal Price { get; init; }      // Stored in JSONB only

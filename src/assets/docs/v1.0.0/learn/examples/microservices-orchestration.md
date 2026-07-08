@@ -7,6 +7,15 @@ description: >-
   Implement saga orchestration patterns - distributed workflows, compensation,
   and process managers
 tags: 'sagas, orchestration, process-managers, distributed-workflows, compensation'
+codeReferences:
+  - src/Whizbang.Core/IReceptor.cs
+  - src/Whizbang.Core/IDispatcher.cs
+  - src/Whizbang.Core/Lifecycle/ILifecycleCoordinator.cs
+  - >-
+    samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
+  - >-
+    samples/ECommerce/ECommerce.PaymentWorker/Receptors/ProcessPaymentReceptor.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Microservices Orchestration
@@ -518,7 +527,7 @@ public class SagasController : ControllerBase {
 
 **Response**:
 
-```json{title="Saga Visualization API (2)" description="Demonstrates saga Visualization API" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Saga", "Visualization"]}
+```json{title="Saga Visualization API (2)" description="Saga Visualization API" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Saga", "Visualization"]}
 {
   "sagaId": "abc123",
   "orderId": "order-456",

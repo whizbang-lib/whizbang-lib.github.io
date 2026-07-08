@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
   - src/Whizbang.Generators/InheritanceInfo.cs
   - src/Whizbang.Generators/PolymorphicTypeInfo.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Polymorphic Serialization
@@ -190,7 +191,7 @@ private JsonTypeInfo<global::MyApp.BaseEvent> CreatePolymorphic_MyApp_BaseEvent(
 
 ### User-Defined Base Classes
 
-```csharp{title="User-Defined Base Classes" description="Demonstrates user-Defined Base Classes" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "User-Defined", "Base"]}
+```csharp{title="User-Defined Base Classes" description="User-Defined Base Classes" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "User-Defined", "Base"]}
 // Non-abstract base class
 public class BaseJdxEvent : IEvent {
   public string EventId { get; init; } = "";
@@ -203,7 +204,7 @@ public class SeedProcessedEvent : BaseJdxEvent { }
 
 ### Interface Collections
 
-```csharp{title="Interface Collections" description="Demonstrates interface Collections" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Interface", "Collections"]}
+```csharp{title="Interface Collections" description="Interface Collections" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Interface", "Collections"]}
 // Return all events via IEvent interface
 public record GetAllEventsCommand : ICommand;
 
@@ -219,7 +220,7 @@ public class GetAllEventsHandler : IReceptor<GetAllEventsCommand, List<IEvent>> 
 
 ### ICommand Collections
 
-```csharp{title="ICommand Collections" description="Demonstrates iCommand Collections" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "ICommand", "Collections"]}
+```csharp{title="ICommand Collections" description="ICommand Collections" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "ICommand", "Collections"]}
 // Return commands to execute
 public record GetPendingCommands : ICommand;
 
@@ -232,7 +233,7 @@ public class GetPendingCommandsHandler : IReceptor<GetPendingCommands, List<ICom
 
 ### Deep Inheritance
 
-```csharp{title="Deep Inheritance" description="Demonstrates deep Inheritance" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Deep", "Inheritance"]}
+```csharp{title="Deep Inheritance" description="Deep Inheritance" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Deep", "Inheritance"]}
 public class DomainEvent : IEvent { }
 public class AggregateEvent : DomainEvent { }
 public class OrderEvent : AggregateEvent { }
@@ -245,7 +246,7 @@ public class OrderShipped : OrderEvent { }
 
 ### Array Types
 
-```csharp{title="Array Types" description="Demonstrates array Types" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Array", "Types"]}
+```csharp{title="Array Types" description="Array Types" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Array", "Types"]}
 // Arrays are also supported
 public record ProcessBatchResult(BaseEvent[] Events);
 ```

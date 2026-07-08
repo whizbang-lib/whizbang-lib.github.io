@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Data.Schema/Schemas/InboxSchema.cs
   - src/Whizbang.Data.Schema/Schemas/OutboxSchema.cs
   - src/Whizbang.Data.Schema/Schemas/EventStoreSchema.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Schema Generation Pattern
@@ -59,7 +60,7 @@ Whizbang uses a **database-agnostic schema definition pattern** where infrastruc
 
 ## ISchemaBuilder Interface
 
-```csharp{title="ISchemaBuilder Interface" description="Demonstrates iSchemaBuilder Interface" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "ISchemaBuilder", "Interface"]}
+```csharp{title="ISchemaBuilder Interface" description="ISchemaBuilder Interface" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "ISchemaBuilder", "Interface"]}
 public interface ISchemaBuilder {
   /// <summary>
   /// Database engine name (e.g., "Postgres", "SQLite", "MySQL").
@@ -107,7 +108,7 @@ public interface ISchemaBuilder {
 
 ### TableDefinition
 
-```csharp{title="TableDefinition" description="Demonstrates tableDefinition" category="Implementation" difficulty="BEGINNER" tags=["Data", "TableDefinition"]}
+```csharp{title="TableDefinition" description="TableDefinition" category="Implementation" difficulty="BEGINNER" tags=["Data", "TableDefinition"]}
 public sealed record TableDefinition(
   string Name,                                    // Table name without prefix
   ImmutableArray<ColumnDefinition> Columns,       // Column definitions
@@ -157,7 +158,7 @@ public static class InboxSchema {
 
 ### ColumnDefinition
 
-```csharp{title="ColumnDefinition" description="Demonstrates columnDefinition" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "ColumnDefinition"]}
+```csharp{title="ColumnDefinition" description="ColumnDefinition" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "ColumnDefinition"]}
 public sealed record ColumnDefinition(
   string Name,                     // Column name
   WhizbangDataType DataType,       // Database-agnostic type
@@ -185,7 +186,7 @@ public enum WhizbangDataType {
 
 ### IndexDefinition
 
-```csharp{title="IndexDefinition" description="Demonstrates indexDefinition" category="Implementation" difficulty="BEGINNER" tags=["Data", "IndexDefinition"]}
+```csharp{title="IndexDefinition" description="IndexDefinition" category="Implementation" difficulty="BEGINNER" tags=["Data", "IndexDefinition"]}
 public sealed record IndexDefinition(
   string Name,                            // Index name
   ImmutableArray<string> Columns,         // Indexed columns
@@ -209,7 +210,7 @@ new IndexDefinition(
 
 ### PostgresSchemaBuilder
 
-```csharp{title="PostgresSchemaBuilder" description="Demonstrates postgresSchemaBuilder" category="Implementation" difficulty="ADVANCED" tags=["Data", "PostgresSchemaBuilder"]}
+```csharp{title="PostgresSchemaBuilder" description="PostgresSchemaBuilder" category="Implementation" difficulty="ADVANCED" tags=["Data", "PostgresSchemaBuilder"]}
 using Whizbang.Data.Schema;
 
 public class PostgresSchemaBuilder : ISchemaBuilder {
@@ -287,7 +288,7 @@ internal static class PostgresTypeMapper {
 
 ### Pattern 1: EF Core Migration Generator
 
-```csharp{title="Pattern 1: EF Core Migration Generator" description="Demonstrates pattern 1: EF Core Migration Generator" category="Implementation" difficulty="ADVANCED" tags=["Data", "Pattern", "Core", "Migration"]}
+```csharp{title="Pattern 1: EF Core Migration Generator" description="Pattern 1: EF Core Migration Generator" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Pattern", "Core", "Migration"]}
 using Whizbang.Data.Schema;
 using Whizbang.Data.Postgres.Schema;
 
@@ -310,7 +311,7 @@ public class InfrastructureMigration {
 
 ### Pattern 2: Dapper Embedded Schema
 
-```csharp{title="Pattern 2: Dapper Embedded Schema" description="Demonstrates pattern 2: Dapper Embedded Schema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Dapper", "Embedded"]}
+```csharp{title="Pattern 2: Dapper Embedded Schema" description="Pattern 2: Dapper Embedded Schema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Dapper", "Embedded"]}
 using Whizbang.Data.Schema;
 using Whizbang.Data.Postgres.Schema;
 
@@ -334,7 +335,7 @@ public class PostgresDatabaseInitializer {
 
 ### Pattern 3: Custom Perspective Tables
 
-```csharp{title="Pattern 3: Custom Perspective Tables" description="Demonstrates pattern 3: Custom Perspective Tables" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Custom", "Perspective"]}
+```csharp{title="Pattern 3: Custom Perspective Tables" description="Pattern 3: Custom Perspective Tables" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Custom", "Perspective"]}
 using Whizbang.Data.Schema;
 using Whizbang.Data.Postgres.Schema;
 
@@ -357,7 +358,7 @@ public class PerspectiveSchemaGenerator {
 
 ## SchemaConfiguration
 
-```csharp{title="SchemaConfiguration" description="Demonstrates schemaConfiguration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "SchemaConfiguration"]}
+```csharp{title="SchemaConfiguration" description="SchemaConfiguration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "SchemaConfiguration"]}
 public record SchemaConfiguration {
   /// <summary>
   /// Prefix for infrastructure tables (inbox, outbox, events).
@@ -395,7 +396,7 @@ Whizbang provides pre-defined schemas for core infrastructure:
 
 ### InboxSchema
 
-```csharp{title="InboxSchema" description="Demonstrates inboxSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "InboxSchema"]}
+```csharp{title="InboxSchema" description="InboxSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "InboxSchema"]}
 public static class InboxSchema {
   public static readonly TableDefinition Table = new(
     Name: "inbox",
@@ -420,7 +421,7 @@ public static class InboxSchema {
 
 ### OutboxSchema
 
-```csharp{title="OutboxSchema" description="Demonstrates outboxSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "OutboxSchema"]}
+```csharp{title="OutboxSchema" description="OutboxSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "OutboxSchema"]}
 public static class OutboxSchema {
   public static readonly TableDefinition Table = new(
     Name: "outbox",
@@ -445,7 +446,7 @@ public static class OutboxSchema {
 
 ### EventStoreSchema
 
-```csharp{title="EventStoreSchema" description="Demonstrates eventStoreSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "EventStoreSchema"]}
+```csharp{title="EventStoreSchema" description="EventStoreSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "EventStoreSchema"]}
 public static class EventStoreSchema {
   public static readonly TableDefinition Table = new(
     Name: "events",
@@ -475,7 +476,7 @@ public static class EventStoreSchema {
 
 ### PerspectiveCheckpointsSchema
 
-```csharp{title="PerspectiveCheckpointsSchema" description="Demonstrates perspectiveCheckpointsSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "PerspectiveCheckpointsSchema"]}
+```csharp{title="PerspectiveCheckpointsSchema" description="PerspectiveCheckpointsSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "PerspectiveCheckpointsSchema"]}
 public static class PerspectiveCheckpointsSchema {
   public static readonly TableDefinition Table = new(
     Name: "perspective_checkpoints",
@@ -502,7 +503,7 @@ public static class PerspectiveCheckpointsSchema {
 
 ### Unit Test Pattern
 
-```csharp{title="Unit Test Pattern" description="Demonstrates unit Test Pattern" category="Implementation" difficulty="ADVANCED" tags=["Data", "Unit", "Test", "Pattern"]}
+```csharp{title="Unit Test Pattern" description="Unit Test Pattern" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Unit", "Test", "Pattern"]}
 using TUnit.Assertions;
 using TUnit.Core;
 using Whizbang.Data.Schema;
@@ -559,7 +560,7 @@ public class PostgresSchemaBuilderTests {
 
 ### Step 1: Create ISchemaBuilder Implementation
 
-```csharp{title="Step 1: Create ISchemaBuilder Implementation" description="Demonstrates step 1: Create ISchemaBuilder Implementation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Step", "Create", "ISchemaBuilder"]}
+```csharp{title="Step 1: Create ISchemaBuilder Implementation" description="Step 1: Create ISchemaBuilder Implementation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Step", "Create", "ISchemaBuilder"]}
 using Whizbang.Data.Schema;
 
 public class MySqlSchemaBuilder : ISchemaBuilder {
@@ -588,7 +589,7 @@ public class MySqlSchemaBuilder : ISchemaBuilder {
 
 ### Step 2: Implement Type Mapper
 
-```csharp{title="Step 2: Implement Type Mapper" description="Demonstrates step 2: Implement Type Mapper" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Step", "Implement", "Type"]}
+```csharp{title="Step 2: Implement Type Mapper" description="Step 2: Implement Type Mapper" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Step", "Implement", "Type"]}
 internal static class MySqlTypeMapper {
   public static string MapDataType(WhizbangDataType type, int? maxLength) {
     return type switch {

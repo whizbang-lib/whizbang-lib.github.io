@@ -5,6 +5,11 @@ category: Components
 order: 7
 description: In-memory event store with basic append and read operations
 tags: 'ledger, event-store, events, in-memory, v0.1.0'
+codeReferences:
+  - src/Whizbang.Core/Messaging/IEventStore.cs
+  - src/Whizbang.Core/Messaging/InMemoryEventStore.cs
+  - src/Whizbang.Core/Messaging/EventStoreRecord.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Ledger Component
@@ -39,7 +44,7 @@ Think of the ledger as your system's permanent memory - every significant action
 The basic ledger interface for event storage:
 :::
 
-```csharp{title="Core Interface (v1.0.0)" description=":::new The basic ledger interface for event storage: :::" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Core", "Interface"]}
+```csharp{title="Core Interface (v1.0.0)" description="Core Interface (v1.0.0)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Core", "Interface"]}
 public interface ILedger {
     // Append an event to the ledger
     Task<long> Append(IEvent @event);
@@ -61,7 +66,7 @@ public interface ILedger {
 In v1.0.0, the ledger uses in-memory storage:
 :::
 
-```csharp{title="Basic Implementation" description=":::new In v1." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Basic", "Implementation"]}
+```csharp{title="Basic Implementation" description="Basic Implementation" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Basic", "Implementation"]}
 [WhizbangLedger]
 public class InMemoryLedger : ILedger {
     private readonly List<StoredEvent> _events = new();
@@ -107,7 +112,7 @@ public class InMemoryLedger : ILedger {
 
 ### Event Structure
 
-```csharp{title="Event Structure" description="Demonstrates event Structure" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Structure"]}
+```csharp{title="Event Structure" description="Event Structure" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Structure"]}
 public interface IEvent {
     Guid Id { get; }
     DateTimeOffset Timestamp { get; }
@@ -130,7 +135,7 @@ internal class StoredEvent {
 Events are automatically appended by the dispatcher:
 :::
 
-```csharp{title="Appending Events" description=":::new Events are automatically appended by the dispatcher: :::" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Appending"]}
+```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Appending"]}
 // Events flow from receptors through dispatcher to ledger
 public class OrderReceptor : IReceptor<CreateOrder> {
     public OrderCreated Receive(CreateOrder cmd) {
@@ -154,7 +159,7 @@ public class OrderReceptor : IReceptor<CreateOrder> {
 Basic event retrieval in v1.0.0:
 :::
 
-```csharp{title="Reading Events" description=":::new Basic event retrieval in v1." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Reading"]}
+```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Reading"]}
 public class EventReader {
     private readonly ILedger _ledger;
     
@@ -223,7 +228,7 @@ public class Dispatcher : IDispatcher {
 The ledger enables powerful debugging capabilities:
 :::
 
-```csharp{title="Debugging with the Ledger" description=":::new The ledger enables powerful debugging capabilities: :::" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Debugging", "Ledger"]}
+```csharp{title="Debugging with the Ledger" description="Debugging with the Ledger" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Debugging", "Ledger"]}
 public class LedgerDebugger {
     private readonly ILedger _ledger;
     
@@ -262,7 +267,7 @@ public class LedgerDebugger {
 
 ## Testing with the Ledger
 
-```csharp{title="Testing with the Ledger" description="Demonstrates testing with the Ledger" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Testing", "Ledger"]}
+```csharp{title="Testing with the Ledger" description="Testing with the Ledger" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Testing", "Ledger"]}
 [Test]
 public class LedgerTests {
     private InMemoryLedger _ledger;
@@ -327,7 +332,7 @@ public class LedgerTests {
 
 ## IDE Features
 
-```csharp{title="IDE Features" description="Demonstrates iDE Features" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IDE", "Features"]}
+```csharp{title="IDE Features" description="IDE Features" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IDE", "Features"]}
 // IDE shows: "Events stored: 1,234 | Size: 5.2MB | Last: 2s ago"
 public interface ILedger { }
 
@@ -367,7 +372,7 @@ These limitations are addressed in future versions:
 v0.2.0 adds persistent storage:
 :::
 
-```csharp{title="To v0.2.0 (Persistence)" description=":::planned v0." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "V0.2.0", "Persistence"]}
+```csharp{title="To v0.2.0 (Persistence)" description="To v0.2.0 (Persistence)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "V0.2.0", "Persistence"]}
 // v0.2.0 - File-based persistence
 public interface ILedger {
     Task<long> Append(string streamId, IEvent @event);
@@ -382,7 +387,7 @@ public interface ILedger {
 v0.3.0 adds full event sourcing:
 :::
 
-```csharp{title="To v0.3.0 (Event Sourcing)" description=":::planned v0." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "V0.3.0", "Event"]}
+```csharp{title="To v0.3.0 (Event Sourcing)" description="To v0.3.0 (Event Sourcing)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "V0.3.0", "Event"]}
 // v0.3.0 - Event sourcing with projections
 public interface IEventStore : ILedger {
     Task<T> LoadAggregate<T>(string aggregateId) where T : IAggregate;

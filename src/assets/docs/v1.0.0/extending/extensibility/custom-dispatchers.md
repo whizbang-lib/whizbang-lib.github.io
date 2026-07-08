@@ -9,6 +9,7 @@ description: >-
 tags: 'dispatcher, mediator, routing, event-sourcing'
 codeReferences:
   - src/Whizbang.Core/Dispatcher/IDispatcher.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Dispatchers
@@ -42,7 +43,7 @@ Whizbang's default dispatcher provides AOT-compatible, zero-reflection routing. 
 
 ### Pattern 1: MediatR-Style Dispatcher
 
-```csharp{title="Pattern 1: MediatR-Style Dispatcher" description="Demonstrates pattern 1: MediatR-Style Dispatcher" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "MediatR-Style"]}
+```csharp{title="Pattern 1: MediatR-Style Dispatcher" description="Pattern 1: MediatR-Style Dispatcher" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "MediatR-Style"]}
 public class MediatorDispatcher : IDispatcher {
   private readonly IServiceProvider _services;
 
@@ -76,7 +77,7 @@ public interface IRequestHandler<in TRequest, TResponse> {
 
 ### Pattern 2: Append-Only Event Store
 
-```csharp{title="Pattern 2: Append-Only Event Store" description="Demonstrates pattern 2: Append-Only Event Store" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Append-Only"]}
+```csharp{title="Pattern 2: Append-Only Event Store" description="Pattern 2: Append-Only Event Store" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Append-Only"]}
 public class EventSourcingDispatcher : IDispatcher {
   private readonly IEventStore _eventStore;
   private readonly IDispatcher _innerDispatcher;
@@ -117,6 +118,11 @@ public class EventSourcingDispatcher : IDispatcher {
 
 **Core Concepts**:
 - [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - Default dispatcher
+
+### For Users
+
+New to dispatchers? Start with the user guide:
+- [Dispatcher Guide](../../fundamentals/dispatcher/dispatcher.md) — Core dispatch patterns, local vs distributed dispatch, and usage examples
 
 ---
 

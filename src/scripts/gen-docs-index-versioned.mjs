@@ -119,6 +119,13 @@ async function processDirectory(dir, relativeDir = '', versionOrState = '', out 
         finalSlug = `${versionOrState}/${relativeDir.split('/')[0]}`; // Use just the folder name with version
       }
       
+      // Calculate reading time (average 200 words per minute)
+      const wordCount = content.split(/\s+/).length;
+      const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
+
+      // Build edit URL for GitHub
+      const editUrl = `https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/${versionOrState}/${baseSlug}.md`;
+
       out.push({
         slug: finalSlug,
         title: data.title || filename.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
@@ -131,7 +138,10 @@ async function processDirectory(dir, relativeDir = '', versionOrState = '', out 
         difficulty: data.difficulty,
         unreleased: data.unreleased,
         status: data.status,
-        completionLevel: data.completionLevel
+        completionLevel: data.completionLevel,
+        readingTime: readingTimeMinutes,
+        editUrl: editUrl,
+        wordCount: wordCount
       });
     }
   }

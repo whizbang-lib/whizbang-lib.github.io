@@ -10,6 +10,7 @@ tags: 'mutations, hooks, lifecycle, validation, error-handling'
 codeReferences:
   - src/Whizbang.Transports.Mutations/Base/MutationEndpointBase.cs
   - src/Whizbang.Transports.Mutations/Base/IMutationContext.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Mutation Hooks
@@ -55,7 +56,7 @@ ExecuteAsync(command, ct)
 Called before command dispatch. Override to add validation, logging, authorization, or other pre-processing.
 
 **Signature**:
-```csharp{title="OnBeforeExecuteAsync" description="Demonstrates onBeforeExecuteAsync" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "OnBeforeExecuteAsync", "Before"]}
+```csharp{title="OnBeforeExecuteAsync" description="OnBeforeExecuteAsync" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "OnBeforeExecuteAsync", "Before"]}
 protected virtual ValueTask OnBeforeExecuteAsync(
     TCommand command,
     IMutationContext context,
@@ -69,7 +70,7 @@ protected virtual ValueTask OnBeforeExecuteAsync(
 
 ### Example: Validation
 
-```csharp{title="Example: Validation" description="Demonstrates example: Validation" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Validation"]}
+```csharp{title="Example: Validation" description="Example: Validation" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Validation"]}
 public partial class CreateOrderEndpoint {
     private readonly IValidator<CreateOrderCommand> _validator;
 
@@ -86,7 +87,7 @@ public partial class CreateOrderEndpoint {
 
 ### Example: Authorization
 
-```csharp{title="Example: Authorization" description="Demonstrates example: Authorization" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Authorization"]}
+```csharp{title="Example: Authorization" description="Example: Authorization" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Authorization"]}
 public partial class UpdateProductEndpoint {
     private readonly IAuthorizationService _authz;
     private readonly ICurrentUser _user;
@@ -110,7 +111,7 @@ public partial class UpdateProductEndpoint {
 
 ### Example: Timing
 
-```csharp{title="Example: Timing" description="Demonstrates example: Timing" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Timing"]}
+```csharp{title="Example: Timing" description="Example: Timing" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Timing"]}
 public partial class ProcessPaymentEndpoint {
     protected override ValueTask OnBeforeExecuteAsync(
         ProcessPaymentCommand command,
@@ -130,7 +131,7 @@ public partial class ProcessPaymentEndpoint {
 Called after successful command dispatch. Override to add post-processing, notifications, or audit logging. **Not called if dispatch throws an exception.**
 
 **Signature**:
-```csharp{title="OnAfterExecuteAsync" description="Demonstrates onAfterExecuteAsync" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "OnAfterExecuteAsync", "After"]}
+```csharp{title="OnAfterExecuteAsync" description="OnAfterExecuteAsync" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "OnAfterExecuteAsync", "After"]}
 protected virtual ValueTask OnAfterExecuteAsync(
     TCommand command,
     TResult result,
@@ -146,7 +147,7 @@ protected virtual ValueTask OnAfterExecuteAsync(
 
 ### Example: Notifications
 
-```csharp{title="Example: Notifications" description="Demonstrates example: Notifications" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Notifications"]}
+```csharp{title="Example: Notifications" description="Example: Notifications" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Notifications"]}
 public partial class CreateOrderEndpoint {
     private readonly INotificationService _notifications;
 
@@ -166,7 +167,7 @@ public partial class CreateOrderEndpoint {
 
 ### Example: Audit Logging
 
-```csharp{title="Example: Audit Logging" description="Demonstrates example: Audit Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Audit"]}
+```csharp{title="Example: Audit Logging" description="Example: Audit Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Audit"]}
 public partial class DeleteUserEndpoint {
     private readonly IAuditLogger _audit;
     private readonly ICurrentUser _user;
@@ -189,7 +190,7 @@ public partial class DeleteUserEndpoint {
 
 ### Example: Performance Logging
 
-```csharp{title="Example: Performance Logging" description="Demonstrates example: Performance Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Performance"]}
+```csharp{title="Example: Performance Logging" description="Example: Performance Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Performance"]}
 public partial class ProcessPaymentEndpoint {
     private readonly ILogger<ProcessPaymentEndpoint> _logger;
 
@@ -219,7 +220,7 @@ public partial class ProcessPaymentEndpoint {
 Called when command dispatch throws an exception. Override to provide custom error handling, logging, or fallback results.
 
 **Signature**:
-```csharp{title="OnErrorAsync" description="Demonstrates onErrorAsync" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "OnErrorAsync"]}
+```csharp{title="OnErrorAsync" description="OnErrorAsync" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "OnErrorAsync"]}
 protected virtual ValueTask<TResult?> OnErrorAsync(
     TCommand command,
     Exception ex,
@@ -238,7 +239,7 @@ protected virtual ValueTask<TResult?> OnErrorAsync(
 
 ### Example: Error Logging
 
-```csharp{title="Example: Error Logging" description="Demonstrates example: Error Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Error"]}
+```csharp{title="Example: Error Logging" description="Example: Error Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Error"]}
 public partial class CreateOrderEndpoint {
     private readonly ILogger<CreateOrderEndpoint> _logger;
 
@@ -260,7 +261,7 @@ public partial class CreateOrderEndpoint {
 
 ### Example: Fallback Result
 
-```csharp{title="Example: Fallback Result" description="Demonstrates example: Fallback Result" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Fallback"]}
+```csharp{title="Example: Fallback Result" description="Example: Fallback Result" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Fallback"]}
 public partial class GetCachedDataEndpoint {
     private readonly ICache _cache;
 
@@ -285,7 +286,7 @@ public partial class GetCachedDataEndpoint {
 
 ### Example: Error Transformation
 
-```csharp{title="Example: Error Transformation" description="Demonstrates example: Error Transformation" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Error"]}
+```csharp{title="Example: Error Transformation" description="Example: Error Transformation" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Error"]}
 public partial class ExternalApiEndpoint {
     protected override ValueTask<ApiResult?> OnErrorAsync(
         ApiCommand command,
@@ -313,7 +314,7 @@ public partial class ExternalApiEndpoint {
 The `IMutationContext` interface provides context information during mutation execution. It is passed to all hooks and enables sharing state between them.
 
 **Interface**:
-```csharp{title="IMutationContext" description="Demonstrates iMutationContext" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Mutations", "IMutationContext", "Context"]}
+```csharp{title="IMutationContext" description="IMutationContext" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Mutations", "IMutationContext", "Context"]}
 public interface IMutationContext {
     /// <summary>
     /// The cancellation token for the current request.

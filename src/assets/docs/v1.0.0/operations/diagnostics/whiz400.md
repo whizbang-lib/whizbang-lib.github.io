@@ -10,6 +10,11 @@ tags:
   - multi-model
   - type-safety
   - analyzer
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/LensQueryTypeArgumentAnalyzer.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresLensQuery.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ400: Invalid Type Argument for ILensQuery
@@ -41,7 +46,7 @@ Ensure the type argument to `Query<T>()` or `GetByIdAsync<T>()` is one of the in
 
 ### Before (causes WHIZ400)
 
-```csharp{title="Before (causes WHIZ400)" description="Demonstrates before (causes WHIZ400)" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Before", "Causes"]}
+```csharp{title="Before (causes WHIZ400)" description="Before (causes WHIZ400)" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Before", "Causes"]}
 public class OrderResolver {
   public async Task<ProductDto> GetProduct(
       [Service] ILensQuery<Order, Customer> query, // Only Order and Customer
@@ -56,7 +61,7 @@ public class OrderResolver {
 
 ### Fix Option 1: Use the correct interface
 
-```csharp{title="Fix Option 1: Use the correct interface" description="Demonstrates fix Option 1: Use the correct interface" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Fix", "Option"]}
+```csharp{title="Fix Option 1: Use the correct interface" description="Fix Option 1: Use the correct interface" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Fix", "Option"]}
 public class OrderResolver {
   public async Task<ProductDto> GetProduct(
       [Service] ILensQuery<Order, Customer, Product> query, // Added Product
@@ -71,7 +76,7 @@ public class OrderResolver {
 
 ### Fix Option 2: Use separate single-generic query
 
-```csharp{title="Fix Option 2: Use separate single-generic query" description="Demonstrates fix Option 2: Use separate single-generic query" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix", "Option"]}
+```csharp{title="Fix Option 2: Use separate single-generic query" description="Fix Option 2: Use separate single-generic query" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix", "Option"]}
 public class OrderResolver {
   public async Task<ProductDto> GetProduct(
       [Service] ILensQuery<Product> productQuery, // Separate query for Product
@@ -85,7 +90,7 @@ public class OrderResolver {
 
 ## Valid Usage Examples
 
-```csharp{title="Valid Usage Examples" description="Demonstrates valid Usage Examples" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Valid", "Usage"]}
+```csharp{title="Valid Usage Examples" description="Valid Usage Examples" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Valid", "Usage"]}
 // ILensQuery<Order, Customer>
 query.Query<Order>();      // OK - T1
 query.Query<Customer>();   // OK - T2

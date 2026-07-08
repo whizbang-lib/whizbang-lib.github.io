@@ -7,6 +7,14 @@ description: >-
   Implement full event sourcing with CQRS - event store, snapshots, temporal
   queries, and projections
 tags: 'event-sourcing, cqrs, event-store, snapshots, temporal-queries'
+codeReferences:
+  - src/Whizbang.Core/Messaging/IEventStore.cs
+  - src/Whizbang.Core/Messaging/IEventStoreQuery.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs
+  - >-
+    samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Event Sourcing & CQRS
@@ -525,7 +533,7 @@ public class EventStoreQueryService {
 
 **Usage**:
 
-```csharp{title="Temporal Queries (2)" description="Demonstrates temporal Queries" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Temporal", "Queries"]}
+```csharp{title="Temporal Queries (2)" description="Temporal Queries" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Temporal", "Queries"]}
 // Get order state as of yesterday
 var orderYesterday = await queryService.LoadAsOfAsync(
   orderId,

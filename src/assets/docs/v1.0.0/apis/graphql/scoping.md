@@ -1,3 +1,19 @@
+---
+title: GraphQL Scoping
+version: 1.0.0
+category: GraphQL
+order: 7
+description: >-
+  Scope middleware for automatic multi-tenancy and security filtering in GraphQL
+  queries. Extracts tenant and user context from JWT claims and headers via
+  IScopeContextAccessor for transparent lens query filtering.
+tags: 'graphql, scoping, multi-tenancy, security, middleware, jwt, scope-context'
+codeReferences:
+  - src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
+  - src/Whizbang.Transports.HotChocolate/Middleware/ScopeMiddlewareExtensions.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # GraphQL Scoping
 
 Whizbang's scope middleware provides automatic multi-tenancy and security filtering for GraphQL queries, ensuring users only see data they're authorized to access.
@@ -29,13 +45,13 @@ Lens Query (automatic filtering)
 
 ### 1. Register Services
 
-```csharp{title="Register Services" description="Demonstrates register Services" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Register", "Services"]}
+```csharp{title="Register Services" description="Register Services" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Register", "Services"]}
 builder.Services.AddWhizbangScope();
 ```
 
 ### 2. Add Middleware
 
-```csharp{title="Add Middleware" description="Demonstrates add Middleware" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Add", "Middleware"]}
+```csharp{title="Add Middleware" description="Add Middleware" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Add", "Middleware"]}
 app.UseAuthentication();
 app.UseWhizbangScope();  // After auth
 app.MapGraphQL();
@@ -56,7 +72,7 @@ app.MapGraphQL();
 
 ### Custom Configuration
 
-```csharp{title="Custom Configuration" description="Demonstrates custom Configuration" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Custom", "Configuration"]}
+```csharp{title="Custom Configuration" description="Custom Configuration" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Custom", "Configuration"]}
 builder.Services.AddWhizbangScope(options => {
     // Custom claim types
     options.TenantIdClaimType = "https://myapp.com/tenant_id";
@@ -169,7 +185,7 @@ WHERE scope->'AllowedPrincipals' ?| ARRAY['user:user-456', 'group:sales-team']
 
 ### Via IScopeContextAccessor
 
-```csharp{title="Via IScopeContextAccessor" description="Demonstrates via IScopeContextAccessor" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "IScopeContextAccessor"]}
+```csharp{title="Via IScopeContextAccessor" description="Via IScopeContextAccessor" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "IScopeContextAccessor"]}
 public class Query {
     public CurrentUser GetCurrentUser([Service] IScopeContextAccessor accessor) {
         var context = accessor.Current;
@@ -184,7 +200,7 @@ public class Query {
 
 ### Exposing Current Scope
 
-```graphql
+```graphql{title="type Query" description="type Query" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 type Query {
   currentScope: ScopeInfo!
   orders(...): OrdersConnection
@@ -228,7 +244,7 @@ builder.Services.AddScoped<IOrderLens>(sp => {
 
 ### In Resolvers
 
-```csharp{title="In Resolvers" description="Demonstrates in Resolvers" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Resolvers"]}
+```csharp{title="In Resolvers" description="In Resolvers" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Resolvers"]}
 public class Query {
     public async Task<Order?> GetOrder(
         Guid id,
@@ -249,7 +265,7 @@ public class Query {
 
 ### With Attributes
 
-```csharp{title="With Attributes" description="Demonstrates with Attributes" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Attributes"]}
+```csharp{title="With Attributes" description="With Attributes" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Attributes"]}
 [RequirePermission("orders:read")]
 public IQueryable<PerspectiveRow<OrderReadModel>> GetOrders(
     [Service] IOrderLens lens) {
@@ -259,7 +275,7 @@ public IQueryable<PerspectiveRow<OrderReadModel>> GetOrders(
 
 ## Testing Scoped Queries
 
-```csharp{title="Testing Scoped Queries" description="Demonstrates testing Scoped Queries" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Testing", "Scoped"]}
+```csharp{title="Testing Scoped Queries" description="Testing Scoped Queries" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Testing", "Scoped"]}
 [Test]
 public async Task Query_FiltersByTenantAsync() {
     // Arrange

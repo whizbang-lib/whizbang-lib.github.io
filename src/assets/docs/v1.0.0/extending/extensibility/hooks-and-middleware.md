@@ -11,6 +11,7 @@ tags: >-
   aop
 codeReferences:
   - src/Whizbang.Core/Pipeline/IPipelineBehavior.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Hooks and Middleware
@@ -94,7 +95,7 @@ Response
 
 ### Definition
 
-```csharp{title="Definition" description="Demonstrates definition" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Definition"]}
+```csharp{title="Definition" description="Definition" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Definition"]}
 public interface IPipelineBehavior<in TRequest, TResponse> {
   Task<TResponse> Handle(
     TRequest request,
@@ -113,7 +114,7 @@ public interface IPipelineBehavior<in TRequest, TResponse> {
 
 ### Base Class
 
-```csharp{title="Base Class" description="Demonstrates base Class" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Base", "Class"]}
+```csharp{title="Base Class" description="Base Class" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Base", "Class"]}
 public abstract class PipelineBehavior<TRequest, TResponse>
   : IPipelineBehavior<TRequest, TResponse> {
 
@@ -135,7 +136,7 @@ public abstract class PipelineBehavior<TRequest, TResponse>
 
 ### 1. Logging Behavior
 
-```csharp{title="Logging Behavior" description="Demonstrates logging Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Logging", "Behavior"]}
+```csharp{title="Logging Behavior" description="Logging Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Logging", "Behavior"]}
 using Microsoft.Extensions.Logging;
 using Whizbang.Core.Pipeline;
 
@@ -202,7 +203,7 @@ builder.Services.AddTransient(
 
 ### 2. Validation Behavior
 
-```csharp{title="Validation Behavior" description="Demonstrates validation Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Validation", "Behavior"]}
+```csharp{title="Validation Behavior" description="Validation Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Validation", "Behavior"]}
 using FluentValidation;
 using Whizbang.Core.Pipeline;
 
@@ -260,7 +261,7 @@ builder.Services.AddTransient(
 
 ### 3. Retry Behavior
 
-```csharp{title="Retry Behavior" description="Demonstrates retry Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Retry", "Behavior"]}
+```csharp{title="Retry Behavior" description="Retry Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Retry", "Behavior"]}
 using Polly;
 using Whizbang.Core.Pipeline;
 
@@ -305,7 +306,7 @@ public class RetryBehavior<TRequest, TResponse>
 
 ### 4. Caching Behavior
 
-```csharp{title="Caching Behavior" description="Demonstrates caching Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Caching", "Behavior"]}
+```csharp{title="Caching Behavior" description="Caching Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Caching", "Behavior"]}
 using Microsoft.Extensions.Caching.Memory;
 using Whizbang.Core.Pipeline;
 
@@ -360,7 +361,7 @@ public interface ICacheableQuery {
 
 ### 5. Performance Timing Behavior
 
-```csharp{title="Performance Timing Behavior" description="Demonstrates performance Timing Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Performance", "Timing"]}
+```csharp{title="Performance Timing Behavior" description="Performance Timing Behavior" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Performance", "Timing"]}
 using System.Diagnostics;
 using Whizbang.Core.Pipeline;
 
@@ -417,7 +418,7 @@ public class PerformanceBehavior<TRequest, TResponse>
 
 ### Registration
 
-```csharp{title="Registration" description="Demonstrates registration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Registration"]}
+```csharp{title="Registration" description="Registration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Registration"]}
 using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -440,7 +441,7 @@ var app = builder.Build();
 
 ### Conditional Registration
 
-```csharp{title="Conditional Registration" description="Demonstrates conditional Registration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Conditional", "Registration"]}
+```csharp{title="Conditional Registration" description="Conditional Registration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Conditional", "Registration"]}
 // Only register in development
 if (builder.Environment.IsDevelopment()) {
   builder.Services.AddTransient(
@@ -460,7 +461,7 @@ builder.Services.AddTransient<IPipelineBehavior<CreateOrder, OrderCreated>,
 
 ### Short-Circuiting
 
-```csharp{title="Short-Circuiting" description="Demonstrates short-Circuiting" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Short-Circuiting"]}
+```csharp{title="Short-Circuiting" description="Short-Circuiting" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Short-Circuiting"]}
 public class AuthorizationBehavior<TRequest, TResponse>
   : IPipelineBehavior<TRequest, TResponse>
   where TRequest : IAuthorizedRequest {
@@ -493,7 +494,7 @@ public class AuthorizationBehavior<TRequest, TResponse>
 
 ### Response Modification
 
-```csharp{title="Response Modification" description="Demonstrates response Modification" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Response", "Modification"]}
+```csharp{title="Response Modification" description="Response Modification" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Response", "Modification"]}
 public class EnrichmentBehavior<TRequest, TResponse>
   : IPipelineBehavior<TRequest, TResponse>
   where TResponse : IEnrichableResponse {
@@ -519,7 +520,7 @@ public class EnrichmentBehavior<TRequest, TResponse>
 
 ### Transaction Management
 
-```csharp{title="Transaction Management" description="Demonstrates transaction Management" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Transaction", "Management"]}
+```csharp{title="Transaction Management" description="Transaction Management" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Transaction", "Management"]}
 public class TransactionBehavior<TRequest, TResponse>
   : IPipelineBehavior<TRequest, TResponse>
   where TRequest : ITransactionalCommand {
@@ -586,7 +587,7 @@ public class TransactionBehavior<TRequest, TResponse>
 2. Wrong generic type registration
 
 **Solution**:
-```csharp{title="Problem: Behavior Not Executing" description="Demonstrates problem: Behavior Not Executing" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Problem:", "Behavior"]}
+```csharp{title="Problem: Behavior Not Executing" description="Problem: Behavior Not Executing" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Problem:", "Behavior"]}
 // ❌ WRONG: Concrete type registration
 builder.Services.AddTransient<LoggingBehavior<CreateOrder, OrderCreated>>();
 
@@ -604,7 +605,7 @@ builder.Services.AddTransient(
 **Cause**: Behavior doesn't call `next()`.
 
 **Solution**:
-```csharp{title="Problem: Pipeline Hangs" description="Demonstrates problem: Pipeline Hangs" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Problem:", "Pipeline"]}
+```csharp{title="Problem: Pipeline Hangs" description="Problem: Pipeline Hangs" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Problem:", "Pipeline"]}
 // ❌ WRONG: Forgot to call next()
 public async Task<TResponse> Handle(TRequest request, Func<Task<TResponse>> next, ...) {
   _logger.LogInformation("Processing...");
@@ -626,7 +627,7 @@ public async Task<TResponse> Handle(TRequest request, Func<Task<TResponse>> next
 **Cause**: Registration order determines execution order.
 
 **Solution**:
-```csharp{title="Problem: Wrong Execution Order" description="Demonstrates problem: Wrong Execution Order" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Problem:", "Wrong"]}
+```csharp{title="Problem: Wrong Execution Order" description="Problem: Wrong Execution Order" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Problem:", "Wrong"]}
 // Execution order = registration order
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(FirstBehavior<,>));   // Runs 1st
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(SecondBehavior<,>));  // Runs 2nd

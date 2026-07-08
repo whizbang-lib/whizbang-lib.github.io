@@ -9,6 +9,7 @@ description: >-
 tags: 'serialization, protobuf, messagepack, aot, json'
 codeReferences:
   - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Serializers
@@ -43,7 +44,7 @@ Whizbang uses JSON by default with `JsonContextRegistry` for AOT support. Custom
 
 ### Pattern 1: Protobuf with AOT
 
-```csharp{title="Pattern 1: Protobuf with AOT" description="Demonstrates pattern 1: Protobuf with AOT" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Protobuf"]}
+```csharp{title="Pattern 1: Protobuf with AOT" description="Pattern 1: Protobuf with AOT" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Protobuf"]}
 using Google.Protobuf;
 using System.Text.Json;
 
@@ -60,7 +61,7 @@ public class ProtobufSerializer : IMessageSerializer {
 ```
 
 **Usage**:
-```csharp{title="Pattern 1: Protobuf with AOT (2)" description="Demonstrates pattern 1: Protobuf with AOT" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Protobuf"]}
+```csharp{title="Pattern 1: Protobuf with AOT (2)" description="Pattern 1: Protobuf with AOT" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Protobuf"]}
 // Define protobuf message
 message OrderCreated {
   string order_id = 1;
@@ -88,7 +89,7 @@ var deserialized = serializer.Deserialize<OrderCreated>(bytes);
 
 ### Pattern 2: MessagePack with AOT
 
-```csharp{title="Pattern 2: MessagePack with AOT" description="Demonstrates pattern 2: MessagePack with AOT" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "MessagePack"]}
+```csharp{title="Pattern 2: MessagePack with AOT" description="Pattern 2: MessagePack with AOT" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "MessagePack"]}
 using MessagePack;
 
 [MessagePackObject]

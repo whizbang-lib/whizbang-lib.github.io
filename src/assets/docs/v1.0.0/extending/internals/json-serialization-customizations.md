@@ -12,6 +12,7 @@ codeReferences:
   - src/Whizbang.Generators/ArrayTypeInfo.cs
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
   - src/Whizbang.Generators/Templates/Snippets/JsonContextSnippets.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # JSON Serialization Customizations

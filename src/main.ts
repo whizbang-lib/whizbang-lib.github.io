@@ -2,6 +2,7 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter } from '@angular/router';
 import { importProvidersFrom, SecurityContext, APP_INITIALIZER } from '@angular/core';
+import { SANITIZE } from 'ngx-markdown';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { providePrimeNG } from 'primeng/config';
 import { WhizbangPreset } from './app/themes/whizbang-theme';
@@ -68,7 +69,7 @@ bootstrapApplication(AppComponent, {
       BrowserAnimationsModule,
       HttpClientModule,
       MarkdownModule.forRoot({
-        sanitize: SecurityContext.NONE
+        sanitize: { provide: SANITIZE, useValue: SecurityContext.NONE }
       })
     ),
     MessageService,

@@ -12,6 +12,10 @@ tags:
   - interface
   - aot
   - source-generator
+codeReferences:
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators/SerializablePropertyAnalyzer.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ062: Property Uses Non-Serializable Interface Type
@@ -41,7 +45,7 @@ Replace non-generic interfaces with generic versions or concrete types:
 
 ### Before (causes WHIZ062)
 
-```csharp{title="Before (causes WHIZ062)" description="Demonstrates before (causes WHIZ062)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
+```csharp{title="Before (causes WHIZ062)" description="Before (causes WHIZ062)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
 public record CreateOrderCommand : ICommand {
   public Guid OrderId { get; init; }
   public IEnumerable Items { get; init; }      // WHIZ062
@@ -52,7 +56,7 @@ public record CreateOrderCommand : ICommand {
 
 ### After (error resolved)
 
-```csharp{title="After (error resolved)" description="Demonstrates after (error resolved)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Error"]}
+```csharp{title="After (error resolved)" description="After (error resolved)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Error"]}
 public record CreateOrderCommand : ICommand {
   public Guid OrderId { get; init; }
   public IEnumerable<OrderItem> Items { get; init; } = [];
@@ -93,7 +97,7 @@ For custom interfaces, either:
 
 ### Example: Custom Interface Fix
 
-```csharp{title="Example: Custom Interface Fix" description="Demonstrates example: Custom Interface Fix" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Custom"]}
+```csharp{title="Example: Custom Interface Fix" description="Example: Custom Interface Fix" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Custom"]}
 // Before - non-generic interface
 public interface IPaymentMethod { }
 

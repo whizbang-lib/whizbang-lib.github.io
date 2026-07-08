@@ -9,6 +9,7 @@ description: >-
 tags: 'lifecycle, system-commands, maintenance, pause, resume'
 codeReferences:
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Lifecycle Management
@@ -30,7 +31,7 @@ The `PauseProcessingCommand` and `ResumeProcessingCommand` enable coordinated pa
 Pauses message processing across all services. Useful for coordinated maintenance operations where you need to ensure no messages are being processed.
 
 **Signature**:
-```csharp{title="PauseProcessingCommand" description="Demonstrates pauseProcessingCommand" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PauseProcessingCommand"]}
+```csharp{title="PauseProcessingCommand" description="PauseProcessingCommand" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PauseProcessingCommand"]}
 public record PauseProcessingCommand(
     int? DurationSeconds = null,
     string? Reason = null
@@ -79,7 +80,7 @@ await dispatcher.SendAsync(new ResumeProcessingCommand(
 Resumes message processing across all services after a pause.
 
 **Signature**:
-```csharp{title="ResumeProcessingCommand" description="Demonstrates resumeProcessingCommand" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ResumeProcessingCommand"]}
+```csharp{title="ResumeProcessingCommand" description="ResumeProcessingCommand" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ResumeProcessingCommand"]}
 public record ResumeProcessingCommand(
     string? Reason = null
 ) : ICommand;
@@ -226,6 +227,9 @@ await dispatcher.SendAsync(new PauseProcessingCommand(
 ```
 
 ### Implement Health Checks
+
+> **Note**: `IProcessingStateMonitor` shown below is an aspirational pattern illustrating how you might expose pause state to health checks. This interface is not provided by the Whizbang library -- you would implement it in your application based on your pause/resume handler state.
+
 Monitor paused state in your health check endpoints:
 ```csharp{title="Implement Health Checks" description="Monitor paused state in your health check endpoints:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Implement", "Health"]}
 public class ProcessingHealthCheck : IHealthCheck {
@@ -275,12 +279,21 @@ Verify your services handle pause correctly:
 ```csharp{title="Test Pause/Resume Behavior" description="Verify your services handle pause correctly:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Test", "Pause"]}
 [Test]
 public async Task Service_WhenPaused_StopsProcessingMessagesAsync() {
-  // Arrange
+  // Arrange - use lifecycle hooks to synchronize deterministically
+  var pauseConfirmed = new TaskCompletionSource(
+    TaskCreationOptions.RunContinuationsAsynchronously);
+  var orderProcessed = new TaskCompletionSource(
+    TaskCreationOptions.RunContinuationsAsynchronously);
+
+  _lifecycleHooks.OnPaused += () => pauseConfirmed.TrySetResult();
+  _lifecycleHooks.OnMessageProcessed += msg => {
+    if (msg is CreateOrderCommand) orderProcessed.TrySetResult();
+  };
+
+  // Pause and wait for confirmation via hook
   await _dispatcher.SendAsync(new PauseProcessingCommand(
     Reason: "Test pause"));
-
-  // Wait for pause to take effect
-  await Task.Delay(1000);
+  await pauseConfirmed.Task;
 
   // Act - send message while paused
   await _dispatcher.SendAsync(new CreateOrderCommand { /* ... */ });
@@ -289,11 +302,10 @@ public async Task Service_WhenPaused_StopsProcessingMessagesAsync() {
   var order = await _orderLens.GetByIdAsync(orderId);
   await Assert.That(order).IsNull();  // Not processed yet
 
-  // Resume and verify
+  // Resume and wait for processing via hook
   await _dispatcher.SendAsync(new ResumeProcessingCommand(
     Reason: "Test resume"));
-
-  await Task.Delay(2000);  // Wait for processing
+  await orderProcessed.Task;
 
   order = await _orderLens.GetByIdAsync(orderId);
   await Assert.That(order).IsNotNull();  // Now processed
@@ -303,6 +315,9 @@ public async Task Service_WhenPaused_StopsProcessingMessagesAsync() {
 ## Implementation Notes
 
 ### Service-Specific Handlers
+
+> **Note**: `IWorkerCoordinator` shown below is an aspirational pattern illustrating how you might coordinate worker lifecycle in response to pause/resume commands. This interface is not provided by the Whizbang library -- you would implement it in your application to manage your specific worker infrastructure.
+
 Each service should implement handlers for pause/resume commands:
 ```csharp{title="Service-Specific Handlers" description="Each service should implement handlers for pause/resume commands:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Service-Specific", "Handlers"]}
 public class PauseResumeHandler :
@@ -356,7 +371,9 @@ lifetime.ApplicationStopping.Register(async () => {
   await dispatcher.SendAsync(new PauseProcessingCommand(
     Reason: "Service shutting down for deployment"));
 
-  // Give time for command to propagate
+  // Intentional delay: gives the transport time to propagate the
+  // pause command to all consumers before the host shuts down.
+  // In production, tune this value based on your transport latency.
   await Task.Delay(2000);
 });
 ```
@@ -366,12 +383,21 @@ lifetime.ApplicationStopping.Register(async () => {
 Whizbang provides other system commands for distributed coordination:
 
 ### RebuildPerspectiveCommand
-Rebuild a specific perspective across all services:
-```csharp{title="RebuildPerspectiveCommand" description="Rebuild a specific perspective across all services:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "RebuildPerspectiveCommand"]}
+Rebuild one or more perspectives across all services:
+```csharp{title="RebuildPerspectiveCommand" description="Rebuild one or more perspectives across all services:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "RebuildPerspectiveCommand"]}
 await dispatcher.SendAsync(new RebuildPerspectiveCommand(
-  "OrderSummary",
+  PerspectiveNames: ["OrderSummary"],
+  Mode: RebuildMode.BlueGreen,
   FromEventId: 12345L
 ));
+```
+
+See [Perspectives](../perspectives/perspectives.md#rebuild) for details.
+
+### CancelPerspectiveRebuildCommand
+Cancel an in-progress perspective rebuild:
+```csharp{title="CancelPerspectiveRebuildCommand" description="Cancel an in-progress perspective rebuild:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "CancelPerspectiveRebuildCommand"]}
+await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand("OrderSummary"));
 ```
 
 See [Perspectives](../perspectives/perspectives.md#rebuild) for details.
@@ -395,6 +421,16 @@ await dispatcher.SendAsync(new DiagnosticsCommand(
   CorrelationId: Guid.NewGuid()
 ));
 ```
+
+#### DiagnosticType Values
+
+| Value | Description |
+|-------|-------------|
+| `HealthCheck` | Basic health check - is the service responsive? |
+| `ResourceMetrics` | Memory usage, thread count, and resource metrics. |
+| `PipelineStatus` | Current state of message processing pipelines. |
+| `PerspectiveStatus` | Perspective and projection state information. |
+| `Full` | Full diagnostic dump including all above categories. |
 
 See [Observability: Diagnostics](../../operations/observability/diagnostics.md#system-diagnostics) for details.
 

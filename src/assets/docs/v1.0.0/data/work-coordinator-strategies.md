@@ -1,3 +1,22 @@
+---
+title: Work Coordinator Strategies
+version: 1.0.0
+category: Data Access
+order: 8
+description: >-
+  Strategy pattern for controlling message flush behavior from in-memory queues
+  to the database. Covers Immediate, Scoped, Interval, and Batch strategies
+  with trade-offs between latency, throughput, and database load.
+tags: 'work-coordinator, flush-strategy, batch, scoped, interval, process-work-batch'
+codeReferences:
+  - src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs
+  - src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs
+  - src/Whizbang.Core/Messaging/WorkCoordinatorStrategyFactory.cs
+  - src/Whizbang.Core/Messaging/IWorkFlusher.cs
+  - src/Whizbang.Hosting.AspNet/WhizbangFlushMiddleware.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # Work Coordinator Strategies
 
 The work coordinator uses a **strategy pattern** to control when and how messages are flushed from in-memory queues to the database via `process_work_batch`. Each strategy makes different trade-offs between latency, throughput, and database load.
@@ -61,7 +80,7 @@ services.Configure<WorkCoordinatorOptions>(o => {
 
 Batches operations within a DI scope (e.g., HTTP request). Flushes on explicit `FlushAsync` or scope disposal.
 
-```csharp{title="Scoped (Default)" description="Batches operations within a DI scope (e." category="Implementation" difficulty="BEGINNER" tags=["Data", "Scoped", "Default"]}
+```csharp{title="Scoped (Default)" description="Batches operations within a DI scope (e." category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Scoped", "Default"]}
 // Default - no configuration needed
 services.Configure<WorkCoordinatorOptions>(o => {
   o.Strategy = WorkCoordinatorStrategy.Scoped;
@@ -94,7 +113,7 @@ Combines **count-based** and **debounce-based** triggers. Flushes when either th
 1. **Batch size reached**: When total queued messages (outbox + inbox) reaches `BatchSize`, flush fires immediately.
 2. **Debounce timer expires**: When no new messages arrive for `IntervalMilliseconds`, flush fires for the partial batch.
 
-```csharp{title="Batch" description="Demonstrates batch" category="Implementation" difficulty="BEGINNER" tags=["Data", "Batch"]}
+```csharp{title="Batch" description="Batch" category="Implementation" difficulty="BEGINNER" tags=["Data", "Batch"]}
 services.Configure<WorkCoordinatorOptions>(o => {
   o.Strategy = WorkCoordinatorStrategy.Batch;
   o.BatchSize = 100;             // Flush at 100 messages
@@ -138,7 +157,7 @@ All strategies support `FlushMode` on `FlushAsync`:
 
 For scenarios where you need explicit control over when messages are persisted — independent of the strategy's automatic triggers — inject `IWorkFlusher`:
 
-```csharp{title="Manual Flushing" description="For scenarios where you need explicit control over when messages are persisted — independent of the strategy's" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Manual", "Flushing"]}
+```csharp{title="Manual Flushing" description="For scenarios where you need explicit control over when messages are persisted — independent of the strategy's" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Manual", "Flushing"]}
 public class ImportService(IWorkFlusher flusher) {
   public async Task ImportBatchAsync(IEnumerable<Order> orders, CancellationToken ct) {
     foreach (var order in orders) {
