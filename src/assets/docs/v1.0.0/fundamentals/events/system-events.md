@@ -23,7 +23,9 @@ codeReferences:
   - src/Whizbang.Core/SystemEvents/Security/AccessGranted.cs
   - src/Whizbang.Core/SystemEvents/Security/AccessDenied.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterTests.cs
+  - src/Whizbang.Core/Events/System/SystemEvents.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventTransportFilterTests.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # System Events
@@ -64,7 +66,7 @@ System events are **internal events emitted by Whizbang** for observability, aud
 
 ### Enable System Events
 
-```csharp{title="Enable System Events" description="Demonstrates enable System Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Enable", "System"]}
+```csharp{title="Enable System Events" description="Enable System Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Enable", "System"]}
 // In Program.cs - enable the system events you need
 services.AddWhizbang(options => {
   // Enable event and command auditing
@@ -89,7 +91,7 @@ services.AddWhizbang(options => {
 
 System events are consumed like domain events - create perspectives:
 
-```csharp{title="Consume System Events" description="System events are consumed like domain events - create perspectives:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Consume", "System"]}
+```csharp{title="Consume System Events" description="System events are consumed like domain events - create perspectives:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "C#", "Consume", "System"]}
 using Whizbang.Core.Perspectives;
 using Whizbang.Core.SystemEvents;
 using Whizbang.Core.Audit;
@@ -882,7 +884,7 @@ public static class SystemEventStreams {
 
 ### Basic Registration
 
-```csharp{title="Basic Registration" description="Demonstrates basic Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Basic", "Registration"]}
+```csharp{title="Basic Registration" description="Basic Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Basic", "Registration"]}
 services.AddSystemEvents(options => {
   options.EnableAudit();
 });
@@ -894,7 +896,7 @@ This registers:
 
 ### Full Auditing Registration
 
-```csharp{title="Full Auditing Registration" description="Demonstrates full Auditing Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Full", "Auditing"]}
+```csharp{title="Full Auditing Registration" description="Full Auditing Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Full", "Auditing"]}
 services.AddSystemEventAuditing(options => {
   options.EnableEventAudit();
   options.EnableCommandAudit();
@@ -908,7 +910,7 @@ This registers:
 
 ### Complete Setup Example
 
-```csharp{title="Complete Setup Example" description="Demonstrates complete Setup Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Complete", "Setup"]}
+```csharp{title="Complete Setup Example" description="Complete Setup Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Complete", "Setup"]}
 // In Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -938,7 +940,7 @@ app.Run();
 
 ### 1. Enable Only What You Need
 
-```csharp{title="Enable Only What You Need" description="Demonstrates enable Only What You Need" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Enable", "Only"]}
+```csharp{title="Enable Only What You Need" description="Enable Only What You Need" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Enable", "Only"]}
 // BFF: Enable full audit for compliance
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAudit();
@@ -955,7 +957,7 @@ services.AddWhizbang();
 
 ### 2. Use LocalOnly (Default)
 
-```csharp{title="Use LocalOnly (Default)" description="Demonstrates use LocalOnly (Default)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "LocalOnly", "Default"]}
+```csharp{title="Use LocalOnly (Default)" description="Use LocalOnly (Default)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "LocalOnly", "Default"]}
 // Default behavior - system events stay local
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAudit();
@@ -969,7 +971,7 @@ services.AddWhizbang(options => {
 
 ### 3. Exclude High-Frequency Events
 
-```csharp{title="Exclude High-Frequency Events" description="Demonstrates exclude High-Frequency Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Exclude", "High-Frequency"]}
+```csharp{title="Exclude High-Frequency Events" description="Exclude High-Frequency Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Exclude", "High-Frequency"]}
 // Exclude events that would create excessive audit volume
 [AuditEvent(Exclude = true, Reason = "High-frequency telemetry event")]
 public sealed record MetricCaptured : IEvent {
@@ -994,7 +996,7 @@ Never remove this attribute from system events!
 
 ### 5. Query System Events Like Domain Events
 
-```csharp{title="Query System Events Like Domain Events" description="Demonstrates query System Events Like Domain Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Query", "System"]}
+```csharp{title="Query System Events Like Domain Events" description="Query System Events Like Domain Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Query", "System"]}
 public interface ISecurityAuditLens : ILensQuery<SecurityAuditEntry> { }
 
 public class SecurityService {
@@ -1019,7 +1021,7 @@ public class SecurityService {
 
 ### Centralized Monitoring Service
 
-```csharp{title="Centralized Monitoring Service" description="Demonstrates centralized Monitoring Service" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Centralized", "Monitoring"]}
+```csharp{title="Centralized Monitoring Service" description="Centralized Monitoring Service" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Centralized", "Monitoring"]}
 // Monitoring service receives system events from all hosts
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAll();
@@ -1032,7 +1034,7 @@ services.AddWhizbang(options => {
 
 ### Selective Security Auditing
 
-```csharp{title="Selective Security Auditing" description="Demonstrates selective Security Auditing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Selective", "Security"]}
+```csharp{title="Selective Security Auditing" description="Selective Security Auditing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Selective", "Security"]}
 // Only audit high-sensitivity operations
 public class DocumentService {
   private readonly ISystemEventEmitter _emitter;
@@ -1063,7 +1065,7 @@ public class DocumentService {
 
 ### Multi-Tenant Audit Queries
 
-```csharp{title="Multi-Tenant Audit Queries" description="Demonstrates multi-Tenant Audit Queries" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Multi-Tenant", "Audit"]}
+```csharp{title="Multi-Tenant Audit Queries" description="Multi-Tenant Audit Queries" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Multi-Tenant", "Audit"]}
 public class AuditService {
   private readonly IAuditLogLens _auditLens;
 
@@ -1108,7 +1110,234 @@ System events provide **observability, auditing, and diagnostics** for Whizbang 
 - **LocalOnly by default** - no transport publishing, no duplication
 - **Same infrastructure** - consumed via perspectives and lenses
 - **Self-audit prevention** - system events excluded from audit
-- **Built-in events** - EventAudited, CommandAudited, security events
+- **Built-in events** - EventAudited, CommandAudited, security events, perspective rebuild/rewind events, migration events
 - **Extensible** - emit custom system events for your scenarios
 
 Use system events to build compliance-ready audit trails, security monitoring, and operational insights without polluting your domain model.
+
+---
+
+<a id="perspective-rebuild-events"></a>
+## Perspective Rebuild Events
+
+These events are emitted during perspective rebuild operations (enabled via `EnablePerspectiveEvents()`). They track the full lifecycle of a rebuild.
+
+### PerspectiveRebuildStarted
+
+Emitted when a perspective rebuild starts (any mode).
+
+```csharp{title="PerspectiveRebuildStarted" description="Emitted when a perspective rebuild starts" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"]}
+public record PerspectiveRebuildStarted(
+    [property: StreamId] Guid StreamId,
+    string PerspectiveName,
+    RebuildMode Mode,
+    int TotalStreams,
+    DateTimeOffset StartedAt
+) : IEvent;
+```
+
+### PerspectiveRebuildProgress
+
+Emitted periodically during a rebuild to report progress.
+
+```csharp{title="PerspectiveRebuildProgress" description="Emitted periodically during a rebuild to report progress" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"]}
+public record PerspectiveRebuildProgress(
+    [property: StreamId] Guid StreamId,
+    string PerspectiveName,
+    RebuildMode Mode,
+    int ProcessedStreams,
+    int TotalStreams,
+    int EventsReplayed,
+    DateTimeOffset StartedAt
+) : IEvent;
+```
+
+### PerspectiveRebuildCompleted
+
+Emitted when a perspective rebuild completes successfully.
+
+```csharp{title="PerspectiveRebuildCompleted" description="Emitted when a perspective rebuild completes successfully" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"]}
+public record PerspectiveRebuildCompleted(
+    [property: StreamId] Guid StreamId,
+    string PerspectiveName,
+    RebuildMode Mode,
+    int StreamsProcessed,
+    int EventsReplayed,
+    TimeSpan Duration
+) : IEvent;
+```
+
+### PerspectiveRebuildFailed
+
+Emitted when a perspective rebuild fails.
+
+```csharp{title="PerspectiveRebuildFailed" description="Emitted when a perspective rebuild fails" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"]}
+public record PerspectiveRebuildFailed(
+    [property: StreamId] Guid StreamId,
+    string PerspectiveName,
+    RebuildMode Mode,
+    string Error,
+    int StreamsProcessedBeforeFailure,
+    TimeSpan Duration
+) : IEvent;
+```
+
+---
+
+<a id="perspective-rewind-events"></a>
+## Perspective Rewind Events
+
+These events are emitted when a perspective rewinds due to a late-arriving event. Rewind replays events from the nearest snapshot to incorporate out-of-order events.
+
+### PerspectiveRewindStarted
+
+Emitted when a perspective rewind begins.
+
+```csharp{title="PerspectiveRewindStarted" description="Emitted when a perspective rewind begins due to a late-arriving event" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rewind"]}
+public record PerspectiveRewindStarted(
+    [property: StreamId] Guid StreamId,
+    string PerspectiveName,
+    Guid TriggeringEventId,
+    Guid? ReplayFromSnapshotEventId,
+    bool HasSnapshot,
+    DateTimeOffset StartedAt
+) : IEvent;
+```
+
+### PerspectiveRewindCompleted
+
+Emitted when a perspective rewind completes successfully.
+
+```csharp{title="PerspectiveRewindCompleted" description="Emitted when a perspective rewind completes successfully" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rewind"]}
+public record PerspectiveRewindCompleted(
+    [property: StreamId] Guid StreamId,
+    string PerspectiveName,
+    Guid TriggeringEventId,
+    Guid FinalEventId,
+    int EventsReplayed,
+    DateTimeOffset StartedAt,
+    DateTimeOffset CompletedAt
+) : IEvent;
+```
+
+---
+
+<a id="migration-events"></a>
+## Migration Events
+
+These events track the lifecycle of database migrations. They are emitted during `AddWhizbang()` startup when migrations are applied.
+
+### MigrationItemStarted
+
+Emitted when an individual migration starts processing.
+
+```csharp{title="MigrationItemStarted" description="Emitted when an individual migration starts processing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+public record MigrationItemStarted(
+    [property: StreamId] Guid StreamId,
+    string MigrationKey,
+    MigrationStrategy Strategy,
+    string? OldHash,
+    string NewHash
+) : IEvent;
+```
+
+### MigrationItemCompleted
+
+Emitted when an individual migration completes.
+
+```csharp{title="MigrationItemCompleted" description="Emitted when an individual migration completes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+public record MigrationItemCompleted(
+    [property: StreamId] Guid StreamId,
+    string MigrationKey,
+    MigrationStatus Status,
+    string StatusDescription,
+    TimeSpan Duration
+) : IEvent;
+```
+
+### MigrationItemFailed
+
+Emitted when an individual migration fails.
+
+```csharp{title="MigrationItemFailed" description="Emitted when an individual migration fails" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+public record MigrationItemFailed(
+    [property: StreamId] Guid StreamId,
+    string MigrationKey,
+    MigrationStatus Status,
+    MigrationFailureReason FailureReason,
+    string Error,
+    TimeSpan Duration
+) : IEvent;
+```
+
+### MigrationBatchStarted
+
+Emitted when the full migration batch starts (all infrastructure + perspectives).
+
+```csharp{title="MigrationBatchStarted" description="Emitted when the full migration batch starts" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+public record MigrationBatchStarted(
+    [property: StreamId] Guid StreamId,
+    string LibraryVersion,
+    int TotalMigrations,
+    int TotalPerspectives
+) : IEvent;
+```
+
+### MigrationBatchCompleted
+
+Emitted when the full migration batch completes, including per-item results.
+
+```csharp{title="MigrationBatchCompleted" description="Emitted when the full migration batch completes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+public record MigrationBatchCompleted(
+    [property: StreamId] Guid StreamId,
+    string LibraryVersion,
+    MigrationBatchItemResult[] Results,
+    int Applied,
+    int Updated,
+    int Skipped,
+    int Failed,
+    TimeSpan TotalDuration
+) : IEvent;
+
+public record MigrationBatchItemResult(
+    string MigrationKey,
+    MigrationStatus Status,
+    string StatusDescription);
+```
+
+### Migration Enums {#migration-enums}
+
+#### MigrationStatus
+
+Status of a migration item in `wh_schema_migrations`:
+
+| Value | Description |
+|-------|-------------|
+| `Applied` (1) | Migration was applied for the first time |
+| `Updated` (2) | Migration was updated (hash changed) |
+| `Skipped` (3) | Migration was skipped (hash unchanged) |
+| `MigratingInBackground` (4) | Migration is running in the background |
+| `Failed` (-1) | Migration failed |
+
+#### MigrationStrategy
+
+Strategy used for executing a migration:
+
+| Value | Description |
+|-------|-------------|
+| `DirectDdl` | Direct DDL execution (CREATE TABLE, ALTER, etc.) |
+| `ColumnCopy` | Column copy strategy for zero-downtime changes |
+| `EventReplay` | Event replay strategy for perspective migrations |
+
+#### MigrationFailureReason
+
+Reason a migration failed:
+
+| Value | Description |
+|-------|-------------|
+| `Unknown` (0) | Unknown failure reason |
+| `SqlError` (1) | SQL execution error |
+| `Timeout` (2) | Migration timed out |
+| `ColumnTypeMismatch` (3) | Column type mismatch during copy |
+| `DataCopyFailed` (4) | Data copy operation failed |
+| `SwapFailed` (5) | Column swap operation failed |

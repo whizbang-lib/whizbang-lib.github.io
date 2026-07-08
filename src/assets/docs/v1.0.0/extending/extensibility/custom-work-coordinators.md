@@ -9,6 +9,7 @@ description: >-
 tags: 'work-coordination, iworkcoordinator, distributed-locks, redis-queues'
 codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Work Coordinators
@@ -40,7 +41,7 @@ Whizbang uses PostgreSQL stored procedures for work coordination by default. Cus
 
 ## IWorkCoordinator Interface
 
-```csharp{title="IWorkCoordinator Interface" description="Demonstrates iWorkCoordinator Interface" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "IWorkCoordinator", "Interface"]}
+```csharp{title="IWorkCoordinator Interface" description="IWorkCoordinator Interface" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "IWorkCoordinator", "Interface"]}
 public interface IWorkCoordinator {
   Task<WorkBatch> ProcessWorkBatchAsync(
     Guid instanceId,
@@ -57,7 +58,7 @@ public interface IWorkCoordinator {
 
 ### Pattern 1: Redis Queue-Based Coordination
 
-```csharp{title="Pattern 1: Redis Queue-Based Coordination" description="Demonstrates pattern 1: Redis Queue-Based Coordination" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Redis"]}
+```csharp{title="Pattern 1: Redis Queue-Based Coordination" description="Pattern 1: Redis Queue-Based Coordination" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Redis"]}
 using StackExchange.Redis;
 
 public class RedisWorkCoordinator : IWorkCoordinator {

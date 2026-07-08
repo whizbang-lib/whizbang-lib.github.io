@@ -9,6 +9,7 @@ description: >-
 tags: 'di, dependency-injection, service-registration, extension-methods, source-generator'
 codeReferences:
   - src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # ServiceRegistrationExtensions

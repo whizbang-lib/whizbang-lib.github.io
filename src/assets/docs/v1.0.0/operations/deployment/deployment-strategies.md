@@ -7,6 +7,11 @@ description: >-
   Deployment patterns - blue-green, canary, rolling updates, feature flags, and
   rollback strategies
 tags: 'deployment, blue-green, canary, rolling-update, feature-flags, kubernetes'
+codeReferences:
+  - src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs
+  - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  - src/Whizbang.Core/ServiceCollectionExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Deployment Strategies
@@ -131,7 +136,7 @@ spec:
 
 **service.yaml** (switch between blue/green):
 
-```yaml{title="Kubernetes Manifests (3)" description="Demonstrates kubernetes Manifests" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Kubernetes", "Manifests"]}
+```yaml{title="Kubernetes Manifests (3)" description="Kubernetes Manifests" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Kubernetes", "Manifests"]}
 apiVersion: v1
 kind: Service
 metadata:
@@ -151,7 +156,7 @@ spec:
 
 **.github/workflows/blue-green-deploy.yml**:
 
-```yaml{title="GitHub Actions Workflow" description="Demonstrates gitHub Actions Workflow" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "GitHub", "Actions"]}
+```yaml{title="GitHub Actions Workflow" description="GitHub Actions Workflow" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "GitHub", "Actions"]}
 name: Blue-Green Deployment
 
 on:
@@ -198,7 +203,7 @@ jobs:
 
 ### Rollback
 
-```bash{title="Rollback" description="Demonstrates rollback" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Rollback"]}
+```bash{title="Rollback" description="Rollback" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Rollback"]}
 # Instant rollback: Switch service back to blue
 kubectl patch svc order-service -p '{"spec":{"selector":{"version":"blue"}}}'
 
@@ -360,7 +365,7 @@ echo "Canary deployment complete!"
 
 **deployment.yaml**:
 
-```yaml{title="Deployment Manifest" description="**deployment." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Manifest"]}
+```yaml{title="Deployment Manifest" description="**deployment." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Yaml", "Manifest"]}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -401,7 +406,7 @@ spec:
 
 ### Rollout
 
-```bash{title="Rollout" description="Demonstrates rollout" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Rollout"]}
+```bash{title="Rollout" description="Rollout" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Rollout"]}
 # Apply new version
 kubectl apply -f deployment.yaml
 
@@ -417,7 +422,7 @@ kubectl rollout status deployment/order-service
 
 ### Rollback
 
-```bash{title="Rollback (2)" description="Demonstrates rollback" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Rollback"]}
+```bash{title="Rollback (2)" description="Rollback (2)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Rollback"]}
 # Rollback to previous version
 kubectl rollout undo deployment/order-service
 
@@ -473,7 +478,7 @@ spec:
 
 **Program.cs**:
 
-```csharp{title="LaunchDarkly Integration" description="Demonstrates launchDarkly Integration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "LaunchDarkly", "Integration"]}
+```csharp{title="LaunchDarkly Integration" description="LaunchDarkly Integration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "LaunchDarkly", "Integration"]}
 builder.Services.AddSingleton<ILdClient>(sp => {
   var config = Configuration.Builder(builder.Configuration["LaunchDarkly:SdkKey"])
     .Build();
@@ -483,7 +488,7 @@ builder.Services.AddSingleton<ILdClient>(sp => {
 
 **Usage**:
 
-```csharp{title="LaunchDarkly Integration - CreateOrderReceptor" description="Demonstrates launchDarkly Integration" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "LaunchDarkly", "Integration"]}
+```csharp{title="LaunchDarkly Integration - CreateOrderReceptor" description="LaunchDarkly Integration - CreateOrderReceptor" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "LaunchDarkly", "Integration"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
   private readonly ILdClient _featureFlags;
 
@@ -516,7 +521,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### Gradual Rollout with Feature Flags
 
-```csharp{title="Gradual Rollout with Feature Flags" description="Demonstrates gradual Rollout with Feature Flags" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Gradual", "Rollout"]}
+```csharp{title="Gradual Rollout with Feature Flags" description="Gradual Rollout with Feature Flags" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Gradual", "Rollout"]}
 // LaunchDarkly dashboard:
 // Day 1: Enable for 10% of users
 // Day 2: Enable for 25% of users

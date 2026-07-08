@@ -2,6 +2,11 @@
 title: Polymorphic Types in Perspectives
 version: 1.0.0
 category: Perspectives
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres.Generators/PerspectiveModelPolymorphicAnalyzer.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Core/Perspectives/PolymorphicDiscriminatorAttribute.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Polymorphic Types in Perspectives
@@ -30,7 +35,7 @@ The analyzer finds perspective models containing properties that are:
 
 ### Example Warning
 
-```csharp{title="Example Warning" description="Demonstrates example Warning" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Example", "Warning"]}
+```csharp{title="Example Warning" description="Example Warning" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Example", "Warning"]}
 public record FormModel {
     public Guid FormId { get; init; }
 

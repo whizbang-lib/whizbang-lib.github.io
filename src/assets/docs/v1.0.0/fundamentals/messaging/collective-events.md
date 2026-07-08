@@ -1,6 +1,18 @@
 ---
 title: Collective Events
 order: 7
+codeReferences:
+  - src/Whizbang.Core/Messaging/ICollectiveEvent.cs
+  - src/Whizbang.Core/Messaging/ICollectiveScope.cs
+  - src/Whizbang.Core/Messaging/TenantCollectiveScope.cs
+  - src/Whizbang.Core/Perspectives/ICollectiveApplyFor.cs
+  - src/Whizbang.Core/Perspectives/CollectiveApplyForAttribute.cs
+  - src/Whizbang.Core/Perspectives/ICollectiveDispatcher.cs
+  - src/Whizbang.Core/Perspectives/CollectiveDispatcher.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/CollectiveEventContractTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/CollectiveDispatcherTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/CollectiveSpecContractTests.cs
 ---
 
 # Collective events

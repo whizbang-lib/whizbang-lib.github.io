@@ -7,6 +7,16 @@ description: >-
   Build the Inventory Worker - event subscription, stock reservations,
   compensation, and perspectives
 tags: 'tutorial, inventory-service, event-driven, perspectives, compensation'
+codeReferences:
+  - samples/ECommerce/ECommerce.InventoryWorker/Program.cs
+  - >-
+    samples/ECommerce/ECommerce.InventoryWorker/Receptors/ReserveInventoryReceptor.cs
+  - >-
+    samples/ECommerce/ECommerce.InventoryWorker/Perspectives/InventoryLevelsPerspective.cs
+  - >-
+    samples/ECommerce/ECommerce.Contracts/Commands/ReserveInventoryCommand.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/InventoryReservedEvent.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Inventory Service
@@ -586,7 +596,7 @@ public class Worker : BackgroundService {
 
 **Program.cs**:
 
-```csharp{title="Step 5: Worker Configuration (2)" description="Demonstrates step 5: Worker Configuration" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Worker"]}
+```csharp{title="Step 5: Worker Configuration (2)" description="Step 5: Worker Configuration" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Worker"]}
 using Whizbang.Core;
 using Whizbang.Data.Postgres;
 using Whizbang.Transports.AzureServiceBus;
@@ -687,14 +697,14 @@ builder.Build().Run();
 
 ### 1. Start Aspire
 
-```bash{title="Start Aspire" description="Demonstrates start Aspire" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Start", "Aspire"]}
+```bash{title="Start Aspire" description="Start Aspire" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Start", "Aspire"]}
 cd ECommerce.AppHost
 dotnet run
 ```
 
 ### 2. Create Order (Triggers Inventory Reservation)
 
-```bash{title="Create Order (Triggers Inventory Reservation)" description="Demonstrates create Order (Triggers Inventory Reservation)" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
+```bash{title="Create Order (Triggers Inventory Reservation)" description="Create Order (Triggers Inventory Reservation)" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{
@@ -723,7 +733,7 @@ Check Aspire Dashboard:
 
 ### 4. Verify Database
 
-```sql{title="Verify Database" description="Demonstrates verify Database" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Database"]}
+```sql{title="Verify Database" description="Verify Database" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Database"]}
 -- Check inventory (stock should be reduced)
 SELECT * FROM inventory WHERE product_id = 'prod-456';
 
@@ -853,7 +863,7 @@ public class ReleaseInventoryReceptor : IReceptor<PaymentFailed, InventoryReleas
 
 ### Unit Test - Sufficient Stock
 
-```csharp{title="Unit Test - Sufficient Stock" description="Demonstrates unit Test - Sufficient Stock" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Sufficient Stock" description="Unit Test - Sufficient Stock" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task ReserveInventory_SufficientStock_ReservesAndPublishesEventAsync() {
   // Arrange
@@ -883,7 +893,7 @@ public async Task ReserveInventory_SufficientStock_ReservesAndPublishesEventAsyn
 
 ### Unit Test - Insufficient Stock
 
-```csharp{title="Unit Test - Insufficient Stock" description="Demonstrates unit Test - Insufficient Stock" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Insufficient Stock" description="Unit Test - Insufficient Stock" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task ReserveInventory_InsufficientStock_ThrowsExceptionAsync() {
   // Arrange

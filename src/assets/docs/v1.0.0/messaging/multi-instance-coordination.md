@@ -1,3 +1,18 @@
+---
+title: "Multi-Instance Coordination"
+version: 1.0.0
+category: "Messaging"
+order: 8
+description: >-
+  Reliable, ordered message processing across multiple service instances using
+  lease-based coordination, partition reassignment, stale instance cleanup,
+  and cross-instance stream ordering guarantees.
+tags: 'multi-instance, coordination, lease-management, partitioning, distributed-processing, stream-ordering, scaling'
+codeReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # Multi-Instance Coordination
 
 ## Overview
@@ -324,7 +339,7 @@ sequenceDiagram
 
 **Deduplication Table**:
 
-```sql{title="Sequence Diagram" description="Deduplication Table:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Sequence", "Diagram"]}
+```sql{title="Sequence Diagram" description="Deduplication Table:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Sql", "Sequence", "Diagram"]}
 CREATE TABLE wh_message_deduplication (
   message_id UUID PRIMARY KEY,  -- Idempotency key
   first_seen_at TIMESTAMPTZ NOT NULL

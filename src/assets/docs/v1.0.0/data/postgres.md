@@ -5,6 +5,11 @@ category: Components
 order: 1
 description: PostgreSQL data provider for Whizbang applications
 tags: data, postgres, postgresql, database
+codeReferences:
+  - src/Whizbang.Data.Postgres/PostgresOptions.cs
+  - src/Whizbang.Data.Postgres/PostgresConnectionRetry.cs
+  - src/Whizbang.Data.Postgres/PostgresReadinessExtensions.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # PostgreSQL Data Provider
@@ -24,7 +29,7 @@ Whizbang provides first-class PostgreSQL support through:
 
 ## Installation
 
-```bash{title="Installation" description="Demonstrates installation" category="Implementation" difficulty="BEGINNER" tags=["Data", "Installation"]}
+```bash{title="Installation" description="Installation" category="Implementation" difficulty="BEGINNER" tags=["Data", "Installation"]}
 dotnet add package Whizbang.Data.EFCore.Postgres
 ```
 
@@ -32,7 +37,7 @@ dotnet add package Whizbang.Data.EFCore.Postgres
 
 ### Basic Setup
 
-```csharp{title="Basic Setup" description="Demonstrates basic Setup" category="Implementation" difficulty="BEGINNER" tags=["Data", "Basic", "Setup"]}
+```csharp{title="Basic Setup" description="Basic Setup" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Setup"]}
 services.AddWhizbang()
     .WithEFCore<MyDbContext>()
     .WithDriver.Postgres(connectionString);
@@ -72,7 +77,7 @@ services.AddWhizbang()
 
 The provider includes database readiness checks for health monitoring:
 
-```csharp{title="Readiness Checks" description="The provider includes database readiness checks for health monitoring:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Readiness", "Checks"]}
+```csharp{title="Readiness Checks" description="The provider includes database readiness checks for health monitoring:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Readiness", "Checks"]}
 services.AddHealthChecks()
     .AddPostgresReadinessCheck();
 ```
@@ -88,7 +93,7 @@ This verifies:
 
 PostgreSQL is the recommended backend for the Whizbang event store:
 
-```csharp{title="Event Store" description="PostgreSQL is the recommended backend for the Whizbang event store:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Event", "Store"]}
+```csharp{title="Event Store" description="PostgreSQL is the recommended backend for the Whizbang event store:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Event", "Store"]}
 // Events stored in optimized JSONB columns
 await eventStore.AppendAsync(streamId, new OrderCreatedEvent(...));
 ```
@@ -110,7 +115,7 @@ public class OrderPerspective : IPerspectiveFor<Order> {
 
 For AI/ML workloads, enable pgvector support:
 
-```csharp{title="Vector Search" description="For AI/ML workloads, enable pgvector support:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Vector", "Search"]}
+```csharp{title="Vector Search" description="For AI/ML workloads, enable pgvector support:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Vector", "Search"]}
 services.AddWhizbang()
     .WithEFCore<MyDbContext>()
     .WithDriver.Postgres(connectionString)

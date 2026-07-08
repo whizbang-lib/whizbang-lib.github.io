@@ -7,6 +7,12 @@ description: >-
   Optimize Whizbang performance - zero-allocation patterns, pooling, batching,
   and profiling
 tags: 'performance, optimization, profiling, zero-allocation, pooling'
+codeReferences:
+  - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  - src/Whizbang.Core/Workers/BatchedCompletionStrategy.cs
+  - src/Whizbang.Core/Workers/ProcessedEventCache.cs
+  - src/Whizbang.Core/Observability/WhizbangMetrics.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Performance Tuning
@@ -99,7 +105,7 @@ public static class PolicyContextPool {
 
 **Usage**:
 
-```csharp{title="Policy Context Pooling (2)" description="Demonstrates policy Context Pooling" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Policy", "Context"]}
+```csharp{title="Policy Context Pooling (2)" description="Policy Context Pooling" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Policy", "Context"]}
 var context = PolicyContextPool.Rent(message, envelope, services, "production");
 try {
   var config = await policyEngine.MatchAsync(context);
@@ -130,7 +136,7 @@ public static class ArrayPool {
 
 **Usage**:
 
-```csharp{title="Bulk Processing Pools (2)" description="Demonstrates bulk Processing Pools" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Bulk", "Processing"]}
+```csharp{title="Bulk Processing Pools (2)" description="Bulk Processing Pools" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Bulk", "Processing"]}
 var buffer = ArrayPool.Rent<OutboxMessage>(100);
 try {
   var count = await ClaimWorkAsync(buffer);
@@ -361,7 +367,7 @@ public class CreateOrderBenchmark {
 
 **Run**:
 
-```bash{title="BenchmarkDotNet (2)" description="Demonstrates benchmarkDotNet" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "BenchmarkDotNet"]}
+```bash{title="BenchmarkDotNet (2)" description="BenchmarkDotNet" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "BenchmarkDotNet"]}
 dotnet run -c Release --project Benchmarks
 ```
 

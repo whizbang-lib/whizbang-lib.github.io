@@ -1,0 +1,69 @@
+🔍 Validating alt text in Whizbang documentation...
+
+📊 Alt Text Validation Report
+================================\n
+📁 Files scanned: 305
+🖼️  Traditional images: 12
+📊 Mermaid diagrams: 45\n
+❌ Issues found: 12\n
+⚠️  Poor Quality Alt Text:
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/data/drivers.md: ![Version](https://img.shields.io/badge/version-1.0.0-blue)
+      Suggestion: Focus on the information the image conveys
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/data/drivers.md: ![Status](https://img.shields.io/badge/status-stable-green)
+      Suggestion: Use 10-50 words to provide meaningful context
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/extending/features/debugger-aware-clock.md: ![Version](https://img.shields.io/badge/version-1.0.0-blue)
+      Suggestion: Use 10-50 words to provide meaningful context
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/extending/features/debugger-aware-clock.md: ![Status](https://img.shields.io/badge/status-stable-green)
+      Suggestion: Focus on the information the image conveys
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/extending/features/vector-search.md: ![Version](https://img.shields.io/badge/version-1.0.0-blue)
+      Suggestion: Use 10-50 words to provide meaningful context
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/extending/features/vector-search.md: ![Status](https://img.shields.io/badge/status-stable-green)
+      Suggestion: Focus on the information the image conveys
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/fundamentals/events/ledger.md: ![Version](https://img.shields.io/badge/version-1.0.0-blue)
+      Suggestion: Use 10-50 words to provide meaningful context
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/fundamentals/events/ledger.md: ![Status](https://img.shields.io/badge/status-stable-green)
+      Suggestion: Focus on the information the image conveys
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/transports/transports.md: ![Version](https://img.shields.io/badge/version-1.0.0-blue)
+      Suggestion: Focus on the information the image conveys
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/transports/transports.md: ![Status](https://img.shields.io/badge/status-stable-green)
+      Suggestion: Focus on the information the image conveys
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md: ![Version](https://img.shields.io/badge/version-1.0.0-blue)
+      Suggestion: Include what the image shows, not just its type
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md: ![Status](https://img.shields.io/badge/status-stable-green)
+      Suggestion: Describe the purpose or meaning, not just the content
+
+💡 Recommendations:
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/drafts/core-concepts/cascade-context.md: Consider adding explanatory text before/after this graph diagram with 8 nodes and 8 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/roadmap/architecture.md: Consider adding explanatory text before/after this graph diagram with 12 nodes and 17 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md: Consider adding explanatory text before/after this graph diagram with 13 nodes and 42 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md: Consider adding explanatory text before/after this sequence diagram with 12 nodes and 17 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md: Consider adding explanatory text before/after this sequence diagram with 7 nodes and 12 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md: Consider adding explanatory text before/after this sequence diagram with 16 nodes and 15 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md: Consider adding explanatory text before/after this sequence diagram with 18 nodes and 24 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md: Consider adding explanatory text before/after this graph diagram with 11 nodes and 14 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md: Consider adding explanatory text before/after this sequence diagram with 6 nodes and 11 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/failure-handling.md: Consider adding explanatory text before/after this sequence diagram with 10 nodes and 13 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/failure-handling.md: Consider adding explanatory text before/after this sequence diagram with 9 nodes and 10 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/idempotency-patterns.md: Consider adding explanatory text before/after this sequence diagram with 18 nodes and 17 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/idempotency-patterns.md: Consider adding explanatory text before/after this graph diagram with 12 nodes and 13 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md: Consider adding explanatory text before/after this sequence diagram with 8 nodes and 16 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md: Consider adding explanatory text before/after this sequence diagram with 10 nodes and 16 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md: Consider adding explanatory text before/after this sequence diagram with 9 nodes and 15 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md: Consider adding explanatory text before/after this sequence diagram with 16 nodes and 11 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md: Consider adding explanatory text before/after this graph diagram with 11 nodes and 9 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md: Consider adding explanatory text before/after this sequence diagram with 11 nodes and 13 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md: Consider adding explanatory text before/after this sequence diagram with 26 nodes and 25 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md: Consider adding explanatory text before/after this sequence diagram with 20 nodes and 19 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/work-coordination.md: Consider adding explanatory text before/after this sequence diagram with 6 nodes and 13 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/messaging/work-coordination.md: Consider adding explanatory text before/after this sequence diagram with 4 nodes and 17 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/operations/workers/execution-lifecycle.md: Consider adding explanatory text before/after this sequence diagram with 11 nodes and 22 connections. Complex diagrams benefit from written context.
+   /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/docs/v1.0.0/operations/workers/perspective-worker.md: Consider adding explanatory text before/after this sequence diagram with 8 nodes and 12 connections. Complex diagrams benefit from written context.
+
+✅ Accessibility Status:
+   • 45 Mermaid diagrams with automated alt text
+
+🎯 Summary:
+   • Alt text coverage: 79%
+   • Automated alt text: ✅ Implemented for all Mermaid diagrams
+   • Manual review needed: 12 items
+\n❌ Alt text validation failed. Please fix the issues above.

@@ -24,11 +24,16 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/Sync/IEventCompletionAwaiter.cs
   - src/Whizbang.Core/Perspectives/Sync/EventCompletionAwaiter.cs
   - src/Whizbang.Core/Lenses/ISyncAwareLensQuery.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Synchronization
 
 **Perspective Synchronization** enables **read-your-writes consistency** for perspectives. When a handler emits events, it can wait for perspectives to process those events before querying, ensuring the handler sees its own changes.
+
+:::updated
+This is the comprehensive guide for perspective synchronization. For a quick reference covering just `SyncInquiry`, `SyncInquiryResult`, and `PerspectiveSyncAwaiter`, see [Perspective Sync (Quick Reference)](sync.md).
+:::
 
 ## The Problem {#problem}
 
@@ -366,7 +371,7 @@ The `SyncContext` provides handlers with information about the perspective sync 
 
 #### SyncContext Properties
 
-```csharp{title="SyncContext Properties" description="Demonstrates syncContext Properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "SyncContext", "Properties"]}
+```csharp{title="SyncContext Properties" description="SyncContext Properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "SyncContext", "Properties"]}
 public sealed class SyncContext {
   public Guid StreamId { get; init; }
   public Type PerspectiveType { get; init; }
@@ -503,7 +508,7 @@ public class Dispatcher {
 
 #### Implementation
 
-```csharp{title="Implementation" description="Demonstrates implementation" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Implementation"]}
+```csharp{title="Implementation" description="Implementation" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Implementation"]}
 public static class ScopedEventTrackerAccessor {
   private static readonly AsyncLocal<IScopedEventTracker?> _current = new();
 
@@ -660,7 +665,7 @@ Internally, waiter registrations are keyed by `awaiterId` using `ConcurrentDicti
 All awaiter classes implement `IAwaiterIdentity`, providing a unique `AwaiterId` for per-awaiter tracking and cleanup.
 :::
 
-```csharp{title="Awaiter Identity" description=":::new All awaiter classes implement IAwaiterIdentity, providing a unique AwaiterId for per-awaiter tracking and" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Awaiter", "Identity"]}
+```csharp{title="Awaiter Identity" description="Awaiter Identity" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Awaiter", "Identity"]}
 public interface IAwaiterIdentity {
   Guid AwaiterId { get; }
 }
@@ -816,13 +821,39 @@ await _perspectiveSyncAwaiter.WaitForStreamAsync(
 
 This enables cross-scope sync even though the events weren't emitted in the current scope.
 
+### AwaitPerspectiveSyncAttribute API {#await-attribute-api}
+
+The `[AwaitPerspectiveSync]` attribute configures perspective synchronization on a receptor class. It can be applied multiple times to wait for multiple perspectives.
+
+```csharp{title="AwaitPerspectiveSyncAttribute API" description="Attribute properties for configuring perspective sync" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "AwaitPerspectiveSyncAttribute", "API"]}
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public sealed class AwaitPerspectiveSyncAttribute(Type perspectiveType) : Attribute {
+    public static int DefaultTimeoutMs { get; set; } = 5000;
+
+    public Type PerspectiveType { get; }
+    public Type[]? EventTypes { get; init; }
+    public int TimeoutMs { get; init; } = -1;
+    public int EffectiveTimeoutMs { get; }
+    public SyncFireBehavior FireBehavior { get; init; } = SyncFireBehavior.FireOnSuccess;
+}
+```
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `PerspectiveType` | `Type` | (required) | The perspective type to wait for |
+| `EventTypes` | `Type[]?` | `null` | Event types to wait for. If null/empty, waits for ALL pending events on the stream. |
+| `TimeoutMs` | `int` | `-1` | Timeout in ms for this sync operation. `-1` uses `DefaultTimeoutMs`. |
+| `EffectiveTimeoutMs` | `int` | (computed) | Returns `TimeoutMs` if explicitly set, otherwise `DefaultTimeoutMs`. |
+| `FireBehavior` | `SyncFireBehavior` | `FireOnSuccess` | Controls handler invocation behavior on sync completion or timeout. |
+| `DefaultTimeoutMs` (static) | `int` | `5000` | Global default timeout. Individual attributes can override via `TimeoutMs`. |
+
 ### Fire Behavior Control {#fire-behavior}
 
 `SyncFireBehavior` controls what happens after perspective sync completes (or times out).
 
 #### Behavior Options
 
-```csharp{title="Behavior Options" description="Demonstrates behavior Options" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Behavior", "Options"]}
+```csharp{title="Behavior Options" description="Behavior Options" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Behavior", "Options"]}
 public enum SyncFireBehavior {
   /// <summary>
   /// Only invoke handler if sync completes successfully. Throw on timeout.
@@ -937,7 +968,7 @@ public async ValueTask LocalInvokeAsync<TMessage>(TMessage message) {
 
 #### Implementation Logic
 
-```csharp{title="Implementation Logic" description="Demonstrates implementation Logic" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Implementation", "Logic"]}
+```csharp{title="Implementation Logic" description="Implementation Logic" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Implementation", "Logic"]}
 private async ValueTask _awaitPerspectiveSyncIfNeededAsync(
     object message,
     Type messageType,
@@ -1233,7 +1264,7 @@ var options = SyncFilter.ForEventTypes<OrderCreatedEvent>()
 
 ### Combined AND/OR
 
-```csharp{title="Combined AND/OR" description="Demonstrates combined AND/OR" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Combined"]}
+```csharp{title="Combined AND/OR" description="Combined AND/OR" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Combined"]}
 // (OrderCreated AND PaymentProcessed) OR OrderCancelled
 var options = SyncFilter.ForStream(orderId)
     .AndEventTypes<OrderCreatedEvent>()
@@ -1280,21 +1311,21 @@ The system uses CPU time sampling to detect when execution is frozen at a breakp
 
 ### Do: Use CurrentScope for Same-Request Consistency
 
-```csharp{title="Do: Use CurrentScope for Same-Request Consistency" description="Demonstrates do: Use CurrentScope for Same-Request Consistency" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "CurrentScope"]}
+```csharp{title="Do: Use CurrentScope for Same-Request Consistency" description="Do: Use CurrentScope for Same-Request Consistency" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "CurrentScope"]}
 // Handler chain within same HTTP request - tracks all emitted events
 SyncFilter.CurrentScope()
 ```
 
 ### Do: Use ForStream for Specific Stream Consistency
 
-```csharp{title="Do: Use ForStream for Specific Stream Consistency" description="Demonstrates do: Use ForStream for Specific Stream Consistency" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "ForStream"]}
+```csharp{title="Do: Use ForStream for Specific Stream Consistency" description="Do: Use ForStream for Specific Stream Consistency" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "ForStream"]}
 // Wait for events on a specific stream
 SyncFilter.ForStream(orderId)
 ```
 
 ### Don't: Over-synchronize
 
-```csharp{title="Don't: Over-synchronize" description="Demonstrates don't: Over-synchronize" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "Over-synchronize"]}
+```csharp{title="Don't: Over-synchronize" description="Don't: Over-synchronize" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "Over-synchronize"]}
 // Avoid: Waiting for all events when you only need specific ones
 SyncFilter.All()  // Too broad
 
@@ -1304,7 +1335,7 @@ SyncFilter.ForEventTypes<OrderCreatedEvent>()
 
 ### Do: Set Appropriate Timeouts
 
-```csharp{title="Do: Set Appropriate Timeouts" description="Demonstrates do: Set Appropriate Timeouts" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "Set"]}
+```csharp{title="Do: Set Appropriate Timeouts" description="Do: Set Appropriate Timeouts" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "Set"]}
 // Short timeout for real-time responses
 .WithTimeout(TimeSpan.FromMilliseconds(500))
 
@@ -1331,6 +1362,6 @@ The key insight is tracking "what did I emit" vs "what has been processed" and b
 ## Related
 
 - **[Event Completion Awaiter](event-completion.md)** - Wait for ALL perspectives (RPC completion)
-- **Source Code**: [SyncFilter.cs](../../../code/Whizbang.Core/Perspectives/Sync/SyncFilter.cs)
-- **Tests**: [SyncFilterBuilderTests.cs](../../../tests/Whizbang.Core.Tests/Perspectives/Sync/)
+- **Source Code**: SyncFilter
+- **Tests**: SyncFilterBuilderTests
 - **Concepts**: [Perspectives](perspectives.md) | [Lenses](../lenses/lenses.md)

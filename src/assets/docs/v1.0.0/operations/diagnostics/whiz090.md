@@ -12,6 +12,10 @@ tags:
   - attributes
   - source-generator
   - naming-convention
+codeReferences:
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators/Analyzers/MessageTagParameterAnalyzer.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # WHIZ090: MessageTag Parameter Naming
@@ -41,7 +45,7 @@ Whizbang uses Roslyn's `AttributeData` API to extract attribute constructor argu
 
 ### Incorrect Code (Triggers WHIZ090)
 
-```csharp{title="Incorrect Code (Triggers WHIZ090)" description="Demonstrates incorrect Code (Triggers WHIZ090)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Incorrect", "Code"]}
+```csharp{title="Incorrect Code (Triggers WHIZ090)" description="Incorrect Code (Triggers WHIZ090)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Incorrect", "Code"]}
 [AttributeUsage(AttributeTargets.Class)]
 public class NotificationTagAttribute : MessageTagAttribute {
   public NotificationTagAttribute(string tagName) {  // WHIZ090: 'tagName' doesn't match 'Tag'
@@ -52,7 +56,7 @@ public class NotificationTagAttribute : MessageTagAttribute {
 
 ### Correct Code
 
-```csharp{title="Correct Code" description="Demonstrates correct Code" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Correct", "Code"]}
+```csharp{title="Correct Code" description="Correct Code" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Correct", "Code"]}
 [AttributeUsage(AttributeTargets.Class)]
 public class NotificationTagAttribute : MessageTagAttribute {
   public NotificationTagAttribute(string tag) {  // 'tag' matches 'Tag' (case-insensitive)
@@ -110,7 +114,7 @@ public class MyTagAttribute : MessageTagAttribute {
 
 ### Option 1: Rename Parameter to Match Property
 
-```csharp{title="Option 1: Rename Parameter to Match Property" description="Demonstrates option 1: Rename Parameter to Match Property" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Option", "Rename"]}
+```csharp{title="Option 1: Rename Parameter to Match Property" description="Option 1: Rename Parameter to Match Property" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Option", "Rename"]}
 // Before (WHIZ090 error)
 public MyTagAttribute(string tagName) {
   Tag = tagName;

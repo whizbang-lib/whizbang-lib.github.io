@@ -12,6 +12,7 @@ tags: >-
 codeReferences:
   - src/Whizbang.Generators/MessageRegistryGenerator.cs
   - tools/vscode-extension/src/staticAnalysis/messageRegistry.ts
+lastMaintainedCommit: '01f07906'
 ---
 
 # Message Registry
@@ -291,7 +292,7 @@ public class OrderSummaryPerspective :
 
 ### Complete Example
 
-```json{title="Complete Example" description="Demonstrates complete Example" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Complete", "Example"]}
+```json{title="Complete Example" description="Complete Example" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Complete", "Example"]}
 {
   "messages": [
     {
@@ -364,7 +365,7 @@ public class OrderSummaryPerspective :
 
 ### Installing the Extension
 
-```bash{title="Installing the Extension" description="Demonstrates installing the Extension" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Installing", "Extension"]}
+```bash{title="Installing the Extension" description="Installing the Extension" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Installing", "Extension"]}
 # From VSCode Extensions panel:
 # Search: "Whizbang"
 # Install: Whizbang Message Flow Visualizer
@@ -448,19 +449,19 @@ Generator runs automatically during build. Optional: Copy JSON to `.whizbang/` f
     <MessageRegistryFiles Include="$(IntermediateOutputPath)generated/**/*MessageRegistry.g.cs" />
   </ItemGroup>
 
-  <!-- Extract JSON from generated C# file and write to .whizbang/message-registry.json -->
+  <!-- Extract JSON from generated C# file and write to .whizbang/cache/message-registry.json -->
   <Exec Command="dotnet run --project tools/extract-message-registry.csproj" />
 </Target>
 ```
 
 ### Extract JSON Script
 
-```csharp{title="Extract JSON Script" description="Demonstrates extract JSON Script" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Extract", "JSON"]}
+```csharp{title="Extract JSON Script" description="Extract JSON Script" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Extract", "JSON"]}
 // tools/extract-message-registry/Program.cs
 using System.Text.RegularExpressions;
 
 var generatedFile = args[0];  // Path to MessageRegistry.g.cs
-var outputFile = ".whizbang/message-registry.json";
+var outputFile = ".whizbang/cache/message-registry.json";
 
 var content = File.ReadAllText(generatedFile);
 
@@ -477,7 +478,7 @@ if (match.Success) {
 **Run after build**:
 ```bash{title="Extract JSON Script (2)" description="Run after build:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Extract", "JSON"]}
 dotnet build
-# Writes .whizbang/message-registry.json
+# Writes .whizbang/cache/message-registry.json
 ```
 
 ---
@@ -614,18 +615,18 @@ Or configured output:
 ```xml{title="View Generated File" description="Or configured output:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
 <PropertyGroup>
   <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-  <CompilerGeneratedFilesOutputPath>.whizbang-generated</CompilerGeneratedFilesOutputPath>
+  <CompilerGeneratedFilesOutputPath>.whizbang/cache</CompilerGeneratedFilesOutputPath>
 </PropertyGroup>
 ```
 
 ### Validate JSON
 
-```bash{title="Validate JSON" description="Demonstrates validate JSON" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Validate", "JSON"]}
+```bash{title="Validate JSON" description="Validate JSON" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Validate", "JSON"]}
 # Extract JSON from generated file
 dotnet run --project tools/extract-message-registry.csproj
 
 # Validate JSON
-cat .whizbang/message-registry.json | jq .
+cat .whizbang/cache/message-registry.json | jq .
 
 # Output:
 {
@@ -647,7 +648,7 @@ View extension logs:
 3. See message registry loading and parsing
 
 ```
-[Whizbang] Loading message registry from .whizbang/message-registry.json
+[Whizbang] Loading message registry from .whizbang/cache/message-registry.json
 [Whizbang] Found 15 messages
 [Whizbang] Registered 42 CodeLens providers
 [Whizbang] Registry loaded successfully
@@ -662,7 +663,7 @@ View extension logs:
 - ✅ **Use ICommand and IEvent** markers for all messages
 - ✅ **Keep messages in dedicated folders** (Commands/, Events/)
 - ✅ **Use descriptive names** (CreateOrder, not Order1)
-- ✅ **Commit .whizbang/message-registry.json** to source control (helps team)
+- ✅ **Commit .whizbang/cache/message-registry.json** to source control (helps team)
 - ✅ **Rebuild after adding new messages** (F5 in VSCode to reload extension)
 
 ### DON'T ❌
@@ -686,14 +687,14 @@ View extension logs:
 3. Extension not loaded
 
 **Solution**:
-```bash{title="Problem: CodeLens Not Showing" description="Demonstrates problem: CodeLens Not Showing" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "CodeLens"]}
+```bash{title="Problem: CodeLens Not Showing" description="Problem: CodeLens Not Showing" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "CodeLens"]}
 # 1. Verify extension installed
 code --list-extensions | grep whizbang
 
 # 2. Rebuild project (generates registry)
 dotnet build
 
-# 3. Check .whizbang/message-registry.json exists
+# 3. Check .whizbang/cache/message-registry.json exists
 ls -la .whizbang/
 
 # 4. Reload VSCode window
@@ -709,12 +710,12 @@ Ctrl+Shift+P → "Developer: Reload Window"
 2. Receptor not discovered (missing IReceptor interface)
 
 **Solution**:
-```bash{title="Problem: Wrong Handler Count" description="Demonstrates problem: Wrong Handler Count" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Wrong"]}
+```bash{title="Problem: Wrong Handler Count" description="Problem: Wrong Handler Count" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Wrong"]}
 # Clean and rebuild
 dotnet clean && dotnet build
 
 # Check generated file
-cat .whizbang/message-registry.json | jq '.messages[] | select(.type == "MyApp.Commands.CreateOrder")'
+cat .whizbang/cache/message-registry.json | jq '.messages[] | select(.type == "MyApp.Commands.CreateOrder")'
 
 # Verify receptor implements interface correctly
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {

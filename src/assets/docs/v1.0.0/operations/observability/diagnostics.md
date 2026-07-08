@@ -9,6 +9,7 @@ description: >-
 tags: 'diagnostics, health-check, monitoring, system-commands, observability'
 codeReferences:
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # Diagnostics
@@ -292,7 +293,7 @@ public class DiagnosticCollectorPerspective : IPerspective {
 
 Integrate diagnostics with monitoring dashboards:
 
-```csharp{title="Dashboard Diagnostics" description="Expose diagnostics via API" category="Usage" difficulty="INTERMEDIATE" tags=["Diagnostics", "Monitoring", "Dashboard"]}
+```csharp{title="Dashboard Diagnostics" description="Expose diagnostics via API" category="Usage" difficulty="INTERMEDIATE" tags=["Operations", "Observability", "C#", "Dashboard", "Diagnostics"]}
 public class SystemDiagnosticsHub : Hub {
   private readonly IDispatcher _dispatcher;
   private readonly ILens<DiagnosticCollectorPerspective> _diagnosticsLens;

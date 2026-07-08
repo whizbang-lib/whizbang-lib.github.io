@@ -1,3 +1,18 @@
+---
+title: GraphQL Integration
+version: 1.0.0
+category: GraphQL
+order: 1
+description: >-
+  Overview of Whizbang's HotChocolate GraphQL integration for Lenses with
+  automatic query generation, filtering, sorting, paging, projection, and
+  scope-aware multi-tenancy. Fully AOT compatible via source generators.
+tags: 'graphql, hotchocolate, lenses, aot, query-generation, paging, projection'
+codeReferences:
+  - src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangExtensions.cs
+lastMaintainedCommit: '01f07906'
+---
+
 # GraphQL Integration
 
 Whizbang provides seamless HotChocolate GraphQL integration for Lenses, enabling powerful filtering, sorting, paging, and projection capabilities with full AOT compatibility.
@@ -15,20 +30,20 @@ The `Whizbang.Transports.HotChocolate` package integrates Whizbang Lenses with [
 
 ### 1. Install the Package
 
-```bash{title="Install the Package" description="Demonstrates install the Package" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Install", "Package"]}
+```bash{title="Install the Package" description="Install the Package" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Install", "Package"]}
 dotnet add package Whizbang.Transports.HotChocolate
 ```
 
 ### 2. Define Your Lens
 
-```csharp{title="Define Your Lens" description="Demonstrates define Your Lens" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Define", "Your"]}
+```csharp{title="Define Your Lens" description="Define Your Lens" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Define", "Your"]}
 [GraphQLLens(QueryName = "orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 ```
 
 ### 3. Configure Services
 
-```csharp{title="Configure Services" description="Demonstrates configure Services" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Configure", "Services"]}
+```csharp{title="Configure Services" description="Configure Services" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Configure", "Services"]}
 // Program.cs
 builder.Services.AddGraphQLServer()
     .AddWhizbangLenses()
@@ -44,7 +59,7 @@ app.MapGraphQL();
 
 ### 4. Query Your Data
 
-```graphql
+```graphql{title="" description="" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 {
   orders(
     where: { data: { status: { eq: "Completed" } } }

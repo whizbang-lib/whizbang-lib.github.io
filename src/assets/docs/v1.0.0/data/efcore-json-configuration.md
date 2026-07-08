@@ -4,6 +4,10 @@ category: Data
 order: 10
 description: Configuring EF Core 10 with custom JSON converters for JSONB columns
 tags: efcore, json, jsonb, postgresql, npgsql, converters
+codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres/Serialization/EFCoreJsonContext.cs
+  - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+lastMaintainedCommit: '01f07906'
 ---
 
 # EF Core 10 JSON Configuration with Custom Converters
@@ -14,7 +18,7 @@ EF Core 10 has native JSONB support for PostgreSQL. When using custom JSON conve
 
 ## ✅ Correct Approach
 
-```csharp{title="✅ Correct Approach" description="Demonstrates ✅ Correct Approach" category="Implementation" difficulty="BEGINNER" tags=["Data", "Correct", "Approach"]}
+```csharp{title="✅ Correct Approach" description="✅ Correct Approach" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Correct", "Approach"]}
 // 1. Create JsonSerializerOptions with your custom converters
 var jsonOptions = WhizbangJsonContext.CreateOptions();
 
@@ -30,7 +34,7 @@ builder.Services.AddDbContext<MyDbContext>(options => {
 
 ## ❌ Incorrect Approach (Bypasses EF Core ORM)
 
-```csharp{title="❌ Incorrect Approach (Bypasses EF Core ORM)" description="Demonstrates ❌ Incorrect Approach (Bypasses EF Core ORM)" category="Implementation" difficulty="BEGINNER" tags=["Data", "Incorrect", "Approach", "Bypasses"]}
+```csharp{title="❌ Incorrect Approach (Bypasses EF Core ORM)" description="❌ Incorrect Approach (Bypasses EF Core ORM)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Incorrect", "Approach", "Bypasses"]}
 // DON'T DO THIS - it bypasses EF Core's ORM layer
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 dataSourceBuilder.ConfigureJsonOptions(jsonOptions);
@@ -66,7 +70,7 @@ Use this pattern when:
 
 Perspective rows store lens DTOs in JSONB columns:
 
-```csharp{title="Example: Perspective Row Storage" description="Perspective rows store lens DTOs in JSONB columns:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Example:", "Perspective", "Row"]}
+```csharp{title="Example: Perspective Row Storage" description="Perspective rows store lens DTOs in JSONB columns:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Example:", "Perspective", "Row"]}
 public class PerspectiveRow<TLensDto> where TLensDto : class {
   public Guid Id { get; set; }
   public TLensDto Data { get; set; } // Stored as JSONB
