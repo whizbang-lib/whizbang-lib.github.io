@@ -53,7 +53,14 @@ has likely passed.
 
 Operators that need finer control replace the default policy via DI:
 
-```csharp
+```csharp{
+title: "Register a custom DLQ recovery policy"
+description: "Replaces the default IDeadLetterRecoveryPolicy via DI to customize retry counts, cooldowns, stream recovery mode, and whether a given DLQ entry should recover at all."
+framework: "NET10"
+category: "Dead Letter Queue"
+difficulty: "ADVANCED"
+tags: ["dead-letter", "recovery", "IDeadLetterRecoveryPolicy", "RecoveryPolicy", "custom-policy"]
+}
 services.AddSingleton<IDeadLetterRecoveryPolicy, MyCustomPolicy>();
 
 public sealed class MyCustomPolicy : IDeadLetterRecoveryPolicy {
@@ -111,7 +118,13 @@ its normal recovery cadence.
 
 Disable globally via:
 
-```json
+```json{
+title: "Disable generation-tagged auto-replay"
+description: "Sets EnableGenerationReplay to false so DLQ rows are not automatically given a free retry attempt on each new deploy generation."
+category: "Dead Letter Queue"
+difficulty: "BEGINNER"
+tags: ["dead-letter", "recovery", "generation-replay", "configuration"]
+}
 {
   "Whizbang": {
     "DeadLetterRecovery": { "EnableGenerationReplay": false }

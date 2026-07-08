@@ -42,7 +42,13 @@ slow — broker DLQ recovery isn't latency-sensitive.
 
 ## Defaults
 
-```json
+```json{
+title: "Configure the transport DLQ drain worker"
+description: "appsettings defaults controlling the broker DLQ drain backstop — enable flag, sweep interval, and the per-tick message cap."
+category: "Operations"
+difficulty: "BEGINNER"
+tags: ["dead-letter", "transport-recovery", "TransportDeadLetterDrainWorker", "configuration"]
+}
 {
   "Whizbang": {
     "TransportDeadLetterDrainWorker": {
@@ -68,7 +74,14 @@ new message.
 
 Registration (one per subscription):
 
-```csharp
+```csharp{
+title: "Register an Azure Service Bus dead-letter drainer"
+description: "Wires an AzureServiceBusDeadLetterDrainer per subscription so the worker can drain the ASB $DeadLetterQueue back onto the topic's receive path."
+framework: "NET10"
+category: "Operations"
+difficulty: "INTERMEDIATE"
+tags: ["dead-letter", "transport-recovery", "azure-service-bus", "ITransportDeadLetterDrainer"]
+}
 services.AddSingleton<ITransportDeadLetterDrainer>(sp =>
   new AzureServiceBusDeadLetterDrainer(
     client: sp.GetRequiredService<ServiceBusClient>(),
@@ -91,7 +104,14 @@ exchange + the message's current routing key when the header is missing
 
 Registration:
 
-```csharp
+```csharp{
+title: "Register a RabbitMQ dead-letter drainer"
+description: "Wires a RabbitMqDeadLetterDrainer that reads the DLQ, resolves the original exchange/routing-key from the x-death header, and re-publishes with a fallback exchange."
+framework: "NET10"
+category: "Operations"
+difficulty: "INTERMEDIATE"
+tags: ["dead-letter", "transport-recovery", "rabbitmq", "ITransportDeadLetterDrainer"]
+}
 services.AddSingleton<ITransportDeadLetterDrainer>(sp =>
   new RabbitMqDeadLetterDrainer(
     connection: sp.GetRequiredService<IConnection>(),
@@ -120,7 +140,14 @@ The worker exposes `DrainOnceAsync(CancellationToken)` publicly so
 operator endpoints can trigger an immediate sweep without waiting for
 the next interval:
 
-```csharp
+```csharp{
+title: "Trigger an on-demand broker DLQ drain"
+description: "Maps an operator endpoint that calls DrainOnceAsync to sweep every registered transport drainer immediately instead of waiting for the next interval tick."
+framework: "NET10"
+category: "Operations"
+difficulty: "INTERMEDIATE"
+tags: ["dead-letter", "transport-recovery", "DrainOnceAsync", "operator-endpoint"]
+}
 app.MapPost("/admin/transport-dlq/drain-now", async (
     TransportDeadLetterDrainWorker worker,
     CancellationToken ct) => {

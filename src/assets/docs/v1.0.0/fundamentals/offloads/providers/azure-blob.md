@@ -20,7 +20,14 @@ codeReferences:
 
 ## Registration
 
-```csharp
+```csharp{
+title: "Register the Azure Blob body-offload provider"
+description: "Wires the Azure Blob store as a named body-offload provider and points MessageBodyOffloadOptions at it so envelopes over the size threshold auto-offload."
+framework: "NET10"
+category: "Offloads"
+difficulty: "BEGINNER"
+tags: ["body-offload", "azure-blob", "claim-check", "dependency-injection", "configuration"]
+}
 services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => {
   opts.ConnectionString = builder.Configuration.GetConnectionString("Storage");
   opts.ContainerName    = "whizbang-offload-bodies";
@@ -41,7 +48,14 @@ Multiple Azure Blob providers can coexist (e.g., `"azure-blob-prod"` + `"azure-b
 
 The SDK's connection-string convention does the work:
 
-```csharp
+```csharp{
+title: "Switch between Azurite emulator and live Azure Blob"
+description: "Shows how the Azure SDK connection-string convention alone selects the Azurite emulator or a live Azure Blob account without any code change."
+framework: "NET10"
+category: "Offloads"
+difficulty: "BEGINNER"
+tags: ["azure-blob", "azurite", "connection-string", "body-offload", "emulator"]
+}
 // Azurite (local dev / CI integration tests)
 opts.ConnectionString = "UseDevelopmentStorage=true";
 
@@ -76,7 +90,14 @@ Two cleanup paths, both supported:
 
 ## Production deployment recipe
 
-```csharp
+```csharp{
+title: "Production Azure Blob body-offload deployment recipe"
+description: "A hardened production wire-up with a required connection string, a defensive MaxDownloadBytes cap, and TTL-based cleanup instead of active deletion."
+framework: "NET10"
+category: "Offloads"
+difficulty: "INTERMEDIATE"
+tags: ["body-offload", "azure-blob", "production", "claim-check", "cleanup", "max-download-bytes"]
+}
 services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => {
   opts.ConnectionString = builder.Configuration.GetConnectionString("Storage")
       ?? throw new InvalidOperationException("Storage connection string is required");

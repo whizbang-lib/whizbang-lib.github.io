@@ -129,7 +129,7 @@ npm install && npm run build</code></pre>
 # MCP Tools: search-docs, find-examples, get-code-location, get-related-docs, get-tests-for-code</code></pre>
     </div>
 
-    <p class="stats">Generated: 2026-07-08T02:03:37.266Z | Total documents: 315</p>
+    <p class="stats">Generated: 2026-07-08T02:43:40.295Z | Total documents: 315</p>
   </header>
 
   <nav>
@@ -26728,7 +26728,13 @@ npm install && npm run build</code></pre>
 
 <p></code>PublishOnceAsync<code> calls </code>IClaimedEmissionStore.TryClaimAsync(claimKey, …)<code>. The Postgres implementation runs:</p>
 
-<p></code></pre>sql</p>
+<p></code></pre>sql{</p>
+<p>title: "Atomic claim via INSERT ... ON CONFLICT DO NOTHING"</p>
+<p>description: "The Postgres statement behind PublishOnceAsync that lets exactly one concurrent emitter win a claim key while the losers affect zero rows, closing the check-to-commit race window at the storage layer."</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["publish-once", "exactly-once", "postgres", "on-conflict", "idempotency"]</p>
+<p>}</p>
 <p>INSERT INTO wh_unique_emission_claims (claim_key, claimed_by_event_id)</p>
 <p>VALUES (@key, @eventId)</p>
 <p>ON CONFLICT (claim_key) DO NOTHING;</p>
@@ -28354,7 +28360,15 @@ npm install && npm run build</code></pre>
 
 <h2>The contract</h2>
 
-<pre><code class="language-csharp">public enum SyncMode {
+<p>``<code>csharp{</p>
+<p>title: "SyncMode enum and the CT-only LocalInvokeAndSyncAsync overload"</p>
+<p>description: "Defines the two read-after-write sync levels (StreamOnly, AllProjections) and the CancellationToken-only dispatch overload that requires an explicit SyncMode at every callsite."</p>
+<p>framework: "NET10"</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["sync-mode", "dispatcher", "read-after-write", "cqrs", "cancellation-token"]</p>
+<p>}</p>
+<p>public enum SyncMode {</p>
 <p>  /// Wait until events are durably written + the local stream version</p>
 <p>  /// has caught up. Does NOT wait for perspectives.</p>
 <p>  StreamOnly,</p>
@@ -28369,23 +28383,30 @@ npm install && npm run build</code></pre>
 <p>    SyncMode mode,                              // required (no default)</p>
 <p>    CancellationToken cancellationToken = default)</p>
 <p>    where TMessage : notnull;</p>
-<p></code></pre></p>
+<pre><code class="language-">
+<p></code>SyncMode<code> has <strong>no default value</strong>. Every callsite must declare its read-after-write expectation explicitly. Two reasons:</p>
 
-<code>SyncMode</code> has <strong>no default value</strong>. Every callsite must declare its read-after-write expectation explicitly. Two reasons:
-
-<ul><li><strong>Disambiguation</strong>: a defaulted <code>SyncMode</code> would conflict with the legacy timeout-shaped overloads (both methods would match <code>LocalInvokeAndSyncAsync(cmd)</code>).</li>
+<ul><li><strong>Disambiguation</strong>: a defaulted </code>SyncMode<code> would conflict with the legacy timeout-shaped overloads (both methods would match </code>LocalInvokeAndSyncAsync(cmd)<code>).</li>
 <li><strong>Design intent</strong>: read-after-write vs. fast-path is a meaningful per-call decision. Burying it in a default hides the cost; making it explicit surfaces intent at the callsite.</li>
 </ul>
-<code>CancellationToken</code> is the <strong>only wait bound</strong>. There is no <code>TimeSpan</code> timeout parameter. Perspective health is an observability concern, not a per-call defense — wrap your own <code>CancellationTokenSource(TimeSpan.FromMinutes(2))</code> if you want a timeout. The framework doesn't provide one for you.
+<p></code>CancellationToken<code> is the <strong>only wait bound</strong>. There is no </code>TimeSpan<code> timeout parameter. Perspective health is an observability concern, not a per-call defense — wrap your own </code>CancellationTokenSource(TimeSpan.FromMinutes(2))<code> if you want a timeout. The framework doesn't provide one for you.</p>
 
 <h2>When to use which mode</h2>
 
 <p>| Mode | Use when | Performance |</p>
 <p>|---|---|---|</p>
-<p>| <code>SyncMode.AllProjections</code> | The caller reads from any local perspective in the same request (the normal CQRS case). | Pays the cost of awaiting every subscribed perspective's signal. |</p>
-<p>| <code>SyncMode.StreamOnly</code> | The caller doesn't read after writing in this request, or perspective-sync latency is unacceptable for a hot bulk path. | Returns at stream catchup. No perspective wait. |</p>
+<p>| </code>SyncMode.AllProjections<code> | The caller reads from any local perspective in the same request (the normal CQRS case). | Pays the cost of awaiting every subscribed perspective's signal. |</p>
+<p>| </code>SyncMode.StreamOnly<code> | The caller doesn't read after writing in this request, or perspective-sync latency is unacceptable for a hot bulk path. | Returns at stream catchup. No perspective wait. |</p>
 
-<pre><code class="language-csharp">// Read-after-write: dispatch + wait for projections before the next read
+<p></code></pre>csharp{</p>
+<p>title: "Choose AllProjections for read-after-write vs StreamOnly for the fast path"</p>
+<p>description: "Contrasts a CQRS read-after-write dispatch that awaits every subscribed perspective against a StreamOnly fast-path dispatch that returns at stream catchup without waiting on perspectives."</p>
+<p>framework: "NET10"</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["sync-mode", "dispatcher", "all-projections", "stream-only", "read-after-write"]</p>
+<p>}</p>
+<p>// Read-after-write: dispatch + wait for projections before the next read</p>
 <p>await dispatcher.LocalInvokeAndSyncAsync(</p>
 <p>    new CreateOrderCommand { /<em> … </em>/ },</p>
 <p>    SyncMode.AllProjections,</p>
@@ -28400,52 +28421,73 @@ npm install && npm run build</code></pre>
 <p>    SyncMode.StreamOnly,</p>
 <p>    cancellationToken);</p>
 <p>// No read after this point in the request; perspectives catch up async</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <h2>Migration from the timeout-shaped overloads</h2>
 
-<p>The three legacy overloads carry <code>[Obsolete]</code> attributes pointing at the new API:</p>
+<p>The three legacy overloads carry </code>[Obsolete]<code> attributes pointing at the new API:</p>
 
-<pre><code class="language-csharp">// LEGACY (Obsolete in W4, removed in next major)
+<p></code></pre>csharp{</p>
+<p>title: "Migrate a timeout-shaped call to the SyncMode overload"</p>
+<p>description: "Shows the [Obsolete] TimeSpan-timeout LocalInvokeAndSyncAsync call and its replacement using SyncMode.AllProjections plus a CancellationToken."</p>
+<p>framework: "NET10"</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["sync-mode", "dispatcher", "migration", "obsolete", "cancellation-token"]</p>
+<p>}</p>
+<p>// LEGACY (Obsolete in W4, removed in next major)</p>
 <p>await dispatcher.LocalInvokeAndSyncAsync(</p>
 <p>    cmd, timeout: TimeSpan.FromSeconds(30));</p>
 
 <p>// NEW</p>
 <p>await dispatcher.LocalInvokeAndSyncAsync(</p>
 <p>    cmd, SyncMode.AllProjections, cancellationToken);</p>
-<p></code></pre></p>
+<pre><code class="language-">
+<p>For callers using the typed-result overload </code><TMessage, TResult><code>, split into </code>LocalInvokeAsync<TResult><code> plus an optional sync step:</p>
 
-<p>For callers using the typed-result overload <code><TMessage, TResult></code>, split into <code>LocalInvokeAsync<TResult></code> plus an optional sync step:</p>
-
-<pre><code class="language-csharp">// LEGACY
+<p></code></pre>csharp{</p>
+<p>title: "Split a typed-result timeout call into LocalInvokeAsync plus a sync step"</p>
+<p>description: "Migrates the obsolete typed-result LocalInvokeAndSyncAsync<TMessage, TResult> overload into a LocalInvokeAsync<TResult> call followed by an optional SyncMode.AllProjections sync when read-after-write is needed."</p>
+<p>framework: "NET10"</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["sync-mode", "dispatcher", "migration", "typed-result", "read-after-write"]</p>
+<p>}</p>
+<p>// LEGACY</p>
 <p>var result = await dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderResult>(</p>
 <p>    cmd, timeout: TimeSpan.FromSeconds(10));</p>
 
 <p>// NEW (when read-after-write needed)</p>
 <p>var result = await dispatcher.LocalInvokeAsync<OrderResult>(cmd);</p>
 <p>await dispatcher.LocalInvokeAndSyncAsync(new NoOpSyncSentinel(), SyncMode.AllProjections, cancellationToken);</p>
-<p></code></pre></p>
-
-<p>If splitting isn't practical, the legacy overload still functions (it's <code>[Obsolete]</code>-warned, not removed). Migrate when convenient.</p>
+<pre><code class="language-">
+<p>If splitting isn't practical, the legacy overload still functions (it's </code>[Obsolete]<code>-warned, not removed). Migrate when convenient.</p>
 
 <h2>Why no implicit timeout</h2>
 
 <p>Two failure modes the timeout shape encourages but signal-based dispatch handles correctly:</p>
 
-<ul><li><strong>Cold start.</strong> Docker bootstrap, slot warmup, or first-event-after-deploy can exceed any single fixed default (30s, 60s, even 5min). A <code>TimeSpan</code> parameter pushes the caller to guess; getting it wrong fails tests under load that pass on warm machines.</li>
-<li><strong>Defensive polling on top of the call.</strong> Callers that don't trust the dispatcher's wait wrap it in <code>PollUntilAsync(100ms, 15s)</code> — two timers stacked, neither tuned for the actual workload. The W4 design forces this question to the surface: if the dispatcher's wait isn't fast enough, the issue is the perspective, not the caller.</li>
+<ul><li><strong>Cold start.</strong> Docker bootstrap, slot warmup, or first-event-after-deploy can exceed any single fixed default (30s, 60s, even 5min). A </code>TimeSpan<code> parameter pushes the caller to guess; getting it wrong fails tests under load that pass on warm machines.</li>
+<li><strong>Defensive polling on top of the call.</strong> Callers that don't trust the dispatcher's wait wrap it in </code>PollUntilAsync(100ms, 15s)<code> — two timers stacked, neither tuned for the actual workload. The W4 design forces this question to the surface: if the dispatcher's wait isn't fast enough, the issue is the perspective, not the caller.</li>
 </ul>
-<code>CancellationToken</code>-only means the caller's own request boundaries (HTTP request timeout, hosted-service shutdown CT, etc.) are the wait bound. If you want a 2-minute upper bound for a specific call, construct a linked CTS:
+<p></code>CancellationToken<code>-only means the caller's own request boundaries (HTTP request timeout, hosted-service shutdown CT, etc.) are the wait bound. If you want a 2-minute upper bound for a specific call, construct a linked CTS:</p>
 
-<pre><code class="language-csharp">using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(httpContext.RequestAborted);
+<p></code></pre>csharp{</p>
+<p>title: "Bound a SyncMode wait with a linked CancellationTokenSource"</p>
+<p>description: "Constructs a linked CTS from the HTTP request-aborted token with a CancelAfter upper bound so a single sync-dispatch call gets a caller-owned timeout without a framework-provided TimeSpan."</p>
+<p>framework: "NET10"</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["sync-mode", "dispatcher", "cancellation-token", "timeout", "linked-cts"]</p>
+<p>}</p>
+<p>using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(httpContext.RequestAborted);</p>
 <p>linkedCts.CancelAfter(TimeSpan.FromMinutes(2));</p>
 
 <p>await dispatcher.LocalInvokeAndSyncAsync(cmd, SyncMode.AllProjections, linkedCts.Token);</p>
-<p></code></pre></p>
+<p></code>`<code></p>
 
 <h2>Observability</h2>
 
-<p>The dispatcher emits a histogram <code>whizbang.dispatcher.sync_wait_ms</code> tagged by perspective count. P99 tail growth indicates perspectives slowing down — a deploy-time / pager-time signal, not a per-call defense.</p>
+<p>The dispatcher emits a histogram </code>whizbang.dispatcher.sync_wait_ms` tagged by perspective count. P99 tail growth indicates perspectives slowing down — a deploy-time / pager-time signal, not a per-call defense.</p>
   </div>
   <p><a href="#top">[Back to top]</a></p>
 </article>
@@ -32270,7 +32312,14 @@ npm install && npm run build</code></pre>
 <code>.whizbang/cache/</code> subfolder) — that records, per pinned id, the type's current CLR name and every
 <strong>former</strong> name it has had:
 
-<pre><code class="language-json">{
+<p>``<code>json{</p>
+<p>title: "Pinned-type ledger entry with a former name"</p>
+<p>description: "Shows the committed .whizbang/pinned-type-ledger.json lockfile recording a pinned id's current CLR name plus every former name, so renamed events still deserialize."</p>
+<p>category: "Identity"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["pinned-id", "type-rename", "ledger", "lockfile", "former-names"]</p>
+<p>}</p>
+<p>{</p>
 <p>  "version": 1,</p>
 <p>  "types": [</p>
 <p>    {</p>
@@ -32281,23 +32330,22 @@ npm install && npm run build</code></pre>
 <p>    }</p>
 <p>  ]</p>
 <p>}</p>
-<p></code></pre></p>
-
-<p>Like <code>package-lock.json</code>, it is generated by tooling, <strong>reviewed as a diff</strong>, and committed. Three build-time</p>
+<pre><code class="language-">
+<p>Like </code>package-lock.json<code>, it is generated by tooling, <strong>reviewed as a diff</strong>, and committed. Three build-time</p>
 <p>components read and maintain it — all AOT-safe, all opt-in.</p>
 
 <h2>The four components</h2>
 
 <h3>1. Ledger generator (bootstrap + monotonic merge)</h3>
 
-<code>PinnedTypeLedgerGenerator</code> discovers every <code>[PinnedId]</code> message and perspective type in the assembly, <strong>merges</strong>
-<p>it with the committed ledger, and emits the merged JSON as a C# constant (<code>PinnedTypeLedger.g.cs</code>). An MSBuild</p>
-<p>target extracts that constant to <code>.whizbang/pinned-type-ledger.json</code> after each build.</p>
+<p></code>PinnedTypeLedgerGenerator<code> discovers every </code>[PinnedId]<code> message and perspective type in the assembly, <strong>merges</strong></p>
+<p>it with the committed ledger, and emits the merged JSON as a C# constant (</code>PinnedTypeLedger.g.cs<code>). An MSBuild</p>
+<p>target extracts that constant to </code>.whizbang/pinned-type-ledger.json<code> after each build.</p>
 
 <p>The merge is a <strong>monotonic lockfile update</strong>:</p>
 
-<ul><li><strong>New</strong> pinned ids are added with the current name and empty <code>formerNames</code>, so every type is governed from birth.</li>
-<li><strong>Existing</strong> entries are preserved verbatim — their <code>clrTypeName</code> is <strong>never</strong> refreshed to the current name.</li>
+<ul><li><strong>New</strong> pinned ids are added with the current name and empty </code>formerNames<code>, so every type is governed from birth.</li>
+<li><strong>Existing</strong> entries are preserved verbatim — their </code>clrTypeName<code> is <strong>never</strong> refreshed to the current name.</li>
 </ul><p>  That is deliberate: it is exactly what makes a rename detectable (see WHIZ120 below).</p>
 <ul><li><strong>Orphan</strong> entries (a pinned id with no living type) are retained; <a href="../../operations/diagnostics/whiz121">WHIZ121</a></li>
 </ul><p>  surfaces them for you to prune.</p>
@@ -32306,10 +32354,10 @@ npm install && npm run build</code></pre>
 
 <h3>2. Governance gate (WHIZ120 / WHIZ121)</h3>
 
-<code>PinnedTypeRenameAnalyzer</code> diffs the compiled <code>[PinnedId]</code> types against the committed ledger:
+<p></code>PinnedTypeRenameAnalyzer<code> diffs the compiled </code>[PinnedId]<code> types against the committed ledger:</p>
 
 <ul><li><a href="../../operations/diagnostics/whiz120"><strong>WHIZ120</strong></a> (Error) — a pinned id's current CLR name is neither the</li>
-</ul><p>  ledger's recorded name nor one of its <code>formerNames</code>. That is an <strong>un-acknowledged rename</strong>; the build fails until</p>
+</ul><p>  ledger's recorded name nor one of its </code>formerNames<code>. That is an <strong>un-acknowledged rename</strong>; the build fails until</p>
 <p>  you record it.</p>
 <ul><li><a href="../../operations/diagnostics/whiz121"><strong>WHIZ121</strong></a> (Warning) — a ledger entry whose pinned id no longer exists</li>
 </ul><p>  in the compilation (a removed type or a changed id).</p>
@@ -32318,70 +32366,77 @@ npm install && npm run build</code></pre>
 
 <h3>3. Alias resolution (former events still deserialize)</h3>
 
-<code>MessageJsonContextGenerator</code> reads the ledger and, for every former name a message type has had, emits an extra
-<code>JsonContextRegistry.RegisterTypeName("<former>, <assembly>", typeof(<current>), …)</code> (bare and
-<code>MessageEnvelope<T></code> forms). Events stored under the old name now resolve to the current type. Aliases are only
+<p></code>MessageJsonContextGenerator<code> reads the ledger and, for every former name a message type has had, emits an extra</p>
+<p></code>JsonContextRegistry.RegisterTypeName("<former>, <assembly>", typeof(<current>), …)<code> (bare and</p>
+<p></code>MessageEnvelope<T><code> forms). Events stored under the old name now resolve to the current type. Aliases are only</p>
 <p>emitted for messages (events/commands) — perspective types are not deserialized from the log by name, so they need</p>
 <p>no alias (their rename is still gated by WHIZ120).</p>
 
 <h3>4. Registry reconcile (the catalog self-heals every environment)</h3>
 
-<p>Whizbang keeps a per-environment catalog of every pinned type in <code>wh_message_type_registry</code> (one row per pinned id,</p>
+<p>Whizbang keeps a per-environment catalog of every pinned type in </code>wh_message_type_registry<code> (one row per pinned id,</p>
 <p>holding the CLR name that environment's data was last populated with). After a rename, that row lags: it still holds</p>
-<p>the old name. The startup reconcile (<code>reconcile_message_type_registry</code>) is now <strong>ledger-aware</strong> — the compile-time</p>
-<code>IMessageTypeCatalog</code> carries each type's <code>FormerNames</code> (attached by <code>MessageTypeCatalogGenerator</code> from the ledger),
+<p>the old name. The startup reconcile (</code>reconcile_message_type_registry<code>) is now <strong>ledger-aware</strong> — the compile-time</p>
+<p></code>IMessageTypeCatalog<code> carries each type's </code>FormerNames<code> (attached by </code>MessageTypeCatalogGenerator<code> from the ledger),</p>
 <p>and the reconcile function uses them:</p>
 
 <ul><li><strong>Acknowledged rename</strong> — the stored (old) name is a recorded former name → the row is updated <em></em>old → new in</li>
-</ul><p>  place<em></em> (action <code>renamed</code>). Because the rename was reviewed and committed to the ledger, healing it is safe.</p>
+</ul><p>  place<em></em> (action </code>renamed<code>). Because the rename was reviewed and committed to the ledger, healing it is safe.</p>
 <ul><li><strong>Unacknowledged drift</strong> — the stored name is <em>not</em> a recorded former name → the row is left untouched (action</li>
-</ul><p>  <code>drift_detected</code>, logged as a warning). An accidental or ungoverned rename must be recorded in the ledger first.</p>
+</ul><p>  </code>drift_detected<code>, logged as a warning). An accidental or ungoverned rename must be recorded in the ledger first.</p>
 
 <p>This runs automatically on every service startup, so <strong>each environment self-heals</strong> — dev slots, staging, and</p>
 <p>production converge without a manual, per-environment step. It is <strong>non-destructive</strong> (only the registry's</p>
-<code>clr_type_name</code> is touched; stored event data is not rewritten, and the ledger remains the sole history) and
+<p></code>clr_type_name<code> is touched; stored event data is not rewritten, and the ledger remains the sole history) and</p>
 <strong>idempotent</strong>. It is also backward-compatible during a rolling deploy in both directions (an old service against the
-<p>new function sends no former names and simply falls back to <code>drift_detected</code>; a new service against the old function</p>
+<p>new function sends no former names and simply falls back to </code>drift_detected<code>; a new service against the old function</p>
 <p>has its extra field ignored).</p>
 
 <p>To <em>audit</em> drift ahead of a deploy, diff the committed ledger against a target environment's registry by pinned id:</p>
 <p>a name in the registry that is neither the ledger's current name nor a recorded former name is unacknowledged drift.</p>
 
-<strong>Observability.</strong> The reconcile emits metrics on the <code>Whizbang.TypeRegistry</code> meter, each tagged by <code>service</code>:
-<code>whizbang.type_registry.renamed</code> (rows healed old → new for an acknowledged rename) and
-<code>whizbang.type_registry.drift_detected</code> (un-acknowledged drift left untouched). <strong>Alert on <code>drift_detected > 0</code></strong> — it
+<strong>Observability.</strong> The reconcile emits metrics on the </code>Whizbang.TypeRegistry<code> meter, each tagged by </code>service<code>:
+<p></code>whizbang.type_registry.renamed<code> (rows healed old → new for an acknowledged rename) and</p>
+<p></code>whizbang.type_registry.drift_detected<code> (un-acknowledged drift left untouched). <strong>Alert on </code>drift_detected > 0<code></strong> — it</p>
 <p>means a type was renamed without recording it in the ledger. Every reconcile outcome is also logged (renames at</p>
 <p>Information, drift at Warning).</p>
 
-<blockquote><strong>Legacy note.</strong> Before the ledger existed, <code>IEventTypeRenameTool.ExecuteAsync</code> reconciled drift by <em>rewriting</em></blockquote>
-<blockquote>stored type names across every data table — a destructive, manual step. That apply path is now <code>[Obsolete]</code>: the</blockquote>
+<blockquote><strong>Legacy note.</strong> Before the ledger existed, </code>IEventTypeRenameTool.ExecuteAsync<code> reconciled drift by <em>rewriting</em></blockquote>
+<blockquote>stored type names across every data table — a destructive, manual step. That apply path is now </code>[Obsolete]<code>: the</blockquote>
 <blockquote>ledger-aware reconcile heals the registry non-destructively and the former-name aliases keep old events readable, so</blockquote>
-<blockquote>no data rewrite is needed. Its <code>DetectRenamesAsync</code> remains a handy non-destructive diagnostic.</blockquote>
+<blockquote>no data rewrite is needed. Its </code>DetectRenamesAsync<code> remains a handy non-destructive diagnostic.</blockquote>
 
 <h2>Renaming a type — the workflow</h2>
 
-<ul><li>Rename the type in code (e.g. <code>OrderCreatedEvent</code> → <code>OrderPlacedEvent</code>). Keep its <code>[PinnedId]</code>.</li>
-<li>Build. <strong>WHIZ120</strong> fails: the ledger still records <code>OrderCreatedEvent</code> for that pinned id.</li>
-<li>In <code>.whizbang/pinned-type-ledger.json</code>, add <code>MyApp.Contracts.OrderCreatedEvent</code> to that entry's <code>formerNames</code></li>
-</ul><p>   and set its <code>clrTypeName</code> to <code>MyApp.Contracts.OrderPlacedEvent</code>.</p>
-<ul><li>Build again. WHIZ120 clears, and the generator now emits the alias so old <code>OrderCreatedEvent</code> events deserialize</li>
-</ul><p>   to <code>OrderPlacedEvent</code>.</p>
+<ul><li>Rename the type in code (e.g. </code>OrderCreatedEvent<code> → </code>OrderPlacedEvent<code>). Keep its </code>[PinnedId]<code>.</li>
+<li>Build. <strong>WHIZ120</strong> fails: the ledger still records </code>OrderCreatedEvent<code> for that pinned id.</li>
+<li>In </code>.whizbang/pinned-type-ledger.json<code>, add </code>MyApp.Contracts.OrderCreatedEvent<code> to that entry's </code>formerNames<code></li>
+</ul><p>   and set its </code>clrTypeName<code> to </code>MyApp.Contracts.OrderPlacedEvent<code>.</p>
+<ul><li>Build again. WHIZ120 clears, and the generator now emits the alias so old </code>OrderCreatedEvent<code> events deserialize</li>
+</ul><p>   to </code>OrderPlacedEvent<code>.</p>
 <ul><li>Commit the ledger change alongside the rename — the diff <em>is</em> the acknowledgment.</li>
 <li>Deploy. On startup each environment's registry reconcile sees the old name recorded as a former name and updates</li>
-</ul><p>   its <code>wh_message_type_registry</code> row <strong>old → new</strong> automatically — no per-environment cleanup.</p>
+</ul><p>   its </code>wh_message_type_registry<code> row <strong>old → new</strong> automatically — no per-environment cleanup.</p>
 
-<blockquote>The <a href="https://github.com/whizbang-lib">VSCode extension</a> reads the same <code>.whizbang/</code> files and can perform steps</blockquote>
+<blockquote>The <a href="https://github.com/whizbang-lib">VSCode extension</a> reads the same </code>.whizbang/<code> files and can perform steps</blockquote>
 <blockquote>3 above inline, surfacing identity and rename history without a manual edit.</blockquote>
 
 <h2>Wiring & opt-out</h2>
 
-<p>The Whizbang generators package auto-includes the ledger as an <code>AdditionalFile</code> and registers the extraction target.</p>
+<p>The Whizbang generators package auto-includes the ledger as an </code>AdditionalFile<code> and registers the extraction target.</p>
 <p>Nothing else is required. To opt a project out, set:</p>
 
-<pre><code class="language-xml"><PropertyGroup>
+<p></code></pre>xml{</p>
+<p>title: "Opt a project out of the pinned-type ledger"</p>
+<p>description: "Sets the WhizbangIncludePinnedTypeLedger MSBuild property to false so the generators package stops emitting and gating the ledger for this project."</p>
+<p>category: "Identity"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["pinned-id", "ledger", "msbuild", "opt-out", "generators"]</p>
+<p>}</p>
+<p><PropertyGroup></p>
 <p>  <WhizbangIncludePinnedTypeLedger>false</WhizbangIncludePinnedTypeLedger></p>
 <p></PropertyGroup></p>
-<p></code></pre></p>
+<p></code>``</p>
 
 <h2>Why not just refresh the name automatically?</h2>
 
@@ -44178,42 +44233,64 @@ npm install && npm run build</code></pre>
 <code>wh_inbox</code> using a single <code>flags INTEGER NOT NULL DEFAULT 0</code> column
 <p>that's a bitmask of the <code>EventFlags</code> enum:</p>
 
-<pre><code class="language-csharp">[Flags]
+<p>``<code>csharp{</p>
+<p>title: "EventFlags bitmask for categorizing events without column churn"</p>
+<p>description: "The [Flags] enum stored in a single flags column on wh_event_store/wh_outbox/wh_inbox that lets the dispatcher route collective and composite events without adding a boolean column per category."</p>
+<p>framework: "NET10"</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["collective-events", "event-flags", "bitmask", "routing", "schema"]</p>
+<p>}</p>
+<p>[Flags]</p>
 <p>public enum EventFlags {</p>
 <p>  None       = 0,</p>
 <p>  Collective = 1 << 0,</p>
 <p>  Composite  = 1 << 1,</p>
 <p>  // future categories add new flags without schema migrations</p>
 <p>}</p>
-<p></code></pre></p>
-
-<p>The dispatcher branches on <code>(envelope.Flags & EventFlags.Collective) != 0</code></p>
+<pre><code class="language-">
+<p>The dispatcher branches on </code>(envelope.Flags & EventFlags.Collective) != 0<code></p>
 <p>to route to the collective-event path. New event categories ship by</p>
 <p>adding a flag value — no boolean column per category, no migration tax.</p>
 
 <h2>Authoring a handler</h2>
 
-<pre><code class="language-csharp">[CollectiveApplyFor]
+<p></code></pre>csharp{</p>
+<p>title: "Author a collective-event handler with [CollectiveApplyFor]"</p>
+<p>description: "A CollectiveSpec handler that describes only the uniform mutation (set Status and ArchivedAt) while the framework composes the scope resolver's WHERE clause for the single SQL UPDATE."</p>
+<p>framework: "NET10"</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["collective-events", "collective-apply-for", "collective-spec", "set-property", "scope"]</p>
+<p>}</p>
+<p>[CollectiveApplyFor]</p>
 <p>public ICollectiveSpec<JobModel> ArchiveJobs(ArchiveJobsCollectiveEvent e) =></p>
 <p>  new CollectiveSpec<JobModel>(s => s</p>
 <p>    .SetProperty(j => j.Status, "Archived")</p>
 <p>    .SetProperty(j => j.ArchivedAt, e.OccurredAt));</p>
-<p></code></pre></p>
-
-<p>The handler describes <strong>only the mutation</strong>. The <code>WHERE</code> clause that</p>
+<pre><code class="language-">
+<p>The handler describes <strong>only the mutation</strong>. The </code>WHERE<code> clause that</p>
 <p>gates the SQL UPDATE is composed by the framework from the scope</p>
-<p>resolver's <code>ScopeFilter(evt.Scope)</code> — nothing else.</p>
+<p>resolver's </code>ScopeFilter(evt.Scope)<code> — nothing else.</p>
 
-<code>SetProperty</code> overloads:
+<p></code>SetProperty<code> overloads:</p>
 
-<ul><li><strong><code>SetProperty(selector, value)</code></strong> — assign a constant or</li>
+<ul><li><strong></code>SetProperty(selector, value)<code></strong> — assign a constant or</li>
 </ul><p>  event-supplied value</p>
-<ul><li><strong><code>SetProperty(selector, computed)</code></strong> — assign an expression of the</li>
+<ul><li><strong></code>SetProperty(selector, computed)<code></strong> — assign an expression of the</li>
 </ul><p>  row's own current state (increment, timestamp-touch, conditional)</p>
 
 <h3>Worked examples</h3>
 
-<pre><code class="language-csharp">// 1. Constant — "archive every job in tenant T"
+<p></code></pre>csharp{</p>
+<p>title: "Collective handler patterns: constant, increment, event-delta, conditional, and opt-outs"</p>
+<p>description: "Worked [CollectiveApplyFor] handlers spanning constant SetProperty, self-referential increment, event-supplied delta, captured-threshold conditional flag, and custom-scope and raw-SQL opt-outs for scope-wide uniform mutations."</p>
+<p>framework: "NET10"</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["collective-events", "collective-apply-for", "set-property", "raw-sql", "scope-handling"]</p>
+<p>}</p>
+<p>// 1. Constant — "archive every job in tenant T"</p>
 <p>[CollectiveApplyFor]</p>
 <p>public ICollectiveSpec<JobModel> ArchiveJobs(ArchiveJobsCollectiveEvent e) =></p>
 <p>  new CollectiveSpec<JobModel>(s => s</p>
@@ -44253,18 +44330,17 @@ npm install && npm run build</code></pre>
 <p>  new RawSqlCollectiveSpec(</p>
 <p>    "data = jsonb_set(data, '{X}', case when ... end)",</p>
 <p>    parameters: new { ... });</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <h3>What the LINQ surface CAN express</h3>
-<ul><li>Scalar <code>SetProperty</code> to a constant or event-supplied value</li>
-<li>Scalar <code>SetProperty</code> to an expression of the row's own current</li>
+<ul><li>Scalar </code>SetProperty<code> to a constant or event-supplied value</li>
+<li>Scalar </code>SetProperty<code> to an expression of the row's own current</li>
 </ul><p>  properties (increment, decrement, arithmetic, string concat, date</p>
 <p>  arithmetic, boolean-from-other-property logic) — EF driver only in</p>
 <p>  v1.0</p>
-<ul><li>Multiple <code>SetProperty</code> calls in one spec — composed into a single SQL</li>
+<ul><li>Multiple </code>SetProperty<code> calls in one spec — composed into a single SQL</li>
 </ul><p>  UPDATE</p>
 
-<h3>What the LINQ surface CANNOT express (use <code>SpecKind = RawSql</code>)</h3>
+<h3>What the LINQ surface CANNOT express (use </code>SpecKind = RawSql<code>)</h3>
 <ul><li>Cross-row aggregates (window functions, CTEs)</li>
 <li>Subqueries against other tables</li>
 <li>Conditional updates whose target column depends on another column's</li>
@@ -44272,15 +44348,16 @@ npm install && npm run build</code></pre>
 <ul><li>Nested jsonb path manipulation more complex than top-level property</li>
 </ul><p>  assignment</p>
 <ul><li>DELETE semantics — collective deletes are out of scope; model as</li>
-</ul><p>  <code>SetProperty(x => x.IsDeleted, true)</code> against a soft-delete schema</p>
+</ul><p>  </code>SetProperty(x => x.IsDeleted, true)<code> against a soft-delete schema</p>
 
 <p>The Dapper driver in v1.0 restricts further to <strong>constant-value</strong></p>
-<code>SetProperty</code> shapes — computed <code>j => j.X + 1</code> selectors throw
-<code>NotSupportedException</code> and need the raw-SQL escape hatch.
+<p></code>SetProperty<code> shapes — computed </code>j => j.X + 1<code> selectors throw</p>
+<p></code>NotSupportedException<code> and need the raw-SQL escape hatch.</p>
 
 <h2>Apply pipeline at runtime</h2>
 
-<pre><code class="language-mermaid">sequenceDiagram
+<p></code></pre>mermaid{title="Collective-event apply pipeline from producer to projection UPDATE" description="Sequence diagram tracing a collective event through outbox, transport, and inbox into the perspective runner, scope resolver, and the single scope-filtered SQL UPDATE."}</p>
+<p>sequenceDiagram</p>
 <p>  autonumber</p>
 <p>  participant P as Producer</p>
 <p>  participant OB as wh_outbox (flags)</p>
@@ -44307,8 +44384,7 @@ npm install && npm run build</code></pre>
 <p>  R->>A: Compose ScopeFilter ⨯ Spec</p>
 <p>  A->>DB: ONE SQL UPDATE: SET data = jsonb_set(...) WHERE <scope filter></p>
 <p>  DB-->>A: Affected row count</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <p>Note what's NOT in this diagram: no matched-id membership clause, no</p>
 <p>audit-pointer write, no expansion to per-stream markers.</p>
 
@@ -44316,53 +44392,60 @@ npm install && npm run build</code></pre>
 
 <p>The collective-events feature adds <strong>one column</strong>, total:</p>
 
-<ul><li><code>wh_event_store.flags INTEGER NOT NULL DEFAULT 0</code></li>
-<li><code>wh_outbox.flags INTEGER NOT NULL DEFAULT 0</code></li>
-<li><code>wh_inbox.flags INTEGER NOT NULL DEFAULT 0</code></li>
+<ul><li></code>wh_event_store.flags INTEGER NOT NULL DEFAULT 0<code></li>
+<li></code>wh_outbox.flags INTEGER NOT NULL DEFAULT 0<code></li>
+<li></code>wh_inbox.flags INTEGER NOT NULL DEFAULT 0<code></li>
 </ul>
-<p>(All three are the same <code>EventFlags</code> enum value, preserved through</p>
+<p>(All three are the same </code>EventFlags<code> enum value, preserved through</p>
 <p>transport.)</p>
 
-<p>No new columns on perspective tables (<code>wh_per_*</code>). No GIN index on a</p>
+<p>No new columns on perspective tables (</code>wh_per_*<code>). No GIN index on a</p>
 <p>new array column. Perspectives that never receive collective events</p>
 <p>pay no schema tax.</p>
 
 <h2>Built-in scopes</h2>
 
-<h3><code>TenantCollectiveScope</code></h3>
+<h3></code>TenantCollectiveScope<code></h3>
 
-<p>Built-in <code>ICollectiveScope</code> for tenant-scoped collective mutations:</p>
+<p>Built-in </code>ICollectiveScope<code> for tenant-scoped collective mutations:</p>
 
-<pre><code class="language-csharp">var evt = new ArchiveJobsCollectiveEvent {
+<p></code></pre>csharp{</p>
+<p>title: "Emit a collective event scoped by TenantCollectiveScope"</p>
+<p>description: "Publishes an ArchiveJobsCollectiveEvent carrying a TenantCollectiveScope so the auto-registered resolver composes a tenant-id WHERE predicate for the single scope-wide UPDATE."</p>
+<p>framework: "NET10"</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["collective-events", "tenant-scope", "collective-scope", "publish", "scope-resolver"]</p>
+<p>}</p>
+<p>var evt = new ArchiveJobsCollectiveEvent {</p>
 <p>  Scope = new TenantCollectiveScope("t-1"),</p>
 <p>  OccurredAt = clock.GetUtcNow(),</p>
 <p>};</p>
 <p>await outbox.PublishAsync(evt);</p>
-<p></code></pre></p>
-
-<code>TenantCollectiveScopeResolver</code> auto-registers via DI and composes
-<code>row.Scope.TenantId == "t-1"</code> as the <code>WHERE</code> predicate.
+<pre><code class="language-">
+<p></code>TenantCollectiveScopeResolver<code> auto-registers via DI and composes</p>
+<p></code>row.Scope.TenantId == "t-1"<code> as the </code>WHERE<code> predicate.</p>
 
 <h3>Custom scopes</h3>
 
-<p>To add a new scope kind (e.g. <code>OrganizationCollectiveScope</code>,</p>
-<code>RegionCollectiveScope</code>):
+<p>To add a new scope kind (e.g. </code>OrganizationCollectiveScope<code>,</p>
+<p></code>RegionCollectiveScope<code>):</p>
 
-<ul><li>Implement <code>ICollectiveScope</code> with a unique <code>ScopeKind</code> string.</li>
-<li>Implement <code>ICollectiveScopeResolver</code> for that kind — return the</li>
-</ul><p>   correct <code>Expression<Func<PerspectiveRow<TModel>, bool>></code> for your</p>
-<p>   <code>PerspectiveRow<TModel></code> shape.</p>
+<ul><li>Implement </code>ICollectiveScope<code> with a unique </code>ScopeKind<code> string.</li>
+<li>Implement </code>ICollectiveScopeResolver<code> for that kind — return the</li>
+</ul><p>   correct </code>Expression<Func<PerspectiveRow<TModel>, bool>><code> for your</p>
+<p>   </code>PerspectiveRow<TModel><code> shape.</p>
 <ul><li>Register the resolver in DI:</li>
-</ul><p>   <code>services.AddSingleton<ICollectiveScopeResolver, OrgCollectiveScopeResolver>();</code></p>
+</ul><p>   </code>services.AddSingleton<ICollectiveScopeResolver, OrgCollectiveScopeResolver>();<code></p>
 
-<p>The runner indexes resolvers by <code>ScopeKind</code>. Registration conflicts</p>
+<p>The runner indexes resolvers by </code>ScopeKind<code>. Registration conflicts</p>
 <p>(two resolvers claiming the same kind) are caught at registration time.</p>
 
 <h2>Observer model</h2>
 
 <p>A collective event surfaces as <strong>one observed event</strong> at the category</p>
 <p>level. Receptors, sagas, and SignalR pushes see a single</p>
-<code>ICollectiveEvent</code> and branch on type. No per-stream amplification on
+<p></code>ICollectiveEvent<code> and branch on type. No per-stream amplification on</p>
 <p>the observer side.</p>
 
 <p>Consumers that genuinely need per-stream side effects subscribe at the</p>
@@ -44373,11 +44456,19 @@ npm install && npm run build</code></pre>
 
 <h2>Discovery and AOT story</h2>
 
-<code>[CollectiveApplyFor]</code> is read at compile time by
-<code>CollectiveApplyDiscoveryGenerator</code>. The generator emits a static
+<p></code>[CollectiveApplyFor]<code> is read at compile time by</p>
+<p></code>CollectiveApplyDiscoveryGenerator<code>. The generator emits a static</p>
 <p>dispatch table per assembly:</p>
 
-<pre><code class="language-csharp">// Auto-generated
+<p></code></pre>csharp{</p>
+<p>title: "Generator-emitted CollectiveApplyRegistry dispatch table"</p>
+<p>description: "The static, per-assembly registry emitted by CollectiveApplyDiscoveryGenerator that maps (ModelType, EventType) to a typed Invoker lambda, enabling reflection-free, AOT-clean collective-event dispatch."</p>
+<p>framework: "NET10"</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["collective-events", "source-generator", "aot", "dispatch-registry", "collective-apply-for"]</p>
+<p>}</p>
+<p>// Auto-generated</p>
 <p>public static class CollectiveApplyRegistry {</p>
 <p>  public static readonly IReadOnlyList<CollectiveApplyEntry> Entries =</p>
 <p>    new CollectiveApplyEntry[] {</p>
@@ -44393,55 +44484,55 @@ npm install && npm run build</code></pre>
 <p>      ),</p>
 <p>    };</p>
 <p>}</p>
-<p></code></pre></p>
+<p></code>`<code></p>
 
-<p>At runtime the projection runner indexes by <code>(ModelType, EventType)</code> and</p>
-<p>dispatches via the typed <code>Invoker</code> lambda — no reflection, AOT-clean by</p>
+<p>At runtime the projection runner indexes by </code>(ModelType, EventType)<code> and</p>
+<p>dispatches via the typed </code>Invoker<code> lambda — no reflection, AOT-clean by</p>
 <p>construction.</p>
 
 <p>Expression-tree LINQ is allowed because the compiler constructs the tree</p>
 <p>from the source literal; the EF adapter and Dapper compiler walk it with</p>
-<code>ExpressionVisitor</code>. The EF adapter emits <code>jsonb_set(...)</code> SQL via a
-<p>custom <code>EF.Functions.JsonbSet</code> translator (<code>WhizbangJsonDbFunctions</code> +</p>
-<code>JsonbSetTranslator</code>), so parameter binding, escaping, and type mapping
+<p></code>ExpressionVisitor<code>. The EF adapter emits </code>jsonb_set(...)<code> SQL via a</p>
+<p>custom </code>EF.Functions.JsonbSet<code> translator (</code>WhizbangJsonDbFunctions<code> +</p>
+<p></code>JsonbSetTranslator<code>), so parameter binding, escaping, and type mapping</p>
 <p>all flow through EF Core's normal pipeline — no raw SQL strings in C#.</p>
 
 <h2>Driver-specific notes</h2>
 
 <h3>EF Core (Postgres)</h3>
 
-<p>Implemented in <code>Whizbang.Data.EFCore.Postgres</code>. Translates the spec's</p>
-<p>LINQ into EF Core 10's <code>ExecuteUpdateAsync(UpdateSettersBuilder<>)</code>.</p>
+<p>Implemented in </code>Whizbang.Data.EFCore.Postgres<code>. Translates the spec's</p>
+<p>LINQ into EF Core 10's </code>ExecuteUpdateAsync(UpdateSettersBuilder<>)<code>.</p>
 <p>The adapter composes:</p>
 
-<ul><li>Resolver's <code>ScopeFilter<TModel>(scope)</code> → outer <code>WHERE</code> predicate</li>
-<li>Spec's <code>Setters</code> → translated <code>SET data = jsonb_set(...)</code> chain via</li>
-</ul><p>  the custom <code>EF.Functions.JsonbSet</code> translator</p>
+<ul><li>Resolver's </code>ScopeFilter<TModel>(scope)<code> → outer </code>WHERE<code> predicate</li>
+<li>Spec's </code>Setters<code> → translated </code>SET data = jsonb_set(...)<code> chain via</li>
+</ul><p>  the custom </code>EF.Functions.JsonbSet<code> translator</p>
 
 <p>That's the entire query. No matched-id membership clause. No audit</p>
 <p>write.</p>
 
 <h3>Dapper (Postgres)</h3>
 
-<p>Implemented in <code>Whizbang.Data.Dapper.Postgres.Collective</code>. The</p>
-<code>DapperCollectiveSpecCompiler<TModel>.Compile(spec, jsonOptions)</code> returns
-<p>a <code>CompiledSetClause</code>:</p>
+<p>Implemented in </code>Whizbang.Data.Dapper.Postgres.Collective<code>. The</p>
+<p></code>DapperCollectiveSpecCompiler<TModel>.Compile(spec, jsonOptions)<code> returns</p>
+<p>a </code>CompiledSetClause<code>:</p>
 
-<ul><li><code>SqlFragment</code>: <code>data = jsonb_set(jsonb_set(data, '{A}', @set_0_a::jsonb), '{B}', @set_1_b::jsonb)</code></li>
-<li><code>Parameters</code>: <code>{ "set_0_a": "<json>", "set_1_b": "<json>" }</code></li>
+<ul><li></code>SqlFragment<code>: </code>data = jsonb_set(jsonb_set(data, '{A}', @set_0_a::jsonb), '{B}', @set_1_b::jsonb)<code></li>
+<li></code>Parameters<code>: </code>{ "set_0_a": "<json>", "set_1_b": "<json>" }<code></li>
 </ul>
-<p>Restricted to scalar constant-value <code>SetProperty</code> in v1.0; computed</p>
-<p>expressions (<code>j => j.X + 1</code>) and nested paths (<code>j => j.Nested.X</code>) throw</p>
-<code>NotSupportedException</code> with a pointer to <code>SpecKind = RawSql</code>.
+<p>Restricted to scalar constant-value </code>SetProperty<code> in v1.0; computed</p>
+<p>expressions (</code>j => j.X + 1<code>) and nested paths (</code>j => j.Nested.X<code>) throw</p>
+<p></code>NotSupportedException<code> with a pointer to </code>SpecKind = RawSql<code>.</p>
 
 <h2>Failure semantics</h2>
 
 <ul><li>The SQL UPDATE either commits or rolls back — no per-row soft-fail</li>
-</ul><p>  (unlike per-stream <code>ApplyResult.Delete</code>/<code>Purge</code>).</p>
-<ul><li>If the resolver rejects the perspective (<code>AcceptsPerspective<TModel>()</code></li>
+</ul><p>  (unlike per-stream </code>ApplyResult.Delete<code>/</code>Purge<code>).</p>
+<ul><li>If the resolver rejects the perspective (</code>AcceptsPerspective<TModel>()<code></li>
 </ul><p>  returns false), the runner skips the handler and logs a structured</p>
 <p>  rejection.</p>
-<ul><li>If the resolver's <code>EnterContext</code> throws, the runner surfaces the</li>
+<ul><li>If the resolver's </code>EnterContext<code> throws, the runner surfaces the</li>
 </ul><p>  exception and the event remains un-acked (will be retried).</p>
 
 <h2>Out of scope (v1.0)</h2>
@@ -44452,18 +44543,18 @@ npm install && npm run build</code></pre>
 <ul><li><strong>Computed expressions on the Dapper driver</strong> — constant-value only</li>
 </ul><p>  in v1.0; the LINQ surface that EF supports comes later.</p>
 <ul><li><strong>Replacing existing receptor / composite-event paths</strong> —</li>
-</ul><p>  <code>ICollectiveEvent</code> is an additional primitive, not a replacement.</p>
+</ul><p>  </code>ICollectiveEvent<code> is an additional primitive, not a replacement.</p>
 <ul><li><strong>Complex jsonb manipulation in the typed LINQ API</strong> — escape hatch via</li>
-</ul><p>  <code>SpecKind = RawSql</code> until a future iteration adds richer expression</p>
+</ul><p>  </code>SpecKind = RawSql<code> until a future iteration adds richer expression</p>
 <p>  translation.</p>
 
 <h2>Sample project</h2>
 
 <p>A self-contained walkthrough lives at</p>
-<a href="https://github.com/a consumer application/whizbang/tree/main/samples/CollectiveEvents"><code>samples/CollectiveEvents/</code></a>
-<p>in the library repo. It shows a tiny <code>JobModel</code>, two collective events</p>
+<a href="https://github.com/a consumer application/whizbang/tree/main/samples/CollectiveEvents"></code>samples/CollectiveEvents/<code></a>
+<p>in the library repo. It shows a tiny </code>JobModel<code>, two collective events</p>
 <p>(constant-value + computed-value), the handler with two</p>
-<code>[CollectiveApplyFor]</code> methods, and the DI registration.
+<p></code>[CollectiveApplyFor]` methods, and the DI registration.</p>
   </div>
   <p><a href="#top">[Back to top]</a></p>
 </article>
@@ -44490,7 +44581,15 @@ npm install && npm run build</code></pre>
 
 <h2>End-to-end DI</h2>
 
-<pre><code class="language-csharp">services.AddWhizbangRabbitMQ(opts => { /<em> … </em>/ });   // or AddWhizbangAzureServiceBus
+<p>``<code>csharp{</p>
+<p>title: "End-to-end body-offload DI wire-up"</p>
+<p>description: "Registers a transport, an Azure Blob body store, and the body-offload post-serialize hook so any envelope over the threshold or transport ceiling auto-offloads via claim-check."</p>
+<p>framework: "NET10"</p>
+<p>category: "Offloads"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["body-offload", "claim-check", "azure-blob", "dependency-injection", "size-threshold", "post-serialize-hook"]</p>
+<p>}</p>
+<p>services.AddWhizbangRabbitMQ(opts => { /<em> … </em>/ });   // or AddWhizbangAzureServiceBus</p>
 
 <p>services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => {</p>
 <p>  opts.ConnectionString = builder.Configuration.GetConnectionString("Storage");</p>
@@ -44504,15 +44603,22 @@ npm install && npm run build</code></pre>
 <p>  opts.SizeThresholdBytes = 64 * 1024;   // 25% of ASB Standard 256 KB</p>
 <p>  opts.ActiveCleanup      = false;       // default — rely on the provider's TTL rule</p>
 <p>});</p>
-<p></code></pre></p>
-
-<p>That's the complete wire-up. From this point, any envelope that exceeds 64 KB OR the transport's <code>MaxMessageSizeBytes</code> (whichever is smaller) auto-offloads. Below threshold, the inline path runs with zero overhead.</p>
+<pre><code class="language-">
+<p>That's the complete wire-up. From this point, any envelope that exceeds 64 KB OR the transport's </code>MaxMessageSizeBytes<code> (whichever is smaller) auto-offloads. Below threshold, the inline path runs with zero overhead.</p>
 
 <h2>The post-serialize hook chain</h2>
 
 <p>Body offload is implemented as a <strong>post-serialize hook</strong> on the publish strategy. The chain runs after the envelope serializes to bytes but before the transport's wire-send, so the offload hook sees the actual byte size — no estimation, no guessing.</p>
 
-<pre><code class="language-csharp">public interface IPostSerializeHook {
+<p></code></pre>csharp{</p>
+<p>title: "The IPostSerializeHook contract"</p>
+<p>description: "Defines the post-serialize hook interface whose ordered chain runs on the serialized bytes before wire-send, letting body offload (Order 1000) measure and substitute the actual payload."</p>
+<p>framework: "NET10"</p>
+<p>category: "Offloads"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["post-serialize-hook", "body-offload", "claim-check", "hook-chain", "extensibility"]</p>
+<p>}</p>
+<p>public interface IPostSerializeHook {</p>
 <p>  /// Lower runs first. Conventions:</p>
 <p>  ///   100 = observability / size measurement</p>
 <p>  ///   500 = compression / encoding</p>
@@ -44522,11 +44628,11 @@ npm install && npm run build</code></pre>
 
 <p>  Task<PostSerializeResult> RunAsync(PostSerializeContext context, CancellationToken cancellationToken);</p>
 <p>}</p>
-<p></code></pre></p>
+<p></code>`<code></p>
 
-<p>Each hook receives the current <code>(envelope, bytes, content-type, transport-max-size, JsonSerializerOptions, destination)</code> and may return a <code>PostSerializeResult</code> that replaces any of them and/or merges additional headers into the destination metadata.</p>
+<p>Each hook receives the current </code>(envelope, bytes, content-type, transport-max-size, JsonSerializerOptions, destination)<code> and may return a </code>PostSerializeResult<code> that replaces any of them and/or merges additional headers into the destination metadata.</p>
 
-<code>BodyOffloadPostSerializeHook</code> (Order 1000) is the built-in body-offload implementation. Custom hooks can compose alongside it.
+<p></code>BodyOffloadPostSerializeHook<code> (Order 1000) is the built-in body-offload implementation. Custom hooks can compose alongside it.</p>
 
 <h2>Wire headers</h2>
 
@@ -44534,43 +44640,43 @@ npm install && npm run build</code></pre>
 
 <p>| Header | Value | Purpose |</p>
 <p>|---|---|---|</p>
-<p>| <code>whizbang.is-claim</code> | <code>true</code> | Receiver-side switch: deserialize as <code>MessageEnvelope<BodyClaimEnvelopePayload></code> instead of the type the <code>ENVELOPE_TYPE_HEADER</code> claims. |</p>
-<p>| <code>whizbang.body-store</code> | provider name | Receiver looks up the matching <code>IMessageBodyStore</code> via <code>GetKeyedService<IMessageBodyStore>(name)</code>. |</p>
-<p>| <code>whizbang.original-type</code> | assembly-qualified envelope type | What to deserialize the downloaded bytes as after rehydrate. |</p>
+<p>| </code>whizbang.is-claim<code> | </code>true<code> | Receiver-side switch: deserialize as </code>MessageEnvelope<BodyClaimEnvelopePayload><code> instead of the type the </code>ENVELOPE_TYPE_HEADER<code> claims. |</p>
+<p>| </code>whizbang.body-store<code> | provider name | Receiver looks up the matching </code>IMessageBodyStore<code> via </code>GetKeyedService<IMessageBodyStore>(name)<code>. |</p>
+<p>| </code>whizbang.original-type<code> | assembly-qualified envelope type | What to deserialize the downloaded bytes as after rehydrate. |</p>
 
-<code>ENVELOPE_TYPE_HEADER</code> (RabbitMQ) / <code>EnvelopeType</code> (ASB ApplicationProperties) stays set to the <strong>original</strong> type so SqlFilters and routing-key matchers continue to work — the wire bytes are different, but the routing-visible properties are unchanged.
+<p></code>ENVELOPE_TYPE_HEADER<code> (RabbitMQ) / </code>EnvelopeType<code> (ASB ApplicationProperties) stays set to the <strong>original</strong> type so SqlFilters and routing-key matchers continue to work — the wire bytes are different, but the routing-visible properties are unchanged.</p>
 
 <h2>Receive-side rehydrate</h2>
 
-<code>BodyClaimRehydrator.MaybeRehydrateAsync</code> is the receive-side counterpart. The <code>TransportConsumerWorker</code> calls it inline before serializing to inbox:
+<p></code>BodyClaimRehydrator.MaybeRehydrateAsync<code> is the receive-side counterpart. The </code>TransportConsumerWorker<code> calls it inline before serializing to inbox:</p>
 
-<ul><li>If <code>envelope.Payload is not BodyClaimEnvelopePayload</code>, pass through unchanged (the common case — cost is one type-check).</li>
-<li>Otherwise: resolve the matching <code>IMessageBodyStore</code> by claim provider name. Unknown provider → dead-letter with <code>MessageFailureReason.BodyClaimProviderUnknown</code>.</li>
-<li>Download the bytes; compute SHA-256; compare against <code>claim.ContentHash</code>. Mismatch → dead-letter with <code>MessageFailureReason.BodyClaimIntegrityFailure</code>.</li>
-<li>Deserialize the downloaded bytes as the original envelope type from <code>claim.OriginalTypeName</code>. No JsonTypeInfo → dead-letter with <code>MessageFailureReason.SerializationError</code>.</li>
+<ul><li>If </code>envelope.Payload is not BodyClaimEnvelopePayload<code>, pass through unchanged (the common case — cost is one type-check).</li>
+<li>Otherwise: resolve the matching </code>IMessageBodyStore<code> by claim provider name. Unknown provider → dead-letter with </code>MessageFailureReason.BodyClaimProviderUnknown<code>.</li>
+<li>Download the bytes; compute SHA-256; compare against </code>claim.ContentHash<code>. Mismatch → dead-letter with </code>MessageFailureReason.BodyClaimIntegrityFailure<code>.</li>
+<li>Deserialize the downloaded bytes as the original envelope type from </code>claim.OriginalTypeName<code>. No JsonTypeInfo → dead-letter with </code>MessageFailureReason.SerializationError<code>.</li>
 <li>Return the rehydrated envelope. The worker treats it as if no claim ever existed.</li>
 </ul>
 <h2>Active cleanup</h2>
 
-<p>By default (<code>ActiveCleanup = false</code>), Whizbang relies on the provider's storage-level TTL (e.g., Azure blob lifecycle rules) to remove offloaded bodies. Simplest, safest in fan-out subscriber topologies.</p>
+<p>By default (</code>ActiveCleanup = false<code>), Whizbang relies on the provider's storage-level TTL (e.g., Azure blob lifecycle rules) to remove offloaded bodies. Simplest, safest in fan-out subscriber topologies.</p>
 
-<p>When <code>ActiveCleanup = true</code>, the consumer worker fires <code>IMessageBodyStore.DeleteAsync(claim)</code> <strong>after the inbox row commits</strong>, in a fresh DI scope, fire-and-forget. A failed inbox INSERT never deletes a body that's still needed for redelivery. The provider's <code>MessageBodyDeleteOptions.IgnoreMissing</code> (default <code>true</code>) absorbs fan-out double-delete races; provider TTL is the backstop on transient delete failures.</p>
+<p>When </code>ActiveCleanup = true<code>, the consumer worker fires </code>IMessageBodyStore.DeleteAsync(claim)<code> <strong>after the inbox row commits</strong>, in a fresh DI scope, fire-and-forget. A failed inbox INSERT never deletes a body that's still needed for redelivery. The provider's </code>MessageBodyDeleteOptions.IgnoreMissing<code> (default </code>true<code>) absorbs fan-out double-delete races; provider TTL is the backstop on transient delete failures.</p>
 
 <h2>Built-in providers</h2>
 
-<ul><li><strong><code>Whizbang.Offloads.InMemory</code></strong> — dev/test/fixture provider. Bodies live in a process-local <code>ConcurrentDictionary</code>. Not suitable for production: bodies don't cross processes, no durability. Mirrors <code>Whizbang.Transports.InMemory</code> in role.</li>
-<li><strong><code>Whizbang.Offloads.AzureBlob</code></strong> — production provider. Wraps <code>Azure.Storage.Blobs</code>. Works identically against the Azurite emulator and live Azure Blob; the connection string distinguishes them via standard Azure SDK conventions. Supports optional Hot/Cool/Cold/Archive access tiers and a defensive <code>MaxDownloadBytes</code> cap.</li>
+<ul><li><strong></code>Whizbang.Offloads.InMemory<code></strong> — dev/test/fixture provider. Bodies live in a process-local </code>ConcurrentDictionary<code>. Not suitable for production: bodies don't cross processes, no durability. Mirrors </code>Whizbang.Transports.InMemory<code> in role.</li>
+<li><strong></code>Whizbang.Offloads.AzureBlob<code></strong> — production provider. Wraps </code>Azure.Storage.Blobs<code>. Works identically against the Azurite emulator and live Azure Blob; the connection string distinguishes them via standard Azure SDK conventions. Supports optional Hot/Cool/Cold/Archive access tiers and a defensive </code>MaxDownloadBytes<code> cap.</li>
 </ul>
-<p>Custom providers implement <code>IMessageBodyStore</code> and register via <code>AddWhizbangMessageBodyStore<TStore>(name)</code>. The interface is three methods (<code>UploadAsync</code>, <code>DownloadAsync</code>, <code>DeleteAsync</code>), each accepting an optional per-call options record so providers can expose features like custom metadata, container overrides, or per-blob TTL without bloating the core contract.</p>
+<p>Custom providers implement </code>IMessageBodyStore<code> and register via </code>AddWhizbangMessageBodyStore<TStore>(name)<code>. The interface is three methods (</code>UploadAsync<code>, </code>DownloadAsync<code>, </code>DeleteAsync<code>), each accepting an optional per-call options record so providers can expose features like custom metadata, container overrides, or per-blob TTL without bloating the core contract.</p>
 
 <h2>Failure semantics</h2>
 
 <p>| Failure mode | Reason code | Behavior |</p>
 <p>|---|---|---|</p>
-<p>| Body exceeds transport ceiling AND no offload hook configured | <code>MessageFailureReason.MessageBodyTooLarge</code> | <code>TransportPublishStrategy</code> returns <code>Success=false</code> pre-flight; outbox row stays put. |</p>
-<p>| Receiver doesn't have the sender's <code>whizbang.body-store</code> provider registered | <code>MessageFailureReason.BodyClaimProviderUnknown</code> | Dead-letter with remediation pointer at <code>AddWhizbang*Offload(name)</code>. |</p>
-<p>| Downloaded body's SHA-256 doesn't match <code>claim.ContentHash</code> | <code>MessageFailureReason.BodyClaimIntegrityFailure</code> | Dead-letter; refuses to process potentially-tampered payload. |</p>
-<p>| No <code>JsonTypeInfo</code> registered for <code>claim.OriginalTypeName</code> | <code>MessageFailureReason.SerializationError</code> | Dead-letter; consumer needs the type registered in a <code>JsonSerializerContext</code>. |</p>
+<p>| Body exceeds transport ceiling AND no offload hook configured | </code>MessageFailureReason.MessageBodyTooLarge<code> | </code>TransportPublishStrategy<code> returns </code>Success=false<code> pre-flight; outbox row stays put. |</p>
+<p>| Receiver doesn't have the sender's </code>whizbang.body-store<code> provider registered | </code>MessageFailureReason.BodyClaimProviderUnknown<code> | Dead-letter with remediation pointer at </code>AddWhizbang*Offload(name)<code>. |</p>
+<p>| Downloaded body's SHA-256 doesn't match </code>claim.ContentHash<code> | </code>MessageFailureReason.BodyClaimIntegrityFailure<code> | Dead-letter; refuses to process potentially-tampered payload. |</p>
+<p>| No </code>JsonTypeInfo<code> registered for </code>claim.OriginalTypeName<code> | </code>MessageFailureReason.SerializationError<code> | Dead-letter; consumer needs the type registered in a </code>JsonSerializerContext`. |</p>
 
 <h2>Composite events + body offload</h2>
 
@@ -44593,7 +44699,15 @@ npm install && npm run build</code></pre>
 
 <h2>Registration</h2>
 
-<pre><code class="language-csharp">services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => {
+<p>``<code>csharp{</p>
+<p>title: "Register the Azure Blob body-offload provider"</p>
+<p>description: "Wires the Azure Blob store as a named body-offload provider and points MessageBodyOffloadOptions at it so envelopes over the size threshold auto-offload."</p>
+<p>framework: "NET10"</p>
+<p>category: "Offloads"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["body-offload", "azure-blob", "claim-check", "dependency-injection", "configuration"]</p>
+<p>}</p>
+<p>services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => {</p>
 <p>  opts.ConnectionString = builder.Configuration.GetConnectionString("Storage");</p>
 <p>  opts.ContainerName    = "whizbang-offload-bodies";</p>
 <p>  // Optional: opts.DefaultAccessTier = AccessTier.Cool;</p>
@@ -44605,49 +44719,63 @@ npm install && npm run build</code></pre>
 <p>  opts.ProviderName       = "azure-blob-prod";</p>
 <p>  opts.SizeThresholdBytes = 64 * 1024;   // 25% of ASB Standard 256 KB</p>
 <p>});</p>
-<p></code></pre></p>
-
-<p>Multiple Azure Blob providers can coexist (e.g., <code>"azure-blob-prod"</code> + <code>"azure-blob-archive"</code>) with different connection strings, containers, or access tiers.</p>
+<pre><code class="language-">
+<p>Multiple Azure Blob providers can coexist (e.g., </code>"azure-blob-prod"<code> + </code>"azure-blob-archive"<code>) with different connection strings, containers, or access tiers.</p>
 
 <h2>Emulator (Azurite) vs live</h2>
 
 <p>The SDK's connection-string convention does the work:</p>
 
-<pre><code class="language-csharp">// Azurite (local dev / CI integration tests)
+<p></code></pre>csharp{</p>
+<p>title: "Switch between Azurite emulator and live Azure Blob"</p>
+<p>description: "Shows how the Azure SDK connection-string convention alone selects the Azurite emulator or a live Azure Blob account without any code change."</p>
+<p>framework: "NET10"</p>
+<p>category: "Offloads"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["azure-blob", "azurite", "connection-string", "body-offload", "emulator"]</p>
+<p>}</p>
+<p>// Azurite (local dev / CI integration tests)</p>
 <p>opts.ConnectionString = "UseDevelopmentStorage=true";</p>
 
 <p>// Live Azure Blob</p>
 <p>opts.ConnectionString = "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...";</p>
-<p></code></pre></p>
-
-<p>Behavior is identical against either backend — same upload/download/delete semantics, same hash verification, same metadata. The integration test suite (<code>Whizbang.Offloads.AzureBlob.Integration.Tests</code>) runs against a real Azurite container via Testcontainers; the same code path runs against live Azure in production.</p>
+<pre><code class="language-">
+<p>Behavior is identical against either backend — same upload/download/delete semantics, same hash verification, same metadata. The integration test suite (</code>Whizbang.Offloads.AzureBlob.Integration.Tests<code>) runs against a real Azurite container via Testcontainers; the same code path runs against live Azure in production.</p>
 
 <h2>Options</h2>
 
 <p>| Option | Default | Notes |</p>
 <p>|---|---|---|</p>
-<p>| <code>ConnectionString</code> | (required) | Azure Storage connection string. |</p>
-<p>| <code>ContainerName</code> | <code>"whizbang-offload-bodies"</code> | Lazily created on first upload via <code>CreateIfNotExistsAsync</code>. |</p>
-<p>| <code>DefaultAccessTier</code> | <code>null</code> (account default) | <code>Hot</code> / <code>Cool</code> / <code>Cold</code> / <code>Archive</code>. Archive bodies are NOT downloadable without rehydration — only set for cold-storage use cases that don't need receive-time rehydrate. |</p>
-<p>| <code>MaxDownloadBytes</code> | <code>null</code> (no cap) | Defensive cap. When non-null and a claim reports a larger body, the provider refuses to download. Protects receivers from tampered claim tickets that would otherwise pull a multi-GB blob. |</p>
+<p>| </code>ConnectionString<code> | (required) | Azure Storage connection string. |</p>
+<p>| </code>ContainerName<code> | </code>"whizbang-offload-bodies"<code> | Lazily created on first upload via </code>CreateIfNotExistsAsync<code>. |</p>
+<p>| </code>DefaultAccessTier<code> | </code>null<code> (account default) | </code>Hot<code> / </code>Cool<code> / </code>Cold<code> / </code>Archive<code>. Archive bodies are NOT downloadable without rehydration — only set for cold-storage use cases that don't need receive-time rehydrate. |</p>
+<p>| </code>MaxDownloadBytes<code> | </code>null<code> (no cap) | Defensive cap. When non-null and a claim reports a larger body, the provider refuses to download. Protects receivers from tampered claim tickets that would otherwise pull a multi-GB blob. |</p>
 
 <h2>Behavior</h2>
 
-<ul><li><strong>Upload</strong>: lazily creates the container; computes SHA-256 of the body; uploads via <code>BlobClient.UploadAsync</code> with <code>ContentType</code> set; stores <code>whizbang_content_hash</code> in blob metadata for forensic recovery. Returns a <code>MessageBodyClaim</code> with <code>StorageKey = "yyyy/MM/dd/<guid>.bin"</code>.</li>
-<li><strong>Download</strong>: pulls the blob via <code>BlobClient.DownloadContentAsync</code>. 404 → <code>InvalidOperationException</code> with a TTL-removal-hint message. Honors <code>MessageBodyDownloadOptions.MaxBytes</code> and the provider's own <code>MaxDownloadBytes</code> cap.</li>
-<li><strong>Delete</strong>: <code>BlobClient.DeleteIfExistsAsync</code> with snapshot inclusion. Default <code>IgnoreMissing = true</code> makes double-deletes silent (fan-out safe); strict mode throws on missing blobs.</li>
+<ul><li><strong>Upload</strong>: lazily creates the container; computes SHA-256 of the body; uploads via </code>BlobClient.UploadAsync<code> with </code>ContentType<code> set; stores </code>whizbang_content_hash<code> in blob metadata for forensic recovery. Returns a </code>MessageBodyClaim<code> with </code>StorageKey = "yyyy/MM/dd/<guid>.bin"<code>.</li>
+<li><strong>Download</strong>: pulls the blob via </code>BlobClient.DownloadContentAsync<code>. 404 → </code>InvalidOperationException<code> with a TTL-removal-hint message. Honors </code>MessageBodyDownloadOptions.MaxBytes<code> and the provider's own </code>MaxDownloadBytes<code> cap.</li>
+<li><strong>Delete</strong>: </code>BlobClient.DeleteIfExistsAsync<code> with snapshot inclusion. Default </code>IgnoreMissing = true<code> makes double-deletes silent (fan-out safe); strict mode throws on missing blobs.</li>
 </ul>
 <h2>Lifecycle / cleanup</h2>
 
 <p>Two cleanup paths, both supported:</p>
 
-<strong>TTL (recommended)</strong>: configure a blob lifecycle rule on the storage account, e.g. "delete after 7 days." <code>DeleteAsync</code> becomes a backstop; the lifecycle rule does the actual reaping. Simplest in fan-out subscriber topologies where multiple consumers read the same body.
+<strong>TTL (recommended)</strong>: configure a blob lifecycle rule on the storage account, e.g. "delete after 7 days." </code>DeleteAsync<code> becomes a backstop; the lifecycle rule does the actual reaping. Simplest in fan-out subscriber topologies where multiple consumers read the same body.
 
-<strong>Active</strong>: set <code>MessageBodyOffloadOptions.ActiveCleanup = true</code>. The consumer worker fires <code>IMessageBodyStore.DeleteAsync(claim)</code> after the inbox row commits, in a fresh DI scope, fire-and-forget. Failed inbox INSERT never deletes a body still needed for redelivery. Provider's <code>IgnoreMissing</code> absorbs fan-out double-delete races. The TTL rule is still the backstop on transient delete failures.
+<strong>Active</strong>: set </code>MessageBodyOffloadOptions.ActiveCleanup = true<code>. The consumer worker fires </code>IMessageBodyStore.DeleteAsync(claim)<code> after the inbox row commits, in a fresh DI scope, fire-and-forget. Failed inbox INSERT never deletes a body still needed for redelivery. Provider's </code>IgnoreMissing<code> absorbs fan-out double-delete races. The TTL rule is still the backstop on transient delete failures.
 
 <h2>Production deployment recipe</h2>
 
-<pre><code class="language-csharp">services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => {
+<p></code></pre>csharp{</p>
+<p>title: "Production Azure Blob body-offload deployment recipe"</p>
+<p>description: "A hardened production wire-up with a required connection string, a defensive MaxDownloadBytes cap, and TTL-based cleanup instead of active deletion."</p>
+<p>framework: "NET10"</p>
+<p>category: "Offloads"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["body-offload", "azure-blob", "production", "claim-check", "cleanup", "max-download-bytes"]</p>
+<p>}</p>
+<p>services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => {</p>
 <p>  opts.ConnectionString = builder.Configuration.GetConnectionString("Storage")</p>
 <p>      ?? throw new InvalidOperationException("Storage connection string is required");</p>
 <p>  opts.ContainerName     = "whizbang-offload-bodies";</p>
@@ -44660,13 +44788,13 @@ npm install && npm run build</code></pre>
 <p>  opts.SizeThresholdBytes = 64 * 1024;</p>
 <p>  opts.ActiveCleanup      = false;   // rely on blob lifecycle rule</p>
 <p>});</p>
-<p></code></pre></p>
+<p></code>`<code></p>
 
-<p>Configure a blob lifecycle policy in Azure Storage for the <code>whizbang-offload-bodies</code> container — typical: delete blobs older than 7 days. That's the production cleanup path.</p>
+<p>Configure a blob lifecycle policy in Azure Storage for the </code>whizbang-offload-bodies<code> container — typical: delete blobs older than 7 days. That's the production cleanup path.</p>
 
 <h2>Integration tests</h2>
 
-<p>The provider's integration test suite (<code>tests/Whizbang.Offloads.AzureBlob.Integration.Tests/</code>) uses <code>Testcontainers.Azurite</code> to spin up a real Azurite container per test class. Four round-trip tests cover the upload/download/delete contract, hash verification, MaxBytes cap behavior, and idempotent delete semantics. The same code paths run against live Azure in production deployments.</p>
+<p>The provider's integration test suite (</code>tests/Whizbang.Offloads.AzureBlob.Integration.Tests/<code>) uses </code>Testcontainers.Azurite` to spin up a real Azurite container per test class. Four round-trip tests cover the upload/download/delete contract, hash verification, MaxBytes cap behavior, and idempotent delete semantics. The same code paths run against live Azure in production deployments.</p>
   </div>
   <p><a href="#top">[Back to top]</a></p>
 </article>
@@ -44685,28 +44813,36 @@ npm install && npm run build</code></pre>
 
 <h2>Registration</h2>
 
-<pre><code class="language-csharp">services.AddWhizbangInMemoryOffload("memory-dev");
+<p>``<code>csharp{</p>
+<p>title: "Register the in-memory body-offload provider"</p>
+<p>description: "Wires the process-local in-memory body store as a named offload provider for dev/test round-trips without standing up external blob storage."</p>
+<p>framework: "NET10"</p>
+<p>category: "Offloads"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["body-offload", "in-memory", "testing", "claim-check", "dependency-injection"]</p>
+<p>}</p>
+<p>services.AddWhizbangInMemoryOffload("memory-dev");</p>
 
 <p>services.AddWhizbangBodyOffload();</p>
 <p>services.Configure<MessageBodyOffloadOptions>(opts => {</p>
 <p>  opts.ProviderName       = "memory-dev";</p>
 <p>  opts.SizeThresholdBytes = 64 * 1024;</p>
 <p>});</p>
-<p></code></pre></p>
+<p></code>`<code></p>
 
 <p>Multiple in-memory providers can coexist under distinct names — useful for tests that exercise multi-provider scenarios without standing up real storage.</p>
 
 <h2>Behavior</h2>
 
-<ul><li><strong>Upload</strong>: copies the body into the dictionary (caller's memory may be pooled/recycled, so the store owns the bytes), computes SHA-256, returns a <code>MessageBodyClaim</code> with <code>StorageKey = "inmemory://<guid>"</code>.</li>
-<li><strong>Download</strong>: returns the bytes for the supplied <code>claim.StorageKey</code>. Throws <code>InvalidOperationException</code> if not found — typically means a restart between upload and download, or producer/consumer running in different processes.</li>
-<li><strong>Download with <code>MessageBodyDownloadOptions.MaxBytes</code></strong>: refuses bodies above the cap.</li>
-<li><strong>Delete</strong>: removes the entry. Default <code>MessageBodyDeleteOptions.IgnoreMissing = true</code> makes second deletes silent; strict mode (<code>IgnoreMissing = false</code>) throws on missing keys.</li>
+<ul><li><strong>Upload</strong>: copies the body into the dictionary (caller's memory may be pooled/recycled, so the store owns the bytes), computes SHA-256, returns a </code>MessageBodyClaim<code> with </code>StorageKey = "inmemory://<guid>"<code>.</li>
+<li><strong>Download</strong>: returns the bytes for the supplied </code>claim.StorageKey<code>. Throws </code>InvalidOperationException<code> if not found — typically means a restart between upload and download, or producer/consumer running in different processes.</li>
+<li><strong>Download with </code>MessageBodyDownloadOptions.MaxBytes<code></strong>: refuses bodies above the cap.</li>
+<li><strong>Delete</strong>: removes the entry. Default </code>MessageBodyDeleteOptions.IgnoreMissing = true<code> makes second deletes silent; strict mode (</code>IgnoreMissing = false<code>) throws on missing keys.</li>
 </ul>
 <h2>When to use</h2>
 
 <ul><li>Unit and integration tests where you want to exercise the full offload round-trip without spinning up Azurite.</li>
-<li>Local development scenarios where the producer and consumer run in the same process (e.g., <code>LocalInvokeAsync</code> paths or sample apps with all services hosted in one process).</li>
+<li>Local development scenarios where the producer and consumer run in the same process (e.g., </code>LocalInvokeAsync` paths or sample apps with all services hosted in one process).</li>
 <li>Fixture/data-seeding code that produces a large composite event and immediately consumes it.</li>
 </ul>
 <p>For multi-process / multi-service scenarios use <a href="/docs/fundamentals/offloads/providers/azure-blob">Whizbang.Offloads.AzureBlob</a> with Azurite locally.</p>
@@ -45683,35 +45819,43 @@ npm install && npm run build</code></pre>
 </ul>
 <p>A projection writer should treat <code>Apply</code> as a write to collection state with no pre-existing dedup:</p>
 
-<pre><code class="language-csharp">public OrderModel Apply(OrderModel current, OrderOrderLineRowAddedEvent evt) {
+<p>``<code>csharp{</p>
+<p>title: "Write a non-idempotent perspective Apply that relies on exactly-once dispatch"</p>
+<p>description: "A projection Apply method that blindly appends a collection row without a dedup check, correct because the framework guarantees Apply runs exactly once per event per perspective per stream."</p>
+<p>framework: "NET10"</p>
+<p>category: "Perspectives"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["perspectives", "apply", "exactly-once", "idempotency", "projection"]</p>
+<p>}</p>
+<p>public OrderModel Apply(OrderModel current, OrderOrderLineRowAddedEvent evt) {</p>
 <p>  current.OrderLineRows.Add(new OrderLineRow { RowId = evt.RowId, /<em> … </em>/ });</p>
 <p>  return current;</p>
 <p>}</p>
-<p></code></pre></p>
+<p></code>`<code></p>
 
-<p>That code is correct. If the contract is ever violated, the symptom is an easy tell: the target collection contains duplicate rows (same <code>RowId</code>), or a counter increments by more than one.</p>
+<p>That code is correct. If the contract is ever violated, the symptom is an easy tell: the target collection contains duplicate rows (same </code>RowId<code>), or a counter increments by more than one.</p>
 
 <h2>Why this contract exists</h2>
 
-<p>Making <code>Apply</code> self-idempotent pushes cost onto every projection author — every collection write needs a <code>RowId</code> check, every numeric accumulator needs a stamped <code>eventId</code> set, every scalar overwrite needs a timestamp comparison. The framework already knows which <code>(streamId, perspectiveName, eventId)</code> tuples have been dispatched; the exactly-once guarantee keeps projection code small.</p>
+<p>Making </code>Apply<code> self-idempotent pushes cost onto every projection author — every collection write needs a </code>RowId<code> check, every numeric accumulator needs a stamped </code>eventId<code> set, every scalar overwrite needs a timestamp comparison. The framework already knows which </code>(streamId, perspectiveName, eventId)<code> tuples have been dispatched; the exactly-once guarantee keeps projection code small.</p>
 
 <h2>How the guarantee holds</h2>
 
 <h3>Standard mode</h3>
 
-<code>PerspectiveWorker</code> groups pending <code>PerspectiveWork</code> by <code>(StreamId, PerspectiveName)</code> and invokes <code>runner.RunAsync(streamId, perspectiveName, lastProcessedEventId, …)</code> <strong>once per group per cycle</strong>. The runner reads events <code>> lastProcessedEventId</code> from the event store and applies them in UUIDv7 order.
+<p></code>PerspectiveWorker<code> groups pending </code>PerspectiveWork<code> by </code>(StreamId, PerspectiveName)<code> and invokes </code>runner.RunAsync(streamId, perspectiveName, lastProcessedEventId, …)<code> <strong>once per group per cycle</strong>. The runner reads events </code>> lastProcessedEventId<code> from the event store and applies them in UUIDv7 order.</p>
 
 <h3>Drain mode</h3>
 
-<p>When the coordinator batch carries leased events, the worker batch-fetches with a single SQL call (<code>get_stream_events</code>) and feeds the pre-deserialized envelopes into <code>runner.RunWithEventsAsync</code>. The upstream SQL joins <code>perspective_events × event_store</code> — the same event can appear in the result multiple times if multiple queue rows reference it. The worker <strong>dedupes by <code>MessageId</code></strong> at the group step before dispatching, so the runner sees each event exactly once while every queued <code>EventWorkId</code> still receives its own completion row.</p>
+<p>When the coordinator batch carries leased events, the worker batch-fetches with a single SQL call (</code>get_stream_events<code>) and feeds the pre-deserialized envelopes into </code>runner.RunWithEventsAsync<code>. The upstream SQL joins </code>perspective_events × event_store<code> — the same event can appear in the result multiple times if multiple queue rows reference it. The worker <strong>dedupes by </code>MessageId<code></strong> at the group step before dispatching, so the runner sees each event exactly once while every queued </code>EventWorkId<code> still receives its own completion row.</p>
 
 <h3>Drain/standard co-fire</h3>
 
-<p>If a stream appears in both <code>WorkBatch.PerspectiveStreamIds</code> (drain) and <code>WorkBatch.PerspectiveWork</code> (standard), the worker processes it via drain mode and clears the standard-mode work queue for that cycle. The two dispatch paths cannot co-fire for the same cycle.</p>
+<p>If a stream appears in both </code>WorkBatch.PerspectiveStreamIds<code> (drain) and </code>WorkBatch.PerspectiveWork<code> (standard), the worker processes it via drain mode and clears the standard-mode work queue for that cycle. The two dispatch paths cannot co-fire for the same cycle.</p>
 
 <h3>Rewind mode</h3>
 
-<p>During a rewind, <code>IPerspectiveReplayReader.ReadWithIsNewAsync</code> annotates each replayed event with <code>IsNewEvent</code>. The runner applies every event in UUIDv7 order to reconstruct model state, but the lifecycle receptors only fire for <code>IsNewEvent == true</code> — see <a href="../receptors/exactly-once-firing">Exactly-Once Receptor Firing</a> for the receptor-side of this contract.</p>
+<p>During a rewind, </code>IPerspectiveReplayReader.ReadWithIsNewAsync<code> annotates each replayed event with </code>IsNewEvent<code>. The runner applies every event in UUIDv7 order to reconstruct model state, but the lifecycle receptors only fire for </code>IsNewEvent == true` — see <a href="../receptors/exactly-once-firing">Exactly-Once Receptor Firing</a> for the receptor-side of this contract.</p>
 
 <h2>Related</h2>
 
@@ -53049,7 +53193,13 @@ npm install && npm run build</code></pre>
 <pre><code class="language-">
 <p>The Postgres atomic UPSERT path detects the marker at compile-time-pinned runtime check and substitutes the WHERE clause:</p>
 
-<p></code></pre>sql</p>
+<p></code></pre>sql{</p>
+<p>title: "Default CommitSequence guard vs the IVersionedApplyTarget EventId WHERE clause"</p>
+<p>description: "Compares the permissive last-writer-wins CommitSequence UPSERT predicate against the opt-in strict-greater UUIDv7 EventId predicate that drops stale cross-pod writes and makes redelivered events idempotent."</p>
+<p>category: "Perspectives"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["versioned-apply", "cross-pod", "upsert", "uuidv7", "strand-prevention"]</p>
+<p>}</p>
 <p>-- Default (non-opted-in models)</p>
 <p>WHERE wh_per_X.metadata->>'CommitSequence' IS NULL</p>
 <p>   OR EXCLUDED.metadata->>'CommitSequence' IS NULL</p>
@@ -55931,7 +56081,14 @@ npm install && npm run build</code></pre>
 
 <p></code>SagaLiveProgressResolvers<code> ships three helpers backing every saga dashboard's </code>processedCount<code> / </code>failedCount<code> / </code>progressPercent<code> GraphQL/REST resolvers:</p>
 
-<p></code></pre>csharp</p>
+<p></code></pre>csharp{</p>
+<p>title: "Wire a saga live-progress resolver"</p>
+<p>description: "Delegates a dashboard's processedCount resolver to SagaLiveProgressResolvers, which reads the live GROUP BY aggregate while running and short-circuits to stored counters once the saga is terminal."</p>
+<p>framework: "NET10"</p>
+<p>category: "Sagas"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["sagas", "dashboard", "live-progress", "resolvers", "graphql"]</p>
+<p>}</p>
 <p>// In a HotChocolate / projection-side resolver:</p>
 <p>public Task<int> GetProcessedCountAsync(</p>
 <p>    Guid sagaId, SagaStatus status, int storedCompletedItems,</p>
@@ -56020,7 +56177,14 @@ npm install && npm run build</code></pre>
 
 <p>Whizbang.Sagas ships an </code>ISagaCompensatingEvent<code> marker interface but does NOT automatically execute compensation — the right ordering is irreducibly domain-specific (refund before un-archive, or vice versa, depends on the workflow). Mark your compensation events with the interface so visualization and audit tooling can group them, then wire your own </code>IReceptor<MyCompensatingEvent><code> chain:</p>
 
-<p></code></pre>csharp</p>
+<p></code></pre>csharp{</p>
+<p>title: "Mark a saga compensation event"</p>
+<p>description: "Tags a domain event with ISagaCompensatingEvent so audit and visualization tooling can group compensation actions, while the domain wires its own receptor chain to execute them."</p>
+<p>framework: "NET10"</p>
+<p>category: "Sagas"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["sagas", "compensation", "saga-orchestration", "events", "audit"]</p>
+<p>}</p>
 <p>public class RefundPaymentEvent : AcmeEventBase, ISagaCompensatingEvent {</p>
 <p>  public Guid CompensatingForSagaId { get; set; }</p>
 <p>  public decimal Amount { get; set; }</p>
@@ -60949,56 +61113,69 @@ npm install && npm run build</code></pre>
 
 <p>The new SQL function <code>is_instance_alive(instance_id, threshold_seconds)</code> returns TRUE if EITHER signal indicates alive:</p>
 
-<pre><code class="language-sql">-- migration 055
+<p>``<code>sql{</p>
+<p>title: "Check whether an instance is alive"</p>
+<p>description: "Calls the migration-055 is_instance_alive function, which returns TRUE if either the advisory lock or a fresh heartbeat row indicates the instance is still live."</p>
+<p>category: "Workers"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["liveness", "advisory-lock", "heartbeat", "postgres", "migration-055"]</p>
+<p>}</p>
+<p>-- migration 055</p>
 <p>SELECT is_instance_alive('11111111-...'::uuid, 30);</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <h2>Adaptive HeartbeatWorker cadence</h2>
 
-<code>HeartbeatWorkerOptions.LivenessSourceMode</code> controls the cadence decision:
+<p></code>HeartbeatWorkerOptions.LivenessSourceMode<code> controls the cadence decision:</p>
 
 <p>| Mode | Behaviour |</p>
 <p>|---|---|</p>
-<p>| <code>AdvisoryLockWhenAvailable</code> (default) | Use <code>SlowIntervalSeconds</code> (60 s) when the lock is held; fall back to <code>IntervalSeconds</code> (30 s) when not. |</p>
-<p>| <code>HeartbeatTableOnly</code> | Always use <code>IntervalSeconds</code>. Legacy / opt-out for environments that don't trust the adaptive behaviour. |</p>
+<p>| </code>AdvisoryLockWhenAvailable<code> (default) | Use </code>SlowIntervalSeconds<code> (60 s) when the lock is held; fall back to </code>IntervalSeconds<code> (30 s) when not. |</p>
+<p>| </code>HeartbeatTableOnly<code> | Always use </code>IntervalSeconds<code>. Legacy / opt-out for environments that don't trust the adaptive behaviour. |</p>
 
 <p>Per-tick resolution means:</p>
 
 <ul><li><strong>Reconnect</strong> (lock acquired) → next tick uses slow cadence.</li>
 <li><strong>Disconnect</strong> (lock released) → next tick reverts to fast cadence.</li>
 </ul>
-<p>The 30 s <code>cleanup_stale_instances</code> recovery guarantee is preserved in both cases because:</p>
+<p>The 30 s </code>cleanup_stale_instances<code> recovery guarantee is preserved in both cases because:</p>
 
-<ul><li><strong>Lock-held path</strong>: TCP keepalive detects pod death within 10–30 s. <code>cleanup_stale_instances</code> (updated in slice 7b) also skips rows whose advisory lock is still held, so the slow heartbeat write doesn't trip false cleanups.</li>
-<li><strong>Lock-not-held path</strong>: HeartbeatWorker reverts to fast cadence automatically; <code>cleanup_stale_instances</code> 30 s cutoff catches stale rows on schedule.</li>
+<ul><li><strong>Lock-held path</strong>: TCP keepalive detects pod death within 10–30 s. </code>cleanup_stale_instances<code> (updated in slice 7b) also skips rows whose advisory lock is still held, so the slow heartbeat write doesn't trip false cleanups.</li>
+<li><strong>Lock-not-held path</strong>: HeartbeatWorker reverts to fast cadence automatically; </code>cleanup_stale_instances<code> 30 s cutoff catches stale rows on schedule.</li>
 </ul>
 <h2>Migration touch points</h2>
 
 <p>| Migration | What changed |</p>
 <p>|---|---|</p>
-<p>| <strong>055</strong> (new) | <code>claim_instance_alive_lock(uuid) → bool</code> and <code>is_instance_alive(uuid, threshold) → bool</code> |</p>
-<p>| <strong>011</strong> (modified) | <code>cleanup_stale_instances</code> skip-while-locked clause added |</p>
+<p>| <strong>055</strong> (new) | </code>claim_instance_alive_lock(uuid) → bool<code> and </code>is_instance_alive(uuid, threshold) → bool<code> |</p>
+<p>| <strong>011</strong> (modified) | </code>cleanup_stale_instances<code> skip-while-locked clause added |</p>
 
 <h2>Operator notes</h2>
 
-<ul><li>The lock acquisition is non-fatal: if it returns <code>false</code> (duplicate-startup race) or throws (migration 055 not yet applied), the heartbeat-table fallback continues to work.</li>
-<li><code>IsAliveLockHeld</code> is observable on <code>IInstanceAliveLockSource</code> (implemented by <code>PgSharedNotifyConnection</code>). The HeartbeatWorker reads it every tick — no eventing/cache invalidation needed.</li>
-<li>DI: HeartbeatWorker takes <code>IInstanceAliveLockSource?</code> as an optional ctor param. When not registered, the worker behaves bit-for-bit like pre-v0.681.</li>
+<ul><li>The lock acquisition is non-fatal: if it returns </code>false<code> (duplicate-startup race) or throws (migration 055 not yet applied), the heartbeat-table fallback continues to work.</li>
+<li></code>IsAliveLockHeld<code> is observable on </code>IInstanceAliveLockSource<code> (implemented by </code>PgSharedNotifyConnection<code>). The HeartbeatWorker reads it every tick — no eventing/cache invalidation needed.</li>
+<li>DI: HeartbeatWorker takes </code>IInstanceAliveLockSource?<code> as an optional ctor param. When not registered, the worker behaves bit-for-bit like pre-v0.681.</li>
 </ul>
 <h2>Verification</h2>
 
-<pre><code class="language-sql">-- Inspect held alive-locks (one row per active instance)
+<p></code></pre>sql{</p>
+<p>title: "Inspect held instance alive-locks"</p>
+<p>description: "Queries pg_locks for the session-level advisory locks each live instance holds on its direct LISTEN connection, giving one row per active instance."</p>
+<p>category: "Workers"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["liveness", "advisory-lock", "pg-locks", "postgres", "verification"]</p>
+<p>}</p>
+<p>-- Inspect held alive-locks (one row per active instance)</p>
 <p>SELECT * FROM pg_locks</p>
 <p>WHERE locktype = 'advisory'</p>
 <p>  AND classid + objid <> 0;</p>
-<p></code></pre></p>
+<p></code>`<code></p>
 
-<p>After deploy + restart, the heartbeat UPDATE call count in <code>pg_stat_statements</code> should drop ~5×–12× (depending on how long pods stay alive holding the lock). <code>pg_stat_database.xact_commit</code> for the same DB should drop proportionally.</p>
+<p>After deploy + restart, the heartbeat UPDATE call count in </code>pg_stat_statements<code> should drop ~5×–12× (depending on how long pods stay alive holding the lock). </code>pg_stat_database.xact_commit<code> for the same DB should drop proportionally.</p>
 
 <h2>Related</h2>
 
 <ul><li><a href="./pinned-connection-pool.md">Pinned connection pool</a> — also uses direct conn(s); future work may add a per-pinned-conn lock for redundancy.</li>
-<li><a href="./worker-classification.md">Worker classification</a> — HeartbeatWorker is classified <code>E</code> (timed) with an adaptive twist.</li>
+<li><a href="./worker-classification.md">Worker classification</a> — HeartbeatWorker is classified </code>E` (timed) with an adaptive twist.</li>
 </ul>  </div>
   <p><a href="#top">[Back to top]</a></p>
 </article>
@@ -61126,38 +61303,52 @@ npm install && npm run build</code></pre>
 
 <p>Consumer code (typically inside a service that defines its own background worker) can add custom workers to the eligibility set:</p>
 
-<pre><code class="language-csharp">services.AddHostedService<MyBulkImportPollingWorker>();
+<p>``<code>csharp{</p>
+<p>title: "Opt a custom worker into the pinned pool"</p>
+<p>description: "Registers a consumer-defined background worker as pinned-pool eligible so it borrows a direct connection alongside the tier-1+2 defaults."</p>
+<p>framework: "NET10"</p>
+<p>category: "Workers"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["pinned-pool", "custom-worker", "eligibility", "hosted-service", "opt-in"]</p>
+<p>}</p>
+<p>services.AddHostedService<MyBulkImportPollingWorker>();</p>
 <p>services.AddPinnedWorker<MyBulkImportPollingWorker>();</p>
-<p></code></pre></p>
-
-<p>The opt-in is additive; the tier-1+2 defaults remain in effect. Use <code>ExcludeWorkers</code> (below) to remove a tier-default worker by short name.</p>
+<pre><code class="language-">
+<p>The opt-in is additive; the tier-1+2 defaults remain in effect. Use </code>ExcludeWorkers<code> (below) to remove a tier-default worker by short name.</p>
 
 <h2>Configuration</h2>
 
-<p>The options class is <code>WhizbangPinnedPoolOptions</code>. The registration helper takes a configure callback so the consumer can bind from any configuration source — typically <code>Whizbang:Workers:PinnedPool</code> in <code>appsettings.json</code> / env vars (kept consistent with devops conventions), but the binding itself happens in the consumer (matches the pattern used by <code>AddWhizbangAzureBlobOffload</code> and keeps <code>Whizbang.Core</code> AOT-clean).</p>
+<p>The options class is </code>WhizbangPinnedPoolOptions<code>. The registration helper takes a configure callback so the consumer can bind from any configuration source — typically </code>Whizbang:Workers:PinnedPool<code> in </code>appsettings.json<code> / env vars (kept consistent with devops conventions), but the binding itself happens in the consumer (matches the pattern used by </code>AddWhizbangAzureBlobOffload<code> and keeps </code>Whizbang.Core<code> AOT-clean).</p>
 
 <p>| Property | Type | Default | Description |</p>
 <p>|---|---|---|---|</p>
-<p>| <code>ConnectionStringName</code> | string? | <code>null</code> | <strong>Preferred.</strong> Name of a key under standard <code>ConnectionStrings:*</code> configuration to resolve the direct conn string from (e.g. <code>"appservice-db-direct"</code>). Wins over <code>ConnectionString</code> when both are set. |</p>
-<p>| <code>ConnectionString</code> | string? | <code>null</code> | Inline direct (non-pgbouncer) PG conn string. Fallback when <code>ConnectionStringName</code> is unset or unresolved. At least one of the two sources must resolve for the pool to take effect. |</p>
-<p>| <code>Enabled</code> | bool | <code>false</code> | Master switch. <code>false</code> → workers stay on pgbouncer. |</p>
-<p>| <code>Size</code> | int | <code>1</code> | Number of pinned connections held open. |</p>
-<p>| <code>IncludeFlushWorkers</code> | bool | <code>true</code> | Whether tier-2 flush workers also pin. |</p>
-<p>| <code>ExcludeWorkers</code> | string[] | <code>[]</code> | CLR short names of workers to skip. Escape hatch. |</p>
-<p>| <code>ConnectionLifetimeSeconds</code> | int | <code>1800</code> | Auto-recycle a connection after this many seconds. |</p>
-<p>| <code>BorrowTimeoutMilliseconds</code> | int | <code>5000</code> | How long a worker waits to borrow before throwing. |</p>
+<p>| </code>ConnectionStringName<code> | string? | </code>null<code> | <strong>Preferred.</strong> Name of a key under standard </code>ConnectionStrings:*<code> configuration to resolve the direct conn string from (e.g. </code>"appservice-db-direct"<code>). Wins over </code>ConnectionString<code> when both are set. |</p>
+<p>| </code>ConnectionString<code> | string? | </code>null<code> | Inline direct (non-pgbouncer) PG conn string. Fallback when </code>ConnectionStringName<code> is unset or unresolved. At least one of the two sources must resolve for the pool to take effect. |</p>
+<p>| </code>Enabled<code> | bool | </code>false<code> | Master switch. </code>false<code> → workers stay on pgbouncer. |</p>
+<p>| </code>Size<code> | int | </code>1<code> | Number of pinned connections held open. |</p>
+<p>| </code>IncludeFlushWorkers<code> | bool | </code>true<code> | Whether tier-2 flush workers also pin. |</p>
+<p>| </code>ExcludeWorkers<code> | string[] | </code>[]<code> | CLR short names of workers to skip. Escape hatch. |</p>
+<p>| </code>ConnectionLifetimeSeconds<code> | int | </code>1800<code> | Auto-recycle a connection after this many seconds. |</p>
+<p>| </code>BorrowTimeoutMilliseconds<code> | int | </code>5000<code> | How long a worker waits to borrow before throwing. |</p>
 
 <h3>Connection-string source: name vs inline</h3>
 
 <p>The pool resolves its connection string in this order:</p>
 
-<ul><li><strong><code>ConnectionStringName</code></strong> — looked up via <code>IConfiguration.GetConnectionString(name)</code>. Recommended for production because it keeps the secret-bearing string under standard <code>ConnectionStrings:*</code> configuration alongside the rest of the app's database secrets — key-vault, env-var, and log-redaction conventions all apply uniformly.</li>
-<li><strong><code>ConnectionString</code></strong> — used when <code>ConnectionStringName</code> is unset OR the named key doesn't resolve. Convenient for tests / dev rigs / single-line registration.</li>
-<li>Neither set → silent no-op (pool returns <code>NoOpPinnedConnectionPool</code>, workers stay on pgbouncer). Matches <code>Enabled=false</code> behaviour so the registration is safe to call unconditionally.</li>
+<ul><li><strong></code>ConnectionStringName<code></strong> — looked up via </code>IConfiguration.GetConnectionString(name)<code>. Recommended for production because it keeps the secret-bearing string under standard </code>ConnectionStrings:*<code> configuration alongside the rest of the app's database secrets — key-vault, env-var, and log-redaction conventions all apply uniformly.</li>
+<li><strong></code>ConnectionString<code></strong> — used when </code>ConnectionStringName<code> is unset OR the named key doesn't resolve. Convenient for tests / dev rigs / single-line registration.</li>
+<li>Neither set → silent no-op (pool returns </code>NoOpPinnedConnectionPool<code>, workers stay on pgbouncer). Matches </code>Enabled=false<code> behaviour so the registration is safe to call unconditionally.</li>
 </ul>
-<p>When configuring a real service, the typical pattern is a sibling under <code>ConnectionStrings:*</code>:</p>
+<p>When configuring a real service, the typical pattern is a sibling under </code>ConnectionStrings:*<code>:</p>
 
-<pre><code class="language-jsonc">// appsettings.json
+<p></code></pre>jsonc{</p>
+<p>title: "Configure a direct connection string for the pinned pool"</p>
+<p>description: "Adds a direct (port 5432) sibling under ConnectionStrings and points the pinned pool at it by name, bypassing pgbouncer for hot-path workers."</p>
+<p>category: "Workers"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["pinned-pool", "connection-string", "pgbouncer", "appsettings", "configuration"]</p>
+<p>}</p>
+<p>// appsettings.json</p>
 <p>{</p>
 <p>  "ConnectionStrings": {</p>
 <p>    "appservice-db":        "Host=…;Port=6432;…", // pgbouncer (existing)</p>
@@ -61172,61 +61363,89 @@ npm install && npm run build</code></pre>
 <p>    }</p>
 <p>  }</p>
 <p>}</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <h3>Minimal registration</h3>
 
-<pre><code class="language-csharp">services.AddWhizbangPinnedWorkerPool(opts => {
+<p></code></pre>csharp{</p>
+<p>title: "Register the pinned pool from configuration"</p>
+<p>description: "Binds the full WhizbangPinnedPoolOptions from the Whizbang:Workers:PinnedPool section so every setting is config-driven, keeping Whizbang.Core AOT-clean."</p>
+<p>framework: "NET10"</p>
+<p>category: "Workers"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["pinned-pool", "registration", "options-binding", "configuration", "dependency-injection"]</p>
+<p>}</p>
+<p>services.AddWhizbangPinnedWorkerPool(opts => {</p>
 <p>  // Bind everything from the configured section — both ConnectionStringName</p>
 <p>  // and any other settings come through this single call.</p>
 <p>  builder.Configuration.GetSection("Whizbang:Workers:PinnedPool").Bind(opts);</p>
 <p>});</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <p>The simpler "everything in code" shape, when you don't want config-driven values (test/dev):</p>
 
-<pre><code class="language-csharp">services.AddWhizbangPinnedWorkerPool(opts => {
+<p></code></pre>csharp{</p>
+<p>title: "Register the pinned pool entirely in code"</p>
+<p>description: "Sets the direct connection string and enables the pool inline without a config section — the minimal test/dev shape for the pinned worker pool."</p>
+<p>framework: "NET10"</p>
+<p>category: "Workers"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["pinned-pool", "registration", "connection-string", "dev", "dependency-injection"]</p>
+<p>}</p>
+<p>services.AddWhizbangPinnedWorkerPool(opts => {</p>
 <p>  opts.ConnectionString = builder.Configuration.GetConnectionString("WorkerDirect");</p>
 <p>  opts.Enabled = true;</p>
 <p>});</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <h3>Tuning size</h3>
 
-<pre><code class="language-csharp">services.AddWhizbangPinnedWorkerPool(opts => {
+<p></code></pre>csharp{</p>
+<p>title: "Tune the pinned pool size"</p>
+<p>description: "Raises the pinned pool to two connections so the hot ClaimWorker no longer shares a single wire with the tier-2 flush workers, easing borrow contention."</p>
+<p>framework: "NET10"</p>
+<p>category: "Workers"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["pinned-pool", "pool-size", "tuning", "flush-workers", "throughput"]</p>
+<p>}</p>
+<p>services.AddWhizbangPinnedWorkerPool(opts => {</p>
 <p>  opts.ConnectionString = builder.Configuration.GetConnectionString("WorkerDirect");</p>
 <p>  opts.Enabled = true;</p>
 <p>  opts.Size = 2;                                // splits ClaimWorker from flush workers</p>
 <p>  opts.IncludeFlushWorkers = true;</p>
 <p>});</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <h3>Surgical exclusion</h3>
 
-<pre><code class="language-csharp">services.AddWhizbangPinnedWorkerPool(opts => {
+<p></code></pre>csharp{</p>
+<p>title: "Exclude a specific worker from the pinned pool"</p>
+<p>description: "Uses ExcludeWorkers to drop a tier-default worker by short name so it stays on pgbouncer while the rest of the fleet remains pinned."</p>
+<p>framework: "NET10"</p>
+<p>category: "Workers"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["pinned-pool", "exclude-workers", "heartbeat", "eligibility", "escape-hatch"]</p>
+<p>}</p>
+<p>services.AddWhizbangPinnedWorkerPool(opts => {</p>
 <p>  opts.ConnectionString = builder.Configuration.GetConnectionString("WorkerDirect");</p>
 <p>  opts.Enabled = true;</p>
 <p>  opts.Size = 1;</p>
 <p>  opts.ExcludeWorkers = new[] { "HeartbeatWorker" };  // investigating heartbeat under pinning</p>
 <p>});</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <h2>Connection budget</h2>
 
-<p>The total direct PG connections per pod increases by <code>Size</code>. Sizing math:</p>
+<p>The total direct PG connections per pod increases by </code>Size<code>. Sizing math:</p>
 
-<pre><code class="language-">direct_pg_conns_per_pod = 1 (LISTEN)
+<p></code></pre></p>
+<p>direct_pg_conns_per_pod = 1 (LISTEN)</p>
 <p>                       + Size (pinned pool)</p>
 <p>total_direct_pg_conns   = num_pods × direct_pg_conns_per_pod</p>
-<p></code></pre></p>
+<p></code>`<code></p>
 
-<p>At <code>Size=1</code> and 50 pods, that's <strong>100 direct PG conns</strong> plus whatever pgbouncer is using. Match this against your PostgreSQL <code>max_connections</code> and pgbouncer's <code>default_pool_size</code>. If you have headroom for more direct conns, raising <code>Size</code> is reasonable.</p>
+<p>At </code>Size=1<code> and 50 pods, that's <strong>100 direct PG conns</strong> plus whatever pgbouncer is using. Match this against your PostgreSQL </code>max_connections<code> and pgbouncer's </code>default_pool_size<code>. If you have headroom for more direct conns, raising </code>Size<code> is reasonable.</p>
 
-<code>Size=1</code> is the right starting point. Raise to <code>2</code> if you observe pinned-pool borrow timeouts in logs (worker queuing on a single wire is hurting flush latency).
+<p></code>Size=1<code> is the right starting point. Raise to </code>2<code> if you observe pinned-pool borrow timeouts in logs (worker queuing on a single wire is hurting flush latency).</p>
 
 <h2>Validation</h2>
 
-<p>When <code>Enabled=true</code>, the registration extension validates <code>Size > 0</code> at startup. If neither <code>ConnectionStringName</code> nor <code>ConnectionString</code> resolves to a non-empty string, the feature silently no-ops — workers continue using pgbouncer. This is intentional: it lets you ship the registration code into all environments and toggle on per-environment via configuration.</p>
+<p>When </code>Enabled=true<code>, the registration extension validates </code>Size > 0<code> at startup. If neither </code>ConnectionStringName<code> nor </code>ConnectionString<code> resolves to a non-empty string, the feature silently no-ops — workers continue using pgbouncer. This is intentional: it lets you ship the registration code into all environments and toggle on per-environment via configuration.</p>
 
 <h2>Observability</h2>
 
@@ -61234,14 +61453,14 @@ npm install && npm run build</code></pre>
 
 <p>| Metric | Type | Tags | What it shows |</p>
 <p>|---|---|---|---|</p>
-<p>| <code>whizbang.workers.pinned_pool.borrow.duration</code> | histogram (ms) | <code>worker_name</code> | Time from borrow request to connection handed out — should be near-zero in steady state. |</p>
-<p>| <code>whizbang.workers.pinned_pool.borrow.timeouts</code> | counter | <code>worker_name</code> | Borrow-timeout count — if non-zero, raise <code>Size</code> or investigate which worker is holding too long. |</p>
+<p>| </code>whizbang.workers.pinned_pool.borrow.duration<code> | histogram (ms) | </code>worker_name<code> | Time from borrow request to connection handed out — should be near-zero in steady state. |</p>
+<p>| </code>whizbang.workers.pinned_pool.borrow.timeouts<code> | counter | </code>worker_name<code> | Borrow-timeout count — if non-zero, raise </code>Size<code> or investigate which worker is holding too long. |</p>
 
-<p>Pair these with the <code>pg_stat_statements</code> query in <a href="#connection-budget">Connection budget</a> to confirm the post-enable <code>DISCARD ALL</code> share has dropped.</p>
+<p>Pair these with the </code>pg_stat_statements<code> query in <a href="#connection-budget">Connection budget</a> to confirm the post-enable </code>DISCARD ALL<code> share has dropped.</p>
 
 <h2>Migration from un-pinned</h2>
 
-<p>The feature is purely additive — no code changes required in workers. Worker classes don't know they're being pinned; the borrow is plumbed through the existing <code>IWorkCoordinator</code> resolution path. Toggling <code>Enabled</code> between <code>true</code> and <code>false</code> is safe at any time (a rolling deploy is sufficient — no migration window required).</p>
+<p>The feature is purely additive — no code changes required in workers. Worker classes don't know they're being pinned; the borrow is plumbed through the existing </code>IWorkCoordinator<code> resolution path. Toggling </code>Enabled<code> between </code>true<code> and </code>false` is safe at any time (a rolling deploy is sufficient — no migration window required).</p>
 
 <h2>Related</h2>
 
@@ -74303,7 +74522,15 @@ npm install && npm run build</code></pre>
 
 <h2>The contract</h2>
 
-<pre><code class="language-csharp">public interface ICompositeEvent : IMessage {
+<p>``<code>csharp{</p>
+<p>title: "The ICompositeEvent contract"</p>
+<p>description: "Defines the composite-event marker interface that yields inner events and caps the count, letting the dispatcher and consumer worker detect and expand a bulk envelope."</p>
+<p>framework: "NET10"</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["composite-events", "fan-out", "bulk", "inner-events", "contract"]</p>
+<p>}</p>
+<p>public interface ICompositeEvent : IMessage {</p>
 <p>  /// Yields the inner events this composite expands into. Receivers</p>
 <p>  /// enumerate this exactly once at receive time.</p>
 <p>  IEnumerable<IMessage> InnerEvents { get; }</p>
@@ -74313,61 +74540,75 @@ npm install && npm run build</code></pre>
 <p>  /// receiver's batched event-store append. Default 10,000.</p>
 <p>  int MaxInnerEventsAllowed => 10_000;</p>
 <p>}</p>
-<p></code></pre></p>
-
-<code>ICompositeEvent</code> extends <code>IMessage</code>, so composites flow through the existing dispatcher/outbox/transport surface — no parallel pipeline. The marker is enough; the dispatcher detects it via <code>payload is ICompositeEvent</code> and stamps <code>IsComposite = true</code> on the resulting <code>OutboxMessage</code>. The receiver-side <code>TransportConsumerWorker</code> detects the same flag on the <code>InboxMessage</code> and triggers expansion.
+<pre><code class="language-">
+<p></code>ICompositeEvent<code> extends </code>IMessage<code>, so composites flow through the existing dispatcher/outbox/transport surface — no parallel pipeline. The marker is enough; the dispatcher detects it via </code>payload is ICompositeEvent<code> and stamps </code>IsComposite = true<code> on the resulting </code>OutboxMessage<code>. The receiver-side </code>TransportConsumerWorker<code> detects the same flag on the </code>InboxMessage<code> and triggers expansion.</p>
 
 <h2>Resolved design decisions</h2>
 
 <p>| Question | Decision | Rationale |</p>
 <p>|---|---|---|</p>
 <p>| Failure atomicity | All-or-nothing. If any inner event fails during expansion, the whole composite rolls back. | Simplest; per-inner retry is future work. |</p>
-<p>| Inner-event <code>StreamId</code> | All inner events inherit the composite's <code>StreamId</code>. | Simplest; per-inner producer-supplied override is future work. |</p>
+<p>| Inner-event </code>StreamId<code> | All inner events inherit the composite's </code>StreamId<code>. | Simplest; per-inner producer-supplied override is future work. |</p>
 <p>| Ordering | Producer-yielded order (sequential within composite). | Matches single-row outbox storage semantics. |</p>
 <p>| Event-store replay | Composite is wire-only; only expanded inner events persist. | Producers can stop emitting a composite type at any time without affecting historical replay. |</p>
 <p>| Lifecycle hooks | Fire per-inner-event. | Consistent with "composite is wire-only" — the lifecycle never sees the composite. |</p>
 
 <h2>Receive-side expansion</h2>
 
-<code>CompositeEventExpander.Expand(IMessageEnvelope)</code> is the non-generic entry point used by the consumer worker (which doesn't know the inner type at compile time). It enumerates <code>InnerEvents</code>, validates against <code>MaxInnerEventsAllowed</code>, and yields a new <code>MessageEnvelope<TInnerRuntimeType></code> per inner event.
+<p></code>CompositeEventExpander.Expand(IMessageEnvelope)<code> is the non-generic entry point used by the consumer worker (which doesn't know the inner type at compile time). It enumerates </code>InnerEvents<code>, validates against </code>MaxInnerEventsAllowed<code>, and yields a new </code>MessageEnvelope<TInnerRuntimeType><code> per inner event.</p>
 
 <p>Each inner envelope inherits:</p>
 
 <p>| Field | Behavior |</p>
 <p>|---|---|</p>
-<p>| <code>Version</code>, <code>DispatchContext</code>, <code>SourceServiceId</code>, <code>SourceCommitSequence</code>, <code>CausedByServiceId</code>, <code>CausedByCommitSequence</code> | Copied from the composite envelope. |</p>
-<p>| <code>Hops</code> | <strong>Shared by reference</strong>. Composites are received together, audited together; a 5K-inner composite shares one hops list rather than duplicating it 5K times. |</p>
-<p>| <code>MessageId</code> | Fresh UUIDv7 per inner. Receiver inbox dedup treats each inner event as a distinct message. Reusing the composite's <code>MessageId</code> would silently dedup all-but-one inner event on redelivery. |</p>
-<p>| <code>ReceptorInvocations</code> | Cleared. Each inner event gets independent receptor accounting. |</p>
+<p>| </code>Version<code>, </code>DispatchContext<code>, </code>SourceServiceId<code>, </code>SourceCommitSequence<code>, </code>CausedByServiceId<code>, </code>CausedByCommitSequence<code> | Copied from the composite envelope. |</p>
+<p>| </code>Hops<code> | <strong>Shared by reference</strong>. Composites are received together, audited together; a 5K-inner composite shares one hops list rather than duplicating it 5K times. |</p>
+<p>| </code>MessageId<code> | Fresh UUIDv7 per inner. Receiver inbox dedup treats each inner event as a distinct message. Reusing the composite's </code>MessageId<code> would silently dedup all-but-one inner event on redelivery. |</p>
+<p>| </code>ReceptorInvocations<code> | Cleared. Each inner event gets independent receptor accounting. |</p>
 
 <p>The composite envelope itself is <strong>never persisted</strong> as an inbox row. The consumer worker generates N inbox rows (one per inner event) which then flow through the normal perspective + receptor machinery.</p>
 
 <h2>Cap enforcement</h2>
 
-<p>The expander counts as it iterates. Reaching <code>MaxInnerEventsAllowed + 1</code> throws <code>CompositeInnerEventLimitExceededException</code> and the partial expansion is discarded — no inner envelopes leak past the failure boundary. The consumer worker catches the exception and dead-letters with <code>MessageFailureReason.CompositeInnerEventLimitExceeded</code>.</p>
+<p>The expander counts as it iterates. Reaching </code>MaxInnerEventsAllowed + 1<code> throws </code>CompositeInnerEventLimitExceededException<code> and the partial expansion is discarded — no inner envelopes leak past the failure boundary. The consumer worker catches the exception and dead-letters with </code>MessageFailureReason.CompositeInnerEventLimitExceeded<code>.</p>
 
 <p>To raise the cap for a specific composite type, override the property:</p>
 
-<pre><code class="language-csharp">public class LargeBulkComposite : ICompositeEvent {
+<p></code></pre>csharp{</p>
+<p>title: "Raise the inner-event cap for a composite type"</p>
+<p>description: "Overrides MaxInnerEventsAllowed on a concrete composite so a known large bulk operation can expand past the default 10,000 inner-event safety limit."</p>
+<p>framework: "NET10"</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["composite-events", "max-inner-events", "bulk", "cap", "fan-out"]</p>
+<p>}</p>
+<p>public class LargeBulkComposite : ICompositeEvent {</p>
 <p>  public IEnumerable<IMessage> InnerEvents => /<em> … </em>/;</p>
 <p>  public int MaxInnerEventsAllowed => 50_000;</p>
 <p>}</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <h2>Batched event-store append</h2>
 
-<p>For composite expansion at scale (5K inner events), looping <code>IEventStore.AppendAsync</code> per inner event would be O(N) round-trips. <code>IEventStore.AppendBatchAsync<TMessage></code> provides a single-call batch entry point:</p>
+<p>For composite expansion at scale (5K inner events), looping </code>IEventStore.AppendAsync<code> per inner event would be O(N) round-trips. </code>IEventStore.AppendBatchAsync<TMessage><code> provides a single-call batch entry point:</p>
 
-<pre><code class="language-csharp">Task AppendBatchAsync<TMessage>(
+<p></code></pre>csharp{</p>
+<p>title: "Batched event-store append signature"</p>
+<p>description: "The AppendBatchAsync entry point that writes all expanded inner events in one call, avoiding O(N) round-trips when a composite expands into thousands of events."</p>
+<p>framework: "NET10"</p>
+<p>category: "Messaging"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["composite-events", "event-store", "batched-append", "performance", "fan-out"]</p>
+<p>}</p>
+<p>Task AppendBatchAsync<TMessage>(</p>
 <p>    IReadOnlyList<(Guid streamId, MessageEnvelope<TMessage> envelope)> entries,</p>
 <p>    CancellationToken cancellationToken = default);</p>
-<p></code></pre></p>
+<p></code>`<code></p>
 
-<p>The default implementation loops <code>AppendAsync</code> per entry — correct but slow. Backends MAY override for bulk performance:</p>
+<p>The default implementation loops </code>AppendAsync<code> per entry — correct but slow. Backends MAY override for bulk performance:</p>
 
 <p>| Backend | Bulk strategy |</p>
 <p>|---|---|</p>
-<p>| EFCore Postgres | <code>INSERT INTO wh_event_store … SELECT FROM jsonb_array_elements(@payload)</code> in a single transaction. One fsync per call regardless of entry count. |</p>
+<p>| EFCore Postgres | </code>INSERT INTO wh_event_store … SELECT FROM jsonb_array_elements(@payload)<code> in a single transaction. One fsync per call regardless of entry count. |</p>
 <p>| In-memory | Use the default loop — overhead is already zero. |</p>
 
 <p>Atomicity is backend-defined: the default loop is per-item; an overriding backend may use a single transaction for all-or-nothing semantics. The XML doc on the interface flags this so consumers know what to depend on.</p>
@@ -74376,8 +74617,8 @@ npm install && npm run build</code></pre>
 
 <p>| Failure mode | Reason code | Behavior |</p>
 <p>|---|---|---|</p>
-<p>| Composite yields more than <code>MaxInnerEventsAllowed</code> inner events | <code>MessageFailureReason.CompositeInnerEventLimitExceeded</code> | Dead-letter; producer likely has a runaway enumerator. |</p>
-<p>| Inner event raises during expansion, or event-store append fails | <code>MessageFailureReason.CompositeExpansionFailure</code> | All-or-nothing rollback; no partial inner events recorded. |</p>
+<p>| Composite yields more than </code>MaxInnerEventsAllowed<code> inner events | </code>MessageFailureReason.CompositeInnerEventLimitExceeded<code> | Dead-letter; producer likely has a runaway enumerator. |</p>
+<p>| Inner event raises during expansion, or event-store append fails | </code>MessageFailureReason.CompositeExpansionFailure` | All-or-nothing rollback; no partial inner events recorded. |</p>
   </div>
   <p><a href="#top">[Back to top]</a></p>
 </article>
@@ -86540,7 +86781,13 @@ npm install && npm run build</code></pre>
 </ul>
 <p>When </code>MessageFailureReason.EmptyStreamId<code> rows accumulate in </code>wh_dead_letters<code> under the </code>DeadLetter<code> policy, group by </code>message_type<code> to find the producer:</p>
 
-<p></code></pre>sql</p>
+<p></code></pre>sql{</p>
+<p>title: "Find producers of Empty stream_id dead letters"</p>
+<p>description: "Group wh_dead_letters by message_type where failure_reason is EmptyStreamId (11) to identify which producer is writing Guid.Empty under the DeadLetter policy."</p>
+<p>category: "Configuration"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["empty-stream-id", "dead-letter", "wh_dead_letters", "message-type", "telemetry", "sql"]</p>
+<p>}</p>
 <p>SELECT message_type, COUNT(*) AS empty_count</p>
 <p>FROM wh_dead_letters</p>
 <p>WHERE failure_reason = 11  -- MessageFailureReason.EmptyStreamId</p>
@@ -87273,7 +87520,14 @@ npm install && npm run build</code></pre>
 
 <code>wh_dead_letters</code> (migration <code>050_WhDeadLetters.sql</code>):
 
-<pre><code class="language-sql">CREATE TABLE wh_dead_letters (
+<p>``<code>sql{</p>
+<p>title: "wh_dead_letters table schema"</p>
+<p>description: "The migration 050 table definition holding the forensic snapshot, generation-replay, and recovery-state columns for every permanently failed work-table row."</p>
+<p>category: "Dead Letter Queue"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["dead-letter", "wh_dead_letters", "schema", "migration", "postgres"]</p>
+<p>}</p>
+<p>CREATE TABLE wh_dead_letters (</p>
 <p>  dead_letter_id     UUID NOT NULL PRIMARY KEY,</p>
 <p>  source_table       TEXT NOT NULL,    -- 'wh_outbox' | 'wh_inbox' | 'wh_perspective_events'</p>
 <p>  source_id          UUID NOT NULL,    -- original message_id or event_work_id</p>
@@ -87297,25 +87551,32 @@ npm install && npm run build</code></pre>
 <p>  retried_on_generations       TEXT[] NOT NULL DEFAULT '{}',</p>
 <p>  operator_disposition         SMALLINT NOT NULL DEFAULT 0</p>
 <p>);</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <p>The columns split into three groups:</p>
 
-<ul><li><strong>Snapshot</strong> (<code>source_*</code>, <code>event_data</code>, <code>metadata</code>, <code>scope</code>, <code>failure_reason</code>,</li>
-</ul><p>   <code>error_text</code>) — captured at the move boundary so the original row can be</p>
+<ul><li><strong>Snapshot</strong> (</code>source_*<code>, </code>event_data<code>, </code>metadata<code>, </code>scope<code>, </code>failure_reason<code>,</li>
+</ul><p>   </code>error_text<code>) — captured at the move boundary so the original row can be</p>
 <p>   reconstructed if recovery succeeds.</p>
-<ul><li><strong>Generation</strong> (<code>generation</code>, <code>retried_on_generations</code>) — used by the</li>
+<ul><li><strong>Generation</strong> (</code>generation<code>, </code>retried_on_generations<code>) — used by the</li>
 </ul><p>   "we-shipped-a-fix" auto-replay: on every deploy, any row whose current</p>
-<p>   generation isn't in <code>retried_on_generations</code> gets one free retry attempt.</p>
-<ul><li><strong>State</strong> (<code>recovery_status</code>, <code>recovery_attempts</code>, <code>next_recovery_attempt_at</code>,</li>
-</ul><p>   <code>operator_disposition</code>) — the recovery worker's bookkeeping.</p>
+<p>   generation isn't in </code>retried_on_generations<code> gets one free retry attempt.</p>
+<ul><li><strong>State</strong> (</code>recovery_status<code>, </code>recovery_attempts<code>, </code>next_recovery_attempt_at<code>,</li>
+</ul><p>   </code>operator_disposition<code>) — the recovery worker's bookkeeping.</p>
 
-<h2>The <code>MoveAsync</code> boundary</h2>
+<h2>The </code>MoveAsync<code> boundary</h2>
 
 <p>Any worker that detects a permanent failure calls</p>
-<code>IDeadLetterStore.MoveAsync(...)</code>:
+<p></code>IDeadLetterStore.MoveAsync(...)<code>:</p>
 
-<pre><code class="language-csharp">public interface IDeadLetterStore {
+<p></code></pre>csharp{</p>
+<p>title: "IDeadLetterStore.MoveAsync interface"</p>
+<p>description: "The atomic move-boundary contract every worker calls to relocate a permanently failed row from its source table into wh_dead_letters."</p>
+<p>framework: "NET10"</p>
+<p>category: "Dead Letter Queue"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["dead-letter", "IDeadLetterStore", "MoveAsync", "atomic-move"]</p>
+<p>}</p>
+<p>public interface IDeadLetterStore {</p>
 <p>  Task<Guid?> MoveAsync(</p>
 <p>    Guid deadLetterId,</p>
 <p>    string sourceTable,</p>
@@ -87326,33 +87587,32 @@ npm install && npm run build</code></pre>
 <p>    string generation,</p>
 <p>    CancellationToken ct = default);</p>
 <p>}</p>
-<p></code></pre></p>
-
-<p>The SQL function <code>move_to_dead_letters()</code> (mig 050) runs the INSERT into</p>
-<code>wh_dead_letters</code> and the DELETE from the source table in a single transaction
+<pre><code class="language-">
+<p>The SQL function </code>move_to_dead_letters()<code> (mig 050) runs the INSERT into</p>
+<p></code>wh_dead_letters<code> and the DELETE from the source table in a single transaction</p>
 <p>so partial-failure crashes leave the system consistent. It's idempotent: when</p>
 <p>the source row is already gone (e.g. two failure paths raced), it returns</p>
-<code>NULL</code> and the caller treats that as "someone else moved it first."
+<p></code>NULL<code> and the caller treats that as "someone else moved it first."</p>
 
 <p>Callers:</p>
 
 <p>| Caller | Trigger | Cap option |</p>
 <p>|---|---|---|</p>
-<p>| <code>InboxDispatchWorker._processOneInnerAsync</code> | <code>attempts > MaxInboxAttempts</code> | <code>MaxInboxAttempts</code> (default 10) |</p>
-<p>| <code>OutboxDrainWorker</code> per-row check | <code>attempts > MaxOutboxAttempts</code> | <code>MaxOutboxAttempts</code> (default 10) |</p>
-<p>| <code>PerspectiveWorker.FilterDeadLetteredAsync</code> | <code>attempts > MaxPerspectiveEventAttempts</code> | <code>MaxPerspectiveEventAttempts</code> (default 10) |</p>
+<p>| </code>InboxDispatchWorker._processOneInnerAsync<code> | </code>attempts > MaxInboxAttempts<code> | </code>MaxInboxAttempts<code> (default 10) |</p>
+<p>| </code>OutboxDrainWorker<code> per-row check | </code>attempts > MaxOutboxAttempts<code> | </code>MaxOutboxAttempts<code> (default 10) |</p>
+<p>| </code>PerspectiveWorker.FilterDeadLetteredAsync<code> | </code>attempts > MaxPerspectiveEventAttempts<code> | </code>MaxPerspectiveEventAttempts<code> (default 10) |</p>
 
 <p>The perspective check runs at the drainer's <strong>pre-deserialization</strong> boundary</p>
 <p>so the typed-envelope parse + apply cost is avoided for rows that are already</p>
 <p>known-doomed. All three callers use one-based attempts semantics:</p>
-<code>attempts=N</code> on the Nth attempt, so <code>Max…Attempts=10</code> permits 10 attempts and
+<p></code>attempts=N<code> on the Nth attempt, so </code>Max…Attempts=10<code> permits 10 attempts and</p>
 <p>dead-letters on the 11th.</p>
 
-<h2>What if <code>MoveAsync</code> throws?</h2>
+<h2>What if </code>MoveAsync<code> throws?</h2>
 
 <p>Every caller has the same fallback: log a warning and leave the row in its</p>
 <p>source table. The next claim cycle will re-pick-it up and the check runs</p>
-<p>again. This keeps <code>wh_dead_letters</code> from silently swallowing rows when the</p>
+<p>again. This keeps </code>wh_dead_letters<code> from silently swallowing rows when the</p>
 <p>DLQ surface itself is broken (DB unhealthy, schema mismatch, etc.). The</p>
 <p>retry budget is already exhausted, so a stuck row at this stage represents</p>
 <p>a partial-availability state worth surfacing — not a correctness issue.</p>
@@ -87361,20 +87621,27 @@ npm install && npm run build</code></pre>
 
 <p>| Worker | Option | Default | Override semantics |</p>
 <p>|---|---|---|---|</p>
-<p>| Inbox | <code>InboxDispatchWorkerOptions.MaxInboxAttempts</code> | 10 | Set to <code>null</code> to disable dead-lettering (legacy v0.501 behavior). |</p>
-<p>| Outbox | <code>OutboxDrainWorkerOptions.MaxOutboxAttempts</code> | 10 | Same — <code>null</code> disables. |</p>
-<p>| Perspective | <code>PerspectiveWorkerOptions.MaxPerspectiveEventAttempts</code> | 10 | Same — <code>null</code> disables. |</p>
+<p>| Inbox | </code>InboxDispatchWorkerOptions.MaxInboxAttempts<code> | 10 | Set to </code>null<code> to disable dead-lettering (legacy v0.501 behavior). |</p>
+<p>| Outbox | </code>OutboxDrainWorkerOptions.MaxOutboxAttempts<code> | 10 | Same — </code>null<code> disables. |</p>
+<p>| Perspective | </code>PerspectiveWorkerOptions.MaxPerspectiveEventAttempts<code> | 10 | Same — </code>null<code> disables. |</p>
 
-<p>The v0.501 defaults were <code>null</code> (unbounded retries). v0.502 ships the 10-attempt</p>
+<p>The v0.501 defaults were </code>null<code> (unbounded retries). v0.502 ships the 10-attempt</p>
 <p>cap as the floor and the DLQ pipeline as the path of recovery. To disable on</p>
-<p>a per-worker basis, set the option to <code>null</code> explicitly in <code>appsettings.json</code>:</p>
+<p>a per-worker basis, set the option to </code>null<code> explicitly in </code>appsettings.json<code>:</p>
 
-<pre><code class="language-json">{
+<p></code></pre>json{</p>
+<p>title: "Disable inbox dead-lettering per worker"</p>
+<p>description: "Sets MaxInboxAttempts to null in appsettings to restore v0.501 unbounded-retry behavior instead of moving exhausted inbox rows to the DLQ."</p>
+<p>category: "Dead Letter Queue"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["dead-letter", "MaxInboxAttempts", "configuration", "inbox"]</p>
+<p>}</p>
+<p>{</p>
 <p>  "Whizbang": {</p>
 <p>    "InboxDispatchWorker": { "MaxInboxAttempts": null }</p>
 <p>  }</p>
 <p>}</p>
-<p></code></pre></p>
+<p></code>``</p>
 
 <h2>See also</h2>
 
@@ -87400,36 +87667,57 @@ npm install && npm run build</code></pre>
 
 <h2>Mounting</h2>
 
-<pre><code class="language-csharp">using Whizbang.Hosting.AspNet;
+<p>``<code>csharp{</p>
+<p>title: "Mount the DLQ operator endpoints"</p>
+<p>description: "Registers the five wh_dead_letters HTTP routes on the app, optionally under a custom path prefix, so operators can drive recovery over JSON."</p>
+<p>framework: "NET10"</p>
+<p>category: "Operations"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["dead-letter", "operator-api", "MapWhizbangDeadLetterEndpoints", "aspnet"]</p>
+<p>}</p>
+<p>using Whizbang.Hosting.AspNet;</p>
 
 <p>var app = builder.Build();</p>
 <p>// ...</p>
 <p>app.MapWhizbangDeadLetterEndpoints();              // default path "/whizbang/dlq"</p>
 <p>app.MapWhizbangDeadLetterEndpoints("/admin/dlq");  // custom prefix</p>
-<p></code></pre></p>
-
-<p>The method returns the <code>RouteGroupBuilder</code> so you can chain authorization,</p>
+<pre><code class="language-">
+<p>The method returns the </code>RouteGroupBuilder<code> so you can chain authorization,</p>
 <p>host filters, and rate limits — recommended before exposing publicly:</p>
 
-<pre><code class="language-csharp">app.MapWhizbangDeadLetterEndpoints()
+<p></code></pre>csharp{</p>
+<p>title: "Secure the DLQ endpoints with authorization and host filters"</p>
+<p>description: "Chains RequireAuthorization and RequireHost onto the returned RouteGroupBuilder so the recovery surface is locked down before it is exposed publicly."</p>
+<p>framework: "NET10"</p>
+<p>category: "Operations"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["dead-letter", "operator-api", "authorization", "security", "aspnet"]</p>
+<p>}</p>
+<p>app.MapWhizbangDeadLetterEndpoints()</p>
 <p>   .RequireAuthorization("WhizbangOperator")</p>
 <p>   .RequireHost("admin.example.com");</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <h2>Endpoints</h2>
 
-<p>All responses are JSON; mutation endpoints return <code>204 No Content</code> on success.</p>
+<p>All responses are JSON; mutation endpoints return </code>204 No Content<code> on success.</p>
 
-<h3><code>GET /whizbang/dlq/due?max=200</code></h3>
+<h3></code>GET /whizbang/dlq/due?max=200<code></h3>
 
-<p>Returns up to <code>max</code> rows ready for recovery (skips terminal states</p>
-<code>Recovered</code>, <code>PermanentlyFailed</code>, <code>HoldForReview</code> and rows whose
-<code>operator_disposition</code> is <code>HoldIndefinitely</code> / <code>MarkPermanentlyFailed</code>).
-<p>Default <code>max=200</code>.</p>
+<p>Returns up to </code>max<code> rows ready for recovery (skips terminal states</p>
+<p></code>Recovered<code>, </code>PermanentlyFailed<code>, </code>HoldForReview<code> and rows whose</p>
+<p></code>operator_disposition<code> is </code>HoldIndefinitely<code> / </code>MarkPermanentlyFailed<code>).</p>
+<p>Default </code>max=200<code>.</p>
 
-<p>Response shape (<code>DeadLetterEntry</code> array):</p>
+<p>Response shape (</code>DeadLetterEntry<code> array):</p>
 
-<pre><code class="language-json">[
+<p></code></pre>json{</p>
+<p>title: "DeadLetterEntry response from GET /whizbang/dlq/due"</p>
+<p>description: "JSON shape returned by the due endpoint for each recoverable wh_dead_letters row, including failureReason, generation, and recovery bookkeeping fields."</p>
+<p>category: "Operations"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["dead-letter", "operator-api", "DeadLetterEntry", "json-response"]</p>
+<p>}</p>
+<p>[</p>
 <p>  {</p>
 <p>    "deadLetterId": "019e8b1d-7e90-77cc-a3c7-ff3469de0f33",</p>
 <p>    "sourceTable": "wh_inbox",</p>
@@ -87444,50 +87732,56 @@ npm install && npm run build</code></pre>
 <p>    "generation": "0.502.0-alpha.1"</p>
 <p>  }</p>
 <p>]</p>
-<p></code></pre></p>
-
-<code>failureReason</code> is the integer value of <code>MessageFailureReason</code>
-<p>(e.g. <code>5 = MaxAttemptsExceeded</code>, <code>8 = Throttled</code>). Consumers should</p>
+<pre><code class="language-">
+<p></code>failureReason<code> is the integer value of </code>MessageFailureReason<code></p>
+<p>(e.g. </code>5 = MaxAttemptsExceeded<code>, </code>8 = Throttled<code>). Consumers should</p>
 <p>map the enum on the client side.</p>
 
-<h3><code>POST /whizbang/dlq/{id}/retry</code></h3>
+<h3></code>POST /whizbang/dlq/{id}/retry<code></h3>
 
-<p>Schedules the row for immediate retry (<code>next_recovery_attempt_at = NOW()</code>).</p>
-<p>The <code>DeadLetterRecoveryWorker</code> picks it up on the next tick. Idempotent —</p>
+<p>Schedules the row for immediate retry (</code>next_recovery_attempt_at = NOW()<code>).</p>
+<p>The </code>DeadLetterRecoveryWorker<code> picks it up on the next tick. Idempotent —</p>
 <p>re-issuing the call just re-sets the timestamp.</p>
 
-<h3><code>POST /whizbang/dlq/{id}/hold</code></h3>
+<h3></code>POST /whizbang/dlq/{id}/hold<code></h3>
 
-<p>Marks the row <code>HoldForReview</code> (terminal). The recovery worker skips it</p>
-<p>until an operator explicitly re-issues <code>retry</code>. Use when you've identified</p>
+<p>Marks the row </code>HoldForReview<code> (terminal). The recovery worker skips it</p>
+<p>until an operator explicitly re-issues </code>retry<code>. Use when you've identified</p>
 <p>a bug that needs a code fix before the row can succeed.</p>
 
-<h3><code>POST /whizbang/dlq/{id}/give-up</code></h3>
+<h3></code>POST /whizbang/dlq/{id}/give-up<code></h3>
 
-<p>Marks the row <code>PermanentlyFailed</code> (terminal). Use when you've decided the</p>
+<p>Marks the row </code>PermanentlyFailed<code> (terminal). Use when you've decided the</p>
 <p>row is truly unrecoverable. Forensic snapshot stays in the table.</p>
 
-<h3><code>POST /whizbang/dlq/scan-now?generation=…</code></h3>
+<h3></code>POST /whizbang/dlq/scan-now?generation=…<code></h3>
 
 <p>Manual generation-replay sweep. Schedules every non-terminal DLQ row whose</p>
 <p>current generation hasn't seen the supplied generation for immediate</p>
 <p>retry. When the query parameter is absent, the configured</p>
-<code>IGenerationProvider.GetGeneration()</code> is used — typically the running
+<p></code>IGenerationProvider.GetGeneration()<code> is used — typically the running</p>
 <p>build's identity.</p>
 
 <p>Response:</p>
 
-<pre><code class="language-json">{ "generation": "0.502.0-alpha.1", "scheduled": 42 }
-<p></code></pre></p>
+<p></code></pre>json{</p>
+<p>title: "Response from POST /whizbang/dlq/scan-now"</p>
+<p>description: "Reports the generation swept and how many non-terminal DLQ rows were rescheduled for immediate retry by the manual generation-replay sweep."</p>
+<p>category: "Operations"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["dead-letter", "operator-api", "generation-replay", "scan-now"]</p>
+<p>}</p>
+<p>{ "generation": "0.502.0-alpha.1", "scheduled": 42 }</p>
+<p></code>`<code></p>
 
-<code>scheduled</code> is the number of rows whose <code>next_recovery_attempt_at</code> got
-<p>reset. Idempotent: rows already in <code>retried_on_generations</code> for this</p>
+<p></code>scheduled<code> is the number of rows whose </code>next_recovery_attempt_at<code> got</p>
+<p>reset. Idempotent: rows already in </code>retried_on_generations<code> for this</p>
 <p>generation are skipped.</p>
 
 <h2>AOT compatibility</h2>
 
-<p>The endpoints use a source-generated <code>JsonSerializerContext</code></p>
-<p>(<code>DeadLetterOperatorJsonContext</code>) — no reflection-based JSON serialization,</p>
+<p>The endpoints use a source-generated </code>JsonSerializerContext<code></p>
+<p>(</code>DeadLetterOperatorJsonContext`) — no reflection-based JSON serialization,</p>
 <p>so they're safe for Native AOT publication. Custom response types added to</p>
 <p>the endpoint group need to be added to the context too.</p>
 
@@ -87555,7 +87849,14 @@ npm install && npm run build</code></pre>
 <p>The SQL function <code>move_to_dead_letters()</code> (mig 050) runs both halves of</p>
 <p>the move in a single transaction:</p>
 
-<pre><code class="language-sql">WITH src AS (
+<p>``<code>sql{</p>
+<p>title: "Atomic move of a perspective-event row to the DLQ"</p>
+<p>description: "The move_to_dead_letters CTE deletes the wh_perspective_events row and inserts the snapshot into wh_dead_letters in one transaction for a consistent, idempotent move."</p>
+<p>category: "Dead Letter Queue"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["dead-letter", "perspective-events", "move_to_dead_letters", "atomic-move", "postgres"]</p>
+<p>}</p>
+<p>WITH src AS (</p>
 <p>  DELETE FROM wh_perspective_events</p>
 <p>  WHERE event_work_id = $sourceId</p>
 <p>  RETURNING stream_id, event_id, perspective_name, attempts, ...</p>
@@ -87564,22 +87865,21 @@ npm install && npm run build</code></pre>
 <p>  (dead_letter_id, source_table, source_id, stream_id, ...)</p>
 <p>SELECT $deadLetterId, 'wh_perspective_events', $sourceId, src.stream_id, ...</p>
 <p>FROM src;</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <p>Atomic — partial-failure crashes leave the system consistent. Idempotent</p>
-<p>— if the row is already gone (another worker beat us to it), <code>MoveAsync</code></p>
-<p>returns <code>NULL</code> and the caller treats it as a no-op.</p>
+<p>— if the row is already gone (another worker beat us to it), </code>MoveAsync<code></p>
+<p>returns </code>NULL<code> and the caller treats it as a no-op.</p>
 
-<h2>What if <code>MoveAsync</code> throws?</h2>
+<h2>What if </code>MoveAsync<code> throws?</h2>
 
-<p>The row stays in the apply set. The next claim cycle re-bumps <code>attempts</code></p>
+<p>The row stays in the apply set. The next claim cycle re-bumps </code>attempts<code></p>
 <p>and the check runs again. Same fallback as inbox / outbox — the retry</p>
 <p>budget is exhausted, but we'd rather visibly keep failing than silently</p>
 <p>swallow rows when the DLQ surface itself is broken.</p>
 
 <h2>Interaction with the cooldown cache</h2>
 
-<p>The cooldown cache (<code>RecentlyProcessedEventCache</code>) and the DLQ check</p>
+<p>The cooldown cache (</code>RecentlyProcessedEventCache<code>) and the DLQ check</p>
 <p>operate independently:</p>
 
 <ul><li>Cooldown filter runs BEFORE the DLQ check (cheaper — pure in-memory</li>
@@ -87588,20 +87888,27 @@ npm install && npm run build</code></pre>
 </ul><p>   entirely and the DLQ check never sees it.</p>
 <ul><li>If a row survives cooldown, the DLQ check runs.</li>
 </ul>
-<p>A row that's been dead-lettered won't reappear in <code>get_stream_events</code></p>
+<p>A row that's been dead-lettered won't reappear in </code>get_stream_events<code></p>
 <p>results (the SQL function deleted it), so the cooldown cache never sees</p>
 <p>a stale entry pointing at a DLQ'd row.</p>
 
 <h2>Disabling</h2>
 
-<pre><code class="language-json">{
+<p></code></pre>json{</p>
+<p>title: "Disable perspective-event dead-lettering"</p>
+<p>description: "Sets MaxPerspectiveEventAttempts to null so wh_perspective_events rows retry indefinitely instead of moving to the DLQ — only safe with an external janitor or idempotent perspectives."</p>
+<p>category: "Dead Letter Queue"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["dead-letter", "perspective-events", "MaxPerspectiveEventAttempts", "configuration"]</p>
+<p>}</p>
+<p>{</p>
 <p>  "Whizbang": {</p>
 <p>    "PerspectiveWorker": { "MaxPerspectiveEventAttempts": null }</p>
 <p>  }</p>
 <p>}</p>
-<p></code></pre></p>
+<p></code>`<code></p>
 
-<p>Restores v0.501 behavior: rows accumulate in <code>wh_perspective_events</code></p>
+<p>Restores v0.501 behavior: rows accumulate in </code>wh_perspective_events`</p>
 <p>indefinitely. Use only if you have an external janitor that purges old</p>
 <p>rows, or if your perspectives are idempotent enough that infinite retry</p>
 <p>is acceptable.</p>
@@ -87656,7 +87963,15 @@ npm install && npm run build</code></pre>
 
 <p>Operators that need finer control replace the default policy via DI:</p>
 
-<pre><code class="language-csharp">services.AddSingleton<IDeadLetterRecoveryPolicy, MyCustomPolicy>();
+<p>``<code>csharp{</p>
+<p>title: "Register a custom DLQ recovery policy"</p>
+<p>description: "Replaces the default IDeadLetterRecoveryPolicy via DI to customize retry counts, cooldowns, stream recovery mode, and whether a given DLQ entry should recover at all."</p>
+<p>framework: "NET10"</p>
+<p>category: "Dead Letter Queue"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["dead-letter", "recovery", "IDeadLetterRecoveryPolicy", "RecoveryPolicy", "custom-policy"]</p>
+<p>}</p>
+<p>services.AddSingleton<IDeadLetterRecoveryPolicy, MyCustomPolicy>();</p>
 
 <p>public sealed class MyCustomPolicy : IDeadLetterRecoveryPolicy {</p>
 <p>  public RecoveryPolicy GetPolicy(DeadLetterEntry entry) {</p>
@@ -87676,34 +87991,33 @@ npm install && npm run build</code></pre>
 <p>    return true;</p>
 <p>  }</p>
 <p>}</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <h2>Stream recovery modes</h2>
 
-<code>StreamRecoveryMode</code> controls how sibling DLQ entries on the same <code>stream_id</code>
+<p></code>StreamRecoveryMode<code> controls how sibling DLQ entries on the same </code>stream_id<code></p>
 <p>are coordinated:</p>
 
-<ul><li><strong><code>PerMessage</code></strong> — recover each row independently. Default for any DLQ row</li>
-</ul><p>  without a <code>stream_id</code>. Faster but doesn't preserve original event ordering</p>
+<ul><li><strong></code>PerMessage<code></strong> — recover each row independently. Default for any DLQ row</li>
+</ul><p>  without a </code>stream_id<code>. Faster but doesn't preserve original event ordering</p>
 <p>  if multiple entries on the same stream all need recovery.</p>
-<ul><li><strong><code>TailAware</code></strong> — gather all sibling entries for the same <code>stream_id</code>, sort</li>
+<ul><li><strong></code>TailAware<code></strong> — gather all sibling entries for the same </code>stream_id<code>, sort</li>
 </ul><p>  by original event order, and re-emit them together. FIFO preserved when</p>
 <p>  every recovery succeeds. When any one fails, the rest stay in DLQ; ordering</p>
 <p>  is best-effort.</p>
 
-<p>Use <code>TailAware</code> for streams that drive aggregate-mutation receptors or</p>
+<p>Use </code>TailAware<code> for streams that drive aggregate-mutation receptors or</p>
 <p>perspectives where re-applying out of order would surface a temporary bad</p>
 <p>state.</p>
 
 <h2>Generation-tagged auto-replay</h2>
 
-<p>Every DLQ row records the <code>generation</code> (typically the Whizbang+app version</p>
+<p>Every DLQ row records the </code>generation<code> (typically the Whizbang+app version</p>
 <p>combo) it dead-lettered under. On every deploy:</p>
 
-<ul><li>The <code>DeadLetterRecoveryWorker</code> runs one extra scan at startup.</li>
+<ul><li>The </code>DeadLetterRecoveryWorker<code> runs one extra scan at startup.</li>
 <li>For every row whose current generation is NOT in</li>
-</ul><p>   <code>retried_on_generations</code>, <code>next_recovery_attempt_at</code> is reset to <code>NOW()</code>.</p>
-<ul><li>Row is appended to <code>retried_on_generations</code> so the next deploy doesn't</li>
+</ul><p>   </code>retried_on_generations<code>, </code>next_recovery_attempt_at<code> is reset to </code>NOW()<code>.</p>
+<ul><li>Row is appended to </code>retried_on_generations<code> so the next deploy doesn't</li>
 </ul><p>   re-trigger it.</p>
 
 <p>This implements the "we shipped a fix — try again" semantic. Operators don't</p>
@@ -87713,12 +88027,19 @@ npm install && npm run build</code></pre>
 
 <p>Disable globally via:</p>
 
-<pre><code class="language-json">{
+<p></code></pre>json{</p>
+<p>title: "Disable generation-tagged auto-replay"</p>
+<p>description: "Sets EnableGenerationReplay to false so DLQ rows are not automatically given a free retry attempt on each new deploy generation."</p>
+<p>category: "Dead Letter Queue"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["dead-letter", "recovery", "generation-replay", "configuration"]</p>
+<p>}</p>
+<p>{</p>
 <p>  "Whizbang": {</p>
 <p>    "DeadLetterRecovery": { "EnableGenerationReplay": false }</p>
 <p>  }</p>
 <p>}</p>
-<p></code></pre></p>
+<p></code>``</p>
 
 <h2>See also</h2>
 
@@ -87760,7 +88081,14 @@ npm install && npm run build</code></pre>
 
 <h2>Defaults</h2>
 
-<pre><code class="language-json">{
+<p>``<code>json{</p>
+<p>title: "Configure the transport DLQ drain worker"</p>
+<p>description: "appsettings defaults controlling the broker DLQ drain backstop — enable flag, sweep interval, and the per-tick message cap."</p>
+<p>category: "Operations"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["dead-letter", "transport-recovery", "TransportDeadLetterDrainWorker", "configuration"]</p>
+<p>}</p>
+<p>{</p>
 <p>  "Whizbang": {</p>
 <p>    "TransportDeadLetterDrainWorker": {</p>
 <p>      "Enabled": true,</p>
@@ -87769,87 +88097,108 @@ npm install && npm run build</code></pre>
 <p>    }</p>
 <p>  }</p>
 <p>}</p>
-<p></code></pre></p>
-
-<code>Enabled = false</code> is the killswitch — broker DLQs stay full until an
+<pre><code class="language-">
+<p></code>Enabled = false<code> is the killswitch — broker DLQs stay full until an</p>
 <p>operator drains them manually via broker-side tooling.</p>
 
 <h2>Azure Service Bus</h2>
 
-<code>AzureServiceBusDeadLetterDrainer</code> reads from
-<code><topic>/Subscriptions/<sub>/$DeadLetterQueue</code> and re-sends each message
-<p>back to <code><topic></code> using a fresh <code>ServiceBusMessage</code>. Body, application</p>
-<p>properties, and routing fields (<code>subject</code>, <code>correlationId</code>, <code>messageId</code>,</p>
-<code>sessionId</code>, <code>partitionKey</code>) are copied; <code>DeliveryCount</code> resets on the
+<p></code>AzureServiceBusDeadLetterDrainer<code> reads from</p>
+<p></code><topic>/Subscriptions/<sub>/$DeadLetterQueue<code> and re-sends each message</p>
+<p>back to </code><topic><code> using a fresh </code>ServiceBusMessage<code>. Body, application</p>
+<p>properties, and routing fields (</code>subject<code>, </code>correlationId<code>, </code>messageId<code>,</p>
+<p></code>sessionId<code>, </code>partitionKey<code>) are copied; </code>DeliveryCount<code> resets on the</p>
 <p>new message.</p>
 
 <p>Registration (one per subscription):</p>
 
-<pre><code class="language-csharp">services.AddSingleton<ITransportDeadLetterDrainer>(sp =>
+<p></code></pre>csharp{</p>
+<p>title: "Register an Azure Service Bus dead-letter drainer"</p>
+<p>description: "Wires an AzureServiceBusDeadLetterDrainer per subscription so the worker can drain the ASB $DeadLetterQueue back onto the topic's receive path."</p>
+<p>framework: "NET10"</p>
+<p>category: "Operations"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["dead-letter", "transport-recovery", "azure-service-bus", "ITransportDeadLetterDrainer"]</p>
+<p>}</p>
+<p>services.AddSingleton<ITransportDeadLetterDrainer>(sp =></p>
 <p>  new AzureServiceBusDeadLetterDrainer(</p>
 <p>    client: sp.GetRequiredService<ServiceBusClient>(),</p>
 <p>    topicName: "orders",</p>
 <p>    subscriptionName: "inventory-svc",</p>
 <p>    logger: sp.GetRequiredService<ILogger<AzureServiceBusDeadLetterDrainer>>()));</p>
-<p></code></pre></p>
-
-<code>TransportName</code> becomes <code>asb:orders/inventory-svc</code> — used as the
-<code>transport</code> dimension on the <code>whizbang.transport_dlq.drained</code> counter.
+<pre><code class="language-">
+<p></code>TransportName<code> becomes </code>asb:orders/inventory-svc<code> — used as the</p>
+<p></code>transport<code> dimension on the </code>whizbang.transport_dlq.drained<code> counter.</p>
 
 <h2>RabbitMQ</h2>
 
-<code>RabbitMqDeadLetterDrainer</code> reads from the configured DLQ via
-<code>BasicGetAsync</code>, resolves the original <code>(exchange, routing-key)</code> from the
-<code>x-death</code> header that RabbitMQ attaches when a message enters DLQ, and
-<p>re-publishes via <code>BasicPublishAsync</code>. Falls back to a configured default</p>
+<p></code>RabbitMqDeadLetterDrainer<code> reads from the configured DLQ via</p>
+<p></code>BasicGetAsync<code>, resolves the original </code>(exchange, routing-key)<code> from the</p>
+<p></code>x-death<code> header that RabbitMQ attaches when a message enters DLQ, and</p>
+<p>re-publishes via </code>BasicPublishAsync<code>. Falls back to a configured default</p>
 <p>exchange + the message's current routing key when the header is missing</p>
 <p>(rare; only happens if the broker stripped it).</p>
 
 <p>Registration:</p>
 
-<pre><code class="language-csharp">services.AddSingleton<ITransportDeadLetterDrainer>(sp =>
+<p></code></pre>csharp{</p>
+<p>title: "Register a RabbitMQ dead-letter drainer"</p>
+<p>description: "Wires a RabbitMqDeadLetterDrainer that reads the DLQ, resolves the original exchange/routing-key from the x-death header, and re-publishes with a fallback exchange."</p>
+<p>framework: "NET10"</p>
+<p>category: "Operations"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["dead-letter", "transport-recovery", "rabbitmq", "ITransportDeadLetterDrainer"]</p>
+<p>}</p>
+<p>services.AddSingleton<ITransportDeadLetterDrainer>(sp =></p>
 <p>  new RabbitMqDeadLetterDrainer(</p>
 <p>    connection: sp.GetRequiredService<IConnection>(),</p>
 <p>    dlqName: "orders.dlq",</p>
 <p>    fallbackExchange: "orders",</p>
 <p>    logger: sp.GetRequiredService<ILogger<RabbitMqDeadLetterDrainer>>()));</p>
-<p></code></pre></p>
-
-<code>TransportName</code> becomes <code>rmq:orders.dlq</code>.
+<pre><code class="language-">
+<p></code>TransportName<code> becomes </code>rmq:orders.dlq<code>.</p>
 
 <h2>Failure handling</h2>
 
 <p>Both implementations are best-effort:</p>
 
-<ul><li>ASB: if <code>SendMessageAsync</code> or <code>CompleteMessageAsync</code> throws, the</li>
-</ul><p>  message is <code>AbandonMessageAsync</code>-ed back to DLQ for the next sweep.</p>
-<ul><li>RMQ: if <code>BasicPublishAsync</code> or <code>BasicAckAsync</code> throws, the message is</li>
-</ul><p>  <code>BasicNack</code>-ed with <code>requeue=true</code> so it stays in DLQ.</p>
+<ul><li>ASB: if </code>SendMessageAsync<code> or </code>CompleteMessageAsync<code> throws, the</li>
+</ul><p>  message is </code>AbandonMessageAsync<code>-ed back to DLQ for the next sweep.</p>
+<ul><li>RMQ: if </code>BasicPublishAsync<code> or </code>BasicAckAsync<code> throws, the message is</li>
+</ul><p>  </code>BasicNack<code>-ed with </code>requeue=true<code> so it stays in DLQ.</p>
 
 <p>A single drainer failing doesn't stop the others — the worker continues</p>
 <p>through the remaining drainers on the current tick.</p>
 
 <h2>On-demand drain</h2>
 
-<p>The worker exposes <code>DrainOnceAsync(CancellationToken)</code> publicly so</p>
+<p>The worker exposes </code>DrainOnceAsync(CancellationToken)<code> publicly so</p>
 <p>operator endpoints can trigger an immediate sweep without waiting for</p>
 <p>the next interval:</p>
 
-<pre><code class="language-csharp">app.MapPost("/admin/transport-dlq/drain-now", async (
+<p></code></pre>csharp{</p>
+<p>title: "Trigger an on-demand broker DLQ drain"</p>
+<p>description: "Maps an operator endpoint that calls DrainOnceAsync to sweep every registered transport drainer immediately instead of waiting for the next interval tick."</p>
+<p>framework: "NET10"</p>
+<p>category: "Operations"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["dead-letter", "transport-recovery", "DrainOnceAsync", "operator-endpoint"]</p>
+<p>}</p>
+<p>app.MapPost("/admin/transport-dlq/drain-now", async (</p>
 <p>    TransportDeadLetterDrainWorker worker,</p>
 <p>    CancellationToken ct) => {</p>
 <p>  await worker.DrainOnceAsync(ct);</p>
 <p>  return Results.NoContent();</p>
 <p>}).RequireAuthorization("WhizbangOperator");</p>
-<p></code></pre></p>
+<p></code>`<code></p>
 
 <h2>Telemetry</h2>
 
 <p>| Metric | Type | Dimensions |</p>
 <p>|---|---|---|</p>
-<p>| <code>whizbang.transport_dlq.drained</code> | counter | <code>transport</code> (e.g. <code>asb:orders/inventory-svc</code>) |</p>
+<p>| </code>whizbang.transport_dlq.drained<code> | counter | </code>transport<code> (e.g. </code>asb:orders/inventory-svc<code>) |</p>
 
-<p>Worker also exposes <code>TotalDrained</code> (a <code>long</code>) for in-process introspection</p>
+<p>Worker also exposes </code>TotalDrained<code> (a </code>long`) for in-process introspection</p>
 <p>— useful for tests and health endpoints.</p>
 
 <h2>See also</h2>
@@ -93629,15 +93978,22 @@ npm install && npm run build</code></pre>
 <ul><li>Add the ledger's currently-recorded name to that entry's <code>formerNames</code>.</li>
 <li>Set the entry's <code>clrTypeName</code> to the new (current) name.</li>
 </ul>
-<pre><code class="language-json">{
+<p>``<code>json{</p>
+<p>title: "Acknowledge a pinned-type rename in the ledger"</p>
+<p>description: "Add the former CLR name to formerNames and update clrTypeName in pinned-type-ledger.json so old stored events still resolve and WHIZ120 clears."</p>
+<p>category: "Diagnostics"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["whiz120", "pinned-id", "type-rename", "ledger", "former-names", "json"]</p>
+<p>}</p>
+<p>{</p>
 <p>  "pinnedId": "11111111-2222-3333-4444-555555555555",</p>
 <p>  "clrTypeName": "MyApp.Contracts.OrderPlacedEvent",</p>
 <p>  "kind": "event",</p>
 <p>  "formerNames": ["MyApp.Contracts.OrderCreatedEvent"]</p>
 <p>}</p>
-<p></code></pre></p>
+<p></code>`<code></p>
 
-<p>Rebuild. WHIZ120 clears, and <code>MessageJsonContextGenerator</code> now emits an alias so events stored under the former name</p>
+<p>Rebuild. WHIZ120 clears, and </code>MessageJsonContextGenerator<code> now emits an alias so events stored under the former name</p>
 <p>still deserialize to the current type. Commit the ledger change alongside the rename — the diff is the acknowledgment.</p>
 
 <p>The <a href="https://github.com/whizbang-lib">VSCode extension</a> can apply this edit inline.</p>
@@ -93646,7 +94002,7 @@ npm install && npm run build</code></pre>
 
 <p>If you are genuinely retiring a pinned id (not renaming), remove the type and prune its ledger entry — see</p>
 <a href="whiz121">WHIZ121</a>. Renaming is not the same as replacing: to <em>replace</em> a type, create a new type with a <strong>new</strong>
-<code>[PinnedId]</code>.
+<p></code>[PinnedId]`.</p>
 
 <h2>Related</h2>
 
@@ -98938,7 +99294,13 @@ npm install && npm run build</code></pre>
 
 <p>Migration </code>054_StuckRowSentinel.sql<code> creates two partial indexes:</p>
 
-<p></code></pre>sql</p>
+<p></code></pre>sql{</p>
+<p>title: "Partial indexes for the stuck-row sentinel"</p>
+<p>description: "Create the attempts>5 partial indexes on wh_outbox and wh_inbox that keep the sentinel scan effectively free in steady state."</p>
+<p>category: "Observability"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["stuck-row", "sentinel", "partial-index", "wh_outbox", "wh_inbox", "sql"]</p>
+<p>}</p>
 <p>CREATE INDEX idx_outbox_stuck_sentinel</p>
 <p>  ON wh_outbox (attempts)</p>
 <p>  WHERE processed_at IS NULL AND attempts > 5;</p>
@@ -98968,7 +99330,13 @@ npm install && npm run build</code></pre>
 <ul><li><strong>Correlate timing</strong> — Check </code>since<code> against your recent deploy timeline. A row stuck since the last deploy is likely a regression in code that shipped. A row stuck longer is likely accumulating from an existing producer bug.</li>
 <li><strong>Group by type</strong> — Multiple Warnings naming the same </code>MessageType<code> mean a specific producer is the source. Search the producer's codebase for that type's call site.</li>
 <li><strong>Investigate the row directly</strong> — Query </code>wh_outbox<code> for the </code>message_id<code>:</li>
-</ul><p>   </code></pre>sql</p>
+</ul><p>   </code></pre>sql{</p>
+<p>title: "Inspect a stuck outbox row by message_id"</p>
+<p>description: "Pull the full forensic column set for a sentinel-flagged wh_outbox row so an operator can diagnose why it never drained."</p>
+<p>category: "Observability"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["stuck-row", "sentinel", "forensics", "wh_outbox", "operator", "sql"]</p>
+<p>}</p>
 <p>   SELECT message_type, stream_id, attempts, status, failure_reason,</p>
 <p>          error, instance_id, lease_expiry, created_at</p>
 <p>   FROM wh_outbox</p>
@@ -98983,7 +99351,13 @@ npm install && npm run build</code></pre>
 
 <h3>Per-type stuck-row rates</h3>
 
-<p></code></pre>sql</p>
+<p></code></pre>sql{</p>
+<p>title: "Aggregate stuck outbox rows by message type"</p>
+<p>description: "Group sentinel-flagged wh_outbox rows by message_type to reveal which producer is the source of a silent-stuck symptom."</p>
+<p>category: "Observability"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["stuck-row", "sentinel", "telemetry", "message-type", "aggregation", "sql"]</p>
+<p>}</p>
 <p>SELECT message_type, COUNT(*) AS stuck_count, MAX(attempts) AS max_attempts</p>
 <p>FROM wh_outbox</p>
 <p>WHERE attempts > 10 AND processed_at IS NULL</p>
@@ -98992,7 +99366,13 @@ npm install && npm run build</code></pre>
 <pre><code class="language-">
 <h3>Time-since-stuck distribution</h3>
 
-<p></code></pre>sql</p>
+<p></code></pre>sql{</p>
+<p>title: "Compute the time-since-stuck distribution"</p>
+<p>description: "Summarize oldest, newest, and average attempts of stuck wh_outbox rows per message_type to frame urgency and correlate with deploy windows."</p>
+<p>category: "Observability"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["stuck-row", "sentinel", "telemetry", "distribution", "deploy-correlation", "sql"]</p>
+<p>}</p>
 <p>SELECT</p>
 <p>  message_type,</p>
 <p>  MIN(created_at) AS oldest_stuck,</p>
@@ -103744,25 +104124,37 @@ npm install && npm run build</code></pre>
 
 <p>Migration 029 (<code>process_work_batch</code>) tracks a refresh threshold alongside the computed expiry:</p>
 
-<pre><code class="language-sql">v_lease_expiry      := p_now + (p_lease_duration_seconds          || ' seconds')::INTERVAL;
+<p>``<code>sql{</p>
+<p>title: "Compute lease expiry and refresh threshold"</p>
+<p>description: "Derive the new lease_expiry and the one-third refresh threshold inside process_work_batch so leases are only rewritten near expiry."</p>
+<p>category: "Workers"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["work-coordinator", "lease-renewal", "process-work-batch", "refresh-threshold", "sql"]</p>
+<p>}</p>
+<p>v_lease_expiry      := p_now + (p_lease_duration_seconds          || ' seconds')::INTERVAL;</p>
 <p>v_refresh_threshold := p_now + ((p_lease_duration_seconds / 3)    || ' seconds')::INTERVAL;</p>
-<p></code></pre></p>
-
+<pre><code class="language-">
 <p>and guards the end-of-tick UPDATE:</p>
 
-<pre><code class="language-sql">UPDATE wh_active_streams
+<p></code></pre>sql{</p>
+<p>title: "Guard the end-of-tick lease refresh UPDATE"</p>
+<p>description: "Refresh lease_expiry only for owned streams within the refresh threshold, cutting per-tick UPDATE volume without changing the orphan-detection SLA."</p>
+<p>category: "Workers"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["work-coordinator", "lease-renewal", "conditional-refresh", "wh_active_streams", "orphan-claim", "sql"]</p>
+<p>}</p>
+<p>UPDATE wh_active_streams</p>
 <p>SET lease_expiry = v_lease_expiry</p>
 <p>WHERE assigned_instance_id = p_instance_id</p>
 <p>  AND lease_expiry < v_refresh_threshold;</p>
-<p></code></pre></p>
+<pre><code class="language-">
+<strong>Meaning.</strong> A stream whose lease expires in more than </code>p_lease_duration_seconds / 3<code> seconds from now is left alone. With the default 300 s lease duration, that means a freshly-renewed stream is not touched again for another ~200 seconds.
 
-<strong>Meaning.</strong> A stream whose lease expires in more than <code>p_lease_duration_seconds / 3</code> seconds from now is left alone. With the default 300 s lease duration, that means a freshly-renewed stream is not touched again for another ~200 seconds.
-
-<h3>Tuning <code>p_lease_duration_seconds</code></h3>
+<h3>Tuning </code>p_lease_duration_seconds<code></h3>
 
 <p>The refresh window is always one-third of the lease duration. Lowering the lease shortens both the refresh cadence (higher write volume) and the orphan-detection window (faster failover):</p>
 
-<p>| <code>p_lease_duration_seconds</code> | Refresh cadence per stream | Max time to orphan detection |</p>
+<p>| </code>p_lease_duration_seconds<code> | Refresh cadence per stream | Max time to orphan detection |</p>
 <p>|----------------------------|----------------------------|------------------------------|</p>
 <p>| 60 (aggressive) | ~20 s | 60 s |</p>
 <p>| 300 (default) | ~200 s | 300 s |</p>
@@ -103770,71 +104162,78 @@ npm install && npm run build</code></pre>
 
 <h3>Why the orphan SLA is unchanged</h3>
 
-<p>The guard only affects <em>refresh</em> — it does not affect <em>expiry</em>. When an instance dies, its stream's <code>lease_expiry</code> still elapses at the same wall-clock time as before (the last refresh + <code>p_lease_duration_seconds</code>). Cross-instance orphan claims still gate on <code>now() > lease_expiry</code>, so the maximum time to re-claim an orphaned stream is unchanged at <code>p_lease_duration_seconds</code>.</p>
+<p>The guard only affects <em>refresh</em> — it does not affect <em>expiry</em>. When an instance dies, its stream's </code>lease_expiry<code> still elapses at the same wall-clock time as before (the last refresh + </code>p_lease_duration_seconds<code>). Cross-instance orphan claims still gate on </code>now() > lease_expiry<code>, so the maximum time to re-claim an orphaned stream is unchanged at </code>p_lease_duration_seconds<code>.</p>
 
 <h2>Instance heartbeat</h2>
 
-<code>register_instance_heartbeat</code> is called on every <code>process_work_batch</code> tick. It upserts the instance row in <code>wh_service_instances</code>, updating <code>last_heartbeat_at</code> to <code>p_now</code>. <code>cleanup_stale_instances</code> removes any instance whose heartbeat is older than <code>p_stale_threshold_seconds</code> (default <strong>30 s</strong>).
+<p></code>register_instance_heartbeat<code> is called on every </code>process_work_batch<code> tick. It upserts the instance row in </code>wh_service_instances<code>, updating </code>last_heartbeat_at<code> to </code>p_now<code>. </code>cleanup_stale_instances<code> removes any instance whose heartbeat is older than </code>p_stale_threshold_seconds<code> (default <strong>30 s</strong>).</p>
 
 <h3>The guard</h3>
 
 <p>Migration 010 now skips the UPDATE side of the UPSERT when the existing heartbeat is already fresh:</p>
 
-<pre><code class="language-sql">ON CONFLICT (instance_id) DO UPDATE SET
+<p></code></pre>sql{</p>
+<p>title: "Skip the heartbeat UPDATE when it is already fresh"</p>
+<p>description: "Guard the register_instance_heartbeat UPSERT so last_heartbeat_at is only rewritten when older than 10s, cutting per-pod heartbeat writes ~40x while staying inside the stale cutoff."</p>
+<p>category: "Workers"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["work-coordinator", "heartbeat", "conditional-refresh", "wh_service_instances", "instance-stickiness", "sql"]</p>
+<p>}</p>
+<p>ON CONFLICT (instance_id) DO UPDATE SET</p>
 <p>  last_heartbeat_at = p_now,</p>
 <p>  metadata          = COALESCE(EXCLUDED.metadata, wh_service_instances.metadata)</p>
 <p>WHERE wh_service_instances.last_heartbeat_at < p_now - interval '10 seconds';</p>
-<p></code></pre></p>
+<p></code>`<code></p>
 
-<strong>Meaning.</strong> If the instance heartbeated less than 10 s ago, the UPDATE is skipped entirely. With the default poll interval (250 ms) that takes a heartbeat write rate of <code>~4 / sec / pod</code> down to <code>~0.1 / sec / pod</code>.
+<strong>Meaning.</strong> If the instance heartbeated less than 10 s ago, the UPDATE is skipped entirely. With the default poll interval (250 ms) that takes a heartbeat write rate of </code>~4 / sec / pod<code> down to </code>~0.1 / sec / pod<code>.
 
 <h3>Why 10 s</h3>
 
-<p>It has to be strictly less than <code>p_stale_threshold_seconds</code> (default 30 s) or an instance would go stale between forced refreshes. 10 s leaves a <strong>20 s safety margin</strong>: at worst the heartbeat is 10 s old when the next tick fires, still 20 s inside the stale cutoff.</p>
+<p>It has to be strictly less than </code>p_stale_threshold_seconds<code> (default 30 s) or an instance would go stale between forced refreshes. 10 s leaves a <strong>20 s safety margin</strong>: at worst the heartbeat is 10 s old when the next tick fires, still 20 s inside the stale cutoff.</p>
 
-<p>If you shorten <code>p_stale_threshold_seconds</code> for faster failure detection, the 10 s window is still safe down to thresholds of around 15 s. Below that, the heartbeat-freshness constant should be reduced in lock-step.</p>
+<p>If you shorten </code>p_stale_threshold_seconds<code> for faster failure detection, the 10 s window is still safe down to thresholds of around 15 s. Below that, the heartbeat-freshness constant should be reduced in lock-step.</p>
 
 <h2>Adaptive poll interval</h2>
 
-<p>Locally-produced work bypasses the poll timer altogether: <code>IWorkChannelWriter.OnNewWorkAvailable</code> and <code>IInboxChannelWriter.OnNewInboxWorkAvailable</code> raise <code>RequestImmediatePoll()</code>, releasing the internal <code>_pollWakeSignal</code> semaphore and making the next tick fire immediately.</p>
+<p>Locally-produced work bypasses the poll timer altogether: </code>IWorkChannelWriter.OnNewWorkAvailable<code> and </code>IInboxChannelWriter.OnNewInboxWorkAvailable<code> raise </code>RequestImmediatePoll()<code>, releasing the internal </code>_pollWakeSignal<code> semaphore and making the next tick fire immediately.</p>
 
 <p>The periodic tick exists to cover:</p>
 
-<ul><li>Transport-received inbox writes (no in-process signal — the transport consumer writes straight to <code>wh_inbox</code>).</li>
+<ul><li>Transport-received inbox writes (no in-process signal — the transport consumer writes straight to </code>wh_inbox<code>).</li>
 <li>Orphan claim and lease-expiry enforcement.</li>
-<li>Scheduled / deferred <code>wh_inbox.scheduled_for</code> promotion.</li>
+<li>Scheduled / deferred </code>wh_inbox.scheduled_for<code> promotion.</li>
 <li>Heartbeat + lease renewal.</li>
 </ul>
 <h3>The backoff</h3>
 
-<p>When <code>process_work_batch</code> returns no work, <code>_consecutiveEmptyPolls</code> is incremented. The worker's wait doubles per empty poll up to a configurable cap:</p>
+<p>When </code>process_work_batch<code> returns no work, </code>_consecutiveEmptyPolls<code> is incremented. The worker's wait doubles per empty poll up to a configurable cap:</p>
 
-<p>| <code>_consecutiveEmptyPolls</code> | Wait (ms, default base = 250, max = 2000) |</p>
+<p>| </code>_consecutiveEmptyPolls<code> | Wait (ms, default base = 250, max = 2000) |</p>
 <p>|--------------------------|-------------------------------------------|</p>
 <p>| 0 (work found this tick) | 250 |</p>
 <p>| 1 | 500 |</p>
 <p>| 2 | 1000 |</p>
 <p>| 3 and above | <strong>2000</strong> (capped) |</p>
 
-<p>Any non-empty batch resets <code>_consecutiveEmptyPolls</code> to zero (via <code>_trackWorkStateTransitions(hasWork)</code>), so the first empty poll after activity waits the base interval again.</p>
+<p>Any non-empty batch resets </code>_consecutiveEmptyPolls<code> to zero (via </code>_trackWorkStateTransitions(hasWork)<code>), so the first empty poll after activity waits the base interval again.</p>
 
 <h3>Wake-signal interruption</h3>
 
-<code>RequestImmediatePoll()</code> works regardless of the current backoff depth — it releases the semaphore and the wait returns immediately. The adaptive path only affects the <em>timeout</em> on the wait, not its <em>interruptibility</em>.
+<p></code>RequestImmediatePoll()<code> works regardless of the current backoff depth — it releases the semaphore and the wait returns immediately. The adaptive path only affects the <em>timeout</em> on the wait, not its <em>interruptibility</em>.</p>
 
 <h3>Tuning the cap</h3>
 
-<code>WorkCoordinatorPublisherOptions.PollingMaxIntervalMilliseconds</code> (default 2000):
+<p></code>WorkCoordinatorPublisherOptions.PollingMaxIntervalMilliseconds<code> (default 2000):</p>
 
 <ul><li><strong>Larger</strong> caps reduce idle write load further but increase worst-case latency for transport-received work discovery (up to the cap).</li>
-<li><strong>Set equal to <code>PollingIntervalMilliseconds</code></strong> to disable backoff entirely (kill-switch — restores the pre-fix fixed-interval behaviour with zero other code changes).</li>
+<li><strong>Set equal to </code>PollingIntervalMilliseconds<code></strong> to disable backoff entirely (kill-switch — restores the pre-fix fixed-interval behaviour with zero other code changes).</li>
 <li><strong>Lower</strong> caps (e.g. 1000 ms) for services that receive bursts of transport-sourced work and need faster pickup at the cost of some idle overhead.</li>
 </ul>
 <h2>Tests</h2>
 
-<ul><li><strong>Dapper</strong>: <code>ProcessWorkBatchLeaseRenewalTests.cs</code> — 5 scenarios covering the lease-fresh no-op, near-expiry refresh, orphan SLA, heartbeat-fresh no-op, and heartbeat-stale refresh.</li>
-<li><strong>EFCore</strong>: <code>EFCoreLeaseRenewalTests.cs</code> — single mirror test proving the guard applies through the EFCore work coordinator too (the guard lives in the Postgres function body).</li>
-<li><strong>Backoff</strong>: <code>WorkCoordinatorPublisherWorkerDrainTests.cs</code> — 4 scenarios covering the doubling schedule, reset on non-empty batch, wake-signal interruption, and kill-switch.</li>
+<ul><li><strong>Dapper</strong>: </code>ProcessWorkBatchLeaseRenewalTests.cs<code> — 5 scenarios covering the lease-fresh no-op, near-expiry refresh, orphan SLA, heartbeat-fresh no-op, and heartbeat-stale refresh.</li>
+<li><strong>EFCore</strong>: </code>EFCoreLeaseRenewalTests.cs<code> — single mirror test proving the guard applies through the EFCore work coordinator too (the guard lives in the Postgres function body).</li>
+<li><strong>Backoff</strong>: </code>WorkCoordinatorPublisherWorkerDrainTests.cs` — 4 scenarios covering the doubling schedule, reset on non-empty batch, wake-signal interruption, and kill-switch.</li>
 </ul>
 <h2>See also</h2>
 

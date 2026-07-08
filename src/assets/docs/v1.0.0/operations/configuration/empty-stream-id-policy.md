@@ -176,7 +176,13 @@ Grep the Warning rate to track:
 
 When `MessageFailureReason.EmptyStreamId` rows accumulate in `wh_dead_letters` under the `DeadLetter` policy, group by `message_type` to find the producer:
 
-```sql
+```sql{
+title: "Find producers of Empty stream_id dead letters"
+description: "Group wh_dead_letters by message_type where failure_reason is EmptyStreamId (11) to identify which producer is writing Guid.Empty under the DeadLetter policy."
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["empty-stream-id", "dead-letter", "wh_dead_letters", "message-type", "telemetry", "sql"]
+}
 SELECT message_type, COUNT(*) AS empty_count
 FROM wh_dead_letters
 WHERE failure_reason = 11  -- MessageFailureReason.EmptyStreamId

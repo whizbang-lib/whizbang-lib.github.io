@@ -31,7 +31,13 @@ landing zone for policy-driven recovery — operators (or the
 
 `wh_dead_letters` (migration `050_WhDeadLetters.sql`):
 
-```sql
+```sql{
+title: "wh_dead_letters table schema"
+description: "The migration 050 table definition holding the forensic snapshot, generation-replay, and recovery-state columns for every permanently failed work-table row."
+category: "Dead Letter Queue"
+difficulty: "INTERMEDIATE"
+tags: ["dead-letter", "wh_dead_letters", "schema", "migration", "postgres"]
+}
 CREATE TABLE wh_dead_letters (
   dead_letter_id     UUID NOT NULL PRIMARY KEY,
   source_table       TEXT NOT NULL,    -- 'wh_outbox' | 'wh_inbox' | 'wh_perspective_events'
@@ -74,7 +80,14 @@ The columns split into three groups:
 Any worker that detects a permanent failure calls
 `IDeadLetterStore.MoveAsync(...)`:
 
-```csharp
+```csharp{
+title: "IDeadLetterStore.MoveAsync interface"
+description: "The atomic move-boundary contract every worker calls to relocate a permanently failed row from its source table into wh_dead_letters."
+framework: "NET10"
+category: "Dead Letter Queue"
+difficulty: "ADVANCED"
+tags: ["dead-letter", "IDeadLetterStore", "MoveAsync", "atomic-move"]
+}
 public interface IDeadLetterStore {
   Task<Guid?> MoveAsync(
     Guid deadLetterId,
@@ -129,7 +142,13 @@ The v0.501 defaults were `null` (unbounded retries). v0.502 ships the 10-attempt
 cap as the floor and the DLQ pipeline as the path of recovery. To disable on
 a per-worker basis, set the option to `null` explicitly in `appsettings.json`:
 
-```json
+```json{
+title: "Disable inbox dead-lettering per worker"
+description: "Sets MaxInboxAttempts to null in appsettings to restore v0.501 unbounded-retry behavior instead of moving exhausted inbox rows to the DLQ."
+category: "Dead Letter Queue"
+difficulty: "BEGINNER"
+tags: ["dead-letter", "MaxInboxAttempts", "configuration", "inbox"]
+}
 {
   "Whizbang": {
     "InboxDispatchWorker": { "MaxInboxAttempts": null }

@@ -81,7 +81,13 @@ No projection-side flag, no read-then-check guard. The framework enforces the in
 
 `PublishOnceAsync` calls `IClaimedEmissionStore.TryClaimAsync(claimKey, …)`. The Postgres implementation runs:
 
-```sql
+```sql{
+title: "Atomic claim via INSERT ... ON CONFLICT DO NOTHING"
+description: "The Postgres statement behind PublishOnceAsync that lets exactly one concurrent emitter win a claim key while the losers affect zero rows, closing the check-to-commit race window at the storage layer."
+category: "Messaging"
+difficulty: "ADVANCED"
+tags: ["publish-once", "exactly-once", "postgres", "on-conflict", "idempotency"]
+}
 INSERT INTO wh_unique_emission_claims (claim_key, claimed_by_event_id)
 VALUES (@key, @eventId)
 ON CONFLICT (claim_key) DO NOTHING;

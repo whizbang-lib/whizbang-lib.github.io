@@ -1,0 +1,54 @@
+name: Sync main into develop
+
+# Reinforces the branch strategy: after ANYTHING lands on main (a release, a hotfix,
+# a direct merge), make sure develop catches up. This is title-independent — unlike
+# release.yml's sync-develop job, which only fires when the merged PR is titled
+# `chore(release): vX.Y.Z`, so a hand-cut release (or any other path to main) would
+# otherwise leave develop stranded and the next release re-diverges.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-develop
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync main into develop
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open (and auto-merge) a main -> develop sync PR when develop is behind
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          AHEAD=$(gh api "repos/$REPO/compare/develop...main" --jq '.ahead_by')
+          echo "main is $AHEAD commit(s) ahead of develop."
+          if [ "$AHEAD" -eq 0 ]; then
+            echo "develop is up to date; nothing to sync."
+            exit 0
+          fi
+
+          # Reuse an existing open sync PR if one is already there, else create it.
+          PR=$(gh pr list --repo "$REPO" --base develop --head main --state open --json number --jq '.[0].number // empty')
+          if [ -z "$PR" ]; then
+            PR=$(gh pr create --repo "$REPO" --base develop --head main \
+              --title "chore: sync main into develop (auto)" \
+              --body "Automated \`main\` → \`develop\` sync after a push to main, so develop never strands behind a release. Independent of the release-PR title gate in release.yml." \
+              | sed -E 's#.*/pull/([0-9]+).*#\1#')
+          fi
+          echo "Sync PR: #$PR"
+
+          # Land it once the Build check passes; if the repo doesn't allow auto-merge,
+          # leave the PR open for a human rather than failing the run.
+          gh pr merge "$PR" --repo "$REPO" --merge --auto \
+            || echo "::warning::Auto-merge unavailable; sync PR #$PR left open for manual merge."

@@ -81,7 +81,14 @@ These workers do not borrow from the pinned pool — pinning them would cost a c
 
 Consumer code (typically inside a service that defines its own background worker) can add custom workers to the eligibility set:
 
-```csharp
+```csharp{
+title: "Opt a custom worker into the pinned pool"
+description: "Registers a consumer-defined background worker as pinned-pool eligible so it borrows a direct connection alongside the tier-1+2 defaults."
+framework: "NET10"
+category: "Workers"
+difficulty: "INTERMEDIATE"
+tags: ["pinned-pool", "custom-worker", "eligibility", "hosted-service", "opt-in"]
+}
 services.AddHostedService<MyBulkImportPollingWorker>();
 services.AddPinnedWorker<MyBulkImportPollingWorker>();
 ```
@@ -113,7 +120,13 @@ The pool resolves its connection string in this order:
 
 When configuring a real service, the typical pattern is a sibling under `ConnectionStrings:*`:
 
-```jsonc
+```jsonc{
+title: "Configure a direct connection string for the pinned pool"
+description: "Adds a direct (port 5432) sibling under ConnectionStrings and points the pinned pool at it by name, bypassing pgbouncer for hot-path workers."
+category: "Workers"
+difficulty: "BEGINNER"
+tags: ["pinned-pool", "connection-string", "pgbouncer", "appsettings", "configuration"]
+}
 // appsettings.json
 {
   "ConnectionStrings": {
@@ -133,7 +146,14 @@ When configuring a real service, the typical pattern is a sibling under `Connect
 
 ### Minimal registration
 
-```csharp
+```csharp{
+title: "Register the pinned pool from configuration"
+description: "Binds the full WhizbangPinnedPoolOptions from the Whizbang:Workers:PinnedPool section so every setting is config-driven, keeping Whizbang.Core AOT-clean."
+framework: "NET10"
+category: "Workers"
+difficulty: "BEGINNER"
+tags: ["pinned-pool", "registration", "options-binding", "configuration", "dependency-injection"]
+}
 services.AddWhizbangPinnedWorkerPool(opts => {
   // Bind everything from the configured section — both ConnectionStringName
   // and any other settings come through this single call.
@@ -143,7 +163,14 @@ services.AddWhizbangPinnedWorkerPool(opts => {
 
 The simpler "everything in code" shape, when you don't want config-driven values (test/dev):
 
-```csharp
+```csharp{
+title: "Register the pinned pool entirely in code"
+description: "Sets the direct connection string and enables the pool inline without a config section — the minimal test/dev shape for the pinned worker pool."
+framework: "NET10"
+category: "Workers"
+difficulty: "BEGINNER"
+tags: ["pinned-pool", "registration", "connection-string", "dev", "dependency-injection"]
+}
 services.AddWhizbangPinnedWorkerPool(opts => {
   opts.ConnectionString = builder.Configuration.GetConnectionString("WorkerDirect");
   opts.Enabled = true;
@@ -152,7 +179,14 @@ services.AddWhizbangPinnedWorkerPool(opts => {
 
 ### Tuning size
 
-```csharp
+```csharp{
+title: "Tune the pinned pool size"
+description: "Raises the pinned pool to two connections so the hot ClaimWorker no longer shares a single wire with the tier-2 flush workers, easing borrow contention."
+framework: "NET10"
+category: "Workers"
+difficulty: "INTERMEDIATE"
+tags: ["pinned-pool", "pool-size", "tuning", "flush-workers", "throughput"]
+}
 services.AddWhizbangPinnedWorkerPool(opts => {
   opts.ConnectionString = builder.Configuration.GetConnectionString("WorkerDirect");
   opts.Enabled = true;
@@ -163,7 +197,14 @@ services.AddWhizbangPinnedWorkerPool(opts => {
 
 ### Surgical exclusion
 
-```csharp
+```csharp{
+title: "Exclude a specific worker from the pinned pool"
+description: "Uses ExcludeWorkers to drop a tier-default worker by short name so it stays on pgbouncer while the rest of the fleet remains pinned."
+framework: "NET10"
+category: "Workers"
+difficulty: "ADVANCED"
+tags: ["pinned-pool", "exclude-workers", "heartbeat", "eligibility", "escape-hatch"]
+}
 services.AddWhizbangPinnedWorkerPool(opts => {
   opts.ConnectionString = builder.Configuration.GetConnectionString("WorkerDirect");
   opts.Enabled = true;

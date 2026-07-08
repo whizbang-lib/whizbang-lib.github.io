@@ -22,7 +22,14 @@ required.
 
 ## Mounting
 
-```csharp
+```csharp{
+title: "Mount the DLQ operator endpoints"
+description: "Registers the five wh_dead_letters HTTP routes on the app, optionally under a custom path prefix, so operators can drive recovery over JSON."
+framework: "NET10"
+category: "Operations"
+difficulty: "BEGINNER"
+tags: ["dead-letter", "operator-api", "MapWhizbangDeadLetterEndpoints", "aspnet"]
+}
 using Whizbang.Hosting.AspNet;
 
 var app = builder.Build();
@@ -34,7 +41,14 @@ app.MapWhizbangDeadLetterEndpoints("/admin/dlq");  // custom prefix
 The method returns the `RouteGroupBuilder` so you can chain authorization,
 host filters, and rate limits — recommended before exposing publicly:
 
-```csharp
+```csharp{
+title: "Secure the DLQ endpoints with authorization and host filters"
+description: "Chains RequireAuthorization and RequireHost onto the returned RouteGroupBuilder so the recovery surface is locked down before it is exposed publicly."
+framework: "NET10"
+category: "Operations"
+difficulty: "INTERMEDIATE"
+tags: ["dead-letter", "operator-api", "authorization", "security", "aspnet"]
+}
 app.MapWhizbangDeadLetterEndpoints()
    .RequireAuthorization("WhizbangOperator")
    .RequireHost("admin.example.com");
@@ -53,7 +67,13 @@ Default `max=200`.
 
 Response shape (`DeadLetterEntry` array):
 
-```json
+```json{
+title: "DeadLetterEntry response from GET /whizbang/dlq/due"
+description: "JSON shape returned by the due endpoint for each recoverable wh_dead_letters row, including failureReason, generation, and recovery bookkeeping fields."
+category: "Operations"
+difficulty: "INTERMEDIATE"
+tags: ["dead-letter", "operator-api", "DeadLetterEntry", "json-response"]
+}
 [
   {
     "deadLetterId": "019e8b1d-7e90-77cc-a3c7-ff3469de0f33",
@@ -102,7 +122,13 @@ build's identity.
 
 Response:
 
-```json
+```json{
+title: "Response from POST /whizbang/dlq/scan-now"
+description: "Reports the generation swept and how many non-terminal DLQ rows were rescheduled for immediate retry by the manual generation-replay sweep."
+category: "Operations"
+difficulty: "INTERMEDIATE"
+tags: ["dead-letter", "operator-api", "generation-replay", "scan-now"]
+}
 { "generation": "0.502.0-alpha.1", "scheduled": 42 }
 ```
 
