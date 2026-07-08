@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate front-matter (released docs)
+        run: pnpm run validate-frontmatter
+
       - name: Build
         run: pnpm run build
 

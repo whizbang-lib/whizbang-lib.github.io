@@ -20,7 +20,14 @@ The dispatcher provides multiple overloads of `LocalInvokeAndSyncAsync` for in-p
 
 ## The contract
 
-```csharp
+```csharp{
+title: "SyncMode enum and the CT-only LocalInvokeAndSyncAsync overload"
+description: "Defines the two read-after-write sync levels (StreamOnly, AllProjections) and the CancellationToken-only dispatch overload that requires an explicit SyncMode at every callsite."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["sync-mode", "dispatcher", "read-after-write", "cqrs", "cancellation-token"]
+}
 public enum SyncMode {
   /// Wait until events are durably written + the local stream version
   /// has caught up. Does NOT wait for perspectives.
@@ -52,7 +59,14 @@ ValueTask LocalInvokeAndSyncAsync<TMessage>(
 | `SyncMode.AllProjections` | The caller reads from any local perspective in the same request (the normal CQRS case). | Pays the cost of awaiting every subscribed perspective's signal. |
 | `SyncMode.StreamOnly` | The caller doesn't read after writing in this request, or perspective-sync latency is unacceptable for a hot bulk path. | Returns at stream catchup. No perspective wait. |
 
-```csharp
+```csharp{
+title: "Choose AllProjections for read-after-write vs StreamOnly for the fast path"
+description: "Contrasts a CQRS read-after-write dispatch that awaits every subscribed perspective against a StreamOnly fast-path dispatch that returns at stream catchup without waiting on perspectives."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["sync-mode", "dispatcher", "all-projections", "stream-only", "read-after-write"]
+}
 // Read-after-write: dispatch + wait for projections before the next read
 await dispatcher.LocalInvokeAndSyncAsync(
     new CreateOrderCommand { /* … */ },
@@ -74,7 +88,14 @@ await dispatcher.LocalInvokeAndSyncAsync(
 
 The three legacy overloads carry `[Obsolete]` attributes pointing at the new API:
 
-```csharp
+```csharp{
+title: "Migrate a timeout-shaped call to the SyncMode overload"
+description: "Shows the [Obsolete] TimeSpan-timeout LocalInvokeAndSyncAsync call and its replacement using SyncMode.AllProjections plus a CancellationToken."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["sync-mode", "dispatcher", "migration", "obsolete", "cancellation-token"]
+}
 // LEGACY (Obsolete in W4, removed in next major)
 await dispatcher.LocalInvokeAndSyncAsync(
     cmd, timeout: TimeSpan.FromSeconds(30));
@@ -86,7 +107,14 @@ await dispatcher.LocalInvokeAndSyncAsync(
 
 For callers using the typed-result overload `<TMessage, TResult>`, split into `LocalInvokeAsync<TResult>` plus an optional sync step:
 
-```csharp
+```csharp{
+title: "Split a typed-result timeout call into LocalInvokeAsync plus a sync step"
+description: "Migrates the obsolete typed-result LocalInvokeAndSyncAsync<TMessage, TResult> overload into a LocalInvokeAsync<TResult> call followed by an optional SyncMode.AllProjections sync when read-after-write is needed."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["sync-mode", "dispatcher", "migration", "typed-result", "read-after-write"]
+}
 // LEGACY
 var result = await dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderResult>(
     cmd, timeout: TimeSpan.FromSeconds(10));
@@ -107,7 +135,14 @@ Two failure modes the timeout shape encourages but signal-based dispatch handles
 
 `CancellationToken`-only means the caller's own request boundaries (HTTP request timeout, hosted-service shutdown CT, etc.) are the wait bound. If you want a 2-minute upper bound for a specific call, construct a linked CTS:
 
-```csharp
+```csharp{
+title: "Bound a SyncMode wait with a linked CancellationTokenSource"
+description: "Constructs a linked CTS from the HTTP request-aborted token with a CancelAfter upper bound so a single sync-dispatch call gets a caller-owned timeout without a framework-provided TimeSpan."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["sync-mode", "dispatcher", "cancellation-token", "timeout", "linked-cts"]
+}
 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(httpContext.RequestAborted);
 linkedCts.CancelAfter(TimeSpan.FromMinutes(2));
 

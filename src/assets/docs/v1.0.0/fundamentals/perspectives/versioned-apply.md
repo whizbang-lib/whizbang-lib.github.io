@@ -39,7 +39,13 @@ public class SagaItemModel : ISagaItem, IVersionedApplyTarget {
 
 The Postgres atomic UPSERT path detects the marker at compile-time-pinned runtime check and substitutes the WHERE clause:
 
-```sql
+```sql{
+title: "Default CommitSequence guard vs the IVersionedApplyTarget EventId WHERE clause"
+description: "Compares the permissive last-writer-wins CommitSequence UPSERT predicate against the opt-in strict-greater UUIDv7 EventId predicate that drops stale cross-pod writes and makes redelivered events idempotent."
+category: "Perspectives"
+difficulty: "ADVANCED"
+tags: ["versioned-apply", "cross-pod", "upsert", "uuidv7", "strand-prevention"]
+}
 -- Default (non-opted-in models)
 WHERE wh_per_X.metadata->>'CommitSequence' IS NULL
    OR EXCLUDED.metadata->>'CommitSequence' IS NULL

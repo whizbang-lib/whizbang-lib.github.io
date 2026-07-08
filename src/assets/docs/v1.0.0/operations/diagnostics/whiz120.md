@@ -60,7 +60,13 @@ In `.whizbang/pinned-type-ledger.json`, find the entry for the reported pinned i
 1. Add the ledger's currently-recorded name to that entry's `formerNames`.
 2. Set the entry's `clrTypeName` to the new (current) name.
 
-```json
+```json{
+title: "Acknowledge a pinned-type rename in the ledger"
+description: "Add the former CLR name to formerNames and update clrTypeName in pinned-type-ledger.json so old stored events still resolve and WHIZ120 clears."
+category: "Diagnostics"
+difficulty: "INTERMEDIATE"
+tags: ["whiz120", "pinned-id", "type-rename", "ledger", "former-names", "json"]
+}
 {
   "pinnedId": "11111111-2222-3333-4444-555555555555",
   "clrTypeName": "MyApp.Contracts.OrderPlacedEvent",

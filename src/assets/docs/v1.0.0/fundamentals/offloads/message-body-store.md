@@ -35,7 +35,14 @@ The receiver-side experience is transparent: receptors and perspectives see the 
 
 ## End-to-end DI
 
-```csharp
+```csharp{
+title: "End-to-end body-offload DI wire-up"
+description: "Registers a transport, an Azure Blob body store, and the body-offload post-serialize hook so any envelope over the threshold or transport ceiling auto-offloads via claim-check."
+framework: "NET10"
+category: "Offloads"
+difficulty: "INTERMEDIATE"
+tags: ["body-offload", "claim-check", "azure-blob", "dependency-injection", "size-threshold", "post-serialize-hook"]
+}
 services.AddWhizbangRabbitMQ(opts => { /* … */ });   // or AddWhizbangAzureServiceBus
 
 services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => {
@@ -58,7 +65,14 @@ That's the complete wire-up. From this point, any envelope that exceeds 64 KB OR
 
 Body offload is implemented as a **post-serialize hook** on the publish strategy. The chain runs after the envelope serializes to bytes but before the transport's wire-send, so the offload hook sees the actual byte size — no estimation, no guessing.
 
-```csharp
+```csharp{
+title: "The IPostSerializeHook contract"
+description: "Defines the post-serialize hook interface whose ordered chain runs on the serialized bytes before wire-send, letting body offload (Order 1000) measure and substitute the actual payload."
+framework: "NET10"
+category: "Offloads"
+difficulty: "ADVANCED"
+tags: ["post-serialize-hook", "body-offload", "claim-check", "hook-chain", "extensibility"]
+}
 public interface IPostSerializeHook {
   /// Lower runs first. Conventions:
   ///   100 = observability / size measurement
