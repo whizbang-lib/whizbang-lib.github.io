@@ -20,6 +20,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/064_ReconcileMessageTypeRegistry_LedgerAware.sql
   - src/Whizbang.Data.Dapper.Postgres/DapperMessageTypeRegistryPopulator.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreMessageTypeRegistryPopulator.cs
+  - src/Whizbang.Core/Observability/TypeRegistryMetrics.cs
+  - src/Whizbang.Core/IEventTypeRenameTool.cs
   - src/Whizbang.Generators/build/SoftwareExtravaganza.Whizbang.Generators.props
   - src/Whizbang.Generators/build/SoftwareExtravaganza.Whizbang.Generators.targets
 testReferences:
@@ -29,7 +31,8 @@ testReferences:
   - tests/Whizbang.Generators.Tests/MessageTypeCatalogGeneratorTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMessageTypeRegistryPopulatorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreMessageTypeRegistryPopulatorTests.cs
-lastMaintainedCommit: '233e186a'
+  - tests/Whizbang.Core.Tests/Observability/TypeRegistryMetricsTests.cs
+lastMaintainedCommit: '358f3b20'
 ---
 
 # Pinned-Type Ledger: Safe, Governed Type Renames
@@ -121,6 +124,17 @@ has its extra field ignored).
 
 To *audit* drift ahead of a deploy, diff the committed ledger against a target environment's registry by pinned id:
 a name in the registry that is neither the ledger's current name nor a recorded former name is unacknowledged drift.
+
+**Observability.** The reconcile emits metrics on the `Whizbang.TypeRegistry` meter, each tagged by `service`:
+`whizbang.type_registry.renamed` (rows healed old → new for an acknowledged rename) and
+`whizbang.type_registry.drift_detected` (un-acknowledged drift left untouched). **Alert on `drift_detected > 0`** — it
+means a type was renamed without recording it in the ledger. Every reconcile outcome is also logged (renames at
+Information, drift at Warning).
+
+> **Legacy note.** Before the ledger existed, `IEventTypeRenameTool.ExecuteAsync` reconciled drift by *rewriting*
+> stored type names across every data table — a destructive, manual step. That apply path is now `[Obsolete]`: the
+> ledger-aware reconcile heals the registry non-destructively and the former-name aliases keep old events readable, so
+> no data rewrite is needed. Its `DetectRenamesAsync` remains a handy non-destructive diagnostic.
 
 ## Renaming a type — the workflow
 
