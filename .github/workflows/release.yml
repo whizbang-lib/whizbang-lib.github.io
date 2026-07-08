@@ -219,104 +219,23 @@ jobs:
           draft: false
 
   # ============================================================================
-  # Build and Deploy to GitHub Pages
-  # ============================================================================
-
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: [check-release, release]
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Checkout tag
-        uses: actions/checkout@v6
-        with:
-          ref: v${{ needs.check-release.outputs.version }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm run build
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: './dist/whizbang-site'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-  # ============================================================================
-  # Sync main back to develop
-  # ============================================================================
-
-  sync-develop:
-    name: Sync Main to Develop
-    needs: [check-release, deploy]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create sync PR
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_VERSION: ${{ needs.check-release.outputs.version }}
-        run: |
-          echo "Creating PR to sync main -> develop after v$RELEASE_VERSION release"
-
-          DIFF=$(gh api repos/${{ github.repository }}/compare/develop...main --jq '.total_commits')
-          if [ "$DIFF" = "0" ]; then
-            echo "No differences between main and develop. Skipping sync."
-            exit 0
-          fi
-
-          gh pr create \
-            --base develop \
-            --head main \
-            --title "chore: sync main into develop after v$RELEASE_VERSION release" \
-            --body "Automated sync of \`main\` into \`develop\` after v$RELEASE_VERSION release.
-
-          This ensures develop has the version bump commit from the release." \
-            --label "automated" || echo "::warning::PR may already exist"
-
-  # ============================================================================
   # Notifications
+  #
+  # Note: the actual GitHub Pages deploy is owned by deploy.yml (push → main),
+  # and the main → develop sync is owned by sync-develop.yml (push → main).
+  # release.yml intentionally does NOT deploy Pages: it runs in the
+  # pull_request-closed context (ref refs/pull/N/merge), which the github-pages
+  # environment protection rejects — a guaranteed failure. Those concerns live
+  # in the push-triggered workflows; this workflow only tags + creates the
+  # GitHub Release and notifies.
   # ============================================================================
 
   notify-release-success:
     name: Notify Release Success
-    needs: [check-release, deploy]
+    needs: [check-release, release]
     if: >-
       needs.check-release.outputs.should_release == 'true' &&
-      needs.deploy.result == 'success' &&
+      needs.release.result == 'success' &&
       vars.PUSHOVER_ENABLED == 'true'
     continue-on-error: true
     runs-on: ubuntu-latest
@@ -341,18 +260,18 @@ jobs:
           user-key-9: ${{ secrets.PUSHOVER_USER_KEY_9 }}
           user-key-10: ${{ secrets.PUSHOVER_USER_KEY_10 }}
           title: "[DOCS] ✅ v${{ needs.check-release.outputs.version }} Released"
-          message: "Docs site v${{ needs.check-release.outputs.version }} deployed to GitHub Pages"
+          message: "Docs site v${{ needs.check-release.outputs.version }} tagged and released. Pages deploy runs separately (deploy.yml)."
           status: deployed
           url: "https://whizbang-lib.github.io"
           url-title: "View Site"
 
   notify-release-failed:
     name: Notify Release Failed
-    needs: [check-release, release, deploy]
+    needs: [check-release, release]
     if: >-
       always() &&
       needs.check-release.outputs.should_release == 'true' &&
-      (needs.release.result == 'failure' || needs.deploy.result == 'failure') &&
+      needs.release.result == 'failure' &&
       vars.PUSHOVER_ENABLED == 'true'
     continue-on-error: true
     runs-on: ubuntu-latest
@@ -366,12 +285,9 @@ jobs:
         id: failed
         env:
           RELEASE_RESULT: ${{ needs.release.result }}
-          DEPLOY_RESULT: ${{ needs.deploy.result }}
         run: |
           if [ "$RELEASE_RESULT" == "failure" ]; then
             echo "job=tag creation" >> "$GITHUB_OUTPUT"
-          elif [ "$DEPLOY_RESULT" == "failure" ]; then
-            echo "job=GitHub Pages deploy" >> "$GITHUB_OUTPUT"
           else
             echo "job=unknown" >> "$GITHUB_OUTPUT"
           fi
