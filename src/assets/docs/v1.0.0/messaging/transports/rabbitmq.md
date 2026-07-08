@@ -539,8 +539,8 @@ cd samples/ECommerce
 dotnet clean
 dotnet build /p:TransportProvider=RabbitMQ  # or AzureServiceBus
 
-# Check generated symbols in .whizbang-generated folder
-grep -r "RABBITMQ\|AZURESERVICEBUS" ECommerce.InventoryWorker/.whizbang-generated
+# Check generated symbols in .whizbang/cache folder
+grep -r "RABBITMQ\|AZURESERVICEBUS" ECommerce.InventoryWorker/.whizbang/cache
 ```
 
 ---
