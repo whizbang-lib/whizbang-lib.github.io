@@ -96,6 +96,7 @@ app.MapGraphQL();
 | [Filtering](filtering.md) | Query filtering examples |
 | [Sorting](sorting.md) | Sort operations |
 | [Scoping](scoping.md) | Multi-tenancy and security |
+| [Production Hardening](production-hardening.md) | Introspection and error-detail hardening for production |
 
 ## Architecture
 

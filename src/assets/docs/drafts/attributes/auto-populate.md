@@ -5,15 +5,16 @@ category: Attributes
 order: 10
 description: >-
   Marker attributes that automatically populate message properties from envelope
-  context including timestamps, security, service info, and identifiers
-tags: 'attributes, auto-populate, timestamps, security, context, source-generator, aot'
+  context including timestamps, security, service info, identifiers, and HTTP headers
+tags: 'attributes, auto-populate, timestamps, security, context, http-header, correlation, source-generator, aot'
 codeReferences:
   - src/Whizbang.Core/Attributes/PopulateTimestampAttribute.cs
   - src/Whizbang.Core/Attributes/PopulateFromContextAttribute.cs
   - src/Whizbang.Core/Attributes/PopulateFromServiceAttribute.cs
   - src/Whizbang.Core/Attributes/PopulateFromIdentifierAttribute.cs
+  - src/Whizbang.Core/Attributes/PopulateFromHttpHeaderAttribute.cs
   - src/Whizbang.Core/AutoPopulate/IAutoPopulateProcessor.cs
-  - src/Whizbang.Generators/AutoPopulate/AutoPopulateDiscoveryGenerator.cs
+  - src/Whizbang.Generators/AutoPopulateDiscoveryGenerator.cs
 ---
 
 # Auto-Populate Attributes
@@ -28,7 +29,7 @@ using Whizbang.Core.Attributes;
 
 ## Overview
 
-There are four categories of auto-populate attributes:
+There are five categories of auto-populate attributes:
 
 | Attribute | Purpose | Example Values |
 |-----------|---------|----------------|
@@ -36,6 +37,13 @@ There are four categories of auto-populate attributes:
 | `[PopulateFromContext]` | Security context | UserId, TenantId |
 | `[PopulateFromService]` | Service instance info | ServiceName, HostName |
 | `[PopulateFromIdentifier]` | Message identifiers | MessageId, CorrelationId, StreamId |
+| `[PopulateFromHttpHeader]` | Inbound HTTP header | `X-Correlation-ID`, any custom header |
+
+### Records and classes
+
+Auto-populate works on both **records** and **classes**. Records are populated with a non-destructive
+`with` expression; classes are mutated in place (their annotated properties must have a `set`, not `init`).
+Both use a build-time source generator — no reflection — so the same message shapes work under Native AOT.
 
 ## Quick Example
 
@@ -320,6 +328,32 @@ var createdBy = envelope.GetAutoPopulated<string>("UserId");
 OrderCreated populatedMessage = envelope.Materialize<OrderCreated>();
 // populatedMessage.SentAt now has the timestamp value
 ```
+
+## HTTP Header Attributes
+
+The `[PopulateFromHttpHeader]` attribute captures a value from an inbound HTTP header at the request edge. The
+transport maps the header into the ambient scope's extensions (`ExtensionHeaderMappings`); the value rides the
+message context and the generated populator reads it back onto the property. Header values are opaque strings
+(per W3C Trace Context, CloudEvents, and HTTP correlation conventions), so the target property must be a
+`string`, and the header key is matched **case-insensitively**.
+
+### Example
+
+```csharp{title="HTTP Header Attribute" description="Populate a property from an inbound header" category="Usage" difficulty="INTERMEDIATE" tags=["HTTP", "Headers", "Correlation"]}
+public class DocumentCreated {
+    [PopulateFromHttpHeader("X-Correlation-ID")]
+    public string? CorrelationId { get; set; }
+
+    [PopulateFromHttpHeader("X-Request-ID")]
+    public string? RequestId { get; set; }
+}
+```
+
+> **Correlation shortcut.** For the correlation id specifically, prefer
+> `[PopulateFromIdentifier(IdentifierKind.CorrelationId)]`. The framework captures an inbound `X-Correlation-ID`
+> onto the message context automatically (see [Message Context](../../fundamentals/messages/message-context.md)),
+> and it then flows to every message in the workflow. Reach for `[PopulateFromHttpHeader]` for other,
+> non-correlation headers.
 
 ## Edge Cases
 

@@ -266,6 +266,8 @@ async function main() {
   console.log('Step 1: Scanning source files for <tests> tags...');
   const sourcePattern = join(LIBRARY_PATH, 'src/**/*.cs');
   const sourceFiles = await glob(sourcePattern, {
+    // path.join emits backslashes on Windows, which glob would otherwise treat as escape characters
+    windowsPathsNoEscape: true,
     ignore: [
       '**/obj/**',
       '**/bin/**',
@@ -288,6 +290,7 @@ async function main() {
   console.log('Step 2: Scanning test files for naming conventions...');
   const testPattern = join(LIBRARY_PATH, 'tests/**/*.cs');
   const testFiles = await glob(testPattern, {
+    windowsPathsNoEscape: true,
     ignore: [
       '**/obj/**',
       '**/bin/**',
