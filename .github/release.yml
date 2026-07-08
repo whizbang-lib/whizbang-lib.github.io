@@ -1,0 +1,40 @@
+# Configures GitHub's auto-generated release notes (generate_release_notes: true in release.yml).
+# Keeps release notes focused on human-authored changes: bot PRs and internal release/sync
+# plumbing are excluded, and the rest is grouped by PR label. See:
+# https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes
+changelog:
+  exclude:
+    # Dependency bumps and the bot-authored release/sync-back PRs are noise in the changelog.
+    authors:
+      - dependabot
+      - dependabot[bot]
+      - github-actions
+      - github-actions[bot]
+    # Belt-and-suspenders: label an internal plumbing PR with either of these to hide it,
+    # even if it was human-authored. `automated` is the label the sync-develop workflow applies.
+    labels:
+      - automated
+      - ignore-for-release
+  categories:
+    - title: 📚 Documentation
+      labels:
+        - documentation
+        - docs
+    - title: 🚀 Features & Enhancements
+      labels:
+        - enhancement
+        - feature
+    - title: 🐛 Fixes
+      labels:
+        - bug
+        - fix
+        - bugfix
+    - title: 🔧 CI, Build & Tooling
+      labels:
+        - ci
+        - build
+        - chore
+        - tooling
+    - title: Other Changes
+      labels:
+        - "*"
