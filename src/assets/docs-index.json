@@ -33,7 +33,7 @@
     "version": "v1.0.0",
     "readingTime": 3,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/apis/graphql/index.md",
-    "wordCount": 479
+    "wordCount": 490
   },
   {
     "slug": "v1.0.0/apis/graphql/lens-integration",
@@ -889,9 +889,9 @@
     "description": "The pinned-type ledger is a committed lockfile of every [PinnedId] type's identity and rename history. It lets you rename event, command, and perspective types safely: a build-time gate (WHIZ120/WHIZ121) forces every rename to be acknowledged, the generators emit former-name aliases so events written under the old name still deserialize, and a ledger-aware startup reconcile heals the type registry in every environment.",
     "tags": "pinned-id, type-rename, ledger, identity, aliases, registry-reconcile, source-generators, whiz120, whiz121, aot",
     "version": "v1.0.0",
-    "readingTime": 6,
+    "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/identity/pinned-type-ledger.md",
-    "wordCount": 1121
+    "wordCount": 1247
   },
   {
     "slug": "v1.0.0/fundamentals/identity/time-provider",
@@ -1165,9 +1165,9 @@
     "description": "Track message flow across distributed systems with MessageId, CorrelationId, and CausationId - automatic distributed tracing built into Whizbang",
     "tags": "message-context, correlation, causation, distributed-tracing, observability",
     "version": "v1.0.0",
-    "readingTime": 12,
+    "readingTime": 13,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/message-context.md",
-    "wordCount": 2397
+    "wordCount": 2527
   },
   {
     "slug": "v1.0.0/fundamentals/messages/message-tags",
