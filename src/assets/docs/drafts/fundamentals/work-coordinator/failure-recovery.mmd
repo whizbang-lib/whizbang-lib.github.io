@@ -1,0 +1,25 @@
+flowchart TD
+    Start([Listener running]) --> Healthy{IsHealthy?}
+    Healthy -->|true| Pump[Pump notifications + every 30s SELECT 1 keepalive]
+    Pump -->|exception or keepalive fail| Drop[Connection dropped]
+
+    Drop --> SetUnhealthy[IsHealthy = false<br/>Fire OnHealthChanged false]
+    SetUnhealthy --> CWFlip[ClaimWorker tightens polling cap<br/>fall back to fast polling]
+    SetUnhealthy --> Backoff[Compute exp backoff:<br/>InitialDelay × Multiplier^attempt-1<br/>capped at MaxDelay 30s]
+
+    Backoff --> Wait[Wait delay]
+    Wait --> Reconnect{Reconnect?}
+    Reconnect -->|fail| Backoff
+    Reconnect -->|success| ReListen[LISTEN wh_work + re-LISTEN app topics]
+    ReListen --> SetHealthy[IsHealthy = true<br/>Fire OnHealthChanged true]
+    SetHealthy --> CWRestore[ClaimWorker restores cap<br/>uses PollingFallbackInterval]
+    SetHealthy --> Pump
+
+    Healthy -->|false| Backoff
+
+    classDef bad fill:#fee,stroke:#c33,stroke-width:1px
+    classDef good fill:#efe,stroke:#3c3,stroke-width:1px
+    classDef neutral fill:#eef,stroke:#33c,stroke-width:1px
+    class Drop,SetUnhealthy,CWFlip bad
+    class SetHealthy,CWRestore,Pump good
+    class Backoff,Wait,Reconnect,ReListen neutral

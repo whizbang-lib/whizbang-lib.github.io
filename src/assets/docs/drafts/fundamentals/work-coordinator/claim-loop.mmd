@@ -1,0 +1,39 @@
+sequenceDiagram
+    autonumber
+    participant CW as ClaimWorker
+    participant Listener as IWorkNotificationListener
+    participant Coord as IWorkCoordinator
+    participant DB as Postgres
+    participant Channels as Per-category channels
+
+    Note over CW: Loop tick: wait for wake signal
+    par Wake sources
+        Listener->>CW: OnSignal(Outbox/Inbox/Perspective)
+    and
+        CW->>CW: PollingFallbackInterval timer (default 30s)
+    and
+        CW->>CW: RequestImmediatePoll() from local producer
+    end
+
+    CW->>Coord: ClaimWorkAsync(req)
+    Coord->>DB: SELECT * FROM claim_work($instance, $maxStreams, ...)
+
+    alt Empty queues (idle case)
+        DB->>DB: 4 EXISTS LIMIT 1 short-circuit (~1ms)
+        DB-->>Coord: 0 rows
+    else Work available
+        DB->>DB: claim_orphaned_* + claim windows + RETURN QUERY (outbox/inbox/perspective)
+        opt Full batch returned
+            DB-->>CW: RAISE NOTICE 'whizbang.has_more=true'
+            Note over CW: Skip wait on next tick (drain mode)
+        end
+        DB-->>Coord: WorkBatch rows
+    end
+
+    Coord-->>CW: WorkBatch
+    alt Has work
+        CW->>Channels: Distribute (Outbox→IWorkChannelWriter, Inbox→IInboxChannelWriter, Perspective→IPerspectiveChannelWriter)
+    end
+
+    CW->>CW: Adaptive backoff (250ms → cap)
+    Note over CW: Cap = PollingMaxIntervalMs (listener healthy)<br/>OR shorter cap (listener unhealthy)
