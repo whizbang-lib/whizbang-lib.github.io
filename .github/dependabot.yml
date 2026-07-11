@@ -19,6 +19,13 @@ updates:
       prefix: "chore"
       prefix-development: "chore"
       include: "scope"
+    ignore:
+      # Angular 22 pins TypeScript to ">=6.0 <6.1" (see @angular/compiler-cli /
+      # @angular/build peerDependencies). TS 6.1+ / 7.x break `ng build`
+      # ("Cannot read properties of undefined (reading 'Error')"), so keep TypeScript on
+      # 6.0.x until an Angular upgrade widens the supported range. Revisit when bumping Angular.
+      - dependency-name: "typescript"
+        versions: [">=6.1.0"]
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
