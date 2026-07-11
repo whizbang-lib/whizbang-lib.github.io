@@ -79,7 +79,7 @@ mechanics:
 
 Registered against `object` under `WhizbangApplyHookKeys.TIMESTAMPS` on both paths:
 
-```csharp
+```csharp{title="whizbang.timestamps default hook" description="The built-in default hook body: stamp updated_at from the apply timestamp and bump the row version." category="Messaging" difficulty="INTERMEDIATE" tags=["Messaging", "Apply Hooks", "Timestamps", "Perspectives"]}
 builder.SetColumn(ApplyHookColumns.UPDATED_AT, ctx.ApplyTimestamp).BumpVersion();
 ```
 
@@ -92,7 +92,7 @@ wrote only `data` left `updated_at`/`version` stale, breaking change-detection).
 **Collective** — DI seeds a `CollectiveApplyHookRegistry` with the defaults (`TryAdd`, so you
 can register your own first) and injects it into the collective executors:
 
-```csharp
+```csharp{title="Register collective apply hooks" description="Seed the collective hook registry with the framework defaults, then add custom hooks and override the default stamp by key." category="Messaging" difficulty="INTERMEDIATE" tags=["Messaging", "Apply Hooks", "Collective", "Dependency Injection"]}
 services.AddSingleton(_ =>
   WhizbangApplyHooks.CreateCollectiveWithDefaults()
     .Register<IAuditable>(new StampLastTouchedByHook())                    // every IAuditable model
@@ -103,7 +103,7 @@ services.AddSingleton(_ =>
 `BaseUpsertStrategy.PathOnePersistenceOptionsProvider`), so the default applies everywhere with
 zero wiring. Register custom hooks at startup:
 
-```csharp
+```csharp{title="Register per-event apply hooks" description="Replace the process-wide per-event registry with one seeded from the framework defaults plus a custom hook, at startup." category="Messaging" difficulty="INTERMEDIATE" tags=["Messaging", "Apply Hooks", "Per-Event", "Perspectives"]}
 PerEventApplyHooks.Registry = WhizbangApplyHooks.CreatePerEventWithDefaults()
   .Register<IAuditable>(new StampLastTouchedByHook());
 ```
