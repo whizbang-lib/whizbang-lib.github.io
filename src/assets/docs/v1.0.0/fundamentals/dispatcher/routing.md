@@ -6,14 +6,22 @@ order: 2
 description: >-
   Namespace-based routing in Whizbang determines how commands and events flow between services.
   Commands use a shared inbox topic with namespace filtering, while events publish to namespace-specific
-  topics for pub/sub distribution with automatic subscription discovery.
-tags: 'routing, namespace-routing, message-routing, inbox, topics, pub-sub'
+  topics for pub/sub distribution with automatic subscription discovery. Owned-domain routing keeps a
+  service's own commands local while its events still broadcast, with transport-layer echo suppression
+  discarding self-delivered copies.
+tags: 'routing, namespace-routing, message-routing, inbox, topics, pub-sub, owned-domains, echo-suppression'
 codeReferences:
   - src/Whizbang.Core/Routing/RoutingOptions.cs
   - src/Whizbang.Core/Routing/NamespaceRoutingStrategy.cs
   - src/Whizbang.Core/Routing/SharedTopicInboxStrategy.cs
   - src/Whizbang.Core/Routing/EventSubscriptionDiscovery.cs
   - src/Whizbang.Core/Routing/MessageKindAttribute.cs
+  - src/Whizbang.Core/Dispatcher.cs
+  - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
+  - src/Whizbang.Core/Dispatch/Route.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOwnedDomainTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerOwnedEventDiscardTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -1240,6 +1248,162 @@ if (kind == MessageKind.Command) {
 3. **Use type name suffixes** - Clear and searchable: `CreateUserCommand`, `UserCreatedEvent`
 4. **Avoid Unknown** - Ensure all messages have a determinable kind
 
+
+## Owned-Domain Routing {#owned-domain-routing}
+
+When a service declares domain ownership via `OwnDomains()` (see [Command Filtering](#own-namespace-of)),
+Whizbang applies **asymmetric routing** between commands and events. The rule is *not* "owned messages
+stay local" — it is:
+
+- **Owned commands** with no local receptor stay local. They are never written to the outbox and never
+  reach the transport.
+- **Owned events always reach the transport.** Other services subscribe to your events, so ownership
+  never suppresses event publication. Self-delivery is handled later, at the consumer, by
+  [echo suppression](#transport-echo-suppression).
+
+### The command/event asymmetry
+
+| Scenario | Outbox | Event Store | Transport |
+|----------|:------:|:-----------:|:---------:|
+| Non-owned command (no local receptor) | Yes | — | Yes |
+| Owned command (no local receptor) | **No** | — | **No** |
+| Non-owned event | Yes | Yes | Yes |
+| Owned event | Yes | Yes | **Yes** |
+
+Owned-command suppression is applied in two places. Both test `msg is not IEvent` first, so events are
+never affected.
+
+**1. Direct dispatch.** When `SendAsync` finds no local receptor and the message's namespace is owned, it
+returns an accepted receipt immediately — the owning service is expected to have a local receptor, so
+there is nothing to deliver cross-service and the outbox is skipped entirely:
+
+```csharp{title="Owned command with no local receptor skips the outbox" description="Dispatcher.SendAsync returns an accepted receipt for an owned-namespace command that has no local receptor, so it is never written to the outbox or sent to the transport." category="Architecture" difficulty="ADVANCED" tags=["Dispatcher", "Routing", "OwnedDomains", "Outbox"]}
+// Dispatcher.SendAsync — reached only when there is no local receptor (invoker == null)
+if (_isOwnedNamespace(messageType.Namespace)) {
+  // Owned-domain command: the owner is expected to handle it locally; skip outbox routing.
+  return DeliveryReceipt.Accepted(MessageId.New(), messageType.Name);
+}
+// Non-owned command → route to the outbox for cross-service delivery.
+return await _sendToOutboxViaScopeAsync(message, messageType, context, /* … */);
+```
+
+**2. Cascade from a receptor.** When a receptor returns an unwrapped message in `Outbox` mode, the cascade
+paths (`_dispatchByModeAsync` and `CascadeMessageAsync`) downgrade an owned non-event to `Local` — local
+handlers plus event store, no transport. Events are explicitly excluded, so a cascaded owned event still
+broadcasts:
+
+```csharp{title="Owned-domain downgrade applies to commands, not events" description="In the receptor cascade paths, an owned non-event dispatched in Outbox mode is downgraded to Local; events are excluded so they always reach the transport." category="Architecture" difficulty="INTERMEDIATE" tags=["Dispatcher", "Routing", "OwnedDomains", "Cascade"]}
+// Owned-domain commands cascaded from receptors stay local (event store + local handlers).
+// Events ALWAYS go to transport — other services subscribe to our events.
+if (mode == DispatchModes.Outbox && msg is not IEvent && _isOwnedNamespace(messageType.Namespace)) {
+  mode = DispatchModes.Local; // local dispatch + event store, no transport
+}
+```
+
+`_resolveEventTopic()` has **no** owned-namespace short-circuit: an owned event resolves to the same
+topic a non-owned event would, so it lands in the outbox with a real destination and is published.
+
+### Namespace matching {#owned-namespace-matching}
+
+Ownership uses **hierarchical matching**, the same logic as `EventSubscriptionDiscovery`: a namespace is
+owned if it exactly matches an owned domain, or is a **child** of one (prefix followed by a `.`
+separator). Matching is case-insensitive.
+
+```csharp{title="Hierarchical owned-namespace matching" description="A namespace is owned when it exactly matches an owned domain or is a child of one (owned prefix plus a dot separator); matching is case-insensitive." category="Architecture" difficulty="BEGINNER" tags=["Dispatcher", "Routing", "OwnedDomains", "Namespaces"]}
+routing.OwnDomains("JDX.Contracts.Chat");
+
+// "JDX.Contracts.Chat"         → owned (exact match)
+// "JDX.Contracts.Chat.Common"  → owned (child namespace)
+// "JDX.Contracts.ChatArchive"  → NOT owned (no '.' boundary after the owned prefix)
+```
+
+If a service declares no owned domains, nothing is treated as owned and none of this special-casing
+applies.
+
+### Why this matters
+
+Owned-command suppression keeps a service from flooding its own inbox topic with commands only it can
+handle — the command is dispatched to the local receptor directly and never makes a broker round-trip.
+Owned *events*, by contrast, must broadcast: other services (e.g. a BFF projecting the domain, a
+notifications service reacting to it) subscribe to them. The originating service also receives its own
+event back from the broker, which is where echo suppression comes in.
+
+## Transport Echo Suppression {#transport-echo-suppression}
+
+Because owned events are broadcast, the transport (RabbitMQ, Azure Service Bus, …) delivers a copy back
+to the **originating** service. The `TransportConsumerWorker` discards these echoes at the consumer
+layer, before they reach the inbox, in `_shouldDiscardOwnedEcho`. Events and commands are suppressed by
+**different** rules:
+
+| Message | Owned namespace? | Echo detection | Discarded? |
+|---------|:----------------:|----------------|:----------:|
+| Event   | Yes | **Unconditional** — an event in your owned namespace can only have been published by you | Always |
+| Event   | No  | None — it's from another service | Never |
+| Command | Yes | **Hop-based** — compare the last hop's service name to this service's name | Only on self-echo |
+| Command | No  | None — routed to this service intentionally | Never |
+
+Two guard conditions come first: if the service declares **no owned domains**, or the incoming
+namespace is **not owned**, the message passes through untouched.
+
+### Events: always echo
+
+An event whose type lives in an owned namespace is discarded **regardless of the hop's service name** —
+even if a hop claims the event came from another service. Only the namespace owner ever publishes events
+in that namespace, so any owned-namespace event arriving from the transport is a self-echo that was
+already processed locally.
+
+The worker decides "is this an event?" from the `IEventTypeProvider` registry
+(`_isKnownEventType(envelopeType)`), **not** from `payload is IEvent` — over the wire the payload is a
+`JsonElement`, so a runtime type check would not work. This unconditional-discard branch therefore
+depends on an `IEventTypeProvider` being registered (every running service registers one); if none is,
+`_isKnownEventType` returns `false` and the owned event falls through to the same hop-based self-echo
+check that commands use.
+
+### Commands: hop-based self-echo
+
+A command in an owned namespace **may** legitimately arrive from another service (cross-service command
+dispatch — e.g. a BFF sending a command into another service's domain). So commands use a last-hop
+service-name check:
+
+- Last hop's service name **equals** this service → self-echo → discard.
+- Last hop's service name **differs** → legitimate cross-service command → process.
+
+```
+Event published by ChatService (owns "JDX.Contracts.Chat")
+  ├── Local fast path: ChatService processes immediately
+  └── Transport broadcast:
+        arrives at ChatService inbox → DISCARDED (owned event echo, unconditional)
+        arrives at BffService inbox  → PROCESSED (cross-service delivery)
+
+Command sent by BffService into ChatService's owned namespace
+  └── arrives at ChatService inbox → PROCESSED (last hop = "BffService" ≠ "ChatService")
+
+Command emitted by ChatService into its own namespace, echoed back
+  └── arrives at ChatService inbox → DISCARDED (last hop = "ChatService", self-echo)
+```
+
+Both discard paths log at `Debug`: an owned-event echo logs *"Owned event echo discarded: {MessageType}
+(owned events never arrive from external services)"*, and a command self-echo logs *"Self-echo
+discarded: {MessageType} from {ServiceName}"*.
+
+### Explicit routing wrappers
+
+Receptors control cascade routing by returning `Route.Local(...)`, `Route.Outbox(...)`,
+`Route.Both(...)`, `Route.EventStoreOnly(...)`, `Route.LocalNoPersist(...)`, or `Route.None()` from
+`Whizbang.Core.Dispatch.Route`. These wrappers set the `DispatchModes` the cascade paths above consume;
+an unwrapped return value uses the default cascade mode (`Outbox`). Because the owned-command downgrade
+excludes events, an owned event returned unwrapped or published via `PublishAsync` already reaches the
+transport — you do **not** need `Route.Outbox(...)`/`Route.Both(...)` to force it.
+
+### Related
+
+- [Namespace-Based Routing](#routing-options) — the command/event routing model this builds on.
+- [Transport Consumer](../../messaging/transports/transport-consumer.md) — where the consumer-side echo
+  check runs, plus subscription resilience and recovery.
+- Source: `Dispatcher._isOwnedNamespace` / `_dispatchByModeAsync` / `CascadeMessageAsync` /
+  `_resolveEventTopic` (`src/Whizbang.Core/Dispatcher.cs`); `TransportConsumerWorker._shouldDiscardOwnedEcho`
+  / `_isSelfEcho` / `_isKnownEventType` (`src/Whizbang.Core/Workers/TransportConsumerWorker.cs`).
+- Tests: `DispatcherOwnedDomainTests`, `TransportConsumerWorkerOwnedEventDiscardTests`.
 
 ## Broker Integration
 
