@@ -4,625 +4,385 @@ version: 1.0.0
 category: Core Concepts
 order: 6
 description: >-
-  Understand Whizbang's hop-based observability architecture - MessageEnvelope
-  and MessageHop for distributed tracing and debugging
-tags: 'observability, message-hops, distributed-tracing, debugging, telemetry'
+  Whizbang's hop-based observability - MessageEnvelope and MessageHop carry a
+  complete journey (routing, scope, policy decisions, caller info) through every
+  service. Query it with ITraceStore for time-travel debugging of distributed flows.
+tags: 'observability, message-hops, distributed-tracing, time-travel, debugging, trace-store, causation, correlation'
 codeReferences:
   - src/Whizbang.Core/Observability/MessageEnvelope.cs
   - src/Whizbang.Core/Observability/MessageHop.cs
+  - src/Whizbang.Core/Observability/ServiceInstanceInfo.cs
+  - src/Whizbang.Core/Observability/ITraceStore.cs
+  - src/Whizbang.Core/Observability/InMemoryTraceStore.cs
   - src/Whizbang.Core/Policies/PolicyDecisionTrail.cs
-lastMaintainedCommit: '01f07906'
+  - src/Whizbang.Core/Policies/PolicyConfiguration.cs
+testReferences:
+  - tests/Whizbang.Observability.Tests/MessageTracingTests.cs
+  - tests/Whizbang.Observability.Tests/MessageHopTests.cs
+  - tests/Whizbang.Observability.Tests/TraceStore/TraceStoreContractTests.cs
+  - tests/Whizbang.Observability.Tests/TraceStore/InMemoryTraceStoreTests.cs
+  - tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs
 ---
 
 # Observability & Message Hops
 
-Whizbang implements **hop-based observability**, inspired by network packet routing. Every message carries a **MessageEnvelope** containing **hops** - snapshots of contextual metadata at each stage of processing.
+Whizbang implements **hop-based observability**, inspired by network packet routing. Every message travels the system inside a **`MessageEnvelope`** whose **`Hops`** list accumulates a complete snapshot of context at each stage of processing — routing, scope, policy decisions, caller location, and timing.
 
-## Core Concept: Network Packet Analogy
+Traditional debugging shows you **where you are now**. Hop chains show you **how you got here**: the full journey of a message across receptors and services, so you can answer "what happened" and "why" for a distributed flow.
 
-Just like IP packets travel through routers, accumulating hops along their journey, Whizbang messages travel through receptors and services, accumulating context hops:
+## Core concept: the network packet analogy
+
+Just as IP packets accumulate hops as they cross routers, Whizbang messages accumulate context hops as they cross receptors and services:
 
 ```
-Network Packet:
-┌────────────────────────┐
-│ IP Header              │
-│ ├─ Source IP           │
-│ ├─ Dest IP             │
-│ └─ Hop Count: 3        │
-├────────────────────────┤
-│ Payload (your data)    │
-└────────────────────────┘
-
-Whizbang Message:
-┌─────────────────────────┐
-│ MessageEnvelope         │
-│ ├─ MessageId            │
-│ ├─ CorrelationId        │
-│ ├─ CausationId          │
-│ └─ Hops: [Hop1, Hop2]   │
-├─────────────────────────┤
-│ Payload (your message)  │
-└─────────────────────────┘
+Network Packet:                Whizbang Message:
+┌───────────────────┐          ┌────────────────────────────┐
+│ IP Header         │          │ MessageEnvelope<T>         │
+│ ├─ Source IP      │          │ ├─ MessageId               │
+│ ├─ Dest IP        │          │ ├─ Payload (your message)  │
+│ └─ Hop Count: 3   │          │ └─ Hops: [Hop1, Hop2, …]   │
+├───────────────────┤          │      each hop carries      │
+│ Payload           │          │      routing + scope +     │
+└───────────────────┘          │      policy + caller info  │
+                               └────────────────────────────┘
 ```
 
-**Key Insight**: Hops capture **where the message has been** and **what decisions were made** along the way.
+**Key insight**: Hops capture **where the message has been** and **what decisions were made** along the way. Correlation and causation are *derived from the hops* (the first hop establishes them) rather than being separate top-level fields.
 
 ---
 
-## MessageEnvelope Structure
+## MessageEnvelope
 
-```csharp{title="MessageEnvelope Structure" description="MessageEnvelope Structure" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "MessageEnvelope", "Structure"]}
-public class MessageEnvelope {
-    // Identity
-    public required MessageId MessageId { get; init; }
-    public required CorrelationId CorrelationId { get; init; }
-    public required CausationId? CausationId { get; init; }
+`MessageEnvelope<TMessage>` (implements `IMessageEnvelope<TMessage>`) wraps every message:
 
-    // Payload
-    public required object Payload { get; init; }
-
-    // Observability
-    public required List<MessageHop> Hops { get; init; }  // THE KEY TO OBSERVABILITY
-
-    // Metadata
-    public DateTimeOffset CreatedAt { get; init; }
+```csharp{title="MessageEnvelope structure" description="The envelope Whizbang wraps every message in: message id, payload, the additive hop list, dispatch context, and a schema version." category="Observability" difficulty="INTERMEDIATE" tags=["message-envelope","hops","dispatch-context","payload"]}
+public class MessageEnvelope<TMessage> : IMessageEnvelope<TMessage> {
+    public required MessageId MessageId { get; init; }             // unique id for this message
+    public required TMessage Payload { get; set; }                 // your command / event / query
+    public required List<MessageHop> Hops { get; init; }           // the journey (>= 1 hop)
+    public required MessageDispatchContext DispatchContext { get; init; } // dispatch mode + source
+    public int Version { get; init; } = 1;                         // envelope schema version
 }
 ```
 
-**MessageEnvelope wraps every message**, providing:
-- **Identity**: MessageId, CorrelationId, CausationId
-- **Payload**: Your actual command/event/query
-- **Observability**: List of hops showing the message's journey
+Notes:
+
+- **At least one hop is required** — the originating hop. `Hops` is additive-only.
+- There is **no top-level `CorrelationId`, `CausationId`, or `CreatedAt` property**. Those are read from the first hop via helper methods (below). Causation is simply the `MessageId` of the parent/causing message — there is no separate `CausationId` type.
+- The envelope also carries commit-sequence and per-receptor bookkeeping used by the work coordinator and exactly-once machinery; those fields are internal to the runtime and not part of the observability surface.
+
+### Envelope helper methods
+
+The envelope exposes read helpers that walk the hop list for you. Each filters to `HopType.Current` hops (ignoring inherited causation hops) unless noted:
+
+| Method | Returns | Behavior |
+|--------|---------|----------|
+| `GetCurrentTopic()` | `string?` | Most-recent current hop with a non-empty topic |
+| `GetCurrentStreamId()` | `string?` | Most-recent current hop with a non-empty stream id |
+| `GetCurrentPartitionIndex()` | `int?` | Most-recent current hop's partition index |
+| `GetCurrentSequenceNumber()` | `long?` | Most-recent current hop's sequence number |
+| `GetCurrentScope()` | `ScopeContext?` | Merges each current hop's scope delta into the effective scope |
+| `GetMessageTimestamp()` | `DateTimeOffset` | Timestamp of the first hop |
+| `GetCorrelationId()` | `CorrelationId?` | Correlation id from the first hop |
+| `GetCausationId()` | `MessageId?` | Causation id from the first hop |
+| `GetMetadata(string key)` | `JsonElement?` | Latest value for a key across current hops |
+| `GetAllMetadata()` | `IReadOnlyDictionary<string, JsonElement>` | All metadata stitched (later hops win) |
+| `GetAllPolicyDecisions()` | `IReadOnlyList<PolicyDecision>` | Every policy decision, chronological |
+| `GetCurrentHops()` | `IReadOnlyList<MessageHop>` | Only `Current` hops |
+| `GetCausationHops()` | `IReadOnlyList<MessageHop>` | Only `Causation` hops |
+| `AddHop(MessageHop hop)` | `void` | Appends a hop (the runtime calls this) |
+
+> `GetCurrentSecurityContext()` still exists but is **`[Obsolete]`** — it returns a legacy `SecurityContext` projection of the current scope. Use `GetCurrentScope()` for the current scope model. See [Scope propagation](../security/scope-propagation.md).
 
 ---
 
-## MessageHop Structure
+## MessageHop
 
-```csharp{title="MessageHop Structure" description="MessageHop Structure" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "MessageHop", "Structure"]}
-public class MessageHop {
-    // Hop Type
-    public required MessageHopType Type { get; init; }  // Current or Causation
+Each hop is an immutable `record` — a complete snapshot of message state at one point in the journey:
+
+```csharp{title="MessageHop record and HopType enum" description="An immutable snapshot of message state at one hop: service instance, routing, scope delta, policy trail, caller info, timing, and a W3C traceparent." category="Observability" difficulty="INTERMEDIATE" tags=["message-hop","hop-type","causation","traceparent"]}
+public record MessageHop {
+    // Hop type
+    public HopType Type { get; init; } = HopType.Current;    // Current or Causation
+
+    // Service/instance identity (produced by the framework's IServiceInstanceProvider)
+    public required ServiceInstanceInfo ServiceInstance { get; init; }
+    public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
 
     // Routing
-    public string? Topic { get; init; }
-    public string? StreamKey { get; init; }
+    public string Topic { get; init; } = string.Empty;
+    public string StreamId { get; init; } = string.Empty;
     public int? PartitionIndex { get; init; }
     public long? SequenceNumber { get; init; }
+    public string ExecutionStrategy { get; init; } = string.Empty;
 
-    // Security
-    public SecurityContext? SecurityContext { get; init; }  // UserId, TenantId, etc.
+    // Scope (delta storage — only what changed vs. the previous hop)
+    public ScopeDelta? Scope { get; init; }
 
-    // Policy
-    public PolicyDecisionTrail? PolicyDecisionTrail { get; init; }
+    // Policy decisions made at this hop
+    public PolicyDecisionTrail? Trail { get; init; }
 
-    // Metadata (stitched across hops)
-    public Dictionary<string, string> Metadata { get; init; } = new();
+    // Arbitrary metadata (JSON values; later hops override earlier for the same key)
+    public IReadOnlyDictionary<string, JsonElement>? Metadata { get; init; }
 
-    // Debugging
+    // Causation (populated on Causation hops)
+    public MessageId? CausationId { get; init; }
+    public CorrelationId? CorrelationId { get; init; }
+    public string? CausationType { get; init; }
+
+    // Caller info (jump-to-source in tooling)
     public string? CallerMemberName { get; init; }
     public string? CallerFilePath { get; init; }
     public int? CallerLineNumber { get; init; }
 
-    // Timing
-    public DateTimeOffset Timestamp { get; init; }
-    public TimeSpan? Duration { get; init; }
+    // Timing + distributed tracing
+    public TimeSpan Duration { get; init; }
+    public string? TraceParent { get; init; }   // W3C traceparent for OpenTelemetry correlation
 }
 
-public enum MessageHopType {
-    Current,    // This message's context
-    Causation   // Parent message's context (inherited)
-}
-```
-
-**MessageHop captures**:
-- **Routing**: Topic, stream, partition, sequence
-- **Security**: Who is making this request?
-- **Policy**: What decisions were made?
-- **Metadata**: Custom key-value pairs
-- **Debugging**: Source location (file, line, method)
-- **Timing**: When did this happen, how long did it take?
-
----
-
-## Hop Types
-
-### Current Hop
-
-**Purpose**: Captures context for **this message**.
-
-```csharp{title="Current Hop" description="Purpose: Captures context for this message." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Current", "Hop"]}
-var currentHop = new MessageHop {
-    Type = MessageHopType.Current,
-    Topic = "orders",
-    StreamKey = "customer-123",
-    PartitionIndex = 42,
-    SecurityContext = new SecurityContext {
-        UserId = Guid.Parse("user-456"),
-        TenantId = Guid.Parse("tenant-789")
-    },
-    Metadata = new Dictionary<string, string> {
-        ["ServiceName"] = "OrderService",
-        ["Version"] = "1.0.0"
-    },
-    Timestamp = DateTimeOffset.UtcNow
-};
-```
-
-**Use Case**: Know where this message originated, who created it, and what metadata it carries.
-
-### Causation Hop
-
-**Purpose**: Captures context from **parent message** (inherited).
-
-```csharp{title="Causation Hop" description="Purpose: Captures context from parent message (inherited)." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Causation", "Hop"]}
-// When OrderCreated event is created from CreateOrder command:
-var envelope = MessageEnvelope.Create(
-    messageId: MessageId.New(),
-    correlationId: command.CorrelationId,  // Inherit
-    causationId: CausationId.From(command.MessageId),  // Parent reference
-    payload: orderCreatedEvent,
-    currentHop: /* current hop */,
-    causationHops: command.Hops  // INHERIT parent's hops!
-);
-```
-
-**Result**: `OrderCreated` envelope contains:
-1. **Current hop**: Context for OrderCreated
-2. **Causation hops**: All hops from CreateOrder (parent)
-
-**Benefit**: Complete trace from HTTP request → Command → Event → Downstream events!
-
----
-
-## Hop Flow Example
-
-### Scenario: Create Order Workflow
-
-```
-1. HTTP POST /api/orders (API Gateway)
-   ├─ Current Hop:
-   │  ├─ Type: Current
-   │  ├─ SecurityContext: { UserId: user-123, TenantId: tenant-456 }
-   │  ├─ Metadata: { ServiceName: "API Gateway", RequestPath: "/api/orders" }
-   │  └─ Timestamp: 2024-12-12T10:00:00Z
-   └─ Causation Hops: (none)
-
-      ↓ Creates CreateOrder Command
-
-2. CreateOrder Command (OrderService)
-   ├─ Current Hop:
-   │  ├─ Type: Current
-   │  ├─ Topic: "orders"
-   │  ├─ StreamKey: "customer-123"
-   │  ├─ SecurityContext: { UserId: user-123, TenantId: tenant-456 }  (inherited)
-   │  ├─ Metadata: { ServiceName: "OrderService", ReceptorName: "CreateOrderReceptor" }
-   │  └─ Timestamp: 2024-12-12T10:00:00.123Z
-   └─ Causation Hops:
-      └─ Hop from API Gateway (inherited)
-
-      ↓ Creates OrderCreated Event
-
-3. OrderCreated Event
-   ├─ Current Hop:
-   │  ├─ Type: Current
-   │  ├─ Topic: "orders"
-   │  ├─ StreamKey: "customer-123"
-   │  ├─ SecurityContext: { UserId: user-123, TenantId: tenant-456 }  (inherited)
-   │  ├─ Metadata: { ServiceName: "OrderService", EventType: "OrderCreated" }
-   │  └─ Timestamp: 2024-12-12T10:00:00.456Z
-   └─ Causation Hops:
-      ├─ Hop from API Gateway (inherited)
-      └─ Hop from CreateOrder Command (inherited)
-
-      ↓ Published to Azure Service Bus
-
-      ↓ Consumed by InventoryWorker
-
-4. InventoryReserved Event
-   ├─ Current Hop:
-   │  ├─ Type: Current
-   │  ├─ Topic: "inventory"
-   │  ├─ StreamKey: "product-789"
-   │  ├─ SecurityContext: { UserId: user-123, TenantId: tenant-456 }  (inherited)
-   │  ├─ Metadata: { ServiceName: "InventoryWorker", EventType: "InventoryReserved" }
-   │  └─ Timestamp: 2024-12-12T10:00:01.234Z
-   └─ Causation Hops:
-      ├─ Hop from API Gateway (inherited)
-      ├─ Hop from CreateOrder Command (inherited)
-      └─ Hop from OrderCreated Event (inherited)
-```
-
-**Result**: `InventoryReserved` event contains **complete trace** back to original HTTP request!
-
----
-
-## Security Context
-
-```csharp{title="Security Context" description="Security Context" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Security", "Context"]}
-public record SecurityContext {
-    public Guid? UserId { get; init; }
-    public Guid? TenantId { get; init; }
-    public string[]? Roles { get; init; }
-    public Dictionary<string, string>? Claims { get; init; }
+public enum HopType {
+    Current   = 0,   // processing of THIS message
+    Causation = 1    // carried forward from the parent/causing message
 }
 ```
 
-**Use Case**: Authorization across services.
+`ServiceInstanceInfo` identifies the exact instance that processed the hop:
 
-### Example: Multi-Tenant Authorization
-
-```csharp{title="Example: Multi-Tenant Authorization" description="Example: Multi-Tenant Authorization" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Example:", "Multi-Tenant"]}
-public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-    private readonly IHttpContextAccessor _httpContext;
-
-    public async ValueTask<OrderCreated> HandleAsync(
-        CreateOrder message,
-        CancellationToken ct = default) {
-
-        // Extract security context from hops
-        var securityContext = message.Hops
-            .FirstOrDefault(h => h.Type == MessageHopType.Current)?
-            .SecurityContext;
-
-        if (securityContext?.TenantId is null) {
-            throw new UnauthorizedAccessException("No tenant context");
-        }
-
-        // Validate customer belongs to tenant
-        if (!await _customerService.BelongsToTenantAsync(
-            message.CustomerId,
-            securityContext.TenantId.Value,
-            ct)) {
-
-            throw new ForbiddenException("Customer does not belong to tenant");
-        }
-
-        // Business logic...
-    }
+```csharp{title="ServiceInstanceInfo identity record" description="Identifies the exact service instance that processed a hop — name, UUIDv7 instance id, host, and process id — with an Unknown sentinel when no provider is configured." category="Observability" difficulty="BEGINNER" tags=["service-instance","instance-id","host-name","process-id"]}
+public record ServiceInstanceInfo {
+    public required string ServiceName { get; init; }   // e.g. "OrderService"
+    public required Guid   InstanceId  { get; init; }   // UUIDv7 per running instance
+    public required string HostName    { get; init; }
+    public required int    ProcessId   { get; init; }
+    // ServiceInstanceInfo.Unknown is the sentinel when no provider is configured.
 }
 ```
 
-**Benefit**: Security context flows automatically across services!
+### Current vs. causation hops
+
+When a message spawns a child message, the parent's **`Current` hops are carried forward as the child's `Causation` hops**. The child always has at least one `Current` hop (its own origin). This preserves the complete causal chain: from any message you can see the hops of everything that led to it.
+
+```
+CreateOrder command             OrderCreated event
+┌───────────────────┐           ┌───────────────────────────┐
+│ Hops:             │           │ Hops:                     │
+│  [Current] gateway│  ───────▶ │  [Causation] gateway      │  ← inherited
+│  [Current] orders │           │  [Causation] orders       │  ← inherited
+└───────────────────┘           │  [Current]   orders (evt) │  ← this message
+                                └───────────────────────────┘
+```
+
+Use `envelope.GetCurrentHops()` and `envelope.GetCausationHops()` to split them.
 
 ---
 
-## Policy Decision Trail
+## Scope
 
-```csharp{title="Policy Decision Trail" description="Policy Decision Trail" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Policy", "Decision"]}
-public record PolicyDecisionTrail {
-    public List<PolicyDecision> Decisions { get; init; } = new();
+`MessageHop.Scope` uses **delta storage**: a hop records only what changed from the previous hop (a `ScopeDelta`), not the full context. Reassemble the effective scope with `envelope.GetCurrentScope()`, which folds the deltas across all current hops into a `ScopeContext` (tenant/user, roles, permissions, claims, principals).
+
+```csharp{title="Read effective scope from an envelope" description="GetCurrentScope folds each current hop's ScopeDelta into a ScopeContext; ScopeContext.Scope exposes the string tenant and user." category="Observability" difficulty="INTERMEDIATE" tags=["scope","tenant","user","scope-delta"]}
+var scope  = envelope.GetCurrentScope();
+var tenant = scope?.Scope.TenantId;   // string?
+var user   = scope?.Scope.UserId;     // string?
+```
+
+The full mechanics — how deltas are captured, merged, and enforced across service boundaries — live in [Scope propagation](../security/scope-propagation.md) and [Security context propagation](../security/security-context-propagation.md).
+
+---
+
+## Policy decision trail
+
+Policy decisions made at a hop are recorded in `MessageHop.Trail`. `envelope.GetAllPolicyDecisions()` stitches every current hop's decisions together in chronological order.
+
+```csharp{title="PolicyDecisionTrail and PolicyDecision" description="RecordDecision appends a routing decision to a hop's trail; each PolicyDecision captures the policy, rule, match result, configuration, reason, and timestamp." category="Observability" difficulty="INTERMEDIATE" tags=["policy-decision","decision-trail","routing","audit"]}
+public class PolicyDecisionTrail {
+    public List<PolicyDecision> Decisions { get; init; } = [];
+
+    public void RecordDecision(string policyName, string rule, bool matched,
+                               object? configuration, string reason);
+
+    public IEnumerable<PolicyDecision> GetMatchedRules();
+    public IEnumerable<PolicyDecision> GetUnmatchedRules();
 }
 
 public record PolicyDecision {
-    public string PolicyName { get; init; }
-    public bool Allowed { get; init; }
-    public string? Reason { get; init; }
-    public Dictionary<string, string> Context { get; init; } = new();
+    public required string          PolicyName    { get; init; }  // e.g. "StreamSelection"
+    public required string          Rule          { get; init; }  // e.g. "Order.* → order-{id}"
+    public required bool            Matched       { get; init; }  // did this rule match?
+    public          object?         Configuration { get; init; }  // usually a PolicyConfiguration
+    public required string          Reason        { get; init; }  // human-readable
+    public required DateTimeOffset  Timestamp     { get; init; }
 }
 ```
 
-**Use Case**: Audit which policies allowed/denied actions.
+When a rule matches, `Configuration` is typically a `PolicyConfiguration` exposing the resolved routing/execution settings: `Topic`, `StreamId`, `ExecutionStrategyType`, `PartitionRouterType`, `SequenceProviderType`, `PartitionCount`, `MaxConcurrency`.
 
-### Example: Rate Limiting Policy
-
-```csharp{title="Example: Rate Limiting Policy" description="Example: Rate Limiting Policy" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Example:", "Rate"]}
-public class RateLimitingPolicy : IPolicy {
-    public async Task<PolicyDecision> EvaluateAsync(
-        MessageEnvelope envelope,
-        CancellationToken ct = default) {
-
-        var securityContext = envelope.Hops
-            .FirstOrDefault(h => h.Type == MessageHopType.Current)?
-            .SecurityContext;
-
-        var userId = securityContext?.UserId;
-
-        if (userId is null) {
-            return new PolicyDecision {
-                PolicyName = "RateLimiting",
-                Allowed = false,
-                Reason = "No user context"
-            };
-        }
-
-        var count = await _rateLimiter.GetRequestCountAsync(userId.Value, ct);
-
-        if (count > 100) {  // Max 100 requests per minute
-            return new PolicyDecision {
-                PolicyName = "RateLimiting",
-                Allowed = false,
-                Reason = "Rate limit exceeded",
-                Context = new Dictionary<string, string> {
-                    ["RequestCount"] = count.ToString(),
-                    ["Limit"] = "100"
-                }
-            };
-        }
-
-        return new PolicyDecision {
-            PolicyName = "RateLimiting",
-            Allowed = true,
-            Context = new Dictionary<string, string> {
-                ["RequestCount"] = count.ToString()
-            }
-        };
-    }
-}
-```
-
-**Result**: Every hop contains policy decisions - full audit trail!
+See [Policy engine](../../operations/infrastructure/policies.md) for how policies are authored and evaluated.
 
 ---
 
-## Metadata Stitching
+## Metadata stitching
 
-Metadata **stitches across hops**, accumulating context:
+Metadata accumulates hop-to-hop. Each hop may **inherit** prior keys, **overwrite** a key, or **add** new ones. `GetAllMetadata()` returns the stitched result (later current hops win); `GetMetadata(key)` returns the latest value for a single key. Values are `JsonElement`, so any JSON shape is allowed.
 
-```csharp{title="Metadata Stitching" description="Metadata stitches across hops, accumulating context:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Metadata", "Stitching"]}
-// Hop 1 (API Gateway)
-Metadata: {
-    "ServiceName": "API Gateway",
-    "RequestPath": "/api/orders"
-}
-
-// Hop 2 (OrderService) - inherits + adds
-Metadata: {
-    "ServiceName": "OrderService",        // Overwrites
-    "RequestPath": "/api/orders",         // Inherited
-    "ReceptorName": "CreateOrderReceptor" // Added
-}
-
-// Hop 3 (InventoryWorker) - inherits + adds
-Metadata: {
-    "ServiceName": "InventoryWorker",     // Overwrites
-    "RequestPath": "/api/orders",         // Inherited
-    "ReceptorName": "ReserveInventoryReceptor", // Overwrites
-    "InventoryCheck": "Passed"            // Added
+```csharp{title="Read stitched hop metadata" description="GetAllMetadata and GetMetadata return JsonElement values stitched across current hops, later hops winning; check ValueKind before extracting." category="Observability" difficulty="INTERMEDIATE" tags=["metadata","json-element","stitching","enrichment"]}
+var all      = envelope.GetAllMetadata();          // IReadOnlyDictionary<string, JsonElement>
+var priority = envelope.GetMetadata("priority");
+if (priority is { } p && p.ValueKind == JsonValueKind.String) {
+    Console.WriteLine(p.GetString());
 }
 ```
-
-**Pattern**: Each hop can:
-- **Inherit** metadata from parent
-- **Overwrite** existing keys
-- **Add** new keys
 
 ---
 
-## Debugging Information
+## Caller information & timing
 
-```csharp{title="Debugging Information" description="Debugging Information" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Debugging", "Information"]}
-public async ValueTask<OrderCreated> HandleAsync(
-    CreateOrder message,
-    [CallerMemberName] string memberName = "",
-    [CallerFilePath] string filePath = "",
-    [CallerLineNumber] int lineNumber = 0,
-    CancellationToken ct = default) {
+Every hop can capture the source location that created it (`CallerMemberName`, `CallerFilePath`, `CallerLineNumber`) and how long it took (`Timestamp`, `Duration`). This turns "where did this originate?" into a file/line answer instead of a distributed stack-trace hunt.
 
-    var currentHop = new MessageHop {
-        Type = MessageHopType.Current,
-        CallerMemberName = memberName,  // "HandleAsync"
-        CallerFilePath = filePath,      // "/src/OrderService/Receptors/CreateOrderReceptor.cs"
-        CallerLineNumber = lineNumber,  // 42
-        Timestamp = DateTimeOffset.UtcNow
-    };
-
-    // Add hop to envelope
-    message.Envelope.Hops.Add(currentHop);
-
-    // Business logic...
-}
-```
-
-**Benefit**: Know **exactly** which file/line created each hop!
-
-### Example: Error Debugging
-
-```
-Error: InvalidOperationException in OrderCreated processing
-
-Stack Trace from Hops:
-1. API Gateway
-   File: /src/API/Controllers/OrdersController.cs:45
-
-2. OrderService - CreateOrderReceptor
-   File: /src/OrderService/Receptors/CreateOrderReceptor.cs:78
-
-3. InventoryWorker - ReserveInventoryReceptor
-   File: /src/InventoryWorker/Receptors/ReserveInventoryReceptor.cs:102  ← ERROR HERE
-```
-
-**Much easier than traditional stack traces in distributed systems!**
-
----
-
-## Timing & Performance
-
-```csharp{title="Timing & Performance" description="Timing & Performance" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Timing", "Performance"]}
-public class MessageHop {
-    public DateTimeOffset Timestamp { get; init; }  // When hop was created
-    public TimeSpan? Duration { get; init; }        // How long this hop took
-}
-```
-
-### Example: Performance Profiling
-
-```csharp{title="Example: Performance Profiling" description="Example: Performance Profiling" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Example:", "Performance"]}
-var startTime = DateTimeOffset.UtcNow;
-
-// Business logic...
-
-var duration = DateTimeOffset.UtcNow - startTime;
-
-var currentHop = new MessageHop {
-    Type = MessageHopType.Current,
-    Timestamp = startTime,
-    Duration = duration,  // How long this receptor took
-    Metadata = new Dictionary<string, string> {
-        ["ReceptorName"] = "CreateOrderReceptor"
-    }
-};
-```
-
-**Query Performance**:
-```csharp{title="Example: Performance Profiling (2)" description="Query Performance:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Example:", "Performance"]}
-// Find slow hops
-var slowHops = envelope.Hops
-    .Where(h => h.Duration > TimeSpan.FromMilliseconds(500))
+```csharp{title="Find the slowest hops with caller locations" description="Order current hops by Duration and print each hop's service, elapsed time, and captured file and line." category="Observability" difficulty="INTERMEDIATE" tags=["caller-info","duration","timing","profiling"]}
+var slowest = envelope.GetCurrentHops()
     .OrderByDescending(h => h.Duration)
-    .ToArray();
+    .Take(5);
 
-foreach (var hop in slowHops) {
-    Console.WriteLine($"{hop.Metadata["ReceptorName"]}: {hop.Duration.TotalMilliseconds}ms");
+foreach (var hop in slowest) {
+    Console.WriteLine($"{hop.ServiceInstance.ServiceName}: {hop.Duration.TotalMilliseconds:F1}ms");
+    Console.WriteLine($"  at {hop.CallerFilePath}:{hop.CallerLineNumber}");
 }
 ```
 
+`TraceParent` carries the W3C `traceparent` value captured from `Activity.Current`, so hop data correlates with OpenTelemetry spans. See [OpenTelemetry integration](../../operations/observability/opentelemetry-integration.md).
+
 ---
 
-## Visualizing Hops
+## Querying traces: `ITraceStore`
 
-```csharp{title="Visualizing Hops" description="Visualizing Hops" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Visualizing", "Hops"]}
-public class HopVisualizer {
-    public void PrintHops(MessageEnvelope envelope) {
-        Console.WriteLine($"Message: {envelope.MessageId}");
-        Console.WriteLine($"Correlation: {envelope.CorrelationId}");
-        Console.WriteLine($"Causation: {envelope.CausationId}");
-        Console.WriteLine();
-        Console.WriteLine("Hops:");
+Envelopes are captured into an `ITraceStore` so you can query the message history after the fact. The dispatcher **automatically stores each envelope** as it dispatches — you don't call `StoreAsync` yourself in application code; you query.
 
-        for (int i = 0; i < envelope.Hops.Count; i++) {
-            var hop = envelope.Hops[i];
-            var prefix = new string(' ', i * 2);
+```csharp{title="ITraceStore query surface" description="The store the dispatcher writes envelopes to: fetch by message id, by correlation id, by causal chain, or by time range." category="Observability" difficulty="INTERMEDIATE" tags=["trace-store","query","correlation","causal-chain"]}
+public interface ITraceStore {
+    Task StoreAsync(IMessageEnvelope envelope, CancellationToken ct = default);
 
-            Console.WriteLine($"{prefix}{i + 1}. {hop.Type}");
-            Console.WriteLine($"{prefix}   Timestamp: {hop.Timestamp:yyyy-MM-dd HH:mm:ss.fff}");
+    Task<IMessageEnvelope?>       GetByMessageIdAsync(MessageId messageId, CancellationToken ct = default);
+    Task<List<IMessageEnvelope>>  GetByCorrelationAsync(CorrelationId correlationId, CancellationToken ct = default);
+    Task<List<IMessageEnvelope>>  GetCausalChainAsync(MessageId messageId, CancellationToken ct = default);
+    Task<List<IMessageEnvelope>>  GetByTimeRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default);
+}
+```
 
-            if (hop.Duration is not null) {
-                Console.WriteLine($"{prefix}   Duration: {hop.Duration.Value.TotalMilliseconds}ms");
-            }
+Behavior guarantees (verified by the contract tests):
 
-            if (hop.SecurityContext is not null) {
-                Console.WriteLine($"{prefix}   User: {hop.SecurityContext.UserId}");
-                Console.WriteLine($"{prefix}   Tenant: {hop.SecurityContext.TenantId}");
-            }
+- **`GetByMessageIdAsync`** returns the envelope for a known id, or `null` when the id is unknown.
+- **`GetByCorrelationAsync`** returns every envelope sharing a correlation id, ordered chronologically by the message's first-hop timestamp.
+- **`GetCausalChainAsync`** returns the message *plus all ancestors* (walked via causation id) *and all descendants* (children, multi-generation), ordered chronologically, and is **protected against circular references**. It returns an empty list when the message id is unknown.
+- **`GetByTimeRangeAsync`** filters and orders by the message's first `Current` hop timestamp.
 
-            foreach (var kvp in hop.Metadata) {
-                Console.WriteLine($"{prefix}   {kvp.Key}: {kvp.Value}");
-            }
+### Registration & the in-memory store
 
-            Console.WriteLine();
-        }
+`AddWhizbang(...)` registers `ITraceStore` as a singleton **`InMemoryTraceStore`** by default. That implementation is thread-safe (backed by a `ConcurrentDictionary` keyed by `MessageId`) and is intended for **testing and development — it is not durable and is bounded by memory**. A couple of concrete behaviors worth knowing:
+
+- `StoreAsync` throws `ArgumentNullException` on a null envelope and **de-dupes on `MessageId`** — the first write for a given id wins (`ConcurrentDictionary.TryAdd`).
+- Queries degrade gracefully: an unknown id yields `null`/empty, and an envelope with no `Current` hop sorts as `DateTimeOffset.MinValue` rather than throwing.
+
+For production, register a persistent `ITraceStore` implementation.
+
+---
+
+## Time-travel debugging scenarios
+
+All examples resolve `ITraceStore` from DI.
+
+### "Why did this message route to the wrong topic?"
+
+Inspect the policy decision trail.
+
+```csharp{title="Debug a routing decision from the policy trail" description="Fetch the envelope by id and print each policy decision, showing the resolved PolicyConfiguration when a rule matched." category="Observability" difficulty="INTERMEDIATE" tags=["policy-trail","routing","debugging","trace-store"]}
+var envelope = await traceStore.GetByMessageIdAsync(messageId);
+
+foreach (var d in envelope!.GetAllPolicyDecisions()) {
+    Console.WriteLine($"{d.PolicyName}: rule={d.Rule} matched={d.Matched}");
+    if (d.Matched && d.Configuration is PolicyConfiguration cfg) {
+        Console.WriteLine($"  → topic={cfg.Topic} stream={cfg.StreamId} " +
+                          $"exec={cfg.ExecutionStrategyType?.Name} partitions={cfg.PartitionCount}");
+    } else {
+        Console.WriteLine($"  → {d.Reason}");
     }
 }
 ```
 
-**Output**:
-```
-Message: msg-003
-Correlation: corr-abc
-Causation: msg-002
+### "What caused this error?"
 
-Hops:
-1. Causation
-   Timestamp: 2024-12-12 10:00:00.123
-   Duration: 15ms
-   User: user-123
-   Tenant: tenant-456
-   ServiceName: API Gateway
-   RequestPath: /api/orders
+Walk the causal chain to find where the failing message came from.
 
-  2. Causation
-     Timestamp: 2024-12-12 10:00:00.456
-     Duration: 50ms
-     User: user-123
-     Tenant: tenant-456
-     ServiceName: OrderService
-     ReceptorName: CreateOrderReceptor
+```csharp{title="Walk the causal chain to an error's origin" description="GetCausalChainAsync returns the failing message plus ancestors and descendants in chronological order; print each message's service and caller location." category="Observability" difficulty="INTERMEDIATE" tags=["causal-chain","causation","debugging","caller-info"]}
+var chain = await traceStore.GetCausalChainAsync(failedMessageId);
 
-    3. Current
-       Timestamp: 2024-12-12 10:00:01.234
-       Duration: 120ms
-       User: user-123
-       Tenant: tenant-456
-       ServiceName: InventoryWorker
-       ReceptorName: ReserveInventoryReceptor
+foreach (var msg in chain) {   // already chronological
+    var hop = msg.GetCurrentHops().LastOrDefault();
+    Console.WriteLine($"{msg.GetMessageTimestamp():HH:mm:ss.fff}  {msg.Payload.GetType().Name}");
+    Console.WriteLine($"  service: {hop?.ServiceInstance.ServiceName}");
+    Console.WriteLine($"  caller : {hop?.CallerFilePath}:{hop?.CallerLineNumber}");
+}
 ```
 
----
+### "How did tenant/user context change?"
 
-## Best Practices
+Merge scope across the current hops and watch for a drop.
 
-### DO ✅
-
-- ✅ **Add hops** at each processing stage
-- ✅ **Include security context** in first hop
-- ✅ **Inherit causation hops** from parent message
-- ✅ **Stitch metadata** across hops
-- ✅ **Record timing** (Timestamp, Duration)
-- ✅ **Add debugging info** (CallerMemberName, FilePath, LineNumber)
-- ✅ **Visualize hops** for debugging
-- ✅ **Query hops** for performance profiling
-
-### DON'T ❌
-
-- ❌ Skip adding hops (breaks tracing)
-- ❌ Forget to inherit causation hops
-- ❌ Store sensitive data in metadata (use SecurityContext)
-- ❌ Add excessive metadata (keep it lean)
-- ❌ Ignore hop timestamps (critical for debugging)
-
----
-
-## Integration with Event Store
-
-Hops are stored with events for full auditability:
-
-```sql{title="Integration with Event Store" description="Hops are stored with events for full auditability:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Integration", "Event"]}
-CREATE TABLE wh_event_store (
-    event_id UUID PRIMARY KEY,
-    message_id UUID NOT NULL,
-    correlation_id UUID NOT NULL,
-    causation_id UUID NULL,
-    event_type VARCHAR(255) NOT NULL,
-    payload JSONB NOT NULL,
-    hops JSONB NOT NULL,  -- Stored as JSON
-    created_at TIMESTAMPTZ NOT NULL
-);
-
-CREATE INDEX idx_event_store_correlation_id ON wh_event_store(correlation_id);
-CREATE INDEX idx_event_store_causation_id ON wh_event_store(causation_id);
+```csharp{title="Inspect tenant and user context on a message" description="Read the merged scope from an envelope to see the effective user and tenant, defaulting to NOT SET when unset." category="Observability" difficulty="INTERMEDIATE" tags=["scope","tenant","user","debugging"]}
+var envelope = await traceStore.GetByMessageIdAsync(messageId);
+var scope = envelope!.GetCurrentScope();
+Console.WriteLine($"UserId={scope?.Scope.UserId ?? "NOT SET"} TenantId={scope?.Scope.TenantId ?? "NOT SET"}");
 ```
 
-**Query hops**:
-```sql{title="Integration with Event Store (2)" description="Query hops:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Persistence", "Integration", "Event"]}
-SELECT
-    event_id,
-    event_type,
-    hops->>0->>'Metadata'->>'ServiceName' AS service_name,
-    hops->>0->>'Timestamp' AS timestamp,
-    hops->>0->>'Duration' AS duration
-FROM wh_event_store
-WHERE correlation_id = 'corr-abc'
-ORDER BY created_at;
+To see the progression hop-by-hop, iterate `envelope.GetCurrentHops()` and inspect each `hop.Scope` delta together with `hop.ServiceInstance.ServiceName` and `hop.CallerFilePath`/`CallerLineNumber`.
+
+### "Show me every message in this workflow."
+
+All messages in one workflow share a correlation id.
+
+```csharp{title="List every message in a workflow by correlation id" description="GetByCorrelationAsync returns all envelopes sharing a correlation id, chronological, with service, topic, and stream per message." category="Observability" difficulty="INTERMEDIATE" tags=["correlation","workflow","trace-store","timeline"]}
+var workflow = await traceStore.GetByCorrelationAsync(correlationId);
+foreach (var e in workflow) {
+    var hop = e.GetCurrentHops().LastOrDefault();
+    Console.WriteLine($"{e.GetMessageTimestamp():HH:mm:ss.fff}  {e.Payload.GetType().Name}  " +
+                      $"{hop?.ServiceInstance.ServiceName} → {hop?.Topic} ({hop?.StreamId})");
+}
+```
+
+### "What happened between 2:00 and 2:05 PM?"
+
+```csharp{title="Query messages in a time window" description="GetByTimeRangeAsync filters and orders envelopes by their first current hop timestamp." category="Observability" difficulty="INTERMEDIATE" tags=["time-range","trace-store","timeline","debugging"]}
+var from = new DateTimeOffset(2025, 11, 2, 14, 0, 0, TimeSpan.Zero);
+var to   = new DateTimeOffset(2025, 11, 2, 14, 5, 0, TimeSpan.Zero);
+
+var messages = await traceStore.GetByTimeRangeAsync(from, to);
+Console.WriteLine($"Found {messages.Count} messages");
+foreach (var e in messages) {
+    var hop = e.GetCurrentHops().LastOrDefault();
+    Console.WriteLine($"{e.GetMessageTimestamp():HH:mm:ss.fff}  {e.Payload.GetType().Name}  " +
+                      $"{hop?.ServiceInstance.ServiceName} → {hop?.Topic}");
+}
 ```
 
 ---
 
-## Further Reading
+## Best practices
 
-**Core Concepts**:
-- [Message Context](../messages/message-context.md) - MessageId, CorrelationId, CausationId
-- [Dispatcher](../dispatcher/dispatcher.md) - How messages flow through the system
-- [Receptors](../receptors/receptors.md) - Message handlers
-
-**Messaging Patterns**:
-- [Message Envelopes](../../messaging/message-envelopes.md) - Deep dive into hop architecture
-- [Outbox Pattern](../../messaging/outbox-pattern.md) - Reliable messaging with hops
-- [Event Store](../../data/event-store.md) - Storing hops with events
-
-**Infrastructure**:
-- Logging & Telemetry - Application Insights integration
-- [Policy Engine](../../operations/infrastructure/policies.md) - Policy decision trails
+- **Correlate everything.** Keep the same correlation id across a workflow so `GetByCorrelationAsync` returns the whole flow. Use `CorrelationId.New()` at the start of a new workflow; downstream messages inherit it through the hop chain.
+- **Preserve causation.** Child messages should carry the parent's `MessageId` as their causation id so `GetCausalChainAsync` can walk parents and children.
+- **Read scope via `GetCurrentScope()`**, not the obsolete `GetCurrentSecurityContext()`.
+- **Treat metadata values as JSON.** `GetAllMetadata()`/`GetMetadata()` return `JsonElement`; check `ValueKind` before extracting.
+- **Don't hand-store traces.** The dispatcher captures envelopes automatically as it dispatches; an application-level `Task.Run(StoreAsync)` is redundant and can double-write.
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+## Further reading
+
+- [Message context](../messages/message-context.md) — MessageId, CorrelationId, causation
+- [Message envelopes](../../messaging/message-envelopes.md) — envelope lifecycle and serialization
+- [Scope propagation](../security/scope-propagation.md) — how scope deltas flow across services
+- [Policy engine](../../operations/infrastructure/policies.md) — policy authoring and decision trails
+- [OpenTelemetry integration](../../operations/observability/opentelemetry-integration.md) — correlating hops with spans
+- [Distributed tracing](../../operations/observability/tracing.md) — end-to-end tracing operations
+</content>
+</invoke>
