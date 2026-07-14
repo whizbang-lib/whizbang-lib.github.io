@@ -11,11 +11,19 @@ tags: >-
   pure-functions, streamkey
 codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
-  - src/Whizbang.Core/StreamKeyAttribute.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveBase.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs
+  - src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs
+  - src/Whizbang.Core/Perspectives/ITemporalPerspectiveFor.cs
+  - src/Whizbang.Generators/PerspectivePurityAnalyzer.cs
+  - src/Whizbang.Generators/Utilities/PerspectiveDiscoveryHelper.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/InventoryLevelsPerspective.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectivePurityAnalyzerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -38,7 +46,9 @@ A Perspective is analogous to a **viewpoint** or **lens through which you see da
 ## IPerspectiveFor Interface
 
 :::new
-All perspective variants (`IPerspectiveFor`, `IPerspectiveWithActionsFor`, `ITemporalPerspectiveFor`, `IGlobalPerspectiveFor`) now inherit from `IPerspectiveBase<TModel>`, a unified marker interface used by source generators for perspective discovery. You do not implement `IPerspectiveBase` directly -- use the specific perspective interfaces below.
+The single-stream perspective interfaces — `IPerspectiveFor<TModel, TEvent…>` and `IPerspectiveWithActionsFor<TModel, TEvent…>` — inherit the event-typed marker `IPerspectiveBase<TModel, TEvent…>` (which in turn derives from `IPerspectiveBase<TModel>`). Source generators scan for those `IPerspectiveBase` markers to discover perspectives. You never implement `IPerspectiveBase` directly — it is `[EditorBrowsable(Never)]`; implement the specific interfaces below.
+
+`IGlobalPerspectiveFor` (multi-stream, partition-keyed) and `ITemporalPerspectiveFor` (append-only, `Transform`-based) are **separate** interface families with their own marker bases — `IGlobalPerspectiveFor<TModel, TPartitionKey>` and `ITemporalPerspectiveFor<TModel>` — and do **not** inherit `IPerspectiveBase`. See [Multi-Stream Perspectives](multi-stream.md), [Temporal Perspectives](temporal.md), and [Perspectives with Actions](perspectives-with-actions.md).
 :::
 
 ```csharp{title="IPerspectiveFor Interface" description="IPerspectiveFor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveFor", "Interface"]}
@@ -333,7 +343,7 @@ Perspectives use **pure functions** for event application:
 **Why pure functions?**
 1. **Deterministic replay**: Rebuilding read models from events always produces same result
 2. **Easy to test**: No database mocking, no complex setup
-3. **Compile-time safety**: Type system enforces purity (future: Roslyn analyzer)
+3. **Compile-time safety**: A Roslyn analyzer (`PerspectivePurityAnalyzer`) enforces purity at build time — see [Purity Enforcement](#purity-enforcement) (WHIZ100–WHIZ106)
 4. **Event sourcing**: Pure functions are perfect for event replay
 5. **Debugging**: No hidden state changes, easy to reason about
 
@@ -371,6 +381,149 @@ public class ProductCatalogPerspective : IPerspectiveFor<ProductDto, ProductCrea
 **The runner handles I/O** (not the perspective):
 - Perspective: Pure function that computes new state
 - Runner: Loads model, calls Apply(), saves result
+
+---
+
+## Purity Enforcement {#purity-enforcement}
+
+Purity is not just a convention — it is enforced at build time by the
+`PerspectivePurityAnalyzer` (a Roslyn `DiagnosticAnalyzer` shipped in
+`Whizbang.Generators`). The analyzer inspects every `Apply` method on a
+perspective (and every `[CollectiveApplyFor]` method) and reports
+diagnostics in the `Whizbang.Purity` category. IDs `WHIZ100`–`WHIZ199`
+are reserved for purity enforcement.
+
+The determinism checks (`WHIZ100`–`WHIZ104`) apply to **both** perspective
+`Apply` methods and collective `[CollectiveApplyFor]` methods — both are
+folded during replay and must be deterministic.
+
+| ID | Severity | Rule |
+|---|---|---|
+| **WHIZ100** | Error | `Apply` must be synchronous — it may not return `Task`, `Task<T>`, `ValueTask`, or `ValueTask<T>` |
+| **WHIZ101** | Error | `Apply` may not use the `await` keyword |
+| **WHIZ102** | Error | `Apply` may not perform database I/O |
+| **WHIZ103** | Error | `Apply` may not perform HTTP/network I/O |
+| **WHIZ104** | Warning | `Apply` should not use `DateTime.UtcNow`/`DateTimeOffset.Now` (non-deterministic) |
+| **WHIZ105** | Warning | A perspective constructor injects a service not marked `[PureService]` |
+| **WHIZ106** | Error | A `[CollectiveApplyFor]` method performs an apply-time cross-perspective query (`ICollectiveQuery.Of<>()`) |
+
+### WHIZ100 — Apply must be synchronous (Error)
+
+```csharp{title="WHIZ100" description="Apply must return the model, not a Task" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Purity", "WHIZ100"]}
+// ❌ Error WHIZ100 — returns Task
+public Task<ProductDto> Apply(ProductDto current, ProductCreatedEvent @event) {
+    return Task.FromResult(current);
+}
+
+// ✅ Correct — returns the model directly
+public ProductDto Apply(ProductDto current, ProductCreatedEvent @event) {
+    return current with { /* ... */ };
+}
+```
+
+**Fix**: Change the return type from `Task<TModel>`/`ValueTask<TModel>` to `TModel`.
+
+### WHIZ101 — Apply cannot use async/await (Error)
+
+```csharp{title="WHIZ101" description="Apply cannot await" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Purity", "WHIZ101"]}
+// ❌ Error WHIZ101 — uses await
+public ProductDto Apply(ProductDto current, ProductUpdatedEvent @event) {
+    var data = await _service.GetDataAsync();   // NO
+    return current with { Name = data };
+}
+
+// ✅ Correct — use event data, no async
+public ProductDto Apply(ProductDto current, ProductUpdatedEvent @event) {
+    return current with { Name = @event.Name ?? current.Name };
+}
+```
+
+**Fix**: Remove all `await` operations; use data carried on the event.
+
+### WHIZ102 — Apply cannot call database I/O (Error)
+
+The analyzer flags invocations whose containing type is a `DbContext`,
+`DbSet`, `IPerspectiveStore`, or `ILensQuery`, as well as `*Async`
+methods whose names contain `Save`, `Insert`, `Update`, `Delete`,
+`Upsert`, `Query`, `Get`, or `Find`.
+
+```csharp{title="WHIZ102" description="Apply cannot call the store or a lens" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Purity", "WHIZ102"]}
+// ❌ Error WHIZ102 — queries the store inside Apply
+public ProductDto Apply(ProductDto current, ProductUpdatedEvent @event) {
+    var existing = _lens.GetByIdAsync(@event.ProductId).Result;  // NO
+    return current with { /* ... */ };
+}
+
+// ✅ Correct — the runner already loaded 'current' for you
+public ProductDto Apply(ProductDto current, ProductUpdatedEvent @event) {
+    return current with { /* ... */ };
+}
+```
+
+**Fix**: Use the `current` parameter — the runner loads it before calling `Apply`.
+
+### WHIZ103 — Apply cannot call HTTP/network operations (Error)
+
+The analyzer flags invocations on `HttpClient`/`HttpMessageInvoker`.
+
+```csharp{title="WHIZ103" description="Apply cannot call HTTP" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Purity", "WHIZ103"]}
+// ❌ Error WHIZ103 — HTTP call inside Apply
+public ProductDto Apply(ProductDto current, ProductCreatedEvent @event) {
+    var response = _httpClient.GetAsync("api/validate").Result;  // NO
+    return current with { /* ... */ };
+}
+```
+
+**Fix**: HTTP calls belong on the command side; events should carry already-validated data.
+
+### WHIZ104 — Prefer event timestamps over `DateTime.UtcNow` (Warning)
+
+The analyzer warns on member access of `Now`/`UtcNow` on `DateTime` or
+`DateTimeOffset`.
+
+```csharp{title="WHIZ104" description="Use event timestamps instead of wall-clock time" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Purity", "WHIZ104"]}
+// ⚠️ Warning WHIZ104 — non-deterministic
+public ProductDto Apply(ProductDto current, ProductUpdatedEvent @event) =>
+    current with { UpdatedAt = DateTime.UtcNow };
+
+// ✅ Correct — deterministic timestamp from the event
+public ProductDto Apply(ProductDto current, ProductUpdatedEvent @event) =>
+    current with { UpdatedAt = @event.UpdatedAt };
+```
+
+**Fix**: Use a timestamp carried on the event so replay is deterministic.
+
+### WHIZ105 — Injected services must be pure (Warning)
+
+Because perspectives may be replayed during recovery, any service
+injected into a perspective's constructor must be deterministic. The
+analyzer warns when a constructor parameter's type (or one of its
+interfaces) is not marked `[PureService]`. Value types, built-in types,
+and enums are ignored.
+
+```csharp{title="WHIZ105" description="Perspectives may only inject services marked [PureService]" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Purity", "WHIZ105", "PureService"]}
+// ⚠️ Warning WHIZ105 — ILogger is not [PureService]
+public class OrderPerspective : IPerspectiveFor<OrderView, OrderCreated> {
+    public OrderPerspective(ILogger<OrderPerspective> logger) { /* ... */ }
+}
+```
+
+**Fix**: Prefer no injected dependencies. If a helper is genuinely pure, mark it `[PureService]`.
+
+### WHIZ106 — No apply-time cross-perspective queries (Error)
+
+A `[CollectiveApplyFor]` spec is folded per-row during a single-stream
+rebuild, so it may not query a sibling perspective at apply time via
+`ICollectiveQuery.Of<>()` — the fact would be unrecoverable on replay.
+Resolve cross-perspective facts on the command side and carry them on the
+event. See [Collective Events](../messaging/collective-events.md).
+
+The analyzer keys on the **receiver type at the call site**: WHIZ106 fires
+only when a member is actually invoked on an `ICollectiveQuery` (i.e.
+`query.Of<…>()`). A **self-referential** collective apply — one that accepts
+the `ICollectiveQuery` parameter for signature parity but never invokes it,
+so its `Where`/`Set` reference only the row's own columns and the event —
+is replay-safe and correctly reports **no** WHIZ106.
 
 ---
 
