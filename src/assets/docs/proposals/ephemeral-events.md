@@ -10,7 +10,7 @@ tags: ephemeral, self-destructing, sourced, consumption-gated, viral, analyzer, 
 Whizbang's default is **event sourcing**: an event is an immutable fact appended to a durable log, the log is the source of truth, and perspectives are rebuildable projections. But some data doesn't want those guarantees — a "user is typing" ping, an open-tabs layout, a chat message that only needs to live ~90 days. **Ephemeral Events** make the *event-driven* path first-class and opt-in, running side-by-side with the event-sourced path in the same product: you emit events, write perspectives, and read lenses **exactly as today**, and only the event's declared **mode** changes what the runtime does with the data underneath.
 
 :::planned
-Ephemeral Events are a proposed capability (unreleased, not yet started). This proposal covers **E1** — the core mode, the compile-time guardrails, and the first retention strategy (**Immediate**). Destruction hooks + TTL ([E2](#scope-what-e1-does-and-does-not-cover)), archival/compaction (A1), carry-forward (E3), and GDPR crypto-shredding (G1) are separate later phases that build on this foundation and the [Temporal Engine](temporal-engine).
+Ephemeral Events are a proposed capability (unreleased, not yet started). This proposal covers **E1** — the core mode, the compile-time guardrails, and the first destruction strategy (**`WhenConsumed`**). Destruction hooks + TTL ([E2](#scope-what-e1-does-and-does-not-cover)), archival/compaction (A1), carry-forward (E3), and GDPR crypto-shredding (G1) are separate later phases that build on this foundation and the [Temporal Engine](temporal-engine).
 :::
 
 ## Motivation
@@ -53,12 +53,15 @@ The **source of truth is a compile-time `[Ephemeral(...)]` attribute** (`Core/At
 
 ```csharp{title="Declaring an ephemeral event" description="Compile-time authority; the runtime carriers are derived from it" category="Architecture" difficulty="BEGINNER" tags=["Ephemeral"] framework="NET10"}
 // Opt in with the attribute (authority for analyzer + generators + AOT).
-[Ephemeral(Strategy = RetentionStrategy.Immediate, Storage = TransientStorage.InMemory)]
+// Reads plainly: this event is ephemeral, destroyed once every perspective has consumed it.
+[Ephemeral(Destruction = Destruction.WhenConsumed, Storage = TransientStorage.InMemory)]
 public sealed record UserIsTyping(Guid ConversationId, Guid UserId) : IEvent;
 
-// …or the marker for the no-config default (Immediate, developer picks storage).
+// …or the marker for the no-config default (WhenConsumed, developer picks storage).
 public sealed record CursorMoved(Guid DocumentId, int Line, int Column) : IEvent, IEphemeralEvent;
 ```
+
+The `Destruction` axis is *how/when the event self-destructs* — named to match the E2 `Pre`/`PostDestruction` hooks and `DestructionContext`, not framed as retention (the event is emphatically **not** retained). Its E1 value is `WhenConsumed`; later phases add `AfterTtl` (E2), `OnCompaction` (E3), and `Archived` (A1).
 
 **Runtime carriers are derived, not authoritative.** The generator stamps the mode onto `MessageTypeCatalogEntry` for AOT-safe lookup; the wire carries **structured, named envelope metadata** (self-describing, version-robust across service/version boundaries); and an optional persisted `EventFlags` bit + `expires_at` marker exists only as an **indexable hot-path hint** for the storage gate — never the source of truth, derived at emit time exactly as `Composite`/`Collective` are in `Dispatcher.cs`.
 
@@ -96,9 +99,9 @@ Nobody in the industry *enforces* virality — everyone documents "don't rebuild
 
 The analyzer is paired with a **runtime guard** (the same replay/rebuild entry points refuse or redirect to load-from-snapshot for an ephemeral stream), so enforcement holds even for dynamically-composed cases the analyzer can't see. Perspective **mode is derived** by a generator step that walks the event→perspective `Apply` edges (the perspective generators already know each perspective's event set) — zero reflection.
 
-## Immediate retention: consumption-gated deletion
+## `Destruction.WhenConsumed`: consumption-gated deletion
 
-`Immediate` is E1's first (and simplest) retention strategy: an ephemeral event self-destructs **once every perspective that cares has consumed it** — modeled on NATS `InterestPolicy` ("gone once handled"). This is the **novel, safe-by-construction guarantee**: every other system *warns* "don't delete before all projections have consumed," but none can enforce it. Whizbang can, because `wh_perspective_cursors` already records each perspective's checkpoint.
+`WhenConsumed` is E1's first (and simplest) destruction strategy: an ephemeral event self-destructs **once every perspective that cares has consumed it** — modeled on NATS `InterestPolicy` ("gone once handled"). This is the **novel, safe-by-construction guarantee**: every other system *warns* "don't delete before all projections have consumed," but none can enforce it. Whizbang can, because `wh_perspective_cursors` already records each perspective's checkpoint. (It is *consumption-gated*, not literally immediate — the honest reason the value isn't called `Immediate`.)
 
 The reaper **provably withholds physical deletion until every registered perspective's cursor has checkpointed past the event** — a join against `wh_perspective_cursors` via `IPerspectiveCursorResolver`. This directly neutralizes the #1 documented hazard in every event store (rebuild-from-a-deleted-log) and is a real differentiator.
 
@@ -111,7 +114,7 @@ ephemeral event E on stream S
   → until then, E is retained (read-time still sees state; the row just isn't reaped)
 ```
 
-Deletion is **two-phase** everywhere (the canonical pattern from ES-DB `$maxAge` vs scavenge): **logical expire (read-time filter) is decoupled from physical reap**. The Immediate reaper attaches to the existing maintenance surface — `perform_maintenance()` (migration `032`, explicitly "add new maintenance operations here") driven by `MaintenanceWorker` — reusing `PurgeAsync` for the read-model hard delete.
+Deletion is **two-phase** everywhere (the canonical pattern from ES-DB `$maxAge` vs scavenge): **logical expire (read-time filter) is decoupled from physical reap**. The `WhenConsumed` reaper attaches to the existing maintenance surface — `perform_maintenance()` (migration `032`, explicitly "add new maintenance operations here") driven by `MaintenanceWorker` — reusing `PurgeAsync` for the read-model hard delete.
 
 ## Transient storage: in-memory or a TTL'd row (developer picks)
 
@@ -126,7 +129,7 @@ Both are read through the existing `ILensQuery` path — **the read side is unaf
 
 ## Scope: what E1 does (and does not) cover
 
-**E1 delivers:** the `[Ephemeral]` attribute + mode on `MessageTypeCatalog`; viral perspective-mode derivation; the analyzer + runtime guards; **Immediate** consumption-gated deletion; in-memory / TTL-row transient storage. It proves the model on the presence/UI case and consumes the [Signal Bus](../fundamentals/signal-bus/signal-bus).
+**E1 delivers:** the `[Ephemeral]` attribute + mode on `MessageTypeCatalog`; viral perspective-mode derivation; the analyzer + runtime guards; **`Destruction.WhenConsumed`** consumption-gated deletion; in-memory / TTL-row transient storage. It proves the model on the presence/UI case and consumes the [Signal Bus](../fundamentals/signal-bus/signal-bus).
 
 **Deliberately deferred to later phases** (each its own proposal):
 
