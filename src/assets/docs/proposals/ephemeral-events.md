@@ -161,7 +161,12 @@ public sealed class DeliberatelyMixedProjection
 
 ### The runtime guard (backstop)
 
-The analyzer is paired with a **runtime guard** (the same replay/rebuild entry points refuse or redirect to load-from-snapshot for an ephemeral stream), so enforcement holds even for the WHIZ130 warning that a developer ignores, and for dynamically-composed cases the analyzer can't see. Perspective **mode is derived** by a generator step that walks the event→perspective `Apply` edges (the perspective generators already know each perspective's event set) — zero reflection.
+Not every rule is statically resolvable, so the analyzer and the runtime guard split the work:
+
+- **Compile-time (analyzer):** **WHIZ130** and **WHIZ134** — both decide from type symbols alone (a perspective's applied event set; a type's composed profiles).
+- **Runtime guard:** **WHIZ131** (a rebuild/rewind call targets a *string* perspective name, not a type), **WHIZ133** (a stream is a runtime id, not a declaration), and **WHIZ132** (re-emit is dataflow) can't be resolved from symbols. Their real enforcement is the guard: the replay/rebuild entry points (`PerspectiveRebuilder.RebuildStreamsAsync`, `RewindAndRunAsync`) **refuse or redirect to load-from-snapshot** for an ephemeral perspective, and the append path refuses a laundered Sourced event. The guard also backstops the WHIZ130 warning a developer ignores.
+
+Either way, a perspective's effective mode is **derived** — a generator step walks the event→perspective `Apply` edges (the perspective generators already know each perspective's event set), and the runtime resolves "is this perspective ephemeral?" from the same catalog mode the generator stamped — zero reflection on both sides.
 
 ## `Destruction.WhenConsumed`: consumption-gated deletion
 
