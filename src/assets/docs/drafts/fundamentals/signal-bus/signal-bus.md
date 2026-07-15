@@ -10,7 +10,13 @@ tags: signal-bus, notifications, listen-notify, control-plane, rebalance, instan
 Whizbang's control plane — waking the work pump, arming scheduled timers, reacting to rebalances and instance failures — is coordinated by lightweight **signals** delivered over PostgreSQL `LISTEN`/`NOTIFY` with a polling fallback. The **System Signal Bus** unifies these into one typed, multicast, developer-extensible abstraction (`ISignalBus`) built on a **doorbell-not-data** discipline and a **hybrid reliability** model: best-effort signals for low latency, a durable log for the few signals that must not be missed, and periodic reconciliation as the correctness backstop.
 
 :::planned
-The System Signal Bus is a proposed foundational capability. It **generalizes the existing `Whizbang.Core/Notifications` subsystem** rather than replacing it — current behavior is preserved and migrated onto the bus, with the existing notification regression suite kept green throughout.
+The System Signal Bus is a foundational capability. **The core (F1) is implemented (unreleased):** the
+transport-agnostic bus, the cross-assembly signal-type registry + generator (with `[WireName]`), the
+Postgres push transport (broadcast **and** targeted) plus polling pull-sources, the durable `wh_signals`
+log, the instance-lifecycle signals, and the work-pump migration onto the bus are all in place. It
+**generalizes the existing `Whizbang.Core/Notifications` subsystem** rather than replacing it — current
+behavior is preserved (the existing notification regression suite stays green throughout). Signals that
+belong to later phases (scheduling, destruction, rebalance, commit-order) are noted as *planned* below.
 :::
 
 ## Motivation
@@ -33,7 +39,7 @@ The bus builds directly on the mature `Whizbang.Core/Notifications` subsystem:
 | `NotifySubscriptionRegistry` | channel → subscribers multicast map | bus subscriber registry |
 | `IWorkNotificationListener` + `WorkSignalCategory` | category-typed multicast of work signals | typed `WorkAvailable` signals |
 | `INotifySignalingGate` | availability killswitch + reconnect | bus health + reconciliation trigger |
-| `IAppSignalChannel` (`wh_app_<topic>`) | app-facing pub/sub | developer-defined signals |
+| `IAppSignalChannel` (`wh_app_<topic>`) | app-facing string pub/sub | precedent for developer signals — now typed `ISignal` via the bus; the string channel stays for non-typed app messaging |
 | `PgSharedNotifyConnection` | the **one direct connection per pod** (self-test probe, alive-lock) | bus Postgres transport |
 
 Signals are delivered on Postgres channels: `wh_work_i_<instance_id>` (instance-routed via `notify_instance_owners`, resolving stream → owner from `wh_active_streams.assigned_instance_id`), `wh_committed`, and `wh_app_<topic>`. Ownership is a **modulo-rank formula** over live instances — there is no separate partition-assignment table.
@@ -154,45 +160,71 @@ Handlers follow the **enqueue-and-return** contract (see [Hot-path constraints](
 
 ## Signal catalog
 
-Built-in control-plane signals (developers can add their own — see below):
+Built-in control-plane signals (developers can add their own — see below).
 
-| Signal | Targeting | Delivery | Reconciliation backstop |
+**Implemented (F1):**
+
+| Signal type | Wire-name | Targeting | Delivery | Reconciliation backstop |
+|---|---|---|---|---|
+| `WorkOutboxAvailableSignal` | `outbox` | targeted | best-effort | adaptive claim poll |
+| `WorkInboxAvailableSignal` | `inbox` | targeted | best-effort | adaptive claim poll |
+| `WorkPerspectiveAvailableSignal` | `perspective` | targeted | best-effort | adaptive claim poll |
+| `InstanceJoinedSignal` | `instance-joined` | broadcast | best-effort | heartbeat scan |
+| `InstanceLeavingSignal` | `instance-leaving` | broadcast | best-effort | heartbeat scan |
+| `InstanceDiedSignal` | `instance-died` | broadcast | **durable** | stale-instance cleanup |
+
+The three `Work…AvailableSignal` wire-names (`outbox` / `inbox` / `perspective`) are deliberately identical
+to the SQL payloads `notify_instance_owners` and the store procs already emit — so the existing work-wake
+NOTIFYs are received *as bus signals* with **no SQL change** (see [Migration](#migration-unify-now)).
+
+**Planned (later phases):**
+
+| Signal | Targeting | Delivery | Phase |
 |---|---|---|---|
-| `WorkAvailable{ Category }` | targeted | best-effort | adaptive claim poll |
-| `ScheduleArmed{ }` / `ScheduleChanged` | targeted | best-effort | temporal fallback poll |
-| `DestructionDue{ }` | targeted | best-effort | reaper sweep |
-| `RebalanceOccurred{ }` | broadcast | best-effort | ownership recompute on poll |
-| `InstanceJoined{ }` / `InstanceLeaving` | broadcast | best-effort | heartbeat scan |
-| `InstanceDied{ }` | broadcast | **durable** | stale-instance cleanup |
-| `CommitCompleted{ }` | broadcast | best-effort | commit-order stamper poll |
+| `ScheduleArmed` / `ScheduleChanged` | targeted | best-effort | temporal engine (F2) |
+| `DestructionDue` | targeted | best-effort | ephemeral reaper (E2) |
+| `RebalanceOccurred` | broadcast | best-effort | future |
+| `CommitCompleted` | broadcast | best-effort | future |
 
 ## Instance-lifecycle signals
 
-Instance lifecycle rides the existing heartbeat/lease/alive-lock machinery (`wh_service_instances`, `register_instance_heartbeat`, `claim_instance_alive_lock`, `cleanup_stale_instances`) and surfaces it as bus signals:
+Instance lifecycle rides the existing heartbeat/lease/alive-lock machinery (`wh_service_instances`, `register_instance_heartbeat`, `claim_instance_alive_lock`, `cleanup_stale_instances`) and surfaces it as bus signals — published by the heartbeat worker and a `PgInstanceLifecycleMonitor`:
 
-- **Joined** — first heartbeat registers the instance.
-- **Leaving** — graceful shutdown publishes `InstanceLeaving` (via `deregister_instance`).
-- **Died** — ungraceful loss detected by lease/heartbeat expiry (`cleanup_stale_instances`) publishes the **durable** `InstanceDied`, which drives orphan takeover.
+- **`InstanceJoinedSignal`** — first heartbeat registers the instance.
+- **`InstanceLeavingSignal`** — graceful shutdown (via `deregister_instance`).
+- **`InstanceDiedSignal`** — ungraceful loss detected by lease/heartbeat expiry (`cleanup_stale_instances`); **durable** (persisted to `wh_signals`) because it drives orphan takeover and must never be missed.
 
 ## Developer-defined signals
 
-Applications can define and publish their own signals (over the app channel family, `wh_app_<topic>`; the `wh_` prefix stays reserved for the framework):
+Applications define their own signals as plain `ISignal` types. The signal-type **generator discovers them
+across the whole dependency chain** (each assembly self-registers via a `[ModuleInitializer]`), and the bus
+routes them exactly like built-in signals — broadcast over `wh_signal_broadcast`, targeted over
+`wh_work_i_<id>`. No string topics, no manual wiring. The optional **`[WireName]`** attribute overrides the
+default wire-name (the fully-qualified type name) when you need to match a fixed external format — this is
+how the three `Work…AvailableSignal` types map onto the legacy `outbox`/`inbox`/`perspective` payloads.
 
-```csharp{title="Custom developer signal" description="Applications define their own control-plane signals and subscribe internal or external reactions" category="Architecture" difficulty="INTERMEDIATE" tags=["Signal-Bus","Extensibility"] framework="NET10"}
-public readonly record struct CacheInvalidated(string Region) : ISignal {
+```csharp{title="Custom developer signal" description="Applications define their own typed control-plane signals; the generator collects them and the bus routes them like built-in signals" category="Architecture" difficulty="INTERMEDIATE" tags=["Signal-Bus","Extensibility"] framework="NET10"}
+[WireName("cache-invalidated")]   // optional — defaults to the fully-qualified type name
+public readonly record struct CacheInvalidated : ISignal {
     public static SignalDeliveryClass DeliveryClass => SignalDeliveryClass.BestEffort;
     public static SignalTargeting Targeting => SignalTargeting.Broadcast;
 }
 
-// React to a system signal:
-using var sub = signalBus.Subscribe<RebalanceOccurred>(async _ => {
+// Publish it (broadcast is the default target):
+await signalBus.PublishAsync(new CacheInvalidated());
+
+// React to any signal — built-in or your own:
+using var sub = signalBus.Subscribe<CacheInvalidated>(async _ => {
     await warmLocalCachesAsync();   // fetch fresh state from the DB (doorbell-not-data)
 });
 ```
 
+(The legacy string-topic `IAppSignalChannel` / `wh_app_<topic>` pub/sub remains for non-typed app messaging;
+the typed signal bus is the control-plane path.)
+
 ## Reliability & the durable log (`wh_signals`)
 
-Durable-class signals are appended to `wh_signals` in the same transaction that raises them, then also NOTIFY'd. Each instance tails the log from a persisted cursor, so a signal survives connection loss and is delivered on reconnect — while best-effort signals stay purely in-memory-fast. Reconciliation reads the DB directly, so even a total NOTIFY outage degrades only to bounded-latency polling, never to lost work.
+Durable-class signals (e.g. `InstanceDiedSignal`) are appended to **`wh_signals` (`wire_name`, `target_instance_id`) before the NOTIFY is emitted**, so the signal survives connection loss: each instance **tails the log from a persisted cursor** and re-delivers anything the fast-path NOTIFY dropped. Best-effort signals stay purely in-memory-fast (no row written). A **retention-sweep worker** trims the log once every instance's tail cursor has advanced past a row. Reconciliation reads the DB directly, so even a total NOTIFY outage degrades only to bounded-latency polling, never to lost work.
 
 ## Hot-path constraints
 
@@ -204,7 +236,7 @@ Dispatch runs subscriber callbacks **synchronously on the shared notify connecti
 
 ## Transports & portability
 
-Push and pull are **transports for the same bus**, and the bus manages the pull interval adaptively via `INotifySignalingGate`:
+Push and pull are **transports for the same bus** (the pull side is implemented as `BasePollSignalSource` plus the Postgres work-available pull sources), and the bus manages the pull interval adaptively via `INotifySignalingGate`:
 
 - **NOTIFY healthy** — push carries latency; the pull source runs at a **relaxed** interval as the correctness backstop.
 - **NOTIFY down** — the pull source **tightens** to carry the load until push recovers.
@@ -214,7 +246,7 @@ The single-direct-connection-per-pod topology and the gated/adaptive intervals (
 
 ## Migration (unify-now)
 
-The existing NOTIFY/work-wake usages become **consumers of the bus** in one step, with **no parallel mechanism** left behind. Because this touches the hot claim/work path, the existing notification regression suite (`ClaimWorkerNotificationWakeIntegrationTests`, `NotifyInstanceOwnersSqlTests`, `SharedDirectConnectionCountRegressionTests`, `PgWorkNotificationListenerIntegrationTests`, `CommittedNotifyEmissionSqlTests`, and peers) is **greened first as a behavior lock**, then the wirings are migrated onto `ISignalBus` with those tests unchanged.
+**Done for the work-wake path.** The `ClaimWorker` now **subscribes to the three `Work…AvailableSignal` types on the bus** instead of consuming raw `IWorkNotificationListener` categories. Because those signals' wire-names (`outbox` / `inbox` / `perspective`) are identical to the SQL payloads already emitted, **no SQL changed** — the existing `notify_instance_owners` NOTIFYs are simply *received as bus signals* now. The notification regression suite (`ClaimWorkerNotificationWakeIntegrationTests`, `NotifyInstanceOwnersSqlTests`, `SharedDirectConnectionCountRegressionTests`, `PgWorkNotificationListenerIntegrationTests`, `CommittedNotifyEmissionSqlTests`, and peers) was **greened first as a behavior lock** and stayed green through the migration. Remaining wirings (commit-order, app-signal) migrate onto `ISignalBus` incrementally with the same guardrail.
 
 ## Related Documentation
 
