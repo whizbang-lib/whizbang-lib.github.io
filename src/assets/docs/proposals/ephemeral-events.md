@@ -62,7 +62,16 @@ public sealed record UserIsTyping(Guid ConversationId, Guid UserId) : IEvent;
 public sealed record CursorMoved(Guid DocumentId, int Line, int Column) : IEvent, IEphemeralEvent;
 ```
 
-The `Destruction` axis is *how/when the event self-destructs* — named to match the E2 `Pre`/`PostDestruction` hooks and `DestructionContext`, not framed as retention (the event is emphatically **not** retained). Its E1 value is `WhenConsumed`; later phases add `AfterTtl` (E2), `OnCompaction` (E3), and `Archived` (A1).
+The `Destruction` axis is *how/when the event self-destructs* — named to match the E2 `Pre`/`PostDestruction` hooks and `DestructionContext`, not framed as retention (the event is emphatically **not** retained). There are four values, each landing with its phase:
+
+| `Destruction` | Self-destruct trigger | The state survives in | Phase | Prior art |
+|---|---|---|---|---|
+| **`WhenConsumed`** | once **every perspective** has consumed it (consumption-gated) | the perspective row / snapshot | **E1** | NATS `InterestPolicy` |
+| **`AfterTtl`** | a logical expiry at `expires_at`, then a two-phase reap | the log within the window, then a snapshot | E2 | ES-DB `$maxAge`, Redis `MINID` |
+| **`OnCompaction`** | fold the detail into an authoritative ephemeral summary (`Compacted<T>`), then truncate | the carry-forward summary (a new origin) | E3 | Marten `Compacted<T>` |
+| **`Archived`** | move the detail to cold storage (preserved, not erased), then drop it from the hot store | the archive store (audit-preserved) | A1 | Marten archived streams |
+
+Only **`WhenConsumed`** is wired in E1; the attribute rejects the others at build time (analyzer) until their phase lands, so the enum is honest about what actually works today. All four share the **two-phase** discipline: logical expire (read-time filter) is decoupled from physical reap.
 
 **Runtime carriers are derived, not authoritative.** The generator stamps the mode onto `MessageTypeCatalogEntry` for AOT-safe lookup; the wire carries **structured, named envelope metadata** (self-describing, version-robust across service/version boundaries); and an optional persisted `EventFlags` bit + `expires_at` marker exists only as an **indexable hot-path hint** for the storage gate — never the source of truth, derived at emit time exactly as `Composite`/`Collective` are in `Dispatcher.cs`.
 
@@ -116,17 +125,21 @@ A stream is **all-Sourced or all-Ephemeral, never mixed** (analyzer + runtime gu
 
 ## Enforcement: a Roslyn analyzer *and* a runtime guard
 
-Nobody in the industry *enforces* virality — everyone documents "don't rebuild from a log you deleted" and hopes. Whizbang makes it **safe by construction** at build time. A new analyzer band (proposed **`WHIZ130`–`WHIZ139`**, following the `PinnedIdAnalyzer` / `InheritScopeAnalyzer` precedent in `Whizbang.Generators/Analyzers/` and the `DiagnosticDescriptors` banding) flags:
+Nobody in the industry *enforces* virality — everyone documents "don't rebuild from a log you deleted" and hopes. Whizbang makes it **safe by construction** at build time. A new analyzer band (proposed **`WHIZ130`–`WHIZ139`**, following the `PinnedIdAnalyzer` / `InheritScopeAnalyzer` precedent in `Whizbang.Generators/Analyzers/` and the `DiagnosticDescriptors` banding). These are ordinary Roslyn `DiagnosticAnalyzer` diagnostics, so each one surfaces in **both** places at once — the **IDE** (live squiggle) **and** the **compiler build** (`dotnet build` / `csc` output) — no separate mechanism:
 
-| Diagnostic | Flags |
-|---|---|
-| **WHIZ130** | A perspective fed by **both** a Sourced and an Ephemeral event (a contradiction — can't be both cache and authority). |
-| **WHIZ131** | `rebuild` / `rewind` / `RebuildFromEvents` on an Ephemeral-tainted perspective (`PerspectiveRebuilder.RebuildStreamsAsync`, `SnapshotUpgradePolicy.RebuildFromEvents`). |
-| **WHIZ132** | Re-emitting an ephemeral event / its payload as a **Sourced** event, or a type escaping an ephemeral base/interface back to Sourced (the promotion boundary). |
-| **WHIZ133** | A mixed-mode **stream** (an event of the other mode appended to a homogeneous stream). |
-| **WHIZ134** | **Ambiguous [composition](#composition-ephemeral-is-inheritable)** — a type inherits two ephemeral profiles that disagree with no more-specific override to break the tie (resolve with an explicit `[Ephemeral]`). |
+| Diagnostic | Severity | Flags |
+|---|---|---|
+| **WHIZ130** | **Warning** | A perspective with **mixed-mode `Apply` methods** — a *viral* `Apply(model, ephemeralEvent)` alongside a *normal* `Apply(model, sourcedEvent)` on the same perspective. It can't be both authoritative state and a rebuildable cache. Warning (not error): a warning is the right first signal for an opt-in feature, and the [runtime guard](#the-runtime-guard-backstop) is the hard stop; teams can escalate to error via `.editorconfig` / `TreatWarningsAsErrors`. |
+| **WHIZ131** | Error | `rebuild` / `rewind` / `RebuildFromEvents` on an Ephemeral-tainted perspective (`PerspectiveRebuilder.RebuildStreamsAsync`, `SnapshotUpgradePolicy.RebuildFromEvents`) — would silently rebuild to **empty** (no log). |
+| **WHIZ132** | Error | Re-emitting an ephemeral event / its payload as a **Sourced** event, or a type escaping an ephemeral base/interface back to Sourced (the one-way promotion boundary). |
+| **WHIZ133** | Error | A mixed-mode **stream** (an event of the other mode appended to a homogeneous stream). |
+| **WHIZ134** | Error | **Ambiguous [composition](#composition-ephemeral-is-inheritable)** — a type inherits two ephemeral profiles that disagree with no more-specific override to break the tie (resolve with an explicit `[Ephemeral]`). |
 
-The analyzer is paired with a **runtime guard** (the same replay/rebuild entry points refuse or redirect to load-from-snapshot for an ephemeral stream), so enforcement holds even for dynamically-composed cases the analyzer can't see. Perspective **mode is derived** by a generator step that walks the event→perspective `Apply` edges (the perspective generators already know each perspective's event set) — zero reflection.
+Severities are the proposed defaults; every one is tunable per project via `.editorconfig`. The mixed-`Apply` case is a **Warning** by request — visible and actionable without blocking a build — while the boundary/data-loss cases (rebuild-to-empty, laundering, ambiguity) default to **Error** because they corrupt silently.
+
+### The runtime guard (backstop)
+
+The analyzer is paired with a **runtime guard** (the same replay/rebuild entry points refuse or redirect to load-from-snapshot for an ephemeral stream), so enforcement holds even for the WHIZ130 warning that a developer ignores, and for dynamically-composed cases the analyzer can't see. Perspective **mode is derived** by a generator step that walks the event→perspective `Apply` edges (the perspective generators already know each perspective's event set) — zero reflection.
 
 ## `Destruction.WhenConsumed`: consumption-gated deletion
 
@@ -134,7 +147,7 @@ The analyzer is paired with a **runtime guard** (the same replay/rebuild entry p
 
 The reaper **provably withholds physical deletion until every registered perspective's cursor has checkpointed past the event** — a join against `wh_perspective_cursors` via `IPerspectiveCursorResolver`. This directly neutralizes the #1 documented hazard in every event store (rebuild-from-a-deleted-log) and is a real differentiator.
 
-```text{title="Consumption-gated deletion" description="Withhold physical delete until every perspective's cursor passes" category="Architecture" difficulty="INTERMEDIATE" tags=["Ephemeral","Retention"] framework="NET10"}
+```text
 ephemeral event E on stream S
   → dispatched to perspectives P1, P2, P3 (all that Apply its type)
   → each Pi advances wh_perspective_cursors[S, Pi] past E
@@ -155,6 +168,16 @@ Where the authoritative ephemeral *state* lives is **orthogonal** to ephemeral-n
 | **TTL'd `wh_per_*` row** | a normal perspective row with an `expires_at` marker | Yes | chat thread state, session layout — lens-queryable, restart-safe |
 
 Both are read through the existing `ILensQuery` path — **the read side is unaffected**; it already reads only `wh_per_*` rows. An in-memory ephemeral event is routed through `Route.LocalNoPersist` (dispatch-only, no event-store append); a TTL'd one may still publish, flagged ephemeral.
+
+## Crossing service boundaries (transport)
+
+**An ephemeral event is not confined to the emitting service** — a published one (e.g. a TTL-row ephemeral, or any ephemeral event routed to the outbox rather than `Route.LocalNoPersist`) travels over the transport like any other, and the downstream service **uses and destructs it there too**. What crosses is *color, not coordination*:
+
+- **Virality crosses the wire by default.** The ephemeral mode + its `Destruction`/storage config ride the envelope as **structured, named metadata** (self-describing and version-robust across service/version boundaries — deliberately *not* a bare `EventFlags` bit, though a coarse flag may accompany it as a cheap hint). A receiver that projects the event derives **ephemeral** read-state too, and runs its **own** local self-destruct (its own consumption-gate / TTL) — the same safe-by-construction model, applied independently on each side.
+- **Consumer sovereignty.** A receiving service **may override** handling at its receive boundary (inbox dispatch / `IInboundEnvelopeInterceptor`, configured via `EphemeralOptions`) — treat it as fire-and-forget, apply its own policy, or (subject to the [no-laundering rule](#ephemeral-is-viral-it-taints-derived-read-state)) decline it. Each service owns its local copy's lifecycle.
+- **In-process is strong; cross-wire is advisory.** Within a process the consumption-gate sees *every* local perspective cursor, so the guarantee is exact. Across the wire it is **advisory metadata + per-service policy**: there is **no global purge coordination**, and none is promised — which is fine, because an ephemeral event is *never the durable source of truth* anywhere. Each service's copy self-destructs on its own terms.
+
+This is why the wire carrier is structured metadata rather than a bitmask: a downstream on a different version must still read "this is ephemeral, `WhenConsumed`" without the compiled contract.
 
 ## Scope: what E1 does (and does not) cover
 
