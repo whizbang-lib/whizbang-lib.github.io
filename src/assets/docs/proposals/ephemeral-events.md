@@ -49,21 +49,49 @@ Ephemeral builds on existing "never persisted" and "hard delete" seams rather th
 
 ## Declaration: `[Ephemeral]` is the compile-time authority
 
-The **source of truth is a compile-time `[Ephemeral(...)]` attribute** (`Core/Attributes/`) on the event type — required so the analyzer, generators, and AOT can evaluate it at build time, and self-describing as part of the contract. An optional `IEphemeralEvent` marker covers the no-config default.
+The **source of truth is a compile-time `[Ephemeral(...)]` attribute** (`Core/Attributes/`) — required so the analyzer, generators, and AOT can evaluate it at build time, and self-describing as part of the contract. It can sit **directly on the event**, or — for reuse — on a **base record or a marker interface** the event derives from ([composition](#composition-ephemeral-is-inheritable), below).
 
 ```csharp{title="Declaring an ephemeral event" description="Compile-time authority; the runtime carriers are derived from it" category="Architecture" difficulty="BEGINNER" tags=["Ephemeral"] framework="NET10"}
-// Opt in with the attribute (authority for analyzer + generators + AOT).
+// Opt in directly (authority for analyzer + generators + AOT).
 // Reads plainly: this event is ephemeral, destroyed once every perspective has consumed it.
 [Ephemeral(Destruction = Destruction.WhenConsumed, Storage = TransientStorage.InMemory)]
 public sealed record UserIsTyping(Guid ConversationId, Guid UserId) : IEvent;
 
-// …or the marker for the no-config default (WhenConsumed, developer picks storage).
+// …or take the framework's default profile — IEphemeralEvent is just a shipped marker
+// interface carrying [Ephemeral] with defaults (WhenConsumed; developer picks storage).
 public sealed record CursorMoved(Guid DocumentId, int Line, int Column) : IEvent, IEphemeralEvent;
 ```
 
 The `Destruction` axis is *how/when the event self-destructs* — named to match the E2 `Pre`/`PostDestruction` hooks and `DestructionContext`, not framed as retention (the event is emphatically **not** retained). Its E1 value is `WhenConsumed`; later phases add `AfterTtl` (E2), `OnCompaction` (E3), and `Archived` (A1).
 
 **Runtime carriers are derived, not authoritative.** The generator stamps the mode onto `MessageTypeCatalogEntry` for AOT-safe lookup; the wire carries **structured, named envelope metadata** (self-describing, version-robust across service/version boundaries); and an optional persisted `EventFlags` bit + `expires_at` marker exists only as an **indexable hot-path hint** for the storage gate — never the source of truth, derived at emit time exactly as `Composite`/`Collective` are in `Dispatcher.cs`.
+
+## Composition: `[Ephemeral]` is inheritable
+
+`[Ephemeral]` may sit on the event type, on an **abstract base record**, or on a **marker interface** — so a team can define a reusable *ephemeral profile* once and have every member obey it, without repeating the attribute (`AttributeTargets.Class | Interface | Struct`, `Inherited = true`). This is the same idiom Whizbang already uses everywhere (`IEvent`, `ICompositeEvent`, `ICollectiveEvent`) and the same *inheritable-attribute* pattern as `[InheritScope]` — generalized so the composed base carries the full configured behavior, not just a bare flag.
+
+```csharp{title="Composing an ephemeral profile" description="One [Ephemeral] on a base/interface; all members obey it" category="Architecture" difficulty="INTERMEDIATE" tags=["Ephemeral","Composition"] framework="NET10"}
+// A reusable profile: everything that is a presence signal is in-memory + WhenConsumed.
+[Ephemeral(Destruction = Destruction.WhenConsumed, Storage = TransientStorage.InMemory)]
+public interface IPresenceSignal : IEvent { }
+
+public sealed record UserIsTyping(Guid ConversationId, Guid UserId) : IPresenceSignal;   // ephemeral
+public sealed record UserWentIdle(Guid ConversationId, Guid UserId) : IPresenceSignal;   // ephemeral
+
+// A base record works too — good for shared payload/fields plus the shared ephemeral nature.
+[Ephemeral(Destruction = Destruction.WhenConsumed, Storage = TransientStorage.TtlRow)]
+public abstract record SessionState(Guid SessionId) : IEvent;
+
+public sealed record TabsReordered(Guid SessionId, int[] Order) : SessionState(SessionId);  // ephemeral
+```
+
+Because the runtime is **zero-reflection**, the generator *resolves* a type's effective mode at compile time rather than relying on `AttributeUsage.Inherited` (which the CLR only honors for base classes via reflection, and never for interfaces). Resolution walks **own type → base records → implemented interfaces (and their bases)**, and is deliberately simple:
+
+- **Most-specific wins.** A type's own `[Ephemeral]` refines an inherited one; a base record's refines an interface's. So a member may re-declare `[Ephemeral]` to tweak `Storage`/`Destruction` for its own case.
+- **Ephemerality can't be escaped.** A type reachable from an ephemeral base/interface **is** ephemeral — it may refine the profile but cannot flip to Sourced (that is the same one-way [no-laundering boundary](#ephemeral-is-viral-it-taints-derived-read-state)). The analyzer flags an attempt (WHIZ132).
+- **Ambiguity is an error, not a silent pick.** If a type implements two ephemeral profiles that disagree and nothing more-specific breaks the tie, the analyzer reports **WHIZ134** — the developer resolves it by declaring an explicit `[Ephemeral]` on the type. No implementation-order-dependent surprises.
+
+`IEphemeralEvent` is therefore not a separate mechanism — it is simply the framework-shipped default profile (an interface carrying `[Ephemeral]` with defaults). Developers ship their own profiles the same way.
 
 ## Ephemeral is viral (it taints derived read-state)
 
@@ -94,8 +122,9 @@ Nobody in the industry *enforces* virality — everyone documents "don't rebuild
 |---|---|
 | **WHIZ130** | A perspective fed by **both** a Sourced and an Ephemeral event (a contradiction — can't be both cache and authority). |
 | **WHIZ131** | `rebuild` / `rewind` / `RebuildFromEvents` on an Ephemeral-tainted perspective (`PerspectiveRebuilder.RebuildStreamsAsync`, `SnapshotUpgradePolicy.RebuildFromEvents`). |
-| **WHIZ132** | Re-emitting an ephemeral event / its payload as a **Sourced** event (the promotion boundary). |
+| **WHIZ132** | Re-emitting an ephemeral event / its payload as a **Sourced** event, or a type escaping an ephemeral base/interface back to Sourced (the promotion boundary). |
 | **WHIZ133** | A mixed-mode **stream** (an event of the other mode appended to a homogeneous stream). |
+| **WHIZ134** | **Ambiguous [composition](#composition-ephemeral-is-inheritable)** — a type inherits two ephemeral profiles that disagree with no more-specific override to break the tie (resolve with an explicit `[Ephemeral]`). |
 
 The analyzer is paired with a **runtime guard** (the same replay/rebuild entry points refuse or redirect to load-from-snapshot for an ephemeral stream), so enforcement holds even for dynamically-composed cases the analyzer can't see. Perspective **mode is derived** by a generator step that walks the event→perspective `Apply` edges (the perspective generators already know each perspective's event set) — zero reflection.
 
