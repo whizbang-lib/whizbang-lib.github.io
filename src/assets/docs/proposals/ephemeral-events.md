@@ -175,6 +175,23 @@ Where the authoritative ephemeral *state* lives is **orthogonal** to ephemeral-n
 
 Both are read through the existing `ILensQuery` path — **the read side is unaffected**; it already reads only `wh_per_*` rows. An in-memory ephemeral event is routed through `Route.LocalNoPersist` (dispatch-only, no event-store append); a TTL'd one may still publish, flagged ephemeral.
 
+## Keeping it alive: renew, defer, hold
+
+Destruction is **not one-way** — a deadline can be moved, or lifted. This is deliberate: a live session, an active presence, an in-progress draft should stay alive as long as it's being used. Because ephemeral death (`expires_at`) is the [Temporal Engine](temporal-engine)'s other end, these operations are the **death-side twin of the birth-side controls the temporal engine already ships** (`IScheduleManager` create / update / `trigger-now` / cancel; `wh_update_schedule`; `wh_defer_occurrence`) — the same durable temporal row, the same arm-on-mutation doorbell, so a keep-alive is just a DB mutation + a signal, exactly like re-arming a schedule:
+
+- **Renew / extend** — push the deadline out: `Renew(ttl)` ⇒ `expires_at = now + ttl` (sliding expiration — the "touch-on-access / still-here heartbeat" pattern, cf. Redis `EXPIRE`). Idempotent; re-arming just moves the deadline.
+- **Set a new expiry** — pin a specific instant: `ExpireAt(when)`.
+- **Hold / release** — keep it alive until explicitly released (`Hold()` / `Release()`) — even a `WhenConsumed` event that every perspective has already consumed. (An unbounded hold is a leak the developer owns — observable via metrics, the same caveat as declining a destruction.)
+- **Defer at the boundary** — the E2 `PreDestruction` hook receives the imminent destruction and may return `Defer(newDeadline)` — "not yet." The same decision reached *reactively* rather than proactively.
+
+**A keep-alive is scoped to the copy it acts on** — the direct consequence of [no global purge coordination](#crossing-service-boundaries-transport). Three rules fall out:
+
+- A change made **before emit** is stamped into the [envelope metadata](#crossing-service-boundaries-transport) and travels — it becomes each downstream service's **initial** deadline.
+- A change made **after transport** — in the origin *or* any receiver — affects only **that service's** copy. Peers are not notified, and none is promised (the deadline is advisory across the wire, like the ephemeral color itself).
+- **Every service may manipulate its own copy independently.** Consumer sovereignty extends to the lifecycle, not just first-touch handling: a receiver renews, holds, or expires what it holds on its own terms, without coordinating with the origin. This is the natural model — each service knows whether *its* users/perspectives still need the data; the origin can't.
+
+The `expires_at` the [reaper](#destructionwhenconsumed-consumption-gated-deletion) reads is authoritative *for that service*, so a local renew that lands before the local reap wins — the two-phase split (logical expire vs physical reap) leaves a safe window for the extension to take effect. Phasing: the proactive renew/extend/set API and the `PreDestruction` `Defer` ride the time-based strategies and land with **`AfterTtl` (E2)**; E1's `WhenConsumed` ships **hold / release** (a pin against the consumption-gate).
+
 ## Crossing service boundaries (transport)
 
 **An ephemeral event is not confined to the emitting service** — a published one (e.g. a TTL-row ephemeral, or any ephemeral event routed to the outbox rather than `Route.LocalNoPersist`) travels over the transport like any other, and the downstream service **uses and destructs it there too**. What crosses is *color, not coordination*:
