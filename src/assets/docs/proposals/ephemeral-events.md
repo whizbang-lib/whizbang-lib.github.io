@@ -143,6 +143,22 @@ Nobody in the industry *enforces* virality — everyone documents "don't rebuild
 
 Severities are the proposed defaults; every one is tunable per project via `.editorconfig`. The mixed-`Apply` case is a **Warning** by request — visible and actionable without blocking a build — while the boundary/data-loss cases (rebuild-to-empty, laundering, ambiguity) default to **Error** because they corrupt silently.
 
+### Escaping WHIZ130 explicitly: `[DangerouslyAllowMixedEphemeralAndSourcedEvents]`
+
+A team that runs **warnings-as-errors with a no-suppression policy** cannot `#pragma warning disable WHIZ130` or relax it in `.editorconfig` — so without an escape hatch they would be *hard-blocked* from ever intentionally building a mixed-mode perspective. So there is a first-class, in-code one: decorate the perspective with **`[DangerouslyAllowMixedEphemeralAndSourcedEvents]`** and WHIZ130 goes silent — *because the developer has acknowledged the dangerous path, right there in the code*. It survives no-suppression policies, shows up in code review as a named choice, and is trivially greppable. The long, alarming name (à la `dangerouslySetInnerHTML`) is deliberate: nobody types it by accident, and the danger stays visible at the call site.
+
+```csharp{title="Deliberately opting into a mixed-mode perspective" description="The explicit in-code escape hatch that silences WHIZ130 and documents the choice." category="Attributes" difficulty="ADVANCED" tags=["Ephemeral","Analyzer","Perspectives"] framework="NET10"}
+// WHIZ130 would warn here — this perspective applies both an ephemeral and a Sourced event.
+// The attribute says "I know; I accept this can't be rebuilt from a log and its ephemeral inputs die."
+[DangerouslyAllowMixedEphemeralAndSourcedEvents]
+public sealed class DeliberatelyMixedProjection
+  : IPerspectiveFor<Model, PresencePing>,   // ephemeral (viral)
+    IPerspectiveFor<Model, OrderPlaced> {   // Sourced
+  public Model Apply(Model current, PresencePing e) => current;
+  public Model Apply(Model current, OrderPlaced e) => current;
+}
+```
+
 ### The runtime guard (backstop)
 
 The analyzer is paired with a **runtime guard** (the same replay/rebuild entry points refuse or redirect to load-from-snapshot for an ephemeral stream), so enforcement holds even for the WHIZ130 warning that a developer ignores, and for dynamically-composed cases the analyzer can't see. Perspective **mode is derived** by a generator step that walks the event→perspective `Apply` edges (the perspective generators already know each perspective's event set) — zero reflection.
