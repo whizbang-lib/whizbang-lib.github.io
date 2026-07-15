@@ -73,7 +73,13 @@ The `Destruction` axis is *how/when the event self-destructs* — named to match
 
 Only **`WhenConsumed`** is wired in E1; the attribute rejects the others at build time (analyzer) until their phase lands, so the enum is honest about what actually works today. All four share the **two-phase** discipline: logical expire (read-time filter) is decoupled from physical reap.
 
-**Runtime carriers are derived, not authoritative.** The generator stamps the mode onto `MessageTypeCatalogEntry` for AOT-safe lookup; the wire carries **structured, named envelope metadata** (self-describing, version-robust across service/version boundaries); and an optional persisted `EventFlags` bit + `expires_at` marker exists only as an **indexable hot-path hint** for the storage gate — never the source of truth, derived at emit time exactly as `Composite`/`Collective` are in `Dispatcher.cs`.
+**Runtime carriers are derived from the attribute, not authoritative.** The compile-time `[Ephemeral]` is *translated* into three runtime carriers at emit time (exactly as `Composite`/`Collective` are derived in `Dispatcher.cs`):
+
+1. **Generated catalog metadata** — the generator stamps the resolved mode onto `MessageTypeCatalogEntry`, the AOT-safe compile-time lookup used in-process.
+2. **Envelope metadata** — the **cross-service carrier** (see [Crossing service boundaries](#crossing-service-boundaries-transport)). A receiver can't read a `[Ephemeral]` attribute — it may not have the type, or has a different version — so the emit path **translates the attribute into structured, named envelope metadata** that travels with the event over the wire. This is the same mechanism F2 already uses to carry `scheduleId` / `deliveryGuarantee` / `authorityClaims` in the envelope metadata through `wh_outbox.metadata` → transport → inbox.
+3. **Persisted hot-path hint** — an optional `EventFlags` bit + `expires_at` column, an **indexable** marker for the storage gate / reaper only.
+
+None of the three is the source of truth — the attribute is; the carriers are stamped from it. Making the attribute → envelope-metadata translation a first-class step is what lets an ephemeral event be understood, and self-destructed, by a service that never compiled against its type.
 
 ## Composition: `[Ephemeral]` is inheritable
 
@@ -178,6 +184,10 @@ Both are read through the existing `ILensQuery` path — **the read side is unaf
 - **In-process is strong; cross-wire is advisory.** Within a process the consumption-gate sees *every* local perspective cursor, so the guarantee is exact. Across the wire it is **advisory metadata + per-service policy**: there is **no global purge coordination**, and none is promised — which is fine, because an ephemeral event is *never the durable source of truth* anywhere. Each service's copy self-destructs on its own terms.
 
 This is why the wire carrier is structured metadata rather than a bitmask: a downstream on a different version must still read "this is ephemeral, `WhenConsumed`" without the compiled contract.
+
+### A shared carrier, not an ephemeral one-off
+
+Translating a **declared behavior** into structured envelope metadata so it travels and is honored cross-service is a **general Whizbang mechanism**, not ephemeral-specific. F2 already rides it — a scheduled occurrence carries its `scheduleId` / `deliveryGuarantee` / `authorityPrincipalId` / `authorityClaims` in the same envelope metadata — and future declared behaviors can too. So ephemeral **joins** an existing pattern: one metadata carrier, one place a receiver looks to learn how a message wants to be treated, whether that message is a scheduled occurrence, an ephemeral trigger, or both. (An occurrence *can* be ephemeral — the two colors are orthogonal and compose on the same envelope.) The E1 work factors the ephemeral keys onto that shared carrier rather than adding a new one.
 
 ## Scope: what E1 does (and does not) cover
 
