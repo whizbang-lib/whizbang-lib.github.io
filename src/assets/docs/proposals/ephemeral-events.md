@@ -185,6 +185,49 @@ ephemeral event E on stream S
 
 Deletion is **two-phase** everywhere (the canonical pattern from ES-DB `$maxAge` vs scavenge): **logical expire (read-time filter) is decoupled from physical reap**. The `WhenConsumed` reaper attaches to the existing maintenance surface — `perform_maintenance()` (migration `032`, explicitly "add new maintenance operations here") driven by `MaintenanceWorker` — reusing `PurgeAsync` for the read-model hard delete.
 
+## Event storage: a pointer table + a uniform body table
+
+The reaper's physical target is the **event store**, and reaping there must never compromise the durable/Sourced path — a naive `DELETE FROM wh_event_store` bloats the hot table, contends with autovacuum on the claim path, and amplifies WAL. So the store splits into two tables that separate the **index** from the **payload** — the architecture EventStoreDB (a position index over scavengeable chunk data) and Kafka (an offset index over deletable segments) use internally:
+
+- **`wh_event` — the pointer.** One narrow, append-only row per event, kept forever: `event_id`, `stream_id`, `version`, `commit_sequence`, `event_type`, `created_at`, `flags`, `scope`, `storage_class`. It carries the hot path (claim / ordering / dedup / cross-service sequence) and is the **ordering anchor snapshots stay valid against after a body is reaped**.
+- **`wh_event_body` — one uniform body.** `event_id → (event_data, metadata)`, exactly the C# envelope shape. Class-specific data (a temporal occurrence's `scheduleId`, an encrypted payload) already rides the `metadata` JSONB or the `event_data` transform, so **every class is the same body shape** — no per-class columns.
+
+```sql{title="Event store split: pointer + uniform body" description="The narrow append-only index table and the single envelope-shaped body table" category="Design" difficulty="ADVANCED" tags=["Ephemeral","Event Store","Storage"]}
+CREATE TABLE wh_event (            -- the pointer: narrow, append-only, forever
+  event_id UUID PRIMARY KEY, stream_id UUID NOT NULL, version INTEGER NOT NULL,
+  commit_sequence BIGINT, event_type VARCHAR(500) NOT NULL, created_at TIMESTAMPTZ NOT NULL,
+  flags INTEGER NOT NULL DEFAULT 0, scope JSONB, storage_class SMALLINT NOT NULL DEFAULT 0,
+  UNIQUE (stream_id, version)
+);
+CREATE TABLE wh_event_body (       -- one uniform body, matches the C# envelope
+  event_id UUID PRIMARY KEY, event_data JSONB NOT NULL, metadata JSONB NOT NULL
+);
+```
+
+**An event's mode is a property, not a location.** `storage_class` lives on the pointer (`0` = Sourced, `1` = Ephemeral, room for temporal / crypto later), so reclassifying an event is a one-row `UPDATE wh_event SET storage_class = …` — the body never moves. Reaping is a gated delete of the body only; the pointer stays:
+
+```sql{title="Consumption-gated body reap" description="Delete only consumed ephemeral bodies; the pointer row stays as the ordering anchor" category="Design" difficulty="ADVANCED" tags=["Ephemeral","Reaper","Consumption Gate"]}
+DELETE FROM wh_event_body b USING wh_event p
+WHERE b.event_id = p.event_id
+  AND p.storage_class = 1                                    -- ephemeral
+  AND <every registered perspective's cursor is past p.event_id>;  -- the consumption gate
+```
+
+Because the pointer survives, a reaped event reads back as **pointer-present / body-NULL** — the exact deterministic signal the [rebuild guard](#the-runtime-guard-backstop) needs: it knows the event existed and refuses/redirects, instead of silently rebuilding a shorter, wrong history.
+
+**Why one body table, not one per class.** A single uniform table keeps the C# model uniform, makes reclassification a flag flip, and makes cross-class reads a single join — at the cost of `O(1)` partition-drop reclaim and per-class `UNLOGGED`. That cost is a non-issue here: the only high-churn ephemeral (presence / typing) is `Route.LocalNoPersist` and **never reaches the body table**, so it only ever holds moderate-volume *persisted* ephemeral, where a row-`DELETE` is healthy — and **continuous appends recycle the reaped space, so the table converges to a bounded steady state** (Sourced-forever + a rolling ephemeral working set) rather than growing without bound. The body table just gets aggressive per-table autovacuum, with a rare compaction backstop. (If a persisted-ephemeral workload ever outgrows that, time-partitioning `wh_event_body` is a later, reap-logic-preserving lever — it buys vacuum locality, though not partition-drop, since Sourced rows pin every partition.)
+
+The reaper runs in **two tiers**:
+
+| Tier | Cadence | Does |
+|---|---|---|
+| **Reap** | ~10 min (`MaintenanceWorker`) | gated `DELETE` of consumed ephemeral **bodies**; pointers stay; `debug_mode`-gated |
+| **Deep** | monthly, **configurable + disableable** | prune ancient ephemeral **pointers** whose bodies are long gone and are past a retention horizon (must exceed the dedup + cross-service replay windows), then optional compaction (`VACUUM` / `pg_repack`) |
+
+Pruning old ephemeral pointers never weakens the guard — the guard keys off the *stream's* ephemeral mode (via `IEphemeralModeResolver`), not per-event pointer presence.
+
+**Migration.** The split lands *before* the reaper. All existing `wh_event_store` rows fold in as `storage_class = 0` (everything today is Sourced) — pointer + body populated by a straight copy — then the event-store SQL functions (append, dedup, `commit_sequence` stamp, replay reads) repoint to the two tables. Pre-1.0, with no production data to rewrite, is the cheapest possible time to do it.
+
 ## Transient storage: in-memory or a TTL'd row (developer picks)
 
 Where the authoritative ephemeral *state* lives is **orthogonal** to ephemeral-ness, chosen per perspective:
@@ -229,7 +272,7 @@ Translating a **declared behavior** into structured envelope metadata so it trav
 
 ## Scope: what E1 does (and does not) cover
 
-**E1 delivers:** the `[Ephemeral]` attribute + mode on `MessageTypeCatalog`; viral perspective-mode derivation; the analyzer + runtime guards; **`Destruction.WhenConsumed`** consumption-gated deletion; in-memory / TTL-row transient storage. It proves the model on the presence/UI case and consumes the [Signal Bus](../fundamentals/signal-bus/signal-bus).
+**E1 delivers:** the `[Ephemeral]` attribute + mode on `MessageTypeCatalog`; the runtime `IEphemeralModeResolver`; viral perspective-mode derivation; the analyzer + runtime guards; the **event-store split** (`wh_event` pointer + uniform `wh_event_body`) + migration; **`Destruction.WhenConsumed`** consumption-gated body reaping (the two-tier maintenance); in-memory / TTL-row transient storage. It proves the model on the presence/UI case and consumes the [Signal Bus](../fundamentals/signal-bus/signal-bus).
 
 **Deliberately deferred to later phases** (each its own proposal):
 
