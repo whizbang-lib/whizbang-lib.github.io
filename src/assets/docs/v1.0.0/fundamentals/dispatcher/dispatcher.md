@@ -123,6 +123,31 @@ public class OrdersController : ControllerBase {
 }
 ```
 
+### Verified example
+
+This snippet is verbatim from the library's test suite and drift-checked in CI — if the test changes, the docs build flags this page:
+
+```csharp{
+title: "SendAsync returns a delivery receipt"
+description: "Verbatim from DispatcherTests; drift-checked against the library by verify-sample-drift.mjs"
+category: "Architecture"
+difficulty: "BEGINNER"
+tags: ["Fundamentals", "Dispatcher", "SendAsync", "Verified"]
+testFile: "tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs"
+testMethod: "Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"
+}
+var command = new CreateOrder(Guid.NewGuid(), ["item1", "item2"]);
+
+// Act
+var receipt = await dispatcher.SendAsync(command);
+
+// Assert
+await Assert.That(receipt).IsNotNull();
+await Assert.That(receipt.MessageId.Value).IsNotEqualTo(Guid.Empty);
+await Assert.That(receipt.Status).IsEqualTo(DeliveryStatus.Delivered);
+await Assert.That(receipt.Destination).Contains("CreateOrder");
+```
+
 ### DeliveryReceipt Structure
 
 ```csharp{title="IDeliveryReceipt Interface" description="IDeliveryReceipt Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "DeliveryReceipt", "Structure"]}
