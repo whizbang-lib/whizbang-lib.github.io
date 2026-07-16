@@ -817,7 +817,7 @@
         "pageType": "overview",
         "readingTime": 44,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-        "wordCount": 8645
+        "wordCount": 8728
       },
       {
         "slug": "v1.0.0/fundamentals/dispatcher/publish-once",
@@ -3396,6 +3396,23 @@
         "readingTime": 6,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/process-work-batch-lease-semantics.md",
         "wordCount": 1103
+      },
+      {
+        "slug": "v1.0.0/tools/mcp-server",
+        "title": "MCP Documentation Server",
+        "category": "tools",
+        "order": 1,
+        "description": "Give your AI assistant direct access to Whizbang docs, code examples, code↔test navigation, and live CI test status via the Model Context Protocol",
+        "tags": "mcp, ai, tooling, claude, cursor, documentation-server",
+        "version": "v1.0.0",
+        "pageType": "guide",
+        "audience": [
+          "consumer",
+          "contributor"
+        ],
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/tools/mcp-server.md",
+        "wordCount": 432
       }
     ]
   },
