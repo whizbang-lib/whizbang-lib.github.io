@@ -2003,6 +2003,11 @@
           "slug": "contributors/overview",
           "title": "Contributing to Whizbang",
           "order": 1
+        },
+        {
+          "slug": "contributors/test-status-pipeline",
+          "title": "Live Test-Status Pipeline",
+          "order": 3
         }
       ],
       "children": []
