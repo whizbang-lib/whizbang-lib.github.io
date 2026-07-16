@@ -2535,6 +2535,18 @@
         "wordCount": 2348
       },
       {
+        "slug": "v1.0.0/operations/diagnostics/error-reference",
+        "title": "Runtime Error Reference",
+        "category": "Operations & Configuration",
+        "order": 1,
+        "description": "Alphabetical catalog of Whizbang runtime error messages — what triggers each one, what the framework does next, and how to fix it. Every entry has a stable heading anchor for deep-linking from incident notes and runbooks.",
+        "tags": "errors, error-reference, troubleshooting, runtime, logs, dead-letter-queue, transport, perspectives, rebuild, serialization",
+        "version": "v1.0.0",
+        "readingTime": 11,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+        "wordCount": 2084
+      },
+      {
         "slug": "v1.0.0/operations/diagnostics/serializable-property-analyzer",
         "title": "Serializable Property Analyzer",
         "category": "Diagnostics",
@@ -3283,6 +3295,18 @@
         "wordCount": 570
       },
       {
+        "slug": "drafts/fundamentals/signal-bus/signal-bus",
+        "title": "System Signal Bus",
+        "category": "Architecture & Design",
+        "order": 20,
+        "description": "\n# System Signal Bus\n\nWhizbang's control plane — waking the work pump, arming scheduled timers, reacting to rebalances and instance failures — is coordinated by lightweight **signals** delivered over PostgreSQL `LISTEN`/`NOTIFY` with a polling fallback. The **System Signal Bus** unifies these into one typed, multicast, developer-extensible abstraction (`ISignalBus`) built on a **doorbell-not-data** discipline and a **hybrid reliability** model: best-effort signals for low latency, a durable log for the few signals that must not be missed, and periodic reconciliation as the correctness backstop.\n\n:::planned\nThe System Signal Bus is a foundational capability. **The core (F1) is implemented (unreleased):** the\ntransport-agnostic bus, the cross-assembly signal-type registry + generator (with `[WireName]`), the\nPostgres push transport (broadcast **and** targeted) plus polling pull-sources, the durable `wh_signals`\nlog, the instance-lifecycle signals, and the work-pump migration onto the bus are all in place. It\n**generalizes the existing `Whizbang.Core/Notifications` subsystem** rather than replacing it — current\nbehavior is preserved (the existing notification regression suite stays green throughout). Signals that\nbelong to later phases (scheduling, destruction, rebalance, commit-order) are noted as *planned* below.\n:::\n\n## Motivation\n\nToday the control plane uses `LISTEN`/`NOTIFY` in several *bespoke, per-use* wirings: an instance-routed work-availability channel (`wh_work_i_<id>`), a commit-order channel (`wh_committed`), and an app-facing pub/sub channel family (`wh_app_<topic>`). Each has its own producer, subscriber, and fallback logic. Cluster events — a partition **rebalance**, an instance **joining**, an instance **dying** — are handled implicitly inside individual workers rather than surfaced as first-class events that *any* subsystem (or the application developer) can react to.\n\nThe Signal Bus makes that control plane **one typed, multicast bus**:\n\n- **Typed & multicast** — publish a `TSignal`; any number of internal or developer subscribers receive it.\n- **Foundational** — the work pump, the temporal engine (scheduled/recurring events), and the ephemeral reaper all become *consumers* of the same bus.\n- **Extensible** — developers subscribe to system signals (\"on rebalance, warm my cache\") and publish their own.\n\n## What exists today\n\nThe bus builds directly on the mature `Whizbang.Core/Notifications` subsystem:\n\n| Existing abstraction | Role | Becomes |\n|",
+        "tags": "signal-bus, notifications, listen-notify, control-plane, rebalance, instance-lifecycle, reliability",
+        "version": "drafts",
+        "readingTime": 12,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/signal-bus/signal-bus.md",
+        "wordCount": 2379
+      },
+      {
         "slug": "drafts/fundamentals/work-coordinator/app-signals",
         "title": "App signals",
         "category": "Fundamentals",
@@ -3593,6 +3617,18 @@
         "wordCount": 1403
       },
       {
+        "slug": "proposals/ephemeral-events",
+        "title": "Ephemeral Events",
+        "category": "Architecture & Design",
+        "order": 22,
+        "description": "\n# Ephemeral Events\n\nWhizbang's default is **event sourcing**: an event is an immutable fact appended to a durable log, the log is the source of truth, and perspectives are rebuildable projections. But some data doesn't want those guarantees — a \"user is typing\" ping, an open-tabs layout, a chat message that only needs to live ~90 days. **Ephemeral Events** make the *event-driven* path first-class and opt-in, running side-by-side with the event-sourced path in the same product: you emit events, write perspectives, and read lenses **exactly as today**, and only the event's declared **mode** changes what the runtime does with the data underneath.\n\n:::planned\nEphemeral Events are a proposed capability (unreleased, not yet started). This proposal covers **E1** — the core mode, the compile-time guardrails, and the first destruction strategy (**`WhenConsumed`**). Destruction hooks + TTL ([E2](#scope-what-e1-does-and-does-not-cover)), archival/compaction (A1), carry-forward (E3), and GDPR crypto-shredding (G1) are separate later phases that build on this foundation and the [Temporal Engine](temporal-engine).\n:::\n\n## Motivation\n\nThree cases want state-based, self-destructing behavior — and today each would force a developer out of Whizbang into a separate channel (Redis, a CRDT, an ad-hoc table):\n\n- **Transient UI / presence** — \"user is typing,\" cursor position, open panels. Barely needs durability; self-destructs on session end or idle. Losing it is fine.\n- **Chat-style history** — keep the current thread state, let the keystroke-by-keystroke detail disappear after a window. The snapshot is enough; the full history isn't worth storing forever.\n- **Perspective-as-source-of-truth** — deliberately *degrade* event sourcing to traditional state-based storage for data that needs no replay/audit. Events drive the read model, then self-destruct; the perspective row becomes authoritative.\n\nThe industry never event-sources this data — Phoenix Presence is an in-memory CRDT, Yjs Awareness is a *separate* channel explicitly \"not stored in the doc,\" NATS `InterestPolicy` deletes on ack. The consistent signal is that transient state is its own mechanism. Whizbang's contribution is to keep it in the **same programming model** — no second API to learn — while being honest that the durability semantics differ.\n\n## Two modes per event: Sourced vs Ephemeral\n\nThis is **not** a new tier bolted onto the event store. It is a per-event **consistency mode** with two values, chosen by opt-in:\n\n| | **Sourced** (default, today) | **Ephemeral** (new, opt-in) |\n|",
+        "tags": "ephemeral, self-destructing, sourced, consumption-gated, viral, analyzer, transient-state, retention",
+        "version": "proposals",
+        "readingTime": 27,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/ephemeral-events.md",
+        "wordCount": 5319
+      },
+      {
         "slug": "proposals/event-store-projections",
         "title": "Event Store & Projection Architecture",
         "category": "Architecture & Design",
@@ -3701,6 +3737,18 @@
         "wordCount": 1643
       },
       {
+        "slug": "proposals/temporal-engine",
+        "title": "Temporal Engine",
+        "category": "Architecture & Design",
+        "order": 21,
+        "description": "\n# Temporal Engine\n\nWhizbang already fires *delayed* work — a failed message re-dispatches at `scheduled_for`, and a saga arms a watchdog that wakes it later. The **Temporal Engine** promotes that into one first-class mechanism: **scheduled events** (fire at a specific time), **recurring events** (cron or interval), and **saga/deadline timeouts** — all as time-triggered transitions on a single durable schedule table, dispatched over the [System Signal Bus](../fundamentals/signal-bus/signal-bus).\n\n:::planned\nThe Temporal Engine is a proposed capability (unreleased, not yet started). It **generalizes the existing `scheduled_for` delayed-retry mechanism** and the sagas watchdog rather than replacing them — both become consumers of the same engine.\n:::\n\n## Motivation\n\nTime-based behavior is currently spread across three bespoke mechanisms:\n\n- **Delayed retry** — `wh_outbox`/`wh_inbox.scheduled_for` set by the failure-backoff procs; the claim gate skips rows until `scheduled_for <= NOW()`; a low-cadence backup tick emits `notify_scheduled_retry_due()` to wake the owning instance.\n- **Saga deadlines** — `BaseSagaService` re-emits an `ISagaCompletionWatchdogTickEvent` into the outbox with `scheduled_for = now + budget` on every tick, re-arming until the saga completes or is abandoned.\n- **Nothing first-class** for \"run this at 09:00 every weekday\" or \"fire this once next Tuesday.\"\n\nThe Temporal Engine unifies these under **one engine, four time-triggered transitions**:\n\n| Transition | Trigger | Meaning |\n|",
+        "tags": "temporal, scheduling, recurring, cron, saga-deadlines, signal-bus, wh_schedules",
+        "version": "proposals",
+        "readingTime": 10,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/temporal-engine.md",
+        "wordCount": 1859
+      },
+      {
         "slug": "proposals/testing-development-tools",
         "title": "Testing & Development Tools",
         "category": "Architecture & Design",
@@ -3711,6 +3759,18 @@
         "readingTime": 10,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/testing-development-tools.md",
         "wordCount": 1825
+      },
+      {
+        "slug": "proposals/type-definition-fingerprint",
+        "title": "Type-Definition Fingerprint & Lineage",
+        "category": "Architecture & Design",
+        "order": 23,
+        "description": "\n# Type-Definition Fingerprint & Lineage\n\nWhen an event type's **definition** changes in code — its behavioral settings (Sourced ↔ Ephemeral, TTL, destruction) or its **payload schema** (properties added/removed/retyped) — the events already stored under the *old* definition become **drift**: rows the runtime must find and reconcile (reclassify their storage treatment, or upcast their payload). This proposal defines a single foundational mechanism — a **per-type fingerprint** (content hashes of a type's definition) plus a **lineage graph** (how one definition superseded another, and the migration that bridges them) — that detects that drift cheaply on startup and drives the right reconciliation.\n\n:::planned\nUnreleased design proposal. It generalizes the detection layer behind **[Ephemeral Events](ephemeral-events)** reclassification (#13c) and is the substrate the future **event-versioning / upcasting** and **GDPR** phases consume. The reclassification *primitive* and coordinator capability already exist; this proposal covers the *detection + automation* layer that supersedes the interim row-scan detector.\n:::\n\n## Motivation\n\nThree separate features all need the same underlying question answered — *\"which stored events were written under a definition that no longer matches the code, and how do I bring them current?\"*:\n\n- **Ephemeral reclassification** — a type gains `[Ephemeral]`; its historical Sourced rows must be stamped ephemeral + offloaded so the reaper can reclaim them.\n- **Event versioning / upcasting** — a type's payload schema evolves; older events must be transformed to the current shape (eagerly or lazily on read).\n- **GDPR / crypto-shred targeting** — find the specific events whose *content* carries a given subject's data.\n\nBuilding three bespoke detectors would triplicate the hardest part (finding affected rows correctly and cheaply). One fingerprint substrate serves all three.\n\n## The model\n\n### Per-type fingerprint (small, in-memory)\n\nThe source generator computes, at compile time, a set of **canonical content hashes** describing each message type, and stamps them onto the generated `MessageTypeCatalogEntry` (alongside the existing `PinnedId`, `FormerNames`, and `Ephemeral` metadata). Each hash has a **kind**:\n\n| Kind | Covers | Changes when… | Drives |\n|",
+        "tags": "fingerprint, type-versioning, schema-hash, settings-hash, lineage, reclassification, upcasting, drift-detection",
+        "version": "proposals",
+        "readingTime": 7,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/type-definition-fingerprint.md",
+        "wordCount": 1387
       }
     ]
   },
