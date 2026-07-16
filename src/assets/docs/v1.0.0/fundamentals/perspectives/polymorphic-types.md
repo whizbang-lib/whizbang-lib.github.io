@@ -71,6 +71,10 @@ public record FormModel {
 
 Consider a form builder where fields can have different settings types:
 
+:::updated
+**Discriminator contract correction (verified against library commit `f2657adc`)**: the source generator treats `[JsonPolymorphic]`/`[JsonDerivedType]` as **discovery markers only**. The generated `JsonTypeInfo` always uses the discriminator property **`$type`** and **simple type names** as discriminator values — custom `TypeDiscriminatorPropertyName` and custom `[JsonDerivedType]` strings (like `"text"` below) are **not honored** (`JsonContextSnippets.cs` hardcodes `$type`; `MessageJsonContextGenerator` emits simple names). Payloads written expecting custom discriminators fail typed readback. Write examples with the default `$type` + type-name values until attribute configuration is supported.
+:::
+
 ```csharp{title="The Problem" description="Consider a form builder where fields can have different settings types:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Problem"]}
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(TextFieldSettings), "text")]

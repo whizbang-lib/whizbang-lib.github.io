@@ -415,9 +415,11 @@ the resolvers use). The built-in scope is
 > event — there is no concrete shape to source-generate a serializer
 > for. A single polymorphic value on a serializable type uses an
 > abstract base with `[JsonDerivedType]` discriminators (the same
-> pattern as `AbstractFieldSettings`). The base declares
-> `[JsonPolymorphic(TypeDiscriminatorPropertyName = "$scopeKind")]` and
-> the built-in `[JsonDerivedType(typeof(TenantCollectiveScope), "tenant")]`.
+> pattern as `AbstractFieldSettings`).
+
+:::updated
+**Discriminator contract correction (verified against library commit `f2657adc`)**: the generator does **not** honor custom `TypeDiscriminatorPropertyName` (e.g. `$scopeKind`) or custom `[JsonDerivedType]` strings (e.g. `"tenant"`). Generated serialization always uses **`$type`** with **simple type names** (`"TenantCollectiveScope"`); the attributes act as discovery markers only. Wire payloads and any consumers must expect the `$type`/type-name form, or typed readback returns zero events.
+:::
 
 ### `TenantCollectiveScope`
 

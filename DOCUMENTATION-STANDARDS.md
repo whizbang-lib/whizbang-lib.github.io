@@ -713,8 +713,17 @@ completes; CI-enforced via `--strict-taxonomy` after).
 title: Page Title
 pageType: concept   # overview | concept | tutorial | guide | reference | troubleshooting
 audience: [consumer]  # optional; consumer (default) | contributor | porter
+verifiedAgainstCommit: f2657adc   # library repo commit the content was verified against
+verifiedDate: 2026-07-16          # when that verification happened
 ---
 ```
+
+**Verification stamps are earned, never backfilled.** Set
+`verifiedAgainstCommit`/`verifiedDate` only after actually reading the page
+against the referenced library source at that commit — API signatures, behavior
+claims, and examples. A page without a stamp is honest about being unverified;
+a wrong stamp is worse than none. (`lastMaintainedCommit` tracks when content
+was last *edited*; the verification stamp tracks when it was last *checked*.)
 
 A page that mixes types (e.g. tutorial steps inside a reference) is a
 candidate for splitting — that's the objective criterion the taxonomy exists
