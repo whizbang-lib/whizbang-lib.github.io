@@ -2,7 +2,7 @@ import { Injectable, signal, effect, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 
 export type VersionType = 'released' | 'beta' | 'alpha' | 'planned';
-export type DocumentationState = 'drafts' | 'proposals' | 'backlog' | 'declined';
+export type DocumentationState = 'drafts' | 'proposals' | 'backlog' | 'declined' | 'contributors' | 'spec';
 
 export interface VersionInfo {
   version: string;
@@ -250,10 +250,14 @@ export class VersionService {
   }
   
   private getVersionDisplayName(version: string, metadata: any): string {
+    // Library is pre-1.0; the v1.0.0 folder holds docs targeting the 1.0 API.
+    // Surface that honestly until GA (folder rename happens at GA via
+    // migrate-docs-version.mjs).
+    const preRelease = metadata?.status?.toLowerCase() === 'planning' ? ' (pre-release)' : '';
     if (metadata?.theme) {
-      return `${version} - ${metadata.theme}`;
+      return `${version} - ${metadata.theme}${preRelease}`;
     }
-    return version;
+    return `${version}${preRelease}`;
   }
   
   private getStateDisplayName(state: string): string {
@@ -261,7 +265,9 @@ export class VersionService {
       drafts: 'Drafts',
       proposals: 'Proposals',
       backlog: 'Backlog',
-      declined: 'Declined'
+      declined: 'Declined',
+      contributors: 'Contributing',
+      spec: 'Functional Spec'
     };
     return stateNames[state] || state;
   }

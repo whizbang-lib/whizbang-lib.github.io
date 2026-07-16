@@ -1666,62 +1666,6 @@
       "children": []
     },
     {
-      "name": "contributing",
-      "title": "Contributing",
-      "order": 999,
-      "pages": [],
-      "children": [
-        {
-          "name": "data-engines",
-          "title": "Data engines",
-          "order": 10,
-          "pages": [
-            {
-              "slug": "drafts/contributing/data-engines/overview",
-              "title": "Overview",
-              "order": 1
-            },
-            {
-              "slug": "drafts/contributing/data-engines/implementing-iworkcoordinator",
-              "title": "Implementing IWorkCoordinator",
-              "order": 2
-            },
-            {
-              "slug": "drafts/contributing/data-engines/implementing-icapabilities",
-              "title": "Implementing IWorkCoordinatorCapabilities",
-              "order": 3
-            },
-            {
-              "slug": "drafts/contributing/data-engines/sql-function-contracts",
-              "title": "SQL function contracts",
-              "order": 4
-            },
-            {
-              "slug": "drafts/contributing/data-engines/implementing-notifications",
-              "title": "Implementing notifications",
-              "order": 5
-            },
-            {
-              "slug": "drafts/contributing/data-engines/testing-a-new-engine",
-              "title": "Testing a new engine",
-              "order": 6
-            },
-            {
-              "slug": "drafts/contributing/data-engines/worked-example-sqlserver",
-              "title": "Worked example - SQL Server (high-capability)",
-              "order": 7
-            },
-            {
-              "slug": "drafts/contributing/data-engines/worked-example-sqlite",
-              "title": "Worked example - SQLite (polling-only, minimum-capability)",
-              "order": 8
-            }
-          ],
-          "children": []
-        }
-      ]
-    },
-    {
       "name": "core-concepts",
       "title": "Core Concepts",
       "order": 999,
@@ -1888,6 +1832,19 @@
       "children": []
     },
     {
+      "name": "migration-guide",
+      "title": "Migration Guide",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "drafts/migration-guide/cli-wizard",
+          "title": "CLI Migration Wizard",
+          "order": 999
+        }
+      ],
+      "children": []
+    },
+    {
       "name": "operations",
       "title": "Operations & Configuration",
       "order": 999,
@@ -2035,5 +1992,83 @@
     }
   ],
   "backlog": [],
-  "declined": []
+  "declined": [],
+  "contributors": [
+    {
+      "name": "_root",
+      "title": "Overview",
+      "order": 0,
+      "pages": [
+        {
+          "slug": "contributors/overview",
+          "title": "Contributing to Whizbang",
+          "order": 1
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "data-engines",
+      "title": "Data engines",
+      "order": 10,
+      "pages": [
+        {
+          "slug": "contributors/data-engines/overview",
+          "title": "Overview",
+          "order": 1
+        },
+        {
+          "slug": "contributors/data-engines/implementing-iworkcoordinator",
+          "title": "Implementing IWorkCoordinator",
+          "order": 2
+        },
+        {
+          "slug": "contributors/data-engines/implementing-icapabilities",
+          "title": "Implementing IWorkCoordinatorCapabilities",
+          "order": 3
+        },
+        {
+          "slug": "contributors/data-engines/sql-function-contracts",
+          "title": "SQL function contracts",
+          "order": 4
+        },
+        {
+          "slug": "contributors/data-engines/implementing-notifications",
+          "title": "Implementing notifications",
+          "order": 5
+        },
+        {
+          "slug": "contributors/data-engines/testing-a-new-engine",
+          "title": "Testing a new engine",
+          "order": 6
+        },
+        {
+          "slug": "contributors/data-engines/worked-example-sqlserver",
+          "title": "Worked example - SQL Server (high-capability)",
+          "order": 7
+        },
+        {
+          "slug": "contributors/data-engines/worked-example-sqlite",
+          "title": "Worked example - SQLite (polling-only, minimum-capability)",
+          "order": 8
+        }
+      ],
+      "children": []
+    }
+  ],
+  "spec": [
+    {
+      "name": "_root",
+      "title": "Overview",
+      "order": 0,
+      "pages": [
+        {
+          "slug": "spec/overview",
+          "title": "Functional Specification",
+          "order": 1
+        }
+      ],
+      "children": []
+    }
+  ]
 }
