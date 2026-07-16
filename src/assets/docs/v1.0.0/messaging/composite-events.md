@@ -34,7 +34,14 @@ Use the [body offload feature](/docs/fundamentals/offloads/message-body-store) a
 
 ## The contract
 
-```csharp
+```csharp{
+title: "The ICompositeEvent contract"
+description: "Marker interface a composite event implements — yields inner events for receive-side expansion and carries a defensive inner-event cap."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["composite-events", "icompositeevent", "contract", "bulk-operations"]
+}
 public interface ICompositeEvent : IMessage {
   /// Yields the inner events this composite expands into. Receivers
   /// enumerate this exactly once at receive time.
@@ -80,7 +87,14 @@ The expander counts as it iterates. Reaching `MaxInnerEventsAllowed + 1` throws 
 
 To raise the cap for a specific composite type, override the property:
 
-```csharp
+```csharp{
+title: "Raise the inner-event cap for a specific composite type"
+description: "Overrides MaxInnerEventsAllowed on one composite class to permit larger expansions without changing the global default."
+framework: "NET10"
+category: "Messaging"
+difficulty: "BEGINNER"
+tags: ["composite-events", "max-inner-events", "cap-override"]
+}
 public class LargeBulkComposite : ICompositeEvent {
   public IEnumerable<IMessage> InnerEvents => /* … */;
   public int MaxInnerEventsAllowed => 50_000;
@@ -91,7 +105,14 @@ public class LargeBulkComposite : ICompositeEvent {
 
 For composite expansion at scale (5K inner events), looping `IEventStore.AppendAsync` per inner event would be O(N) round-trips. `IEventStore.AppendBatchAsync<TMessage>` provides a single-call batch entry point:
 
-```csharp
+```csharp{
+title: "IEventStore.AppendBatchAsync batch append signature"
+description: "Single-call batch entry point that lets backends persist a composite's expanded inner events without O(N) per-event round-trips."
+framework: "NET10"
+category: "Messaging"
+difficulty: "ADVANCED"
+tags: ["composite-events", "event-store", "batch-append", "performance"]
+}
 Task AppendBatchAsync<TMessage>(
     IReadOnlyList<(Guid streamId, MessageEnvelope<TMessage> envelope)> entries,
     CancellationToken cancellationToken = default);
