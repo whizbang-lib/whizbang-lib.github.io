@@ -56,6 +56,17 @@ function checkTaxonomy(file, fm, isFolderPage) {
   if (status && !isFolderPage && !STATUSES.has(status)) {
     taxonomyWarnings.push(`${file}: invalid status '${status}' (${[...STATUSES].join('|')})`);
   }
+  // Verification stamp: set ONLY when a page's content has actually been
+  // verified against library code — records the library commit checked.
+  const vCommit = scalar('verifiedAgainstCommit');
+  if (vCommit && !/^[0-9a-f]{7,40}$/i.test(vCommit)) {
+    taxonomyWarnings.push(`${file}: verifiedAgainstCommit '${vCommit}' is not a git sha`);
+  }
+  const vDate = scalar('verifiedDate');
+  if (vDate && !/^\d{4}-\d{2}-\d{2}$/.test(vDate.replace(/["']/g, ''))) {
+    taxonomyWarnings.push(`${file}: verifiedDate '${vDate}' must be YYYY-MM-DD`);
+  }
+
   // audience: inline list "audience: [consumer, porter]" or block list lines "  - consumer"
   const audienceInline = fm.match(/^audience:\s*\[([^\]]*)\]/m);
   const audienceBlock = fm.match(/^audience:\s*\n((?:\s+-\s+.+\n?)+)/m);

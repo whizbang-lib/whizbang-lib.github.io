@@ -30,6 +30,12 @@ Concentrated in the recent library workstreams:
 
 Full lists: `broken-code-docs-links.json`, `undocumented-public-types.json`, `stale-docs-candidates.json`.
 
+## Confirmed semantic-drift example (why automated audit isn't enough)
+
+User-reported on 0.860.8-alpha.9 and verified against library source: docs claimed the JSON context generator honors `[JsonPolymorphic(TypeDiscriminatorPropertyName = ...)]` and custom `[JsonDerivedType]` strings; the shipped generator hardcodes `$type` (`Templates/Snippets/JsonContextSnippets.cs:222`) and simple type names (`MessageJsonContextGenerator.cs:3497`, `_extractSimpleName`) — attributes are discovery markers only. Symptom: nested DTO unions wedge at readback ("0 typed events from 75 raw"). Corrected 2026-07-16 on `perspectives/polymorphic-types.md`, `messaging/collective-events.md`, `extending/source-generators/polymorphic-serialization.md`. Whether the generator *should* honor attribute config is an open library design question.
+
+This class of drift is invisible to link/frontmatter audits — it requires the Phase 2b per-page verification sweep (read page against source at a pinned commit, stamp `verifiedAgainstCommit`).
+
 ## Reading the March task list against this
 
 - March batches B03 (missing frontmatter), search-leak fixes, and much of B01/B02 landed (PRs #83–#121).
