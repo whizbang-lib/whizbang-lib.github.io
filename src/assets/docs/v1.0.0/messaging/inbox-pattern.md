@@ -54,27 +54,20 @@ public async Task ProcessMessageAsync(OrderCreated @event, CancellationToken ct)
 
 **The Fix**: Check inbox before processing, store message ID after processing.
 
-```
-┌─────────────────────────────────────────────────┐
-│ 1. Message arrives from Azure Service Bus      │
-└─────────────────┬───────────────────────────────┘
-                  ↓
-┌─────────────────────────────────────────────────┐
-│ 2. Check inbox for duplicate                    │
-│    SELECT * FROM wh_inbox WHERE message_id = ?  │
-│                                                 │
-│    If found: SKIP (already processed!)         │  ← Exactly-once!
-│    If not found: Continue...                    │
-└─────────────────┬───────────────────────────────┘
-                  ↓
-┌─────────────────────────────────────────────────┐
-│ 3. Process message (business logic)             │
-└─────────────────┬───────────────────────────────┘
-                  ↓
-┌─────────────────────────────────────────────────┐
-│ 4. Store message ID in inbox (atomic!)          │
-│    INSERT INTO wh_inbox (message_id, ...)       │
-└─────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    S1["1. Message arrives from Azure Service Bus"]
+    S2["2. Check inbox for duplicate<br/>SELECT * FROM wh_inbox WHERE message_id = ?<br/><br/>If found: SKIP (already processed!) — Exactly-once!<br/>If not found: Continue..."]
+    S3["3. Process message (business logic)"]
+    S4["4. Store message ID in inbox (atomic!)<br/>INSERT INTO wh_inbox (message_id, ...)"]
+
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+
+    class S1,S2 layer-command
+    class S3 layer-core
+    class S4 layer-event
 ```
 
 **Benefits**:
@@ -409,42 +402,47 @@ RETURNING *;
 
 ### How Inbox Ensures Exactly-Once
 
-```
-Message arrives with MessageId: msg-123
+```mermaid
+flowchart TD
+    M1["Message arrives with MessageId: msg-123"]
+    A1["Attempt 1 (Worker A)<br/><br/>1. Check inbox for msg-123: NOT FOUND<br/>2. Insert into inbox: SUCCESS — First to insert!<br/>3. Process message: SUCCESS<br/>4. Mark completed: SUCCESS"]
+    M2["Duplicate arrives with MessageId: msg-123 (network retry)"]
+    A2["Attempt 2 (Worker B)<br/><br/>1. Check inbox for msg-123: FOUND! — Duplicate detected!<br/>2. SKIP processing"]
 
-┌──────────────────────────────────────────┐
-│ Attempt 1 (Worker A)                     │
-│                                          │
-│ 1. Check inbox for msg-123: NOT FOUND   │
-│ 2. Insert into inbox: SUCCESS           │  ← First to insert!
-│ 3. Process message: SUCCESS              │
-│ 4. Mark completed: SUCCESS               │
-└──────────────────────────────────────────┘
+    M1 --> A1
+    M2 --> A2
 
-Duplicate arrives with MessageId: msg-123 (network retry)
-
-┌──────────────────────────────────────────┐
-│ Attempt 2 (Worker B)                     │
-│                                          │
-│ 1. Check inbox for msg-123: FOUND!      │  ← Duplicate detected!
-│ 2. SKIP processing                       │
-└──────────────────────────────────────────┘
+    class M1,M2 layer-command
+    class A1 layer-core
+    class A2 layer-event
 ```
 
 **Key**: `UNIQUE INDEX` on `message_id` prevents duplicate inserts.
 
 ### Race Condition Handling
 
-```
-Two workers receive same message simultaneously:
+```mermaid
+flowchart TD
+    Start["Two workers receive same message simultaneously"]
+    WA["Worker A"]
+    WB["Worker B"]
+    IA["INSERT msg-123 → SUCCESS"]
+    IB["INSERT msg-123 → DUPLICATE KEY ERROR!"]
+    PA["Process message"]
+    SB["Skip (unique constraint violation)"]
+    MC["Mark completed"]
 
-Worker A                     Worker B
-  ↓                           ↓
-INSERT msg-123 → SUCCESS     INSERT msg-123 → DUPLICATE KEY ERROR!
-  ↓                           ↓
-Process message              Skip (unique constraint violation)
-  ↓
-Mark completed
+    Start --> WA
+    Start --> WB
+    WA --> IA
+    IA --> PA
+    PA --> MC
+    WB --> IB
+    IB --> SB
+
+    class WA,WB layer-command
+    class IA,IB layer-event
+    class PA,MC layer-core
 ```
 
 **Database guarantees exactly-once** via unique constraint!

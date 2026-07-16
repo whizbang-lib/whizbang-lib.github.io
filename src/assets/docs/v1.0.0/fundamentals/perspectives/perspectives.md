@@ -221,34 +221,34 @@ Whizbang implements CQRS with:
 - **Write side**: Commands → Receptors → Events → Event Store
 - **Read side**: PerspectiveWorker → Runners → Apply() → Read Models
 
-```
-┌─────────────── WRITE SIDE ───────────────┐
-│                                           │
-│  CreateProduct Command                    │
-│       ↓                                   │
-│  CreateProductReceptor                    │
-│       ↓                                   │
-│  ProductCreatedEvent → Event Store        │
-│                                           │
-└───────────────┬───────────────────────────┘
-                │
-                │ PerspectiveWorker polls for new events
-                ↓
-┌─────────────── READ SIDE ────────────────┐
-│                                           │
-│  ProductCreatedEvent (from event store)  │
-│       ↓                                   │
-│  ProductCatalogPerspectiveRunner         │
-│       ↓                                   │
-│  perspective.Apply(currentModel, event)  │
-│       ↓                                   │
-│  IPerspectiveStore.UpsertAsync(model)    │
-│       ↓                                   │
-│  product_catalog table (denormalized)    │
-│       ↓                                   │
-│  ProductLens.GetProductAsync() ← Query   │
-│                                           │
-└───────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph WriteSide["WRITE SIDE"]
+        Command["CreateProduct Command"]
+        Receptor["CreateProductReceptor"]
+        Event["ProductCreatedEvent → Event Store"]
+        Command --> Receptor
+        Receptor --> Event
+    end
+
+    subgraph ReadSide["READ SIDE"]
+        StoredEvent["ProductCreatedEvent (from event store)"]
+        Runner["ProductCatalogPerspectiveRunner"]
+        Apply["perspective.Apply(currentModel, event)"]
+        Upsert["IPerspectiveStore.UpsertAsync(model)"]
+        Table["product_catalog table (denormalized)"]
+        Lens["ProductLens.GetProductAsync() ← Query"]
+        StoredEvent --> Runner
+        Runner --> Apply
+        Apply --> Upsert
+        Upsert --> Table
+        Table --> Lens
+    end
+
+    WriteSide -->|"PerspectiveWorker polls for new events"| ReadSide
+
+    style WriteSide fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style ReadSide fill:#cce5ff,stroke:#004085,stroke-width:2px
 ```
 
 **Benefits**:

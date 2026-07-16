@@ -27,44 +27,29 @@ Implement **saga orchestration patterns** with Whizbang for distributed workflow
 
 ## Orchestration vs. Choreography
 
-```
-┌────────────────────────────────────────────────────────────┐
-│  Choreography (Decentralized)                              │
-│                                                             │
-│  OrderService → OrderCreated → InventoryService            │
-│                                      ↓                      │
-│                            InventoryReserved                │
-│                                      ↓                      │
-│                              PaymentService                 │
-│                                      ↓                      │
-│                             PaymentProcessed                │
-│                                                             │
-│  ❌ No central coordinator                                 │
-│  ❌ Hard to track overall state                            │
-│  ✅ Loose coupling                                         │
-└────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph CHOREO["Choreography (Decentralized)"]
+        OrderService["OrderService"] --> OC["OrderCreated"] --> InventoryService["InventoryService"] --> IR["InventoryReserved"] --> PaymentService["PaymentService"] --> PP["PaymentProcessed"]
+        ChoreoNotes["❌ No central coordinator<br/>❌ Hard to track overall state<br/>✅ Loose coupling"]
+    end
 
-┌────────────────────────────────────────────────────────────┐
-│  Orchestration (Centralized)                               │
-│                                                             │
-│           ┌──────────────────────┐                         │
-│           │ OrderSaga            │                         │
-│           │ (Process Manager)    │                         │
-│           └──────────┬───────────┘                         │
-│                      │                                      │
-│         ┌────────────┼────────────┐                        │
-│         │            │            │                        │
-│         ▼            ▼            ▼                        │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                │
-│  │Inventory │  │ Payment  │  │ Shipping │                │
-│  │ Service  │  │ Service  │  │ Service  │                │
-│  └──────────┘  └──────────┘  └──────────┘                │
-│                                                             │
-│  ✅ Central coordinator                                    │
-│  ✅ Easy to track state                                    │
-│  ✅ Complex workflows                                      │
-│  ❌ Tighter coupling                                       │
-└────────────────────────────────────────────────────────────┘
+    class OrderService,InventoryService,PaymentService layer-core
+    class OC,IR,PP layer-event
+```
+
+```mermaid
+flowchart TD
+    subgraph ORCH["Orchestration (Centralized)"]
+        OrderSaga["OrderSaga<br/>(Process Manager)"]
+        OrderSaga --> InvSvc["Inventory Service"]
+        OrderSaga --> PaySvc["Payment Service"]
+        OrderSaga --> ShipSvc["Shipping Service"]
+        OrchNotes["✅ Central coordinator<br/>✅ Easy to track state<br/>✅ Complex workflows<br/>❌ Tighter coupling"]
+    end
+
+    class OrderSaga layer-command
+    class InvSvc,PaySvc,ShipSvc layer-core
 ```
 
 ---

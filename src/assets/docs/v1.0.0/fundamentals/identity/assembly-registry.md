@@ -71,22 +71,31 @@ public static class AssemblyRegistry<T> where T : class {
 
 ## Registration Flow
 
-```
-1. Application starts
+```mermaid
+graph TB
+    A["1. Application starts"]
+    B["2. CLR loads assemblies"]
+    C1["MyApp.Contracts.dll loads"]
+    C2["[ModuleInitializer] runs BEFORE Main()"]
+    C3["AssemblyRegistry&lt;IStreamIdExtractor&gt;.Register(extractor, 100)"]
+    D1["MyApp.Services.dll loads"]
+    D2["[ModuleInitializer] runs"]
+    D3["AssemblyRegistry&lt;IStreamIdExtractor&gt;.Register(extractor, 1000)"]
+    M["3. Main() executes"]
+    M1["AddWhizbang() called"]
+    M2["Uses AssemblyRegistry&lt;T&gt;.GetOrderedContributions()"]
+    M3["Gets: [ContractsExtractor (100), ServiceExtractor (1000)]"]
 
-2. CLR loads assemblies
-   └─> MyApp.Contracts.dll loads
-       └─> [ModuleInitializer] runs BEFORE Main()
-       └─> AssemblyRegistry<IStreamIdExtractor>.Register(extractor, 100)
+    A --> B
+    B --> C1 --> C2 --> C3
+    B --> D1 --> D2 --> D3
+    C3 --> M
+    D3 --> M
+    M --> M1 --> M2 --> M3
 
-   └─> MyApp.Services.dll loads
-       └─> [ModuleInitializer] runs
-       └─> AssemblyRegistry<IStreamIdExtractor>.Register(extractor, 1000)
-
-3. Main() executes
-   └─> AddWhizbang() called
-   └─> Uses AssemblyRegistry<T>.GetOrderedContributions()
-   └─> Gets: [ContractsExtractor (100), ServiceExtractor (1000)]
+    style A fill:#d4edda,stroke:#28a745
+    style B fill:#d4edda,stroke:#28a745
+    style M fill:#d4edda,stroke:#28a745
 ```
 
 ## Priority Convention

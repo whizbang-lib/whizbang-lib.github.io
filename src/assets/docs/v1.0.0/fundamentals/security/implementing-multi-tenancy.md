@@ -350,48 +350,22 @@ When using lifecycle receptors (`PostPerspectiveAsync`, etc.) or background work
 
 Whizbang captures tenant context when a message is dispatched and propagates it through the entire processing pipeline:
 
-```
-HTTP Request (TenantId from JWT)
-         │
-         ▼
-┌────────────────────────────────┐
-│ ScopeContextMiddleware         │
-│ IScopeContextAccessor.Current  │
-│ = { TenantId: "tenant-123" }   │
-└────────────────┬───────────────┘
-                 │
-                 ▼
-┌────────────────────────────────┐
-│ Command Dispatch               │
-│ dispatcher.SendAsync(cmd)      │
-└────────────────┬───────────────┘
-                 │
-                 ▼ TenantId stored in MessageHop
-┌────────────────────────────────┐
-│ Outbox (wh_outbox)             │
-│ hop.SecurityContext.TenantId   │
-│ = "tenant-123"                 │
-└────────────────┬───────────────┘
-                 │
-                 ▼ Worker picks up message
-┌────────────────────────────────┐
-│ ServiceBusConsumerWorker       │
-│ Extracts TenantId from hop     │
-│ Establishes IScopeContext      │
-└────────────────┬───────────────┘
-                 │
-                 ▼ Event cascaded
-┌────────────────────────────────┐
-│ Perspective Processing         │
-│ TenantId flows to event        │
-└────────────────┬───────────────┘
-                 │
-                 ▼ Lifecycle receptor fires
-┌────────────────────────────────┐
-│ PostPerspectiveAsync Receptor  │
-│ IMessageContext.TenantId       │
-│ = "tenant-123" ✓               │
-└────────────────────────────────┘
+```mermaid
+flowchart TD
+    Request["HTTP Request (TenantId from JWT)"]
+    Middleware["ScopeContextMiddleware<br/>IScopeContextAccessor.Current<br/>= { TenantId: #quot;tenant-123#quot; }"]
+    Dispatch["Command Dispatch<br/>dispatcher.SendAsync(cmd)"]
+    Outbox["Outbox (wh_outbox)<br/>hop.SecurityContext.TenantId<br/>= #quot;tenant-123#quot;"]
+    Consumer["ServiceBusConsumerWorker<br/>Extracts TenantId from hop<br/>Establishes IScopeContext"]
+    Processing["Perspective Processing<br/>TenantId flows to event"]
+    Receptor["PostPerspectiveAsync Receptor<br/>IMessageContext.TenantId<br/>= #quot;tenant-123#quot; ✓"]
+
+    Request --> Middleware
+    Middleware --> Dispatch
+    Dispatch -->|"TenantId stored in MessageHop"| Outbox
+    Outbox -->|"Worker picks up message"| Consumer
+    Consumer -->|"Event cascaded"| Processing
+    Processing -->|"Lifecycle receptor fires"| Receptor
 ```
 
 **Key insight**: TenantId is preserved through the entire flow without any manual propagation.

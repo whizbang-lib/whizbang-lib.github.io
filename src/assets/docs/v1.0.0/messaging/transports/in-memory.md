@@ -46,43 +46,31 @@ The **In-Memory transport** provides synchronous, in-process message delivery wi
 
 ### Synchronous Delivery Model
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  InProcessTransport                                     │
-│                                                          │
-│  ┌────────────────────────────────────────────────┐    │
-│  │  Subscriptions Dictionary                      │    │
-│  │                                                 │    │
-│  │  "orders" → [Handler1, Handler2]               │    │
-│  │  "payments" → [Handler3]                       │    │
-│  │  "notifications" → [Handler4, Handler5]        │    │
-│  └────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Transport["InProcessTransport"]
+        Dict["Subscriptions Dictionary<br/><br/>#quot;orders#quot; → [Handler1, Handler2]<br/>#quot;payments#quot; → [Handler3]<br/>#quot;notifications#quot; → [Handler4, Handler5]"]
+    end
 
-Publisher                                      Subscriber
-  │                                                │
-  │ 1. PublishAsync(envelope, destination)        │
-  │    Destination: "orders"                       │
-  ▼                                                │
-┌──────────────────────────────────┐              │
-│  Lookup subscriptions["orders"]  │              │
-└──────────────────────────────────┘              │
-  │                                                │
-  │ 2. Foreach handler in subscriptions           │
-  │    → Await handler(envelope)                  │
-  ▼                                                ▼
-┌──────────────────────────────────┐    ┌──────────────────┐
-│  Handler1(envelope)              │───▶│  Process message │
-└──────────────────────────────────┘    └──────────────────┘
-  │                                                │
-  │ 3. Sequential execution                       │
-  ▼                                                │
-┌──────────────────────────────────┐    ┌──────────────────┐
-│  Handler2(envelope)              │───▶│  Process message │
-└──────────────────────────────────┘    └──────────────────┘
-  │
-  │ 4. PublishAsync completes after ALL handlers
-  ▼
+    Publisher["Publisher"]
+    Lookup["Lookup subscriptions[#quot;orders#quot;]"]
+    H1["Handler1(envelope)"]
+    P1["Process message (Subscriber)"]
+    H2["Handler2(envelope)"]
+    P2["Process message (Subscriber)"]
+    Done["PublishAsync completes after ALL handlers"]
+
+    Publisher -->|"1. PublishAsync(envelope, destination)<br/>Destination: #quot;orders#quot;"| Lookup
+    Lookup -.-> Dict
+    Lookup -->|"2. Foreach handler in subscriptions<br/>→ Await handler(envelope)"| H1
+    H1 --> P1
+    H1 -->|"3. Sequential execution"| H2
+    H2 --> P2
+    H2 -->|"4."| Done
+
+    class Dict,Lookup layer-command
+    class Publisher,Done layer-core
+    class H1,H2,P1,P2 layer-core
 ```
 
 **Key Characteristics**:

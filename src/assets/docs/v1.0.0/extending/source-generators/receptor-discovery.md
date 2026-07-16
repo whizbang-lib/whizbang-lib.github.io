@@ -52,39 +52,18 @@ services.AddScoped<IReceptor<ShipOrder, OrderShipped>, ShipOrderReceptor>();
 
 ### 1. Compile-Time Discovery
 
-```
-┌──────────────────────────────────────────────────┐
-│  Your Code                                       │
-│                                                  │
-│  public class OrderReceptor                     │
-│      : IReceptor<CreateOrder, OrderCreated> {   │
-│    // Implementation...                          │
-│  }                                               │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  ReceptorDiscoveryGenerator (Roslyn)            │
-│                                                  │
-│  1. Scan syntax tree for classes                │
-│  2. Filter classes with base types              │
-│  3. Check for IReceptor<TMessage, TResponse>    │
-│  4. Extract: Class, Message, Response types     │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  Generated Code (3 files)                       │
-│                                                  │
-│  1. DispatcherRegistrations.g.cs                │
-│     └─ services.AddScoped<IReceptor<...>, ...>()│
-│                                                  │
-│  2. Dispatcher.g.cs                             │
-│     └─ Type-safe routing logic                  │
-│                                                  │
-│  3. ReceptorDiscoveryDiagnostics.g.cs           │
-│     └─ Startup diagnostics                      │
-└──────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Code["Your Code<br/><br/>public class OrderReceptor<br/>: IReceptor&lt;CreateOrder, OrderCreated&gt; {<br/>// Implementation...<br/>}"]
+    Generator["ReceptorDiscoveryGenerator (Roslyn)<br/><br/>1. Scan syntax tree for classes<br/>2. Filter classes with base types<br/>3. Check for IReceptor&lt;TMessage, TResponse&gt;<br/>4. Extract: Class, Message, Response types"]
+    Generated["Generated Code (3 files)<br/><br/>1. DispatcherRegistrations.g.cs<br/>— services.AddScoped&lt;IReceptor&lt;...&gt;, ...&gt;()<br/><br/>2. Dispatcher.g.cs<br/>— Type-safe routing logic<br/><br/>3. ReceptorDiscoveryDiagnostics.g.cs<br/>— Startup diagnostics"]
+
+    Code --> Generator
+    Generator --> Generated
+
+    class Code layer-core
+    class Generator layer-infrastructure
+    class Generated layer-core
 ```
 
 ### 2. Generated Files
@@ -291,25 +270,20 @@ if (messageType == typeof(SendEmail)) {
 
 Roslyn incremental generators use **value-based caching** to skip work when inputs haven't changed:
 
-```
-First compilation:
-├─ Scan syntax tree: 50ms
-├─ Extract receptor info: 20ms
-├─ Generate 3 files: 10ms
-└─ Total: 80ms
-
-Subsequent compilation (no changes):
-├─ Check cache: 1ms (inputs unchanged)
-├─ Skip generation: 0ms
-└─ Total: 1ms (79ms saved!)
-
-Compilation after receptor change:
-├─ Check cache: 1ms (CreateOrder receptor changed)
-├─ Scan syntax tree: 50ms
-├─ Extract receptor info: 20ms
-├─ Generate 3 files: 10ms
-└─ Total: 81ms (only re-runs affected pipeline)
-```
+| Scenario | Step | Time |
+|----------|------|------|
+| First compilation | Scan syntax tree | 50ms |
+| | Extract receptor info | 20ms |
+| | Generate 3 files | 10ms |
+| | **Total** | **80ms** |
+| Subsequent compilation (no changes) | Check cache | 1ms (inputs unchanged) |
+| | Skip generation | 0ms |
+| | **Total** | **1ms (79ms saved!)** |
+| Compilation after receptor change | Check cache | 1ms (CreateOrder receptor changed) |
+| | Scan syntax tree | 50ms |
+| | Extract receptor info | 20ms |
+| | Generate 3 files | 10ms |
+| | **Total** | **81ms (only re-runs affected pipeline)** |
 
 **Key Insight**: Generator only re-runs when receptors actually change, not on every compilation.
 

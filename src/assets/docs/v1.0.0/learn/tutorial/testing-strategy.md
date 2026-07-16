@@ -34,24 +34,19 @@ This is **Part 8** of the ECommerce Tutorial. Complete [Analytics Service](analy
 
 ## Testing Pyramid
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Testing Pyramid                                         │
-│                                                          │
-│              ┌────────────────┐                          │
-│              │  E2E Tests     │ ← 10% (Slow, Expensive)  │
-│              │  Full system   │                          │
-│              └────────────────┘                          │
-│         ┌───────────────────────┐                        │
-│         │  Integration Tests    │ ← 30% (Medium)        │
-│         │  Service + DB + Bus   │                        │
-│         └───────────────────────┘                        │
-│    ┌───────────────────────────────┐                     │
-│    │      Unit Tests               │ ← 60% (Fast, Cheap) │
-│    │  Receptors, Perspectives,     │                     │
-│    │  Business Logic               │                     │
-│    └───────────────────────────────┘                     │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Pyramid["Testing Pyramid"]
+        E2E["E2E Tests<br/>Full system<br/>← 10% (Slow, Expensive)"]
+        Integration["Integration Tests<br/>Service + DB + Bus<br/>← 30% (Medium)"]
+        Unit["Unit Tests<br/>Receptors, Perspectives, Business Logic<br/>← 60% (Fast, Cheap)"]
+
+        E2E ~~~ Integration ~~~ Unit
+    end
+
+    class E2E layer-infrastructure
+    class Integration layer-command
+    class Unit layer-core
 ```
 
 ---

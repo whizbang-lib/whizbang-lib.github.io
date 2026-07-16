@@ -25,16 +25,17 @@ The **Event Store** is the append-only log of all domain events in your system. 
 
 **Event Sourcing** stores state changes as a sequence of events rather than current state:
 
-```
-Traditional State Storage:        Event Sourcing:
-┌──────────────────────┐         ┌──────────────────────┐
-│  Order Table         │         │  Event Stream        │
-├──────────────────────┤         ├──────────────────────┤
-│ order_id: abc        │         │ OrderCreated         │
-│ status: Shipped      │   ←──   │ OrderPaid            │
-│ total: $100          │         │ OrderShipped         │
-└──────────────────────┘         └──────────────────────┘
-  (current state)                  (full history)
+```mermaid
+flowchart RL
+    subgraph EventSourcing["Event Sourcing"]
+        Stream["Event Stream<br/>OrderCreated<br/>OrderPaid<br/>OrderShipped<br/>(full history)"]
+    end
+
+    subgraph Traditional["Traditional State Storage"]
+        Table["Order Table<br/>order_id: abc<br/>status: Shipped<br/>total: $100<br/>(current state)"]
+    end
+
+    Stream --> Table
 ```
 
 **Benefits**:

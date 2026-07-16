@@ -33,64 +33,26 @@ In distributed systems, security context must flow across multiple hops:
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         HTTP Request                            │
-│                    (Bearer Token / Cookie)                      │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-                            ▼
-        ┌───────────────────────────────────────┐
-        │   WhizbangScopeMiddleware (HTTP)      │
-        │   • Extracts JWT claims               │
-        │   • Populates IScopeContextAccessor   │
-        └───────────────────┬───────────────────┘
-                            │
-                            ▼
-        ┌───────────────────────────────────────┐
-        │   Business Logic / Controller         │
-        │   • Calls dispatcher.SendAsync()      │
-        └───────────────────┬───────────────────┘
-                            │
-                            ▼
-        ┌───────────────────────────────────────┐
-        │   Dispatcher (Outgoing Messages)      │
-        │   • Reads IScopeContextAccessor       │
-        │   • Attaches to MessageHop            │
-        └───────────────────┬───────────────────┘
-                            │
-                            ▼
-        ┌───────────────────────────────────────┐
-        │   Transport (Azure Service Bus, etc.) │
-        │   • Carries MessageHop.SecurityContext│
-        └───────────────────┬───────────────────┘
-                            │
-                            ▼
-        ┌───────────────────────────────────────┐
-        │   ServiceBusConsumerWorker (Incoming) │
-        │   • Creates DI scope                  │
-        │   • Calls provider.EstablishContextAsync()│
-        └───────────────────┬───────────────────┘
-                            │
-                            ▼
-        ┌───────────────────────────────────────┐
-        │   MessageHopSecurityExtractor         │
-        │   • Reads MessageHop.SecurityContext  │
-        │   • Populates IScopeContextAccessor   │
-        └───────────────────┬───────────────────┘
-                            │
-                            ▼
-        ┌───────────────────────────────────────┐
-        │   ISecurityContextCallback[]          │
-        │   • Initialize custom services        │
-        │   • Populate UserContextManager       │
-        └───────────────────┬───────────────────┘
-                            │
-                            ▼
-        ┌───────────────────────────────────────┐
-        │   Receptor / Business Logic           │
-        │   • Executes with full security ctx   │
-        └───────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Request["HTTP Request<br/>(Bearer Token / Cookie)"]
+    Middleware["WhizbangScopeMiddleware (HTTP)<br/>• Extracts JWT claims<br/>• Populates IScopeContextAccessor"]
+    Logic["Business Logic / Controller<br/>• Calls dispatcher.SendAsync()"]
+    Dispatcher["Dispatcher (Outgoing Messages)<br/>• Reads IScopeContextAccessor<br/>• Attaches to MessageHop"]
+    Transport["Transport (Azure Service Bus, etc.)<br/>• Carries MessageHop.SecurityContext"]
+    Consumer["ServiceBusConsumerWorker (Incoming)<br/>• Creates DI scope<br/>• Calls provider.EstablishContextAsync()"]
+    Extractor["MessageHopSecurityExtractor<br/>• Reads MessageHop.SecurityContext<br/>• Populates IScopeContextAccessor"]
+    Callbacks["ISecurityContextCallback[]<br/>• Initialize custom services<br/>• Populate UserContextManager"]
+    Receptor["Receptor / Business Logic<br/>• Executes with full security ctx"]
+
+    Request --> Middleware
+    Middleware --> Logic
+    Logic --> Dispatcher
+    Dispatcher --> Transport
+    Transport --> Consumer
+    Consumer --> Extractor
+    Extractor --> Callbacks
+    Callbacks --> Receptor
 ```
 
 ## HTTP to Message Propagation

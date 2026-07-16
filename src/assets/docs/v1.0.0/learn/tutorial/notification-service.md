@@ -29,32 +29,25 @@ This is **Part 4** of the ECommerce Tutorial. Complete [Payment Processing](paym
 
 ## What You'll Build
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Notification Service Architecture                          │
-│                                                              │
-│  ┌─────────────┐                                            │
-│  │Azure Service│  OrderCreated, PaymentProcessed, etc.      │
-│  │     Bus     │──────────────────────────┐                 │
-│  └─────────────┘                          │                 │
-│                                            ▼                 │
-│                          ┌────────────────────────────┐     │
-│                          │  Multiple Event Receptors  │     │
-│                          │  - OrderConfirmationReceptor│    │
-│                          │  - PaymentReceiptReceptor  │     │
-│                          │  - ShipmentNotificationReceptor│ │
-│                          └──────────┬─────────────────┘     │
-│                                     │                        │
-│                      ┌──────────────┼──────────────┐        │
-│                      │              │              │        │
-│                      ▼              ▼              ▼        │
-│                 ┌─────────┐   ┌─────────┐   ┌──────────┐   │
-│                 │Template │   │  Email  │   │Postgres  │   │
-│                 │ Engine  │   │Provider │   │ Tracking │   │
-│                 │(Scriban)│   │(SendGrid│   │  Table   │   │
-│                 └─────────┘   │/Twilio) │   └──────────┘   │
-│                               └─────────┘                    │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph NSA["Notification Service Architecture"]
+        ASB["Azure Service Bus"]
+        Receptors["Multiple Event Receptors<br/>- OrderConfirmationReceptor<br/>- PaymentReceiptReceptor<br/>- ShipmentNotificationReceptor"]
+        Template["Template Engine<br/>(Scriban)"]
+        Email["Email Provider<br/>(SendGrid/Twilio)"]
+        Tracking["Postgres Tracking Table"]
+
+        ASB -->|"OrderCreated, PaymentProcessed, etc."| Receptors
+        Receptors --> Template
+        Receptors --> Email
+        Receptors --> Tracking
+    end
+
+    class ASB layer-command
+    class Receptors layer-core
+    class Template,Email layer-infrastructure
+    class Tracking layer-event
 ```
 
 **Features**:

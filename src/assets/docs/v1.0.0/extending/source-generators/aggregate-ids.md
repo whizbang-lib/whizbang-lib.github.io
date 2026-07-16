@@ -67,24 +67,15 @@ public record OrderCreated(
 
 ### 2. Compile-Time Discovery
 
-```
-┌──────────────────────────────────────────────────┐
-│  AggregateIdGenerator (Roslyn)                  │
-│                                                  │
-│  1. Scan syntax tree for records/classes        │
-│  2. Check properties for [AggregateId] attribute│
-│  3. Extract: Message type, Property name        │
-│  4. Validate: Must be Guid or Guid?             │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  Generated: AggregateIdExtractors.g.cs           │
-│                                                  │
-│  - Static extractor methods (zero reflection)   │
-│  - Type-safe property access                    │
-│  - AOT-compatible                                │
-└──────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Generator["AggregateIdGenerator (Roslyn)<br/><br/>1. Scan syntax tree for records/classes<br/>2. Check properties for [AggregateId] attribute<br/>3. Extract: Message type, Property name<br/>4. Validate: Must be Guid or Guid?"]
+    Generated["Generated: AggregateIdExtractors.g.cs<br/><br/>- Static extractor methods (zero reflection)<br/>- Type-safe property access<br/>- AOT-compatible"]
+
+    Generator --> Generated
+
+    class Generator layer-infrastructure
+    class Generated layer-core
 ```
 
 ---

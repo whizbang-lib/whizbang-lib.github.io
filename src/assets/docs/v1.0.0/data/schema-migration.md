@@ -39,32 +39,13 @@ Schema drift occurs when your C# perspective definition doesn't match the databa
 
 ### Detection Flow
 
-```
-┌─────────────────────┐
-│  Compile Time       │
-├─────────────────────┤
-│ Generate schema     │
-│ JSON from C# class  │
-│ Compute SHA-256     │
-│ hash of schema      │
-└─────────┬───────────┘
-          │
-          ▼
-┌─────────────────────┐
-│  Runtime            │
-├─────────────────────┤
-│ Compare hash with   │
-│ stored hash in      │
-│ perspective_registry│
-└─────────┬───────────┘
-          │
-          ▼
-┌─────────────────────┐
-│  If Different       │
-├─────────────────────┤
-│ Log drift warning   │
-│ Update registry     │
-└─────────────────────┘
+```mermaid
+flowchart TD
+    CompileTime["Compile Time<br/>Generate schema JSON from C# class<br/>Compute SHA-256 hash of schema"]
+    Runtime["Runtime<br/>Compare hash with stored hash in perspective_registry"]
+    IfDifferent["If Different<br/>Log drift warning<br/>Update registry"]
+
+    CompileTime --> Runtime --> IfDifferent
 ```
 
 ### What Causes Drift

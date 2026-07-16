@@ -48,44 +48,38 @@ lastMaintainedCommit: '01f07906'
 
 ### Health Check Flow
 
+```mermaid
+flowchart TD
+    Endpoint["Health Check Endpoint: /health<br/>(Kubernetes readiness, load balancer, monitoring)"]
+    HealthChecks["Microsoft.Extensions.Diagnostics.HealthChecks<br/>(Built into ASP.NET Core)<br/>Executes all registered health checks in parallel:<br/>- AzureServiceBusHealthCheck<br/>- PostgresHealthCheck<br/>- CustomHealthCheck<br/>- ..."]
+    Response["Health Check Response"]
+
+    Endpoint -->|"HTTP GET /health"| HealthChecks
+    HealthChecks -->|"Aggregate results"| Response
 ```
-┌────────────────────────────────────────────────────────┐
-│  Health Check Endpoint: /health                        │
-│  (Kubernetes readiness, load balancer, monitoring)     │
-└────────────────┬───────────────────────────────────────┘
-                 │
-                 │ HTTP GET /health
-                 ▼
-┌────────────────────────────────────────────────────────┐
-│  Microsoft.Extensions.Diagnostics.HealthChecks         │
-│  (Built into ASP.NET Core)                             │
-│                                                         │
-│  Executes all registered health checks in parallel:    │
-│  ├─ AzureServiceBusHealthCheck                         │
-│  ├─ PostgresHealthCheck                                │
-│  ├─ CustomHealthCheck                                  │
-│  └─ ...                                                 │
-└────────────────┬───────────────────────────────────────┘
-                 │
-                 │ Aggregate results
-                 ▼
-┌────────────────────────────────────────────────────────┐
-│  Health Check Response                                 │
-│                                                         │
-│  {                                                      │
-│    "status": "Healthy",           // or Degraded, Unhealthy
-│    "results": {                                         │
-│      "azure_servicebus": {                              │
-│        "status": "Healthy",                             │
-│        "description": "Transport is available"          │
-│      },                                                 │
-│      "postgres": {                                      │
-│        "status": "Healthy",                             │
-│        "description": "Database is accessible"          │
-│      }                                                  │
-│    }                                                    │
-│  }                                                      │
-└────────────────────────────────────────────────────────┘
+
+Example health check response:
+
+```json{
+title: "Health check response"
+description: "Aggregated /health endpoint payload with per-check status"
+category: "Operations"
+difficulty: "BEGINNER"
+tags: ["Operations", "Health-Checks", "Response"]
+}
+{
+  "status": "Healthy",           // or Degraded, Unhealthy
+  "results": {
+    "azure_servicebus": {
+      "status": "Healthy",
+      "description": "Transport is available"
+    },
+    "postgres": {
+      "status": "Healthy",
+      "description": "Database is accessible"
+    }
+  }
+}
 ```
 
 ---

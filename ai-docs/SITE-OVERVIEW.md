@@ -87,7 +87,7 @@ Plan lives at `~/.claude/plans/we-need-to-reconcile-swift-newell.md` (session-lo
 | 4 | Audience trees: `contributors/`, `spec/` (porting) | DONE — new state folders wired through index/nav/version selector; data-engines guide moved in; spec seeded with subsystem roadmap; v1.0.0 labeled "(pre-release)"; orphan folders (roadmap/, Advanced/, Tutorials/, future/, migrate-from-marten-wolverine/) removed, cli-wizard rescued to drafts |
 | 5 | Live test-status pipeline (library CI → site badges) | docs side DONE (PR #124); library side in whizbang#347; dormant until DOCS_REPO_PUSH_TOKEN secret exists |
 | 6 | Example validation (drift check + compile gate) | drift check DONE (verify-sample-drift.mjs, CI warning mode, seed on dispatcher.md); library compile-gate project deferred until whizbang#347 merges |
-| 7 | ASCII → mermaid (~86 files) | pending |
+| 7 | ASCII → mermaid (~86 files) | DONE — ~121 diagrams converted across 78 files (console output + directory trees deliberately left as text). Fixed two pre-existing renderer bugs found during verification: mermaid extraction skipped every other block (exec-while-mutating), and enhanced-metadata blocks in non-csharp languages caused fence mispairing that silently swallowed prose sections (visible on production) |
 | 8 | MCP server npm publish (@whizbang/docs-mcp-server; verify scope, fallback @whizbang-lib) | pending |
 | 9 | Page split/merge per taxonomy + summary pages | pending |
 

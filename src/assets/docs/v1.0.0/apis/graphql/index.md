@@ -101,33 +101,14 @@ app.MapGraphQL();
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    GraphQL Request                          │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│              WhizbangScopeMiddleware                        │
-│  - Extracts TenantId, UserId from claims/headers            │
-│  - Sets IScopeContext for request                           │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 HotChocolate Execution                      │
-│  - [UseFiltering] → WhizbangFilterConvention                │
-│  - [UseSorting]   → WhizbangSortConvention                  │
-│  - [UsePaging]    → Relay-style pagination                  │
-│  - [UseProjection]→ Efficient field selection               │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   ILensQuery<TModel>                        │
-│  - Scope-filtered IQueryable                                │
-│  - PerspectiveRow<TModel> with Data, Metadata, Scope        │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Request["GraphQL Request"]
+    Middleware["WhizbangScopeMiddleware<br/>- Extracts TenantId, UserId from claims/headers<br/>- Sets IScopeContext for request"]
+    HotChocolate["HotChocolate Execution<br/>- &#91;UseFiltering&#93; → WhizbangFilterConvention<br/>- &#91;UseSorting&#93; → WhizbangSortConvention<br/>- &#91;UsePaging&#93; → Relay-style pagination<br/>- &#91;UseProjection&#93; → Efficient field selection"]
+    LensQuery["ILensQuery&lt;TModel&gt;<br/>- Scope-filtered IQueryable<br/>- PerspectiveRow&lt;TModel&gt; with Data, Metadata, Scope"]
+
+    Request --> Middleware --> HotChocolate --> LensQuery
 ```
 
 ## Key Types

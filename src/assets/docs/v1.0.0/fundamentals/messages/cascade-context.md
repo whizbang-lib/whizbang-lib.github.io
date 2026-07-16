@@ -34,36 +34,22 @@ When a message produces child messages, **CascadeContext** carries everything th
 
 ## How It Fits Together
 
-```
-                   Incoming Envelope
-                         |
-                         v
-               ┌─────────────────────┐
-               │ CascadeContextFactory│
-               │  .FromEnvelope()    │
-               └────────┬────────────┘
-                        |
-                        v
-               ┌─────────────────────┐
-               │   CascadeContext     │
-               │ CorrelationId       │
-               │ CausationId         │
-               │ SecurityContext      │
-               │ Metadata            │
-               └────────┬────────────┘
-                        |
-            ┌───────────┼───────────┐
-            v           v           v
-      ICascadeContextEnricher (1..N)
-            |           |           |
-            v           v           v
-       Enriched CascadeContext
-                        |
-                        v
-         MessageContext.Create(cascade)
-                        |
-                        v
-              Child Message Envelope
+```mermaid
+graph TB
+    IE["Incoming Envelope"]
+    F["CascadeContextFactory<br/>.FromEnvelope()"]
+    CC["CascadeContext<br/>CorrelationId<br/>CausationId<br/>SecurityContext<br/>Metadata"]
+    EN["ICascadeContextEnricher (1..N)"]
+    EC["Enriched CascadeContext"]
+    MC["MessageContext.Create(cascade)"]
+    CE["Child Message Envelope"]
+
+    IE --> F --> CC --> EN --> EC --> MC --> CE
+
+    style IE fill:#fff3cd,stroke:#ffc107
+    style CE fill:#fff3cd,stroke:#ffc107
+    style CC fill:#d4edda,stroke:#28a745
+    style EC fill:#d4edda,stroke:#28a745
 ```
 
 ---
@@ -423,28 +409,18 @@ var childContext = MessageContext.Create(cascade);
 
 Here is how cascade context flows through a complete message lifecycle:
 
-```
-1. HTTP Request arrives
-   └─ ScopeContextAccessor.Current = IScopeContext (from claims)
-   └─ ScopeContextAccessor.InitiatingContext = IMessageContext
+```mermaid
+graph TB
+    S1["1. HTTP Request arrives<br/>ScopeContextAccessor.Current = IScopeContext (from claims)<br/>ScopeContextAccessor.InitiatingContext = IMessageContext"]
+    S2["2. Controller dispatches command<br/>CascadeContextFactory.NewRoot()<br/>Enrichers add metadata<br/>CascadeContext { CorrelationId, CausationId, SecurityContext }"]
+    S3["3. Receptor processes command, emits event<br/>CascadeContextFactory.FromMessageContext(messageContext)<br/>Event gets new MessageId, inherits CorrelationId<br/>CausationId = command's MessageId"]
+    S4["4. Event published to outbox → Service Bus<br/>Envelope carries SecurityContext in hops"]
+    S5["5. Worker receives event<br/>CascadeContextFactory.FromEnvelope(envelope)<br/>Ambient security restored from envelope hops<br/>Child messages inherit full context chain"]
 
-2. Controller dispatches command
-   └─ CascadeContextFactory.NewRoot()
-   └─ Enrichers add metadata
-   └─ CascadeContext { CorrelationId, CausationId, SecurityContext }
+    S1 --> S2 --> S3 --> S4 --> S5
 
-3. Receptor processes command, emits event
-   └─ CascadeContextFactory.FromMessageContext(messageContext)
-   └─ Event gets new MessageId, inherits CorrelationId
-   └─ CausationId = command's MessageId
-
-4. Event published to outbox → Service Bus
-   └─ Envelope carries SecurityContext in hops
-
-5. Worker receives event
-   └─ CascadeContextFactory.FromEnvelope(envelope)
-   └─ Ambient security restored from envelope hops
-   └─ Child messages inherit full context chain
+    style S3 fill:#d4edda,stroke:#28a745
+    style S4 fill:#fff3cd,stroke:#ffc107
 ```
 
 ---

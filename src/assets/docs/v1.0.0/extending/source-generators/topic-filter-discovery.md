@@ -62,35 +62,18 @@ var topics = TopicFilterRegistry.GetTopicFilters<CreateOrderCommand>();
 
 ### 1. Compile-Time Discovery
 
-```
-┌──────────────────────────────────────────────────┐
-│  Your Code                                       │
-│                                                  │
-│  [TopicFilter("orders.created")]                │
-│  public record CreateOrderCommand : ICommand {  │
-│    // ...                                        │
-│  }                                               │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  TopicFilterGenerator (Roslyn)                  │
-│                                                  │
-│  1. Scan syntax tree for classes/records        │
-│  2. Filter types with attributes                │
-│  3. Check for ICommand implementation           │
-│  4. Extract TopicFilter attribute values        │
-│  5. Extract enum Description attributes         │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  Generated Code                                  │
-│                                                  │
-│  TopicFilterRegistry.g.cs                       │
-│  └─ GetTopicFilters<TCommand>()                 │
-│  └─ GetAllFilters()                             │
-└──────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Code["Your Code<br/><br/>[TopicFilter(#quot;orders.created#quot;)]<br/>public record CreateOrderCommand : ICommand {<br/>// ...<br/>}"]
+    Generator["TopicFilterGenerator (Roslyn)<br/><br/>1. Scan syntax tree for classes/records<br/>2. Filter types with attributes<br/>3. Check for ICommand implementation<br/>4. Extract TopicFilter attribute values<br/>5. Extract enum Description attributes"]
+    Generated["Generated Code<br/><br/>TopicFilterRegistry.g.cs<br/>— GetTopicFilters&lt;TCommand&gt;()<br/>— GetAllFilters()"]
+
+    Code --> Generator
+    Generator --> Generated
+
+    class Code layer-command
+    class Generator layer-infrastructure
+    class Generated layer-core
 ```
 
 ### 2. String-Based Filter Extraction
@@ -341,25 +324,20 @@ return enumField.Name;  // "OrdersCreated"
 
 Roslyn incremental generators use **value-based caching** to skip work when inputs haven't changed:
 
-```
-First compilation:
-├─ Scan syntax tree: 30ms
-├─ Extract topic filters: 15ms
-├─ Generate registry: 5ms
-└─ Total: 50ms
-
-Subsequent compilation (no changes):
-├─ Check cache: 1ms (inputs unchanged)
-├─ Skip generation: 0ms
-└─ Total: 1ms (49ms saved!)
-
-Compilation after topic filter change:
-├─ Check cache: 1ms (CreateOrder filter changed)
-├─ Scan syntax tree: 30ms
-├─ Extract topic filters: 15ms
-├─ Generate registry: 5ms
-└─ Total: 51ms (only re-runs affected pipeline)
-```
+| Scenario | Step | Time |
+|----------|------|------|
+| First compilation | Scan syntax tree | 30ms |
+| | Extract topic filters | 15ms |
+| | Generate registry | 5ms |
+| | **Total** | **50ms** |
+| Subsequent compilation (no changes) | Check cache | 1ms (inputs unchanged) |
+| | Skip generation | 0ms |
+| | **Total** | **1ms (49ms saved!)** |
+| Compilation after topic filter change | Check cache | 1ms (CreateOrder filter changed) |
+| | Scan syntax tree | 30ms |
+| | Extract topic filters | 15ms |
+| | Generate registry | 5ms |
+| | **Total** | **51ms (only re-runs affected pipeline)** |
 
 ### Lookup Performance
 

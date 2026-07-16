@@ -50,18 +50,40 @@ public interface IMessage {
 
 ## Message Type Hierarchy
 
-```
-IMessage (marker interface)
-├── ICommand (intentions to change state)
-│   ├── CreateOrder
-│   ├── UpdateInventory
-│   └── ProcessPayment
-├── IEvent (facts about state changes)
-│   ├── OrderCreated
-│   ├── InventoryUpdated
-│   └── PaymentProcessed
-└── Custom Messages
-    └── Application-specific types
+```mermaid
+graph TB
+    M["IMessage (marker interface)"]
+    C["ICommand (intentions to change state)"]
+    E["IEvent (facts about state changes)"]
+    X["Custom Messages"]
+    C1["CreateOrder"]
+    C2["UpdateInventory"]
+    C3["ProcessPayment"]
+    E1["OrderCreated"]
+    E2["InventoryUpdated"]
+    E3["PaymentProcessed"]
+    X1["Application-specific types"]
+
+    M --> C
+    M --> E
+    M --> X
+    C --> C1
+    C --> C2
+    C --> C3
+    E --> E1
+    E --> E2
+    E --> E3
+    X --> X1
+
+    style M fill:#d4edda,stroke:#28a745
+    style C fill:#fff3cd,stroke:#ffc107
+    style C1 fill:#fff3cd,stroke:#ffc107
+    style C2 fill:#fff3cd,stroke:#ffc107
+    style C3 fill:#fff3cd,stroke:#ffc107
+    style E fill:#cce5ff,stroke:#004085
+    style E1 fill:#cce5ff,stroke:#004085
+    style E2 fill:#cce5ff,stroke:#004085
+    style E3 fill:#cce5ff,stroke:#004085
 ```
 
 ## Defining Messages

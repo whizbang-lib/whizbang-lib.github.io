@@ -28,24 +28,20 @@ Whizbang provides audit logging through **System Events** - internal events emit
 
 ## Core Concept
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Domain Event Appended (OrderCreated, PaymentProcessed, ...)    │
-│       │                                                          │
-│       ▼                                                          │
-│  [System Audit Enabled?] ──No──► (nothing emitted)              │
-│       │                                                          │
-│      Yes                                                         │
-│       │                                                          │
-│       ▼                                                          │
-│  Emit EventAudited to $wb-system stream                         │
-│       │                                                          │
-│       ▼                                                          │
-│  AuditPerspective : IPerspectiveFor<AuditLogEntry, EventAudited>│
-│       │                                                          │
-│       ▼                                                          │
-│  wb_audit_log table (queryable via IAuditLogLens)               │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Appended["Domain Event Appended<br/>(OrderCreated, PaymentProcessed, ...)"]
+    Enabled{"System Audit Enabled?"}
+    Nothing["(nothing emitted)"]
+    Emit["Emit EventAudited to $wb-system stream"]
+    Perspective["AuditPerspective : IPerspectiveFor&lt;AuditLogEntry, EventAudited&gt;"]
+    Table["wb_audit_log table (queryable via IAuditLogLens)"]
+
+    Appended --> Enabled
+    Enabled -->|No| Nothing
+    Enabled -->|Yes| Emit
+    Emit --> Perspective
+    Perspective --> Table
 ```
 
 **Key insight**: System events dogfood Whizbang's own event infrastructure - no special interfaces needed.

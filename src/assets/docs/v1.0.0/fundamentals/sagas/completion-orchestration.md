@@ -29,28 +29,27 @@ The **completion watchdog** is the safety net. It fires on a budgeted schedule, 
 
 ## The two completion paths
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ PRIMARY: event-driven completion                                │
-│                                                                 │
-│   per-item terminal event → SagaItemCompletedHandler →          │
-│   TryRecoverViaWatchdogAsync → CompleteSagaAsync (one-shot)     │
-│                                                                 │
-│ Last item to terminate sees agg.Total == TotalItems, the        │
-│ reconciler agrees with the event store, exactly-one             │
-│ SagaCompletedEvent emits via PublishOnceAsync.                  │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓ if dropped
-┌─────────────────────────────────────────────────────────────────┐
-│ SAFETY NET: time-driven completion                              │
-│                                                                 │
-│   watchdog tick (scheduled_for in outbox) →                     │
-│   TryRecoverViaWatchdogTickAsync →                              │
-│       recovered          → exit                                 │
-│       progress observed  → next tick at ETA + safety            │
-│       no progress        → stall counter increments             │
-│       max stalls reached → SagaCompletionAbandonedEvent         │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Primary["PRIMARY: event-driven completion"]
+        P1["per-item terminal event"] --> P2["SagaItemCompletedHandler"]
+        P2 --> P3["TryRecoverViaWatchdogAsync"]
+        P3 --> P4["CompleteSagaAsync (one-shot)"]
+        PNote["Last item to terminate sees agg.Total == TotalItems,<br/>the reconciler agrees with the event store,<br/>exactly-one SagaCompletedEvent emits via PublishOnceAsync."]
+    end
+
+    subgraph Safety["SAFETY NET: time-driven completion"]
+        S1["watchdog tick (scheduled_for in outbox)"] --> S2["TryRecoverViaWatchdogTickAsync"]
+        S2 -->|"recovered"| S3["exit"]
+        S2 -->|"progress observed"| S4["next tick at ETA + safety"]
+        S2 -->|"no progress"| S5["stall counter increments"]
+        S2 -->|"max stalls reached"| S6["SagaCompletionAbandonedEvent"]
+    end
+
+    Primary -->|"if dropped"| Safety
+
+    style Primary fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Safety fill:#fff3cd,stroke:#ffc107,stroke-width:2px
 ```
 
 ## The cascade bug (motivating slot-3 incident, 2026-06-25)

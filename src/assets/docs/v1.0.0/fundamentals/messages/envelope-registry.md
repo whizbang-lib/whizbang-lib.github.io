@@ -71,19 +71,18 @@ public interface IEnvelopeRegistry {
 
 ## Usage Flow
 
-```
-1. Dispatcher creates envelope
-   └─> envelopeRegistry.Register(envelope)
+```mermaid
+graph TB
+    S1["1. Dispatcher creates envelope<br/>envelopeRegistry.Register(envelope)"]
+    S2["2. Receptor receives message (payload only)<br/>Calls eventStore.AppendAsync(streamId, message)"]
+    S3["3. EventStore needs envelope context<br/>envelope = envelopeRegistry.TryGetEnvelope(message)<br/>Uses envelope.CorrelationId, envelope.Hops, etc."]
+    S4["4. Processing completes<br/>envelopeRegistry.Unregister(message)"]
 
-2. Receptor receives message (payload only)
-   └─> Calls eventStore.AppendAsync(streamId, message)
+    S1 --> S2 --> S3 --> S4
 
-3. EventStore needs envelope context
-   └─> envelope = envelopeRegistry.TryGetEnvelope(message)
-   └─> Uses envelope.CorrelationId, envelope.Hops, etc.
-
-4. Processing completes
-   └─> envelopeRegistry.Unregister(message)
+    style S1 fill:#fff3cd,stroke:#ffc107
+    style S2 fill:#d4edda,stroke:#28a745
+    style S3 fill:#fff3cd,stroke:#ffc107
 ```
 
 ## How It Works

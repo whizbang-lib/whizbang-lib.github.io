@@ -225,23 +225,28 @@ MyApp/
 
 ### Project Dependencies
 
-```
-MyApp.API
-  ├─> MyApp.Domain
-  ├─> MyApp.ReadModels
-  └─> Whizbang.Core
+```mermaid
+flowchart TD
+    API["MyApp.API"]
+    Domain["MyApp.Domain"]
+    ReadModels["MyApp.ReadModels"]
+    Messages["MyApp.Messages<br/>(no dependencies - pure DTOs)"]
+    Core["Whizbang.Core"]
+    Dapper["Whizbang.Data.Dapper.Postgres"]
 
-MyApp.Domain
-  ├─> MyApp.Messages
-  └─> Whizbang.Core
+    API --> Domain
+    API --> ReadModels
+    API --> Core
+    Domain --> Messages
+    Domain --> Core
+    ReadModels --> Messages
+    ReadModels --> Core
+    ReadModels --> Dapper
 
-MyApp.ReadModels
-  ├─> MyApp.Messages
-  ├─> Whizbang.Core
-  └─> Whizbang.Data.Dapper.Postgres
-
-MyApp.Messages
-  └─> (no dependencies - pure DTOs)
+    class API,Domain layer-core
+    class ReadModels layer-read
+    class Messages layer-command
+    class Core,Dapper layer-infrastructure
 ```
 
 **Key Point**: Messages project has **no dependencies** - makes it easy to share across services.
@@ -411,27 +416,26 @@ ECommerce/
 
 ### Communication Pattern
 
-```
-1. UI → BFF.API
-   └─> Send CreateOrder command (via HTTP POST)
+```mermaid
+sequenceDiagram
+    participant UI
+    participant BFF as BFF.API
+    participant Dispatcher as Dispatcher (local)
+    participant Receptor
+    participant Outbox
+    participant Publisher as WorkCoordinatorPublisher
+    participant ASB as Azure Service Bus
+    participant Inventory as InventoryWorker
+    participant Payment as PaymentWorker
+    participant Perspectives as BFF Perspectives
 
-2. BFF.API → Dispatcher (local)
-   └─> LocalInvokeAsync<CreateOrder, OrderCreated>()
-
-3. Receptor → Outbox
-   └─> Stores OrderCreated event in outbox
-
-4. WorkCoordinatorPublisher → Azure Service Bus
-   └─> Publishes OrderCreated to topic
-
-5. InventoryWorker subscribes to OrderCreated
-   └─> Processes event, publishes InventoryReserved
-
-6. PaymentWorker subscribes to InventoryReserved
-   └─> Processes event, publishes PaymentProcessed
-
-7. BFF Perspectives subscribe to all events
-   └─> Update read models, trigger SignalR updates to UI
+    UI->>BFF: 1. Send CreateOrder command (via HTTP POST)
+    BFF->>Dispatcher: 2. LocalInvokeAsync&lt;CreateOrder, OrderCreated&gt;()
+    Receptor->>Outbox: 3. Stores OrderCreated event in outbox
+    Publisher->>ASB: 4. Publishes OrderCreated to topic
+    ASB->>Inventory: 5. Subscribes to OrderCreated - processes event, publishes InventoryReserved
+    ASB->>Payment: 6. Subscribes to InventoryReserved - processes event, publishes PaymentProcessed
+    ASB->>Perspectives: 7. Subscribe to all events - update read models, trigger SignalR updates to UI
 ```
 
 ### .NET Aspire Orchestration

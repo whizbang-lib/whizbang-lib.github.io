@@ -35,17 +35,21 @@ Traditional debugging shows you **where you are now**. Hop chains show you **how
 
 Just as IP packets accumulate hops as they cross routers, Whizbang messages accumulate context hops as they cross receptors and services:
 
-```
-Network Packet:                Whizbang Message:
-┌───────────────────┐          ┌────────────────────────────┐
-│ IP Header         │          │ MessageEnvelope<T>         │
-│ ├─ Source IP      │          │ ├─ MessageId               │
-│ ├─ Dest IP        │          │ ├─ Payload (your message)  │
-│ └─ Hop Count: 3   │          │ └─ Hops: [Hop1, Hop2, …]   │
-├───────────────────┤          │      each hop carries      │
-│ Payload           │          │      routing + scope +     │
-└───────────────────┘          │      policy + caller info  │
-                               └────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph Packet["Network Packet"]
+        direction TB
+        IPHeader["IP Header<br/>• Source IP<br/>• Dest IP<br/>• Hop Count: 3"]
+        PacketPayload["Payload"]
+        IPHeader --- PacketPayload
+    end
+
+    subgraph Message["Whizbang Message"]
+        direction TB
+        Envelope["MessageEnvelope&lt;T&gt;<br/>• MessageId<br/>• Payload (your message)<br/>• Hops: [Hop1, Hop2, …]"]
+        HopInfo["each hop carries<br/>routing + scope +<br/>policy + caller info"]
+        Envelope --- HopInfo
+    end
 ```
 
 **Key insight**: Hops capture **where the message has been** and **what decisions were made** along the way. Correlation and causation are *derived from the hops* (the first hop establishes them) rather than being separate top-level fields.
@@ -163,14 +167,12 @@ public record ServiceInstanceInfo {
 
 When a message spawns a child message, the parent's **`Current` hops are carried forward as the child's `Causation` hops**. The child always has at least one `Current` hop (its own origin). This preserves the complete causal chain: from any message you can see the hops of everything that led to it.
 
-```
-CreateOrder command             OrderCreated event
-┌───────────────────┐           ┌───────────────────────────┐
-│ Hops:             │           │ Hops:                     │
-│  [Current] gateway│  ───────▶ │  [Causation] gateway      │  ← inherited
-│  [Current] orders │           │  [Causation] orders       │  ← inherited
-└───────────────────┘           │  [Current]   orders (evt) │  ← this message
-                                └───────────────────────────┘
+```mermaid
+flowchart LR
+    Cmd["CreateOrder command<br/>Hops:<br/>[Current] gateway<br/>[Current] orders"]
+    Evt["OrderCreated event<br/>Hops:<br/>[Causation] gateway ← inherited<br/>[Causation] orders ← inherited<br/>[Current] orders (evt) ← this message"]
+
+    Cmd --> Evt
 ```
 
 Use `envelope.GetCurrentHops()` and `envelope.GetCausationHops()` to split them.
