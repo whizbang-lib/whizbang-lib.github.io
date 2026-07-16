@@ -1,5 +1,6 @@
 ---
 title: Deployment
+pageType: tutorial
 version: 1.0.0
 category: Tutorial
 order: 10

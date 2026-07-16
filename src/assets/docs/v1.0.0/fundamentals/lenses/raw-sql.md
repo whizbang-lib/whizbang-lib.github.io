@@ -1,5 +1,6 @@
 ---
 title: "Raw SQL and Connection Access"
+pageType: concept
 version: 1.0.0
 category: "Lenses"
 order: 6

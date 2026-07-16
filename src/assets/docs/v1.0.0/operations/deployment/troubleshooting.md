@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting Guide
+pageType: troubleshooting
 version: 1.0.0
 category: Advanced Topics
 order: 9

@@ -700,36 +700,65 @@ public class OrderAggregate : Aggregate {
 - Document internal behavior when relevant
 - Explain design decisions
 
-## Documentation Types
+## Documentation Types (pageType taxonomy)
 
-### Tutorials
+Every content page declares its type in frontmatter, following the
+[Diátaxis](https://diataxis.fr/) framework plus two pragmatic extensions
+(`overview`, `troubleshooting`). Validated by
+`src/scripts/validate-frontmatter.mjs` (warning mode until backfill review
+completes; CI-enforced via `--strict-taxonomy` after).
+
+```yaml
+---
+title: Page Title
+pageType: concept   # overview | concept | tutorial | guide | reference | troubleshooting
+audience: [consumer]  # optional; consumer (default) | contributor | porter
+---
+```
+
+A page that mixes types (e.g. tutorial steps inside a reference) is a
+candidate for splitting — that's the objective criterion the taxonomy exists
+to provide.
+
+### `tutorial` — learning-oriented
 
 - Step-by-step instructions
 - Complete working examples
 - Expected outcomes at each step
 - Clear prerequisites
 
-### Concept Guides
+### `concept` — understanding-oriented (Diátaxis "explanation")
 
 - Explain what and why
 - Use cases and scenarios
 - Design rationale
 - Related patterns
 
-### API Reference
+### `reference` — information-oriented
 
-- Complete method signatures
+- Complete method signatures / option tables
 - All parameters documented
 - Return values explained
 - Exceptions listed
 - Usage examples
 
-### How-To Guides
+### `guide` — task-oriented (Diátaxis "how-to")
 
 - Solve specific problems
 - Practical, goal-oriented
 - Assume baseline knowledge
 - Quick and focused
+
+### `overview` — section landing pages
+
+- Orient the reader in a section (`index.md`, folder-name pages)
+- Summarize child pages with links
+- Minimal standalone content
+
+### `troubleshooting` — problem/solution catalogs
+
+- Symptom → cause → fix structure
+- Diagnostic codes (WHIZ###), FAQs, error references
 
 ## Maintaining Documentation
 

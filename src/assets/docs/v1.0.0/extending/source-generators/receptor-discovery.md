@@ -1,5 +1,6 @@
 ---
 title: Receptor Discovery
+pageType: concept
 version: 1.0.0
 category: Source Generators
 order: 1

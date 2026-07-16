@@ -1,5 +1,6 @@
 ---
 title: Perspective Worker
+pageType: concept
 version: 1.0.0
 category: Workers
 order: 1

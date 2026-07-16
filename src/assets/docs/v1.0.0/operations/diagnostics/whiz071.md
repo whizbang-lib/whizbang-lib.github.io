@@ -1,5 +1,6 @@
 ---
 title: 'WHIZ071: Missing Pgvector Package'
+pageType: troubleshooting
 description: >-
   Error diagnostic when a perspective model uses [VectorField] but the required
   base Pgvector package is not referenced

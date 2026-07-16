@@ -1,5 +1,6 @@
 ---
 title: 'WHIZ802: VectorField Invalid Dimensions'
+pageType: troubleshooting
 description: >-
   Error diagnostic when a [VectorField] attribute has invalid dimensions value
 version: 1.0.0

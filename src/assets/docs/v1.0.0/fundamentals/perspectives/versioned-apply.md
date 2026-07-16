@@ -1,5 +1,6 @@
 ---
 title: Versioned Apply — Strict Cross-Pod Ordering
+pageType: concept
 version: 1.0.0
 category: Fundamentals
 order: 5

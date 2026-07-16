@@ -1,5 +1,6 @@
 ---
 title: 'Serializable Property Analyzer'
+pageType: troubleshooting
 description: >-
   Roslyn analyzer that detects non-serializable properties on ICommand/IEvent types
   for AOT compatibility

@@ -1,5 +1,6 @@
 ---
 title: Production Hardening
+pageType: concept
 version: 1.0.0
 category: API
 order: 8

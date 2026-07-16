@@ -1,5 +1,6 @@
 ---
 title: 'WHIZ120: Pinned Type Renamed Without Ledger Acknowledgment'
+pageType: troubleshooting
 description: >-
   Error diagnostic when a [PinnedId] type's CLR name changed but the change was not acknowledged in the
   committed pinned-type ledger — an un-acknowledged rename that would break deserialization of stored events.

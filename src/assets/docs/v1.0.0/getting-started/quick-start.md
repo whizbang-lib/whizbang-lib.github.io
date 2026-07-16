@@ -1,5 +1,6 @@
 ---
 title: Quick Start Tutorial
+pageType: tutorial
 version: 1.0.0
 category: Getting Started
 order: 3

@@ -1,5 +1,6 @@
 ---
 title: Pinned Worker Connection Pool
+pageType: concept
 version: 1.0.0
 category: Fundamentals
 order: 6

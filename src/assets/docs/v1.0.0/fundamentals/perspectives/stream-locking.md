@@ -1,5 +1,6 @@
 ---
 title: Perspective Stream Locking
+pageType: concept
 version: 1.0.0
 category: Perspectives
 order: 12

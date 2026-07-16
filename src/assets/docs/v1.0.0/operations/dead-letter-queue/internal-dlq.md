@@ -1,5 +1,6 @@
 ---
 title: Internal DLQ (wh_dead_letters)
+pageType: concept
 version: 1.0.0
 category: Dead-Letter Queue
 order: 1

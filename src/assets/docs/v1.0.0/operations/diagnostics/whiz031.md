@@ -1,5 +1,6 @@
 ---
 title: 'WHIZ031: Multiple StreamKey Attributes'
+pageType: troubleshooting
 description: >-
   Event type has multiple properties marked with [StreamKey] - only one is
   allowed

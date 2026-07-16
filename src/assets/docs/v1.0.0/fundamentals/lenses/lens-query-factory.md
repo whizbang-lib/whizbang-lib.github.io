@@ -1,5 +1,6 @@
 ---
 title: Lens Query Factory
+pageType: concept
 version: 1.0.0
 category: Lenses
 order: 2

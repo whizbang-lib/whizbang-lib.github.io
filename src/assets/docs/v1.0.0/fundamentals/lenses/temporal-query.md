@@ -1,5 +1,6 @@
 ---
 title: Temporal Lens Queries
+pageType: concept
 version: 1.0.0
 category: Lenses
 order: 4

@@ -1,5 +1,6 @@
 ---
 title: Testing Strategy
+pageType: tutorial
 version: 1.0.0
 category: Tutorial
 order: 9

@@ -1,5 +1,6 @@
 ---
 title: 'WHIZ121: Pinned-Type Ledger Entry Has No Living Type'
+pageType: troubleshooting
 description: >-
   Warning diagnostic when the committed pinned-type ledger records a pinned id that no [PinnedId] type in the
   compilation carries — a removed type or a changed pinned id, whose aliases would register against nothing.

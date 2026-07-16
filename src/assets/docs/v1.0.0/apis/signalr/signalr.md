@@ -1,5 +1,6 @@
 ---
 title: SignalR Integration
+pageType: overview
 version: 1.0.0
 category: Integrations
 order: 1

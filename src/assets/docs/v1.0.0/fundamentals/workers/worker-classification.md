@@ -1,5 +1,6 @@
 ---
 title: Worker Classification — A through F
+pageType: concept
 version: 1.0.0
 category: Fundamentals
 order: 9

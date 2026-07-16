@@ -1,5 +1,6 @@
 ---
 title: "GetPerspectiveAssociations: Strongly-Typed Perspective Queries"
+pageType: concept
 version: 1.0.0
 category: "Perspectives"
 order: 9

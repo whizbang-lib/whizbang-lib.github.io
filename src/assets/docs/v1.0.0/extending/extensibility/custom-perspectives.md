@@ -1,5 +1,6 @@
 ---
 title: Custom Perspectives
+pageType: concept
 version: 1.0.0
 category: Extensibility
 order: 3

@@ -1,5 +1,6 @@
 ---
 title: 'WHIZ080: Multiple Handlers for RPC Message'
+pageType: troubleshooting
 description: >-
   Warning diagnostic when multiple handlers are registered for a message type
   that returns a response (RPC pattern)

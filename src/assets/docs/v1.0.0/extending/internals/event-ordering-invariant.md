@@ -1,5 +1,6 @@
 ---
 title: Event Ordering Invariant
+pageType: concept
 version: 1.0.0
 category: Architecture
 order: 2

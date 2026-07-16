@@ -1,5 +1,6 @@
 ---
 title: Transports Component
+pageType: overview
 version: 1.0.0
 category: Components
 order: 9

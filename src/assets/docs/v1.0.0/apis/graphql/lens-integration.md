@@ -1,5 +1,6 @@
 ---
 title: Lens Integration
+pageType: concept
 version: 1.0.0
 category: GraphQL
 order: 3

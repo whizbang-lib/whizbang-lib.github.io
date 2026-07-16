@@ -1,5 +1,6 @@
 ---
 title: Tracing
+pageType: concept
 version: 1.0.0
 category: Observability
 order: 1

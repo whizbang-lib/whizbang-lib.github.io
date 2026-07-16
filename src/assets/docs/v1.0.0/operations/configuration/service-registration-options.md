@@ -1,5 +1,6 @@
 ---
 title: ServiceRegistrationOptions
+pageType: reference
 version: 1.0.0
 category: DI
 order: 1

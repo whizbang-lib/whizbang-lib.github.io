@@ -1,5 +1,6 @@
 ---
 title: Message Envelopes Deep Dive
+pageType: concept
 version: 1.0.0
 category: Messaging
 order: 4

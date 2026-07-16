@@ -1,5 +1,6 @@
 ---
 title: Lifecycle Coordinator
+pageType: concept
 version: 1.0.0
 category: Core Concepts
 order: 11

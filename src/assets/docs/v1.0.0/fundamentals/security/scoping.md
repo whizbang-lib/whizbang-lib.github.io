@@ -1,5 +1,6 @@
 ---
 title: Scoping
+pageType: concept
 version: 1.0.0
 category: Core Concepts
 description: Multi-tenancy and data isolation through composable scope filters, enabling tenant, user, organization, and principal-based access patterns.
