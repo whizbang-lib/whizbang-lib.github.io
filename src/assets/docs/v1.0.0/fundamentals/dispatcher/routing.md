@@ -1369,18 +1369,32 @@ service-name check:
 - Last hop's service name **equals** this service → self-echo → discard.
 - Last hop's service name **differs** → legitimate cross-service command → process.
 
-```
-Event published by ChatService (owns "JDX.Contracts.Chat")
-  ├── Local fast path: ChatService processes immediately
-  └── Transport broadcast:
-        arrives at ChatService inbox → DISCARDED (owned event echo, unconditional)
-        arrives at BffService inbox  → PROCESSED (cross-service delivery)
+```mermaid
+graph TB
+    E["Event published by ChatService (owns &quot;JDX.Contracts.Chat&quot;)"]
+    EL["Local fast path: ChatService processes immediately"]
+    ET["Transport broadcast"]
+    ET1["arrives at ChatService inbox → DISCARDED (owned event echo, unconditional)"]
+    ET2["arrives at BffService inbox → PROCESSED (cross-service delivery)"]
 
-Command sent by BffService into ChatService's owned namespace
-  └── arrives at ChatService inbox → PROCESSED (last hop = "BffService" ≠ "ChatService")
+    CA["Command sent by BffService into ChatService's owned namespace"]
+    CA1["arrives at ChatService inbox → PROCESSED (last hop = &quot;BffService&quot; ≠ &quot;ChatService&quot;)"]
 
-Command emitted by ChatService into its own namespace, echoed back
-  └── arrives at ChatService inbox → DISCARDED (last hop = "ChatService", self-echo)
+    CB["Command emitted by ChatService into its own namespace, echoed back"]
+    CB1["arrives at ChatService inbox → DISCARDED (last hop = &quot;ChatService&quot;, self-echo)"]
+
+    E --> EL
+    E --> ET
+    ET --> ET1
+    ET --> ET2
+    CA --> CA1
+    CB --> CB1
+
+    style EL fill:#d4edda,stroke:#28a745
+    style ET2 fill:#d4edda,stroke:#28a745
+    style CA1 fill:#d4edda,stroke:#28a745
+    style ET1 fill:#f8d7da,stroke:#dc3545
+    style CB1 fill:#f8d7da,stroke:#dc3545
 ```
 
 Both discard paths log at `Debug`: an owned-event echo logs *"Owned event echo discarded: {MessageType}

@@ -26,35 +26,31 @@ Implement **full event sourcing with CQRS** using Whizbang - event store, aggreg
 
 ## Architecture
 
-```
-┌────────────────────────────────────────────────────────────┐
-│  Event Sourcing Architecture                               │
-│                                                             │
-│  WRITE SIDE (Commands)                                     │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  1. Load Aggregate from Event Store                  │  │
-│  │  2. Execute Command (domain logic)                   │  │
-│  │  3. Generate Events                                  │  │
-│  │  4. Persist Events to Event Store                    │  │
-│  │  5. Publish Events to Bus                            │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  Event Store (Append-Only Log)                       │  │
-│  │  ┌────────┬────────┬────────┬────────┬────────┐      │  │
-│  │  │Event 1 │Event 2 │Event 3 │Event 4 │Event 5 │      │  │
-│  │  └────────┴────────┴────────┴────────┴────────┘      │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                          │                                  │
-│                          ▼                                  │
-│  READ SIDE (Queries)                                       │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  Projections (Perspectives)                          │  │
-│  │  - OrderSummaryProjection                            │  │
-│  │  - CustomerActivityProjection                        │  │
-│  │  - InventoryProjection                               │  │
-│  └──────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph ESA["Event Sourcing Architecture"]
+        direction TB
+
+        subgraph WRITE["WRITE SIDE (Commands)"]
+            WriteSteps["1. Load Aggregate from Event Store<br/>2. Execute Command (domain logic)<br/>3. Generate Events<br/>4. Persist Events to Event Store<br/>5. Publish Events to Bus"]
+        end
+
+        subgraph STORE["Event Store (Append-Only Log)"]
+            direction LR
+            E1["Event 1"] ~~~ E2["Event 2"] ~~~ E3["Event 3"] ~~~ E4["Event 4"] ~~~ E5["Event 5"]
+        end
+
+        subgraph READ["READ SIDE (Queries)"]
+            Projections["Projections (Perspectives)<br/>- OrderSummaryProjection<br/>- CustomerActivityProjection<br/>- InventoryProjection"]
+        end
+
+        WRITE ~~~ STORE
+        STORE --> READ
+    end
+
+    class WriteSteps layer-command
+    class E1,E2,E3,E4,E5 layer-event
+    class Projections layer-read
 ```
 
 ---

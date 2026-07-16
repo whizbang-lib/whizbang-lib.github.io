@@ -28,44 +28,37 @@ This is **Part 9** (Final) of the ECommerce Tutorial. Complete [Testing Strategy
 
 ## Deployment Architecture
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  Azure Kubernetes Service (AKS)                              │
-│                                                               │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  Ingress Controller (nginx)                         │    │
-│  │  - SSL/TLS Termination                              │    │
-│  │  - Load Balancing                                   │    │
-│  └────────────┬─────────────────────────────────────────┘   │
-│               │                                               │
-│  ┌────────────▼────────┐  ┌──────────────────┐              │
-│  │  Order Service      │  │ Customer Service │              │
-│  │  (3 replicas)       │  │  (2 replicas)    │              │
-│  └─────────────────────┘  └──────────────────┘              │
-│                                                               │
-│  ┌─────────────────────┐  ┌──────────────────┐              │
-│  │ Inventory Worker    │  │  Payment Worker  │              │
-│  │  (2 replicas)       │  │  (2 replicas)    │              │
-│  └─────────────────────┘  └──────────────────┘              │
-│                                                               │
-│  ┌─────────────────────┐  ┌──────────────────┐              │
-│  │Notification Worker  │  │ Shipping Worker  │              │
-│  │  (2 replicas)       │  │  (2 replicas)    │              │
-│  └─────────────────────┘  └──────────────────┘              │
-│                                                               │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  Analytics Worker (1 replica)                        │   │
-│  └──────────────────────────────────────────────────────┘   │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph AKS["Azure Kubernetes Service (AKS)"]
+        Ingress["Ingress Controller (nginx)<br/>- SSL/TLS Termination<br/>- Load Balancing"]
+        OrderSvc["Order Service<br/>(3 replicas)"]
+        CustomerSvc["Customer Service<br/>(2 replicas)"]
+        InventoryWorker["Inventory Worker<br/>(2 replicas)"]
+        PaymentWorker["Payment Worker<br/>(2 replicas)"]
+        NotificationWorker["Notification Worker<br/>(2 replicas)"]
+        ShippingWorker["Shipping Worker<br/>(2 replicas)"]
+        AnalyticsWorker["Analytics Worker (1 replica)"]
 
-┌──────────────────────────────────────────────────────────────┐
-│  Azure Managed Services                                      │
-│                                                               │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────┐│
-│  │ Azure Service    │  │ Azure Database   │  │ Azure      ││
-│  │ Bus (Premium)    │  │ for PostgreSQL   │  │ Monitor    ││
-│  └──────────────────┘  └──────────────────┘  └────────────┘│
-└──────────────────────────────────────────────────────────────┘
+        Ingress --> OrderSvc
+        OrderSvc ~~~ CustomerSvc
+        InventoryWorker ~~~ PaymentWorker
+        NotificationWorker ~~~ ShippingWorker
+        OrderSvc ~~~ InventoryWorker
+        InventoryWorker ~~~ NotificationWorker
+        NotificationWorker ~~~ AnalyticsWorker
+    end
+
+    subgraph Managed["Azure Managed Services"]
+        direction LR
+        ASB["Azure Service Bus (Premium)"] ~~~ PG["Azure Database for PostgreSQL"] ~~~ Monitor["Azure Monitor"]
+    end
+
+    AKS ~~~ Managed
+
+    class Ingress layer-command
+    class OrderSvc,CustomerSvc,InventoryWorker,PaymentWorker,NotificationWorker,ShippingWorker,AnalyticsWorker layer-core
+    class ASB,PG,Monitor layer-infrastructure
 ```
 
 ---

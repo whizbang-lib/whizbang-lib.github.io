@@ -130,20 +130,18 @@ public static class MessageAssociationsSchema {
 
 At startup, services reconcile their associations:
 
-```
-1. Service starts
-   └─> Scan assemblies for perspectives and receptors
+```mermaid
+graph TB
+    S1["1. Service starts<br/>Scan assemblies for perspectives and receptors"]
+    S2["2. Discover associations<br/>OrderSummaryPerspective handles OrderCreated, OrderShipped<br/>InventoryReceptor handles OrderCreated"]
+    S3["3. Reconcile with database<br/>Upsert new associations<br/>Remove stale associations (optional)"]
+    S4["4. Auto-create checkpoints<br/>New perspectives get checkpoints initialized"]
 
-2. Discover associations
-   └─> OrderSummaryPerspective handles OrderCreated, OrderShipped
-   └─> InventoryReceptor handles OrderCreated
+    S1 --> S2 --> S3 --> S4
 
-3. Reconcile with database
-   └─> Upsert new associations
-   └─> Remove stale associations (optional)
-
-4. Auto-create checkpoints
-   └─> New perspectives get checkpoints initialized
+    style S2 fill:#d4edda,stroke:#28a745
+    style S3 fill:#fff3cd,stroke:#ffc107
+    style S4 fill:#cce5ff,stroke:#004085
 ```
 
 ### Implementation Example

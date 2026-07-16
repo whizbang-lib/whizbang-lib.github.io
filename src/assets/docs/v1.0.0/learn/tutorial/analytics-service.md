@@ -31,36 +31,23 @@ This is **Part 7** of the ECommerce Tutorial. Complete [Customer Service](custom
 
 ## What You'll Build
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  Analytics Service Architecture                              │
-│                                                               │
-│  ┌─────────────┐                                             │
-│  │Azure Service│  ALL domain events                          │
-│  │     Bus     │  (OrderCreated, PaymentProcessed, etc.)     │
-│  └──────┬──────┘                                             │
-│         │                                                     │
-│         ▼                                                     │
-│  ┌────────────────────────────────────┐                      │
-│  │  Time-Series Perspectives          │                      │
-│  │  - DailySalesAnalyticsPerspective  │                      │
-│  │  - HourlySalesAnalyticsPerspective │                      │
-│  │  - ProductAnalyticsPerspective     │                      │
-│  └──────────┬─────────────────────────┘                      │
-│             │                                                 │
-│             ▼                                                 │
-│  ┌────────────────────────────────────┐                      │
-│  │  PostgreSQL Time-Series Tables     │                      │
-│  │  (Partitioned by date)             │                      │
-│  └──────────┬─────────────────────────┘                      │
-│             │                                                 │
-│             ▼                                                 │
-│  ┌────────────────────────────────────┐                      │
-│  │  Analytics API (REST)              │                      │
-│  │  GET /analytics/sales/daily        │                      │
-│  │  GET /analytics/products/top       │                      │
-│  └────────────────────────────────────┘                      │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph ASA["Analytics Service Architecture"]
+        ASB["Azure Service Bus"]
+        Perspectives["Time-Series Perspectives<br/>- DailySalesAnalyticsPerspective<br/>- HourlySalesAnalyticsPerspective<br/>- ProductAnalyticsPerspective"]
+        Tables["PostgreSQL Time-Series Tables<br/>(Partitioned by date)"]
+        API["Analytics API (REST)<br/>GET /analytics/sales/daily<br/>GET /analytics/products/top"]
+
+        ASB -->|"ALL domain events<br/>(OrderCreated, PaymentProcessed, etc.)"| Perspectives
+        Perspectives --> Tables
+        Tables --> API
+    end
+
+    class ASB layer-command
+    class Perspectives layer-read
+    class Tables layer-event
+    class API layer-core
 ```
 
 **Features**:

@@ -95,20 +95,17 @@ public sealed record SerializedEnvelope(
 
 ## Serialization Flow
 
-```
-1. Typed Envelope: MessageEnvelope<OrderCreated>
-   └─> serializer.SerializeEnvelope(envelope)
+```mermaid
+graph TB
+    S1["1. Typed Envelope: MessageEnvelope&lt;OrderCreated&gt;<br/>serializer.SerializeEnvelope(envelope)"]
+    S2["2. Capture Type Metadata<br/>EnvelopeType: &quot;MessageEnvelope&#96;1[[OrderCreated,...]], Whizbang.Core&quot;<br/>MessageType: &quot;MyApp.Events.OrderCreated, MyApp&quot;"]
+    S3["3. Convert to JsonElement<br/>Serialize envelope to JSON<br/>Deserialize as MessageEnvelope&lt;JsonElement&gt;"]
+    S4["4. Return SerializedEnvelope<br/>Contains JsonEnvelope + type metadata"]
 
-2. Capture Type Metadata
-   └─> EnvelopeType: "MessageEnvelope`1[[OrderCreated,...]], Whizbang.Core"
-   └─> MessageType: "MyApp.Events.OrderCreated, MyApp"
+    S1 --> S2 --> S3 --> S4
 
-3. Convert to JsonElement
-   └─> Serialize envelope to JSON
-   └─> Deserialize as MessageEnvelope<JsonElement>
-
-4. Return SerializedEnvelope
-   └─> Contains JsonEnvelope + type metadata
+    style S1 fill:#fff3cd,stroke:#ffc107
+    style S4 fill:#d4edda,stroke:#28a745
 ```
 
 ## Usage Examples

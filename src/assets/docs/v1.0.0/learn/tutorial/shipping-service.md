@@ -31,37 +31,27 @@ This is **Part 5** of the ECommerce Tutorial. Complete [Notification Service](no
 
 ## What You'll Build
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Shipping Service Architecture                              │
-│                                                              │
-│  ┌─────────────┐                                            │
-│  │Azure Service│  PaymentProcessed event                    │
-│  │     Bus     │──────────────────────┐                     │
-│  └─────────────┘                      │                     │
-│                                        ▼                     │
-│                          ┌────────────────────────┐         │
-│                          │CreateShipmentReceptor  │         │
-│                          │  - Get order details   │         │
-│                          │  - Call carrier API    │         │
-│                          │  - Store tracking info │         │
-│                          └──────────┬─────────────┘         │
-│                                     │                        │
-│                      ┌──────────────┼──────────────┐        │
-│                      │              │              │        │
-│                      ▼              ▼              ▼        │
-│                 ┌─────────┐   ┌─────────┐   ┌──────────┐   │
-│                 │Postgres │   │ Outbox  │   │ Carrier  │   │
-│                 │Shipments│   │ Table   │   │   API    │   │
-│                 │  Table  │   │         │   │(FedEx)   │   │
-│                 └─────────┘   └─────────┘   └──────────┘   │
-│                                     │                        │
-│                                     ▼                        │
-│                          ┌────────────────────────┐         │
-│                          │ Azure Service Bus      │         │
-│                          │ ShipmentCreated        │         │
-│                          └────────────────────────┘         │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph SSA["Shipping Service Architecture"]
+        ASBIn["Azure Service Bus"]
+        Receptor["CreateShipmentReceptor<br/>- Get order details<br/>- Call carrier API<br/>- Store tracking info"]
+        ShipmentsTable["Postgres Shipments Table"]
+        OutboxTable["Outbox Table"]
+        CarrierAPI["Carrier API<br/>(FedEx)"]
+        ASBOut["Azure Service Bus<br/>ShipmentCreated"]
+
+        ASBIn -->|"PaymentProcessed event"| Receptor
+        Receptor --> ShipmentsTable
+        Receptor --> OutboxTable
+        Receptor --> CarrierAPI
+        OutboxTable --> ASBOut
+    end
+
+    class ASBIn,ASBOut,OutboxTable layer-command
+    class Receptor layer-core
+    class ShipmentsTable layer-event
+    class CarrierAPI layer-infrastructure
 ```
 
 **Features**:

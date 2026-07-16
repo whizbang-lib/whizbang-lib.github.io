@@ -62,79 +62,45 @@ The **Azure Service Bus transport** provides reliable, ordered message delivery 
 
 ### Topic/Subscription Pattern
 
-```
-┌────────────────────────────────────────────────────────┐
-│  Azure Service Bus Namespace                           │
-│                                                         │
-│  ┌────────────────────────────────────────────────┐   │
-│  │  Topic: "whizbang.events"                      │   │
-│  │                                                 │   │
-│  │  ┌──────────────────────────────────────────┐ │   │
-│  │  │  Subscription: "inventory-service"       │ │   │
-│  │  │  Filter: Destination = "inventory"       │ │   │
-│  │  │  → Inventory Service                     │ │   │
-│  │  └──────────────────────────────────────────┘ │   │
-│  │                                                 │   │
-│  │  ┌──────────────────────────────────────────┐ │   │
-│  │  │  Subscription: "notification-service"    │ │   │
-│  │  │  Filter: Destination = "notifications"   │ │   │
-│  │  │  → Notification Service                  │ │   │
-│  │  └──────────────────────────────────────────┘ │   │
-│  │                                                 │   │
-│  │  ┌──────────────────────────────────────────┐ │   │
-│  │  │  Subscription: "analytics-service"       │ │   │
-│  │  │  Filter: Destination = "analytics"       │ │   │
-│  │  │  → Analytics Service                     │ │   │
-│  │  └──────────────────────────────────────────┘ │   │
-│  └────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph NS["Azure Service Bus Namespace"]
+        subgraph Topic["Topic: #quot;whizbang.events#quot;"]
+            Sub1["Subscription: #quot;inventory-service#quot;<br/>Filter: Destination = #quot;inventory#quot;"]
+            Sub2["Subscription: #quot;notification-service#quot;<br/>Filter: Destination = #quot;notifications#quot;"]
+            Sub3["Subscription: #quot;analytics-service#quot;<br/>Filter: Destination = #quot;analytics#quot;"]
+        end
+    end
+
+    Svc1["Inventory Service"]
+    Svc2["Notification Service"]
+    Svc3["Analytics Service"]
+
+    Sub1 --> Svc1
+    Sub2 --> Svc2
+    Sub3 --> Svc3
+
+    class Sub1,Sub2,Sub3 layer-command
+    class Svc1,Svc2,Svc3 layer-core
 ```
 
 ### Message Flow
 
-```
-Publisher (Order Service)
-  │
-  │ 1. PublishAsync(envelope, destination)
-  │    Destination: "inventory"
-  ▼
-┌─────────────────────────────────────┐
-│  AzureServiceBusTransport           │
-│                                     │
-│  - Serialize MessageEnvelope        │
-│  - Set ApplicationProperties:       │
-│    • MessageId                      │
-│    • CorrelationId                  │
-│    • CausationId                    │
-│    • Destination = "inventory"      │
-└─────────────────────────────────────┘
-  │
-  │ 2. SendMessageAsync()
-  ▼
-┌─────────────────────────────────────┐
-│  Azure Service Bus Topic            │
-│  "whizbang.events"                  │
-└─────────────────────────────────────┘
-  │
-  │ 3. Correlation Filter
-  │    WHERE Destination = "inventory"
-  ▼
-┌─────────────────────────────────────┐
-│  Subscription: "inventory-service"  │
-│  (Only messages with matching       │
-│   Destination property)             │
-└─────────────────────────────────────┘
-  │
-  │ 4. ProcessMessageAsync()
-  ▼
-┌─────────────────────────────────────┐
-│  Inventory Service Subscriber       │
-│                                     │
-│  - Deserialize MessageEnvelope      │
-│  - Extract metadata (IDs, hops)     │
-│  - Invoke handler                   │
-│  - Complete or Abandon message      │
-└─────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Publisher["Publisher (Order Service)"]
+    Transport["AzureServiceBusTransport<br/><br/>- Serialize MessageEnvelope<br/>- Set ApplicationProperties:<br/>• MessageId<br/>• CorrelationId<br/>• CausationId<br/>• Destination = #quot;inventory#quot;"]
+    Topic["Azure Service Bus Topic<br/>#quot;whizbang.events#quot;"]
+    Subscription["Subscription: #quot;inventory-service#quot;<br/>(Only messages with matching<br/>Destination property)"]
+    Subscriber["Inventory Service Subscriber<br/><br/>- Deserialize MessageEnvelope<br/>- Extract metadata (IDs, hops)<br/>- Invoke handler<br/>- Complete or Abandon message"]
+
+    Publisher -->|"1. PublishAsync(envelope, destination)<br/>Destination: #quot;inventory#quot;"| Transport
+    Transport -->|"2. SendMessageAsync()"| Topic
+    Topic -->|"3. Correlation Filter<br/>WHERE Destination = #quot;inventory#quot;"| Subscription
+    Subscription -->|"4. ProcessMessageAsync()"| Subscriber
+
+    class Publisher,Transport,Topic,Subscription layer-command
+    class Subscriber layer-core
 ```
 
 ---

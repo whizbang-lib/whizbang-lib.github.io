@@ -591,25 +591,69 @@ public class OrderNotificationReceptor : IReceptor<OrderPlacedEvent> {
 
 Each worker processes a specific **segment** of the lifecycle. `PostLifecycle` fires at the end of whichever worker is the last to act on the event:
 
-```
-Dispatcher                    OutboxWorker              TransportConsumer         PerspectiveWorker
-─────────────────────────    ─────────────────────    ─────────────────────    ─────────────────────
-ENTRY: dispatch               ENTRY: load from DB      ENTRY: receive            ENTRY: load from DB
-  ┌─ LocalImmediateAsync       ┌─ PreOutboxAsync        ┌─ PreInboxAsync          ┌─ PrePerspectiveAsync
-  ├─ LocalImmediateInline      ├─ PreOutboxInline       ├─ PreInboxInline         ├─ PrePerspectiveInline
-  ├─ PostLifecycleAsync†       ├─ PostOutboxAsync       ├─ PostInboxAsync         ├─ PostPerspectiveAsync
-  └─ PostLifecycleInline†      ├─ PostOutboxInline      ├─ PostInboxInline        ├─ PostPerspectiveInline
-EXIT: done / WhenAll          ├─ PostLifecycleAsync‡   ├─ PostLifecycleAsync*    ├─ PostAllPerspectivesAsync
-                              └─ PostLifecycleInline‡   └─ PostLifecycleInline*   ├─ PostAllPerspectivesInline
-                             EXIT: transport / WhenAll  EXIT: done / WhenAll      ├─ PostLifecycleAsync**
-                                                                                  └─ PostLifecycleInline**
-                                                                                 EXIT: done / WhenAll
+```mermaid
+graph LR
+    subgraph DIS["Dispatcher"]
+        direction TB
+        DIS0["ENTRY: dispatch"]
+        DIS1["LocalImmediateAsync"]
+        DIS2["LocalImmediateInline"]
+        DIS3["PostLifecycleAsync †"]
+        DIS4["PostLifecycleInline †"]
+        DIS5["EXIT: done / WhenAll"]
+        DIS0 --> DIS1 --> DIS2 --> DIS3 --> DIS4 --> DIS5
+    end
 
-† fires if this is the only processing path (Route.Local), OR via WhenAll
-‡ fires if no further processing (event leaves service), OR via WhenAll
-* fires for events WITHOUT perspectives, OR via WhenAll
-** fires AFTER ALL perspectives complete (PostAllPerspectives → PostLifecycle), OR via WhenAll
+    subgraph OBW["OutboxWorker"]
+        direction TB
+        OBW0["ENTRY: load from DB"]
+        OBW1["PreOutboxAsync"]
+        OBW2["PreOutboxInline"]
+        OBW3["PostOutboxAsync"]
+        OBW4["PostOutboxInline"]
+        OBW5["PostLifecycleAsync ‡"]
+        OBW6["PostLifecycleInline ‡"]
+        OBW7["EXIT: transport / WhenAll"]
+        OBW0 --> OBW1 --> OBW2 --> OBW3 --> OBW4 --> OBW5 --> OBW6 --> OBW7
+    end
+
+    subgraph TC["TransportConsumer"]
+        direction TB
+        TC0["ENTRY: receive"]
+        TC1["PreInboxAsync"]
+        TC2["PreInboxInline"]
+        TC3["PostInboxAsync"]
+        TC4["PostInboxInline"]
+        TC5["PostLifecycleAsync *"]
+        TC6["PostLifecycleInline *"]
+        TC7["EXIT: done / WhenAll"]
+        TC0 --> TC1 --> TC2 --> TC3 --> TC4 --> TC5 --> TC6 --> TC7
+    end
+
+    subgraph PW["PerspectiveWorker"]
+        direction TB
+        PW0["ENTRY: load from DB"]
+        PW1["PrePerspectiveAsync"]
+        PW2["PrePerspectiveInline"]
+        PW3["PostPerspectiveAsync"]
+        PW4["PostPerspectiveInline"]
+        PW5["PostAllPerspectivesAsync"]
+        PW6["PostAllPerspectivesInline"]
+        PW7["PostLifecycleAsync **"]
+        PW8["PostLifecycleInline **"]
+        PW9["EXIT: done / WhenAll"]
+        PW0 --> PW1 --> PW2 --> PW3 --> PW4 --> PW5 --> PW6 --> PW7 --> PW8 --> PW9
+    end
+
+    DIS ~~~ OBW
+    OBW ~~~ TC
+    TC ~~~ PW
 ```
+
+- `†` fires if this is the only processing path (Route.Local), OR via WhenAll
+- `‡` fires if no further processing (event leaves service), OR via WhenAll
+- `*` fires for events WITHOUT perspectives, OR via WhenAll
+- `**` fires AFTER ALL perspectives complete (PostAllPerspectives → PostLifecycle), OR via WhenAll
 
 See [Lifecycle Coordinator](lifecycle-coordinator.md) for details on entry/exit points, WhenAll, and tracking.
 

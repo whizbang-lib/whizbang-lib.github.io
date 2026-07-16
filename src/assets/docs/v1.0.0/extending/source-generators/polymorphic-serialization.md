@@ -110,23 +110,23 @@ During source generation, the `MessageJsonContextGenerator`:
 3. Records base class → derived type relationships
 4. Groups by base type to build polymorphic registry
 
-```
-Discovery Phase
-├── SeedCreatedEvent : BaseEvent : IEvent
-│   └── Records: SeedCreatedEvent → BaseEvent
-│   └── Records: SeedCreatedEvent → IEvent
-├── SeedProcessedEvent : BaseEvent : IEvent
-│   └── Records: SeedProcessedEvent → BaseEvent
-│   └── Records: SeedProcessedEvent → IEvent
-└── SeedDeletedEvent : BaseEvent : IEvent
-    └── Records: SeedDeletedEvent → BaseEvent
-    └── Records: SeedDeletedEvent → IEvent
+```mermaid
+flowchart TD
+    subgraph Discovery["Discovery Phase"]
+        D1["SeedCreatedEvent : BaseEvent : IEvent<br/>Records: SeedCreatedEvent → BaseEvent<br/>Records: SeedCreatedEvent → IEvent"]
+        D2["SeedProcessedEvent : BaseEvent : IEvent<br/>Records: SeedProcessedEvent → BaseEvent<br/>Records: SeedProcessedEvent → IEvent"]
+        D3["SeedDeletedEvent : BaseEvent : IEvent<br/>Records: SeedDeletedEvent → BaseEvent<br/>Records: SeedDeletedEvent → IEvent"]
+    end
 
-Grouping Phase
-├── BaseEvent (base class)
-│   └── Derived: [SeedCreatedEvent, SeedProcessedEvent, SeedDeletedEvent]
-└── IEvent (interface)
-    └── Derived: [SeedCreatedEvent, SeedProcessedEvent, SeedDeletedEvent]
+    subgraph Grouping["Grouping Phase"]
+        G1["BaseEvent (base class)<br/>Derived: [SeedCreatedEvent, SeedProcessedEvent, SeedDeletedEvent]"]
+        G2["IEvent (interface)<br/>Derived: [SeedCreatedEvent, SeedProcessedEvent, SeedDeletedEvent]"]
+    end
+
+    Discovery --> Grouping
+
+    class D1,D2,D3 layer-event
+    class G1,G2 layer-core
 ```
 
 ### 2. Internal Data Structures

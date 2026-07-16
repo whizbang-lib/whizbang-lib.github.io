@@ -47,40 +47,34 @@ lastMaintainedCommit: '01f07906'
 
 ### Aspire AppHost Pattern
 
-```
-┌────────────────────────────────────────────────────────┐
-│  AppHost (Program.cs)                                  │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐ │
-│  │  Azure Service Bus Resource                      │ │
-│  │  ├─ Topic: "whizbang.events"                     │ │
-│  │  │  ├─ Subscription: "inventory-service"         │ │
-│  │  │  │  └─ Filter: Destination = "inventory"      │ │
-│  │  │  ├─ Subscription: "notification-service"      │ │
-│  │  │  │  └─ Filter: Destination = "notifications"  │ │
-│  │  │  └─ Subscription: "analytics-service"         │ │
-│  │  │     └─ Filter: Destination = "analytics"      │ │
-│  └──────────────────────────────────────────────────┘ │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐ │
-│  │  Service Projects (with references)              │ │
-│  │  ├─ Inventory Service → inventory-service sub    │ │
-│  │  ├─ Notification Service → notification-service  │ │
-│  │  └─ Analytics Service → analytics-service sub    │ │
-│  └──────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────┘
-         │
-         │ dotnet run (AppHost)
-         ▼
-┌────────────────────────────────────────────────────────┐
-│  Aspire Runtime                                        │
-│                                                         │
-│  - Starts Service Bus emulator (or connects to Azure) │
-│  - Provisions topics and subscriptions via Bicep/API  │
-│  - Injects connection strings into services           │
-│  - Starts all service projects                        │
-│  - Exposes dashboard at http://localhost:15888        │
-└────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph AppHost["AppHost (Program.cs)"]
+        subgraph SBResource["Azure Service Bus Resource"]
+            Topic["Topic: &quot;whizbang.events&quot;"]
+            SubInventory["Subscription: &quot;inventory-service&quot;<br/>Filter: Destination = &quot;inventory&quot;"]
+            SubNotification["Subscription: &quot;notification-service&quot;<br/>Filter: Destination = &quot;notifications&quot;"]
+            SubAnalytics["Subscription: &quot;analytics-service&quot;<br/>Filter: Destination = &quot;analytics&quot;"]
+
+            Topic --> SubInventory
+            Topic --> SubNotification
+            Topic --> SubAnalytics
+        end
+
+        subgraph ServiceProjects["Service Projects (with references)"]
+            InventoryService["Inventory Service"]
+            NotificationService["Notification Service"]
+            AnalyticsService["Analytics Service"]
+        end
+
+        InventoryService --> SubInventory
+        NotificationService --> SubNotification
+        AnalyticsService --> SubAnalytics
+    end
+
+    Runtime["Aspire Runtime<br/>- Starts Service Bus emulator (or connects to Azure)<br/>- Provisions topics and subscriptions via Bicep/API<br/>- Injects connection strings into services<br/>- Starts all service projects<br/>- Exposes dashboard at http://localhost:15888"]
+
+    AppHost -->|"dotnet run (AppHost)"| Runtime
 ```
 
 ---

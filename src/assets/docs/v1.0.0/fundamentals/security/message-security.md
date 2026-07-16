@@ -37,37 +37,20 @@ When messages arrive from external transports (Azure Service Bus, RabbitMQ, etc.
 
 ## Architecture {#architecture}
 
-```
-Message Arrives
-      │
-      ▼
-┌─────────────────────────────────────┐
-│  IMessageSecurityContextProvider    │
-│  (DefaultMessageSecurityContextProvider) │
-└─────────────────────────────────────┘
-      │
-      ▼ Calls extractors in priority order
-┌─────────────────────────────────────┐
-│  ISecurityContextExtractor[]        │
-│  • MessageHopSecurityExtractor (100)│
-│  • JwtPayloadExtractor (200)        │
-│  • TransportMetadataExtractor (300) │
-└─────────────────────────────────────┘
-      │
-      ▼ First successful extraction wins
-┌─────────────────────────────────────┐
-│  ImmutableScopeContext              │
-│  (wraps SecurityExtraction)         │
-└─────────────────────────────────────┘
-      │
-      ├─▶ Populates IScopeContextAccessor.Current
-      │
-      ▼ Invokes callbacks
-┌─────────────────────────────────────┐
-│  ISecurityContextCallback[]         │
-│  • UserContextManagerCallback       │
-│  • AuditLogCallback                 │
-└─────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Arrives["Message Arrives"]
+    Provider["IMessageSecurityContextProvider<br/>(DefaultMessageSecurityContextProvider)"]
+    Extractors["ISecurityContextExtractor[]<br/>• MessageHopSecurityExtractor (100)<br/>• JwtPayloadExtractor (200)<br/>• TransportMetadataExtractor (300)"]
+    Context["ImmutableScopeContext<br/>(wraps SecurityExtraction)"]
+    Accessor["Populates IScopeContextAccessor.Current"]
+    Callbacks["ISecurityContextCallback[]<br/>• UserContextManagerCallback<br/>• AuditLogCallback"]
+
+    Arrives --> Provider
+    Provider -->|"Calls extractors in priority order"| Extractors
+    Extractors -->|"First successful extraction wins"| Context
+    Context --> Accessor
+    Context -->|"Invokes callbacks"| Callbacks
 ```
 
 ## Quick Start {#quick-start}
@@ -294,33 +277,16 @@ This ensures your custom services have security context available regardless of 
 
 ### Execution Sequence Diagram
 
-```
-HTTP Request or Message Arrival
-         │
-         ▼
-┌────────────────────────────────────────┐
-│ Security Context Establishment         │
-│ (Extractors run in priority order)     │
-└────────────────────┬───────────────────┘
-                     │
-                     ▼
-┌────────────────────────────────────────┐
-│ ISecurityContextCallback.              │
-│ OnContextEstablishedAsync()            │◀── YOUR CALLBACK RUNS HERE
-│                                        │
-│ • UserContextManager initialized       │
-│ • Tenant config loaded                 │
-│ • Custom services populated            │
-└────────────────────┬───────────────────┘
-                     │
-                     ▼
-┌────────────────────────────────────────┐
-│ Receptor / Handler Executes            │◀── BUSINESS LOGIC RUNS HERE
-│                                        │
-│ • IMessageContext.TenantId available   │
-│ • IScopeContextAccessor.Current ready  │
-│ • UserContextManager ready (if used)   │
-└────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Arrival["HTTP Request or Message Arrival"]
+    Establishment["Security Context Establishment<br/>(Extractors run in priority order)"]
+    Callback["ISecurityContextCallback.OnContextEstablishedAsync()<br/>← YOUR CALLBACK RUNS HERE<br/><br/>• UserContextManager initialized<br/>• Tenant config loaded<br/>• Custom services populated"]
+    Receptor["Receptor / Handler Executes<br/>← BUSINESS LOGIC RUNS HERE<br/><br/>• IMessageContext.TenantId available<br/>• IScopeContextAccessor.Current ready<br/>• UserContextManager ready (if used)"]
+
+    Arrival --> Establishment
+    Establishment --> Callback
+    Callback --> Receptor
 ```
 
 **Key insight**: Callbacks complete **before** any receptor code runs, so your services are fully initialized when business logic needs them.
@@ -395,29 +361,26 @@ When events are cascaded from receptor return values (auto-cascade), security co
 
 ### Cascade Flow Diagram
 
-```
-HTTP Request (UserId: user@test.com, TenantId: tenant-123)
-    ↓
-Command Handler (security context established by message security system)
-    │ (IMessageContext available: UserId, TenantId)
-    ↓
-Returns Event (OrderCreated)
-    ↓
-Auto-Cascade via GetUntypedReceptorPublisher
-    │
-    ├─▶ Creates new DI scope
-    │
-    ├─▶ SecurityContextHelper.EstablishFullContextAsync(sourceEnvelope, scope.ServiceProvider)
-    │   │
-    │   ├─▶ Extracts security from envelope hops
-    │   ├─▶ Sets IScopeContextAccessor.Current
-    │   └─▶ Invokes ISecurityContextCallback[] (UserContextManager, etc.)
-    │
-    ├─▶ Resolves receptors from new scope
-    │
-    └─▶ Event Receptors execute
-        │ (IMessageContext available: UserId = user@test.com, TenantId = tenant-123)
-        └─▶ UserContextManager.TenantContext is populated
+```mermaid
+flowchart TD
+    Request["HTTP Request<br/>(UserId: user@test.com, TenantId: tenant-123)"]
+    Handler["Command Handler<br/>(security context established by message security system)<br/>(IMessageContext available: UserId, TenantId)"]
+    Returns["Returns Event (OrderCreated)"]
+    Cascade["Auto-Cascade via GetUntypedReceptorPublisher"]
+    Scope["Creates new DI scope"]
+    Establish["SecurityContextHelper.EstablishFullContextAsync(sourceEnvelope, scope.ServiceProvider)<br/>• Extracts security from envelope hops<br/>• Sets IScopeContextAccessor.Current<br/>• Invokes ISecurityContextCallback[] (UserContextManager, etc.)"]
+    Resolve["Resolves receptors from new scope"]
+    Execute["Event Receptors execute<br/>(IMessageContext available: UserId = user@test.com, TenantId = tenant-123)"]
+    Populated["UserContextManager.TenantContext is populated"]
+
+    Request --> Handler
+    Handler --> Returns
+    Returns --> Cascade
+    Cascade --> Scope
+    Scope --> Establish
+    Establish --> Resolve
+    Resolve --> Execute
+    Execute --> Populated
 ```
 
 ### How It Works
@@ -897,35 +860,27 @@ var local = new ImmutableScopeContext(extraction, shouldPropagate: false);
 
 ### End-to-End Flow
 
-```
-Service A (HTTP Request)          Service B (Message Consumer)
-┌─────────────────────────┐       ┌─────────────────────────┐
-│ WhizbangScopeMiddleware │       │ ServiceBusConsumerWorker│
-│ establishes IScopeContext│       │                         │
-└───────────┬─────────────┘       └───────────┬─────────────┘
-            │                                 │
-            ▼                                 │
-┌───────────────────────────┐                 │
-│ Business logic calls      │                 │
-│ dispatcher.SendAsync()    │                 │
-└───────────┬───────────────┘                 │
-            │                                 │
-            ▼ Dispatcher attaches security    │
-┌───────────────────────────┐                 │
-│ MessageHop.SecurityContext│                 │
-│ = { UserId, TenantId }    │ ───Message───▶ │
-└───────────────────────────┘                 │
-                                              ▼
-                              ┌───────────────────────────┐
-                              │ MessageHopSecurityExtractor│
-                              │ reads SecurityContext      │
-                              └───────────┬───────────────┘
-                                          │
-                                          ▼
-                              ┌───────────────────────────┐
-                              │ IScopeContextAccessor     │
-                              │ .Current = context        │
-                              └───────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph ServiceA["Service A (HTTP Request)"]
+        direction TB
+        Middleware["WhizbangScopeMiddleware<br/>establishes IScopeContext"]
+        Logic["Business logic calls<br/>dispatcher.SendAsync()"]
+        Hop["MessageHop.SecurityContext<br/>= { UserId, TenantId }"]
+        Middleware --> Logic
+        Logic -->|"Dispatcher attaches security"| Hop
+    end
+
+    subgraph ServiceB["Service B (Message Consumer)"]
+        direction TB
+        Consumer["ServiceBusConsumerWorker"]
+        Extractor["MessageHopSecurityExtractor<br/>reads SecurityContext"]
+        Accessor["IScopeContextAccessor<br/>.Current = context"]
+        Consumer --> Extractor
+        Extractor --> Accessor
+    end
+
+    Hop -->|"Message"| Consumer
 ```
 
 ## Explicit Security Context API {#explicit-context}

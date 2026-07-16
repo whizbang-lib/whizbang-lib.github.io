@@ -239,12 +239,18 @@ public interface IEventStore {
 
 Whizbang applies decorators to enhance event store functionality:
 
-```
-IEventStore (your code calls this)
-└─ AppendAndWaitEventStoreDecorator (enables AppendAndWaitAsync)
-   └─ SyncTrackingEventStoreDecorator (tracks events for sync)
-      └─ SecurityContextEventStoreDecorator (propagates security context)
-         └─ Base IEventStore (e.g., EFCoreEventStore, DapperEventStore)
+```mermaid
+graph TB
+    A["IEventStore (your code calls this)"]
+    B["AppendAndWaitEventStoreDecorator (enables AppendAndWaitAsync)"]
+    C["SyncTrackingEventStoreDecorator (tracks events for sync)"]
+    D["SecurityContextEventStoreDecorator (propagates security context)"]
+    E["Base IEventStore (e.g., EFCoreEventStore, DapperEventStore)"]
+
+    A --> B --> C --> D --> E
+
+    style A fill:#d4edda,stroke:#28a745
+    style E fill:#fff3cd,stroke:#ffc107
 ```
 
 These decorators are automatically applied when using `DecorateEventStoreWithSyncTracking()`, which is called by data providers.

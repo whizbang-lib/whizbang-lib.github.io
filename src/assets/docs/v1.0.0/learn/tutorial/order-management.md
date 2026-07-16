@@ -31,35 +31,28 @@ This is **Part 1** of the ECommerce Tutorial. Start with [Tutorial Overview](tut
 
 ## What You'll Build
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Order Service Architecture                             │
-│                                                          │
-│  ┌──────────────┐                                       │
-│  │    HTTP      │                                       │
-│  │  Controller  │  POST /orders                         │
-│  └──────┬───────┘                                       │
-│         │                                                │
-│         ▼                                                │
-│  ┌──────────────┐  CreateOrder command                  │
-│  │  Dispatcher  │─────────────────────────┐             │
-│  └──────────────┘                         │             │
-│                                            ▼             │
-│                                 ┌─────────────────────┐ │
-│                                 │ CreateOrderReceptor │ │
-│                                 │  - Validate order   │ │
-│                                 │  - Save to DB       │ │
-│                                 │  - Publish event    │ │
-│                                 └─────────┬───────────┘ │
-│                                           │             │
-│                              ┌────────────┼───────────┐ │
-│                              │            │           │ │
-│                              ▼            ▼           ▼ │
-│                         ┌────────┐  ┌─────────┐  ┌─────┐
-│                         │Postgres│  │ Outbox  │  │ ASB │
-│                         │ Orders │  │ Table   │  │ Bus │
-│                         └────────┘  └─────────┘  └─────┘
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph OSA["Order Service Architecture"]
+        Controller["HTTP Controller<br/>POST /orders"]
+        Dispatcher["Dispatcher"]
+        Receptor["CreateOrderReceptor<br/>- Validate order<br/>- Save to DB<br/>- Publish event"]
+        Orders["Postgres Orders"]
+        Outbox["Outbox Table"]
+        ASB["ASB Bus"]
+
+        Controller --> Dispatcher
+        Dispatcher -->|"CreateOrder command"| Receptor
+        Receptor --> Orders
+        Receptor --> Outbox
+        Receptor --> ASB
+    end
+
+    class Controller layer-core
+    class Dispatcher layer-command
+    class Receptor layer-core
+    class Orders layer-event
+    class Outbox,ASB layer-command
 ```
 
 **Features**:
@@ -658,31 +651,17 @@ Check Aspire Dashboard:
 
 ### Outbox Pattern
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Transactional Outbox Pattern                       │
-│                                                      │
-│  ┌──────────────────────────────────┐               │
-│  │  PostgreSQL Transaction          │               │
-│  │                                   │               │
-│  │  1. INSERT INTO orders (...)     │               │
-│  │  2. INSERT INTO order_items (...) │               │
-│  │  3. INSERT INTO outbox (...)     │ ← Same TX!   │
-│  │                                   │               │
-│  │  COMMIT;                          │               │
-│  └──────────────┬───────────────────┘               │
-│                 │                                    │
-│                 ▼                                    │
-│  ┌──────────────────────────────────┐               │
-│  │  Background Worker (Whizbang)    │               │
-│  │                                   │               │
-│  │  - SELECT * FROM outbox WHERE    │               │
-│  │    processed_at IS NULL          │               │
-│  │  - Publish to Azure Service Bus  │               │
-│  │  - UPDATE outbox SET             │               │
-│  │    processed_at = NOW()          │               │
-│  └──────────────────────────────────┘               │
-└─────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph TOP["Transactional Outbox Pattern"]
+        TX["PostgreSQL Transaction<br/>1. INSERT INTO orders (...)<br/>2. INSERT INTO order_items (...)<br/>3. INSERT INTO outbox (...) ← Same TX!<br/>COMMIT;"]
+        Worker["Background Worker (Whizbang)<br/>- SELECT * FROM outbox WHERE processed_at IS NULL<br/>- Publish to Azure Service Bus<br/>- UPDATE outbox SET processed_at = NOW()"]
+
+        TX --> Worker
+    end
+
+    class TX layer-event
+    class Worker layer-command
 ```
 
 **Benefits**:

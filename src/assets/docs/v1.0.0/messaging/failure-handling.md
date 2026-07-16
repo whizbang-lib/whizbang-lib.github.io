@@ -115,27 +115,22 @@ sequenceDiagram
 
 ### Retry Schedule Timeline
 
-```
-Time →
-0s              60s             120s            180s            240s
-│               │               │               │               │
-M1 ━━━━━━━━━┃ Fail (attempts=0)
-           │
-           ├→ scheduled_for = now + 30s * 2^1 = now + 1 min
-           │
-           ├──── Cannot claim (scheduled_for > now)
-           │
-           │               Retry #1
-           │               ┃ Fail (attempts=1)
-           │               │
-           │               ├→ scheduled_for = now + 30s * 2^2 = now + 2 min
-           │               │
-           │               ├──── Cannot claim
-           │               │
-           │               │                               Retry #2
-           │               │                               ┃ Success
-           │               │                               │
-           │               │                               └→ Published
+```mermaid
+flowchart LR
+    F0["M1 initial attempt<br/>Fail (attempts=0)<br/>scheduled_for = now + 30s * 2^1 = now + 1 min"]
+    W0["Cannot claim<br/>(scheduled_for > now)"]
+    R1["Retry #1<br/>Fail (attempts=1)<br/>scheduled_for = now + 30s * 2^2 = now + 2 min"]
+    W1["Cannot claim<br/>(scheduled_for > now)"]
+    R2["Retry #2<br/>Success → Published"]
+
+    F0 --> W0
+    W0 -->|"1 min later"| R1
+    R1 --> W1
+    W1 -->|"2 min later"| R2
+
+    class F0,R1 layer-event
+    class W0,W1 layer-command
+    class R2 layer-core
 ```
 
 ## Stream-Based Failure Cascades {#failure-cascade}
