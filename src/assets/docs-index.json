@@ -2526,6 +2526,18 @@
     "wordCount": 2348
   },
   {
+    "slug": "v1.0.0/operations/diagnostics/error-reference",
+    "title": "Runtime Error Reference",
+    "category": "Operations & Configuration",
+    "order": 1,
+    "description": "Alphabetical catalog of Whizbang runtime error messages — what triggers each one, what the framework does next, and how to fix it. Every entry has a stable heading anchor for deep-linking from incident notes and runbooks.",
+    "tags": "errors, error-reference, troubleshooting, runtime, logs, dead-letter-queue, transport, perspectives, rebuild, serialization",
+    "version": "v1.0.0",
+    "readingTime": 11,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+    "wordCount": 2084
+  },
+  {
     "slug": "v1.0.0/operations/diagnostics/serializable-property-analyzer",
     "title": "Serializable Property Analyzer",
     "category": "Diagnostics",
