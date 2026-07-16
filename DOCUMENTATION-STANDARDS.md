@@ -613,6 +613,28 @@ If documentation is for unreleased features:
 
 To ensure examples remain accurate:
 
+### Living-docs drift check (preferred)
+
+Tag a sample with the test it comes from, and CI verifies the snippet still
+matches that test's body verbatim (whitespace/comments normalized) via
+`src/scripts/verify-sample-drift.mjs`:
+
+````markdown
+```csharp{
+title: "SendAsync returns a delivery receipt"
+testFile: "tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs"
+testMethod: "Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"
+}
+var receipt = await dispatcher.SendAsync(command);
+```
+````
+
+The snippet must be a contiguous excerpt of the test method — write the test
+first, then paste from it. If the test later changes, CI flags the page
+(warning mode today; `--strict` once adoption grows). Seed example:
+`fundamentals/dispatcher/dispatcher.md` § "Verified example". Tag samples as
+pages go through the verification sweep.
+
 ### Manual Validation
 
 1. **Extract Examples**: Pull all code examples from documentation

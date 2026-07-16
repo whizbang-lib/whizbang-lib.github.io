@@ -35,6 +35,18 @@ jobs:
       - name: Validate front-matter (released docs)
         run: pnpm run validate-frontmatter
 
+      # Living docs: samples tagged {testFile, testMethod} must match the
+      # referenced library test body (warning mode until adoption grows).
+      - name: Checkout library for sample-drift check
+        uses: actions/checkout@v6
+        with:
+          repository: whizbang-lib/whizbang
+          ref: develop
+          path: .whizbang-lib
+
+      - name: Verify sample drift
+        run: WHIZBANG_LIB_PATH="$GITHUB_WORKSPACE/.whizbang-lib" node src/scripts/verify-sample-drift.mjs
+
       - name: Build
         run: pnpm run build
 

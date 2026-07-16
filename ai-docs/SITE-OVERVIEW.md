@@ -85,8 +85,8 @@ Plan lives at `~/.claude/plans/we-need-to-reconcile-swift-newell.md` (session-lo
 | 2 | Re-baseline audit vs current library (v0.8xx) | DONE — see `audit-reports/REBASELINE-2026-07-16.md`; 63 missing pages demanded by code tags, work-coordinator dominates |
 | 3 | Frontmatter taxonomy (pageType/audience/status) + validator | DONE — heuristic backfill on 251 pages (refine per-page in content passes); enforce with `validate-frontmatter.mjs --strict-taxonomy` when review completes |
 | 4 | Audience trees: `contributors/`, `spec/` (porting) | DONE — new state folders wired through index/nav/version selector; data-engines guide moved in; spec seeded with subsystem roadmap; v1.0.0 labeled "(pre-release)"; orphan folders (roadmap/, Advanced/, Tutorials/, future/, migrate-from-marten-wolverine/) removed, cli-wizard rescued to drafts |
-| 5 | Live test-status pipeline (library CI → site badges) | pending |
-| 6 | Example validation (drift check + compile gate) | pending |
+| 5 | Live test-status pipeline (library CI → site badges) | docs side DONE (PR #124); library side in whizbang#347; dormant until DOCS_REPO_PUSH_TOKEN secret exists |
+| 6 | Example validation (drift check + compile gate) | drift check DONE (verify-sample-drift.mjs, CI warning mode, seed on dispatcher.md); library compile-gate project deferred until whizbang#347 merges |
 | 7 | ASCII → mermaid (~86 files) | pending |
 | 8 | MCP server npm publish (@whizbang/docs-mcp-server; verify scope, fallback @whizbang-lib) | pending |
 | 9 | Page split/merge per taxonomy + summary pages | pending |
