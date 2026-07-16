@@ -51,6 +51,11 @@ The `bun start` and `bun run build` commands automatically execute:
 
 ## When to Read ai-docs/
 
+### 📖 **[SITE-OVERVIEW.md](ai-docs/SITE-OVERVIEW.md)** — START HERE
+**Read when**:
+- First session in this repo (system-level map: content pipeline, dual publication, code↔docs↔tests linking, conventions, gotchas)
+- Need current status of the 2026-07 reconciliation initiative
+
 ### 📖 **[PROJECT-VISION.md](ai-docs/PROJECT-VISION.md)**
 **Read when**:
 - Starting work on the documentation site
