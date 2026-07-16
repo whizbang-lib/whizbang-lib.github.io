@@ -31,7 +31,7 @@
     "@angular/router": "~22.0.6",
     "@angular/youtube-player": "^22.0.4",
     "@primeng/themes": "^21.0.4",
-    "fuse.js": "^7.1.0",
+    "fuse.js": "^7.5.0",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
     "mermaid": "^11.12.0",
