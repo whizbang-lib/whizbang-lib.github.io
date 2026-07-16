@@ -129,7 +129,7 @@ npm install && npm run build</code></pre>
 # MCP Tools: search-docs, find-examples, get-code-location, get-related-docs, get-tests-for-code</code></pre>
     </div>
 
-    <p class="stats">Generated: 2026-07-16T21:00:20.544Z | Total documents: 314</p>
+    <p class="stats">Generated: 2026-07-16T21:26:27.210Z | Total documents: 315</p>
   </header>
 
   <nav>
@@ -728,6 +728,7 @@ npm install && npm run build</code></pre>
 <h4>Contributors</h4>
 <ul>
   <li><a href="#contributors-overview">Contributing to Whizbang</a></li>
+  <li><a href="#contributors-test-status-pipeline">Live Test-Status Pipeline</a></li>
   <li>
     <strong>Data Engines</strong>
     <ul>
@@ -121960,6 +121961,75 @@ npm install && npm run build</code></pre>
 <ul><li><strong>MCP docs server</strong> (<code>mcp-docs-server/</code>) — query docs, find code for a concept, find tests for a symbol, validate links — from Claude, Cursor, or any MCP client.</li>
 <li><strong>Audit tooling</strong> (<code>src/scripts/audit-baseline.mjs</code>) — full content audit against the current library; see <code>audit-reports/</code> for the latest baseline.</li>
 </ul>  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="contributors-test-status-pipeline" class="doc-section">
+  <h2>Live Test-Status Pipeline</h2>
+  <p class="doc-path"><code>contributors/test-status-pipeline</code></p>
+  <p class="doc-description"><em>How test pass/fail results flow from library CI into the docs site's living-docs badges — architecture, data shapes, and setup</em></p>
+  <div class="doc-content">
+
+<h1>Live Test-Status Pipeline</h1>
+
+<p>Doc pages declare the tests that verify them (<code>testReferences</code> frontmatter). This pipeline stitches <strong>real CI results</strong> into those references so the live site shows whether the referenced tests exist and pass — SpecFlow-style living documentation.</p>
+
+<h2>Architecture</h2>
+
+<pre><code class="language-mermaid">flowchart LR
+<p>    A[Library CI\ntest jobs] -- "--report-trx" --> B[TRX artifacts\nper suite]</p>
+<p>    B --> C[publish-test-status job]</p>
+<p>    C -- "checkout docs repo\n(main, via PAT)" --> D[build-test-status.mjs]</p>
+<p>    D --> E[src/assets/data/test-status/\nindex.json + per-assembly shards]</p>
+<p>    E -- commit + push --> F[docs main]</p>
+<p>    F -- push triggers --> G[Pages deploy]</p>
+<p>    F -- sync automation --> H[develop]</p>
+<p>    G --> I[Angular TestStatusService\n+ wb-test-references panel]</p>
+<p>    E -- read at build time --> J[rtd/build.py\nstatic admonition]</p>
+<p></code></pre></p>
+
+<ul><li><strong>Library CI</strong> (<code>whizbang</code> repo): each test suite job passes <code>-ReportTrx</code> to <code>Run-Tests.ps1</code> and uploads <code>trx-<suite></code> artifacts.</li>
+<li><strong>publish-test-status job</strong> (runs on <code>develop</code> pushes only, after all suites): downloads the TRX artifacts, checks out this repo's <code>main</code>, runs <code>src/scripts/build-test-status.mjs</code>, and pushes the regenerated <code>src/assets/data/test-status/</code> files.</li>
+<li><strong>This repo</strong>: the data commit triggers the Pages deploy; the main→develop sync automation keeps develop aligned. ReadTheDocs picks the data up at its next build and injects a static "Verified by tests" admonition per page.</li>
+</ul>
+<h2>Data shapes</h2>
+
+<code>src/assets/data/test-status/index.json</code>:
+
+<pre><code class="language-json">{
+<p>  "run": { "runId": "123", "sha": "abc123", "branch": "develop", "libraryVersion": "0.9.4", "completedAt": "2026-07-16T20:00:00Z" },</p>
+<p>  "total": { "passed": 8100, "failed": 2, "skipped": 40 },</p>
+<p>  "suites": { "unit": { "passed": 5800, "failed": 0, "skipped": 12 } },</p>
+<p>  "assemblies": { "Whizbang.Core.Tests": { "file": "Whizbang.Core.Tests.json", "passed": 5800, "failed": 0, "skipped": 12 } }</p>
+<p>}</p>
+<p></code></pre></p>
+
+<p>Per-assembly shard (<code>Whizbang.Core.Tests.json</code>) — keys use the <strong>code-tests-map identity</strong> <code>ShortClassName.MethodNameAsync</code>:</p>
+
+<pre><code class="language-json">{ "DispatcherTests.Dispatch_SendsMessageToCorrectReceptorAsync": { "o": "passed", "d": 12, "s": "unit" } }
+<p></code></pre></p>
+
+<h2>Rendering</h2>
+
+<ul><li><strong>Angular</strong>: <code>TestStatusService</code> loads <code>index.json</code> (graceful null when absent) and lazy-loads shards; <code>wb-test-references</code> renders per-class badges at the bottom of any page with <code>testReferences</code>, with a staleness warning when results are older than 7 days (which also signals a dead token).</li>
+<li><strong>RTD</strong>: static — <code>rtd/build.py</code> injects a <code>!!! success "Verified by tests"</code> admonition naming the referenced classes and the CI run.</li>
+</ul>
+<h2>Setup (one-time)</h2>
+
+<p>The library repo needs a secret so CI can push data commits here:</p>
+
+<ul><li>Create a <strong>fine-grained PAT</strong>: repository access = <code>whizbang-lib/whizbang-lib.github.io</code> only, permission = <strong>Contents: read/write</strong>. Set a ≥6-month expiry and calendar the renewal — the staleness banner is the runtime symptom of an expired token.</li>
+<li>Add it as <code>DOCS_REPO_PUSH_TOKEN</code> in the <strong>whizbang</strong> repo's Actions secrets.</li>
+<li>The publish job no-ops gracefully when the secret is absent, so forks and PRs are unaffected.</li>
+</ul>
+<h2>Failure modes</h2>
+
+<p>| Symptom | Cause |</p>
+<p>|---|---|</p>
+<p>| Panel shows "no status" on every page | <code>index.json</code> missing — pipeline never ran, or first publish pending |</p>
+<p>| Staleness banner (>7 days) | expired/revoked PAT, or the publish job is failing — check the library repo's Actions |</p>
+<p>| A class shows "no status" while others work | class renamed, or its suite's TRX artifact wasn't produced — re-check <code>-ReportTrx</code> on that suite's workflow |</p>
+  </div>
   <p><a href="#top">[Back to top]</a></p>
 </article>
 

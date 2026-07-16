@@ -4175,6 +4175,23 @@
         "readingTime": 2,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/overview.md",
         "wordCount": 375
+      },
+      {
+        "slug": "contributors/test-status-pipeline",
+        "title": "Live Test-Status Pipeline",
+        "category": "General",
+        "order": 3,
+        "description": "How test pass/fail results flow from library CI into the docs site's living-docs badges — architecture, data shapes, and setup",
+        "tags": "living-docs, test-status, ci, trx, pipeline",
+        "version": "contributors",
+        "status": "current",
+        "pageType": "concept",
+        "audience": [
+          "contributor"
+        ],
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/test-status-pipeline.md",
+        "wordCount": 530
       }
     ]
   },
