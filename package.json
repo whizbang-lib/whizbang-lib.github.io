@@ -58,7 +58,7 @@
     "autoprefixer": "^10.4.21",
     "katex": "^0.17.0",
     "marked-katex-extension": "^5.1.10",
-    "postcss": "^8.5.5",
+    "postcss": "^8.5.19",
     "tailwindcss": "^4.1.10",
     "typescript": "~6.0.2"
   }
