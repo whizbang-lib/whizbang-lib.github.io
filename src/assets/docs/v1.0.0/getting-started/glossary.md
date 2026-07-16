@@ -1,5 +1,6 @@
 ---
 title: Glossary
+pageType: reference
 version: 1.0.0
 category: Getting Started
 order: 5

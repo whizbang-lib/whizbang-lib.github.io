@@ -1,5 +1,6 @@
 ---
 title: GraphQL Integration
+pageType: overview
 version: 1.0.0
 category: GraphQL
 order: 1

@@ -1,5 +1,6 @@
 ---
 title: AddLensServices
+pageType: concept
 version: 1.0.0
 category: DI
 order: 4

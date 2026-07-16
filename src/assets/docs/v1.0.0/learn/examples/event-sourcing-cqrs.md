@@ -1,5 +1,6 @@
 ---
 title: Event Sourcing & CQRS
+pageType: concept
 version: 1.0.0
 category: Customization Examples
 order: 2

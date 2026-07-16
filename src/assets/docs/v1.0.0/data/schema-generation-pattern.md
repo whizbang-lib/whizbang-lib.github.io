@@ -1,5 +1,6 @@
 ---
 title: Schema Generation Pattern
+pageType: concept
 version: 1.0.0
 category: Data Access
 order: 6

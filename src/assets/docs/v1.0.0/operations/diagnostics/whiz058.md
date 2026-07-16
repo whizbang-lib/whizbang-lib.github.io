@@ -1,5 +1,6 @@
 ---
 title: 'WHIZ058: GUID Call Intercepted'
+pageType: troubleshooting
 description: >-
   Informational diagnostic indicating a GUID creation call has been intercepted
   and wrapped with TrackedGuid

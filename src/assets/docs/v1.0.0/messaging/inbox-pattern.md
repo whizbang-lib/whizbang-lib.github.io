@@ -1,5 +1,6 @@
 ---
 title: Inbox Pattern
+pageType: concept
 version: 1.0.0
 category: Messaging
 order: 2

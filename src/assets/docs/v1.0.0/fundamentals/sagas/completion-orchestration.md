@@ -1,5 +1,6 @@
 ---
 title: Completion Orchestration & Adaptive Watchdog
+pageType: concept
 version: 1.0.0
 category: Application Blocks
 order: 2

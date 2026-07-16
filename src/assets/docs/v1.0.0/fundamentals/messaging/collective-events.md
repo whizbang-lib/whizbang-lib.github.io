@@ -1,5 +1,6 @@
 ---
 title: Collective Events
+pageType: concept
 order: 7
 codeReferences:
   - src/Whizbang.Core/Messaging/ICollectiveEvent.cs

@@ -1,12 +1,122 @@
 {
-  "recentlyChangedSourceFiles": 858,
-  "potentiallyStaleDocPages": 286,
+  "recentlyChangedSourceFiles": 1266,
+  "potentiallyStaleDocPages": 412,
   "staleCandidates": [
     {
+      "docsPath": "fundamentals/messaging/collective-events",
+      "changedFileCount": 38,
+      "symbols": [
+        "DapperCollectiveEventApplier",
+        "DapperCollectiveEventExecutor",
+        "helpers",
+        "CollectiveEventsDapperExtensions",
+        "CollectiveSettersRewriter",
+        "EFCoreCollectiveEventExecutor",
+        "CollectiveEventsEFCoreExtensions",
+        "ICollectiveInMemoryExecutor",
+        "ICollectiveReplayApplier",
+        "CollectiveReplayApplier",
+        "CollectiveApplyOptions",
+        "ReferencedJsonPath",
+        "CollectivePredicateSqlCompiler",
+        "CollectiveApplyEntry",
+        "CollectiveScopeHandling",
+        "CollectiveSpecKind",
+        "CollectiveApplyDiscoveryGenerator",
+        "ICollectiveEventExecutor",
+        "CollectiveApplyLockKey",
+        "PostgresOptions",
+        "CommandTimeoutSeconds",
+        "MaxInFlightCommands",
+        "CollectiveApplyBatchSize",
+        "ICollectiveSiblingTableSource",
+        "DapperCollectiveQuery",
+        "EFCoreCollectiveQuery",
+        "CollectiveWhereComposer",
+        "CollectiveEventBase",
+        "ICollectiveApplyFor",
+        "ICollectiveQuery",
+        "DapperCollectiveTableRegistry",
+        "ICollectiveSpec",
+        "DapperCollectiveSessionAccessor",
+        "CollectiveScope",
+        "ICollectiveEvent",
+        "TenantCollectiveScope",
+        "ICollectiveSessionAccessor",
+        "EFCoreCollectiveSessionAccessor",
+        "RecordHeartbeatAsync",
+        "CompletePerspectiveAsync",
+        "ReportFailuresAsync",
+        "CommitHandlerResultAsync",
+        "FlushCompletionsAsync",
+        "StoreInboxMessagesAsync",
+        "ReportPerspectiveCompletionAsync",
+        "ReportPerspectiveFailureAsync",
+        "RecordLifecycleCompletionAsync",
+        "MaintenanceResult",
+        "RewindCursorInfo",
+        "OrphanedLifecycleEvent",
+        "Flags",
+        "EventsProcessed",
+        "Attempts",
+        "PendingPerspectiveEvent",
+        "OutboxBatchRow",
+        "InboxBatchRow",
+        "ICollectiveDispatcher",
+        "CollectiveDispatchResult",
+        "ICollectiveScope",
+        "ICollectiveScopeResolver",
+        "ICollectiveSetters"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveEventApplier.cs",
+        "src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveEventExecutor.cs",
+        "src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveSpecCompiler.cs",
+        "src/Whizbang.Data.Dapper.Postgres/CollectiveEventsDapperExtensions.cs",
+        "src/Whizbang.Data.EFCore.Postgres/Collective/CollectiveSettersRewriter.cs",
+        "src/Whizbang.Data.EFCore.Postgres/Collective/EFCoreCollectiveEventExecutor.cs",
+        "src/Whizbang.Data.EFCore.Postgres/CollectiveEventsEFCoreExtensions.cs",
+        "src/Whizbang.Core/Perspectives/ICollectiveInMemoryExecutor.cs",
+        "src/Whizbang.Core/Perspectives/ICollectiveReplayApplier.cs",
+        "src/Whizbang.Data.Postgres/Collective/CollectiveReplayApplier.cs",
+        "src/Whizbang.Core/Perspectives/CollectiveApplyOptions.cs",
+        "src/Whizbang.Data.Postgres/Collective/CollectivePredicateSqlCompiler.cs",
+        "src/Whizbang.Core/Perspectives/CollectiveApplyEntry.cs",
+        "src/Whizbang.Core/Perspectives/CollectiveApplyForAttribute.cs",
+        "src/Whizbang.Generators/CollectiveApplyDiscoveryGenerator.cs",
+        "src/Whizbang.Core/Perspectives/ICollectiveEventExecutor.cs",
+        "src/Whizbang.Data.Postgres/Collective/CollectiveApplyLockKey.cs",
+        "src/Whizbang.Data.Postgres/PostgresOptions.cs",
+        "src/Whizbang.Core/Perspectives/ICollectiveSiblingTableSource.cs",
+        "src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveQuery.cs",
+        "src/Whizbang.Data.EFCore.Postgres/Collective/EFCoreCollectiveQuery.cs",
+        "src/Whizbang.Core/Perspectives/CollectiveWhereComposer.cs",
+        "src/Whizbang.Core/Messaging/CollectiveEventBase.cs",
+        "src/Whizbang.Core/Perspectives/ICollectiveApplyFor.cs",
+        "src/Whizbang.Core/Perspectives/ICollectiveQuery.cs",
+        "src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveTableRegistry.cs",
+        "src/Whizbang.Core/Perspectives/ICollectiveSpec.cs",
+        "src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveSessionAccessor.cs",
+        "src/Whizbang.Core/Messaging/CollectiveScope.cs",
+        "src/Whizbang.Core/Messaging/ICollectiveEvent.cs",
+        "src/Whizbang.Core/Messaging/TenantCollectiveScope.cs",
+        "src/Whizbang.Core/Perspectives/ICollectiveSessionAccessor.cs",
+        "src/Whizbang.Data.EFCore.Postgres/Collective/EFCoreCollectiveSessionAccessor.cs",
+        "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "src/Whizbang.Core/Perspectives/ICollectiveDispatcher.cs",
+        "src/Whizbang.Core/Messaging/ICollectiveScope.cs",
+        "src/Whizbang.Core/Perspectives/ICollectiveScopeResolver.cs",
+        "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs"
+      ]
+    },
+    {
       "docsPath": "extending/attributes/auto-populate",
-      "changedFileCount": 19,
+      "changedFileCount": 20,
       "symbols": [
         "AutoPopulateDiscoveryGenerator",
+        "PopulateFromHttpHeaderAttribute",
+        "AutoPopulateRegistration",
+        "PopulateKind",
         "PopulateFromContextAttribute",
         "PopulateFromIdentifierAttribute",
         "PopulateFromServiceAttribute",
@@ -17,17 +127,18 @@
         "TimestampKind",
         "AutoPopulatePopulatorRegistry",
         "AutoPopulateProcessor",
-        "AutoPopulateRegistration",
         "AutoPopulateRegistry",
         "IAutoPopulatePopulator",
         "IAutoPopulateProcessor",
         "IAutoPopulateRegistry",
         "JsonAutoPopulateHelper",
-        "MessageEnvelopeAutoPopulateExtensions",
-        "PopulateKind"
+        "MessageEnvelopeAutoPopulateExtensions"
       ],
       "changedFiles": [
         "src/Whizbang.Generators/AutoPopulateDiscoveryGenerator.cs",
+        "src/Whizbang.Core/Attributes/PopulateFromHttpHeaderAttribute.cs",
+        "src/Whizbang.Core/AutoPopulate/AutoPopulateRegistration.cs",
+        "src/Whizbang.Core/AutoPopulate/PopulateKind.cs",
         "src/Whizbang.Core/Attributes/PopulateFromContextAttribute.cs",
         "src/Whizbang.Core/Attributes/PopulateFromIdentifierAttribute.cs",
         "src/Whizbang.Core/Attributes/PopulateFromServiceAttribute.cs",
@@ -38,37 +149,148 @@
         "src/Whizbang.Core/Attributes/TimestampKind.cs",
         "src/Whizbang.Core/AutoPopulate/AutoPopulatePopulatorRegistry.cs",
         "src/Whizbang.Core/AutoPopulate/AutoPopulateProcessor.cs",
-        "src/Whizbang.Core/AutoPopulate/AutoPopulateRegistration.cs",
         "src/Whizbang.Core/AutoPopulate/AutoPopulateRegistry.cs",
         "src/Whizbang.Core/AutoPopulate/IAutoPopulatePopulator.cs",
         "src/Whizbang.Core/AutoPopulate/IAutoPopulateProcessor.cs",
         "src/Whizbang.Core/AutoPopulate/IAutoPopulateRegistry.cs",
         "src/Whizbang.Core/AutoPopulate/JsonAutoPopulateHelper.cs",
-        "src/Whizbang.Core/AutoPopulate/MessageEnvelopeAutoPopulateExtensions.cs",
-        "src/Whizbang.Core/AutoPopulate/PopulateKind.cs"
+        "src/Whizbang.Core/AutoPopulate/MessageEnvelopeAutoPopulateExtensions.cs"
+      ]
+    },
+    {
+      "docsPath": "offloads",
+      "changedFileCount": 18,
+      "symbols": [
+        "BodyClaimRehydrator",
+        "MessageBodyOffloadOptions",
+        "BodyClaimEnvelopePayload",
+        "BodyClaimWireHelper",
+        "BodyOffloadPostSerializeHook",
+        "IMessageBodyStore",
+        "IPostSerializeHook",
+        "MessageBodyClaim",
+        "MessageBodyDeleteOptions",
+        "MessageBodyDownloadOptions",
+        "MessageBodyUploadOptions",
+        "OffloadServiceCollectionExtensions",
+        "PostSerializeHookChain",
+        "AzureBlobMessageBodyStore",
+        "AzureBlobOffloadOptions",
+        "AzureBlobOffloadServiceCollectionExtensions",
+        "AddWhizbangAzureBlobOffloadsFromConfiguration",
+        "InMemoryMessageBodyStore",
+        "InMemoryOffloadServiceCollectionExtensions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Offloads/BodyClaimRehydrator.cs",
+        "src/Whizbang.Core/Offloads/MessageBodyOffloadOptions.cs",
+        "src/Whizbang.Core/Offloads/BodyClaimEnvelopePayload.cs",
+        "src/Whizbang.Core/Offloads/BodyClaimWireHelper.cs",
+        "src/Whizbang.Core/Offloads/BodyOffloadPostSerializeHook.cs",
+        "src/Whizbang.Core/Offloads/IMessageBodyStore.cs",
+        "src/Whizbang.Core/Offloads/IPostSerializeHook.cs",
+        "src/Whizbang.Core/Offloads/MessageBodyClaim.cs",
+        "src/Whizbang.Core/Offloads/MessageBodyDeleteOptions.cs",
+        "src/Whizbang.Core/Offloads/MessageBodyDownloadOptions.cs",
+        "src/Whizbang.Core/Offloads/MessageBodyUploadOptions.cs",
+        "src/Whizbang.Core/Offloads/OffloadServiceCollectionExtensions.cs",
+        "src/Whizbang.Core/Offloads/PostSerializeHookChain.cs",
+        "src/Whizbang.Offloads.AzureBlob/AzureBlobMessageBodyStore.cs",
+        "src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadOptions.cs",
+        "src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadServiceCollectionExtensions.cs",
+        "src/Whizbang.Offloads.InMemory/InMemoryMessageBodyStore.cs",
+        "src/Whizbang.Offloads.InMemory/InMemoryOffloadServiceCollectionExtensions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "changedFileCount": 16,
+      "symbols": [
+        "InboxDispatchWorker",
+        "InboxDispatchWorkerOptions",
+        "RecordHeartbeatAsync",
+        "CompletePerspectiveAsync",
+        "ReportFailuresAsync",
+        "CommitHandlerResultAsync",
+        "FlushCompletionsAsync",
+        "StoreInboxMessagesAsync",
+        "ReportPerspectiveCompletionAsync",
+        "ReportPerspectiveFailureAsync",
+        "RecordLifecycleCompletionAsync",
+        "MaintenanceResult",
+        "RewindCursorInfo",
+        "OrphanedLifecycleEvent",
+        "Flags",
+        "EventsProcessed",
+        "Attempts",
+        "PendingPerspectiveEvent",
+        "OutboxBatchRow",
+        "InboxBatchRow",
+        "ClaimWorker",
+        "ClaimWorkerOptions",
+        "HeartbeatWorker",
+        "HeartbeatWorkerOptions",
+        "FailureFlushWorker",
+        "FailureFlushWorkerOptions",
+        "InboxHandlerWorker",
+        "InboxHandlerWorkerOptions",
+        "LeaseRenewalWorker",
+        "LeaseRenewalWorkerOptions",
+        "OutboxCompletionFlushWorker",
+        "OutboxCompletionFlushWorkerOptions",
+        "registered",
+        "OutboxPublishWorkerOptions",
+        "PerspectiveCompletionFlushWorker",
+        "PerspectiveCompletionFlushWorkerOptions",
+        "WorkerPipelineExtensions",
+        "WorkCoordinatorGate",
+        "MaintenanceWorker",
+        "MaintenanceWorkerOptions",
+        "StuckRowSentinelEnabled",
+        "StuckRowSentinelMaxAttempts",
+        "StuckRowSentinelLimit",
+        "InboxDeserializeCacheOptions",
+        "RecentlyProcessedEventCacheOptions",
+        "HeartbeatRequest"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
+        "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "src/Whizbang.Core/Workers/ClaimWorker.cs",
+        "src/Whizbang.Core/Workers/HeartbeatWorker.cs",
+        "src/Whizbang.Core/Workers/FailureFlushWorker.cs",
+        "src/Whizbang.Core/Workers/InboxHandlerWorker.cs",
+        "src/Whizbang.Core/Workers/LeaseRenewalWorker.cs",
+        "src/Whizbang.Core/Workers/OutboxCompletionFlushWorker.cs",
+        "src/Whizbang.Core/Workers/OutboxPublishWorker.cs",
+        "src/Whizbang.Core/Workers/PerspectiveCompletionFlushWorker.cs",
+        "src/Whizbang.Core/Workers/WorkerPipelineExtensions.cs",
+        "src/Whizbang.Core/Messaging/WorkCoordinatorGate.cs",
+        "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+        "src/Whizbang.Core/Workers/InboxDeserializeCacheOptions.cs",
+        "src/Whizbang.Core/Workers/RecentlyProcessedEventCacheOptions.cs",
+        "src/Whizbang.Core/Messaging/HeartbeatRequest.cs"
       ]
     },
     {
       "docsPath": "fundamentals/perspectives/perspective-sync",
-      "changedFileCount": 17,
+      "changedFileCount": 15,
       "symbols": [
+        "ReceptorInfo",
+        "ReceptorSyncAttributeInfo",
         "StreamFilter",
         "EventTypeFilter",
         "CurrentScopeFilter",
         "AllPendingFilter",
         "AndFilter",
         "OrFilter",
-        "_serializeSyncInquiries",
         "LensQueryExtensions",
-        "SyncAwareLensQuery",
         "AwaitPerspectiveSyncAttribute",
         "LocalSyncSignaler",
         "SyncFilter",
         "SyncFilterBuilder",
         "ScopedEventTracker",
         "ISyncAwareLensQuery",
-        "ReceptorInfo",
-        "ReceptorSyncAttributeInfo",
         "IPerspectiveSyncAwaiter",
         "IPerspectiveSyncSignaler",
         "IScopedEventTracker",
@@ -77,17 +299,15 @@
         "SyncOutcome"
       ],
       "changedFiles": [
+        "src/Whizbang.Core/Messaging/ReceptorInfo.cs",
         "src/Whizbang.Core/Perspectives/Sync/SyncFilterNode.cs",
-        "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
         "src/Whizbang.Core/Lenses/LensQueryExtensions.cs",
-        "src/Whizbang.Core/Lenses/SyncAwareLensQuery.cs",
         "src/Whizbang.Core/Perspectives/Sync/AwaitPerspectiveSyncAttribute.cs",
         "src/Whizbang.Core/Perspectives/Sync/LocalSyncSignaler.cs",
         "src/Whizbang.Core/Perspectives/Sync/SyncFilter.cs",
         "src/Whizbang.Core/Perspectives/Sync/SyncFilterBuilder.cs",
         "src/Whizbang.Core/Perspectives/Sync/ScopedEventTracker.cs",
         "src/Whizbang.Core/Lenses/ISyncAwareLensQuery.cs",
-        "src/Whizbang.Core/Messaging/ReceptorInfo.cs",
         "src/Whizbang.Core/Perspectives/Sync/IPerspectiveSyncAwaiter.cs",
         "src/Whizbang.Core/Perspectives/Sync/IPerspectiveSyncSignaler.cs",
         "src/Whizbang.Core/Perspectives/Sync/IScopedEventTracker.cs",
@@ -97,32 +317,413 @@
       ]
     },
     {
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "changedFileCount": 13,
+      "symbols": [
+        "WorkSignalCategory",
+        "IWorkNotificationListener",
+        "PgWorkNotificationListener",
+        "PgSharedNotifyConnection",
+        "PostgresNotificationsServiceCollectionExtensions",
+        "AddWhizbangNotificationDataSource",
+        "WorkSignalingMode",
+        "WhizbangNotificationOptions",
+        "TcpKeepAliveTime",
+        "TcpKeepAliveInterval",
+        "WhizbangNamingConvention",
+        "NotifySubscriptionRegistry",
+        "INotificationDataSource",
+        "DbContextNotificationConnectionStringFallback",
+        "INotifySignalingGate",
+        "INotifySubscription",
+        "ISharedNotifyConnection",
+        "INotificationConnectionStringFallback",
+        "NotificationConnectionStringResolver"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Notifications/IWorkNotificationListener.cs",
+        "src/Whizbang.Data.Postgres/Notifications/PgWorkNotificationListener.cs",
+        "src/Whizbang.Data.Postgres/Notifications/PgSharedNotifyConnection.cs",
+        "src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs",
+        "src/Whizbang.Core/Notifications/WhizbangNotificationOptions.cs",
+        "src/Whizbang.Core/Naming/WhizbangNamingConvention.cs",
+        "src/Whizbang.Core/Notifications/NotifySubscriptionRegistry.cs",
+        "src/Whizbang.Data.Postgres/Notifications/INotificationDataSource.cs",
+        "src/Whizbang.Data.EFCore.Postgres/DbContextNotificationConnectionStringFallback.cs",
+        "src/Whizbang.Core/Notifications/INotifySignalingGate.cs",
+        "src/Whizbang.Core/Notifications/INotifySubscription.cs",
+        "src/Whizbang.Core/Notifications/INotificationConnectionStringFallback.cs",
+        "src/Whizbang.Core/Notifications/NotificationConnectionStringResolver.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messaging/apply-hooks",
+      "changedFileCount": 11,
+      "symbols": [
+        "CollectiveApplyHookPlan",
+        "CollectiveApplyHookPlanner",
+        "ApplyHookContext",
+        "ApplyHookColumns",
+        "ApplyHookOp",
+        "MarkerHookRegistryBase",
+        "CollectiveApplyHookRegistry",
+        "ApplyHookRegistry",
+        "IApplyHook",
+        "ICollectiveApplyHook",
+        "IApplyHookBuilder",
+        "ICollectiveApplyHookBuilder",
+        "TimestampsApplyHook",
+        "WhizbangApplyHookKeys",
+        "WhizbangApplyHooks",
+        "PerEventApplyHookPlan",
+        "tradeoff"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.Postgres/Collective/CollectiveApplyHookPlan.cs",
+        "src/Whizbang.Data.Postgres/Collective/CollectiveApplyHookPlanner.cs",
+        "src/Whizbang.Core/Perspectives/Hooks/ApplyHookContext.cs",
+        "src/Whizbang.Core/Perspectives/Hooks/ApplyHookOp.cs",
+        "src/Whizbang.Core/Perspectives/Hooks/ApplyHookRegistry.cs",
+        "src/Whizbang.Core/Perspectives/Hooks/IApplyHook.cs",
+        "src/Whizbang.Core/Perspectives/Hooks/IApplyHookBuilder.cs",
+        "src/Whizbang.Core/Perspectives/Hooks/TimestampsApplyHook.cs",
+        "src/Whizbang.Core/Perspectives/Hooks/WhizbangApplyHookKeys.cs",
+        "src/Whizbang.Core/Perspectives/Hooks/WhizbangApplyHooks.cs",
+        "src/Whizbang.Data.Postgres/PerEventApplyHooks.cs"
+      ]
+    },
+    {
       "docsPath": "fundamentals/receptors/lifecycle-receptors",
       "changedFileCount": 10,
       "symbols": [
         "ReceptorInvoker",
-        "IReceptorRegistry",
-        "FireAtAttribute",
+        "_invokeReceptorAsync",
         "last",
-        "ILifecycleContext",
-        "IReceptorInvoker",
-        "LifecycleExecutionContext",
-        "MessageSource",
+        "GeneratedReceptorRegistry",
+        "IReceptorRegistry",
         "ReceptorInfo",
         "ReceptorSyncAttributeInfo",
-        "GeneratedReceptorRegistry"
+        "ILifecycleContext",
+        "LifecycleExecutionContext",
+        "FireAtAttribute",
+        "MessageSource",
+        "IReceptorInvoker"
       ],
       "changedFiles": [
         "src/Whizbang.Core/Messaging/ReceptorInvoker.cs",
-        "src/Whizbang.Core/Messaging/IReceptorRegistry.cs",
-        "src/Whizbang.Core/Messaging/FireAtAttribute.cs",
         "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "src/Whizbang.Core/Messaging/ILifecycleContext.cs",
-        "src/Whizbang.Core/Messaging/IReceptorInvoker.cs",
-        "src/Whizbang.Core/Messaging/LifecycleExecutionContext.cs",
-        "src/Whizbang.Core/Messaging/MessageSource.cs",
+        "src/Whizbang.Generators/Templates/ReceptorRegistryTemplate.cs",
+        "src/Whizbang.Core/Messaging/IReceptorRegistry.cs",
         "src/Whizbang.Core/Messaging/ReceptorInfo.cs",
-        "src/Whizbang.Generators/Templates/ReceptorRegistryTemplate.cs"
+        "src/Whizbang.Core/Messaging/ILifecycleContext.cs",
+        "src/Whizbang.Core/Messaging/LifecycleExecutionContext.cs",
+        "src/Whizbang.Core/Messaging/FireAtAttribute.cs",
+        "src/Whizbang.Core/Messaging/MessageSource.cs",
+        "src/Whizbang.Core/Messaging/IReceptorInvoker.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/workers/pinned-connection-pool",
+      "changedFileCount": 10,
+      "symbols": [
+        "WhizbangPinnedPoolOptions",
+        "PinnedConnectionPool",
+        "PostgresPinnedPoolServiceCollectionExtensions",
+        "PinnedPoolMetrics",
+        "PinnedPoolServiceCollectionExtensions",
+        "CoordinatorConnectionScope",
+        "IBorrowedConnection",
+        "IPinnedConnectionPool",
+        "NoOpPinnedConnectionPool",
+        "PinnedConnectionContext"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/WhizbangPinnedPoolOptions.cs",
+        "src/Whizbang.Data.Postgres/PinnedConnectionPool.cs",
+        "src/Whizbang.Data.Postgres/PostgresPinnedPoolServiceCollectionExtensions.cs",
+        "src/Whizbang.Core/Observability/PinnedPoolMetrics.cs",
+        "src/Whizbang.Core/Workers/PinnedPoolServiceCollectionExtensions.cs",
+        "src/Whizbang.Data.Postgres/CoordinatorConnectionScope.cs",
+        "src/Whizbang.Core/Workers/IBorrowedConnection.cs",
+        "src/Whizbang.Core/Workers/IPinnedConnectionPool.cs",
+        "src/Whizbang.Core/Workers/NoOpPinnedConnectionPool.cs",
+        "src/Whizbang.Core/Workers/PinnedConnectionContext.cs"
+      ]
+    },
+    {
+      "docsPath": "core-concepts/pinned-identity",
+      "changedFileCount": 9,
+      "symbols": [
+        "DapperEventTypeRenameTool",
+        "DapperMessageTypeRegistryPopulator",
+        "EFCoreMessageTypeRegistryPopulator",
+        "IMessageTypeCatalog",
+        "PinnedIdCodeFixProvider",
+        "IMessageTypeRegistryPopulator",
+        "MessageTypeRegistrySchema",
+        "IPinnedIdRegistry",
+        "PinnedIdAttribute"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.Dapper.Postgres/DapperEventTypeRenameTool.cs",
+        "src/Whizbang.Data.Dapper.Postgres/DapperMessageTypeRegistryPopulator.cs",
+        "src/Whizbang.Data.EFCore.Postgres/EFCoreMessageTypeRegistryPopulator.cs",
+        "src/Whizbang.Core/IMessageTypeCatalog.cs",
+        "src/Whizbang.Generators.CodeFixes/PinnedIdCodeFixProvider.cs",
+        "src/Whizbang.Core/IMessageTypeRegistryPopulator.cs",
+        "src/Whizbang.Data.Schema/Schemas/MessageTypeRegistrySchema.cs",
+        "src/Whizbang.Core/IPinnedIdRegistry.cs",
+        "src/Whizbang.Core/Attributes/PinnedIdAttribute.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/observability/metrics",
+      "changedFileCount": 9,
+      "symbols": [
+        "DispatcherMetrics",
+        "EventCategoryMetrics",
+        "TransportMetrics",
+        "InboxMetrics",
+        "WorkCoordinatorMetrics",
+        "NotifyMetrics",
+        "PerspectiveMetrics",
+        "LifecycleCoordinatorMetrics",
+        "LifecycleMetrics"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Observability/DispatcherMetrics.cs",
+        "src/Whizbang.Core/Observability/EventCategoryMetrics.cs",
+        "src/Whizbang.Core/Observability/TransportMetrics.cs",
+        "src/Whizbang.Core/Observability/InboxMetrics.cs",
+        "src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs",
+        "src/Whizbang.Data.Postgres/Notifications/NotifyMetrics.cs",
+        "src/Whizbang.Core/Observability/PerspectiveMetrics.cs",
+        "src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs",
+        "src/Whizbang.Core/Observability/LifecycleMetrics.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/batched-flushers",
+      "changedFileCount": 8,
+      "symbols": [
+        "RecordHeartbeatAsync",
+        "CompletePerspectiveAsync",
+        "ReportFailuresAsync",
+        "CommitHandlerResultAsync",
+        "FlushCompletionsAsync",
+        "StoreInboxMessagesAsync",
+        "ReportPerspectiveCompletionAsync",
+        "ReportPerspectiveFailureAsync",
+        "RecordLifecycleCompletionAsync",
+        "MaintenanceResult",
+        "RewindCursorInfo",
+        "OrphanedLifecycleEvent",
+        "Flags",
+        "EventsProcessed",
+        "Attempts",
+        "PendingPerspectiveEvent",
+        "OutboxBatchRow",
+        "InboxBatchRow",
+        "FailureFlushWorker",
+        "FailureFlushWorkerOptions",
+        "LeaseRenewalWorker",
+        "LeaseRenewalWorkerOptions",
+        "OutboxCompletionFlushWorker",
+        "OutboxCompletionFlushWorkerOptions",
+        "PerspectiveCompletionFlushWorker",
+        "PerspectiveCompletionFlushWorkerOptions",
+        "BatchFlusher",
+        "BatchFlusherOptions",
+        "FlushCompletionsRequest",
+        "WorkCategory"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "src/Whizbang.Core/Workers/FailureFlushWorker.cs",
+        "src/Whizbang.Core/Workers/LeaseRenewalWorker.cs",
+        "src/Whizbang.Core/Workers/OutboxCompletionFlushWorker.cs",
+        "src/Whizbang.Core/Workers/PerspectiveCompletionFlushWorker.cs",
+        "src/Whizbang.Core/Workers/BatchFlusher.cs",
+        "src/Whizbang.Core/Messaging/FlushCompletionsRequest.cs",
+        "src/Whizbang.Core/Messaging/WorkCategory.cs"
+      ]
+    },
+    {
+      "docsPath": "event-upcasting",
+      "changedFileCount": 8,
+      "symbols": [
+        "SerializationOptions",
+        "SerializationResult",
+        "WireEnvelopeSerializer",
+        "IVersionedJsonSerializer",
+        "IVersionedJsonSerializerRegistry",
+        "VersionedJsonSerializerRegistry",
+        "SnapshotUpgradePolicy",
+        "SnapshotEnvelope",
+        "SerializationVersion",
+        "VersionedJsonEnvelope"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Serialization/SerializationOptions.cs",
+        "src/Whizbang.Core/Serialization/SerializationResult.cs",
+        "src/Whizbang.Core/Serialization/WireEnvelopeSerializer.cs",
+        "src/Whizbang.Core/Serialization/IVersionedJsonSerializer.cs",
+        "src/Whizbang.Core/Serialization/VersionedJsonSerializerRegistry.cs",
+        "src/Whizbang.Core/Perspectives/SnapshotEnvelope.cs",
+        "src/Whizbang.Core/Serialization/SerializationVersion.cs",
+        "src/Whizbang.Core/Serialization/VersionedJsonEnvelope.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/physical-fields",
+      "changedFileCount": 8,
+      "symbols": [
+        "SplitModeChangeTrackerHydrator",
+        "PhysicalFieldHydratorRegistry",
+        "PhysicalFieldMaterializationInterceptor",
+        "UseWhizbangPhysicalFields",
+        "PhysicalFieldQueryInterceptor",
+        "PhysicalFieldRegistry",
+        "FieldStorageMode",
+        "PhysicalFieldInfo"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.EFCore.Postgres/SplitModeChangeTrackerHydrator.cs",
+        "src/Whizbang.Data.EFCore.Postgres/PhysicalFieldHydratorRegistry.cs",
+        "src/Whizbang.Data.EFCore.Postgres/PhysicalFieldMaterializationInterceptor.cs",
+        "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs",
+        "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs",
+        "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs",
+        "src/Whizbang.Core/Perspectives/FieldStorageMode.cs",
+        "src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/identity/pinned-type-ledger",
+      "changedFileCount": 7,
+      "symbols": [
+        "types",
+        "_generateRenameAliasRegistrations",
+        "IEventTypeRenameTool",
+        "TypeRegistryMetrics",
+        "MessageTypeRegistryJson",
+        "PinnedIdAnalyzer",
+        "PinnedTypeRenameAnalyzer",
+        "PinnedTypeLedgerGenerator"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
+        "src/Whizbang.Core/IEventTypeRenameTool.cs",
+        "src/Whizbang.Core/Observability/TypeRegistryMetrics.cs",
+        "src/Whizbang.Core/MessageTypeRegistryJson.cs",
+        "src/Whizbang.Generators/Analyzers/PinnedIdAnalyzer.cs",
+        "src/Whizbang.Generators/Analyzers/PinnedTypeRenameAnalyzer.cs",
+        "src/Whizbang.Generators/PinnedTypeLedgerGenerator.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/dead-letter-queue/internal-dlq",
+      "changedFileCount": 7,
+      "symbols": [
+        "SecurityContextHelper",
+        "EstablishMessageContextForCascade",
+        "EnqueueSecurityContextTimeoutFailureAsync",
+        "SecurityContextEstablishmentOutcome",
+        "OutboxDrainWorker",
+        "transition",
+        "publish",
+        "OutboxDrainWorkerOptions",
+        "MaxConcurrentStreams",
+        "Batcher",
+        "SecurityContextTimeoutSeconds",
+        "PublishTimeoutSeconds",
+        "UnobservedExceptionDiagnostics",
+        "UnobservedExceptionDiagnosticsOptions",
+        "IGenerationProvider",
+        "IDeadLetterStore",
+        "DapperDeadLetterStore",
+        "EFCoreDeadLetterStore"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/SecurityContextHelper.cs",
+        "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
+        "src/Whizbang.Core/Observability/UnobservedExceptionDiagnostics.cs",
+        "src/Whizbang.Core/Messaging/IGenerationProvider.cs",
+        "src/Whizbang.Core/Messaging/IDeadLetterStore.cs",
+        "src/Whizbang.Data.Dapper.Postgres/DapperDeadLetterStore.cs",
+        "src/Whizbang.Data.EFCore.Postgres/EFCoreDeadLetterStore.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "changedFileCount": 7,
+      "symbols": [
+        "InboxDrainWorker",
+        "_drainStreamBatchAsync",
+        "InboxDrainWorkerOptions",
+        "RecordHeartbeatAsync",
+        "CompletePerspectiveAsync",
+        "ReportFailuresAsync",
+        "CommitHandlerResultAsync",
+        "FlushCompletionsAsync",
+        "StoreInboxMessagesAsync",
+        "ReportPerspectiveCompletionAsync",
+        "ReportPerspectiveFailureAsync",
+        "RecordLifecycleCompletionAsync",
+        "MaintenanceResult",
+        "RewindCursorInfo",
+        "OrphanedLifecycleEvent",
+        "Flags",
+        "EventsProcessed",
+        "Attempts",
+        "PendingPerspectiveEvent",
+        "OutboxBatchRow",
+        "InboxBatchRow",
+        "OutboxDrainWorker",
+        "transition",
+        "publish",
+        "OutboxDrainWorkerOptions",
+        "MaxConcurrentStreams",
+        "Batcher",
+        "SecurityContextTimeoutSeconds",
+        "PublishTimeoutSeconds",
+        "RecentlyProcessedEventCacheSweepWorker",
+        "RecentlyProcessedEventCache",
+        "IInboxDrainChannel",
+        "InboxDrainChannel",
+        "IOutboxDrainChannel",
+        "OutboxDrainChannel"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/InboxDrainWorker.cs",
+        "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
+        "src/Whizbang.Core/Workers/RecentlyProcessedEventCacheSweepWorker.cs",
+        "src/Whizbang.Core/Workers/RecentlyProcessedEventCache.cs",
+        "src/Whizbang.Core/Messaging/IInboxDrainChannel.cs",
+        "src/Whizbang.Core/Messaging/IOutboxDrainChannel.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/rebuild",
+      "changedFileCount": 7,
+      "symbols": [
+        "PerspectiveRebuilder",
+        "EFCorePostgresPerspectiveCheckpointCompleter",
+        "RebuildPerspectiveCommandReceptor",
+        "RebuildCommandReceptorRegistrar",
+        "DapperPostgresPerspectiveCheckpointCompleter",
+        "IPerspectiveCheckpointCompleter",
+        "PerspectiveMigrationWorker"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs",
+        "src/Whizbang.Data.EFCore.Postgres/EFCorePostgresPerspectiveCheckpointCompleter.cs",
+        "src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs",
+        "src/Whizbang.Data.EFCore.Postgres/RebuildCommandReceptorRegistrar.cs",
+        "src/Whizbang.Data.Dapper.Postgres/DapperPostgresPerspectiveCheckpointCompleter.cs",
+        "src/Whizbang.Core/Messaging/IPerspectiveCheckpointCompleter.cs",
+        "src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs"
       ]
     },
     {
@@ -130,87 +731,221 @@
       "changedFileCount": 7,
       "symbols": [
         "RabbitMQTransport",
+        "ServiceCollectionExtensions",
         "RabbitMQChannelPool",
-        "RabbitMQHealthCheck",
         "RabbitMQOptions",
+        "MaxChannels",
+        "MaxDeliveryAttempts",
+        "PrefetchCount",
+        "EnableSingleActiveConsumer",
         "InitialRetryAttempts",
         "InitialRetryDelay",
         "MaxRetryDelay",
         "BackoffMultiplier",
         "RetryIndefinitely",
         "RabbitMQReadinessCheck",
-        "RabbitMQSubscription",
-        "ServiceCollectionExtensions"
+        "RabbitMQHealthCheck",
+        "RabbitMQSubscription"
       ],
       "changedFiles": [
         "src/Whizbang.Transports.RabbitMQ/RabbitMQTransport.cs",
+        "src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs",
         "src/Whizbang.Transports.RabbitMQ/RabbitMQChannelPool.cs",
-        "src/Whizbang.Transports.RabbitMQ/RabbitMQHealthCheck.cs",
         "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs",
         "src/Whizbang.Transports.RabbitMQ/RabbitMQReadinessCheck.cs",
-        "src/Whizbang.Transports.RabbitMQ/RabbitMQSubscription.cs",
-        "src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs"
+        "src/Whizbang.Transports.RabbitMQ/RabbitMQHealthCheck.cs",
+        "src/Whizbang.Transports.RabbitMQ/RabbitMQSubscription.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messages/message-context",
+      "changedFileCount": 6,
+      "symbols": [
+        "InboundCorrelationAccessor",
+        "CorrelationId",
+        "WhizbangCorrelationMiddleware",
+        "IMessageContext",
+        "MessageContext",
+        "MessageId"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Observability/InboundCorrelationAccessor.cs",
+        "src/Whizbang.Core/ValueObjects/CorrelationId.cs",
+        "src/Whizbang.Hosting.AspNet/WhizbangCorrelationMiddleware.cs",
+        "src/Whizbang.Core/IMessageContext.cs",
+        "src/Whizbang.Core/MessageContext.cs",
+        "src/Whizbang.Core/ValueObjects/MessageId.cs"
       ]
     },
     {
       "docsPath": "messaging/transports/transports",
       "changedFileCount": 6,
       "symbols": [
+        "struct",
+        "ITransport",
+        "destination",
         "BulkPublishItem",
         "BulkPublishItemResult",
-        "ITransport",
+        "ITransportReadinessCheck",
         "IMessageSerializer",
         "ISubscription",
-        "ITransportManager",
-        "ITransportReadinessCheck"
+        "ITransportManager"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Transports/BulkPublish.cs",
         "src/Whizbang.Core/Transports/ITransport.cs",
+        "src/Whizbang.Core/Transports/BulkPublish.cs",
+        "src/Whizbang.Core/Transports/ITransportReadinessCheck.cs",
         "src/Whizbang.Core/Transports/IMessageSerializer.cs",
         "src/Whizbang.Core/Transports/ISubscription.cs",
-        "src/Whizbang.Core/Transports/ITransportManager.cs",
-        "src/Whizbang.Core/Transports/ITransportReadinessCheck.cs"
+        "src/Whizbang.Core/Transports/ITransportManager.cs"
       ]
     },
     {
-      "docsPath": "operations/observability/metrics",
+      "docsPath": "data/work-coordinator-strategies",
       "changedFileCount": 6,
       "symbols": [
-        "LifecycleCoordinatorMetrics",
-        "DispatcherMetrics",
-        "LifecycleMetrics",
-        "PerspectiveMetrics",
-        "TransportMetrics",
-        "WorkCoordinatorMetrics"
+        "QueueOutboxMessageAsync",
+        "WorkCoordinatorStrategy",
+        "WorkCoordinatorOptions",
+        "BatchWorkCoordinatorStrategy",
+        "FlushTrigger",
+        "WorkBatchFlushedArgs",
+        "FlushAsync",
+        "IWorkFlusher",
+        "WhizbangFlushMiddleware",
+        "WhizbangFlushMiddlewareExtensions"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs",
-        "src/Whizbang.Core/Observability/DispatcherMetrics.cs",
-        "src/Whizbang.Core/Observability/LifecycleMetrics.cs",
-        "src/Whizbang.Core/Observability/PerspectiveMetrics.cs",
-        "src/Whizbang.Core/Observability/TransportMetrics.cs",
-        "src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs"
+        "src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs",
+        "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs",
+        "src/Whizbang.Core/Messaging/IntervalWorkCoordinatorStrategy.cs",
+        "src/Whizbang.Core/Messaging/IWorkFlusher.cs",
+        "src/Whizbang.Hosting.AspNet/WhizbangFlushMiddleware.cs",
+        "src/Whizbang.Hosting.AspNet/WhizbangFlushMiddlewareExtensions.cs"
       ]
     },
     {
-      "docsPath": "fundamentals/perspectives/physical-fields",
+      "docsPath": "fundamentals/receptors/exactly-once-firing",
       "changedFileCount": 6,
       "symbols": [
-        "FieldStorageMode",
-        "PhysicalFieldExpressionVisitor",
-        "PhysicalFieldQueryInterceptor",
-        "PhysicalFieldRegistry",
-        "UseWhizbangPhysicalFields",
-        "PhysicalFieldInfo"
+        "LifecycleStageTracker",
+        "AutoGenerateStreamIds",
+        "Guardrails",
+        "WhizbangGuardrailsOptions",
+        "DuplicateReceptorFireException",
+        "EnvelopeReceptorDedupStore",
+        "IReceptorDedupStore",
+        "ReceptorInvocationRecord"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Perspectives/FieldStorageMode.cs",
-        "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs",
-        "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs",
-        "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs",
-        "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs",
-        "src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs"
+        "src/Whizbang.Core/Messaging/LifecycleStageTracker.cs",
+        "src/Whizbang.Core/Configuration/WhizbangOptions.cs",
+        "src/Whizbang.Core/Messaging/DuplicateReceptorFireException.cs",
+        "src/Whizbang.Core/Messaging/EnvelopeReceptorDedupStore.cs",
+        "src/Whizbang.Core/Messaging/IReceptorDedupStore.cs",
+        "src/Whizbang.Core/Observability/ReceptorInvocationRecord.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/persistence/observability",
+      "changedFileCount": 5,
+      "symbols": [
+        "MessageHop",
+        "IMessageEnvelope",
+        "MessageEnvelope",
+        "Version",
+        "DispatchContext",
+        "SourceServiceId",
+        "SourceCommitSequence",
+        "MessageEnvelopeExtensions",
+        "ReconstructWithPayload",
+        "ITraceStore"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Observability/MessageHop.cs",
+        "src/Whizbang.Core/Observability/IMessageEnvelope.cs",
+        "src/Whizbang.Core/Observability/MessageEnvelope.cs",
+        "src/Whizbang.Core/Observability/MessageEnvelopeExtensions.cs",
+        "src/Whizbang.Core/Observability/ITraceStore.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/sagas/completion-orchestration",
+      "changedFileCount": 5,
+      "symbols": [
+        "SagaCompletionWatchdogTickEvent",
+        "SagaOptions",
+        "ISagaCompletionAbandonedEvent",
+        "SagaCompletionAbandonedEvent",
+        "ISagaCompletionWatchdogTickEvent"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Sagas/SagaCompletionWatchdogTickEvent.cs",
+        "src/Whizbang.Sagas/SagaOptions.cs",
+        "src/Whizbang.Sagas.Contracts/Events/ISagaCompletionAbandonedEvent.cs",
+        "src/Whizbang.Sagas/SagaCompletionAbandonedEvent.cs",
+        "src/Whizbang.Sagas.Contracts/Events/ISagaCompletionWatchdogTickEvent.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/transport-consumer#subscription-resilience",
+      "changedFileCount": 5,
+      "symbols": [
+        "TransportConsumerConfiguration",
+        "ResilienceOptions",
+        "TransportConsumerBuilderExtensions",
+        "AddTransportConsumer",
+        "SubscriptionRetryHelper",
+        "SubscriptionStatus",
+        "SubscriptionResilienceOptions",
+        "HealthCheckInterval",
+        "AllowPartialSubscriptions",
+        "ITransportWithRecovery"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs",
+        "src/Whizbang.Core/Resilience/SubscriptionRetryHelper.cs",
+        "src/Whizbang.Core/Resilience/SubscriptionState.cs",
+        "src/Whizbang.Core/Resilience/SubscriptionResilienceOptions.cs",
+        "src/Whizbang.Core/Transports/ITransportWithRecovery.cs"
+      ]
+    },
+    {
+      "docsPath": "internals/outbox-batch-strategy",
+      "changedFileCount": 5,
+      "symbols": [
+        "StreamAffinityWorkCoordinatorStrategy",
+        "ImmediateOutboxBatchStrategy",
+        "QueueOutboxMessageAsync",
+        "WorkCoordinatorStrategy",
+        "WorkCoordinatorOptions",
+        "IOutboxBatchStrategy",
+        "SlidingWindowOutboxOptions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/StreamAffinityWorkCoordinatorStrategy.cs",
+        "src/Whizbang.Core/Workers/ImmediateOutboxBatchStrategy.cs",
+        "src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs",
+        "src/Whizbang.Core/Messaging/IOutboxBatchStrategy.cs",
+        "src/Whizbang.Core/Workers/SlidingWindowOutboxOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "extending/features/debugger-aware-clock",
+      "changedFileCount": 5,
+      "symbols": [
+        "DebuggerAwareClock",
+        "DebuggerAwareClockOptions",
+        "DebuggerDetectionMode",
+        "IActiveStopwatch",
+        "IDebuggerAwareClock"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Diagnostics/DebuggerAwareClock.cs",
+        "src/Whizbang.Core/Diagnostics/DebuggerAwareClockOptions.cs",
+        "src/Whizbang.Core/Diagnostics/DebuggerDetectionMode.cs",
+        "src/Whizbang.Core/Diagnostics/IActiveStopwatch.cs",
+        "src/Whizbang.Core/Diagnostics/IDebuggerAwareClock.cs"
       ]
     },
     {
@@ -238,152 +973,367 @@
       ]
     },
     {
-      "docsPath": "data/work-coordinator-strategies",
-      "changedFileCount": 5,
-      "symbols": [
-        "BatchWorkCoordinatorStrategy",
-        "FlushTrigger",
-        "WorkBatchFlushedArgs",
-        "FlushMode",
-        "WorkCoordinatorStrategy",
-        "WorkCoordinatorOptions",
-        "WhizbangFlushMiddleware",
-        "WhizbangFlushMiddlewareExtensions",
-        "IWorkFlusher"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs",
-        "src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs",
-        "src/Whizbang.Hosting.AspNet/WhizbangFlushMiddleware.cs",
-        "src/Whizbang.Hosting.AspNet/WhizbangFlushMiddlewareExtensions.cs",
-        "src/Whizbang.Core/Messaging/IWorkFlusher.cs"
-      ]
-    },
-    {
-      "docsPath": "messaging/transports/transport-consumer#subscription-resilience",
-      "changedFileCount": 5,
-      "symbols": [
-        "TransportConsumerConfiguration",
-        "ResilienceOptions",
-        "TransportConsumerBuilderExtensions",
-        "AddTransportConsumer",
-        "SubscriptionRetryHelper",
-        "SubscriptionStatus",
-        "SubscriptionResilienceOptions",
-        "HealthCheckInterval",
-        "AllowPartialSubscriptions",
-        "ITransportWithRecovery"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs",
-        "src/Whizbang.Core/Resilience/SubscriptionRetryHelper.cs",
-        "src/Whizbang.Core/Resilience/SubscriptionState.cs",
-        "src/Whizbang.Core/Resilience/SubscriptionResilienceOptions.cs",
-        "src/Whizbang.Core/Transports/ITransportWithRecovery.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/persistence/observability",
-      "changedFileCount": 5,
-      "symbols": [
-        "MessageHop",
-        "MessageEnvelope",
-        "IMessageEnvelope",
-        "ITraceStore",
-        "MessageEnvelopeExtensions",
-        "ReconstructWithPayload"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Observability/MessageHop.cs",
-        "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "src/Whizbang.Core/Observability/IMessageEnvelope.cs",
-        "src/Whizbang.Core/Observability/ITraceStore.cs",
-        "src/Whizbang.Core/Observability/MessageEnvelopeExtensions.cs"
-      ]
-    },
-    {
-      "docsPath": "extending/features/debugger-aware-clock",
-      "changedFileCount": 5,
-      "symbols": [
-        "DebuggerAwareClock",
-        "DebuggerAwareClockOptions",
-        "DebuggerDetectionMode",
-        "IActiveStopwatch",
-        "IDebuggerAwareClock"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Diagnostics/DebuggerAwareClock.cs",
-        "src/Whizbang.Core/Diagnostics/DebuggerAwareClockOptions.cs",
-        "src/Whizbang.Core/Diagnostics/DebuggerDetectionMode.cs",
-        "src/Whizbang.Core/Diagnostics/IActiveStopwatch.cs",
-        "src/Whizbang.Core/Diagnostics/IDebuggerAwareClock.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/dispatcher/dispatcher#routed-message-cascading",
+      "docsPath": "fundamentals/perspectives/perspectives",
       "changedFileCount": 4,
       "symbols": [
-        "DefaultRoutingAttribute",
-        "DispatchModes",
-        "Route",
-        "RoutedNone",
-        "IRouted"
+        "DapperPostgresPerspectiveStore",
+        "IPerspectiveBase",
+        "IPerspectiveFor",
+        "IPerspectiveInvoker"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Dispatch/DefaultRoutingAttribute.cs",
-        "src/Whizbang.Core/Dispatch/DispatchMode.cs",
-        "src/Whizbang.Core/Dispatch/Route.cs",
-        "src/Whizbang.Core/Dispatch/Routed.cs"
+        "src/Whizbang.Data.Dapper.Postgres/DapperPostgresPerspectiveStore.cs",
+        "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
+        "src/Whizbang.Core/Perspectives/IPerspectiveFor.cs",
+        "src/Whizbang.Core/Perspectives/IPerspectiveInvoker.cs"
       ]
     },
     {
       "docsPath": "operations/workers/perspective-worker",
       "changedFileCount": 4,
       "symbols": [
+        "PerspectiveWorker",
+        "RequestImmediatePoll",
+        "_scanAndRepairRewindsOnStartupAsync",
+        "ProcessChannelBatchAsync",
+        "_processDrainModeStreamsAsync",
+        "_establishSecurityContextAsync",
+        "PerspectiveStartupScanLog",
+        "DrainBatcher",
+        "RecordHeartbeatAsync",
+        "CompletePerspectiveAsync",
+        "ReportFailuresAsync",
+        "CommitHandlerResultAsync",
+        "FlushCompletionsAsync",
+        "StoreInboxMessagesAsync",
         "ReportPerspectiveCompletionAsync",
         "ReportPerspectiveFailureAsync",
-        "PerspectiveWorker",
-        "_establishSecurityContextAsync",
+        "RecordLifecycleCompletionAsync",
+        "MaintenanceResult",
+        "RewindCursorInfo",
+        "OrphanedLifecycleEvent",
+        "Flags",
+        "EventsProcessed",
+        "Attempts",
+        "PendingPerspectiveEvent",
+        "OutboxBatchRow",
+        "InboxBatchRow",
         "BatchedCompletionStrategy",
         "IPerspectiveCompletionStrategy"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
         "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
         "src/Whizbang.Core/Workers/BatchedCompletionStrategy.cs",
         "src/Whizbang.Core/Workers/IPerspectiveCompletionStrategy.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/claim-loop",
+      "changedFileCount": 4,
+      "symbols": [
+        "PerspectiveWorker",
+        "RequestImmediatePoll",
+        "_scanAndRepairRewindsOnStartupAsync",
+        "ProcessChannelBatchAsync",
+        "_processDrainModeStreamsAsync",
+        "_establishSecurityContextAsync",
+        "PerspectiveStartupScanLog",
+        "DrainBatcher",
+        "ClaimWorker",
+        "ClaimWorkerOptions",
+        "WorkCoordinatorPumpAdapter",
+        "ClaimWorkRequest"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "src/Whizbang.Core/Workers/ClaimWorker.cs",
+        "src/Whizbang.Testing/Workers/WorkCoordinatorPumpAdapter.cs",
+        "src/Whizbang.Core/Messaging/ClaimWorkRequest.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/http-security-headers",
+      "changedFileCount": 4,
+      "symbols": [
+        "WhizbangSecurityHeadersMiddleware",
+        "WhizbangSecurityHeadersOptions",
+        "WhizbangKestrelExtensions",
+        "WhizbangSecurityHeadersMiddlewareExtensions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Hosting.AspNet/WhizbangSecurityHeadersMiddleware.cs",
+        "src/Whizbang.Hosting.AspNet/WhizbangSecurityHeadersOptions.cs",
+        "src/Whizbang.Hosting.AspNet/WhizbangKestrelExtensions.cs",
+        "src/Whizbang.Hosting.AspNet/WhizbangSecurityHeadersMiddlewareExtensions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/handler-commit",
+      "changedFileCount": 4,
+      "symbols": [
+        "PerspectiveWorkerTestHarness",
+        "RecordHeartbeatAsync",
+        "CompletePerspectiveAsync",
+        "ReportFailuresAsync",
+        "CommitHandlerResultAsync",
+        "FlushCompletionsAsync",
+        "StoreInboxMessagesAsync",
+        "ReportPerspectiveCompletionAsync",
+        "ReportPerspectiveFailureAsync",
+        "RecordLifecycleCompletionAsync",
+        "MaintenanceResult",
+        "RewindCursorInfo",
+        "OrphanedLifecycleEvent",
+        "Flags",
+        "EventsProcessed",
+        "Attempts",
+        "PendingPerspectiveEvent",
+        "OutboxBatchRow",
+        "InboxBatchRow",
+        "InboxHandlerWorker",
+        "InboxHandlerWorkerOptions",
+        "HandlerCommitRequest"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Testing/Workers/PerspectiveWorkerTestHarness.cs",
+        "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "src/Whizbang.Core/Workers/InboxHandlerWorker.cs",
+        "src/Whizbang.Core/Messaging/HandlerCommitRequest.cs"
       ]
     },
     {
       "docsPath": "fundamentals/security/security#principal-filtering",
       "changedFileCount": 4,
       "symbols": [
-        "JsonArrayContainsAnyTranslator",
-        "WhizbangDbContextOptionsExtensions",
         "WhizbangJsonDbFunctions",
-        "WhizbangMethodCallTranslatorPlugin"
+        "WhizbangMethodCallTranslatorPlugin",
+        "JsonArrayContainsAnyTranslator",
+        "WhizbangDbContextOptionsExtensions"
       ],
       "changedFiles": [
-        "src/Whizbang.Data.EFCore.Postgres/Functions/JsonArrayContainsAnyTranslator.cs",
-        "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangDbContextOptionsExtensions.cs",
         "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangJsonDbFunctions.cs",
-        "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangMethodCallTranslatorPlugin.cs"
+        "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangMethodCallTranslatorPlugin.cs",
+        "src/Whizbang.Data.EFCore.Postgres/Functions/JsonArrayContainsAnyTranslator.cs",
+        "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangDbContextOptionsExtensions.cs"
       ]
     },
     {
-      "docsPath": "fundamentals/messages/message-context",
+      "docsPath": "fundamentals/work-coordinator/commit-sequence",
       "changedFileCount": 4,
       "symbols": [
-        "MessageContext",
-        "IMessageContext",
-        "CorrelationId",
-        "MessageId"
+        "MessageEnvelope",
+        "Version",
+        "DispatchContext",
+        "SourceServiceId",
+        "SourceCommitSequence",
+        "CommitOrderStamperOptions",
+        "PgCommitOrderStamperWorker",
+        "IPerspectiveSnapshotStore",
+        "CreateSnapshotAsync",
+        "GetLatestSnapshotAsync"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/MessageContext.cs",
-        "src/Whizbang.Core/IMessageContext.cs",
-        "src/Whizbang.Core/ValueObjects/CorrelationId.cs",
-        "src/Whizbang.Core/ValueObjects/MessageId.cs"
+        "src/Whizbang.Core/Observability/MessageEnvelope.cs",
+        "src/Whizbang.Core/Notifications/CommitOrderStamperOptions.cs",
+        "src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs",
+        "src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/rewind",
+      "changedFileCount": 4,
+      "symbols": [
+        "RecordHeartbeatAsync",
+        "CompletePerspectiveAsync",
+        "ReportFailuresAsync",
+        "CommitHandlerResultAsync",
+        "FlushCompletionsAsync",
+        "StoreInboxMessagesAsync",
+        "ReportPerspectiveCompletionAsync",
+        "ReportPerspectiveFailureAsync",
+        "RecordLifecycleCompletionAsync",
+        "MaintenanceResult",
+        "RewindCursorInfo",
+        "OrphanedLifecycleEvent",
+        "Flags",
+        "EventsProcessed",
+        "Attempts",
+        "PendingPerspectiveEvent",
+        "OutboxBatchRow",
+        "InboxBatchRow",
+        "IPerspectiveApplyCoordinator",
+        "PerspectiveApplyCoordinator",
+        "PerspectiveRewindOptions",
+        "DebounceWindow",
+        "MaxDebounceWindow",
+        "RewindStartupMode"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "src/Whizbang.Core/Perspectives/IPerspectiveApplyCoordinator.cs",
+        "src/Whizbang.Core/Perspectives/PerspectiveApplyCoordinator.cs",
+        "src/Whizbang.Core/Perspectives/PerspectiveRewindOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/events/event-upcasting",
+      "changedFileCount": 4,
+      "symbols": [
+        "EventUpcasterPipeline",
+        "IEventUpcaster",
+        "UpcastingEventStoreDecorator",
+        "EventUpcasterServiceCollectionExtensions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/EventUpcasterPipeline.cs",
+        "src/Whizbang.Core/Messaging/IEventUpcaster.cs",
+        "src/Whizbang.Core/Messaging/UpcastingEventStoreDecorator.cs",
+        "src/Whizbang.Core/Messaging/EventUpcasterServiceCollectionExtensions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/snapshots",
+      "changedFileCount": 4,
+      "symbols": [
+        "PerspectiveSnapshotOptions",
+        "IPerspectiveSnapshotStore",
+        "CreateSnapshotAsync",
+        "GetLatestSnapshotAsync",
+        "EFCorePerspectiveSnapshotStore",
+        "DapperPerspectiveSnapshotStore"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs",
+        "src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs",
+        "src/Whizbang.Data.EFCore.Postgres/EFCorePerspectiveSnapshotStore.cs",
+        "src/Whizbang.Data.Dapper.Postgres/DapperPerspectiveSnapshotStore.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/dead-letter-queue/recovery",
+      "changedFileCount": 4,
+      "symbols": [
+        "DeadLetterRecoveryWorker",
+        "DeadLetterRecoveryStatus",
+        "DeadLetterDisposition",
+        "RecoveryPolicy",
+        "IDeadLetterRecoveryPolicy",
+        "DeadLetterRecoveryOptions",
+        "IDeadLetterRecoveryService",
+        "EFCoreDeadLetterRecoveryService"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/DeadLetterRecoveryWorker.cs",
+        "src/Whizbang.Core/Messaging/DeadLetterRecoveryTypes.cs",
+        "src/Whizbang.Core/Messaging/IDeadLetterRecoveryService.cs",
+        "src/Whizbang.Data.EFCore.Postgres/EFCoreDeadLetterRecoveryService.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/configuration/empty-stream-id-policy",
+      "changedFileCount": 4,
+      "symbols": [
+        "EmptyStreamIdGuard",
+        "StreamIdCoalescer",
+        "WhizbangCoreOptions",
+        "Tracing",
+        "Services",
+        "DefaultQueryScope",
+        "ShowBanner",
+        "ImmediateDetachedChainWarningThreshold",
+        "EmptyStreamIdPolicy",
+        "TagProcessingMode",
+        "typed"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/EmptyStreamIdGuard.cs",
+        "src/Whizbang.Data.EFCore.Postgres/StreamIdCoalescer.cs",
+        "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs",
+        "src/Whizbang.Core/Messaging/EmptyStreamIdException.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/backup-tick-coordinator",
+      "changedFileCount": 4,
+      "symbols": [
+        "DefaultBackupTickRegistrar",
+        "BackupTickCoordinator",
+        "BackupTickRegistry",
+        "BackupTickRegistration",
+        "IBackupTickRegistry"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/DefaultBackupTickRegistrar.cs",
+        "src/Whizbang.Core/Workers/BackupTickCoordinator.cs",
+        "src/Whizbang.Core/Workers/BackupTickRegistry.cs",
+        "src/Whizbang.Core/Workers/IBackupTickRegistry.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/dead-letter-queue/transport-recovery",
+      "changedFileCount": 4,
+      "symbols": [
+        "AzureServiceBusDeadLetterDrainer",
+        "RabbitMqDeadLetterDrainer",
+        "ITransportDeadLetterDrainer",
+        "TransportDeadLetterDrainWorker",
+        "TransportDeadLetterDrainWorkerOptions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusDeadLetterDrainer.cs",
+        "src/Whizbang.Transports.RabbitMQ/RabbitMqDeadLetterDrainer.cs",
+        "src/Whizbang.Core/Transports/ITransportDeadLetterDrainer.cs",
+        "src/Whizbang.Core/Workers/TransportDeadLetterDrainWorker.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/lease-cancellation",
+      "changedFileCount": 4,
+      "symbols": [
+        "LeaseHandle",
+        "LeaseDispatchExecutor",
+        "LeaseHandleOptions",
+        "LeaseRegistry"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/LeaseHandle.cs",
+        "src/Whizbang.Core/Workers/LeaseDispatchExecutor.cs",
+        "src/Whizbang.Core/Workers/LeaseHandleOptions.cs",
+        "src/Whizbang.Core/Workers/LeaseRegistry.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/observability/metrics#table-statistics",
+      "changedFileCount": 4,
+      "symbols": [
+        "TableStatisticsCollector",
+        "ITableStatisticsProvider",
+        "TableStatisticsMetrics",
+        "PostgresTableStatisticsProvider"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Observability/TableStatisticsCollector.cs",
+        "src/Whizbang.Core/Observability/ITableStatisticsProvider.cs",
+        "src/Whizbang.Core/Observability/TableStatisticsMetrics.cs",
+        "src/Whizbang.Data.EFCore.Postgres/PostgresTableStatisticsProvider.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/dispatcher/dispatcher#routed-message-cascading",
+      "changedFileCount": 4,
+      "symbols": [
+        "DispatchModes",
+        "DefaultRoutingAttribute",
+        "Route",
+        "RoutedNone",
+        "IRouted"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Dispatch/DispatchMode.cs",
+        "src/Whizbang.Core/Dispatch/DefaultRoutingAttribute.cs",
+        "src/Whizbang.Core/Dispatch/Route.cs",
+        "src/Whizbang.Core/Dispatch/Routed.cs"
       ]
     },
     {
@@ -408,6 +1358,8 @@
       "symbols": [
         "ServiceBusConsumerWorker",
         "TransportConsumerWorker",
+        "_handleMessageBatchAsync",
+        "_isKnownEventType",
         "TransportConsumerOptions"
       ],
       "changedFiles": [
@@ -417,11 +1369,27 @@
       ]
     },
     {
+      "docsPath": "internals/receptor-registry-query",
+      "changedFileCount": 3,
+      "symbols": [
+        "IReceptorRegistryQuery",
+        "ReceptorRegistryContribution",
+        "WhizbangReceptorRegistryQueryAdapter"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/IReceptorRegistryQuery.cs",
+        "src/Whizbang.Core/Messaging/ReceptorRegistryContribution.cs",
+        "src/Whizbang.Core/Messaging/WhizbangReceptorRegistryQueryAdapter.cs"
+      ]
+    },
+    {
       "docsPath": "fundamentals/dispatcher/dispatcher",
       "changedFileCount": 3,
       "symbols": [
         "IDispatcher",
+        "message",
         "CascadeMessageAsync",
+        "LocalInvokeAndSyncAsync",
         "ONLY",
         "routing",
         "IDeliveryReceipt",
@@ -434,31 +1402,50 @@
       ]
     },
     {
-      "docsPath": "fundamentals/lenses/scoped-queries",
+      "docsPath": "fundamentals/dispatcher/publish-once",
       "changedFileCount": 3,
       "symbols": [
-        "ScopedLensQuery",
-        "IScopedLensQuery",
-        "LensQueryFactory"
+        "IDispatcher",
+        "message",
+        "CascadeMessageAsync",
+        "LocalInvokeAndSyncAsync",
+        "ONLY",
+        "routing",
+        "IClaimedEmissionStore",
+        "EFCoreClaimedEmissionStore"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Lenses/ScopedLensQuery.cs",
-        "src/Whizbang.Core/Lenses/IScopedLensQuery.cs",
-        "src/Whizbang.Core/Lenses/LensQueryFactory.cs"
+        "src/Whizbang.Core/IDispatcher.cs",
+        "src/Whizbang.Core/Dispatch/IClaimedEmissionStore.cs",
+        "src/Whizbang.Data.EFCore.Postgres/Dispatch/EFCoreClaimedEmissionStore.cs"
       ]
     },
     {
-      "docsPath": "fundamentals/messages/delivery-receipts",
+      "docsPath": "fundamentals/work-coordinator/idle-activity-tracking",
       "changedFileCount": 3,
       "symbols": [
-        "StreamIdExtractorRegistry",
-        "IStreamIdExtractor",
-        "StreamIdExtractor"
+        "IdleActivityTouchHookBinder",
+        "IdleActivityTracker",
+        "IIdleActivityTracker"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Registry/StreamIdExtractorRegistry.cs",
-        "src/Whizbang.Core/IStreamIdExtractor.cs",
-        "src/Whizbang.Core/StreamIdExtractor.cs"
+        "src/Whizbang.Core/Workers/IdleActivityTouchHookBinder.cs",
+        "src/Whizbang.Core/Workers/IdleActivityTracker.cs",
+        "src/Whizbang.Core/Workers/IIdleActivityTracker.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/receptors/raw-receptors",
+      "changedFileCount": 3,
+      "symbols": [
+        "RawReceptorRegistry",
+        "IRawReceptor",
+        "IRawReceptorRegistry"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/RawReceptorRegistry.cs",
+        "src/Whizbang.Core/Messaging/IRawReceptor.cs",
+        "src/Whizbang.Core/Messaging/IRawReceptorRegistry.cs"
       ]
     },
     {
@@ -476,17 +1463,101 @@
       ]
     },
     {
+      "docsPath": "internals/apply-batch-strategy",
+      "changedFileCount": 3,
+      "symbols": [
+        "SlidingWindowApplyBatchStrategy",
+        "IApplyBatchStrategy",
+        "SlidingWindowApplyOptions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/SlidingWindowApplyBatchStrategy.cs",
+        "src/Whizbang.Core/Messaging/IApplyBatchStrategy.cs",
+        "src/Whizbang.Core/Workers/SlidingWindowApplyOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "internals/inbox-batch-strategy",
+      "changedFileCount": 3,
+      "symbols": [
+        "SlidingWindowInboxOptions",
+        "ImmediateInboxBatchStrategy",
+        "IInboxBatchStrategy"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/SlidingWindowInboxOptions.cs",
+        "src/Whizbang.Core/Workers/ImmediateInboxBatchStrategy.cs",
+        "src/Whizbang.Core/Messaging/IInboxBatchStrategy.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/security#receptor-permission-gate",
+      "changedFileCount": 3,
+      "symbols": [
+        "DeniedAction",
+        "DefaultRequirePermissionInterceptor",
+        "IReceptorInterceptor"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/Attributes/DeniedAction.cs",
+        "src/Whizbang.Core/Security/DefaultRequirePermissionInterceptor.cs",
+        "src/Whizbang.Core/Security/IReceptorInterceptor.cs"
+      ]
+    },
+    {
+      "docsPath": "data/turnkey-initialization",
+      "changedFileCount": 3,
+      "symbols": [
+        "WhizbangDatabaseInitializerService",
+        "DbContextInitializationRegistry",
+        "WhizbangHostExtensions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs",
+        "src/Whizbang.Data.EFCore.Postgres/DbContextInitializationRegistry.cs",
+        "src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs"
+      ]
+    },
+    {
       "docsPath": "fundamentals/dispatcher/routing#domain-topic-provisioning",
       "changedFileCount": 3,
       "symbols": [
-        "ServiceBusInfrastructureProvisioner",
         "IInfrastructureProvisioner",
+        "ServiceBusInfrastructureProvisioner",
         "RabbitMQInfrastructureProvisioner"
       ],
       "changedFiles": [
-        "src/Whizbang.Transports.AzureServiceBus/ServiceBusInfrastructureProvisioner.cs",
         "src/Whizbang.Core/Transports/IInfrastructureProvisioner.cs",
+        "src/Whizbang.Transports.AzureServiceBus/ServiceBusInfrastructureProvisioner.cs",
         "src/Whizbang.Transports.RabbitMQ/RabbitMQInfrastructureProvisioner.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messages/delivery-receipts",
+      "changedFileCount": 3,
+      "symbols": [
+        "StreamIdExtractorRegistry",
+        "IStreamIdExtractor",
+        "StreamIdExtractor"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Registry/StreamIdExtractorRegistry.cs",
+        "src/Whizbang.Core/IStreamIdExtractor.cs",
+        "src/Whizbang.Core/StreamIdExtractor.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/perspectives-with-actions",
+      "changedFileCount": 3,
+      "symbols": [
+        "ApplyResult",
+        "ModelAction",
+        "IPerspectiveWithActionsFor"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Perspectives/ApplyResult.cs",
+        "src/Whizbang.Core/Perspectives/ModelAction.cs",
+        "src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs"
       ]
     },
     {
@@ -518,17 +1589,17 @@
       ]
     },
     {
-      "docsPath": "fundamentals/perspectives/perspectives",
+      "docsPath": "fundamentals/lenses/scoped-queries",
       "changedFileCount": 3,
       "symbols": [
-        "IPerspectiveBase",
-        "IPerspectiveFor",
-        "IPerspectiveInvoker"
+        "ScopedLensQuery",
+        "IScopedLensQuery",
+        "LensQueryFactory"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Perspectives/IPerspectiveBase.cs",
-        "src/Whizbang.Core/Perspectives/IPerspectiveFor.cs",
-        "src/Whizbang.Core/Perspectives/IPerspectiveInvoker.cs"
+        "src/Whizbang.Core/Lenses/ScopedLensQuery.cs",
+        "src/Whizbang.Core/Lenses/IScopedLensQuery.cs",
+        "src/Whizbang.Core/Lenses/LensQueryFactory.cs"
       ]
     },
     {
@@ -543,20 +1614,6 @@
         "src/Whizbang.Core/Routing/MessageKindDetector.cs",
         "src/Whizbang.Core/Routing/MessageKindAttribute.cs",
         "src/Whizbang.Core/Routing/MessageKind.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/lenses/lens-query-factory",
-      "changedFileCount": 3,
-      "symbols": [
-        "FactoryOwnedLensQuery",
-        "EFCoreLensQueryFactory",
-        "ILensQueryFactory"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Lenses/FactoryOwnedLensQuery.cs",
-        "src/Whizbang.Data.EFCore.Postgres/EFCoreLensQueryFactory.cs",
-        "src/Whizbang.Core/Lenses/ILensQueryFactory.cs"
       ]
     },
     {
@@ -593,17 +1650,17 @@
       ]
     },
     {
-      "docsPath": "fundamentals/perspectives/snapshots",
+      "docsPath": "extending/extensibility/database-schema-framework",
       "changedFileCount": 3,
       "symbols": [
-        "IPerspectiveSnapshotStore",
-        "PerspectiveSnapshotOptions",
-        "DapperPerspectiveSnapshotStore"
+        "table",
+        "for",
+        "with"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs",
-        "src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs",
-        "src/Whizbang.Data.Dapper.Postgres/DapperPerspectiveSnapshotStore.cs"
+        "src/Whizbang.Data.Schema/Schemas/PartitionAssignmentsSchema.cs",
+        "src/Whizbang.Data.Schema/DefaultValue.cs",
+        "src/Whizbang.Data.Schema/SequenceDefinition.cs"
       ]
     },
     {
@@ -621,17 +1678,35 @@
       ]
     },
     {
-      "docsPath": "data/turnkey-initialization",
-      "changedFileCount": 3,
+      "docsPath": "internals/message-discard-policy",
+      "changedFileCount": 2,
       "symbols": [
-        "DbContextInitializationRegistry",
-        "WhizbangDatabaseInitializerService",
-        "WhizbangHostExtensions"
+        "IMessageDiscardPolicy",
+        "MessageDiscardReason"
       ],
       "changedFiles": [
-        "src/Whizbang.Data.EFCore.Postgres/DbContextInitializationRegistry.cs",
-        "src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs",
-        "src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs"
+        "src/Whizbang.Core/Routing/MessageDiscardPolicy.cs",
+        "src/Whizbang.Core/Routing/MessageDiscardReason.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/drain-mode",
+      "changedFileCount": 2,
+      "symbols": [
+        "PerspectiveWorker",
+        "RequestImmediatePoll",
+        "_scanAndRepairRewindsOnStartupAsync",
+        "ProcessChannelBatchAsync",
+        "_processDrainModeStreamsAsync",
+        "_establishSecurityContextAsync",
+        "PerspectiveStartupScanLog",
+        "DrainBatcher",
+        "IPerspectiveDrainChannel",
+        "PerspectiveDrainChannel"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "src/Whizbang.Core/Messaging/IPerspectiveDrainChannel.cs"
       ]
     },
     {
@@ -639,12 +1714,14 @@
       "changedFileCount": 2,
       "symbols": [
         "VoidSyncReceptorInvoker",
+        "_isOwnedNamespace",
         "_awaitPerspectiveSyncIfNeededAsync",
         "_waitForPerspectivesIfNeededAsync",
-        "_invokeImmediateAsyncReceptorsAsync",
+        "_invokeImmediateDetachedReceptorsAsync",
         "_invokePostLifecycleReceptorsAsync",
         "CascadeToOutboxAsync",
         "CascadeToEventStoreOnlyAsync",
+        "_fanOutCompositeLocallyAtPublishAsync",
         "PublishToOutboxDynamicAsync",
         "ISyncReceptor"
       ],
@@ -658,18 +1735,22 @@
       "changedFileCount": 2,
       "symbols": [
         "VoidSyncReceptorInvoker",
+        "_isOwnedNamespace",
         "_awaitPerspectiveSyncIfNeededAsync",
         "_waitForPerspectivesIfNeededAsync",
-        "_invokeImmediateAsyncReceptorsAsync",
+        "_invokeImmediateDetachedReceptorsAsync",
         "_invokePostLifecycleReceptorsAsync",
         "CascadeToOutboxAsync",
         "CascadeToEventStoreOnlyAsync",
+        "_fanOutCompositeLocallyAtPublishAsync",
         "PublishToOutboxDynamicAsync",
         "WhizbangCoreOptions",
         "Tracing",
         "Services",
         "DefaultQueryScope",
-        "ImmediateAsyncChainWarningThreshold",
+        "ShowBanner",
+        "ImmediateDetachedChainWarningThreshold",
+        "EmptyStreamIdPolicy",
         "TagProcessingMode"
       ],
       "changedFiles": [
@@ -682,12 +1763,14 @@
       "changedFileCount": 2,
       "symbols": [
         "VoidSyncReceptorInvoker",
+        "_isOwnedNamespace",
         "_awaitPerspectiveSyncIfNeededAsync",
         "_waitForPerspectivesIfNeededAsync",
-        "_invokeImmediateAsyncReceptorsAsync",
+        "_invokeImmediateDetachedReceptorsAsync",
         "_invokePostLifecycleReceptorsAsync",
         "CascadeToOutboxAsync",
         "CascadeToEventStoreOnlyAsync",
+        "_fanOutCompositeLocallyAtPublishAsync",
         "PublishToOutboxDynamicAsync",
         "messages"
       ],
@@ -697,100 +1780,38 @@
       ]
     },
     {
-      "docsPath": "fundamentals/messages/message-tags#processing",
+      "docsPath": "fundamentals/work-coordinator/inbox-dispatch",
       "changedFileCount": 2,
       "symbols": [
-        "MessageTagProcessor",
-        "IMessageTagProcessor"
+        "InboxDispatchWorker",
+        "InboxDispatchWorkerOptions",
+        "InboxDeserializeCache"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Tags/MessageTagProcessor.cs",
-        "src/Whizbang.Core/Tags/IMessageTagProcessor.cs"
+        "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
+        "src/Whizbang.Core/Workers/InboxDeserializeCache.cs"
       ]
     },
     {
-      "docsPath": "fundamentals/events/stream-id#validation",
+      "docsPath": "messaging/transports/azure-service-bus#auto-provisioning",
       "changedFileCount": 2,
       "symbols": [
-        "InvalidStreamIdException",
-        "StreamIdGuard"
+        "AzureServiceBusOptions",
+        "AutoProvisionInfrastructure",
+        "MaxConcurrentCalls",
+        "PublishMaxConcurrency",
+        "MaxAutoLockRenewalDuration",
+        "EnableSessions",
+        "MaxConcurrentSessions",
+        "SessionIdleTimeout",
+        "_deriveSubscriptionName",
+        "_ensureInfrastructureExistsAsync",
+        "_applyRoutingPatternFilterAsync",
+        "_ensureTopicExistsViaAdminAsync"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Validation/InvalidStreamIdException.cs",
-        "src/Whizbang.Core/Validation/StreamIdGuard.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/diagnostics/whiz070",
-      "changedFileCount": 2,
-      "symbols": [
-        "VectorFieldPackageReferenceAnalyzer",
-        "VectorDependencyAnalyzer"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.EFCore.Postgres.Generators/VectorFieldPackageReferenceAnalyzer.cs",
-        "src/Whizbang.Generators/VectorDependencyAnalyzer.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/lenses/scoped-queries#query-scope",
-      "changedFileCount": 2,
-      "symbols": [
-        "QueryScope",
-        "QueryScopeMapper"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Lenses/QueryScope.cs",
-        "src/Whizbang.Core/Lenses/QueryScopeMapper.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/lifecycle/lifecycle-coordinator",
-      "changedFileCount": 2,
-      "symbols": [
-        "ILifecycleCoordinator",
-        "PostLifecycleCompletionSource",
-        "LifecycleCoordinator"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Lifecycle/ILifecycleCoordinator.cs",
-        "src/Whizbang.Core/Lifecycle/LifecycleCoordinator.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/receptors/lifecycle-receptors#event-cascading",
-      "changedFileCount": 2,
-      "symbols": [
-        "DispatcherEventCascader",
-        "IEventCascader"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Messaging/DispatcherEventCascader.cs",
-        "src/Whizbang.Core/Messaging/IEventCascader.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/identity/whizbang-ids#tracked-guid",
-      "changedFileCount": 2,
-      "symbols": [
-        "TrackedGuid",
-        "TrackedGuidJsonConverter"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/ValueObjects/TrackedGuid.cs",
-        "src/Whizbang.Core/ValueObjects/TrackedGuidJsonConverter.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/perspectives/perspective-sync#awaiter-identity",
-      "changedFileCount": 2,
-      "symbols": [
-        "AsyncTimeoutHelper",
-        "IAwaiterIdentity"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Async/AsyncTimeoutHelper.cs",
-        "src/Whizbang.Core/IAwaiterIdentity.cs"
+        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
+        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs"
       ]
     },
     {
@@ -809,48 +1830,76 @@
       ]
     },
     {
-      "docsPath": "messaging/transports/azure-service-bus#auto-provisioning",
+      "docsPath": "fundamentals/messaging/composite-events",
       "changedFileCount": 2,
       "symbols": [
-        "_deriveSubscriptionName",
-        "_ensureInfrastructureExistsAsync",
-        "_applyRoutingPatternFilterAsync",
-        "_ensureTopicExistsViaAdminAsync",
-        "AzureServiceBusOptions",
-        "AutoProvisionInfrastructure"
+        "ICompositeEvent",
+        "CompositeEventBase"
       ],
       "changedFiles": [
-        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs"
+        "src/Whizbang.Core/Messaging/ICompositeEvent.cs",
+        "src/Whizbang.Core/Messaging/CompositeEventBase.cs"
       ]
     },
     {
-      "docsPath": "messaging/transports/rabbitmq#connection-retry",
+      "docsPath": "fundamentals/dispatcher/routing#dispatch-context",
       "changedFileCount": 2,
       "symbols": [
-        "RabbitMQConnectionRetry",
-        "RabbitMQOptions",
-        "InitialRetryAttempts",
-        "InitialRetryDelay",
-        "MaxRetryDelay",
-        "BackoffMultiplier",
-        "RetryIndefinitely"
+        "MessageEnvelope",
+        "Version",
+        "DispatchContext",
+        "SourceServiceId",
+        "SourceCommitSequence",
+        "MessageDispatchContext"
       ],
       "changedFiles": [
-        "src/Whizbang.Transports.RabbitMQ/RabbitMQConnectionRetry.cs",
-        "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs"
+        "src/Whizbang.Core/Observability/MessageEnvelope.cs",
+        "src/Whizbang.Core/Observability/MessageDispatchContext.cs"
       ]
     },
     {
-      "docsPath": "fundamentals/lifecycle/lifecycle-coordinator#diagnostics",
+      "docsPath": "fundamentals/lifecycle/lifecycle-reconciliation",
       "changedFileCount": 2,
       "symbols": [
-        "DebugAwareStopwatch",
-        "StageRecord"
+        "RecordHeartbeatAsync",
+        "CompletePerspectiveAsync",
+        "ReportFailuresAsync",
+        "CommitHandlerResultAsync",
+        "FlushCompletionsAsync",
+        "StoreInboxMessagesAsync",
+        "ReportPerspectiveCompletionAsync",
+        "ReportPerspectiveFailureAsync",
+        "RecordLifecycleCompletionAsync",
+        "MaintenanceResult",
+        "RewindCursorInfo",
+        "OrphanedLifecycleEvent",
+        "Flags",
+        "EventsProcessed",
+        "Attempts",
+        "PendingPerspectiveEvent",
+        "OutboxBatchRow",
+        "InboxBatchRow",
+        "LifecycleCompletionsSchema"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Lifecycle/DebugAwareStopwatch.cs",
-        "src/Whizbang.Core/Lifecycle/StageRecord.cs"
+        "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "src/Whizbang.Data.Schema/Schemas/LifecycleCompletionsSchema.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/observability/stuck-row-sentinel",
+      "changedFileCount": 2,
+      "symbols": [
+        "StuckRow",
+        "MaintenanceWorker",
+        "MaintenanceWorkerOptions",
+        "StuckRowSentinelEnabled",
+        "StuckRowSentinelMaxAttempts",
+        "StuckRowSentinelLimit"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/StuckRow.cs",
+        "src/Whizbang.Core/Workers/MaintenanceWorker.cs"
       ]
     },
     {
@@ -861,7 +1910,9 @@
         "Tracing",
         "Services",
         "DefaultQueryScope",
-        "ImmediateAsyncChainWarningThreshold",
+        "ShowBanner",
+        "ImmediateDetachedChainWarningThreshold",
+        "EmptyStreamIdPolicy",
         "TagProcessingMode",
         "TracingOptions"
       ],
@@ -878,7 +1929,9 @@
         "Tracing",
         "Services",
         "DefaultQueryScope",
-        "ImmediateAsyncChainWarningThreshold",
+        "ShowBanner",
+        "ImmediateDetachedChainWarningThreshold",
+        "EmptyStreamIdPolicy",
         "TagProcessingMode",
         "ServiceRegistrationOptions",
         "ServiceRegistrationExtensions",
@@ -892,15 +1945,188 @@
       ]
     },
     {
-      "docsPath": "fundamentals/perspectives/rebuild",
+      "docsPath": "operations/dead-letter-queue/operator-api",
       "changedFileCount": 2,
       "symbols": [
-        "PerspectiveRebuilder",
-        "PerspectiveMigrationWorker"
+        "DeadLetterOperatorEndpoints",
+        "DeadLetterRecoveryStatus",
+        "DeadLetterDisposition",
+        "RecoveryPolicy",
+        "IDeadLetterRecoveryPolicy",
+        "DeadLetterRecoveryOptions"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs",
-        "src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs"
+        "src/Whizbang.Hosting.AspNet/DeadLetterOperatorEndpoints.cs",
+        "src/Whizbang.Core/Messaging/DeadLetterRecoveryTypes.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/cursor-inversion",
+      "changedFileCount": 2,
+      "symbols": [
+        "IPerspectiveCursorResolver",
+        "PerspectiveCursorResolver"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/IPerspectiveCursorResolver.cs",
+        "src/Whizbang.Core/Workers/PerspectiveCursorResolver.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/app-signals",
+      "changedFileCount": 2,
+      "symbols": [
+        "IAppSignalChannel",
+        "PgAppSignalChannel"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Notifications/AppSignals/IAppSignalChannel.cs",
+        "src/Whizbang.Data.Postgres/Notifications/PgAppSignalChannel.cs"
+      ]
+    },
+    {
+      "docsPath": "resilience/stream-rate-limiter",
+      "changedFileCount": 2,
+      "symbols": [
+        "StreamRateLimiter",
+        "StreamRateLimiterOptions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Resilience/StreamRateLimiter.cs",
+        "src/Whizbang.Core/Resilience/StreamRateLimiterOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messages/message-tags#processing",
+      "changedFileCount": 2,
+      "symbols": [
+        "MessageTagProcessor",
+        "IMessageTagProcessor"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Tags/MessageTagProcessor.cs",
+        "src/Whizbang.Core/Tags/IMessageTagProcessor.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/identity/whizbang-ids#tracked-guid",
+      "changedFileCount": 2,
+      "symbols": [
+        "TrackedGuid",
+        "TrackedGuidJsonConverter"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/ValueObjects/TrackedGuid.cs",
+        "src/Whizbang.Core/ValueObjects/TrackedGuidJsonConverter.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/workers/perspective-worker#rewind-replay",
+      "changedFileCount": 2,
+      "symbols": [
+        "EFCorePerspectiveReplayReader",
+        "IPerspectiveReplayReader"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.EFCore.Postgres/Perspectives/EFCorePerspectiveReplayReader.cs",
+        "src/Whizbang.Core/Perspectives/IPerspectiveReplayReader.cs"
+      ]
+    },
+    {
+      "docsPath": "apis/graphql/authorization#require-permission",
+      "changedFileCount": 2,
+      "symbols": [
+        "JobMutations",
+        "RequirePermissionMiddleware"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.HotChocolate/Middleware/UseRequirePermissionAttribute.cs",
+        "src/Whizbang.Transports.HotChocolate/Middleware/RequirePermissionMiddleware.cs"
+      ]
+    },
+    {
+      "docsPath": "extending/internals/event-ordering-invariant",
+      "changedFileCount": 2,
+      "symbols": [
+        "SlidingWindowInboxBatchStrategy",
+        "SlidingWindowOutboxBatchStrategy"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/SlidingWindowInboxBatchStrategy.cs",
+        "src/Whizbang.Core/Workers/SlidingWindowOutboxBatchStrategy.cs"
+      ]
+    },
+    {
+      "docsPath": "internals/stream-affinity",
+      "changedFileCount": 2,
+      "symbols": [
+        "PerStreamSerializer",
+        "PerStreamSerializerOptions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/PerStreamSerializer.cs",
+        "src/Whizbang.Core/Workers/PerStreamSerializerOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "resilience/database-availability-middleware",
+      "changedFileCount": 2,
+      "symbols": [
+        "DatabaseAvailabilityMiddleware",
+        "UseDatabaseAvailabilityGate"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Hosting.AspNet/DatabaseAvailabilityMiddleware.cs",
+        "src/Whizbang.Hosting.AspNet/DatabaseAvailabilityMiddlewareExtensions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/lifecycle/lifecycle-coordinator",
+      "changedFileCount": 2,
+      "symbols": [
+        "LifecycleCoordinator",
+        "ILifecycleCoordinator",
+        "PostLifecycleCompletionSource"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Lifecycle/LifecycleCoordinator.cs",
+        "src/Whizbang.Core/Lifecycle/ILifecycleCoordinator.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/testing/chaos-injection",
+      "changedFileCount": 2,
+      "symbols": [
+        "ChaosInjectorInvoker",
+        "IChaosInjector"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/ChaosInjectorInvoker.cs",
+        "src/Whizbang.Core/Messaging/IChaosInjector.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/perspective-sync#auto-registration",
+      "changedFileCount": 2,
+      "symbols": [
+        "SyncEventTypeRegistrations",
+        "SyncEventTypeAutoRegistration"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Perspectives/Sync/SyncEventTypeRegistrations.cs",
+        "src/Whizbang.Generators/Templates/SyncEventTypeRegistryTemplate.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/events/stream-id#validation",
+      "changedFileCount": 2,
+      "symbols": [
+        "StreamIdGuard",
+        "InvalidStreamIdException"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Validation/StreamIdGuard.cs",
+        "src/Whizbang.Core/Validation/InvalidStreamIdException.cs"
       ]
     },
     {
@@ -917,15 +2143,137 @@
       ]
     },
     {
-      "docsPath": "fundamentals/perspectives/perspective-sync#auto-registration",
+      "docsPath": "fundamentals/lenses/lens-query-factory",
       "changedFileCount": 2,
       "symbols": [
-        "SyncEventTypeRegistrations",
-        "SyncEventTypeAutoRegistration"
+        "EFCoreLensQueryFactory",
+        "ILensQueryFactory"
       ],
       "changedFiles": [
-        "src/Whizbang.Core/Perspectives/Sync/SyncEventTypeRegistrations.cs",
-        "src/Whizbang.Generators/Templates/SyncEventTypeRegistryTemplate.cs"
+        "src/Whizbang.Data.EFCore.Postgres/EFCoreLensQueryFactory.cs",
+        "src/Whizbang.Core/Lenses/ILensQueryFactory.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/perspectives#rebuild",
+      "changedFileCount": 2,
+      "symbols": [
+        "RebuildPerspectiveCommand",
+        "CancelPerspectiveRebuildCommand",
+        "ClearCacheCommand",
+        "DiagnosticsCommand",
+        "PauseProcessingCommand",
+        "ResumeProcessingCommand",
+        "IPerspectiveRebuilder"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Commands/System/SystemCommands.cs",
+        "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/inbox-channel",
+      "changedFileCount": 2,
+      "symbols": [
+        "IInboxChannelWriter",
+        "InboxChannelWriter"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/IInboxChannelWriter.cs",
+        "src/Whizbang.Core/Messaging/InboxChannelWriter.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/rabbitmq#connection-retry",
+      "changedFileCount": 2,
+      "symbols": [
+        "RabbitMQConnectionRetry",
+        "RabbitMQOptions",
+        "MaxChannels",
+        "MaxDeliveryAttempts",
+        "PrefetchCount",
+        "EnableSingleActiveConsumer",
+        "InitialRetryAttempts",
+        "InitialRetryDelay",
+        "MaxRetryDelay",
+        "BackoffMultiplier",
+        "RetryIndefinitely"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.RabbitMQ/RabbitMQConnectionRetry.cs",
+        "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/azure-service-bus#admin-client",
+      "changedFileCount": 2,
+      "symbols": [
+        "IServiceBusAdminClient",
+        "ServiceBusAdminClientWrapper"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.AzureServiceBus/IServiceBusAdminClient.cs",
+        "src/Whizbang.Transports.AzureServiceBus/ServiceBusAdminClientWrapper.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/diagnostics/whiz070",
+      "changedFileCount": 2,
+      "symbols": [
+        "VectorDependencyAnalyzer",
+        "VectorFieldPackageReferenceAnalyzer"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/VectorDependencyAnalyzer.cs",
+        "src/Whizbang.Data.EFCore.Postgres.Generators/VectorFieldPackageReferenceAnalyzer.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/lenses/scoped-queries#query-scope",
+      "changedFileCount": 2,
+      "symbols": [
+        "QueryScope",
+        "QueryScopeMapper"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Lenses/QueryScope.cs",
+        "src/Whizbang.Core/Lenses/QueryScopeMapper.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/receptors/lifecycle-receptors#event-cascading",
+      "changedFileCount": 2,
+      "symbols": [
+        "DispatcherEventCascader",
+        "IEventCascader"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/DispatcherEventCascader.cs",
+        "src/Whizbang.Core/Messaging/IEventCascader.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/perspective-sync#awaiter-identity",
+      "changedFileCount": 2,
+      "symbols": [
+        "AsyncTimeoutHelper",
+        "IAwaiterIdentity"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Async/AsyncTimeoutHelper.cs",
+        "src/Whizbang.Core/IAwaiterIdentity.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/lifecycle/lifecycle-coordinator#diagnostics",
+      "changedFileCount": 2,
+      "symbols": [
+        "DebugAwareStopwatch",
+        "StageRecord"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Lifecycle/DebugAwareStopwatch.cs",
+        "src/Whizbang.Core/Lifecycle/StageRecord.cs"
       ]
     },
     {
@@ -938,18 +2286,6 @@
       "changedFiles": [
         "src/Whizbang.Data.Schema/Schemas/MessageAssociationsSchema.cs",
         "src/Whizbang.Core/Messaging/MessageAssociationRecord.cs"
-      ]
-    },
-    {
-      "docsPath": "extending/extensibility/database-schema-framework",
-      "changedFileCount": 2,
-      "symbols": [
-        "table",
-        "with"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.Schema/Schemas/PartitionAssignmentsSchema.cs",
-        "src/Whizbang.Data.Schema/SequenceDefinition.cs"
       ]
     },
     {
@@ -986,23 +2322,6 @@
       "changedFiles": [
         "src/Whizbang.Core/Policies/PolicyContext.cs",
         "src/Whizbang.Core/Policies/PolicyDecisionTrail.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/perspectives/perspectives#rebuild",
-      "changedFileCount": 2,
-      "symbols": [
-        "RebuildPerspectiveCommand",
-        "CancelPerspectiveRebuildCommand",
-        "ClearCacheCommand",
-        "DiagnosticsCommand",
-        "PauseProcessingCommand",
-        "ResumeProcessingCommand",
-        "IPerspectiveRebuilder"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Commands/System/SystemCommands.cs",
-        "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs"
       ]
     },
     {
@@ -1155,15 +2474,390 @@
       ]
     },
     {
-      "docsPath": "messaging/transports/azure-service-bus#admin-client",
-      "changedFileCount": 2,
+      "docsPath": "extending/features/vector-search#auto-config",
+      "changedFileCount": 1,
       "symbols": [
-        "IServiceBusAdminClient",
-        "ServiceBusAdminClientWrapper"
+        "VectorConfigurationRegistry"
       ],
       "changedFiles": [
-        "src/Whizbang.Transports.AzureServiceBus/IServiceBusAdminClient.cs",
-        "src/Whizbang.Transports.AzureServiceBus/ServiceBusAdminClientWrapper.cs"
+        "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/lenses/scoped-lenses#ef-core-implementation",
+      "changedFileCount": 1,
+      "symbols": [
+        "EFCoreFilterableLensQuery"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableLensQuery.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/lenses/multi-model-queries",
+      "changedFileCount": 1,
+      "symbols": [
+        "EFCorePostgresLensQuery"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.EFCore.Postgres/EFCorePostgresLensQuery.cs"
+      ]
+    },
+    {
+      "docsPath": "extending/source-generators/json-contexts",
+      "changedFileCount": 1,
+      "symbols": [
+        "types",
+        "_generateRenameAliasRegistrations"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/MessageJsonContextGenerator.cs"
+      ]
+    },
+    {
+      "docsPath": "data/efcore-complex-types#in-place-updates",
+      "changedFileCount": 1,
+      "symbols": [
+        "UpdateMetadataInPlace",
+        "UpdateScopeInPlace"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/transport-consumer#batch-handler",
+      "changedFileCount": 1,
+      "symbols": [
+        "TransportConsumerWorker",
+        "_handleMessageBatchAsync",
+        "_isKnownEventType"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/TransportConsumerWorker.cs"
+      ]
+    },
+    {
+      "docsPath": "docs/transport-routing-architecture.md#transport-echo-suppression",
+      "changedFileCount": 1,
+      "symbols": [
+        "TransportConsumerWorker",
+        "_handleMessageBatchAsync",
+        "_isKnownEventType"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/TransportConsumerWorker.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/observability/receptor-logging",
+      "changedFileCount": 1,
+      "symbols": [
+        "ReceptorInvoker",
+        "_invokeReceptorAsync"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/ReceptorInvoker.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messages/cascade-context",
+      "changedFileCount": 1,
+      "symbols": [
+        "CascadeContext"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Observability/CascadeContext.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messages/message-context-extraction",
+      "changedFileCount": 1,
+      "symbols": [
+        "EnvelopeContextExtractor"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Observability/EnvelopeContextExtractor.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/message-security#security-context-helper",
+      "changedFileCount": 1,
+      "symbols": [
+        "SecurityContextHelper",
+        "EstablishMessageContextForCascade",
+        "EnqueueSecurityContextTimeoutFailureAsync",
+        "SecurityContextEstablishmentOutcome"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/SecurityContextHelper.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/message-security#asynclocal-context-flow",
+      "changedFileCount": 1,
+      "symbols": [
+        "SecurityContextHelper",
+        "EstablishMessageContextForCascade",
+        "EnqueueSecurityContextTimeoutFailureAsync",
+        "SecurityContextEstablishmentOutcome"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/SecurityContextHelper.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/workers/perspective-worker#immediate-poll",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveWorker",
+        "RequestImmediatePoll",
+        "_scanAndRepairRewindsOnStartupAsync",
+        "ProcessChannelBatchAsync",
+        "_processDrainModeStreamsAsync",
+        "_establishSecurityContextAsync",
+        "PerspectiveStartupScanLog",
+        "DrainBatcher"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/PerspectiveWorker.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/rewind#startup-scan",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveWorker",
+        "RequestImmediatePoll",
+        "_scanAndRepairRewindsOnStartupAsync",
+        "ProcessChannelBatchAsync",
+        "_processDrainModeStreamsAsync",
+        "_establishSecurityContextAsync",
+        "PerspectiveStartupScanLog",
+        "DrainBatcher"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/PerspectiveWorker.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/workers/perspective-worker#security-context",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveWorker",
+        "RequestImmediatePoll",
+        "_scanAndRepairRewindsOnStartupAsync",
+        "ProcessChannelBatchAsync",
+        "_processDrainModeStreamsAsync",
+        "_establishSecurityContextAsync",
+        "PerspectiveStartupScanLog",
+        "DrainBatcher"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/PerspectiveWorker.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/drain-mode#sliding-window",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveWorker",
+        "RequestImmediatePoll",
+        "_scanAndRepairRewindsOnStartupAsync",
+        "ProcessChannelBatchAsync",
+        "_processDrainModeStreamsAsync",
+        "_establishSecurityContextAsync",
+        "PerspectiveStartupScanLog",
+        "DrainBatcher"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/PerspectiveWorker.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/dispatcher/routing#owned-domain-routing",
+      "changedFileCount": 1,
+      "symbols": [
+        "VoidSyncReceptorInvoker",
+        "_isOwnedNamespace",
+        "_awaitPerspectiveSyncIfNeededAsync",
+        "_waitForPerspectivesIfNeededAsync",
+        "_invokeImmediateDetachedReceptorsAsync",
+        "_invokePostLifecycleReceptorsAsync",
+        "CascadeToOutboxAsync",
+        "CascadeToEventStoreOnlyAsync",
+        "_fanOutCompositeLocallyAtPublishAsync",
+        "PublishToOutboxDynamicAsync"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Dispatcher.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/perspective-sync#dispatcher-integration",
+      "changedFileCount": 1,
+      "symbols": [
+        "VoidSyncReceptorInvoker",
+        "_isOwnedNamespace",
+        "_awaitPerspectiveSyncIfNeededAsync",
+        "_waitForPerspectivesIfNeededAsync",
+        "_invokeImmediateDetachedReceptorsAsync",
+        "_invokePostLifecycleReceptorsAsync",
+        "CascadeToOutboxAsync",
+        "CascadeToEventStoreOnlyAsync",
+        "_fanOutCompositeLocallyAtPublishAsync",
+        "PublishToOutboxDynamicAsync"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Dispatcher.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/event-completion#dispatcher-integration",
+      "changedFileCount": 1,
+      "symbols": [
+        "VoidSyncReceptorInvoker",
+        "_isOwnedNamespace",
+        "_awaitPerspectiveSyncIfNeededAsync",
+        "_waitForPerspectivesIfNeededAsync",
+        "_invokeImmediateDetachedReceptorsAsync",
+        "_invokePostLifecycleReceptorsAsync",
+        "CascadeToOutboxAsync",
+        "CascadeToEventStoreOnlyAsync",
+        "_fanOutCompositeLocallyAtPublishAsync",
+        "PublishToOutboxDynamicAsync"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Dispatcher.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/lifecycle/lifecycle-stages#post-lifecycle",
+      "changedFileCount": 1,
+      "symbols": [
+        "VoidSyncReceptorInvoker",
+        "_isOwnedNamespace",
+        "_awaitPerspectiveSyncIfNeededAsync",
+        "_waitForPerspectivesIfNeededAsync",
+        "_invokeImmediateDetachedReceptorsAsync",
+        "_invokePostLifecycleReceptorsAsync",
+        "CascadeToOutboxAsync",
+        "CascadeToEventStoreOnlyAsync",
+        "_fanOutCompositeLocallyAtPublishAsync",
+        "PublishToOutboxDynamicAsync"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Dispatcher.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/dispatcher/dispatcher#auto-cascade-to-outbox",
+      "changedFileCount": 1,
+      "symbols": [
+        "VoidSyncReceptorInvoker",
+        "_isOwnedNamespace",
+        "_awaitPerspectiveSyncIfNeededAsync",
+        "_waitForPerspectivesIfNeededAsync",
+        "_invokeImmediateDetachedReceptorsAsync",
+        "_invokePostLifecycleReceptorsAsync",
+        "CascadeToOutboxAsync",
+        "CascadeToEventStoreOnlyAsync",
+        "_fanOutCompositeLocallyAtPublishAsync",
+        "PublishToOutboxDynamicAsync"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Dispatcher.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messaging/composite-events#publish-time-local-fan-out",
+      "changedFileCount": 1,
+      "symbols": [
+        "VoidSyncReceptorInvoker",
+        "_isOwnedNamespace",
+        "_awaitPerspectiveSyncIfNeededAsync",
+        "_waitForPerspectivesIfNeededAsync",
+        "_invokeImmediateDetachedReceptorsAsync",
+        "_invokePostLifecycleReceptorsAsync",
+        "CascadeToOutboxAsync",
+        "CascadeToEventStoreOnlyAsync",
+        "_fanOutCompositeLocallyAtPublishAsync",
+        "PublishToOutboxDynamicAsync"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Dispatcher.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/dispatcher/dispatcher#cascade-default-dispatch",
+      "changedFileCount": 1,
+      "symbols": [
+        "CascadeEnvelopeWrapper"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Observability/CascadeEnvelopeWrapper.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messaging/composite-events#dispatch-fanout",
+      "changedFileCount": 1,
+      "symbols": [
+        "CompositeInboxFanout"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/diagnostics/whiz062",
+      "changedFileCount": 1,
+      "symbols": [
+        "type",
+        "response",
+        "dimensions",
+        "field"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/DiagnosticDescriptors.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/diagnostics/whiz080",
+      "changedFileCount": 1,
+      "symbols": [
+        "type",
+        "response",
+        "dimensions",
+        "field"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/DiagnosticDescriptors.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/diagnostics/whiz802",
+      "changedFileCount": 1,
+      "symbols": [
+        "type",
+        "response",
+        "dimensions",
+        "field"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/DiagnosticDescriptors.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/diagnostics/whiz807",
+      "changedFileCount": 1,
+      "symbols": [
+        "type",
+        "response",
+        "dimensions",
+        "field"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/DiagnosticDescriptors.cs"
       ]
     },
     {
@@ -1177,6 +2871,1859 @@
       ]
     },
     {
+      "docsPath": "fundamentals/work-coordinator/inbox-drain",
+      "changedFileCount": 1,
+      "symbols": [
+        "InboxDrainWorker",
+        "_drainStreamBatchAsync",
+        "InboxDrainWorkerOptions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/InboxDrainWorker.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/azure-service-bus",
+      "changedFileCount": 1,
+      "symbols": [
+        "AzureServiceBusOptions",
+        "AutoProvisionInfrastructure",
+        "MaxConcurrentCalls",
+        "PublishMaxConcurrency",
+        "MaxAutoLockRenewalDuration",
+        "EnableSessions",
+        "MaxConcurrentSessions",
+        "SessionIdleTimeout"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/azure-service-bus#concurrency",
+      "changedFileCount": 1,
+      "symbols": [
+        "AzureServiceBusOptions",
+        "AutoProvisionInfrastructure",
+        "MaxConcurrentCalls",
+        "PublishMaxConcurrency",
+        "MaxAutoLockRenewalDuration",
+        "EnableSessions",
+        "MaxConcurrentSessions",
+        "SessionIdleTimeout"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/azure-service-bus#publish-concurrency",
+      "changedFileCount": 1,
+      "symbols": [
+        "AzureServiceBusOptions",
+        "AutoProvisionInfrastructure",
+        "MaxConcurrentCalls",
+        "PublishMaxConcurrency",
+        "MaxAutoLockRenewalDuration",
+        "EnableSessions",
+        "MaxConcurrentSessions",
+        "SessionIdleTimeout"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/azure-service-bus#lock-renewal",
+      "changedFileCount": 1,
+      "symbols": [
+        "AzureServiceBusOptions",
+        "AutoProvisionInfrastructure",
+        "MaxConcurrentCalls",
+        "PublishMaxConcurrency",
+        "MaxAutoLockRenewalDuration",
+        "EnableSessions",
+        "MaxConcurrentSessions",
+        "SessionIdleTimeout"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/azure-service-bus#sessions",
+      "changedFileCount": 1,
+      "symbols": [
+        "AzureServiceBusOptions",
+        "AutoProvisionInfrastructure",
+        "MaxConcurrentCalls",
+        "PublishMaxConcurrency",
+        "MaxAutoLockRenewalDuration",
+        "EnableSessions",
+        "MaxConcurrentSessions",
+        "SessionIdleTimeout"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/azure-service-bus#session-idle-timeout",
+      "changedFileCount": 1,
+      "symbols": [
+        "AzureServiceBusOptions",
+        "AutoProvisionInfrastructure",
+        "MaxConcurrentCalls",
+        "PublishMaxConcurrency",
+        "MaxAutoLockRenewalDuration",
+        "EnableSessions",
+        "MaxConcurrentSessions",
+        "SessionIdleTimeout"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/azure-service-bus#routing-filters",
+      "changedFileCount": 1,
+      "symbols": [
+        "_deriveSubscriptionName",
+        "_ensureInfrastructureExistsAsync",
+        "_applyRoutingPatternFilterAsync",
+        "_ensureTopicExistsViaAdminAsync"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/azure-service-bus#publish-auto-provisioning",
+      "changedFileCount": 1,
+      "symbols": [
+        "_deriveSubscriptionName",
+        "_ensureInfrastructureExistsAsync",
+        "_applyRoutingPatternFilterAsync",
+        "_ensureTopicExistsViaAdminAsync"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs"
+      ]
+    },
+    {
+      "docsPath": "data/postgres",
+      "changedFileCount": 1,
+      "symbols": [
+        "PostgresOptions",
+        "CommandTimeoutSeconds",
+        "MaxInFlightCommands",
+        "CollectiveApplyBatchSize"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.Postgres/PostgresOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "data/postgres#command-timeout",
+      "changedFileCount": 1,
+      "symbols": [
+        "PostgresOptions",
+        "CommandTimeoutSeconds",
+        "MaxInFlightCommands",
+        "CollectiveApplyBatchSize"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.Postgres/PostgresOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/configuration-reference#max-in-flight-commands",
+      "changedFileCount": 1,
+      "symbols": [
+        "PostgresOptions",
+        "CommandTimeoutSeconds",
+        "MaxInFlightCommands",
+        "CollectiveApplyBatchSize"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.Postgres/PostgresOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/infrastructure/deadlock-retry",
+      "changedFileCount": 1,
+      "symbols": [
+        "PostgresDeadlockRetry"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.Postgres/PostgresDeadlockRetry.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messaging/composite-events#no-rebroadcast",
+      "changedFileCount": 1,
+      "symbols": [
+        "NoRebroadcastGuard"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/NoRebroadcastGuard.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/dispatcher/routing#envelope-versioning",
+      "changedFileCount": 1,
+      "symbols": [
+        "MessageEnvelope",
+        "Version",
+        "DispatchContext",
+        "SourceServiceId",
+        "SourceCommitSequence"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Observability/MessageEnvelope.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messaging/composite-events#fanout-control",
+      "changedFileCount": 1,
+      "symbols": [
+        "FanoutMode",
+        "FanoutAtomicity",
+        "FanoutDirective",
+        "DispatchFanoutControl"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/FanoutControl.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messaging/composite-events#pre-fanout",
+      "changedFileCount": 1,
+      "symbols": [
+        "DispatchOutboxCollector"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/DispatchOutboxCollector.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/versioned-apply",
+      "changedFileCount": 1,
+      "symbols": [
+        "IVersionedApplyTarget"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Perspectives/IVersionedApplyTarget.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/workers/transport-consumer",
+      "changedFileCount": 1,
+      "symbols": [
+        "RecordHeartbeatAsync",
+        "CompletePerspectiveAsync",
+        "ReportFailuresAsync",
+        "CommitHandlerResultAsync",
+        "FlushCompletionsAsync",
+        "StoreInboxMessagesAsync",
+        "ReportPerspectiveCompletionAsync",
+        "ReportPerspectiveFailureAsync",
+        "RecordLifecycleCompletionAsync",
+        "MaintenanceResult",
+        "RewindCursorInfo",
+        "OrphanedLifecycleEvent",
+        "Flags",
+        "EventsProcessed",
+        "Attempts",
+        "PendingPerspectiveEvent",
+        "OutboxBatchRow",
+        "InboxBatchRow"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/IWorkCoordinator.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/maintenance",
+      "changedFileCount": 1,
+      "symbols": [
+        "RecordHeartbeatAsync",
+        "CompletePerspectiveAsync",
+        "ReportFailuresAsync",
+        "CommitHandlerResultAsync",
+        "FlushCompletionsAsync",
+        "StoreInboxMessagesAsync",
+        "ReportPerspectiveCompletionAsync",
+        "ReportPerspectiveFailureAsync",
+        "RecordLifecycleCompletionAsync",
+        "MaintenanceResult",
+        "RewindCursorInfo",
+        "OrphanedLifecycleEvent",
+        "Flags",
+        "EventsProcessed",
+        "Attempts",
+        "PendingPerspectiveEvent",
+        "OutboxBatchRow",
+        "InboxBatchRow"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/IWorkCoordinator.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/rewind#metrics",
+      "changedFileCount": 1,
+      "symbols": [
+        "RecordHeartbeatAsync",
+        "CompletePerspectiveAsync",
+        "ReportFailuresAsync",
+        "CommitHandlerResultAsync",
+        "FlushCompletionsAsync",
+        "StoreInboxMessagesAsync",
+        "ReportPerspectiveCompletionAsync",
+        "ReportPerspectiveFailureAsync",
+        "RecordLifecycleCompletionAsync",
+        "MaintenanceResult",
+        "RewindCursorInfo",
+        "OrphanedLifecycleEvent",
+        "Flags",
+        "EventsProcessed",
+        "Attempts",
+        "PendingPerspectiveEvent",
+        "OutboxBatchRow",
+        "InboxBatchRow"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/IWorkCoordinator.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/dead-letter-queue/perspective-events",
+      "changedFileCount": 1,
+      "symbols": [
+        "RecordHeartbeatAsync",
+        "CompletePerspectiveAsync",
+        "ReportFailuresAsync",
+        "CommitHandlerResultAsync",
+        "FlushCompletionsAsync",
+        "StoreInboxMessagesAsync",
+        "ReportPerspectiveCompletionAsync",
+        "ReportPerspectiveFailureAsync",
+        "RecordLifecycleCompletionAsync",
+        "MaintenanceResult",
+        "RewindCursorInfo",
+        "OrphanedLifecycleEvent",
+        "Flags",
+        "EventsProcessed",
+        "Attempts",
+        "PendingPerspectiveEvent",
+        "OutboxBatchRow",
+        "InboxBatchRow"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/IWorkCoordinator.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/dispatcher/dispatcher#dispatch-options",
+      "changedFileCount": 1,
+      "symbols": [
+        "DispatchOptions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Dispatch/DispatchOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/dispatcher/dispatcher#cascade-to-outbox",
+      "changedFileCount": 1,
+      "symbols": [
+        "IDispatcher",
+        "message",
+        "CascadeMessageAsync",
+        "LocalInvokeAndSyncAsync",
+        "ONLY",
+        "routing"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/IDispatcher.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/dispatcher/dispatcher#local-invoke-and-sync",
+      "changedFileCount": 1,
+      "symbols": [
+        "IDispatcher",
+        "message",
+        "CascadeMessageAsync",
+        "LocalInvokeAndSyncAsync",
+        "ONLY",
+        "routing"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/IDispatcher.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/dispatcher/dispatcher#localsendmanyasync",
+      "changedFileCount": 1,
+      "symbols": [
+        "IDispatcher",
+        "message",
+        "CascadeMessageAsync",
+        "LocalInvokeAndSyncAsync",
+        "ONLY",
+        "routing"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/IDispatcher.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/transports#transport-message",
+      "changedFileCount": 1,
+      "symbols": [
+        "struct",
+        "ITransport",
+        "destination"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Transports/ITransport.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/transports#max-message-size",
+      "changedFileCount": 1,
+      "symbols": [
+        "struct",
+        "ITransport",
+        "destination"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Transports/ITransport.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/workers/instance-liveness",
+      "changedFileCount": 1,
+      "symbols": [
+        "IInstanceAliveLockSource"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/IInstanceAliveLockSource.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/outbox-publish",
+      "changedFileCount": 1,
+      "symbols": [
+        "registered",
+        "OutboxPublishWorkerOptions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/OutboxPublishWorker.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/dispatcher/sync-mode",
+      "changedFileCount": 1,
+      "symbols": [
+        "SyncMode"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Perspectives/Sync/SyncMode.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/maintenance",
+      "changedFileCount": 1,
+      "symbols": [
+        "MaintenanceWorker",
+        "MaintenanceWorkerOptions",
+        "StuckRowSentinelEnabled",
+        "StuckRowSentinelMaxAttempts",
+        "StuckRowSentinelLimit"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/MaintenanceWorker.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/configuration/whizbang-options",
+      "changedFileCount": 1,
+      "symbols": [
+        "WhizbangCoreOptions",
+        "Tracing",
+        "Services",
+        "DefaultQueryScope",
+        "ShowBanner",
+        "ImmediateDetachedChainWarningThreshold",
+        "EmptyStreamIdPolicy",
+        "TagProcessingMode"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/lenses/scoped-queries#default-scope",
+      "changedFileCount": 1,
+      "symbols": [
+        "WhizbangCoreOptions",
+        "Tracing",
+        "Services",
+        "DefaultQueryScope",
+        "ShowBanner",
+        "ImmediateDetachedChainWarningThreshold",
+        "EmptyStreamIdPolicy",
+        "TagProcessingMode"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/configuration/whizbang-options#banner",
+      "changedFileCount": 1,
+      "symbols": [
+        "WhizbangCoreOptions",
+        "Tracing",
+        "Services",
+        "DefaultQueryScope",
+        "ShowBanner",
+        "ImmediateDetachedChainWarningThreshold",
+        "EmptyStreamIdPolicy",
+        "TagProcessingMode"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/configuration/whizbang-options#tag-processing-mode",
+      "changedFileCount": 1,
+      "symbols": [
+        "WhizbangCoreOptions",
+        "Tracing",
+        "Services",
+        "DefaultQueryScope",
+        "ShowBanner",
+        "ImmediateDetachedChainWarningThreshold",
+        "EmptyStreamIdPolicy",
+        "TagProcessingMode"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/workers/publisher-worker",
+      "changedFileCount": 1,
+      "symbols": [
+        "OutboxDrainWorker",
+        "transition",
+        "publish",
+        "OutboxDrainWorkerOptions",
+        "MaxConcurrentStreams",
+        "Batcher",
+        "SecurityContextTimeoutSeconds",
+        "PublishTimeoutSeconds"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/OutboxDrainWorker.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain#cross-stream-parallelism",
+      "changedFileCount": 1,
+      "symbols": [
+        "OutboxDrainWorker",
+        "transition",
+        "publish",
+        "OutboxDrainWorkerOptions",
+        "MaxConcurrentStreams",
+        "Batcher",
+        "SecurityContextTimeoutSeconds",
+        "PublishTimeoutSeconds"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/OutboxDrainWorker.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain#sliding-window",
+      "changedFileCount": 1,
+      "symbols": [
+        "OutboxDrainWorker",
+        "transition",
+        "publish",
+        "OutboxDrainWorkerOptions",
+        "MaxConcurrentStreams",
+        "Batcher",
+        "SecurityContextTimeoutSeconds",
+        "PublishTimeoutSeconds"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/OutboxDrainWorker.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/configuration-reference#backup-tick-coordinator",
+      "changedFileCount": 1,
+      "symbols": [
+        "BackupTickCoordinatorOptions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/BackupTickCoordinatorOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer#tcp-keepalive",
+      "changedFileCount": 1,
+      "symbols": [
+        "WorkSignalingMode",
+        "WhizbangNotificationOptions",
+        "TcpKeepAliveTime",
+        "TcpKeepAliveInterval"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Notifications/WhizbangNotificationOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/perspective-sync#event-tracking",
+      "changedFileCount": 1,
+      "symbols": [
+        "ISyncEventTracker"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Perspectives/Sync/ISyncEventTracker.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/perspective-sync#tracker-implementation",
+      "changedFileCount": 1,
+      "symbols": [
+        "SyncEventTracker"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Perspectives/Sync/SyncEventTracker.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/dead-letter-queue/metrics",
+      "changedFileCount": 1,
+      "symbols": [
+        "DeadLetterMetrics"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Observability/DeadLetterMetrics.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/association-metadata",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveAssociationInfo"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs"
+      ]
+    },
+    {
+      "docsPath": "data/postgres#connection-retry",
+      "changedFileCount": 1,
+      "symbols": [
+        "PostgresConnectionRetry"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.Postgres/PostgresConnectionRetry.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/transport-consumer#additional-destinations",
+      "changedFileCount": 1,
+      "symbols": [
+        "TransportConsumerConfiguration",
+        "ResilienceOptions",
+        "TransportConsumerBuilderExtensions",
+        "AddTransportConsumer"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/transport-consumer#auto-configuration",
+      "changedFileCount": 1,
+      "symbols": [
+        "TransportConsumerConfiguration",
+        "ResilienceOptions",
+        "TransportConsumerBuilderExtensions",
+        "AddTransportConsumer"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs"
+      ]
+    },
+    {
+      "docsPath": "internals/ordering-invariant",
+      "changedFileCount": 1,
+      "symbols": [
+        "MessageOrderingExtensions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/MessageOrderingExtensions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/effective-permissions",
+      "changedFileCount": 1,
+      "symbols": [
+        "IEffectivePermissionsStore"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/IEffectivePermissionsStore.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/effective-permissions#in-memory",
+      "changedFileCount": 1,
+      "symbols": [
+        "InMemoryEffectivePermissionsStore"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/InMemoryEffectivePermissionsStore.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/jwt-claim-builder",
+      "changedFileCount": 1,
+      "symbols": [
+        "JwtClaimSet"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/JwtClaimSet.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/token-refresh",
+      "changedFileCount": 1,
+      "symbols": [
+        "ITokenRefreshNotifier"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/ITokenRefreshNotifier.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/token-refresh#signalr-default",
+      "changedFileCount": 1,
+      "symbols": [
+        "SignalRTokenRefreshNotifier"
+      ],
+      "changedFiles": [
+        "src/Whizbang.SignalR/SignalRTokenRefreshNotifier.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/scoping#perspective-scope",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveScope"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Lenses/PerspectiveScope.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/scoping#update-stream-scope",
+      "changedFileCount": 1,
+      "symbols": [
+        "UpdateStreamScopeCommand"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/UpdateStreamScopeCommand.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/scoping#stream-scope-events",
+      "changedFileCount": 1,
+      "symbols": [
+        "IStreamScopeEvent"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/IStreamScopeEvent.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/security#permission-based-rls",
+      "changedFileCount": 1,
+      "symbols": [
+        "ScopeOperation"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/Attributes/ScopeOperation.cs"
+      ]
+    },
+    {
+      "docsPath": "apis/graphql/scoping#claim-aggregation",
+      "changedFileCount": 1,
+      "symbols": [
+        "ClaimAggregation"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.HotChocolate/Middleware/ClaimAggregation.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/scoping#scope-inheritance",
+      "changedFileCount": 1,
+      "symbols": [
+        "ScopeFields"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Lenses/ScopeFields.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/serialization/type-binding",
+      "changedFileCount": 1,
+      "symbols": [
+        "IMessageTypeBinder"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/IMessageTypeBinder.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/transport/message-headers",
+      "changedFileCount": 1,
+      "symbols": [
+        "MessageHeaders"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/MessageHeaders.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/transport/asb-receive",
+      "changedFileCount": 1,
+      "symbols": [
+        "AsbMessageHeaderReader"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.AzureServiceBus/AsbMessageHeaderReader.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/workers/processing-hooks",
+      "changedFileCount": 1,
+      "symbols": [
+        "WorkProcessingStartedHandler",
+        "WorkProcessingIdleHandler",
+        "OutboxMessagePublishedHandler",
+        "OutboxMessagePublishedEvent",
+        "PerspectiveEventProcessedHandler",
+        "PerspectiveEventProcessedEvent"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/WorkerEvents.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/workers/outbox-publish-worker#processing-hooks",
+      "changedFileCount": 1,
+      "symbols": [
+        "WorkProcessingStartedHandler",
+        "WorkProcessingIdleHandler",
+        "OutboxMessagePublishedHandler",
+        "OutboxMessagePublishedEvent",
+        "PerspectiveEventProcessedHandler",
+        "PerspectiveEventProcessedEvent"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/WorkerEvents.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/workers/perspective-worker#processing-hooks",
+      "changedFileCount": 1,
+      "symbols": [
+        "WorkProcessingStartedHandler",
+        "WorkProcessingIdleHandler",
+        "OutboxMessagePublishedHandler",
+        "OutboxMessagePublishedEvent",
+        "PerspectiveEventProcessedHandler",
+        "PerspectiveEventProcessedEvent"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/WorkerEvents.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/work-coordinator/startup-ordering",
+      "changedFileCount": 1,
+      "symbols": [
+        "ISchemaReadyGate",
+        "SchemaReadyGate"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/ISchemaReadyGate.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/transport-consumer#batch-collector",
+      "changedFileCount": 1,
+      "symbols": [
+        "TransportBatchCollector"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/TransportBatchCollector.cs"
+      ]
+    },
+    {
+      "docsPath": "data/work-coordinator-strategies#flush-events",
+      "changedFileCount": 1,
+      "symbols": [
+        "BatchWorkCoordinatorStrategy",
+        "FlushTrigger",
+        "WorkBatchFlushedArgs"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/lifecycle/lifecycle-coordinator#tracking-state",
+      "changedFileCount": 1,
+      "symbols": [
+        "LifecycleTrackingState"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Lifecycle/LifecycleTrackingState.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/identity/fuzzy-matching",
+      "changedFileCount": 1,
+      "symbols": [
+        "MatchStrictness"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/MatchStrictness.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messages/envelope-serialization",
+      "changedFileCount": 1,
+      "symbols": [
+        "EnvelopeSerializer",
+        "IEnvelopeSerializer",
+        "SerializedEnvelope"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/EnvelopeSerializer.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/identity/assembly-registry",
+      "changedFileCount": 1,
+      "symbols": [
+        "AssemblyRegistry"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Registry/AssemblyRegistry.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/dispatcher/routing#transport-subscription-builder",
+      "changedFileCount": 1,
+      "symbols": [
+        "TransportSubscriptionBuilder"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Routing/TransportSubscriptionBuilder.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/observability/tracing#components",
+      "changedFileCount": 1,
+      "symbols": [
+        "TraceComponents"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Tracing/TraceComponents.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/transport-options",
+      "changedFileCount": 1,
+      "symbols": [
+        "TransportOptions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Transports/TransportOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/identity/type-qualification",
+      "changedFileCount": 1,
+      "symbols": [
+        "TypeQualifications"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/TypeQualification.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/workers/perspective-worker#event-deduplication",
+      "changedFileCount": 1,
+      "symbols": [
+        "acknowledgement"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/ProcessedEventCache.cs"
+      ]
+    },
+    {
+      "docsPath": "extending/features/vector-search#turnkey-setup",
+      "changedFileCount": 1,
+      "symbols": [
+        "DbContextRegistrationRegistry"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.EFCore.Postgres/DbContextRegistrationRegistry.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/diagnostics/serializable-property-analyzer",
+      "changedFileCount": 1,
+      "symbols": [
+        "SerializablePropertyAnalyzer"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/SerializablePropertyAnalyzer.cs"
+      ]
+    },
+    {
+      "docsPath": "extending/source-generators/topic-filter-discovery",
+      "changedFileCount": 1,
+      "symbols": [
+        "TopicFilterGenerator"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/TopicFilterGenerator.cs"
+      ]
+    },
+    {
+      "docsPath": "apis/graphql/lens-integration#scope",
+      "changedFileCount": 1,
+      "symbols": [
+        "data"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensScope.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/message-security#cross-tenant-operations",
+      "changedFileCount": 1,
+      "symbols": [
+        "DispatcherSecurityBuilder",
+        "WithTenant"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messages/cascade-context#enrichers",
+      "changedFileCount": 1,
+      "symbols": [
+        "ICascadeContextEnricher"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Observability/ICascadeContextEnricher.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/observability/logging#startup",
+      "changedFileCount": 1,
+      "symbols": [
+        "WhizbangStartupLogger"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Observability/WhizbangStartupLog.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/message-security#exceptions",
+      "changedFileCount": 1,
+      "symbols": [
+        "SecurityContextRequiredException"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/Exceptions/SecurityContextRequiredException.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/message-security#callbacks",
+      "changedFileCount": 1,
+      "symbols": [
+        "UserContextManagerCallback"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/ISecurityContextCallback.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/message-security#extractors",
+      "changedFileCount": 1,
+      "symbols": [
+        "JwtPayloadExtractor"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/ISecurityContextExtractor.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/message-security#registration",
+      "changedFileCount": 1,
+      "symbols": [
+        "MessageSecurityServiceCollectionExtensions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/MessageSecurityServiceCollectionExtensions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/events/system-events#audit-model",
+      "changedFileCount": 1,
+      "symbols": [
+        "AuditEventModel",
+        "AuditEventProjection"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/SystemEvents/Audit/AuditEventModel.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/events/system-events#audit-projection",
+      "changedFileCount": 1,
+      "symbols": [
+        "AuditEventModel",
+        "AuditEventProjection"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/SystemEvents/Audit/AuditEventModel.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/message-security#transport-metadata",
+      "changedFileCount": 1,
+      "symbols": [
+        "ITransportMetadata"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Transports/ITransportMetadata.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/message-security#service-bus-metadata",
+      "changedFileCount": 1,
+      "symbols": [
+        "ServiceBusTransportMetadata"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Transports/ServiceBusTransportMetadata.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/infrastructure/database-limits",
+      "changedFileCount": 1,
+      "symbols": [
+        "length"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.EFCore.Postgres.Generators/Limits/PostgresLimits.cs"
+      ]
+    },
+    {
+      "docsPath": "data/schema-generation-pattern",
+      "changedFileCount": 1,
+      "symbols": [
+        "ISchemaBuilder"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.Schema/ISchemaBuilder.cs"
+      ]
+    },
+    {
+      "docsPath": "extending/source-generators/configuration",
+      "changedFileCount": 1,
+      "symbols": [
+        "ConfigurationUtilities"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators.Shared/Utilities/ConfigurationUtilities.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/diagnostics/whiz900",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveSyncInReceptorAnalyzer"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/Analyzers/PerspectiveSyncInReceptorAnalyzer.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messages/message-tags#configuration",
+      "changedFileCount": 1,
+      "symbols": [
+        "TagOptions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Tags/TagOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/audit-logging#selective-auditing",
+      "changedFileCount": 1,
+      "symbols": [
+        "AuditEventAttribute"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Attributes/AuditEventAttribute.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messages/message-tags",
+      "changedFileCount": 1,
+      "symbols": [
+        "MessageTagAttribute"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Attributes/MessageTagAttribute.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messages/message-tags#registration",
+      "changedFileCount": 1,
+      "symbols": [
+        "MessageTagRegistration"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Tags/MessageTagRegistration.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/messages/message-tags#tag-context",
+      "changedFileCount": 1,
+      "symbols": [
+        "TagContext"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Tags/TagContext.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/perspectives#rebuild-events",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveRebuildStarted",
+        "PerspectiveRebuildProgress",
+        "PerspectiveRebuildCompleted",
+        "PerspectiveRebuildFailed",
+        "PerspectiveRewindStarted",
+        "PerspectiveRewindCompleted",
+        "StreamRewindStarted",
+        "StreamRewindCompleted",
+        "MigrationItemStarted",
+        "MigrationItemCompleted",
+        "MigrationItemFailed",
+        "MigrationBatchStarted",
+        "MigrationBatchCompleted"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Events/System/SystemEvents.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/perspectives#rewind-events",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveRebuildStarted",
+        "PerspectiveRebuildProgress",
+        "PerspectiveRebuildCompleted",
+        "PerspectiveRebuildFailed",
+        "PerspectiveRewindStarted",
+        "PerspectiveRewindCompleted",
+        "StreamRewindStarted",
+        "StreamRewindCompleted",
+        "MigrationItemStarted",
+        "MigrationItemCompleted",
+        "MigrationItemFailed",
+        "MigrationBatchStarted",
+        "MigrationBatchCompleted"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Events/System/SystemEvents.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/rewind#stream-events",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveRebuildStarted",
+        "PerspectiveRebuildProgress",
+        "PerspectiveRebuildCompleted",
+        "PerspectiveRebuildFailed",
+        "PerspectiveRewindStarted",
+        "PerspectiveRewindCompleted",
+        "StreamRewindStarted",
+        "StreamRewindCompleted",
+        "MigrationItemStarted",
+        "MigrationItemCompleted",
+        "MigrationItemFailed",
+        "MigrationBatchStarted",
+        "MigrationBatchCompleted"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Events/System/SystemEvents.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/infrastructure/migrations#migration-events",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveRebuildStarted",
+        "PerspectiveRebuildProgress",
+        "PerspectiveRebuildCompleted",
+        "PerspectiveRebuildFailed",
+        "PerspectiveRewindStarted",
+        "PerspectiveRewindCompleted",
+        "StreamRewindStarted",
+        "StreamRewindCompleted",
+        "MigrationItemStarted",
+        "MigrationItemCompleted",
+        "MigrationItemFailed",
+        "MigrationBatchStarted",
+        "MigrationBatchCompleted"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Events/System/SystemEvents.cs"
+      ]
+    },
+    {
+      "docsPath": "data/caching#clear-cache",
+      "changedFileCount": 1,
+      "symbols": [
+        "RebuildPerspectiveCommand",
+        "CancelPerspectiveRebuildCommand",
+        "ClearCacheCommand",
+        "DiagnosticsCommand",
+        "PauseProcessingCommand",
+        "ResumeProcessingCommand"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Commands/System/SystemCommands.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/observability/diagnostics#system-diagnostics",
+      "changedFileCount": 1,
+      "symbols": [
+        "RebuildPerspectiveCommand",
+        "CancelPerspectiveRebuildCommand",
+        "ClearCacheCommand",
+        "DiagnosticsCommand",
+        "PauseProcessingCommand",
+        "ResumeProcessingCommand"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Commands/System/SystemCommands.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/lifecycle/lifecycle#pause-resume",
+      "changedFileCount": 1,
+      "symbols": [
+        "RebuildPerspectiveCommand",
+        "CancelPerspectiveRebuildCommand",
+        "ClearCacheCommand",
+        "DiagnosticsCommand",
+        "PauseProcessingCommand",
+        "ResumeProcessingCommand"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Commands/System/SystemCommands.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/audit-logging#command-auditing",
+      "changedFileCount": 1,
+      "symbols": [
+        "CommandAudited"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/SystemEvents/CommandAudited.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/events/system-events#audit",
+      "changedFileCount": 1,
+      "symbols": [
+        "EventAudited"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/SystemEvents/EventAudited.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/events/system-events#access-denied",
+      "changedFileCount": 1,
+      "symbols": [
+        "AccessDenied"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/SystemEvents/Security/AccessDenied.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/events/system-events#access-granted",
+      "changedFileCount": 1,
+      "symbols": [
+        "AccessGranted"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/SystemEvents/Security/AccessGranted.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/events/system-events#permission-changed",
+      "changedFileCount": 1,
+      "symbols": [
+        "PermissionChanged"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/SystemEvents/Security/PermissionChanged.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/events/system-events#scope-context-established",
+      "changedFileCount": 1,
+      "symbols": [
+        "ScopeContextEstablished"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/SystemEvents/Security/ScopeContextEstablished.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/events/stream-id#auto-generation",
+      "changedFileCount": 1,
+      "symbols": [
+        "AutoGenerateStreamIds",
+        "Guardrails",
+        "WhizbangGuardrailsOptions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Configuration/WhizbangOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/testing/receptor-firing-observer",
+      "changedFileCount": 1,
+      "symbols": [
+        "IReceptorFiringObserver"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/IReceptorFiringObserver.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/receptors/lifecycle-receptors#processing-mode",
+      "changedFileCount": 1,
+      "symbols": [
+        "ProcessingMode"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/ProcessingMode.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/receptors/lifecycle-receptors#replay-safety",
+      "changedFileCount": 1,
+      "symbols": [
+        "ReceptorIdempotentAttribute"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/ReceptorIdempotentAttribute.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/scoping#scope-events",
+      "changedFileCount": 1,
+      "symbols": [
+        "IScopeEvent"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/IScopeEvent.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/perspectives#scope-handling",
+      "changedFileCount": 1,
+      "symbols": [
+        "IPerspectiveScopeFor"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Perspectives/IPerspectiveScopeFor.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/rewind#debounce",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveRewindOptions",
+        "DebounceWindow",
+        "MaxDebounceWindow",
+        "RewindStartupMode"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Perspectives/PerspectiveRewindOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/rewind#startup-modes",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveRewindOptions",
+        "DebounceWindow",
+        "MaxDebounceWindow",
+        "RewindStartupMode"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Perspectives/PerspectiveRewindOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/transport-consumer#batch-options",
+      "changedFileCount": 1,
+      "symbols": [
+        "TransportBatchOptions",
+        "BatchSize",
+        "SlideMs",
+        "MaxWaitMs"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/TransportBatchOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/rabbitmq#channels",
+      "changedFileCount": 1,
+      "symbols": [
+        "RabbitMQOptions",
+        "MaxChannels",
+        "MaxDeliveryAttempts",
+        "PrefetchCount",
+        "EnableSingleActiveConsumer",
+        "InitialRetryAttempts",
+        "InitialRetryDelay",
+        "MaxRetryDelay",
+        "BackoffMultiplier",
+        "RetryIndefinitely"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/rabbitmq#dead-lettering",
+      "changedFileCount": 1,
+      "symbols": [
+        "RabbitMQOptions",
+        "MaxChannels",
+        "MaxDeliveryAttempts",
+        "PrefetchCount",
+        "EnableSingleActiveConsumer",
+        "InitialRetryAttempts",
+        "InitialRetryDelay",
+        "MaxRetryDelay",
+        "BackoffMultiplier",
+        "RetryIndefinitely"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/rabbitmq#prefetch",
+      "changedFileCount": 1,
+      "symbols": [
+        "RabbitMQOptions",
+        "MaxChannels",
+        "MaxDeliveryAttempts",
+        "PrefetchCount",
+        "EnableSingleActiveConsumer",
+        "InitialRetryAttempts",
+        "InitialRetryDelay",
+        "MaxRetryDelay",
+        "BackoffMultiplier",
+        "RetryIndefinitely"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/rabbitmq#single-active-consumer",
+      "changedFileCount": 1,
+      "symbols": [
+        "RabbitMQOptions",
+        "MaxChannels",
+        "MaxDeliveryAttempts",
+        "PrefetchCount",
+        "EnableSingleActiveConsumer",
+        "InitialRetryAttempts",
+        "InitialRetryDelay",
+        "MaxRetryDelay",
+        "BackoffMultiplier",
+        "RetryIndefinitely"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/message-security#message-context-accessor",
+      "changedFileCount": 1,
+      "symbols": [
+        "IMessageContextAccessor"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/IMessageContextAccessor.cs"
+      ]
+    },
+    {
+      "docsPath": "data/turnkey-initialization#multi-instance",
+      "changedFileCount": 1,
+      "symbols": [
+        "SchemaInitializationLog"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/lifecycle/lifecycle-coordinator#whenall",
+      "changedFileCount": 1,
+      "symbols": [
+        "ILifecycleCoordinator",
+        "PostLifecycleCompletionSource"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Lifecycle/ILifecycleCoordinator.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/lifecycle/lifecycle-coordinator#tracking",
+      "changedFileCount": 1,
+      "symbols": [
+        "ILifecycleTracking"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Lifecycle/ILifecycleTracking.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/lifecycle/lifecycle-stages",
+      "changedFileCount": 1,
+      "symbols": [
+        "ILifecycleMessageDeserializer"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Messaging/ILifecycleMessageDeserializer.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/message-security#scoped-message-context",
+      "changedFileCount": 1,
+      "symbols": [
+        "ScopedMessageContext"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Security/ScopedMessageContext.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/transport-consumer#message-processing-options",
+      "changedFileCount": 1,
+      "symbols": [
+        "MessageProcessingOptions",
+        "MaxConcurrentMessages",
+        "InboxBatchSize",
+        "InboxBatchSlideMs",
+        "InboxBatchMaxWaitMs"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/MessageProcessingOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/transport-consumer#concurrency",
+      "changedFileCount": 1,
+      "symbols": [
+        "MessageProcessingOptions",
+        "MaxConcurrentMessages",
+        "InboxBatchSize",
+        "InboxBatchSlideMs",
+        "InboxBatchMaxWaitMs"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/MessageProcessingOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "messaging/transports/transport-consumer#inbox-batching",
+      "changedFileCount": 1,
+      "symbols": [
+        "MessageProcessingOptions",
+        "MaxConcurrentMessages",
+        "InboxBatchSize",
+        "InboxBatchSlideMs",
+        "InboxBatchMaxWaitMs"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/MessageProcessingOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/security/message-security#envelope-reconstruction",
+      "changedFileCount": 1,
+      "symbols": [
+        "MessageEnvelopeExtensions",
+        "ReconstructWithPayload"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Observability/MessageEnvelopeExtensions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/dispatcher/dispatcher#automatic-message-cascade",
+      "changedFileCount": 1,
+      "symbols": [
+        "MessageExtractor"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Internal/MessageExtractor.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/events/system-events#audit-builder",
+      "changedFileCount": 1,
+      "symbols": [
+        "AuditOutboxMessageBuilder"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/SystemEvents/AuditOutboxMessageBuilder.cs"
+      ]
+    },
+    {
+      "docsPath": "resilience/circuit-breaker",
+      "changedFileCount": 1,
+      "symbols": [
+        "CircuitBreakerOptions"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Resilience/CircuitBreakerOptions.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/lenses/lenses",
+      "changedFileCount": 1,
+      "symbols": [
+        "ILensQuery"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Lenses/ILensQuery.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/multi-stream",
+      "changedFileCount": 1,
+      "symbols": [
+        "IGlobalPerspectiveFor"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/temporal",
+      "changedFileCount": 1,
+      "symbols": [
+        "ITemporalPerspectiveFor"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Perspectives/ITemporalPerspectiveFor.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/workers/perspective-worker#dedup-observer",
+      "changedFileCount": 1,
+      "symbols": [
+        "IProcessedEventCacheObserver"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Core/Workers/IProcessedEventCacheObserver.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/diagnostics/whiz090",
+      "changedFileCount": 1,
+      "symbols": [
+        "MessageTagParameterAnalyzer"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/Analyzers/MessageTagParameterAnalyzer.cs"
+      ]
+    },
+    {
+      "docsPath": "operations/diagnostics/whiz300",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveModelConsistencyAnalyzer"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/Analyzers/PerspectiveModelConsistencyAnalyzer.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/identity/whizbang-ids#analyzer",
+      "changedFileCount": 1,
+      "symbols": [
+        "GuidUsageAnalyzer"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Generators/GuidUsageAnalyzer.cs"
+      ]
+    },
+    {
+      "docsPath": "fundamentals/perspectives/polymorphic-types",
+      "changedFileCount": 1,
+      "symbols": [
+        "PerspectiveModelPolymorphicAnalyzer"
+      ],
+      "changedFiles": [
+        "src/Whizbang.Data.EFCore.Postgres.Generators/PerspectiveModelPolymorphicAnalyzer.cs"
+      ]
+    },
+    {
       "docsPath": "fundamentals/dispatcher/dispatcher#local-invoke-with-receipt",
       "changedFileCount": 1,
       "symbols": [
@@ -1184,74 +4731,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/Dispatch/InvokeResult.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/perspectives/perspective-sync#dispatcher-integration",
-      "changedFileCount": 1,
-      "symbols": [
-        "VoidSyncReceptorInvoker",
-        "_awaitPerspectiveSyncIfNeededAsync",
-        "_waitForPerspectivesIfNeededAsync",
-        "_invokeImmediateAsyncReceptorsAsync",
-        "_invokePostLifecycleReceptorsAsync",
-        "CascadeToOutboxAsync",
-        "CascadeToEventStoreOnlyAsync",
-        "PublishToOutboxDynamicAsync"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Dispatcher.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/perspectives/event-completion#dispatcher-integration",
-      "changedFileCount": 1,
-      "symbols": [
-        "VoidSyncReceptorInvoker",
-        "_awaitPerspectiveSyncIfNeededAsync",
-        "_waitForPerspectivesIfNeededAsync",
-        "_invokeImmediateAsyncReceptorsAsync",
-        "_invokePostLifecycleReceptorsAsync",
-        "CascadeToOutboxAsync",
-        "CascadeToEventStoreOnlyAsync",
-        "PublishToOutboxDynamicAsync"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Dispatcher.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/lifecycle/lifecycle-stages#post-lifecycle",
-      "changedFileCount": 1,
-      "symbols": [
-        "VoidSyncReceptorInvoker",
-        "_awaitPerspectiveSyncIfNeededAsync",
-        "_waitForPerspectivesIfNeededAsync",
-        "_invokeImmediateAsyncReceptorsAsync",
-        "_invokePostLifecycleReceptorsAsync",
-        "CascadeToOutboxAsync",
-        "CascadeToEventStoreOnlyAsync",
-        "PublishToOutboxDynamicAsync"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Dispatcher.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/dispatcher/dispatcher#auto-cascade-to-outbox",
-      "changedFileCount": 1,
-      "symbols": [
-        "VoidSyncReceptorInvoker",
-        "_awaitPerspectiveSyncIfNeededAsync",
-        "_waitForPerspectivesIfNeededAsync",
-        "_invokeImmediateAsyncReceptorsAsync",
-        "_invokePostLifecycleReceptorsAsync",
-        "CascadeToOutboxAsync",
-        "CascadeToEventStoreOnlyAsync",
-        "PublishToOutboxDynamicAsync"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Dispatcher.cs"
       ]
     },
     {
@@ -1273,42 +4752,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/Dispatch/Routed.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/dispatcher/dispatcher#cascade-to-outbox",
-      "changedFileCount": 1,
-      "symbols": [
-        "IDispatcher",
-        "CascadeMessageAsync",
-        "ONLY",
-        "routing"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/IDispatcher.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/dispatcher/dispatcher#localsendmanyasync",
-      "changedFileCount": 1,
-      "symbols": [
-        "IDispatcher",
-        "CascadeMessageAsync",
-        "ONLY",
-        "routing"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/IDispatcher.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/dispatcher/dispatcher#automatic-message-cascade",
-      "changedFileCount": 1,
-      "symbols": [
-        "MessageExtractor"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Internal/MessageExtractor.cs"
       ]
     },
     {
@@ -1356,29 +4799,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/lifecycle/lifecycle-coordinator#whenall",
-      "changedFileCount": 1,
-      "symbols": [
-        "ILifecycleCoordinator",
-        "PostLifecycleCompletionSource"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Lifecycle/ILifecycleCoordinator.cs"
-      ]
-    },
-    {
-      "docsPath": "data/work-coordinator-strategies#flush-events",
-      "changedFileCount": 1,
-      "symbols": [
-        "BatchWorkCoordinatorStrategy",
-        "FlushTrigger",
-        "WorkBatchFlushedArgs"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/security/security#row-level-security",
       "changedFileCount": 1,
       "symbols": [
@@ -1386,16 +4806,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/Security/Attributes/ScopedAttribute.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/events/system-events#access-granted",
-      "changedFileCount": 1,
-      "symbols": [
-        "AccessGranted"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/SystemEvents/Security/AccessGranted.cs"
       ]
     },
     {
@@ -1409,16 +4819,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/identity/type-qualification",
-      "changedFileCount": 1,
-      "symbols": [
-        "TypeQualifications"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/TypeQualification.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/identity/whizbang-ids#guid-metadata",
       "changedFileCount": 1,
       "symbols": [
@@ -1426,77 +4826,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/ValueObjects/GuidMetadata.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/workers/perspective-worker#security-context",
-      "changedFileCount": 1,
-      "symbols": [
-        "PerspectiveWorker",
-        "_establishSecurityContextAsync"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Workers/PerspectiveWorker.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/workers/perspective-worker#event-deduplication",
-      "changedFileCount": 1,
-      "symbols": [
-        "ProcessedEventCache"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Workers/ProcessedEventCache.cs"
-      ]
-    },
-    {
-      "docsPath": "messaging/work-coordination",
-      "changedFileCount": 1,
-      "symbols": [
-        "_processInboxWorkAsync"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/lenses/scoped-lenses#ef-core-implementation",
-      "changedFileCount": 1,
-      "symbols": [
-        "EFCoreFilterableLensQuery"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableLensQuery.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/lenses/multi-model-queries",
-      "changedFileCount": 1,
-      "symbols": [
-        "EFCorePostgresLensQuery"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.EFCore.Postgres/EFCorePostgresLensQuery.cs"
-      ]
-    },
-    {
-      "docsPath": "extending/source-generators/json-contexts",
-      "changedFileCount": 1,
-      "symbols": [
-        "types"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Generators/MessageJsonContextGenerator.cs"
-      ]
-    },
-    {
-      "docsPath": "apis/graphql/lens-integration#scope",
-      "changedFileCount": 1,
-      "symbols": [
-        "data"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensScope.cs"
       ]
     },
     {
@@ -1536,120 +4865,6 @@
       ]
     },
     {
-      "docsPath": "extending/features/vector-search#auto-config",
-      "changedFileCount": 1,
-      "symbols": [
-        "VectorConfigurationRegistry"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs"
-      ]
-    },
-    {
-      "docsPath": "messaging/transports/azure-service-bus#routing-filters",
-      "changedFileCount": 1,
-      "symbols": [
-        "_deriveSubscriptionName",
-        "_ensureInfrastructureExistsAsync",
-        "_applyRoutingPatternFilterAsync",
-        "_ensureTopicExistsViaAdminAsync"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs"
-      ]
-    },
-    {
-      "docsPath": "messaging/transports/azure-service-bus#publish-auto-provisioning",
-      "changedFileCount": 1,
-      "symbols": [
-        "_deriveSubscriptionName",
-        "_ensureInfrastructureExistsAsync",
-        "_applyRoutingPatternFilterAsync",
-        "_ensureTopicExistsViaAdminAsync"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/events/system-events#audit-model",
-      "changedFileCount": 1,
-      "symbols": [
-        "AuditEventModel",
-        "AuditEventProjection"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/SystemEvents/Audit/AuditEventModel.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/events/system-events#audit-projection",
-      "changedFileCount": 1,
-      "symbols": [
-        "AuditEventModel",
-        "AuditEventProjection"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/SystemEvents/Audit/AuditEventModel.cs"
-      ]
-    },
-    {
-      "docsPath": "messaging/transports/transport-consumer#additional-destinations",
-      "changedFileCount": 1,
-      "symbols": [
-        "TransportConsumerConfiguration",
-        "ResilienceOptions",
-        "TransportConsumerBuilderExtensions",
-        "AddTransportConsumer"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs"
-      ]
-    },
-    {
-      "docsPath": "messaging/transports/transport-consumer#auto-configuration",
-      "changedFileCount": 1,
-      "symbols": [
-        "TransportConsumerConfiguration",
-        "ResilienceOptions",
-        "TransportConsumerBuilderExtensions",
-        "AddTransportConsumer"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/lifecycle/lifecycle-coordinator#tracking-state",
-      "changedFileCount": 1,
-      "symbols": [
-        "LifecycleTrackingState"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Lifecycle/LifecycleTrackingState.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/perspectives/polymorphic-types",
-      "changedFileCount": 1,
-      "symbols": [
-        "PerspectiveModelPolymorphicAnalyzer"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.EFCore.Postgres.Generators/PerspectiveModelPolymorphicAnalyzer.cs"
-      ]
-    },
-    {
-      "docsPath": "data/postgres#connection-retry",
-      "changedFileCount": 1,
-      "symbols": [
-        "PostgresConnectionRetry"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.Postgres/PostgresConnectionRetry.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/messages/message-tags#hook-registration",
       "changedFileCount": 1,
       "symbols": [
@@ -1660,16 +4875,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/messages/message-tags#configuration",
-      "changedFileCount": 1,
-      "symbols": [
-        "TagOptions"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Tags/TagOptions.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/lifecycle/lifecycle-coordinator#context",
       "changedFileCount": 1,
       "symbols": [
@@ -1677,48 +4882,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/Lifecycle/ILifecycleTrackingContext.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/workers/perspective-worker#dedup-observer",
-      "changedFileCount": 1,
-      "symbols": [
-        "IProcessedEventCacheObserver"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Workers/IProcessedEventCacheObserver.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/perspectives/perspectives-with-actions",
-      "changedFileCount": 1,
-      "symbols": [
-        "IPerspectiveWithActionsFor"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/security/message-security#security-context-helper",
-      "changedFileCount": 1,
-      "symbols": [
-        "SecurityContextHelper",
-        "EstablishMessageContextForCascade"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Security/SecurityContextHelper.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/security/message-security#asynclocal-context-flow",
-      "changedFileCount": 1,
-      "symbols": [
-        "SecurityContextHelper",
-        "EstablishMessageContextForCascade"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Security/SecurityContextHelper.cs"
       ]
     },
     {
@@ -1752,28 +4915,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/messages/envelope-serialization",
-      "changedFileCount": 1,
-      "symbols": [
-        "EnvelopeSerializer",
-        "IEnvelopeSerializer",
-        "SerializedEnvelope"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Messaging/EnvelopeSerializer.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/events/system-events#audit-builder",
-      "changedFileCount": 1,
-      "symbols": [
-        "AuditOutboxMessageBuilder"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/SystemEvents/AuditOutboxMessageBuilder.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/events/system-events#registration",
       "changedFileCount": 1,
       "symbols": [
@@ -1784,26 +4925,6 @@
       ]
     },
     {
-      "docsPath": "extending/source-generators/configuration",
-      "changedFileCount": 1,
-      "symbols": [
-        "ConfigurationUtilities"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Generators.Shared/Utilities/ConfigurationUtilities.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/events/stream-id#auto-generation",
-      "changedFileCount": 1,
-      "symbols": [
-        "AutoGenerateStreamIds"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Configuration/WhizbangOptions.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/lifecycle/lifecycle-coordinator#perspective-context",
       "changedFileCount": 1,
       "symbols": [
@@ -1811,71 +4932,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/Lifecycle/ILifecyclePerspectiveStageContext.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/lifecycle/lifecycle-coordinator#tracking",
-      "changedFileCount": 1,
-      "symbols": [
-        "ILifecycleTracking"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Lifecycle/ILifecycleTracking.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/configuration/whizbang-options",
-      "changedFileCount": 1,
-      "symbols": [
-        "WhizbangCoreOptions",
-        "Tracing",
-        "Services",
-        "DefaultQueryScope",
-        "ImmediateAsyncChainWarningThreshold",
-        "TagProcessingMode"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/lenses/scoped-queries#default-scope",
-      "changedFileCount": 1,
-      "symbols": [
-        "WhizbangCoreOptions",
-        "Tracing",
-        "Services",
-        "DefaultQueryScope",
-        "ImmediateAsyncChainWarningThreshold",
-        "TagProcessingMode"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/configuration/whizbang-options#tag-processing-mode",
-      "changedFileCount": 1,
-      "symbols": [
-        "WhizbangCoreOptions",
-        "Tracing",
-        "Services",
-        "DefaultQueryScope",
-        "ImmediateAsyncChainWarningThreshold",
-        "TagProcessingMode"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/lenses/lenses",
-      "changedFileCount": 1,
-      "symbols": [
-        "ILensQuery"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Lenses/ILensQuery.cs"
       ]
     },
     {
@@ -1896,16 +4952,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/Lenses/IScopedMultiLensAccess.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/lenses/scoped-queries#scope-override",
-      "changedFileCount": 1,
-      "symbols": [
-        "struct"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Lenses/ScopeFilterOverride.cs"
       ]
     },
     {
@@ -1961,16 +5007,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/security/message-security#scoped-message-context",
-      "changedFileCount": 1,
-      "symbols": [
-        "ScopedMessageContext"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Security/ScopedMessageContext.cs"
-      ]
-    },
-    {
       "docsPath": "apis/mutations/hooks#context",
       "changedFileCount": 1,
       "symbols": [
@@ -1978,17 +5014,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Transports.Mutations/Base/IMutationContext.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/security/message-security#cross-tenant-operations",
-      "changedFileCount": 1,
-      "symbols": [
-        "DispatcherSecurityBuilder",
-        "WithTenant"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs"
       ]
     },
     {
@@ -2055,46 +5080,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/messages/cascade-context",
-      "changedFileCount": 1,
-      "symbols": [
-        "CascadeContext"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Observability/CascadeContext.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/perspectives/perspective-sync#tracker-implementation",
-      "changedFileCount": 1,
-      "symbols": [
-        "SyncEventTracker"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Perspectives/Sync/SyncEventTracker.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/identity/assembly-registry",
-      "changedFileCount": 1,
-      "symbols": [
-        "AssemblyRegistry"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Registry/AssemblyRegistry.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/dispatcher/routing#transport-subscription-builder",
-      "changedFileCount": 1,
-      "symbols": [
-        "TransportSubscriptionBuilder"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Routing/TransportSubscriptionBuilder.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/perspectives/registry",
       "changedFileCount": 1,
       "symbols": [
@@ -2122,56 +5107,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Generators.Shared/Utilities/TypeSymbolExtensions.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/diagnostics/whiz090",
-      "changedFileCount": 1,
-      "symbols": [
-        "MessageTagParameterAnalyzer"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Generators/Analyzers/MessageTagParameterAnalyzer.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/diagnostics/whiz300",
-      "changedFileCount": 1,
-      "symbols": [
-        "PerspectiveModelConsistencyAnalyzer"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Generators/Analyzers/PerspectiveModelConsistencyAnalyzer.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/identity/whizbang-ids#analyzer",
-      "changedFileCount": 1,
-      "symbols": [
-        "GuidUsageAnalyzer"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Generators/GuidUsageAnalyzer.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/diagnostics/serializable-property-analyzer",
-      "changedFileCount": 1,
-      "symbols": [
-        "SerializablePropertyAnalyzer"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Generators/SerializablePropertyAnalyzer.cs"
-      ]
-    },
-    {
-      "docsPath": "extending/source-generators/topic-filter-discovery",
-      "changedFileCount": 1,
-      "symbols": [
-        "TopicFilterGenerator"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Generators/TopicFilterGenerator.cs"
       ]
     },
     {
@@ -2317,26 +5252,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/security/audit-logging#selective-auditing",
-      "changedFileCount": 1,
-      "symbols": [
-        "AuditEventAttribute"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Attributes/AuditEventAttribute.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/messages/message-tags",
-      "changedFileCount": 1,
-      "symbols": [
-        "MessageTagAttribute"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Attributes/MessageTagAttribute.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/messages/message-tags#metric-tag",
       "changedFileCount": 1,
       "symbols": [
@@ -2407,51 +5322,6 @@
       ]
     },
     {
-      "docsPath": "data/caching#clear-cache",
-      "changedFileCount": 1,
-      "symbols": [
-        "RebuildPerspectiveCommand",
-        "CancelPerspectiveRebuildCommand",
-        "ClearCacheCommand",
-        "DiagnosticsCommand",
-        "PauseProcessingCommand",
-        "ResumeProcessingCommand"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Commands/System/SystemCommands.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/observability/diagnostics#system-diagnostics",
-      "changedFileCount": 1,
-      "symbols": [
-        "RebuildPerspectiveCommand",
-        "CancelPerspectiveRebuildCommand",
-        "ClearCacheCommand",
-        "DiagnosticsCommand",
-        "PauseProcessingCommand",
-        "ResumeProcessingCommand"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Commands/System/SystemCommands.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/lifecycle/lifecycle#pause-resume",
-      "changedFileCount": 1,
-      "symbols": [
-        "RebuildPerspectiveCommand",
-        "CancelPerspectiveRebuildCommand",
-        "ClearCacheCommand",
-        "DiagnosticsCommand",
-        "PauseProcessingCommand",
-        "ResumeProcessingCommand"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Commands/System/SystemCommands.cs"
-      ]
-    },
-    {
       "docsPath": "operations/infrastructure/migrations",
       "changedFileCount": 1,
       "symbols": [
@@ -2459,76 +5329,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/Data/IMigrationProvider.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/dispatcher/dispatcher#dispatch-options",
-      "changedFileCount": 1,
-      "symbols": [
-        "DispatchOptions"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Dispatch/DispatchOptions.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/perspectives/perspectives#rebuild-events",
-      "changedFileCount": 1,
-      "symbols": [
-        "PerspectiveRebuildStarted",
-        "PerspectiveRebuildProgress",
-        "PerspectiveRebuildCompleted",
-        "PerspectiveRebuildFailed",
-        "PerspectiveRewindStarted",
-        "PerspectiveRewindCompleted",
-        "MigrationItemStarted",
-        "MigrationItemCompleted",
-        "MigrationItemFailed",
-        "MigrationBatchStarted",
-        "MigrationBatchCompleted"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Events/System/SystemEvents.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/perspectives/perspectives#rewind-events",
-      "changedFileCount": 1,
-      "symbols": [
-        "PerspectiveRebuildStarted",
-        "PerspectiveRebuildProgress",
-        "PerspectiveRebuildCompleted",
-        "PerspectiveRebuildFailed",
-        "PerspectiveRewindStarted",
-        "PerspectiveRewindCompleted",
-        "MigrationItemStarted",
-        "MigrationItemCompleted",
-        "MigrationItemFailed",
-        "MigrationBatchStarted",
-        "MigrationBatchCompleted"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Events/System/SystemEvents.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/infrastructure/migrations#migration-events",
-      "changedFileCount": 1,
-      "symbols": [
-        "PerspectiveRebuildStarted",
-        "PerspectiveRebuildProgress",
-        "PerspectiveRebuildCompleted",
-        "PerspectiveRebuildFailed",
-        "PerspectiveRewindStarted",
-        "PerspectiveRewindCompleted",
-        "MigrationItemStarted",
-        "MigrationItemCompleted",
-        "MigrationItemFailed",
-        "MigrationBatchStarted",
-        "MigrationBatchCompleted"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Events/System/SystemEvents.cs"
       ]
     },
     {
@@ -2582,16 +5382,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/security/scoping#perspective-scope",
-      "changedFileCount": 1,
-      "symbols": [
-        "PerspectiveScope"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Lenses/PerspectiveScope.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/security/multi-tenancy",
       "changedFileCount": 1,
       "symbols": [
@@ -2599,56 +5389,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/Lenses/TenantConstants.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/identity/fuzzy-matching",
-      "changedFileCount": 1,
-      "symbols": [
-        "MatchStrictness"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/MatchStrictness.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/receptors/lifecycle-receptors#replay-safety",
-      "changedFileCount": 1,
-      "symbols": [
-        "FireDuringReplayAttribute"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Messaging/FireDuringReplayAttribute.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/lifecycle/lifecycle-stages",
-      "changedFileCount": 1,
-      "symbols": [
-        "ILifecycleMessageDeserializer"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Messaging/ILifecycleMessageDeserializer.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/receptors/lifecycle-receptors#processing-mode",
-      "changedFileCount": 1,
-      "symbols": [
-        "ProcessingMode"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Messaging/ProcessingMode.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/messages/message-context-extraction",
-      "changedFileCount": 1,
-      "symbols": [
-        "EnvelopeContextExtractor"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Observability/EnvelopeContextExtractor.cs"
       ]
     },
     {
@@ -2662,16 +5402,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/messages/cascade-context#enrichers",
-      "changedFileCount": 1,
-      "symbols": [
-        "ICascadeContextEnricher"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Observability/ICascadeContextEnricher.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/messages/envelope-registry",
       "changedFileCount": 1,
       "symbols": [
@@ -2682,17 +5412,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/security/message-security#envelope-reconstruction",
-      "changedFileCount": 1,
-      "symbols": [
-        "MessageEnvelopeExtensions",
-        "ReconstructWithPayload"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Observability/MessageEnvelopeExtensions.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/persistence/persistence#modes",
       "changedFileCount": 1,
       "symbols": [
@@ -2700,26 +5419,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/Persistence/PersistenceMode.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/perspectives/multi-stream",
-      "changedFileCount": 1,
-      "symbols": [
-        "IGlobalPerspectiveFor"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/perspectives/temporal",
-      "changedFileCount": 1,
-      "symbols": [
-        "ITemporalPerspectiveFor"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Perspectives/ITemporalPerspectiveFor.cs"
       ]
     },
     {
@@ -2740,16 +5439,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/Perspectives/Sync/IEventCompletionAwaiter.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/perspectives/perspective-sync#event-tracking",
-      "changedFileCount": 1,
-      "symbols": [
-        "ISyncEventTracker"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Perspectives/Sync/ISyncEventTracker.cs"
       ]
     },
     {
@@ -2910,26 +5599,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/security/message-security#exceptions",
-      "changedFileCount": 1,
-      "symbols": [
-        "SecurityContextRequiredException"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Security/Exceptions/SecurityContextRequiredException.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/security/message-security#message-context-accessor",
-      "changedFileCount": 1,
-      "symbols": [
-        "IMessageContextAccessor"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Security/IMessageContextAccessor.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/security/security#scope-context-accessor",
       "changedFileCount": 1,
       "symbols": [
@@ -2938,36 +5607,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/Security/IScopeContextAccessor.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/security/message-security#callbacks",
-      "changedFileCount": 1,
-      "symbols": [
-        "UserContextManagerCallback"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Security/ISecurityContextCallback.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/security/message-security#extractors",
-      "changedFileCount": 1,
-      "symbols": [
-        "JwtPayloadExtractor"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Security/ISecurityContextExtractor.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/security/message-security#registration",
-      "changedFileCount": 1,
-      "symbols": [
-        "MessageSecurityServiceCollectionExtensions"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Security/MessageSecurityServiceCollectionExtensions.cs"
       ]
     },
     {
@@ -3011,26 +5650,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/security/audit-logging#command-auditing",
-      "changedFileCount": 1,
-      "symbols": [
-        "CommandAudited"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/SystemEvents/CommandAudited.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/events/system-events#audit",
-      "changedFileCount": 1,
-      "symbols": [
-        "EventAudited"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/SystemEvents/EventAudited.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/events/system-events#emitter",
       "changedFileCount": 1,
       "symbols": [
@@ -3048,36 +5667,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/SystemEvents/ITransportPublishFilter.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/events/system-events#access-denied",
-      "changedFileCount": 1,
-      "symbols": [
-        "AccessDenied"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/SystemEvents/Security/AccessDenied.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/events/system-events#permission-changed",
-      "changedFileCount": 1,
-      "symbols": [
-        "PermissionChanged"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/SystemEvents/Security/PermissionChanged.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/events/system-events#scope-context-established",
-      "changedFileCount": 1,
-      "symbols": [
-        "ScopeContextEstablished"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/SystemEvents/Security/ScopeContextEstablished.cs"
       ]
     },
     {
@@ -3123,16 +5712,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/messages/message-tags#registration",
-      "changedFileCount": 1,
-      "symbols": [
-        "MessageTagRegistration"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Tags/MessageTagRegistration.cs"
-      ]
-    },
-    {
       "docsPath": "fundamentals/messages/message-tags#metric-type",
       "changedFileCount": 1,
       "symbols": [
@@ -3163,26 +5742,6 @@
       ]
     },
     {
-      "docsPath": "fundamentals/messages/message-tags#tag-context",
-      "changedFileCount": 1,
-      "symbols": [
-        "TagContext"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Tags/TagContext.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/observability/tracing#components",
-      "changedFileCount": 1,
-      "symbols": [
-        "TraceComponents"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Tracing/TraceComponents.cs"
-      ]
-    },
-    {
       "docsPath": "operations/observability/verbosity-levels",
       "changedFileCount": 1,
       "symbols": [
@@ -3190,26 +5749,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/Tracing/TraceVerbosity.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/security/message-security#transport-metadata",
-      "changedFileCount": 1,
-      "symbols": [
-        "ITransportMetadata"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Transports/ITransportMetadata.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/security/message-security#service-bus-metadata",
-      "changedFileCount": 1,
-      "symbols": [
-        "ServiceBusTransportMetadata"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Core/Transports/ServiceBusTransportMetadata.cs"
       ]
     },
     {
@@ -3250,159 +5789,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Core/ValueObjects/WhizbangId.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/infrastructure/database-limits",
-      "changedFileCount": 1,
-      "symbols": [
-        "length"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.EFCore.Postgres.Generators/Limits/PostgresLimits.cs"
-      ]
-    },
-    {
-      "docsPath": "data/efcore-complex-types#in-place-updates",
-      "changedFileCount": 1,
-      "symbols": [
-        "UpdateMetadataInPlace",
-        "UpdateScopeInPlace"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs"
-      ]
-    },
-    {
-      "docsPath": "extending/features/vector-search#turnkey-setup",
-      "changedFileCount": 1,
-      "symbols": [
-        "DbContextRegistrationRegistry"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.EFCore.Postgres/DbContextRegistrationRegistry.cs"
-      ]
-    },
-    {
-      "docsPath": "data/postgres",
-      "changedFileCount": 1,
-      "symbols": [
-        "PostgresOptions",
-        "CommandTimeoutSeconds"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.Postgres/PostgresOptions.cs"
-      ]
-    },
-    {
-      "docsPath": "data/postgres#command-timeout",
-      "changedFileCount": 1,
-      "symbols": [
-        "PostgresOptions",
-        "CommandTimeoutSeconds"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.Postgres/PostgresOptions.cs"
-      ]
-    },
-    {
-      "docsPath": "data/postgres#readiness",
-      "changedFileCount": 1,
-      "symbols": [
-        "PostgresReadinessExtensions"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.Postgres/PostgresReadinessExtensions.cs"
-      ]
-    },
-    {
-      "docsPath": "data/schema-generation-pattern",
-      "changedFileCount": 1,
-      "symbols": [
-        "ISchemaBuilder"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.Schema/ISchemaBuilder.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/diagnostics/whiz062",
-      "changedFileCount": 1,
-      "symbols": [
-        "type",
-        "for",
-        "response",
-        "dimensions",
-        "field"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Generators/DiagnosticDescriptors.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/diagnostics/whiz059",
-      "changedFileCount": 1,
-      "symbols": [
-        "type",
-        "for",
-        "response",
-        "dimensions",
-        "field"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Generators/DiagnosticDescriptors.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/diagnostics/whiz080",
-      "changedFileCount": 1,
-      "symbols": [
-        "type",
-        "for",
-        "response",
-        "dimensions",
-        "field"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Generators/DiagnosticDescriptors.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/diagnostics/whiz802",
-      "changedFileCount": 1,
-      "symbols": [
-        "type",
-        "for",
-        "response",
-        "dimensions",
-        "field"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Generators/DiagnosticDescriptors.cs"
-      ]
-    },
-    {
-      "docsPath": "operations/diagnostics/whiz807",
-      "changedFileCount": 1,
-      "symbols": [
-        "type",
-        "for",
-        "response",
-        "dimensions",
-        "field"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Generators/DiagnosticDescriptors.cs"
-      ]
-    },
-    {
-      "docsPath": "fundamentals/perspectives/association-metadata",
-      "changedFileCount": 1,
-      "symbols": [
-        "PerspectiveAssociationInfo"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs"
       ]
     },
     {
@@ -3472,17 +5858,6 @@
       ]
     },
     {
-      "docsPath": "messaging/transports/azure-service-bus",
-      "changedFileCount": 1,
-      "symbols": [
-        "AzureServiceBusOptions",
-        "AutoProvisionInfrastructure"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs"
-      ]
-    },
-    {
       "docsPath": "apis/rest/setup",
       "changedFileCount": 1,
       "symbols": [
@@ -3510,16 +5885,6 @@
       ],
       "changedFiles": [
         "src/Whizbang.Transports.HotChocolate/Extensions/PolymorphicTypeExtensions.cs"
-      ]
-    },
-    {
-      "docsPath": "data/turnkey-initialization#multi-instance",
-      "changedFileCount": 1,
-      "symbols": [
-        "SchemaInitializationLog"
-      ],
-      "changedFiles": [
-        "src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs"
       ]
     }
   ]

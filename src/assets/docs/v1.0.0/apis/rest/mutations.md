@@ -1,5 +1,6 @@
 ---
 title: REST Mutations
+pageType: concept
 version: 1.0.0
 category: REST
 order: 3

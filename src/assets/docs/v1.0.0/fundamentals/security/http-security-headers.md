@@ -1,5 +1,6 @@
 ---
 title: HTTP Security Headers & Method Filtering
+pageType: concept
 version: 1.0.0
 category: Security
 order: 10

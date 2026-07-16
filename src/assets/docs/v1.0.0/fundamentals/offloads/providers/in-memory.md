@@ -1,5 +1,6 @@
 ---
 title: InMemory Body Store
+pageType: concept
 version: 1.0.0
 category: Fundamentals
 order: 1

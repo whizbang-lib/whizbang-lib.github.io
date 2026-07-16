@@ -1,5 +1,6 @@
 ---
 title: Whizbang.Sagas — Multi-Stream Saga Coordination
+pageType: concept
 version: 1.0.0
 category: Application Blocks
 order: 1

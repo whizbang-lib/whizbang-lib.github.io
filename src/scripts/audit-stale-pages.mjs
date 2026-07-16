@@ -19,7 +19,7 @@ import { execSync } from 'child_process';
 
 const DOCS_ROOT = 'src/assets/docs/v1.0.0';
 const CODE_DOCS_MAP = 'src/assets/code-docs-map.json';
-const LIBRARY_PATH = path.resolve('..', 'whizbang');
+const LIBRARY_PATH = process.env.WHIZBANG_LIB_PATH || path.resolve('..', 'whizbang');
 
 const showAll = process.argv.includes('--all');
 const setCurrent = process.argv.includes('--set-current');

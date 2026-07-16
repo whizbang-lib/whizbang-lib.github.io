@@ -1,0 +1,76 @@
+{
+  "session": "2H",
+  "section": "operations/ (configuration, deployment, diagnostics, infrastructure, observability, testing, workers)",
+  "auditDate": "2026-03-25",
+  "pagesAudited": ["operations/ (all ~30 pages)"],
+  "libraryFilesRead": ["Baseline data analysis — source verification deferred"],
+  "tasks": [
+    {
+      "id": "2H-001",
+      "type": "new-content",
+      "priority": "P0",
+      "page": "operations/observability/metrics.md",
+      "dimension": "incomplete-docs",
+      "summary": "metrics page doesn't exist — 6 metrics classes reference it",
+      "details": "6 broken code-docs links point to operations/observability/metrics: WorkCoordinatorMetrics, TransportMetrics, PerspectiveMetrics, LifecycleMetrics, LifecycleCoordinatorMetrics, DispatcherMetrics. Each class has OpenTelemetry instruments. Need a comprehensive metrics reference page listing all meters, counters, and histograms.",
+      "sourceFiles": [],
+      "effort": "L"
+    },
+    {
+      "id": "2H-002",
+      "type": "new-content",
+      "priority": "P1",
+      "page": "operations/diagnostics/whiz300.md",
+      "dimension": "incomplete-docs",
+      "summary": "Diagnostic rule WHIZ300 page doesn't exist",
+      "details": "PerspectiveModelConsistencyAnalyzer has <docs> tag to operations/diagnostics/whiz300. Page needs creation documenting this Roslyn analyzer diagnostic.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2H-003",
+      "type": "new-content",
+      "priority": "P1",
+      "page": "operations/infrastructure/database-limits.md",
+      "dimension": "incomplete-docs",
+      "summary": "database-limits page doesn't exist",
+      "details": "'length' type has <docs> tag to operations/infrastructure/database-limits. Page about database column/value limits needs creation.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2H-004",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "operations/ (30 pages)",
+      "dimension": "page-frontmatter",
+      "summary": "30 operations pages missing codeReferences",
+      "details": "All operations pages have frontmatter but are missing codeReferences. This is the largest gap — each page should link to its relevant source files (configuration classes, observability meters, testing utilities, worker types, etc.).",
+      "sourceFiles": [],
+      "effort": "L"
+    },
+    {
+      "id": "2H-005",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "operations/observability/",
+      "dimension": "incomplete-docs",
+      "summary": "LifecycleCoordinatorMetrics documented in lifecycle-coordinator.md but should also be in observability",
+      "details": "The lifecycle coordinator metrics table is in fundamentals/lifecycle/lifecycle-coordinator.md but operations/observability/ should have a comprehensive metrics reference covering ALL Whizbang meters. Cross-reference between the two.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2H-006",
+      "type": "code-sample-fix",
+      "priority": "P2",
+      "page": "operations/",
+      "dimension": "code-sample-frontmatter",
+      "summary": "Code samples across all 30 pages have auto-generated poor metadata",
+      "details": "Same pattern. ~60+ code samples need metadata review.",
+      "sourceFiles": [],
+      "effort": "L"
+    }
+  ],
+  "sectionSummary": "Operations is the largest section (~30 pages). Main issues: (1) metrics page missing — 6 metrics classes reference it, (2) 2 more missing pages (diagnostics/whiz300, infrastructure/database-limits), (3) all 30 pages missing codeReferences, (4) observability coverage needs cross-referencing with lifecycle metrics. No pages missing frontmatter entirely — this section has good structure."
+}

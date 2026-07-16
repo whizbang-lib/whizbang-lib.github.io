@@ -1,5 +1,6 @@
 ---
 title: Azure Blob Body Store
+pageType: concept
 version: 1.0.0
 category: Fundamentals
 order: 2

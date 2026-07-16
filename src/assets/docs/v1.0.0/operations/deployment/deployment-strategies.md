@@ -1,5 +1,6 @@
 ---
 title: Deployment Strategies
+pageType: guide
 version: 1.0.0
 category: Advanced Topics
 order: 7

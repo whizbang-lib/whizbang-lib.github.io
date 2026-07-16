@@ -1,5 +1,6 @@
 ---
 title: Multi-Tenancy Patterns
+pageType: concept
 version: 1.0.0
 category: Advanced Topics
 order: 4

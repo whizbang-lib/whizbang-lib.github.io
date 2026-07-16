@@ -1,5 +1,6 @@
 ---
 title: PerspectiveWorker NOTIFY Wake
+pageType: concept
 version: 1.0.0
 category: Fundamentals
 order: 7

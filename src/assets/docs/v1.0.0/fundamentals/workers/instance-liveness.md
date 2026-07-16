@@ -1,5 +1,6 @@
 ---
 title: Instance Liveness — Advisory Lock + Heartbeat Fallback
+pageType: concept
 version: 1.0.0
 category: Fundamentals
 order: 8

@@ -1,5 +1,6 @@
 ---
 title: SignalR Notification Hooks
+pageType: concept
 version: 1.0.0
 category: SignalR
 order: 1

@@ -1,5 +1,6 @@
 ---
 title: Database Identifier Limits
+pageType: concept
 version: 1.0.0
 category: Infrastructure
 order: 7

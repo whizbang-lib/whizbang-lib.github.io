@@ -1,5 +1,6 @@
 ---
 title: WhizbangCoreOptions
+pageType: reference
 version: 1.0.0
 category: Configuration
 order: 1

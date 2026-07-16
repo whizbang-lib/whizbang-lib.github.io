@@ -1,5 +1,6 @@
 ---
 title: PublishOnceAsync — Exactly-Once Event Emission
+pageType: concept
 version: 1.0.0
 category: Core Concepts
 order: 4

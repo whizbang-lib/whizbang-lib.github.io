@@ -1,5 +1,6 @@
 ---
 title: Custom Storage
+pageType: concept
 version: 1.0.0
 category: Extensibility
 order: 10

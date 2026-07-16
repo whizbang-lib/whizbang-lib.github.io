@@ -1,5 +1,6 @@
 ---
 title: Empty Stream ID Policy
+pageType: concept
 version: 1.0.0
 category: Configuration
 order: 8
