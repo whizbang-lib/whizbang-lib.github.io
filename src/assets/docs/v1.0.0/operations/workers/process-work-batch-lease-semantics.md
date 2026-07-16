@@ -1,5 +1,6 @@
 ---
 title: Process Work Batch — Lease & Heartbeat Semantics
+pageType: concept
 version: 1.0.0
 category: Workers
 order: 4

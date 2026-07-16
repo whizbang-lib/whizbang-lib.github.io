@@ -1,5 +1,6 @@
 ---
 title: Dapper Integration
+pageType: concept
 version: 1.0.0
 category: Data Access
 order: 1

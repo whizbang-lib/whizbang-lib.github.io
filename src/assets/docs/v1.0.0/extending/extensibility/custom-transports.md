@@ -1,5 +1,6 @@
 ---
 title: Custom Transports
+pageType: concept
 version: 1.0.0
 category: Extensibility
 order: 4

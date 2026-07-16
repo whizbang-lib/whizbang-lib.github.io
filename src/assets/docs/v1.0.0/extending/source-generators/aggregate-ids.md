@@ -1,5 +1,6 @@
 ---
 title: Aggregate IDs
+pageType: concept
 version: 1.0.0
 category: Source Generators
 order: 4

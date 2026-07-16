@@ -1,5 +1,6 @@
 ---
 title: Custom Work Coordinators
+pageType: concept
 version: 1.0.0
 category: Extensibility
 order: 11

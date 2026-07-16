@@ -1,5 +1,6 @@
 ---
 title: Introduction to Whizbang
+pageType: guide
 version: 1.0.0
 category: Getting Started
 order: 1

@@ -1,5 +1,6 @@
 ---
 title: "Commands and Events"
+pageType: concept
 version: 1.0.0
 category: "Messaging"
 order: 5

@@ -1,5 +1,6 @@
 ---
 title: EF Core 10 JSON Configuration
+pageType: concept
 category: Data
 order: 10
 description: Configuring EF Core 10 with custom JSON converters for JSONB columns

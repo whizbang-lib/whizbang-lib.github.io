@@ -1,5 +1,6 @@
 ---
 title: Message Lifecycle & Architecture
+pageType: concept
 version: 1.0.0
 category: Architecture
 order: 1

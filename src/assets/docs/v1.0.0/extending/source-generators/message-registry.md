@@ -1,5 +1,6 @@
 ---
 title: Message Registry
+pageType: concept
 version: 1.0.0
 category: Source Generators
 order: 3

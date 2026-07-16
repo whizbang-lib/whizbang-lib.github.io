@@ -1,5 +1,6 @@
 ---
 title: "Runtime Error Reference"
+pageType: troubleshooting
 description: >-
   Alphabetical catalog of Whizbang runtime error messages — what triggers each
   one, what the framework does next, and how to fix it. Every entry has a

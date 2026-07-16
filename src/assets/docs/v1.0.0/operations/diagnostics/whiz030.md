@@ -1,5 +1,6 @@
 ---
 title: 'WHIZ030: Perspective Event Missing StreamKey'
+pageType: troubleshooting
 description: >-
   Event type used in perspective must have exactly one property marked with
   [StreamKey] attribute

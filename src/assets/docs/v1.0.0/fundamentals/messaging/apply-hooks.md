@@ -1,5 +1,6 @@
 ---
 title: Apply Hooks
+pageType: concept
 order: 8
 codeReferences:
   - src/Whizbang.Core/Perspectives/Hooks/IApplyHook.cs

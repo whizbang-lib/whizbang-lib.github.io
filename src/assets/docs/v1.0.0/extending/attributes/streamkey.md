@@ -1,5 +1,6 @@
 ---
 title: StreamKey Attribute
+pageType: concept
 description: >-
   Marks a property as the stream key for event sourcing and perspective event
   ordering

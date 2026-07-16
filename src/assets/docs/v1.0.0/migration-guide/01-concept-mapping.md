@@ -1,5 +1,6 @@
 ---
 title: Concept Mapping
+pageType: guide
 version: 1.0.0
 category: Migration Guide
 order: 2

@@ -1,5 +1,6 @@
 ---
 title: 'WHIZ807: Physical Fields Discovered'
+pageType: troubleshooting
 description: >-
   Informational diagnostic when physical fields are discovered on a perspective model
 version: 1.0.0

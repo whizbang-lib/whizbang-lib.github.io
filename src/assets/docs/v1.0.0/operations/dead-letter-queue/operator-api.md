@@ -1,5 +1,6 @@
 ---
 title: Operator HTTP API
+pageType: concept
 version: 1.0.0
 category: Dead-Letter Queue
 order: 3

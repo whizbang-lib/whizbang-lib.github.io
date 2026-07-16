@@ -138,6 +138,8 @@ async function processDirectory(dir, relativeDir = '', versionOrState = '', out 
         difficulty: data.difficulty,
         unreleased: data.unreleased,
         status: data.status,
+        pageType: data.pageType,
+        audience: data.audience,
         completionLevel: data.completionLevel,
         readingTime: readingTimeMinutes,
         editUrl: editUrl,

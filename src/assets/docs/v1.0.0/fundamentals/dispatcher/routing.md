@@ -1,5 +1,6 @@
 ---
 title: "Namespace-Based Routing"
+pageType: concept
 version: 1.0.0
 category: "Core Concepts"
 order: 2

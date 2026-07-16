@@ -1,5 +1,6 @@
 ---
 title: EF Core Complex Types
+pageType: concept
 version: 1.0.0
 category: Data Access
 order: 3

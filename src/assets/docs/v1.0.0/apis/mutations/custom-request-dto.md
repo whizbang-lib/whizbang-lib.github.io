@@ -1,5 +1,6 @@
 ---
 title: Custom Request DTOs
+pageType: concept
 version: 1.0.0
 category: Mutations
 order: 2

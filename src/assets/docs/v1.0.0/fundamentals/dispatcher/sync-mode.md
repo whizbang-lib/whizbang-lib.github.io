@@ -1,5 +1,6 @@
 ---
 title: SyncMode — Read-After-Write Dispatch
+pageType: concept
 version: 1.0.0
 category: Fundamentals
 order: 5

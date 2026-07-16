@@ -1,5 +1,6 @@
 ---
 title: REST API Setup
+pageType: guide
 version: 1.0.0
 category: REST
 order: 1

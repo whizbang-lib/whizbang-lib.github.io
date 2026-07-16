@@ -1,5 +1,6 @@
 ---
 title: Messages
+pageType: overview
 version: 1.0.0
 category: Core Concepts
 order: 5

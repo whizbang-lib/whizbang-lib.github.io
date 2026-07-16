@@ -1,5 +1,6 @@
 ---
 title: GenerateStreamId Attribute
+pageType: concept
 version: 1.0.0
 category: Attributes
 order: 3

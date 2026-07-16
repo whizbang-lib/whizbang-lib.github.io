@@ -1,5 +1,6 @@
 ---
 title: PerspectiveAssociationInfo
+pageType: concept
 version: 1.0.0
 category: Perspectives
 codeReferences:

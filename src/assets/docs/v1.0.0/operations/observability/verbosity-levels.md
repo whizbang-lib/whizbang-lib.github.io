@@ -1,5 +1,6 @@
 ---
 title: Trace Verbosity Levels
+pageType: concept
 version: 1.0.0
 category: Tracing
 order: 1

@@ -1,5 +1,6 @@
 ---
 title: Perspective Association Info
+pageType: concept
 version: 1.0.0
 category: Perspectives
 order: 4

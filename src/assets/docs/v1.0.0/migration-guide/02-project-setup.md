@@ -1,5 +1,6 @@
 ---
 title: Project Setup
+pageType: guide
 version: 1.0.0
 category: Migration Guide
 order: 3
