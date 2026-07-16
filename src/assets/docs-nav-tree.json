@@ -185,6 +185,11 @@
               "slug": "v1.0.0/fundamentals/events/event-streams",
               "title": "Event Streams",
               "order": 13
+            },
+            {
+              "slug": "v1.0.0/fundamentals/events/event-upcasting",
+              "title": "Event Upcasting",
+              "order": 14
             }
           ],
           "children": []
@@ -281,9 +286,19 @@
           "order": 4,
           "pages": [
             {
+              "slug": "v1.0.0/fundamentals/messaging/composite-events",
+              "title": "Composite Events",
+              "order": 6
+            },
+            {
               "slug": "v1.0.0/fundamentals/messaging/collective-events",
               "title": "Collective Events",
               "order": 7
+            },
+            {
+              "slug": "v1.0.0/fundamentals/messaging/apply-hooks",
+              "title": "Apply Hooks",
+              "order": 8
             }
           ],
           "children": []
@@ -385,6 +400,11 @@
               "slug": "v1.0.0/fundamentals/perspectives/stream-locking",
               "title": "Perspective Stream Locking",
               "order": 12
+            },
+            {
+              "slug": "v1.0.0/fundamentals/perspectives/rewind",
+              "title": "Perspective Rewind",
+              "order": 13
             },
             {
               "slug": "v1.0.0/fundamentals/perspectives/apply-exactly-once",
@@ -657,6 +677,11 @@
               "order": 6
             },
             {
+              "slug": "v1.0.0/fundamentals/persistence/caller-info-capture",
+              "title": "Caller Information Capture",
+              "order": 7
+            },
+            {
               "slug": "v1.0.0/fundamentals/persistence",
               "title": "Persistence",
               "order": 12
@@ -775,6 +800,11 @@
               "slug": "v1.0.0/messaging/transports/rabbitmq",
               "title": "RabbitMQ Transport",
               "order": 2
+            },
+            {
+              "slug": "v1.0.0/messaging/transports/infrastructure-mapping",
+              "title": "Infrastructure Mapping",
+              "order": 3
             },
             {
               "slug": "v1.0.0/messaging/transports",
@@ -1623,6 +1653,11 @@
           "order": 10
         },
         {
+          "slug": "drafts/attributes/pinned-id",
+          "title": "PinnedId Attribute",
+          "order": 20
+        },
+        {
           "slug": "drafts/attributes/must-exist",
           "title": "MustExist Attribute",
           "order": 999
@@ -1700,6 +1735,11 @@
           "slug": "drafts/core-concepts/cascade-context",
           "title": "Cascade Context",
           "order": 6
+        },
+        {
+          "slug": "drafts/core-concepts/pinned-identity",
+          "title": "Pinned Identity",
+          "order": 30
         }
       ],
       "children": []
