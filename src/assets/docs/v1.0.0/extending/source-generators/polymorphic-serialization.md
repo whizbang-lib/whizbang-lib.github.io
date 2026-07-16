@@ -93,6 +93,10 @@ public class ProcessBatchHandler : IReceptor<ProcessBatchCommand, List<BaseEvent
 ]
 ```
 
+:::updated
+**The discriminator contract is fixed (verified against library commit `f2657adc`)**: generated polymorphic factories always use the property name **`$type`** and **simple type names** as values. `[JsonPolymorphic]` on an abstract base is honored as a *discovery marker* (it triggers derived-type registration), but its `TypeDiscriminatorPropertyName` setting and custom `[JsonDerivedType]` string values are **ignored** by the generated `JsonTypeInfo` (`JsonContextSnippets.cs` — hardcoded `$type`; discriminator values come from `_extractSimpleName`). If you need custom discriminators, that is currently unsupported — using them in attributes produces payloads that cannot be read back as typed events.
+:::
+
 ---
 
 ## How It Works
