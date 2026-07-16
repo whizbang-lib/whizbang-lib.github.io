@@ -1,14 +1,14 @@
 {
-  "totalCallouts": 113,
+  "totalCallouts": 108,
   "unclosed": 0,
   "byType": {
-    "new": 58,
+    "new": 56,
     "info": 6,
     "planned": 9,
-    "updated": 11,
-    "note": 24,
+    "note": 22,
     "new{important}": 2,
     "new{breaking}": 2,
+    "updated": 10,
     "tip": 1
   },
   "unclosedCallouts": [],
@@ -66,13 +66,6 @@
       "file": "src/assets/docs/v1.0.0/data/efcore-integration.md",
       "line": 842,
       "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/data/work-coordinator-strategies.md",
-      "line": 158,
-      "type": "updated",
       "closed": true,
       "lineCount": 3
     },
@@ -239,7 +232,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "line": 619,
+      "line": 611,
       "type": "new",
       "closed": true,
       "lineCount": 3
@@ -379,15 +372,8 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-      "line": 387,
+      "line": 329,
       "type": "tip",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-      "line": 870,
-      "type": "new",
       "closed": true,
       "lineCount": 3
     },
@@ -449,10 +435,10 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "line": 48,
+      "line": 40,
       "type": "new",
       "closed": true,
-      "lineCount": 5
+      "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/sync.md",
@@ -589,56 +575,42 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "line": 258,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "line": 330,
+      "line": 302,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "line": 371,
+      "line": 343,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "line": 417,
+      "line": 389,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "line": 466,
+      "line": 438,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "line": 561,
+      "line": 533,
       "type": "new",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "line": 610,
-      "type": "note",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "line": 616,
+      "line": 591,
       "type": "new",
       "closed": true,
       "lineCount": 3
@@ -688,27 +660,20 @@
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
       "line": 460,
-      "type": "new",
-      "closed": true,
-      "lineCount": 3
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 509,
       "type": "info",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 523,
+      "line": 474,
       "type": "planned",
       "closed": true,
       "lineCount": 3
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "line": 539,
+      "line": 490,
       "type": "planned",
       "closed": true,
       "lineCount": 3
@@ -799,7 +764,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "line": 1192,
+      "line": 1123,
       "type": "new",
       "closed": true,
       "lineCount": 7

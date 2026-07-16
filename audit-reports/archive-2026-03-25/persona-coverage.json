@@ -1,11 +1,11 @@
 {
-  "fundamentalsTopicCount": 14,
+  "fundamentalsTopicCount": 10,
   "extendingTopicCount": 5,
-  "operationsTopicCount": 8,
+  "operationsTopicCount": 7,
   "dataTopicCount": 13,
-  "messagingTopicCount": 12,
+  "messagingTopicCount": 11,
   "apisTopicCount": 4,
-  "crossReferenceGaps": 19,
+  "crossReferenceGaps": 15,
   "crossReference": [
     {
       "topic": "dispatcher",
@@ -44,18 +44,6 @@
       "gap": "Missing contributor docs"
     },
     {
-      "topic": "messaging",
-      "inFundamentals": true,
-      "inExtending": false,
-      "gap": "Missing contributor docs"
-    },
-    {
-      "topic": "offloads",
-      "inFundamentals": true,
-      "inExtending": false,
-      "gap": "Missing contributor docs"
-    },
-    {
       "topic": "persistence",
       "inFundamentals": true,
       "inExtending": false,
@@ -74,19 +62,7 @@
       "gap": "Missing contributor docs"
     },
     {
-      "topic": "sagas",
-      "inFundamentals": true,
-      "inExtending": false,
-      "gap": "Missing contributor docs"
-    },
-    {
       "topic": "security",
-      "inFundamentals": true,
-      "inExtending": false,
-      "gap": "Missing contributor docs"
-    },
-    {
-      "topic": "workers",
       "inFundamentals": true,
       "inExtending": false,
       "gap": "Missing contributor docs"
@@ -130,14 +106,10 @@
       "lenses",
       "lifecycle",
       "messages",
-      "messaging",
-      "offloads",
       "persistence",
       "perspectives",
       "receptors",
-      "sagas",
-      "security",
-      "workers"
+      "security"
     ],
     "extending": [
       "attributes",
@@ -148,7 +120,6 @@
     ],
     "operations": [
       "configuration",
-      "dead-letter-queue",
       "deployment",
       "diagnostics",
       "infrastructure",
@@ -173,7 +144,6 @@
     ],
     "messaging": [
       "commands-events",
-      "composite-events",
       "failure-handling",
       "idempotency-patterns",
       "inbox-pattern",

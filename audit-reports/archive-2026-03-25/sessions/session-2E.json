@@ -1,0 +1,197 @@
+{
+  "session": "2E",
+  "section": "messaging/ + messaging/transports",
+  "auditDate": "2026-03-25",
+  "pagesAudited": [
+    "messaging/commands-events.md",
+    "messaging/failure-handling.md",
+    "messaging/idempotency-patterns.md",
+    "messaging/inbox-pattern.md",
+    "messaging/message-envelopes.md",
+    "messaging/multi-instance-coordination.md",
+    "messaging/outbox-pattern.md",
+    "messaging/topic-filters.md",
+    "messaging/work-coordination.md",
+    "messaging/work-coordinator.md",
+    "messaging/transports/azure-service-bus.md",
+    "messaging/transports/in-memory.md",
+    "messaging/transports/rabbitmq.md",
+    "messaging/transports/transport-consumer.md",
+    "messaging/transports/transports.md"
+  ],
+  "libraryFilesRead": [
+    "src/Whizbang.Core/Messaging/ (work coordination types)",
+    "src/Whizbang.Hosting.Azure.ServiceBus/",
+    "src/Whizbang.Hosting.RabbitMQ/",
+    "src/Whizbang.Transports.AzureServiceBus/",
+    "src/Whizbang.Transports.RabbitMQ/"
+  ],
+  "tasks": [
+    {
+      "id": "2E-001",
+      "type": "frontmatter",
+      "priority": "P0",
+      "page": "messaging/commands-events.md",
+      "dimension": "page-frontmatter",
+      "summary": "commands-events.md missing ALL frontmatter",
+      "details": "No YAML frontmatter block at all. This is a fundamental page explaining ICommand vs IEvent. Needs title, version, category, order, description, tags (commands, events, ICommand, IEvent, IMessage, CQRS, domain events, state changes), codeReferences (ICommand.cs, IEvent.cs, IMessage.cs).",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2E-002",
+      "type": "frontmatter",
+      "priority": "P0",
+      "page": "messaging/failure-handling.md",
+      "dimension": "page-frontmatter",
+      "summary": "failure-handling.md missing ALL frontmatter",
+      "details": "No frontmatter. Needs all fields. Tags should include: retry, exponential backoff, poison message, dead letter, failure cascade, stream blocking, error handling.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2E-003",
+      "type": "frontmatter",
+      "priority": "P0",
+      "page": "messaging/idempotency-patterns.md",
+      "dimension": "page-frontmatter",
+      "summary": "idempotency-patterns.md missing ALL frontmatter",
+      "details": "No frontmatter. Tags: idempotency, exactly-once, deduplication, inbox dedup, outbox dedup, message processing.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2E-004",
+      "type": "frontmatter",
+      "priority": "P0",
+      "page": "messaging/work-coordination.md",
+      "dimension": "page-frontmatter",
+      "summary": "work-coordination.md missing ALL frontmatter",
+      "details": "No frontmatter. This is a critical operational page about distributed processing. Tags: work coordination, lease management, partition, stream ordering, batch processing, distributed coordination.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2E-005",
+      "type": "frontmatter",
+      "priority": "P0",
+      "page": "messaging/multi-instance-coordination.md",
+      "dimension": "page-frontmatter",
+      "summary": "multi-instance-coordination.md missing ALL frontmatter",
+      "details": "No frontmatter. Tags: multi-instance, horizontal scaling, cross-instance, stream locking, message ordering, distributed processing.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2E-006",
+      "type": "frontmatter",
+      "priority": "P0",
+      "page": "messaging/topic-filters.md",
+      "dimension": "page-frontmatter",
+      "summary": "topic-filters.md missing ALL frontmatter",
+      "details": "No frontmatter. Tags: topic filter, TopicFilterAttribute, routing, command routing, enum topics, compile-time routing.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2E-007",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "messaging/outbox-pattern.md",
+      "dimension": "page-frontmatter",
+      "summary": "outbox-pattern.md missing codeReferences",
+      "details": "Has other frontmatter but codeReferences is empty. Should reference outbox worker, IWorkCoordinator, outbox message types.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2E-008",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "messaging/work-coordinator.md",
+      "dimension": "page-frontmatter",
+      "summary": "work-coordinator.md missing codeReferences",
+      "details": "Has frontmatter but codeReferences is empty. Should reference IWorkCoordinator.cs, IWorkBatchCoordinator.cs, IUnitOfWorkStrategy.cs.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2E-009",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "messaging/message-envelopes.md",
+      "dimension": "page-frontmatter",
+      "summary": "message-envelopes.md missing codeReferences",
+      "details": "Has frontmatter but codeReferences is empty. Should reference IMessageEnvelope.cs, MessageEnvelope.cs, MessageHop.cs.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2E-010",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "messaging/transports/azure-service-bus.md + rabbitmq.md + in-memory.md",
+      "dimension": "page-frontmatter",
+      "summary": "All transport pages missing codeReferences",
+      "details": "Azure SB, RabbitMQ, and in-memory transport pages have frontmatter but empty codeReferences. Should reference their respective project source files (ServiceBusTransport.cs, RabbitMQTransport.cs, etc.).",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2E-011",
+      "type": "link-fix",
+      "priority": "P1",
+      "page": "messaging/transports/",
+      "dimension": "code-tests-docs-links",
+      "summary": "service-bus-consumer page referenced but doesn't exist",
+      "details": "ServiceBusConsumerWorker has <docs> tag pointing to messaging/transports/service-bus-consumer but this page doesn't exist. Content may be covered in transport-consumer.md but the path is wrong.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2E-012",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "messaging/work-coordination.md + work-coordinator.md",
+      "dimension": "redundancy",
+      "summary": "Two work coordination pages — potential overlap",
+      "details": "work-coordination.md and work-coordinator.md both cover work coordination. Need to verify they're clearly differentiated (one conceptual, one API reference?) or consolidate. Both have significant content.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2E-013",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "messaging/",
+      "dimension": "incomplete-docs",
+      "summary": "77 undocumented public types in messaging/transport layer",
+      "details": "Baseline found 77 undocumented types across messaging infrastructure: IWorkCoordinator, IWorkBatchCoordinator, IUnitOfWorkStrategy, WorkBatch, OutboxMessage, InboxMessage, MessageCompletion, MessageFailure, IMessageQueue, etc. Many are internal implementation types but key interfaces (IWorkCoordinator, IUnitOfWorkStrategy) should be documented for users who configure work coordination.",
+      "sourceFiles": [],
+      "effort": "L"
+    },
+    {
+      "id": "2E-014",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "messaging/outbox-pattern.md",
+      "dimension": "incomplete-docs",
+      "summary": "Outbox topic architecture change may not be reflected",
+      "details": "Memory note (project_audit_topic_architecture.md) indicates an 'outbox topic approach to eliminate circular DI'. Need to verify the outbox-pattern.md reflects the current architecture, especially around topic-based outbox publishing vs direct dispatch.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2E-015",
+      "type": "code-sample-fix",
+      "priority": "P2",
+      "page": "messaging/",
+      "dimension": "code-sample-frontmatter",
+      "summary": "Code samples across all 15 pages have auto-generated poor metadata",
+      "details": "Same pattern as all previous sessions.",
+      "sourceFiles": [],
+      "effort": "L"
+    }
+  ],
+  "sectionSummary": "The messaging section has 15 content pages. The most striking issue is that 6 pages have NO frontmatter at all (commands-events, failure-handling, idempotency-patterns, multi-instance-coordination, work-coordination, topic-filters). Additionally, 5 pages that do have frontmatter are missing codeReferences. There are 77 undocumented public types in the messaging/transport layer, though many may be internal. The outbox topic architecture change (from memory) needs verification. There's potential redundancy between work-coordination.md and work-coordinator.md. One broken code-docs link (service-bus-consumer page missing)."
+}
