@@ -129,7 +129,7 @@ npm install && npm run build</code></pre>
 # MCP Tools: search-docs, find-examples, get-code-location, get-related-docs, get-tests-for-code</code></pre>
     </div>
 
-    <p class="stats">Generated: 2026-07-16T22:22:14.197Z | Total documents: 315</p>
+    <p class="stats">Generated: 2026-07-16T22:24:56.823Z | Total documents: 316</p>
   </header>
 
   <nav>
@@ -608,6 +608,12 @@ npm install && npm run build</code></pre>
           <li><a href="#v1-0-0-operations-workers-process-work-batch-lease-semantics">Process Work Batch — Lease &amp; Heartbeat Semantics</a></li>
         </ul>
       </li>
+    </ul>
+  </li>
+  <li>
+    <strong>Tools</strong>
+    <ul>
+      <li><a href="#v1-0-0-tools-mcp-server">MCP Documentation Server</a></li>
     </ul>
   </li>
 </ul>
@@ -24656,6 +24662,30 @@ npm install && npm run build</code></pre>
 <p>        });</p>
 <p>    }</p>
 <p>}</p>
+<pre><code class="language-">
+<h3>Verified example</h3>
+
+<p>This snippet is verbatim from the library's test suite and drift-checked in CI — if the test changes, the docs build flags this page:</p>
+
+<p></code></pre>csharp{</p>
+<p>title: "SendAsync returns a delivery receipt"</p>
+<p>description: "Verbatim from DispatcherTests; drift-checked against the library by verify-sample-drift.mjs"</p>
+<p>category: "Architecture"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["Fundamentals", "Dispatcher", "SendAsync", "Verified"]</p>
+<p>testFile: "tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs"</p>
+<p>testMethod: "Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"</p>
+<p>}</p>
+<p>var command = new CreateOrder(Guid.NewGuid(), ["item1", "item2"]);</p>
+
+<p>// Act</p>
+<p>var receipt = await dispatcher.SendAsync(command);</p>
+
+<p>// Assert</p>
+<p>await Assert.That(receipt).IsNotNull();</p>
+<p>await Assert.That(receipt.MessageId.Value).IsNotEqualTo(Guid.Empty);</p>
+<p>await Assert.That(receipt.Status).IsEqualTo(DeliveryStatus.Delivered);</p>
+<p>await Assert.That(receipt.Destination).Contains("CreateOrder");</p>
 <pre><code class="language-">
 <h3>DeliveryReceipt Structure</h3>
 
@@ -105649,6 +105679,88 @@ npm install && npm run build</code></pre>
 </article>
 
 </section>
+
+</section>
+
+<section class="doc-category">
+  <h2 class="category-header">Tools</h2>
+<article id="v1-0-0-tools-mcp-server" class="doc-section">
+  <h3>MCP Documentation Server</h3>
+  <p class="doc-path"><code>v1.0.0/tools/mcp-server</code></p>
+  <p class="doc-description"><em>Give your AI assistant direct access to Whizbang docs, code examples, code↔test navigation, and live CI test status via the Model Context Protocol</em></p>
+  <div class="doc-content">
+
+<h1>MCP Documentation Server</h1>
+
+<code>@whizbang/docs-mcp-server</code> is a <a href="https://modelcontextprotocol.io">Model Context Protocol</a> server that gives AI assistants (Claude Code, Claude Desktop, Cursor, or any MCP client) direct, structured access to this documentation — search, code examples, code↔docs↔tests navigation, and <strong>live CI test status</strong>.
+
+<h2>Quick start</h2>
+
+<p>No install required — point your MCP client at <code>npx</code>:</p>
+
+<p>``<code>json{</p>
+<p>title: "Claude Desktop / Claude Code configuration"</p>
+<p>description: "Add to claude_desktop_config.json or use: claude mcp add whizbang-docs -- npx @whizbang/docs-mcp-server"</p>
+<p>category: "Configuration"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["MCP", "Setup"]</p>
+<p>}</p>
+<p>{</p>
+<p>  "mcpServers": {</p>
+<p>    "whizbang-docs": {</p>
+<p>      "command": "npx",</p>
+<p>      "args": ["@whizbang/docs-mcp-server"]</p>
+<p>    }</p>
+<p>  }</p>
+<p>}</p>
+<pre><code class="language-">
+<p>Or with the Claude Code CLI:</p>
+
+<p></code></pre>bash{</p>
+<p>title: "Claude Code CLI"</p>
+<p>description: "One-line MCP server registration"</p>
+<p>category: "Configuration"</p>
+<p>difficulty: "BEGINNER"</p>
+<p>tags: ["MCP", "Setup", "CLI"]</p>
+<p>}</p>
+<p>claude mcp add whizbang-docs -- npx @whizbang/docs-mcp-server</p>
+<pre><code class="language-">
+<p>The npm package bundles a versioned snapshot of these docs (works offline; </code>bundle-info.json<code> records the source commit). Live test status is always fetched from the site so it can never go stale.</p>
+
+<h2>What your assistant can do with it</h2>
+
+<p>| Tool | Purpose |</p>
+<p>|---|---|</p>
+<p>| </code>search-docs<code> | Full-text/semantic search across all pages |</p>
+<p>| </code>find-examples<code> | Find C# examples by topic, framework, difficulty |</p>
+<p>| </code>list-categories<code> / </code>list-docs-by-category<code> | Browse the docs structure |</p>
+<p>| </code>get-code-location<code> | Where in the library a documented concept is implemented |</p>
+<p>| </code>get-related-docs<code> | Which pages document a given code symbol |</p>
+<p>| </code>get-tests-for-code<code> / </code>get-code-for-test<code> | Navigate the code↔tests map (~1,300 linked test methods) |</p>
+<p>| </code>get-test-status<code> | <strong>Live pass/fail</strong> for a test class or method from the latest library CI run |</p>
+<p>| </code>validate-doc-links<code> / </code>validate-test-links<code> | Integrity checks over the linking system |</p>
+<p>| </code>get-coverage-stats<code> | How much of the public API has linked tests |</p>
+
+<p>Example: ask <em>"is the dispatcher's delivery-receipt behavior actually passing on develop?"</em> — the assistant calls </code>get-tests-for-code<code> on </code>Dispatcher<code>, then </code>get-test-status<code> on </code>DispatcherTests<code>, and answers from real CI data.</p>
+
+<h2>Contributor mode</h2>
+
+<p>Running from a checkout of the docs repo uses the live files automatically (no bundled snapshot). Point it elsewhere explicitly with:</p>
+
+<p></code></pre>bash{</p>
+<p>title: "Contributor mode environment"</p>
+<p>description: "Use a specific docs checkout instead of the bundled snapshot"</p>
+<p>category: "Configuration"</p>
+<p>difficulty: "INTERMEDIATE"</p>
+<p>tags: ["MCP", "Contributing"]</p>
+<p>}</p>
+<p>DOCS_PATH=/path/to/whizbang-lib.github.io/src/assets/docs npx @whizbang/docs-mcp-server</p>
+<p></code>`<code></p>
+
+<p>See the <a href="/docs/contributors/overview">contributor documentation</a> for the full development workflow, and </code>mcp-docs-server/README.md` in the repo for all environment variables.</p>
+  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
 
 </section>
 
