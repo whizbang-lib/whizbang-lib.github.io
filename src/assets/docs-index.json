@@ -232,12 +232,12 @@
     "title": "EF Core Complex Types",
     "category": "Data Access",
     "order": 3,
-    "description": "EF Core 10 ComplexProperty().ToJson() patterns for perspective metadata and scope - in-place updates, collection handling, and index corruption prevention",
-    "tags": "ef-core, complex-types, json, jsonb, perspectives, metadata, scope, in-place-updates, complexproperty",
+    "description": "EF Core 10 ComplexProperty().ToJson() for perspective data, metadata, and scope - the generated ConfigureWhizbang() configuration, the concrete store and scope-aware lens query, in-place updates, and index corruption prevention",
+    "tags": "ef-core, complex-types, json, jsonb, perspectives, metadata, scope, in-place-updates, complexproperty, source-generator, perspective-store, lens-query, tenant-scope",
     "version": "v1.0.0",
-    "readingTime": 7,
+    "readingTime": 11,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/data/efcore-complex-types.md",
-    "wordCount": 1303
+    "wordCount": 2155
   },
   {
     "slug": "v1.0.0/data/efcore-integration",
@@ -766,12 +766,12 @@
     "title": "Namespace-Based Routing",
     "category": "Core Concepts",
     "order": 2,
-    "description": "Namespace-based routing in Whizbang determines how commands and events flow between services. Commands use a shared inbox topic with namespace filtering, while events publish to namespace-specific topics for pub/sub distribution with automatic subscription discovery.",
-    "tags": "routing, namespace-routing, message-routing, inbox, topics, pub-sub",
+    "description": "Namespace-based routing in Whizbang determines how commands and events flow between services. Commands use a shared inbox topic with namespace filtering, while events publish to namespace-specific topics for pub/sub distribution with automatic subscription discovery. Owned-domain routing keeps a service's own commands local while its events still broadcast, with transport-layer echo suppression discarding self-delivered copies.",
+    "tags": "routing, namespace-routing, message-routing, inbox, topics, pub-sub, owned-domains, echo-suppression",
     "version": "v1.0.0",
-    "readingTime": 26,
+    "readingTime": 32,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-    "wordCount": 5060
+    "wordCount": 6336
   },
   {
     "slug": "v1.0.0/fundamentals/dispatcher/rpc-extraction",
@@ -832,6 +832,18 @@
     "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/events/event-streams.md",
     "wordCount": 1044
+  },
+  {
+    "slug": "v1.0.0/fundamentals/events/event-upcasting",
+    "title": "Event Upcasting",
+    "category": "Core Concepts",
+    "order": 14,
+    "description": "Transform stored events into their current shape on read — backfill, type change, or re-key — without ever rewriting the immutable event log.",
+    "tags": "events, event-sourcing, upcasting, versioning, schema-evolution, re-key, aot",
+    "version": "v1.0.0",
+    "readingTime": 10,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/events/event-upcasting.md",
+    "wordCount": 1918
   },
   {
     "slug": "v1.0.0/fundamentals/events/events",
@@ -1201,9 +1213,9 @@
     "description": "Declarative cross-cutting concerns via message tag attributes and hooks - notifications, telemetry, metrics, and audit logging without polluting business logic",
     "tags": "tags, attributes, hooks, notifications, telemetry, metrics, cross-cutting",
     "version": "v1.0.0",
-    "readingTime": 36,
+    "readingTime": 34,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-    "wordCount": 7124
+    "wordCount": 6739
   },
   {
     "slug": "v1.0.0/fundamentals/messages/messages",
@@ -1218,16 +1230,40 @@
     "wordCount": 1169
   },
   {
+    "slug": "v1.0.0/fundamentals/messaging/apply-hooks",
+    "title": "Apply Hooks",
+    "category": "Fundamentals",
+    "order": 8,
+    "description": "\n# Apply hooks\n\nPluggable logic that modifies **what a perspective's `Apply` produced**, gated by the\nmodel's type. There are two hooks over two apply paths, with a deliberately **identical\nsurface** — so one hook body can run on both:\n\n| | Collective path | Per-event path |\n|",
+    "tags": [],
+    "version": "v1.0.0",
+    "readingTime": 5,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/apply-hooks.md",
+    "wordCount": 832
+  },
+  {
     "slug": "v1.0.0/fundamentals/messaging/collective-events",
     "title": "Collective Events",
     "category": "Fundamentals",
     "order": 7,
-    "description": "\n# Collective events\n\nA first-class persistable event that mutates **every stream in a scope**\nas a unit. The producer expresses scope + mutation; the projection\nrunner applies it as **one SQL UPDATE per affected projection table**\nwhose `WHERE` clause is just the scope predicate. No per-row enumeration,\nno per-row tracking, no per-row tax.\n\nCanonical use cases:\n\n- \"Archive every non-active job in tenant T\"\n- \"Remove all jobs in tenant T\"\n- \"Change state of every matching job\"\n- \"Flag all entities older than Y\" (where Y is captured on the event payload)\n\nWhen the producer expresses **intent + scope** rather than a list of\nevents, this is the primitive — one event row, one SQL UPDATE, one\ncategory-level observed event.\n\n## When to reach for it\n\n```\nProducer wants to mutate multiple streams in one operation\n  │\n  ├─ Is the mutation uniform across all targeted streams?\n  │   ├─ NO  → ICompositeEvent (hand-crafted per-stream batch)\n  │   └─ YES\n  │       │\n  │       ├─ Does the producer want to name an explicit list of streams?\n  │       │   ├─ YES → ICompositeEvent (enumerate them)\n  │       │   └─ NO  → ICollectiveEvent ← THIS — scope IS the descriptor\n```\n\n## Composite vs collective — pick one per producer intent\n\n`ICollectiveEvent` sits **next to** `ICompositeEvent` — additive, not a\nreplacement. They solve different problems and ship on different runtime\npaths.\n\n| Dimension | `ICompositeEvent` | `ICollectiveEvent` |\n|",
+    "description": "\n# Collective events\n\nA first-class persistable event that mutates **every row in a scope**\nas a unit. The producer expresses **scope + a uniform mutation**; the\nprojection runner applies it as **one predicate SQL `UPDATE` per\naffected projection table** whose `WHERE` clause is the scope predicate\n(optionally refined per-perspective by the handler). No per-row\nenumeration, no per-row event replication, no per-row tracking, no\nper-row tax.\n\nCanonical use cases:\n\n- \"Archive every job in tenant T\"\n- \"Remove all jobs in tenant T\" (soft-delete via a status column)\n- \"Change the state of every matching job in a scope\"\n- \"Apply this template to every Draft/Approved/Published job in a tenant\"\n\nWhen the producer expresses **intent + scope** rather than a list of\nevents, this is the primitive — one event row, one SQL `UPDATE`, one\ncategory-level observed event.\n\n## When to reach for it\n\n```\nProducer wants to mutate multiple streams in one operation\n  │\n  ├─ Is the mutation uniform across all targeted streams?\n  │   ├─ NO  → ICompositeEvent (hand-crafted per-stream batch)\n  │   └─ YES\n  │       │\n  │       ├─ Does the producer want to name an explicit list of streams?\n  │       │   ├─ YES → ICompositeEvent (enumerate them)\n  │       │   └─ NO  → ICollectiveEvent ← THIS — scope IS the descriptor\n```\n\nPick **collective** when the mutation is uniform across a scope and you\ndo **not** need a per-entity event for it. Pick **composite** when each\nstream gets a distinct payload. Pick neither (stay individual) when a\nper-entity event is consumed downstream — a notification, an\nacknowledgment, an audit entry, or a receptor keyed off the per-entity\nevent.\n\n## Composite vs collective — pick one per producer intent\n\n`ICollectiveEvent` sits **next to** `ICompositeEvent` — additive, not a\nreplacement. They solve different problems and ship on different runtime\npaths. The two contracts share **no inheritance**: `ICollectiveEvent`\nextends `IEvent`, and the two run separate code paths end-to-end.\n\n| Dimension | `ICompositeEvent` | `ICollectiveEvent` |\n|",
     "tags": [],
     "version": "v1.0.0",
-    "readingTime": 14,
+    "readingTime": 24,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
-    "wordCount": 2617
+    "wordCount": 4719
+  },
+  {
+    "slug": "v1.0.0/fundamentals/messaging/composite-events",
+    "title": "Composite Events",
+    "category": "Fundamentals",
+    "order": 6,
+    "description": "Bundle many inner events into one transport hop — one outbox row, one publish, one receive — that fans out into N per-inner-event inbox rows at the dispatch seam, inside the durable inbox/retry/DLQ envelope. Composites are never event-stored; only the expanded inner events persist.",
+    "tags": "composite-events, fan-out, bulk, inner-events, no-rebroadcast, dispatch-seam",
+    "version": "v1.0.0",
+    "readingTime": 16,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/composite-events.md",
+    "wordCount": 3050
   },
   {
     "slug": "v1.0.0/fundamentals/offloads/message-body-store",
@@ -1246,12 +1282,12 @@
     "title": "Azure Blob Body Store",
     "category": "Fundamentals",
     "order": 2,
-    "description": "Production body-store provider backed by Azure Blob Storage. Works identically against the Azurite emulator and live Azure Blob via standard connection-string conventions.",
-    "tags": "offload, providers, azure-blob, azurite, production",
+    "description": "Production body-store provider backed by Azure Blob Storage. Works identically against the Azurite emulator and live Azure Blob via standard connection-string conventions. Wire it in one config-driven call or register providers by hand.",
+    "tags": "offload, providers, azure-blob, azurite, production, configuration",
     "version": "v1.0.0",
-    "readingTime": 4,
+    "readingTime": 9,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
-    "wordCount": 769
+    "wordCount": 1778
   },
   {
     "slug": "v1.0.0/fundamentals/offloads/providers/in-memory",
@@ -1266,16 +1302,28 @@
     "wordCount": 349
   },
   {
+    "slug": "v1.0.0/fundamentals/persistence/caller-info-capture",
+    "title": "Caller Information Capture",
+    "category": "Observability",
+    "order": 7,
+    "description": "How Whizbang records the exact source location (method, file, line) that created each MessageHop, using C# caller-info compiler attributes with no reflection or stack walking.",
+    "tags": "caller-info, observability, message-hops, debugging, compiler-attributes",
+    "version": "v1.0.0",
+    "readingTime": 8,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/persistence/caller-info-capture.md",
+    "wordCount": 1464
+  },
+  {
     "slug": "v1.0.0/fundamentals/persistence/observability",
     "title": "Observability & Message Hops",
     "category": "Core Concepts",
     "order": 6,
-    "description": "Understand Whizbang's hop-based observability architecture - MessageEnvelope and MessageHop for distributed tracing and debugging",
-    "tags": "observability, message-hops, distributed-tracing, debugging, telemetry",
+    "description": "Whizbang's hop-based observability - MessageEnvelope and MessageHop carry a complete journey (routing, scope, policy decisions, caller info) through every service. Query it with ITraceStore for time-travel debugging of distributed flows.",
+    "tags": "observability, message-hops, distributed-tracing, time-travel, debugging, trace-store, causation, correlation",
     "version": "v1.0.0",
-    "readingTime": 11,
+    "readingTime": 13,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
-    "wordCount": 2156
+    "wordCount": 2590
   },
   {
     "slug": "v1.0.0/fundamentals/persistence/persistence",
@@ -1381,9 +1429,9 @@
     "description": "Master Whizbang Perspectives - pure function event handlers that maintain eventually consistent read models optimized for queries",
     "tags": "perspectives, read-models, cqrs, eventual-consistency, event-driven, pure-functions, streamkey",
     "version": "v1.0.0",
-    "readingTime": 20,
+    "readingTime": 24,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-    "wordCount": 3853
+    "wordCount": 4783
   },
   {
     "slug": "v1.0.0/fundamentals/perspectives/physical-fields",
@@ -1444,6 +1492,18 @@
     "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/registry.md",
     "wordCount": 1070
+  },
+  {
+    "slug": "v1.0.0/fundamentals/perspectives/rewind",
+    "title": "Perspective Rewind",
+    "category": "Fundamentals",
+    "order": 13,
+    "description": "How Whizbang detects and repairs out-of-order (late-arriving) events in perspective processing — the RewindRequired flag, snapshot-or-full replay, the bounded catch-up loop, startup scan, and rewind observability.",
+    "tags": "perspectives, rewind, late-arriving-events, out-of-order, replay, snapshots, startup-scan, observability, operational",
+    "version": "v1.0.0",
+    "readingTime": 15,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/rewind.md",
+    "wordCount": 2889
   },
   {
     "slug": "v1.0.0/fundamentals/perspectives/snapshots",
@@ -2007,7 +2067,7 @@
     "version": "v1.0.0",
     "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/composite-events.md",
-    "wordCount": 1037
+    "wordCount": 1015
   },
   {
     "slug": "v1.0.0/messaging/failure-handling",
@@ -2116,6 +2176,18 @@
     "readingTime": 13,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/in-memory.md",
     "wordCount": 2546
+  },
+  {
+    "slug": "v1.0.0/messaging/transports/infrastructure-mapping",
+    "title": "Infrastructure Mapping",
+    "category": "Transports",
+    "order": 3,
+    "description": "How Whizbang's provider-agnostic abstractions - topic, stream, partition, and sequence - map onto concrete message transports (in-memory, RabbitMQ, Azure Service Bus)",
+    "tags": "transports, topic, stream, partition, partition-router, sequence, policies, routing, rabbitmq, azure-service-bus, provider-agnostic",
+    "version": "v1.0.0",
+    "readingTime": 10,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/infrastructure-mapping.md",
+    "wordCount": 1975
   },
   {
     "slug": "v1.0.0/messaging/transports/rabbitmq",
@@ -2526,6 +2598,18 @@
     "wordCount": 2348
   },
   {
+    "slug": "v1.0.0/operations/diagnostics/error-reference",
+    "title": "Runtime Error Reference",
+    "category": "Operations & Configuration",
+    "order": 1,
+    "description": "Alphabetical catalog of Whizbang runtime error messages — what triggers each one, what the framework does next, and how to fix it. Every entry has a stable heading anchor for deep-linking from incident notes and runbooks.",
+    "tags": "errors, error-reference, troubleshooting, runtime, logs, dead-letter-queue, transport, perspectives, rebuild, serialization",
+    "version": "v1.0.0",
+    "readingTime": 11,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+    "wordCount": 2084
+  },
+  {
     "slug": "v1.0.0/operations/diagnostics/serializable-property-analyzer",
     "title": "Serializable Property Analyzer",
     "category": "Diagnostics",
@@ -2869,9 +2953,9 @@
     "description": "Dynamic message routing and configuration via predicate-based policies - multi-tenancy, environment-based routing, and execution strategies",
     "tags": "policies, routing, multi-tenancy, execution-strategy, policy-engine, decision-trail",
     "version": "v1.0.0",
-    "readingTime": 12,
+    "readingTime": 17,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
-    "wordCount": 2201
+    "wordCount": 3380
   },
   {
     "slug": "v1.0.0/operations/infrastructure/policy-engine",
