@@ -1,6 +1,3052 @@
 {
-  "totalLinks": 498,
-  "valid": 498,
-  "broken": 0,
-  "brokenLinks": []
+  "totalLinks": 919,
+  "valid": 716,
+  "broken": 203,
+  "brokenLinks": [
+    {
+      "symbol": "AsbMessageHeaderReader",
+      "docsPath": "fundamentals/transport/asb-receive",
+      "resolvedPath": "fundamentals/transport/asb-receive",
+      "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AsbMessageHeaderReader.cs",
+      "line": 25,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/transport/asb-receive.md",
+        "src/assets/docs/v1.0.0/fundamentals/transport/asb-receive.md",
+        "src/assets/docs/fundamentals/transport/asb-receive/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/transport/asb-receive/_folder.md",
+        "src/assets/docs/fundamentals/transport/asb-receive/asb-receive.md",
+        "src/assets/docs/v1.0.0/fundamentals/transport/asb-receive/asb-receive.md"
+      ]
+    },
+    {
+      "symbol": "SignalRTokenRefreshNotifier",
+      "docsPath": "fundamentals/security/token-refresh#signalr-default",
+      "resolvedPath": "fundamentals/security/token-refresh",
+      "sourceFile": "src/Whizbang.SignalR/SignalRTokenRefreshNotifier.cs",
+      "line": 25,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/security/token-refresh.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/token-refresh.md",
+        "src/assets/docs/fundamentals/security/token-refresh/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/token-refresh/_folder.md",
+        "src/assets/docs/fundamentals/security/token-refresh/token-refresh.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/token-refresh/token-refresh.md"
+      ]
+    },
+    {
+      "symbol": "InMemoryOffloadServiceCollectionExtensions",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Offloads.InMemory/InMemoryOffloadServiceCollectionExtensions.cs",
+      "line": 9,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "InMemoryMessageBodyStore",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Offloads.InMemory/InMemoryMessageBodyStore.cs",
+      "line": 27,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "UseDatabaseAvailabilityGate",
+      "docsPath": "resilience/database-availability-middleware",
+      "resolvedPath": "resilience/database-availability-middleware",
+      "sourceFile": "src/Whizbang.Hosting.AspNet/DatabaseAvailabilityMiddlewareExtensions.cs",
+      "line": 13,
+      "triedPaths": [
+        "src/assets/docs/resilience/database-availability-middleware.md",
+        "src/assets/docs/v1.0.0/resilience/database-availability-middleware.md",
+        "src/assets/docs/resilience/database-availability-middleware/_folder.md",
+        "src/assets/docs/v1.0.0/resilience/database-availability-middleware/_folder.md",
+        "src/assets/docs/resilience/database-availability-middleware/database-availability-middleware.md",
+        "src/assets/docs/v1.0.0/resilience/database-availability-middleware/database-availability-middleware.md"
+      ]
+    },
+    {
+      "symbol": "DatabaseAvailabilityMiddleware",
+      "docsPath": "resilience/database-availability-middleware",
+      "resolvedPath": "resilience/database-availability-middleware",
+      "sourceFile": "src/Whizbang.Hosting.AspNet/DatabaseAvailabilityMiddleware.cs",
+      "line": 12,
+      "triedPaths": [
+        "src/assets/docs/resilience/database-availability-middleware.md",
+        "src/assets/docs/v1.0.0/resilience/database-availability-middleware.md",
+        "src/assets/docs/resilience/database-availability-middleware/_folder.md",
+        "src/assets/docs/v1.0.0/resilience/database-availability-middleware/_folder.md",
+        "src/assets/docs/resilience/database-availability-middleware/database-availability-middleware.md",
+        "src/assets/docs/v1.0.0/resilience/database-availability-middleware/database-availability-middleware.md"
+      ]
+    },
+    {
+      "symbol": "PinnedIdCodeFixProvider",
+      "docsPath": "core-concepts/pinned-identity",
+      "resolvedPath": "core-concepts/pinned-identity",
+      "sourceFile": "src/Whizbang.Generators.CodeFixes/PinnedIdCodeFixProvider.cs",
+      "line": 30,
+      "triedPaths": [
+        "src/assets/docs/core-concepts/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity.md",
+        "src/assets/docs/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/core-concepts/pinned-identity/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/pinned-identity.md"
+      ]
+    },
+    {
+      "symbol": "MaxInFlightCommands",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference#max-in-flight-commands",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Data.Postgres/PostgresOptions.cs",
+      "line": 73,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "PostgresDeadlockRetry",
+      "docsPath": "operations/infrastructure/deadlock-retry",
+      "resolvedPath": "operations/infrastructure/deadlock-retry",
+      "sourceFile": "src/Whizbang.Data.Postgres/PostgresDeadlockRetry.cs",
+      "line": 13,
+      "triedPaths": [
+        "src/assets/docs/operations/infrastructure/deadlock-retry.md",
+        "src/assets/docs/v1.0.0/operations/infrastructure/deadlock-retry.md",
+        "src/assets/docs/operations/infrastructure/deadlock-retry/_folder.md",
+        "src/assets/docs/v1.0.0/operations/infrastructure/deadlock-retry/_folder.md",
+        "src/assets/docs/operations/infrastructure/deadlock-retry/deadlock-retry.md",
+        "src/assets/docs/v1.0.0/operations/infrastructure/deadlock-retry/deadlock-retry.md"
+      ]
+    },
+    {
+      "symbol": "DapperMessageTypeRegistryPopulator",
+      "docsPath": "core-concepts/pinned-identity",
+      "resolvedPath": "core-concepts/pinned-identity",
+      "sourceFile": "src/Whizbang.Data.Dapper.Postgres/DapperMessageTypeRegistryPopulator.cs",
+      "line": 18,
+      "triedPaths": [
+        "src/assets/docs/core-concepts/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity.md",
+        "src/assets/docs/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/core-concepts/pinned-identity/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/pinned-identity.md"
+      ]
+    },
+    {
+      "symbol": "DapperEventTypeRenameTool",
+      "docsPath": "core-concepts/pinned-identity",
+      "resolvedPath": "core-concepts/pinned-identity",
+      "sourceFile": "src/Whizbang.Data.Dapper.Postgres/DapperEventTypeRenameTool.cs",
+      "line": 25,
+      "triedPaths": [
+        "src/assets/docs/core-concepts/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity.md",
+        "src/assets/docs/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/core-concepts/pinned-identity/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/pinned-identity.md"
+      ]
+    },
+    {
+      "symbol": "EFCoreMessageTypeRegistryPopulator",
+      "docsPath": "core-concepts/pinned-identity",
+      "resolvedPath": "core-concepts/pinned-identity",
+      "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreMessageTypeRegistryPopulator.cs",
+      "line": 20,
+      "triedPaths": [
+        "src/assets/docs/core-concepts/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity.md",
+        "src/assets/docs/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/core-concepts/pinned-identity/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/pinned-identity.md"
+      ]
+    },
+    {
+      "symbol": "DbContextNotificationConnectionStringFallback",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Data.EFCore.Postgres/DbContextNotificationConnectionStringFallback.cs",
+      "line": 22,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "AzureBlobOffloadServiceCollectionExtensions",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadServiceCollectionExtensions.cs",
+      "line": 11,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "AddWhizbangAzureBlobOffloadsFromConfiguration",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadServiceCollectionExtensions.cs",
+      "line": 67,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "AzureBlobOffloadOptions",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadOptions.cs",
+      "line": 10,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "AzureBlobMessageBodyStore",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Offloads.AzureBlob/AzureBlobMessageBodyStore.cs",
+      "line": 32,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "IPinnedIdRegistry",
+      "docsPath": "core-concepts/pinned-identity",
+      "resolvedPath": "core-concepts/pinned-identity",
+      "sourceFile": "src/Whizbang.Core/IPinnedIdRegistry.cs",
+      "line": 12,
+      "triedPaths": [
+        "src/assets/docs/core-concepts/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity.md",
+        "src/assets/docs/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/core-concepts/pinned-identity/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/pinned-identity.md"
+      ]
+    },
+    {
+      "symbol": "IMessageTypeRegistryPopulator",
+      "docsPath": "core-concepts/pinned-identity",
+      "resolvedPath": "core-concepts/pinned-identity",
+      "sourceFile": "src/Whizbang.Core/IMessageTypeRegistryPopulator.cs",
+      "line": 18,
+      "triedPaths": [
+        "src/assets/docs/core-concepts/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity.md",
+        "src/assets/docs/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/core-concepts/pinned-identity/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/pinned-identity.md"
+      ]
+    },
+    {
+      "symbol": "IMessageTypeCatalog",
+      "docsPath": "core-concepts/pinned-identity",
+      "resolvedPath": "core-concepts/pinned-identity",
+      "sourceFile": "src/Whizbang.Core/IMessageTypeCatalog.cs",
+      "line": 36,
+      "triedPaths": [
+        "src/assets/docs/core-concepts/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity.md",
+        "src/assets/docs/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/core-concepts/pinned-identity/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/pinned-identity.md"
+      ]
+    },
+    {
+      "symbol": "JobMutations",
+      "docsPath": "apis/graphql/authorization#require-permission",
+      "resolvedPath": "apis/graphql/authorization",
+      "sourceFile": "src/Whizbang.Transports.HotChocolate/Middleware/UseRequirePermissionAttribute.cs",
+      "line": 22,
+      "triedPaths": [
+        "src/assets/docs/apis/graphql/authorization.md",
+        "src/assets/docs/v1.0.0/apis/graphql/authorization.md",
+        "src/assets/docs/apis/graphql/authorization/_folder.md",
+        "src/assets/docs/v1.0.0/apis/graphql/authorization/_folder.md",
+        "src/assets/docs/apis/graphql/authorization/authorization.md",
+        "src/assets/docs/v1.0.0/apis/graphql/authorization/authorization.md"
+      ]
+    },
+    {
+      "symbol": "RequirePermissionMiddleware",
+      "docsPath": "apis/graphql/authorization#require-permission",
+      "resolvedPath": "apis/graphql/authorization",
+      "sourceFile": "src/Whizbang.Transports.HotChocolate/Middleware/RequirePermissionMiddleware.cs",
+      "line": 26,
+      "triedPaths": [
+        "src/assets/docs/apis/graphql/authorization.md",
+        "src/assets/docs/v1.0.0/apis/graphql/authorization.md",
+        "src/assets/docs/apis/graphql/authorization/_folder.md",
+        "src/assets/docs/v1.0.0/apis/graphql/authorization/_folder.md",
+        "src/assets/docs/apis/graphql/authorization/authorization.md",
+        "src/assets/docs/v1.0.0/apis/graphql/authorization/authorization.md"
+      ]
+    },
+    {
+      "symbol": "WorkCoordinatorPumpAdapter",
+      "docsPath": "fundamentals/work-coordinator/claim-loop",
+      "resolvedPath": "fundamentals/work-coordinator/claim-loop",
+      "sourceFile": "src/Whizbang.Testing/Workers/WorkCoordinatorPumpAdapter.cs",
+      "line": 18,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/claim-loop.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/claim-loop.md",
+        "src/assets/docs/fundamentals/work-coordinator/claim-loop/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/claim-loop/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/claim-loop/claim-loop.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/claim-loop/claim-loop.md"
+      ]
+    },
+    {
+      "symbol": "PerspectiveWorkerTestHarness",
+      "docsPath": "fundamentals/work-coordinator/handler-commit",
+      "resolvedPath": "fundamentals/work-coordinator/handler-commit",
+      "sourceFile": "src/Whizbang.Testing/Workers/PerspectiveWorkerTestHarness.cs",
+      "line": 18,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/handler-commit.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/handler-commit.md",
+        "src/assets/docs/fundamentals/work-coordinator/handler-commit/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/handler-commit/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/handler-commit/handler-commit.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/handler-commit/handler-commit.md"
+      ]
+    },
+    {
+      "symbol": "MessageTypeRegistrySchema",
+      "docsPath": "core-concepts/pinned-identity",
+      "resolvedPath": "core-concepts/pinned-identity",
+      "sourceFile": "src/Whizbang.Data.Schema/Schemas/MessageTypeRegistrySchema.cs",
+      "line": 16,
+      "triedPaths": [
+        "src/assets/docs/core-concepts/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity.md",
+        "src/assets/docs/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/core-concepts/pinned-identity/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/pinned-identity.md"
+      ]
+    },
+    {
+      "symbol": "LifecycleCompletionsSchema",
+      "docsPath": "fundamentals/lifecycle/lifecycle-reconciliation",
+      "resolvedPath": "fundamentals/lifecycle/lifecycle-reconciliation",
+      "sourceFile": "src/Whizbang.Data.Schema/Schemas/LifecycleCompletionsSchema.cs",
+      "line": 11,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/lifecycle/lifecycle-reconciliation.md",
+        "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-reconciliation.md",
+        "src/assets/docs/fundamentals/lifecycle/lifecycle-reconciliation/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-reconciliation/_folder.md",
+        "src/assets/docs/fundamentals/lifecycle/lifecycle-reconciliation/lifecycle-reconciliation.md",
+        "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-reconciliation/lifecycle-reconciliation.md"
+      ]
+    },
+    {
+      "symbol": "PerspectiveSyncInReceptorAnalyzer",
+      "docsPath": "operations/diagnostics/whiz900",
+      "resolvedPath": "operations/diagnostics/whiz900",
+      "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveSyncInReceptorAnalyzer.cs",
+      "line": 27,
+      "triedPaths": [
+        "src/assets/docs/operations/diagnostics/whiz900.md",
+        "src/assets/docs/v1.0.0/operations/diagnostics/whiz900.md",
+        "src/assets/docs/operations/diagnostics/whiz900/_folder.md",
+        "src/assets/docs/v1.0.0/operations/diagnostics/whiz900/_folder.md",
+        "src/assets/docs/operations/diagnostics/whiz900/whiz900.md",
+        "src/assets/docs/v1.0.0/operations/diagnostics/whiz900/whiz900.md"
+      ]
+    },
+    {
+      "symbol": "PostgresNotificationsServiceCollectionExtensions",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs",
+      "line": 42,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "AddWhizbangNotificationDataSource",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs",
+      "line": 235,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "PgWorkNotificationListener",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Data.Postgres/Notifications/PgWorkNotificationListener.cs",
+      "line": 33,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "PgSharedNotifyConnection",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Data.Postgres/Notifications/PgSharedNotifyConnection.cs",
+      "line": 35,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "PgCommitOrderStamperWorker",
+      "docsPath": "fundamentals/work-coordinator/commit-sequence",
+      "resolvedPath": "fundamentals/work-coordinator/commit-sequence",
+      "sourceFile": "src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs",
+      "line": 42,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence.md",
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence/commit-sequence.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence/commit-sequence.md"
+      ]
+    },
+    {
+      "symbol": "PgAppSignalChannel",
+      "docsPath": "fundamentals/work-coordinator/app-signals",
+      "resolvedPath": "fundamentals/work-coordinator/app-signals",
+      "sourceFile": "src/Whizbang.Data.Postgres/Notifications/PgAppSignalChannel.cs",
+      "line": 19,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/app-signals.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/app-signals.md",
+        "src/assets/docs/fundamentals/work-coordinator/app-signals/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/app-signals/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/app-signals/app-signals.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/app-signals/app-signals.md"
+      ]
+    },
+    {
+      "symbol": "INotificationDataSource",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Data.Postgres/Notifications/INotificationDataSource.cs",
+      "line": 31,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "WorkerPipelineExtensions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/WorkerPipelineExtensions.cs",
+      "line": 18,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "WorkProcessingStartedHandler",
+      "docsPath": "operations/workers/processing-hooks",
+      "resolvedPath": "operations/workers/processing-hooks",
+      "sourceFile": "src/Whizbang.Core/Workers/WorkerEvents.cs",
+      "line": 7,
+      "triedPaths": [
+        "src/assets/docs/operations/workers/processing-hooks.md",
+        "src/assets/docs/v1.0.0/operations/workers/processing-hooks.md",
+        "src/assets/docs/operations/workers/processing-hooks/_folder.md",
+        "src/assets/docs/v1.0.0/operations/workers/processing-hooks/_folder.md",
+        "src/assets/docs/operations/workers/processing-hooks/processing-hooks.md",
+        "src/assets/docs/v1.0.0/operations/workers/processing-hooks/processing-hooks.md"
+      ]
+    },
+    {
+      "symbol": "WorkProcessingIdleHandler",
+      "docsPath": "operations/workers/processing-hooks",
+      "resolvedPath": "operations/workers/processing-hooks",
+      "sourceFile": "src/Whizbang.Core/Workers/WorkerEvents.cs",
+      "line": 15,
+      "triedPaths": [
+        "src/assets/docs/operations/workers/processing-hooks.md",
+        "src/assets/docs/v1.0.0/operations/workers/processing-hooks.md",
+        "src/assets/docs/operations/workers/processing-hooks/_folder.md",
+        "src/assets/docs/v1.0.0/operations/workers/processing-hooks/_folder.md",
+        "src/assets/docs/operations/workers/processing-hooks/processing-hooks.md",
+        "src/assets/docs/v1.0.0/operations/workers/processing-hooks/processing-hooks.md"
+      ]
+    },
+    {
+      "symbol": "OutboxMessagePublishedHandler",
+      "docsPath": "operations/workers/outbox-publish-worker#processing-hooks",
+      "resolvedPath": "operations/workers/outbox-publish-worker",
+      "sourceFile": "src/Whizbang.Core/Workers/WorkerEvents.cs",
+      "line": 22,
+      "triedPaths": [
+        "src/assets/docs/operations/workers/outbox-publish-worker.md",
+        "src/assets/docs/v1.0.0/operations/workers/outbox-publish-worker.md",
+        "src/assets/docs/operations/workers/outbox-publish-worker/_folder.md",
+        "src/assets/docs/v1.0.0/operations/workers/outbox-publish-worker/_folder.md",
+        "src/assets/docs/operations/workers/outbox-publish-worker/outbox-publish-worker.md",
+        "src/assets/docs/v1.0.0/operations/workers/outbox-publish-worker/outbox-publish-worker.md"
+      ]
+    },
+    {
+      "symbol": "OutboxMessagePublishedEvent",
+      "docsPath": "operations/workers/outbox-publish-worker#processing-hooks",
+      "resolvedPath": "operations/workers/outbox-publish-worker",
+      "sourceFile": "src/Whizbang.Core/Workers/WorkerEvents.cs",
+      "line": 29,
+      "triedPaths": [
+        "src/assets/docs/operations/workers/outbox-publish-worker.md",
+        "src/assets/docs/v1.0.0/operations/workers/outbox-publish-worker.md",
+        "src/assets/docs/operations/workers/outbox-publish-worker/_folder.md",
+        "src/assets/docs/v1.0.0/operations/workers/outbox-publish-worker/_folder.md",
+        "src/assets/docs/operations/workers/outbox-publish-worker/outbox-publish-worker.md",
+        "src/assets/docs/v1.0.0/operations/workers/outbox-publish-worker/outbox-publish-worker.md"
+      ]
+    },
+    {
+      "symbol": "_isKnownEventType",
+      "docsPath": "docs/transport-routing-architecture.md#transport-echo-suppression",
+      "resolvedPath": "docs/transport-routing-architecture.md",
+      "sourceFile": "src/Whizbang.Core/Workers/TransportConsumerWorker.cs",
+      "line": 1038,
+      "triedPaths": [
+        "src/assets/docs/docs/transport-routing-architecture.md.md",
+        "src/assets/docs/v1.0.0/docs/transport-routing-architecture.md.md",
+        "src/assets/docs/docs/transport-routing-architecture.md/_folder.md",
+        "src/assets/docs/v1.0.0/docs/transport-routing-architecture.md/_folder.md",
+        "src/assets/docs/docs/transport-routing-architecture.md/transport-routing-architecture.md.md",
+        "src/assets/docs/v1.0.0/docs/transport-routing-architecture.md/transport-routing-architecture.md.md"
+      ]
+    },
+    {
+      "symbol": "SlidingWindowOutboxOptions",
+      "docsPath": "internals/outbox-batch-strategy",
+      "resolvedPath": "internals/outbox-batch-strategy",
+      "sourceFile": "src/Whizbang.Core/Workers/SlidingWindowOutboxOptions.cs",
+      "line": 7,
+      "triedPaths": [
+        "src/assets/docs/internals/outbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy.md",
+        "src/assets/docs/internals/outbox-batch-strategy/_folder.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy/_folder.md",
+        "src/assets/docs/internals/outbox-batch-strategy/outbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy/outbox-batch-strategy.md"
+      ]
+    },
+    {
+      "symbol": "SlidingWindowInboxOptions",
+      "docsPath": "internals/inbox-batch-strategy",
+      "resolvedPath": "internals/inbox-batch-strategy",
+      "sourceFile": "src/Whizbang.Core/Workers/SlidingWindowInboxOptions.cs",
+      "line": 13,
+      "triedPaths": [
+        "src/assets/docs/internals/inbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/inbox-batch-strategy.md",
+        "src/assets/docs/internals/inbox-batch-strategy/_folder.md",
+        "src/assets/docs/v1.0.0/internals/inbox-batch-strategy/_folder.md",
+        "src/assets/docs/internals/inbox-batch-strategy/inbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/inbox-batch-strategy/inbox-batch-strategy.md"
+      ]
+    },
+    {
+      "symbol": "SlidingWindowApplyOptions",
+      "docsPath": "internals/apply-batch-strategy",
+      "resolvedPath": "internals/apply-batch-strategy",
+      "sourceFile": "src/Whizbang.Core/Workers/SlidingWindowApplyOptions.cs",
+      "line": 8,
+      "triedPaths": [
+        "src/assets/docs/internals/apply-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/apply-batch-strategy.md",
+        "src/assets/docs/internals/apply-batch-strategy/_folder.md",
+        "src/assets/docs/v1.0.0/internals/apply-batch-strategy/_folder.md",
+        "src/assets/docs/internals/apply-batch-strategy/apply-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/apply-batch-strategy/apply-batch-strategy.md"
+      ]
+    },
+    {
+      "symbol": "SlidingWindowApplyBatchStrategy",
+      "docsPath": "internals/apply-batch-strategy",
+      "resolvedPath": "internals/apply-batch-strategy",
+      "sourceFile": "src/Whizbang.Core/Workers/SlidingWindowApplyBatchStrategy.cs",
+      "line": 31,
+      "triedPaths": [
+        "src/assets/docs/internals/apply-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/apply-batch-strategy.md",
+        "src/assets/docs/internals/apply-batch-strategy/_folder.md",
+        "src/assets/docs/v1.0.0/internals/apply-batch-strategy/_folder.md",
+        "src/assets/docs/internals/apply-batch-strategy/apply-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/apply-batch-strategy/apply-batch-strategy.md"
+      ]
+    },
+    {
+      "symbol": "RecentlyProcessedEventCacheSweepWorker",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Workers/RecentlyProcessedEventCacheSweepWorker.cs",
+      "line": 22,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "RecentlyProcessedEventCacheOptions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/RecentlyProcessedEventCacheOptions.cs",
+      "line": 7,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "RecentlyProcessedEventCache",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Workers/RecentlyProcessedEventCache.cs",
+      "line": 34,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "ProcessChannelBatchAsync",
+      "docsPath": "fundamentals/work-coordinator/claim-loop",
+      "resolvedPath": "fundamentals/work-coordinator/claim-loop",
+      "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+      "line": 761,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/claim-loop.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/claim-loop.md",
+        "src/assets/docs/fundamentals/work-coordinator/claim-loop/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/claim-loop/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/claim-loop/claim-loop.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/claim-loop/claim-loop.md"
+      ]
+    },
+    {
+      "symbol": "_processDrainModeStreamsAsync",
+      "docsPath": "fundamentals/perspectives/drain-mode",
+      "resolvedPath": "fundamentals/perspectives/drain-mode",
+      "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+      "line": 1186,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/perspectives/drain-mode.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/drain-mode.md",
+        "src/assets/docs/fundamentals/perspectives/drain-mode/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/drain-mode/_folder.md",
+        "src/assets/docs/fundamentals/perspectives/drain-mode/drain-mode.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/drain-mode/drain-mode.md"
+      ]
+    },
+    {
+      "symbol": "DrainBatcher",
+      "docsPath": "fundamentals/perspectives/drain-mode#sliding-window",
+      "resolvedPath": "fundamentals/perspectives/drain-mode",
+      "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+      "line": 4306,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/perspectives/drain-mode.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/drain-mode.md",
+        "src/assets/docs/fundamentals/perspectives/drain-mode/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/drain-mode/_folder.md",
+        "src/assets/docs/fundamentals/perspectives/drain-mode/drain-mode.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/drain-mode/drain-mode.md"
+      ]
+    },
+    {
+      "symbol": "PerspectiveCursorResolver",
+      "docsPath": "fundamentals/perspectives/cursor-inversion",
+      "resolvedPath": "fundamentals/perspectives/cursor-inversion",
+      "sourceFile": "src/Whizbang.Core/Workers/PerspectiveCursorResolver.cs",
+      "line": 18,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/perspectives/cursor-inversion.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/cursor-inversion.md",
+        "src/assets/docs/fundamentals/perspectives/cursor-inversion/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/cursor-inversion/_folder.md",
+        "src/assets/docs/fundamentals/perspectives/cursor-inversion/cursor-inversion.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/cursor-inversion/cursor-inversion.md"
+      ]
+    },
+    {
+      "symbol": "PerspectiveCompletionFlushWorker",
+      "docsPath": "fundamentals/work-coordinator/batched-flushers",
+      "resolvedPath": "fundamentals/work-coordinator/batched-flushers",
+      "sourceFile": "src/Whizbang.Core/Workers/PerspectiveCompletionFlushWorker.cs",
+      "line": 15,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/batched-flushers.md"
+      ]
+    },
+    {
+      "symbol": "PerspectiveCompletionFlushWorkerOptions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/PerspectiveCompletionFlushWorker.cs",
+      "line": 119,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "PerStreamSerializerOptions",
+      "docsPath": "internals/stream-affinity",
+      "resolvedPath": "internals/stream-affinity",
+      "sourceFile": "src/Whizbang.Core/Workers/PerStreamSerializerOptions.cs",
+      "line": 6,
+      "triedPaths": [
+        "src/assets/docs/internals/stream-affinity.md",
+        "src/assets/docs/v1.0.0/internals/stream-affinity.md",
+        "src/assets/docs/internals/stream-affinity/_folder.md",
+        "src/assets/docs/v1.0.0/internals/stream-affinity/_folder.md",
+        "src/assets/docs/internals/stream-affinity/stream-affinity.md",
+        "src/assets/docs/v1.0.0/internals/stream-affinity/stream-affinity.md"
+      ]
+    },
+    {
+      "symbol": "PerStreamSerializer",
+      "docsPath": "internals/stream-affinity",
+      "resolvedPath": "internals/stream-affinity",
+      "sourceFile": "src/Whizbang.Core/Workers/PerStreamSerializer.cs",
+      "line": 36,
+      "triedPaths": [
+        "src/assets/docs/internals/stream-affinity.md",
+        "src/assets/docs/v1.0.0/internals/stream-affinity.md",
+        "src/assets/docs/internals/stream-affinity/_folder.md",
+        "src/assets/docs/v1.0.0/internals/stream-affinity/_folder.md",
+        "src/assets/docs/internals/stream-affinity/stream-affinity.md",
+        "src/assets/docs/v1.0.0/internals/stream-affinity/stream-affinity.md"
+      ]
+    },
+    {
+      "symbol": "registered",
+      "docsPath": "fundamentals/work-coordinator/outbox-publish",
+      "resolvedPath": "fundamentals/work-coordinator/outbox-publish",
+      "sourceFile": "src/Whizbang.Core/Workers/OutboxPublishWorker.cs",
+      "line": 28,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/outbox-publish.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/outbox-publish.md",
+        "src/assets/docs/fundamentals/work-coordinator/outbox-publish/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/outbox-publish/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/outbox-publish/outbox-publish.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/outbox-publish/outbox-publish.md"
+      ]
+    },
+    {
+      "symbol": "OutboxPublishWorkerOptions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/OutboxPublishWorker.cs",
+      "line": 586,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "OutboxDrainWorker",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
+      "line": 35,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "transition",
+      "docsPath": "operations/workers/publisher-worker",
+      "resolvedPath": "operations/workers/publisher-worker",
+      "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
+      "line": 70,
+      "triedPaths": [
+        "src/assets/docs/operations/workers/publisher-worker.md",
+        "src/assets/docs/v1.0.0/operations/workers/publisher-worker.md",
+        "src/assets/docs/operations/workers/publisher-worker/_folder.md",
+        "src/assets/docs/v1.0.0/operations/workers/publisher-worker/_folder.md",
+        "src/assets/docs/operations/workers/publisher-worker/publisher-worker.md",
+        "src/assets/docs/v1.0.0/operations/workers/publisher-worker/publisher-worker.md"
+      ]
+    },
+    {
+      "symbol": "publish",
+      "docsPath": "operations/workers/publisher-worker",
+      "resolvedPath": "operations/workers/publisher-worker",
+      "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
+      "line": 83,
+      "triedPaths": [
+        "src/assets/docs/operations/workers/publisher-worker.md",
+        "src/assets/docs/v1.0.0/operations/workers/publisher-worker.md",
+        "src/assets/docs/operations/workers/publisher-worker/_folder.md",
+        "src/assets/docs/v1.0.0/operations/workers/publisher-worker/_folder.md",
+        "src/assets/docs/operations/workers/publisher-worker/publisher-worker.md",
+        "src/assets/docs/v1.0.0/operations/workers/publisher-worker/publisher-worker.md"
+      ]
+    },
+    {
+      "symbol": "OutboxDrainWorkerOptions",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
+      "line": 987,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "MaxConcurrentStreams",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain#cross-stream-parallelism",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
+      "line": 1024,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "Batcher",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain#sliding-window",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
+      "line": 1034,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "OutboxCompletionFlushWorker",
+      "docsPath": "fundamentals/work-coordinator/batched-flushers",
+      "resolvedPath": "fundamentals/work-coordinator/batched-flushers",
+      "sourceFile": "src/Whizbang.Core/Workers/OutboxCompletionFlushWorker.cs",
+      "line": 15,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/batched-flushers.md"
+      ]
+    },
+    {
+      "symbol": "OutboxCompletionFlushWorkerOptions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/OutboxCompletionFlushWorker.cs",
+      "line": 100,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "MaintenanceWorker",
+      "docsPath": "fundamentals/work-coordinator/maintenance",
+      "resolvedPath": "fundamentals/work-coordinator/maintenance",
+      "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+      "line": 19,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/maintenance.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/maintenance.md",
+        "src/assets/docs/fundamentals/work-coordinator/maintenance/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/maintenance/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/maintenance/maintenance.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/maintenance/maintenance.md"
+      ]
+    },
+    {
+      "symbol": "MaintenanceWorkerOptions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+      "line": 125,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "LeaseRenewalWorker",
+      "docsPath": "fundamentals/work-coordinator/batched-flushers",
+      "resolvedPath": "fundamentals/work-coordinator/batched-flushers",
+      "sourceFile": "src/Whizbang.Core/Workers/LeaseRenewalWorker.cs",
+      "line": 14,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/batched-flushers.md"
+      ]
+    },
+    {
+      "symbol": "LeaseRenewalWorkerOptions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/LeaseRenewalWorker.cs",
+      "line": 130,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "LeaseRegistry",
+      "docsPath": "fundamentals/work-coordinator/lease-cancellation",
+      "resolvedPath": "fundamentals/work-coordinator/lease-cancellation",
+      "sourceFile": "src/Whizbang.Core/Workers/LeaseRegistry.cs",
+      "line": 23,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/lease-cancellation.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/lease-cancellation.md",
+        "src/assets/docs/fundamentals/work-coordinator/lease-cancellation/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/lease-cancellation/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/lease-cancellation/lease-cancellation.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/lease-cancellation/lease-cancellation.md"
+      ]
+    },
+    {
+      "symbol": "LeaseHandleOptions",
+      "docsPath": "fundamentals/work-coordinator/lease-cancellation",
+      "resolvedPath": "fundamentals/work-coordinator/lease-cancellation",
+      "sourceFile": "src/Whizbang.Core/Workers/LeaseHandleOptions.cs",
+      "line": 6,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/lease-cancellation.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/lease-cancellation.md",
+        "src/assets/docs/fundamentals/work-coordinator/lease-cancellation/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/lease-cancellation/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/lease-cancellation/lease-cancellation.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/lease-cancellation/lease-cancellation.md"
+      ]
+    },
+    {
+      "symbol": "LeaseHandle",
+      "docsPath": "fundamentals/work-coordinator/lease-cancellation",
+      "resolvedPath": "fundamentals/work-coordinator/lease-cancellation",
+      "sourceFile": "src/Whizbang.Core/Workers/LeaseHandle.cs",
+      "line": 33,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/lease-cancellation.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/lease-cancellation.md",
+        "src/assets/docs/fundamentals/work-coordinator/lease-cancellation/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/lease-cancellation/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/lease-cancellation/lease-cancellation.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/lease-cancellation/lease-cancellation.md"
+      ]
+    },
+    {
+      "symbol": "LeaseDispatchExecutor",
+      "docsPath": "fundamentals/work-coordinator/lease-cancellation",
+      "resolvedPath": "fundamentals/work-coordinator/lease-cancellation",
+      "sourceFile": "src/Whizbang.Core/Workers/LeaseDispatchExecutor.cs",
+      "line": 25,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/lease-cancellation.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/lease-cancellation.md",
+        "src/assets/docs/fundamentals/work-coordinator/lease-cancellation/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/lease-cancellation/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/lease-cancellation/lease-cancellation.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/lease-cancellation/lease-cancellation.md"
+      ]
+    },
+    {
+      "symbol": "InboxHandlerWorker",
+      "docsPath": "fundamentals/work-coordinator/handler-commit",
+      "resolvedPath": "fundamentals/work-coordinator/handler-commit",
+      "sourceFile": "src/Whizbang.Core/Workers/InboxHandlerWorker.cs",
+      "line": 16,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/handler-commit.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/handler-commit.md",
+        "src/assets/docs/fundamentals/work-coordinator/handler-commit/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/handler-commit/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/handler-commit/handler-commit.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/handler-commit/handler-commit.md"
+      ]
+    },
+    {
+      "symbol": "InboxHandlerWorkerOptions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/InboxHandlerWorker.cs",
+      "line": 139,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "InboxDrainWorker",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Workers/InboxDrainWorker.cs",
+      "line": 38,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "_drainStreamBatchAsync",
+      "docsPath": "fundamentals/work-coordinator/inbox-drain",
+      "resolvedPath": "fundamentals/work-coordinator/inbox-drain",
+      "sourceFile": "src/Whizbang.Core/Workers/InboxDrainWorker.cs",
+      "line": 160,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/inbox-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/inbox-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/inbox-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/inbox-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/inbox-drain/inbox-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/inbox-drain/inbox-drain.md"
+      ]
+    },
+    {
+      "symbol": "InboxDrainWorkerOptions",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Workers/InboxDrainWorker.cs",
+      "line": 369,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "InboxDispatchWorker",
+      "docsPath": "fundamentals/work-coordinator/inbox-dispatch",
+      "resolvedPath": "fundamentals/work-coordinator/inbox-dispatch",
+      "sourceFile": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
+      "line": 50,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/inbox-dispatch.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/inbox-dispatch.md",
+        "src/assets/docs/fundamentals/work-coordinator/inbox-dispatch/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/inbox-dispatch/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/inbox-dispatch/inbox-dispatch.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/inbox-dispatch/inbox-dispatch.md"
+      ]
+    },
+    {
+      "symbol": "InboxDispatchWorkerOptions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
+      "line": 874,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "InboxDeserializeCacheOptions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/InboxDeserializeCacheOptions.cs",
+      "line": 6,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "InboxDeserializeCache",
+      "docsPath": "fundamentals/work-coordinator/inbox-dispatch",
+      "resolvedPath": "fundamentals/work-coordinator/inbox-dispatch",
+      "sourceFile": "src/Whizbang.Core/Workers/InboxDeserializeCache.cs",
+      "line": 35,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/inbox-dispatch.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/inbox-dispatch.md",
+        "src/assets/docs/fundamentals/work-coordinator/inbox-dispatch/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/inbox-dispatch/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/inbox-dispatch/inbox-dispatch.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/inbox-dispatch/inbox-dispatch.md"
+      ]
+    },
+    {
+      "symbol": "ImmediateOutboxBatchStrategy",
+      "docsPath": "internals/outbox-batch-strategy",
+      "resolvedPath": "internals/outbox-batch-strategy",
+      "sourceFile": "src/Whizbang.Core/Workers/ImmediateOutboxBatchStrategy.cs",
+      "line": 24,
+      "triedPaths": [
+        "src/assets/docs/internals/outbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy.md",
+        "src/assets/docs/internals/outbox-batch-strategy/_folder.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy/_folder.md",
+        "src/assets/docs/internals/outbox-batch-strategy/outbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy/outbox-batch-strategy.md"
+      ]
+    },
+    {
+      "symbol": "ImmediateInboxBatchStrategy",
+      "docsPath": "internals/inbox-batch-strategy",
+      "resolvedPath": "internals/inbox-batch-strategy",
+      "sourceFile": "src/Whizbang.Core/Workers/ImmediateInboxBatchStrategy.cs",
+      "line": 19,
+      "triedPaths": [
+        "src/assets/docs/internals/inbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/inbox-batch-strategy.md",
+        "src/assets/docs/internals/inbox-batch-strategy/_folder.md",
+        "src/assets/docs/v1.0.0/internals/inbox-batch-strategy/_folder.md",
+        "src/assets/docs/internals/inbox-batch-strategy/inbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/inbox-batch-strategy/inbox-batch-strategy.md"
+      ]
+    },
+    {
+      "symbol": "IdleActivityTracker",
+      "docsPath": "fundamentals/work-coordinator/idle-activity-tracking",
+      "resolvedPath": "fundamentals/work-coordinator/idle-activity-tracking",
+      "sourceFile": "src/Whizbang.Core/Workers/IdleActivityTracker.cs",
+      "line": 12,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/idle-activity-tracking.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/idle-activity-tracking.md",
+        "src/assets/docs/fundamentals/work-coordinator/idle-activity-tracking/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/idle-activity-tracking/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/idle-activity-tracking/idle-activity-tracking.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/idle-activity-tracking/idle-activity-tracking.md"
+      ]
+    },
+    {
+      "symbol": "IdleActivityTouchHookBinder",
+      "docsPath": "fundamentals/work-coordinator/idle-activity-tracking",
+      "resolvedPath": "fundamentals/work-coordinator/idle-activity-tracking",
+      "sourceFile": "src/Whizbang.Core/Workers/IdleActivityTouchHookBinder.cs",
+      "line": 26,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/idle-activity-tracking.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/idle-activity-tracking.md",
+        "src/assets/docs/fundamentals/work-coordinator/idle-activity-tracking/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/idle-activity-tracking/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/idle-activity-tracking/idle-activity-tracking.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/idle-activity-tracking/idle-activity-tracking.md"
+      ]
+    },
+    {
+      "symbol": "ISchemaReadyGate",
+      "docsPath": "fundamentals/work-coordinator/startup-ordering",
+      "resolvedPath": "fundamentals/work-coordinator/startup-ordering",
+      "sourceFile": "src/Whizbang.Core/Workers/ISchemaReadyGate.cs",
+      "line": 24,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/startup-ordering.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/startup-ordering.md",
+        "src/assets/docs/fundamentals/work-coordinator/startup-ordering/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/startup-ordering/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/startup-ordering/startup-ordering.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/startup-ordering/startup-ordering.md"
+      ]
+    },
+    {
+      "symbol": "SchemaReadyGate",
+      "docsPath": "fundamentals/work-coordinator/startup-ordering",
+      "resolvedPath": "fundamentals/work-coordinator/startup-ordering",
+      "sourceFile": "src/Whizbang.Core/Workers/ISchemaReadyGate.cs",
+      "line": 46,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/startup-ordering.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/startup-ordering.md",
+        "src/assets/docs/fundamentals/work-coordinator/startup-ordering/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/startup-ordering/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/startup-ordering/startup-ordering.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/startup-ordering/startup-ordering.md"
+      ]
+    },
+    {
+      "symbol": "IPerspectiveCursorResolver",
+      "docsPath": "fundamentals/perspectives/cursor-inversion",
+      "resolvedPath": "fundamentals/perspectives/cursor-inversion",
+      "sourceFile": "src/Whizbang.Core/Workers/IPerspectiveCursorResolver.cs",
+      "line": 21,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/perspectives/cursor-inversion.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/cursor-inversion.md",
+        "src/assets/docs/fundamentals/perspectives/cursor-inversion/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/cursor-inversion/_folder.md",
+        "src/assets/docs/fundamentals/perspectives/cursor-inversion/cursor-inversion.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/cursor-inversion/cursor-inversion.md"
+      ]
+    },
+    {
+      "symbol": "IIdleActivityTracker",
+      "docsPath": "fundamentals/work-coordinator/idle-activity-tracking",
+      "resolvedPath": "fundamentals/work-coordinator/idle-activity-tracking",
+      "sourceFile": "src/Whizbang.Core/Workers/IIdleActivityTracker.cs",
+      "line": 26,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/idle-activity-tracking.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/idle-activity-tracking.md",
+        "src/assets/docs/fundamentals/work-coordinator/idle-activity-tracking/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/idle-activity-tracking/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/idle-activity-tracking/idle-activity-tracking.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/idle-activity-tracking/idle-activity-tracking.md"
+      ]
+    },
+    {
+      "symbol": "BackupTickRegistration",
+      "docsPath": "fundamentals/work-coordinator/backup-tick-coordinator",
+      "resolvedPath": "fundamentals/work-coordinator/backup-tick-coordinator",
+      "sourceFile": "src/Whizbang.Core/Workers/IBackupTickRegistry.cs",
+      "line": 23,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator/backup-tick-coordinator.md"
+      ]
+    },
+    {
+      "symbol": "IBackupTickRegistry",
+      "docsPath": "fundamentals/work-coordinator/backup-tick-coordinator",
+      "resolvedPath": "fundamentals/work-coordinator/backup-tick-coordinator",
+      "sourceFile": "src/Whizbang.Core/Workers/IBackupTickRegistry.cs",
+      "line": 43,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator/backup-tick-coordinator.md"
+      ]
+    },
+    {
+      "symbol": "HeartbeatWorker",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/HeartbeatWorker.cs",
+      "line": 16,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "HeartbeatWorkerOptions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/HeartbeatWorker.cs",
+      "line": 138,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "FailureFlushWorker",
+      "docsPath": "fundamentals/work-coordinator/batched-flushers",
+      "resolvedPath": "fundamentals/work-coordinator/batched-flushers",
+      "sourceFile": "src/Whizbang.Core/Workers/FailureFlushWorker.cs",
+      "line": 14,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/batched-flushers.md"
+      ]
+    },
+    {
+      "symbol": "FailureFlushWorkerOptions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/FailureFlushWorker.cs",
+      "line": 92,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "DefaultBackupTickRegistrar",
+      "docsPath": "fundamentals/work-coordinator/backup-tick-coordinator",
+      "resolvedPath": "fundamentals/work-coordinator/backup-tick-coordinator",
+      "sourceFile": "src/Whizbang.Core/Workers/DefaultBackupTickRegistrar.cs",
+      "line": 31,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator/backup-tick-coordinator.md"
+      ]
+    },
+    {
+      "symbol": "ClaimWorker",
+      "docsPath": "fundamentals/work-coordinator/claim-loop",
+      "resolvedPath": "fundamentals/work-coordinator/claim-loop",
+      "sourceFile": "src/Whizbang.Core/Workers/ClaimWorker.cs",
+      "line": 20,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/claim-loop.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/claim-loop.md",
+        "src/assets/docs/fundamentals/work-coordinator/claim-loop/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/claim-loop/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/claim-loop/claim-loop.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/claim-loop/claim-loop.md"
+      ]
+    },
+    {
+      "symbol": "ClaimWorkerOptions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/ClaimWorker.cs",
+      "line": 418,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "BatchFlusher",
+      "docsPath": "fundamentals/work-coordinator/batched-flushers",
+      "resolvedPath": "fundamentals/work-coordinator/batched-flushers",
+      "sourceFile": "src/Whizbang.Core/Workers/BatchFlusher.cs",
+      "line": 16,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/batched-flushers.md"
+      ]
+    },
+    {
+      "symbol": "BatchFlusherOptions",
+      "docsPath": "fundamentals/work-coordinator/batched-flushers",
+      "resolvedPath": "fundamentals/work-coordinator/batched-flushers",
+      "sourceFile": "src/Whizbang.Core/Workers/BatchFlusher.cs",
+      "line": 124,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/batched-flushers.md"
+      ]
+    },
+    {
+      "symbol": "BackupTickRegistry",
+      "docsPath": "fundamentals/work-coordinator/backup-tick-coordinator",
+      "resolvedPath": "fundamentals/work-coordinator/backup-tick-coordinator",
+      "sourceFile": "src/Whizbang.Core/Workers/BackupTickRegistry.cs",
+      "line": 7,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator/backup-tick-coordinator.md"
+      ]
+    },
+    {
+      "symbol": "BackupTickCoordinatorOptions",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference#backup-tick-coordinator",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Workers/BackupTickCoordinatorOptions.cs",
+      "line": 7,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "BackupTickCoordinator",
+      "docsPath": "fundamentals/work-coordinator/backup-tick-coordinator",
+      "resolvedPath": "fundamentals/work-coordinator/backup-tick-coordinator",
+      "sourceFile": "src/Whizbang.Core/Workers/BackupTickCoordinator.cs",
+      "line": 34,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/backup-tick-coordinator/backup-tick-coordinator.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/backup-tick-coordinator/backup-tick-coordinator.md"
+      ]
+    },
+    {
+      "symbol": "WireEnvelopeSerializer",
+      "docsPath": "event-upcasting",
+      "resolvedPath": "event-upcasting",
+      "sourceFile": "src/Whizbang.Core/Serialization/WireEnvelopeSerializer.cs",
+      "line": 14,
+      "triedPaths": [
+        "src/assets/docs/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting.md",
+        "src/assets/docs/event-upcasting/_folder.md",
+        "src/assets/docs/v1.0.0/event-upcasting/_folder.md",
+        "src/assets/docs/event-upcasting/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting/event-upcasting.md"
+      ]
+    },
+    {
+      "symbol": "IVersionedJsonSerializerRegistry",
+      "docsPath": "event-upcasting",
+      "resolvedPath": "event-upcasting",
+      "sourceFile": "src/Whizbang.Core/Serialization/VersionedJsonSerializerRegistry.cs",
+      "line": 13,
+      "triedPaths": [
+        "src/assets/docs/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting.md",
+        "src/assets/docs/event-upcasting/_folder.md",
+        "src/assets/docs/v1.0.0/event-upcasting/_folder.md",
+        "src/assets/docs/event-upcasting/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting/event-upcasting.md"
+      ]
+    },
+    {
+      "symbol": "VersionedJsonSerializerRegistry",
+      "docsPath": "event-upcasting",
+      "resolvedPath": "event-upcasting",
+      "sourceFile": "src/Whizbang.Core/Serialization/VersionedJsonSerializerRegistry.cs",
+      "line": 29,
+      "triedPaths": [
+        "src/assets/docs/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting.md",
+        "src/assets/docs/event-upcasting/_folder.md",
+        "src/assets/docs/v1.0.0/event-upcasting/_folder.md",
+        "src/assets/docs/event-upcasting/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting/event-upcasting.md"
+      ]
+    },
+    {
+      "symbol": "VersionedJsonEnvelope",
+      "docsPath": "event-upcasting",
+      "resolvedPath": "event-upcasting",
+      "sourceFile": "src/Whizbang.Core/Serialization/VersionedJsonEnvelope.cs",
+      "line": 18,
+      "triedPaths": [
+        "src/assets/docs/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting.md",
+        "src/assets/docs/event-upcasting/_folder.md",
+        "src/assets/docs/v1.0.0/event-upcasting/_folder.md",
+        "src/assets/docs/event-upcasting/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting/event-upcasting.md"
+      ]
+    },
+    {
+      "symbol": "SerializationVersion",
+      "docsPath": "event-upcasting",
+      "resolvedPath": "event-upcasting",
+      "sourceFile": "src/Whizbang.Core/Serialization/SerializationVersion.cs",
+      "line": 21,
+      "triedPaths": [
+        "src/assets/docs/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting.md",
+        "src/assets/docs/event-upcasting/_folder.md",
+        "src/assets/docs/v1.0.0/event-upcasting/_folder.md",
+        "src/assets/docs/event-upcasting/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting/event-upcasting.md"
+      ]
+    },
+    {
+      "symbol": "SerializationResult",
+      "docsPath": "event-upcasting",
+      "resolvedPath": "event-upcasting",
+      "sourceFile": "src/Whizbang.Core/Serialization/SerializationResult.cs",
+      "line": 11,
+      "triedPaths": [
+        "src/assets/docs/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting.md",
+        "src/assets/docs/event-upcasting/_folder.md",
+        "src/assets/docs/v1.0.0/event-upcasting/_folder.md",
+        "src/assets/docs/event-upcasting/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting/event-upcasting.md"
+      ]
+    },
+    {
+      "symbol": "SerializationOptions",
+      "docsPath": "event-upcasting",
+      "resolvedPath": "event-upcasting",
+      "sourceFile": "src/Whizbang.Core/Serialization/SerializationOptions.cs",
+      "line": 8,
+      "triedPaths": [
+        "src/assets/docs/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting.md",
+        "src/assets/docs/event-upcasting/_folder.md",
+        "src/assets/docs/v1.0.0/event-upcasting/_folder.md",
+        "src/assets/docs/event-upcasting/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting/event-upcasting.md"
+      ]
+    },
+    {
+      "symbol": "IVersionedJsonSerializer",
+      "docsPath": "event-upcasting",
+      "resolvedPath": "event-upcasting",
+      "sourceFile": "src/Whizbang.Core/Serialization/IVersionedJsonSerializer.cs",
+      "line": 21,
+      "triedPaths": [
+        "src/assets/docs/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting.md",
+        "src/assets/docs/event-upcasting/_folder.md",
+        "src/assets/docs/v1.0.0/event-upcasting/_folder.md",
+        "src/assets/docs/event-upcasting/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting/event-upcasting.md"
+      ]
+    },
+    {
+      "symbol": "JwtClaimSet",
+      "docsPath": "fundamentals/security/jwt-claim-builder",
+      "resolvedPath": "fundamentals/security/jwt-claim-builder",
+      "sourceFile": "src/Whizbang.Core/Security/JwtClaimSet.cs",
+      "line": 23,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/security/jwt-claim-builder.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/jwt-claim-builder.md",
+        "src/assets/docs/fundamentals/security/jwt-claim-builder/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/jwt-claim-builder/_folder.md",
+        "src/assets/docs/fundamentals/security/jwt-claim-builder/jwt-claim-builder.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/jwt-claim-builder/jwt-claim-builder.md"
+      ]
+    },
+    {
+      "symbol": "InMemoryEffectivePermissionsStore",
+      "docsPath": "fundamentals/security/effective-permissions#in-memory",
+      "resolvedPath": "fundamentals/security/effective-permissions",
+      "sourceFile": "src/Whizbang.Core/Security/InMemoryEffectivePermissionsStore.cs",
+      "line": 12,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/security/effective-permissions.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/effective-permissions.md",
+        "src/assets/docs/fundamentals/security/effective-permissions/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/effective-permissions/_folder.md",
+        "src/assets/docs/fundamentals/security/effective-permissions/effective-permissions.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/effective-permissions/effective-permissions.md"
+      ]
+    },
+    {
+      "symbol": "ITokenRefreshNotifier",
+      "docsPath": "fundamentals/security/token-refresh",
+      "resolvedPath": "fundamentals/security/token-refresh",
+      "sourceFile": "src/Whizbang.Core/Security/ITokenRefreshNotifier.cs",
+      "line": 23,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/security/token-refresh.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/token-refresh.md",
+        "src/assets/docs/fundamentals/security/token-refresh/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/token-refresh/_folder.md",
+        "src/assets/docs/fundamentals/security/token-refresh/token-refresh.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/token-refresh/token-refresh.md"
+      ]
+    },
+    {
+      "symbol": "IEffectivePermissionsStore",
+      "docsPath": "fundamentals/security/effective-permissions",
+      "resolvedPath": "fundamentals/security/effective-permissions",
+      "sourceFile": "src/Whizbang.Core/Security/IEffectivePermissionsStore.cs",
+      "line": 32,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/security/effective-permissions.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/effective-permissions.md",
+        "src/assets/docs/fundamentals/security/effective-permissions/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/effective-permissions/_folder.md",
+        "src/assets/docs/fundamentals/security/effective-permissions/effective-permissions.md",
+        "src/assets/docs/v1.0.0/fundamentals/security/effective-permissions/effective-permissions.md"
+      ]
+    },
+    {
+      "symbol": "MessageDiscardReason",
+      "docsPath": "internals/message-discard-policy",
+      "resolvedPath": "internals/message-discard-policy",
+      "sourceFile": "src/Whizbang.Core/Routing/MessageDiscardReason.cs",
+      "line": 11,
+      "triedPaths": [
+        "src/assets/docs/internals/message-discard-policy.md",
+        "src/assets/docs/v1.0.0/internals/message-discard-policy.md",
+        "src/assets/docs/internals/message-discard-policy/_folder.md",
+        "src/assets/docs/v1.0.0/internals/message-discard-policy/_folder.md",
+        "src/assets/docs/internals/message-discard-policy/message-discard-policy.md",
+        "src/assets/docs/v1.0.0/internals/message-discard-policy/message-discard-policy.md"
+      ]
+    },
+    {
+      "symbol": "IMessageDiscardPolicy",
+      "docsPath": "internals/message-discard-policy",
+      "resolvedPath": "internals/message-discard-policy",
+      "sourceFile": "src/Whizbang.Core/Routing/MessageDiscardPolicy.cs",
+      "line": 43,
+      "triedPaths": [
+        "src/assets/docs/internals/message-discard-policy.md",
+        "src/assets/docs/v1.0.0/internals/message-discard-policy.md",
+        "src/assets/docs/internals/message-discard-policy/_folder.md",
+        "src/assets/docs/v1.0.0/internals/message-discard-policy/_folder.md",
+        "src/assets/docs/internals/message-discard-policy/message-discard-policy.md",
+        "src/assets/docs/v1.0.0/internals/message-discard-policy/message-discard-policy.md"
+      ]
+    },
+    {
+      "symbol": "StreamRateLimiterOptions",
+      "docsPath": "resilience/stream-rate-limiter",
+      "resolvedPath": "resilience/stream-rate-limiter",
+      "sourceFile": "src/Whizbang.Core/Resilience/StreamRateLimiterOptions.cs",
+      "line": 7,
+      "triedPaths": [
+        "src/assets/docs/resilience/stream-rate-limiter.md",
+        "src/assets/docs/v1.0.0/resilience/stream-rate-limiter.md",
+        "src/assets/docs/resilience/stream-rate-limiter/_folder.md",
+        "src/assets/docs/v1.0.0/resilience/stream-rate-limiter/_folder.md",
+        "src/assets/docs/resilience/stream-rate-limiter/stream-rate-limiter.md",
+        "src/assets/docs/v1.0.0/resilience/stream-rate-limiter/stream-rate-limiter.md"
+      ]
+    },
+    {
+      "symbol": "StreamRateLimiter",
+      "docsPath": "resilience/stream-rate-limiter",
+      "resolvedPath": "resilience/stream-rate-limiter",
+      "sourceFile": "src/Whizbang.Core/Resilience/StreamRateLimiter.cs",
+      "line": 16,
+      "triedPaths": [
+        "src/assets/docs/resilience/stream-rate-limiter.md",
+        "src/assets/docs/v1.0.0/resilience/stream-rate-limiter.md",
+        "src/assets/docs/resilience/stream-rate-limiter/_folder.md",
+        "src/assets/docs/v1.0.0/resilience/stream-rate-limiter/_folder.md",
+        "src/assets/docs/resilience/stream-rate-limiter/stream-rate-limiter.md",
+        "src/assets/docs/v1.0.0/resilience/stream-rate-limiter/stream-rate-limiter.md"
+      ]
+    },
+    {
+      "symbol": "CircuitBreakerOptions",
+      "docsPath": "resilience/circuit-breaker",
+      "resolvedPath": "resilience/circuit-breaker",
+      "sourceFile": "src/Whizbang.Core/Resilience/CircuitBreakerOptions.cs",
+      "line": 7,
+      "triedPaths": [
+        "src/assets/docs/resilience/circuit-breaker.md",
+        "src/assets/docs/v1.0.0/resilience/circuit-breaker.md",
+        "src/assets/docs/resilience/circuit-breaker/_folder.md",
+        "src/assets/docs/v1.0.0/resilience/circuit-breaker/_folder.md",
+        "src/assets/docs/resilience/circuit-breaker/circuit-breaker.md",
+        "src/assets/docs/v1.0.0/resilience/circuit-breaker/circuit-breaker.md"
+      ]
+    },
+    {
+      "symbol": "TransportOptions",
+      "docsPath": "messaging/transports/transport-options",
+      "resolvedPath": "messaging/transports/transport-options",
+      "sourceFile": "src/Whizbang.Core/Transports/TransportOptions.cs",
+      "line": 15,
+      "triedPaths": [
+        "src/assets/docs/messaging/transports/transport-options.md",
+        "src/assets/docs/v1.0.0/messaging/transports/transport-options.md",
+        "src/assets/docs/messaging/transports/transport-options/_folder.md",
+        "src/assets/docs/v1.0.0/messaging/transports/transport-options/_folder.md",
+        "src/assets/docs/messaging/transports/transport-options/transport-options.md",
+        "src/assets/docs/v1.0.0/messaging/transports/transport-options/transport-options.md"
+      ]
+    },
+    {
+      "symbol": "PostSerializeHookChain",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Core/Offloads/PostSerializeHookChain.cs",
+      "line": 17,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "OffloadServiceCollectionExtensions",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Core/Offloads/OffloadServiceCollectionExtensions.cs",
+      "line": 14,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "MessageBodyUploadOptions",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Core/Offloads/MessageBodyUploadOptions.cs",
+      "line": 15,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "MessageBodyOffloadOptions",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Core/Offloads/MessageBodyOffloadOptions.cs",
+      "line": 8,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "MessageBodyDownloadOptions",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Core/Offloads/MessageBodyDownloadOptions.cs",
+      "line": 6,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "MessageBodyDeleteOptions",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Core/Offloads/MessageBodyDeleteOptions.cs",
+      "line": 6,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "MessageBodyClaim",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Core/Offloads/MessageBodyClaim.cs",
+      "line": 18,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "IPostSerializeHook",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Core/Offloads/IPostSerializeHook.cs",
+      "line": 28,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "IMessageBodyStore",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Core/Offloads/IMessageBodyStore.cs",
+      "line": 26,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "BodyOffloadPostSerializeHook",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Core/Offloads/BodyOffloadPostSerializeHook.cs",
+      "line": 31,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "BodyClaimWireHelper",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Core/Offloads/BodyClaimWireHelper.cs",
+      "line": 13,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "BodyClaimRehydrator",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Core/Offloads/BodyClaimRehydrator.cs",
+      "line": 20,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "BodyClaimEnvelopePayload",
+      "docsPath": "offloads",
+      "resolvedPath": "offloads",
+      "sourceFile": "src/Whizbang.Core/Offloads/BodyClaimEnvelopePayload.cs",
+      "line": 13,
+      "triedPaths": [
+        "src/assets/docs/offloads.md",
+        "src/assets/docs/v1.0.0/offloads.md",
+        "src/assets/docs/offloads/_folder.md",
+        "src/assets/docs/v1.0.0/offloads/_folder.md",
+        "src/assets/docs/offloads/offloads.md",
+        "src/assets/docs/v1.0.0/offloads/offloads.md"
+      ]
+    },
+    {
+      "symbol": "SnapshotUpgradePolicy",
+      "docsPath": "event-upcasting",
+      "resolvedPath": "event-upcasting",
+      "sourceFile": "src/Whizbang.Core/Perspectives/SnapshotEnvelope.cs",
+      "line": 11,
+      "triedPaths": [
+        "src/assets/docs/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting.md",
+        "src/assets/docs/event-upcasting/_folder.md",
+        "src/assets/docs/v1.0.0/event-upcasting/_folder.md",
+        "src/assets/docs/event-upcasting/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting/event-upcasting.md"
+      ]
+    },
+    {
+      "symbol": "SnapshotEnvelope",
+      "docsPath": "event-upcasting",
+      "resolvedPath": "event-upcasting",
+      "sourceFile": "src/Whizbang.Core/Perspectives/SnapshotEnvelope.cs",
+      "line": 51,
+      "triedPaths": [
+        "src/assets/docs/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting.md",
+        "src/assets/docs/event-upcasting/_folder.md",
+        "src/assets/docs/v1.0.0/event-upcasting/_folder.md",
+        "src/assets/docs/event-upcasting/event-upcasting.md",
+        "src/assets/docs/v1.0.0/event-upcasting/event-upcasting.md"
+      ]
+    },
+    {
+      "symbol": "CreateSnapshotAsync",
+      "docsPath": "fundamentals/work-coordinator/commit-sequence",
+      "resolvedPath": "fundamentals/work-coordinator/commit-sequence",
+      "sourceFile": "src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs",
+      "line": 28,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence.md",
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence/commit-sequence.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence/commit-sequence.md"
+      ]
+    },
+    {
+      "symbol": "GetLatestSnapshotAsync",
+      "docsPath": "fundamentals/work-coordinator/commit-sequence",
+      "resolvedPath": "fundamentals/work-coordinator/commit-sequence",
+      "sourceFile": "src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs",
+      "line": 55,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence.md",
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence/commit-sequence.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence/commit-sequence.md"
+      ]
+    },
+    {
+      "symbol": "WhizbangNamingConvention",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Core/Naming/WhizbangNamingConvention.cs",
+      "line": 26,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "WorkSignalingMode",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Core/Notifications/WhizbangNotificationOptions.cs",
+      "line": 6,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "WhizbangNotificationOptions",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Core/Notifications/WhizbangNotificationOptions.cs",
+      "line": 46,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "TcpKeepAliveTime",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer#tcp-keepalive",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Core/Notifications/WhizbangNotificationOptions.cs",
+      "line": 141,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "TcpKeepAliveInterval",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer#tcp-keepalive",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Core/Notifications/WhizbangNotificationOptions.cs",
+      "line": 148,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "NotifySubscriptionRegistry",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Core/Notifications/NotifySubscriptionRegistry.cs",
+      "line": 14,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "NotificationConnectionStringResolver",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Core/Notifications/NotificationConnectionStringResolver.cs",
+      "line": 10,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "WorkSignalCategory",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Core/Notifications/IWorkNotificationListener.cs",
+      "line": 8,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "IWorkNotificationListener",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Core/Notifications/IWorkNotificationListener.cs",
+      "line": 43,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "INotifySubscription",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Core/Notifications/INotifySubscription.cs",
+      "line": 25,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "ISharedNotifyConnection",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Core/Notifications/INotifySubscription.cs",
+      "line": 48,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "INotifySignalingGate",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Core/Notifications/INotifySignalingGate.cs",
+      "line": 28,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "INotificationConnectionStringFallback",
+      "docsPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "resolvedPath": "fundamentals/work-coordinator/notifications-and-pgbouncer",
+      "sourceFile": "src/Whizbang.Core/Notifications/INotificationConnectionStringFallback.cs",
+      "line": 16,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer/notifications-and-pgbouncer.md"
+      ]
+    },
+    {
+      "symbol": "CommitOrderStamperOptions",
+      "docsPath": "fundamentals/work-coordinator/commit-sequence",
+      "resolvedPath": "fundamentals/work-coordinator/commit-sequence",
+      "sourceFile": "src/Whizbang.Core/Notifications/CommitOrderStamperOptions.cs",
+      "line": 8,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence.md",
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence/commit-sequence.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence/commit-sequence.md"
+      ]
+    },
+    {
+      "symbol": "WhizbangStartupLogger",
+      "docsPath": "operations/observability/logging#startup",
+      "resolvedPath": "operations/observability/logging",
+      "sourceFile": "src/Whizbang.Core/Observability/WhizbangStartupLog.cs",
+      "line": 17,
+      "triedPaths": [
+        "src/assets/docs/operations/observability/logging.md",
+        "src/assets/docs/v1.0.0/operations/observability/logging.md",
+        "src/assets/docs/operations/observability/logging/_folder.md",
+        "src/assets/docs/v1.0.0/operations/observability/logging/_folder.md",
+        "src/assets/docs/operations/observability/logging/logging.md",
+        "src/assets/docs/v1.0.0/operations/observability/logging/logging.md"
+      ]
+    },
+    {
+      "symbol": "SourceServiceId",
+      "docsPath": "fundamentals/work-coordinator/commit-sequence",
+      "resolvedPath": "fundamentals/work-coordinator/commit-sequence",
+      "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
+      "line": 91,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence.md",
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence/commit-sequence.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence/commit-sequence.md"
+      ]
+    },
+    {
+      "symbol": "SourceCommitSequence",
+      "docsPath": "fundamentals/work-coordinator/commit-sequence",
+      "resolvedPath": "fundamentals/work-coordinator/commit-sequence",
+      "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
+      "line": 100,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence.md",
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/commit-sequence/commit-sequence.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence/commit-sequence.md"
+      ]
+    },
+    {
+      "symbol": "DeadLetterMetrics",
+      "docsPath": "operations/dead-letter-queue/metrics",
+      "resolvedPath": "operations/dead-letter-queue/metrics",
+      "sourceFile": "src/Whizbang.Core/Observability/DeadLetterMetrics.cs",
+      "line": 30,
+      "triedPaths": [
+        "src/assets/docs/operations/dead-letter-queue/metrics.md",
+        "src/assets/docs/v1.0.0/operations/dead-letter-queue/metrics.md",
+        "src/assets/docs/operations/dead-letter-queue/metrics/_folder.md",
+        "src/assets/docs/v1.0.0/operations/dead-letter-queue/metrics/_folder.md",
+        "src/assets/docs/operations/dead-letter-queue/metrics/metrics.md",
+        "src/assets/docs/v1.0.0/operations/dead-letter-queue/metrics/metrics.md"
+      ]
+    },
+    {
+      "symbol": "WorkCoordinatorGate",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Messaging/WorkCoordinatorGate.cs",
+      "line": 29,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "WorkCategory",
+      "docsPath": "fundamentals/work-coordinator/batched-flushers",
+      "resolvedPath": "fundamentals/work-coordinator/batched-flushers",
+      "sourceFile": "src/Whizbang.Core/Messaging/WorkCategory.cs",
+      "line": 8,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/batched-flushers.md"
+      ]
+    },
+    {
+      "symbol": "WhizbangReceptorRegistryQueryAdapter",
+      "docsPath": "internals/receptor-registry-query",
+      "resolvedPath": "internals/receptor-registry-query",
+      "sourceFile": "src/Whizbang.Core/Messaging/WhizbangReceptorRegistryQueryAdapter.cs",
+      "line": 10,
+      "triedPaths": [
+        "src/assets/docs/internals/receptor-registry-query.md",
+        "src/assets/docs/v1.0.0/internals/receptor-registry-query.md",
+        "src/assets/docs/internals/receptor-registry-query/_folder.md",
+        "src/assets/docs/v1.0.0/internals/receptor-registry-query/_folder.md",
+        "src/assets/docs/internals/receptor-registry-query/receptor-registry-query.md",
+        "src/assets/docs/v1.0.0/internals/receptor-registry-query/receptor-registry-query.md"
+      ]
+    },
+    {
+      "symbol": "StreamAffinityWorkCoordinatorStrategy",
+      "docsPath": "internals/outbox-batch-strategy",
+      "resolvedPath": "internals/outbox-batch-strategy",
+      "sourceFile": "src/Whizbang.Core/Messaging/StreamAffinityWorkCoordinatorStrategy.cs",
+      "line": 22,
+      "triedPaths": [
+        "src/assets/docs/internals/outbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy.md",
+        "src/assets/docs/internals/outbox-batch-strategy/_folder.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy/_folder.md",
+        "src/assets/docs/internals/outbox-batch-strategy/outbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy/outbox-batch-strategy.md"
+      ]
+    },
+    {
+      "symbol": "ReceptorRegistryContribution",
+      "docsPath": "internals/receptor-registry-query",
+      "resolvedPath": "internals/receptor-registry-query",
+      "sourceFile": "src/Whizbang.Core/Messaging/ReceptorRegistryContribution.cs",
+      "line": 18,
+      "triedPaths": [
+        "src/assets/docs/internals/receptor-registry-query.md",
+        "src/assets/docs/v1.0.0/internals/receptor-registry-query.md",
+        "src/assets/docs/internals/receptor-registry-query/_folder.md",
+        "src/assets/docs/v1.0.0/internals/receptor-registry-query/_folder.md",
+        "src/assets/docs/internals/receptor-registry-query/receptor-registry-query.md",
+        "src/assets/docs/v1.0.0/internals/receptor-registry-query/receptor-registry-query.md"
+      ]
+    },
+    {
+      "symbol": "_invokeReceptorAsync",
+      "docsPath": "operations/observability/receptor-logging",
+      "resolvedPath": "operations/observability/receptor-logging",
+      "sourceFile": "src/Whizbang.Core/Messaging/ReceptorInvoker.cs",
+      "line": 541,
+      "triedPaths": [
+        "src/assets/docs/operations/observability/receptor-logging.md",
+        "src/assets/docs/v1.0.0/operations/observability/receptor-logging.md",
+        "src/assets/docs/operations/observability/receptor-logging/_folder.md",
+        "src/assets/docs/v1.0.0/operations/observability/receptor-logging/_folder.md",
+        "src/assets/docs/operations/observability/receptor-logging/receptor-logging.md",
+        "src/assets/docs/v1.0.0/operations/observability/receptor-logging/receptor-logging.md"
+      ]
+    },
+    {
+      "symbol": "RawReceptorRegistry",
+      "docsPath": "fundamentals/receptors/raw-receptors",
+      "resolvedPath": "fundamentals/receptors/raw-receptors",
+      "sourceFile": "src/Whizbang.Core/Messaging/RawReceptorRegistry.cs",
+      "line": 14,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/receptors/raw-receptors.md",
+        "src/assets/docs/v1.0.0/fundamentals/receptors/raw-receptors.md",
+        "src/assets/docs/fundamentals/receptors/raw-receptors/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/receptors/raw-receptors/_folder.md",
+        "src/assets/docs/fundamentals/receptors/raw-receptors/raw-receptors.md",
+        "src/assets/docs/v1.0.0/fundamentals/receptors/raw-receptors/raw-receptors.md"
+      ]
+    },
+    {
+      "symbol": "MessageOrderingExtensions",
+      "docsPath": "internals/ordering-invariant",
+      "resolvedPath": "internals/ordering-invariant",
+      "sourceFile": "src/Whizbang.Core/Messaging/MessageOrderingExtensions.cs",
+      "line": 21,
+      "triedPaths": [
+        "src/assets/docs/internals/ordering-invariant.md",
+        "src/assets/docs/v1.0.0/internals/ordering-invariant.md",
+        "src/assets/docs/internals/ordering-invariant/_folder.md",
+        "src/assets/docs/v1.0.0/internals/ordering-invariant/_folder.md",
+        "src/assets/docs/internals/ordering-invariant/ordering-invariant.md",
+        "src/assets/docs/v1.0.0/internals/ordering-invariant/ordering-invariant.md"
+      ]
+    },
+    {
+      "symbol": "MessageHeaders",
+      "docsPath": "fundamentals/transport/message-headers",
+      "resolvedPath": "fundamentals/transport/message-headers",
+      "sourceFile": "src/Whizbang.Core/Messaging/MessageHeaders.cs",
+      "line": 30,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/transport/message-headers.md",
+        "src/assets/docs/v1.0.0/fundamentals/transport/message-headers.md",
+        "src/assets/docs/fundamentals/transport/message-headers/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/transport/message-headers/_folder.md",
+        "src/assets/docs/fundamentals/transport/message-headers/message-headers.md",
+        "src/assets/docs/v1.0.0/fundamentals/transport/message-headers/message-headers.md"
+      ]
+    },
+    {
+      "symbol": "InboxChannelWriter",
+      "docsPath": "messaging/inbox-channel",
+      "resolvedPath": "messaging/inbox-channel",
+      "sourceFile": "src/Whizbang.Core/Messaging/InboxChannelWriter.cs",
+      "line": 15,
+      "triedPaths": [
+        "src/assets/docs/messaging/inbox-channel.md",
+        "src/assets/docs/v1.0.0/messaging/inbox-channel.md",
+        "src/assets/docs/messaging/inbox-channel/_folder.md",
+        "src/assets/docs/v1.0.0/messaging/inbox-channel/_folder.md",
+        "src/assets/docs/messaging/inbox-channel/inbox-channel.md",
+        "src/assets/docs/v1.0.0/messaging/inbox-channel/inbox-channel.md"
+      ]
+    },
+    {
+      "symbol": "QueueOutboxMessageAsync",
+      "docsPath": "internals/outbox-batch-strategy",
+      "resolvedPath": "internals/outbox-batch-strategy",
+      "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs",
+      "line": 34,
+      "triedPaths": [
+        "src/assets/docs/internals/outbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy.md",
+        "src/assets/docs/internals/outbox-batch-strategy/_folder.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy/_folder.md",
+        "src/assets/docs/internals/outbox-batch-strategy/outbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy/outbox-batch-strategy.md"
+      ]
+    },
+    {
+      "symbol": "RecordHeartbeatAsync",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "line": 248,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "CompletePerspectiveAsync",
+      "docsPath": "fundamentals/work-coordinator/batched-flushers",
+      "resolvedPath": "fundamentals/work-coordinator/batched-flushers",
+      "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "line": 307,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/batched-flushers.md"
+      ]
+    },
+    {
+      "symbol": "ReportFailuresAsync",
+      "docsPath": "fundamentals/work-coordinator/batched-flushers",
+      "resolvedPath": "fundamentals/work-coordinator/batched-flushers",
+      "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "line": 359,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/batched-flushers.md"
+      ]
+    },
+    {
+      "symbol": "CommitHandlerResultAsync",
+      "docsPath": "fundamentals/work-coordinator/handler-commit",
+      "resolvedPath": "fundamentals/work-coordinator/handler-commit",
+      "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "line": 375,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/handler-commit.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/handler-commit.md",
+        "src/assets/docs/fundamentals/work-coordinator/handler-commit/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/handler-commit/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/handler-commit/handler-commit.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/handler-commit/handler-commit.md"
+      ]
+    },
+    {
+      "symbol": "FlushCompletionsAsync",
+      "docsPath": "fundamentals/work-coordinator/batched-flushers",
+      "resolvedPath": "fundamentals/work-coordinator/batched-flushers",
+      "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "line": 421,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/batched-flushers.md"
+      ]
+    },
+    {
+      "symbol": "StoreInboxMessagesAsync",
+      "docsPath": "operations/workers/transport-consumer",
+      "resolvedPath": "operations/workers/transport-consumer",
+      "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "line": 462,
+      "triedPaths": [
+        "src/assets/docs/operations/workers/transport-consumer.md",
+        "src/assets/docs/v1.0.0/operations/workers/transport-consumer.md",
+        "src/assets/docs/operations/workers/transport-consumer/_folder.md",
+        "src/assets/docs/v1.0.0/operations/workers/transport-consumer/_folder.md",
+        "src/assets/docs/operations/workers/transport-consumer/transport-consumer.md",
+        "src/assets/docs/v1.0.0/operations/workers/transport-consumer/transport-consumer.md"
+      ]
+    },
+    {
+      "symbol": "RecordLifecycleCompletionAsync",
+      "docsPath": "fundamentals/lifecycle/lifecycle-reconciliation",
+      "resolvedPath": "fundamentals/lifecycle/lifecycle-reconciliation",
+      "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "line": 606,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/lifecycle/lifecycle-reconciliation.md",
+        "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-reconciliation.md",
+        "src/assets/docs/fundamentals/lifecycle/lifecycle-reconciliation/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-reconciliation/_folder.md",
+        "src/assets/docs/fundamentals/lifecycle/lifecycle-reconciliation/lifecycle-reconciliation.md",
+        "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-reconciliation/lifecycle-reconciliation.md"
+      ]
+    },
+    {
+      "symbol": "MaintenanceResult",
+      "docsPath": "operations/maintenance",
+      "resolvedPath": "operations/maintenance",
+      "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "line": 875,
+      "triedPaths": [
+        "src/assets/docs/operations/maintenance.md",
+        "src/assets/docs/v1.0.0/operations/maintenance.md",
+        "src/assets/docs/operations/maintenance/_folder.md",
+        "src/assets/docs/v1.0.0/operations/maintenance/_folder.md",
+        "src/assets/docs/operations/maintenance/maintenance.md",
+        "src/assets/docs/v1.0.0/operations/maintenance/maintenance.md"
+      ]
+    },
+    {
+      "symbol": "OrphanedLifecycleEvent",
+      "docsPath": "fundamentals/lifecycle/lifecycle-reconciliation",
+      "resolvedPath": "fundamentals/lifecycle/lifecycle-reconciliation",
+      "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "line": 897,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/lifecycle/lifecycle-reconciliation.md",
+        "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-reconciliation.md",
+        "src/assets/docs/fundamentals/lifecycle/lifecycle-reconciliation/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-reconciliation/_folder.md",
+        "src/assets/docs/fundamentals/lifecycle/lifecycle-reconciliation/lifecycle-reconciliation.md",
+        "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-reconciliation/lifecycle-reconciliation.md"
+      ]
+    },
+    {
+      "symbol": "PendingPerspectiveEvent",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "line": 1721,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "OutboxBatchRow",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "line": 1728,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "InboxBatchRow",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+      "line": 1797,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "IReceptorRegistryQuery",
+      "docsPath": "internals/receptor-registry-query",
+      "resolvedPath": "internals/receptor-registry-query",
+      "sourceFile": "src/Whizbang.Core/Messaging/IReceptorRegistryQuery.cs",
+      "line": 17,
+      "triedPaths": [
+        "src/assets/docs/internals/receptor-registry-query.md",
+        "src/assets/docs/v1.0.0/internals/receptor-registry-query.md",
+        "src/assets/docs/internals/receptor-registry-query/_folder.md",
+        "src/assets/docs/v1.0.0/internals/receptor-registry-query/_folder.md",
+        "src/assets/docs/internals/receptor-registry-query/receptor-registry-query.md",
+        "src/assets/docs/v1.0.0/internals/receptor-registry-query/receptor-registry-query.md"
+      ]
+    },
+    {
+      "symbol": "IReceptorFiringObserver",
+      "docsPath": "operations/testing/receptor-firing-observer",
+      "resolvedPath": "operations/testing/receptor-firing-observer",
+      "sourceFile": "src/Whizbang.Core/Messaging/IReceptorFiringObserver.cs",
+      "line": 27,
+      "triedPaths": [
+        "src/assets/docs/operations/testing/receptor-firing-observer.md",
+        "src/assets/docs/v1.0.0/operations/testing/receptor-firing-observer.md",
+        "src/assets/docs/operations/testing/receptor-firing-observer/_folder.md",
+        "src/assets/docs/v1.0.0/operations/testing/receptor-firing-observer/_folder.md",
+        "src/assets/docs/operations/testing/receptor-firing-observer/receptor-firing-observer.md",
+        "src/assets/docs/v1.0.0/operations/testing/receptor-firing-observer/receptor-firing-observer.md"
+      ]
+    },
+    {
+      "symbol": "IRawReceptorRegistry",
+      "docsPath": "fundamentals/receptors/raw-receptors",
+      "resolvedPath": "fundamentals/receptors/raw-receptors",
+      "sourceFile": "src/Whizbang.Core/Messaging/IRawReceptorRegistry.cs",
+      "line": 21,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/receptors/raw-receptors.md",
+        "src/assets/docs/v1.0.0/fundamentals/receptors/raw-receptors.md",
+        "src/assets/docs/fundamentals/receptors/raw-receptors/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/receptors/raw-receptors/_folder.md",
+        "src/assets/docs/fundamentals/receptors/raw-receptors/raw-receptors.md",
+        "src/assets/docs/v1.0.0/fundamentals/receptors/raw-receptors/raw-receptors.md"
+      ]
+    },
+    {
+      "symbol": "IRawReceptor",
+      "docsPath": "fundamentals/receptors/raw-receptors",
+      "resolvedPath": "fundamentals/receptors/raw-receptors",
+      "sourceFile": "src/Whizbang.Core/Messaging/IRawReceptor.cs",
+      "line": 29,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/receptors/raw-receptors.md",
+        "src/assets/docs/v1.0.0/fundamentals/receptors/raw-receptors.md",
+        "src/assets/docs/fundamentals/receptors/raw-receptors/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/receptors/raw-receptors/_folder.md",
+        "src/assets/docs/fundamentals/receptors/raw-receptors/raw-receptors.md",
+        "src/assets/docs/v1.0.0/fundamentals/receptors/raw-receptors/raw-receptors.md"
+      ]
+    },
+    {
+      "symbol": "IPerspectiveDrainChannel",
+      "docsPath": "fundamentals/perspectives/drain-mode",
+      "resolvedPath": "fundamentals/perspectives/drain-mode",
+      "sourceFile": "src/Whizbang.Core/Messaging/IPerspectiveDrainChannel.cs",
+      "line": 17,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/perspectives/drain-mode.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/drain-mode.md",
+        "src/assets/docs/fundamentals/perspectives/drain-mode/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/drain-mode/_folder.md",
+        "src/assets/docs/fundamentals/perspectives/drain-mode/drain-mode.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/drain-mode/drain-mode.md"
+      ]
+    },
+    {
+      "symbol": "PerspectiveDrainChannel",
+      "docsPath": "fundamentals/perspectives/drain-mode",
+      "resolvedPath": "fundamentals/perspectives/drain-mode",
+      "sourceFile": "src/Whizbang.Core/Messaging/IPerspectiveDrainChannel.cs",
+      "line": 44,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/perspectives/drain-mode.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/drain-mode.md",
+        "src/assets/docs/fundamentals/perspectives/drain-mode/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/drain-mode/_folder.md",
+        "src/assets/docs/fundamentals/perspectives/drain-mode/drain-mode.md",
+        "src/assets/docs/v1.0.0/fundamentals/perspectives/drain-mode/drain-mode.md"
+      ]
+    },
+    {
+      "symbol": "IOutboxDrainChannel",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Messaging/IOutboxDrainChannel.cs",
+      "line": 17,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "OutboxDrainChannel",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Messaging/IOutboxDrainChannel.cs",
+      "line": 44,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "IOutboxBatchStrategy",
+      "docsPath": "internals/outbox-batch-strategy",
+      "resolvedPath": "internals/outbox-batch-strategy",
+      "sourceFile": "src/Whizbang.Core/Messaging/IOutboxBatchStrategy.cs",
+      "line": 24,
+      "triedPaths": [
+        "src/assets/docs/internals/outbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy.md",
+        "src/assets/docs/internals/outbox-batch-strategy/_folder.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy/_folder.md",
+        "src/assets/docs/internals/outbox-batch-strategy/outbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/outbox-batch-strategy/outbox-batch-strategy.md"
+      ]
+    },
+    {
+      "symbol": "IMessageTypeBinder",
+      "docsPath": "fundamentals/serialization/type-binding",
+      "resolvedPath": "fundamentals/serialization/type-binding",
+      "sourceFile": "src/Whizbang.Core/Messaging/IMessageTypeBinder.cs",
+      "line": 24,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/serialization/type-binding.md",
+        "src/assets/docs/v1.0.0/fundamentals/serialization/type-binding.md",
+        "src/assets/docs/fundamentals/serialization/type-binding/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/serialization/type-binding/_folder.md",
+        "src/assets/docs/fundamentals/serialization/type-binding/type-binding.md",
+        "src/assets/docs/v1.0.0/fundamentals/serialization/type-binding/type-binding.md"
+      ]
+    },
+    {
+      "symbol": "IInboxDrainChannel",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Messaging/IInboxDrainChannel.cs",
+      "line": 17,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "InboxDrainChannel",
+      "docsPath": "fundamentals/work-coordinator/per-stream-drain",
+      "resolvedPath": "fundamentals/work-coordinator/per-stream-drain",
+      "sourceFile": "src/Whizbang.Core/Messaging/IInboxDrainChannel.cs",
+      "line": 39,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain/per-stream-drain.md"
+      ]
+    },
+    {
+      "symbol": "IInboxChannelWriter",
+      "docsPath": "messaging/inbox-channel",
+      "resolvedPath": "messaging/inbox-channel",
+      "sourceFile": "src/Whizbang.Core/Messaging/IInboxChannelWriter.cs",
+      "line": 13,
+      "triedPaths": [
+        "src/assets/docs/messaging/inbox-channel.md",
+        "src/assets/docs/v1.0.0/messaging/inbox-channel.md",
+        "src/assets/docs/messaging/inbox-channel/_folder.md",
+        "src/assets/docs/v1.0.0/messaging/inbox-channel/_folder.md",
+        "src/assets/docs/messaging/inbox-channel/inbox-channel.md",
+        "src/assets/docs/v1.0.0/messaging/inbox-channel/inbox-channel.md"
+      ]
+    },
+    {
+      "symbol": "IInboxBatchStrategy",
+      "docsPath": "internals/inbox-batch-strategy",
+      "resolvedPath": "internals/inbox-batch-strategy",
+      "sourceFile": "src/Whizbang.Core/Messaging/IInboxBatchStrategy.cs",
+      "line": 20,
+      "triedPaths": [
+        "src/assets/docs/internals/inbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/inbox-batch-strategy.md",
+        "src/assets/docs/internals/inbox-batch-strategy/_folder.md",
+        "src/assets/docs/v1.0.0/internals/inbox-batch-strategy/_folder.md",
+        "src/assets/docs/internals/inbox-batch-strategy/inbox-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/inbox-batch-strategy/inbox-batch-strategy.md"
+      ]
+    },
+    {
+      "symbol": "IChaosInjector",
+      "docsPath": "operations/testing/chaos-injection",
+      "resolvedPath": "operations/testing/chaos-injection",
+      "sourceFile": "src/Whizbang.Core/Messaging/IChaosInjector.cs",
+      "line": 32,
+      "triedPaths": [
+        "src/assets/docs/operations/testing/chaos-injection.md",
+        "src/assets/docs/v1.0.0/operations/testing/chaos-injection.md",
+        "src/assets/docs/operations/testing/chaos-injection/_folder.md",
+        "src/assets/docs/v1.0.0/operations/testing/chaos-injection/_folder.md",
+        "src/assets/docs/operations/testing/chaos-injection/chaos-injection.md",
+        "src/assets/docs/v1.0.0/operations/testing/chaos-injection/chaos-injection.md"
+      ]
+    },
+    {
+      "symbol": "IApplyBatchStrategy",
+      "docsPath": "internals/apply-batch-strategy",
+      "resolvedPath": "internals/apply-batch-strategy",
+      "sourceFile": "src/Whizbang.Core/Messaging/IApplyBatchStrategy.cs",
+      "line": 25,
+      "triedPaths": [
+        "src/assets/docs/internals/apply-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/apply-batch-strategy.md",
+        "src/assets/docs/internals/apply-batch-strategy/_folder.md",
+        "src/assets/docs/v1.0.0/internals/apply-batch-strategy/_folder.md",
+        "src/assets/docs/internals/apply-batch-strategy/apply-batch-strategy.md",
+        "src/assets/docs/v1.0.0/internals/apply-batch-strategy/apply-batch-strategy.md"
+      ]
+    },
+    {
+      "symbol": "HeartbeatRequest",
+      "docsPath": "fundamentals/work-coordinator/configuration-reference",
+      "resolvedPath": "fundamentals/work-coordinator/configuration-reference",
+      "sourceFile": "src/Whizbang.Core/Messaging/HeartbeatRequest.cs",
+      "line": 15,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/configuration-reference/configuration-reference.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference/configuration-reference.md"
+      ]
+    },
+    {
+      "symbol": "HandlerCommitRequest",
+      "docsPath": "fundamentals/work-coordinator/handler-commit",
+      "resolvedPath": "fundamentals/work-coordinator/handler-commit",
+      "sourceFile": "src/Whizbang.Core/Messaging/HandlerCommitRequest.cs",
+      "line": 22,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/handler-commit.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/handler-commit.md",
+        "src/assets/docs/fundamentals/work-coordinator/handler-commit/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/handler-commit/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/handler-commit/handler-commit.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/handler-commit/handler-commit.md"
+      ]
+    },
+    {
+      "symbol": "FlushCompletionsRequest",
+      "docsPath": "fundamentals/work-coordinator/batched-flushers",
+      "resolvedPath": "fundamentals/work-coordinator/batched-flushers",
+      "sourceFile": "src/Whizbang.Core/Messaging/FlushCompletionsRequest.cs",
+      "line": 12,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/batched-flushers/batched-flushers.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers/batched-flushers.md"
+      ]
+    },
+    {
+      "symbol": "ClaimWorkRequest",
+      "docsPath": "fundamentals/work-coordinator/claim-loop",
+      "resolvedPath": "fundamentals/work-coordinator/claim-loop",
+      "sourceFile": "src/Whizbang.Core/Messaging/ClaimWorkRequest.cs",
+      "line": 16,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/claim-loop.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/claim-loop.md",
+        "src/assets/docs/fundamentals/work-coordinator/claim-loop/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/claim-loop/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/claim-loop/claim-loop.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/claim-loop/claim-loop.md"
+      ]
+    },
+    {
+      "symbol": "ChaosInjectorInvoker",
+      "docsPath": "operations/testing/chaos-injection",
+      "resolvedPath": "operations/testing/chaos-injection",
+      "sourceFile": "src/Whizbang.Core/Messaging/ChaosInjectorInvoker.cs",
+      "line": 19,
+      "triedPaths": [
+        "src/assets/docs/operations/testing/chaos-injection.md",
+        "src/assets/docs/v1.0.0/operations/testing/chaos-injection.md",
+        "src/assets/docs/operations/testing/chaos-injection/_folder.md",
+        "src/assets/docs/v1.0.0/operations/testing/chaos-injection/_folder.md",
+        "src/assets/docs/operations/testing/chaos-injection/chaos-injection.md",
+        "src/assets/docs/v1.0.0/operations/testing/chaos-injection/chaos-injection.md"
+      ]
+    },
+    {
+      "symbol": "PinnedIdAttribute",
+      "docsPath": "core-concepts/pinned-identity",
+      "resolvedPath": "core-concepts/pinned-identity",
+      "sourceFile": "src/Whizbang.Core/Attributes/PinnedIdAttribute.cs",
+      "line": 19,
+      "triedPaths": [
+        "src/assets/docs/core-concepts/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity.md",
+        "src/assets/docs/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/_folder.md",
+        "src/assets/docs/core-concepts/pinned-identity/pinned-identity.md",
+        "src/assets/docs/v1.0.0/core-concepts/pinned-identity/pinned-identity.md"
+      ]
+    },
+    {
+      "symbol": "IAppSignalChannel",
+      "docsPath": "fundamentals/work-coordinator/app-signals",
+      "resolvedPath": "fundamentals/work-coordinator/app-signals",
+      "sourceFile": "src/Whizbang.Core/Notifications/AppSignals/IAppSignalChannel.cs",
+      "line": 10,
+      "triedPaths": [
+        "src/assets/docs/fundamentals/work-coordinator/app-signals.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/app-signals.md",
+        "src/assets/docs/fundamentals/work-coordinator/app-signals/_folder.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/app-signals/_folder.md",
+        "src/assets/docs/fundamentals/work-coordinator/app-signals/app-signals.md",
+        "src/assets/docs/v1.0.0/fundamentals/work-coordinator/app-signals/app-signals.md"
+      ]
+    }
+  ]
 }

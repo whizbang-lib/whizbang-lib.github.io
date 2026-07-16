@@ -82,7 +82,7 @@ Plan lives at `~/.claude/plans/we-need-to-reconcile-swift-newell.md` (session-lo
 | 0 | PR/branch/worktree/stash triage | DONE — 7 PRs resolved, ~24 stale remote + ~28 local branches deleted, 3 worktrees removed, stash content salvaged (backup: `~/src/whizbang/stash-backup-2026-07-16/`) |
 | 0a | This document | DONE |
 | 1 | Repo hygiene (root clutter, CLAUDE.md refresh) | pending |
-| 2 | Re-baseline audit vs current library (v0.8xx) | pending |
+| 2 | Re-baseline audit vs current library (v0.8xx) | DONE — see `audit-reports/REBASELINE-2026-07-16.md`; 63 missing pages demanded by code tags, work-coordinator dominates |
 | 3 | Frontmatter taxonomy (pageType/audience/status) + validator | pending |
 | 4 | Audience trees: `contributors/`, `spec/` (porting) | pending |
 | 5 | Live test-status pipeline (library CI → site badges) | pending |
