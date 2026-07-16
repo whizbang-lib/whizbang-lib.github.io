@@ -1138,9 +1138,9 @@
         "description": "Propagate correlation, causation, and security context across message flows with CascadeContext, enrichers, and scope context integration",
         "tags": "cascade-context, security-propagation, scope-context, enrichers, multi-tenant, correlation",
         "version": "v1.0.0",
-        "readingTime": 10,
+        "readingTime": 12,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
-        "wordCount": 1998
+        "wordCount": 2379
       },
       {
         "slug": "v1.0.0/fundamentals/messages/delivery-receipts",
@@ -2230,9 +2230,9 @@
         "description": "Basic in-process message transport for local development",
         "tags": "transports, messaging, in-process, communication, v0.1.0",
         "version": "v1.0.0",
-        "readingTime": 9,
+        "readingTime": 10,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/transports.md",
-        "wordCount": 1604
+        "wordCount": 1826
       },
       {
         "slug": "v1.0.0/messaging/work-coordination",
@@ -3130,9 +3130,9 @@
         "description": "Background worker for processing perspective checkpoints - automatic checkpoint creation, polling workflow, error tracking, and startup coordination",
         "tags": "perspective-worker, checkpoints, background-worker, lease-based-coordination, error-tracking",
         "version": "v1.0.0",
-        "readingTime": 25,
+        "readingTime": 27,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-        "wordCount": 4859
+        "wordCount": 5255
       },
       {
         "slug": "v1.0.0/operations/workers/process-work-batch-lease-semantics",
@@ -3722,7 +3722,7 @@
         "version": "proposals",
         "readingTime": 28,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/ephemeral-events.md",
-        "wordCount": 5432
+        "wordCount": 5576
       },
       {
         "slug": "proposals/event-store-projections",

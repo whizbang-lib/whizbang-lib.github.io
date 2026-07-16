@@ -6,7 +6,7 @@
 
 ## Site Overview
 
-This is a documentation website for the **Whizbang .NET library** - built with Angular 20. It provides API docs, tutorials, and C# code examples with advanced search and syntax highlighting.
+This is a documentation website for the **Whizbang .NET library** - built with Angular 22. It provides API docs, tutorials, and C# code examples with advanced search and syntax highlighting.
 
 **Documentation Philosophy**: This serves as both user-facing documentation AND the living specification for the Whizbang library. Documentation drives API design. A feature is not complete until fully documented with examples.
 
@@ -15,18 +15,20 @@ This is a documentation website for the **Whizbang .NET library** - built with A
 ## Essential Commands
 
 ```bash
-bun start      # Start dev server with HMR at http://localhost:4200
-bun run build  # Production build with output hashing
-bun run preview # Serve production build locally
+pnpm start        # Start dev server with HMR at http://localhost:4200
+pnpm run build    # Production build with output hashing
+pnpm run preview  # Serve production build locally
 ```
 
-**IMPORTANT**: The development server (`bun start`) is **always running** during development sessions and automatically picks up live changes. **Never run `bun start`** during development sessions as it's already active.
+**Package manager is pnpm** (Node 24) — `bun` references in older docs are historical. pnpm enforces `minimumReleaseAge` on dependencies; freshly published package versions fail install until they age (deliberate supply-chain protection).
+
+**IMPORTANT**: The development server (`pnpm start`) is often **already running** during development sessions and automatically picks up live changes — check before starting another.
 
 ---
 
 ## Build Process
 
-The `bun start` and `bun run build` commands automatically execute:
+The `pnpm start` and `pnpm run build` commands automatically execute:
 1. `node src/scripts/gen-docs-list.mjs` - Generates documentation listing
 2. `node src/scripts/gen-docs-index-versioned.mjs` - Creates version-aware docs index with metadata
 3. `./build-search-index.sh` - Builds search indices with version support
