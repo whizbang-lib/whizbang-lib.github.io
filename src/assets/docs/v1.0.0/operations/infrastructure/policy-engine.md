@@ -1,5 +1,6 @@
 ---
 title: Policy Engine Component
+pageType: concept
 version: 1.0.0
 category: Components
 order: 6

@@ -1,5 +1,6 @@
 ---
 title: Shipping Service
+pageType: tutorial
 version: 1.0.0
 category: Tutorial
 order: 6

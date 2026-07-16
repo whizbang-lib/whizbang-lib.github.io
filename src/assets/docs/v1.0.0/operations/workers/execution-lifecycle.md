@@ -1,5 +1,6 @@
 ---
 title: Execution Lifecycle
+pageType: concept
 version: 1.0.0
 category: Workers
 order: 2

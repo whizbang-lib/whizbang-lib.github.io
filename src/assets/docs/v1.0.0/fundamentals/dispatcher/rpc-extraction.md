@@ -1,5 +1,6 @@
 ---
 title: RPC Response Extraction
+pageType: concept
 version: 1.0.0
 category: Core Concepts
 order: 18

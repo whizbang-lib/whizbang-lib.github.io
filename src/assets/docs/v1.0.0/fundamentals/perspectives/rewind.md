@@ -1,5 +1,6 @@
 ---
 title: Perspective Rewind
+pageType: concept
 description: >-
   How Whizbang detects and repairs out-of-order (late-arriving) events in
   perspective processing — the RewindRequired flag, snapshot-or-full replay, the

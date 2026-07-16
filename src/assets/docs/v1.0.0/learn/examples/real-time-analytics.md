@@ -1,5 +1,6 @@
 ---
 title: Real-Time Analytics
+pageType: concept
 version: 1.0.0
 category: Customization Examples
 order: 4

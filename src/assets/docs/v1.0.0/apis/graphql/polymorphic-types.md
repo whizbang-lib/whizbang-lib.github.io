@@ -1,5 +1,6 @@
 ---
 title: Polymorphic Types
+pageType: concept
 version: 1.0.0
 category: GraphQL
 order: 6

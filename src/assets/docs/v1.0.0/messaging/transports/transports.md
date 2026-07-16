@@ -1,5 +1,6 @@
 ---
 title: Transports Component
+pageType: overview
 version: 1.0.0
 category: Components
 order: 9
@@ -454,6 +455,55 @@ public Task Publish<TMessage>(TMessage message, string topic) { }
 | Publish (10 subscribers) | < 1μs | TBD |
 | Subscribe | < 50ns | TBD |
 | Message serialization | N/A | N/A |
+
+## Bulk Publishing
+
+:::new
+**New**: Transports can declare `BulkPublish` capability to enable batching multiple messages in a single transport operation.
+:::
+
+When a transport supports `BulkPublish`, the outbox publisher worker automatically drains multiple messages from its channel and publishes them in a single batch call, reducing network round-trips.
+
+### How It Works
+
+1. The publisher worker checks `ITransport.Capabilities.HasFlag(TransportCapabilities.BulkPublish)`
+2. If supported, it drains up to `MaxBulkPublishBatchSize` messages from the channel
+3. Messages are grouped by destination address
+4. Each group is published via `ITransport.PublishBatchAsync()` in a single transport call
+5. Per-message lifecycle hooks (PreOutbox/PostOutbox) still fire individually
+
+### Capability Detection
+
+```csharp{title="Capability Detection" category="Configuration" difficulty="INTERMEDIATE" tags=["Transports", "BulkPublish"]}
+// Transports declare their capabilities via the Capabilities property
+public TransportCapabilities Capabilities =>
+    TransportCapabilities.PublishSubscribe |
+    TransportCapabilities.Reliable |
+    TransportCapabilities.BulkPublish;
+
+// The ITransport interface provides a default implementation that throws
+// NotSupportedException — transports override it when they support batching
+Task<IReadOnlyList<BulkPublishItemResult>> PublishBatchAsync(
+    IReadOnlyList<BulkPublishItem> items,
+    TransportDestination destination,
+    CancellationToken cancellationToken = default);
+```
+
+### Configuration
+
+```csharp{title="Bulk Publish Options" category="Configuration" difficulty="BEGINNER" tags=["Transports", "BulkPublish", "Options"]}
+services.Configure<WorkCoordinatorPublisherOptions>(options => {
+    options.MaxBulkPublishBatchSize = 50; // Default: 50
+});
+```
+
+### Transport Support
+
+| Transport | BulkPublish | Mechanism |
+|-----------|:-----------:|-----------|
+| InProcess | No | No network benefit |
+| Azure Service Bus | Yes | `CreateMessageBatchAsync` with auto-split on size overflow |
+| RabbitMQ | Yes | Sequential publish on single pooled channel |
 
 ## Limitations in v1.0.0
 

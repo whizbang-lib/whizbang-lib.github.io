@@ -1,5 +1,6 @@
 ---
 title: Ledger Component
+pageType: concept
 version: 1.0.0
 category: Components
 order: 7

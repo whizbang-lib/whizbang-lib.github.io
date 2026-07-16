@@ -222,9 +222,9 @@ The reaper runs in **two tiers**:
 | Tier | Cadence | Does |
 |---|---|---|
 | **Reap** | ~10 min (`MaintenanceWorker`) | gated `DELETE` of consumed ephemeral **bodies**; pointers stay; `debug_mode`-gated |
-| **Deep** | monthly, **configurable + disableable** | prune ancient ephemeral **pointers** whose bodies are long gone and are past a retention horizon (must exceed the dedup + cross-service replay windows), then optional compaction (`VACUUM` / `pg_repack`) |
+| **Deep** | ~monthly, **opt-in (disabled by default) + self-gated** | prune ancient ephemeral **pointers** whose bodies are long gone and are past a retention horizon that can never undercut the dedup window (`GREATEST(pointer retention, dedup retention)`; widen it for cross-service replay windows), **keeping the newest pointer per stream**; `debug_mode`-gated |
 
-Pruning old ephemeral pointers never weakens the guard — the guard keys off the *stream's* ephemeral mode (via `IEphemeralModeResolver`), not per-event pointer presence.
+Pruning old ephemeral pointers never weakens the guard, because the prune always **keeps the newest pointer per stream** as a tombstone: that one surviving row keeps the stream flagged ephemeral (the runtime rebuild guard detects ephemeral streams by their flagged event-store rows), and it is also the perspective cursor's last-event target — so neither the guard nor the cursor ever dangles, no matter how much ancient history is pruned. A pointer is pruned only when its body is already reaped, it is past the horizon, it has no pending perspective work, and it is not the stream's newest. The deep tier is invoked every maintenance cycle but **self-gates** (an atomic watermark CAS, multi-pod safe) so it actually runs at most once per configured interval; space from the monthly bulk delete is reclaimed by autovacuum — explicit `VACUUM` / `pg_repack` cannot run inside the maintenance transaction and remains an operator runbook step for extreme cases.
 
 **Migration.** The split lands *before* the reaper. All existing `wh_event_store` rows fold in as `storage_class = 0` (everything today is Sourced) — pointer + body populated by a straight copy — then the event-store SQL functions (append, dedup, `commit_sequence` stamp, replay reads) repoint to the two tables. Pre-1.0, with no production data to rewrite, is the cheapest possible time to do it.
 

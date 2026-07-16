@@ -1,5 +1,6 @@
 ---
 title: "Pinned-Type Ledger: Safe, Governed Type Renames"
+pageType: concept
 version: 1.0.0
 category: "Core Concepts"
 order: 31

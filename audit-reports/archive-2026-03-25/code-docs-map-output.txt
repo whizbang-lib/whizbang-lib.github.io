@@ -1,0 +1,579 @@
+Scanning Whizbang library for <docs> tags...
+Library path: /Users/philcarbone/src/whizbang/whizbang
+Found 915 C# files to scan
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.AzureServiceBus/ServiceBusInfrastructureProvisioner.cs:71 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs:740 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs:836 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/MessageJsonContextGenerator.cs:2951 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/MessageJsonContextGenerator.cs:3015 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/MessageJsonContextGenerator.cs:3203 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:290 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:304 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:318 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:333 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:353 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:369 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:385 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:473 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:488 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:518 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:538 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:553 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:567 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:581 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:635 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:677 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:709 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:730 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/DiagnosticDescriptors.cs:751 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.Schema/WhizbangDataType.cs:4 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.Schema/TableDefinition.cs:6 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.Schema/SchemaConfiguration.cs:4 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.Schema/PostgresSchemaBuilder.cs:11 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.Schema/IndexDefinition.cs:6 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.Schema/DefaultValueFunction.cs:4 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.Schema/ColumnDefinition.cs:4 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.Postgres/PostgresDatabaseReadinessCheck.cs:12 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs:29 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs:45 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs:62 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs:92 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs:107 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs:121 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs:136 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs:151 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres/VectorSearchExtensions.cs:27 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres/ScopedDbContextFactory.cs:28 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres/PrincipalFilterExtensions.cs:12 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres/PolymorphicQueryExtensions.cs:16 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres/LensQueryConnectionExtensions.cs:11 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableEventStoreQuery.cs:21 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.EFCore.Custom/WhizbangDbContextAttribute.cs:149 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/TopicFilterAttribute{TEnum}.cs:9 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/TopicFilterAttribute.cs:8 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/SuppressGuidOrderingValidationAttribute.cs:31 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs:34 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/ServiceCollectionExtensions.cs:87 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/MessageContext.cs:44 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/MessageContext.cs:107 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IWhizbangIdProvider.cs:9 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IMessageContext.cs:94 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IMessageContext.cs:101 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IEvent.cs:7 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IDispatcher.cs:289 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IDispatcher.cs:303 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IDispatcher.cs:321 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IDispatcher.cs:343 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IDispatcher.cs:360 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IDispatcher.cs:471 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IDispatcher.cs:508 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IDispatcher.cs:539 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IDispatcher.cs:572 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IDispatcher.cs:641 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IDispatcher.cs:650 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/IDeliveryReceipt.cs:55 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:55 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:935 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:998 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:1053 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:2373 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:2551 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:3071 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:4171 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:4227 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:4280 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:4309 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:4361 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:4616 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:4617 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:4625 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:4635 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:4652 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatcher.cs:4664 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs:13 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.Mutations/Base/MutationEndpointBase.cs:79 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.Mutations/Base/MutationEndpointBase.cs:113 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.Mutations/Base/IMutationContext.cs:25 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.Mutations/Attributes/CommandEndpointAttribute.cs:14 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.Mutations/Attributes/CommandEndpointAttribute.cs:42 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.Mutations/Attributes/CommandEndpointAttribute.cs:50 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.Mutations/Attributes/CommandEndpointAttribute.cs:59 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs:12 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs:186 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.HotChocolate/Middleware/ScopeMiddlewareExtensions.cs:10 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.HotChocolate/Extensions/PolymorphicTypeExtensions.cs:44 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.HotChocolate/Extensions/PolymorphicTypeExtensions.cs:88 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangExtensions.cs:9 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.HotChocolate/Conventions/WhizbangSortConvention.cs:10 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.HotChocolate/Conventions/WhizbangFilterConvention.cs:10 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.HotChocolate/Configuration/WhizbangGraphQLOptions.cs:8 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensAttribute.cs:8 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.FastEndpoints/Models/LensResponse.cs:8 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Transports.FastEndpoints/Attributes/RestLensAttribute.cs:8 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.SignalR/Hooks/SignalRNotificationHook.cs:38 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs:199 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators.Shared/Utilities/SchemaHashUtilities.cs:13 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators.Shared/Utilities/IdentifierValidation.cs:7 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Generators.Shared/Limits/IDbProviderLimits.cs:4 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs:33 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Workers/InstantCompletionStrategy.cs:23 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Tracing/WhizbangTraceAttribute.cs:37 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Tracing/Tracer.cs:27 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Transports/IInfrastructureProvisioner.cs:52 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Scoping/IScopedInterfaces.cs:7 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/SystemEvents/SystemEventTransportFilter.cs:46 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/SystemEvents/SystemEventEmitter.cs:25 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs:29 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/SystemEvents/AuditingEventStoreDecorator.cs:32 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/SecurityPrincipalId.cs:7 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/SecurityOptions.cs:6 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/SecurityContextHelper.cs:251 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/ScopedMessageContext.cs:40 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/ScopedMessageContext.cs:54 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/ScopePropJsonConverter.cs:10 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/ScopeDelta.cs:14 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/ScopeDelta.cs:51 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/ScopeDelta.cs:90 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/ScopeContextAccessor.cs:7 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/ScopeContextAccessor.cs:76 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/ScopeContextAccessor.cs:94 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/ScopeContextAccessor.cs:108 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/Permission.cs:9 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/MessageSecurityOptions.cs:12 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/ImmutableScopeContext.cs:18 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/IScopeContextAccessor.cs:50 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/IScopeContext.cs:9 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/IMessageSecurityContextProvider.cs:20 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/IMessageContextAccessor.cs:46 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/DefaultMessageSecurityContextProvider.cs:22 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Resilience/SubscriptionState.cs:41 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Policies/IPolicyEngine.cs:7 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Routing/SharedTopicOutboxStrategy.cs:21 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Routing/SharedTopicInboxStrategy.cs:20 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Routing/NamespaceRoutingStrategy.cs:19 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Routing/DomainTopicOutboxStrategy.cs:20 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Observability/WhizbangMetrics.cs:9 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Observability/MessageEnvelopeExtensions.cs:82 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Observability/IServiceInstanceProvider.cs:11 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Observability/EnvelopeRegistry.cs:24 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Observability/CascadeContextFactory.cs:23 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/VectorFieldAttribute.cs:17 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/TemporalActionType.cs:7 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/SuppressVectorPackageCheckAttribute.cs:18 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs:21 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs:25 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/MustExistAttribute.cs:33 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/ModelAction.cs:27 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/ITemporalPerspectiveStore.cs:9 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/ITemporalPerspectiveFor.cs:15 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/IPerspectiveStore.cs:11 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/ApplyResult.cs:35 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Lenses/VectorSearchResult.cs:10 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Lenses/ScopedLensFactory.cs:13 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Lenses/ScopeFilter.cs:7 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Lenses/ScopeDefinition.cs:30 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/WorkCoordinatorStrategyFactory.cs:14 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/SyncTrackingEventStoreDecorator.cs:27 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/SecurityContextEventStoreDecorator.cs:34 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/OutboxRecord.cs:11 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/OutboxRecord.cs:37 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/LifecycleStage.cs:42 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/LifecycleStage.cs:231 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/LifecycleStage.cs:245 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/JsonLifecycleMessageDeserializer.cs:12 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/InboxRecord.cs:11 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/ImmediateAsyncDrainer.cs:25 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/IWorkCoordinator.cs:141 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/IWorkCoordinator.cs:177 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/IWorkCoordinator.cs:380 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/IReceptorRegistry.cs:56 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/IReceptorRegistry.cs:76 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/ILifecycleContext.cs:145 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/IEventStore.cs:133 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/IEventStore.cs:195 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/IEventStore.cs:234 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/IDatabaseReadinessCheck.cs:18 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Messaging/AppendAndWaitEventStoreDecorator.cs:24 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Internal/MessageExtractor.cs:23 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Internal/MessageExtractor.cs:99 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/HealthChecks/SubscriptionHealthCheck.cs:17 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Dispatch/Routed.cs:112 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Data.Dapper.Sqlite/Schema/SqliteSchemaBuilder.cs:18 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Security/Extractors/MessageHopSecurityExtractor.cs:22 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/Sync/SyncInquiryResult.cs:86 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/Sync/SyncInquiryResult.cs:103 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/Sync/PerspectiveSyncAwaiter.cs:22 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/Sync/PerspectiveSyncAwaiter.cs:23 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/Sync/ISyncContextAccessor.cs:43 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/Sync/IPerspectiveSyncAwaiter.cs:99 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Perspectives/Sync/EventCompletionAwaiter.cs:20 but couldn't extract symbol name
+Warning: Found <docs> tag at /Users/philcarbone/src/whizbang/whizbang/src/Whizbang.Core/Commands/System/SystemCommands.cs:19 but couldn't extract symbol name
+Extracted 556 code-docs mappings
+Warning: Duplicate symbol "InitialRetryAttempts" found. Using first occurrence.
+Warning: Duplicate symbol "InitialRetryDelay" found. Using first occurrence.
+Warning: Duplicate symbol "MaxRetryDelay" found. Using first occurrence.
+Warning: Duplicate symbol "BackoffMultiplier" found. Using first occurrence.
+Warning: Duplicate symbol "RetryIndefinitely" found. Using first occurrence.
+Warning: Duplicate symbol "ServiceCollectionExtensions" found. Using first occurrence.
+Warning: Duplicate symbol "type" found. Using first occurrence.
+Warning: Duplicate symbol "for" found. Using first occurrence.
+Warning: Duplicate symbol "InitialRetryAttempts" found. Using first occurrence.
+Warning: Duplicate symbol "InitialRetryDelay" found. Using first occurrence.
+Warning: Duplicate symbol "MaxRetryDelay" found. Using first occurrence.
+Warning: Duplicate symbol "BackoffMultiplier" found. Using first occurrence.
+Warning: Duplicate symbol "RetryIndefinitely" found. Using first occurrence.
+Warning: Duplicate symbol "VectorFieldPackageReferenceAnalyzer" found. Using first occurrence.
+Warning: Duplicate symbol "EFCorePostgresLensQuery" found. Using first occurrence.
+Warning: Duplicate symbol "ISyncReceptor" found. Using first occurrence.
+Warning: Duplicate symbol "IReceptor" found. Using first occurrence.
+Warning: Duplicate symbol "CascadeMessageAsync" found. Using first occurrence.
+Warning: Duplicate symbol "CascadeMessageAsync" found. Using first occurrence.
+Warning: Duplicate symbol "for" found. Using first occurrence.
+Warning: Duplicate symbol "type" found. Using first occurrence.
+Warning: Duplicate symbol "endpoint" found. Using first occurrence.
+Warning: Duplicate symbol "AddWhizbangSignalR" found. Using first occurrence.
+Warning: Duplicate symbol "CascadeToOutboxAsync" found. Using first occurrence.
+Warning: Duplicate symbol "CascadeToEventStoreOnlyAsync" found. Using first occurrence.
+Warning: Duplicate symbol "AddTransportConsumer" found. Using first occurrence.
+Warning: Duplicate symbol "InitiatingContext" found. Using first occurrence.
+Warning: Duplicate symbol "InitialRetryAttempts" found. Using first occurrence.
+Warning: Duplicate symbol "InitialRetryDelay" found. Using first occurrence.
+Warning: Duplicate symbol "MaxRetryDelay" found. Using first occurrence.
+Warning: Duplicate symbol "BackoffMultiplier" found. Using first occurrence.
+Warning: Duplicate symbol "RetryIndefinitely" found. Using first occurrence.
+Warning: Duplicate symbol "InvalidOperationException" found. Using first occurrence.
+Warning: Duplicate symbol "IPerspectiveWithActionsFor" found. Using first occurrence.
+Warning: Duplicate symbol "IPerspectiveFor" found. Using first occurrence.
+Warning: Duplicate symbol "IGlobalPerspectiveFor" found. Using first occurrence.
+Warning: Duplicate symbol "struct" found. Using first occurrence.
+Warning: Duplicate symbol "IScopedMultiLensAccess" found. Using first occurrence.
+Warning: Duplicate symbol "IScopedMultiLensAccess" found. Using first occurrence.
+Warning: Duplicate symbol "IScopedMultiLensAccess" found. Using first occurrence.
+Warning: Duplicate symbol "IScopedMultiLensAccess" found. Using first occurrence.
+Warning: Duplicate symbol "IScopedMultiLensAccess" found. Using first occurrence.
+Warning: Duplicate symbol "IScopedMultiLensAccess" found. Using first occurrence.
+Warning: Duplicate symbol "IScopedMultiLensAccess" found. Using first occurrence.
+Warning: Duplicate symbol "IScopedMultiLensAccess" found. Using first occurrence.
+Warning: Duplicate symbol "GetEventStoreQuery" found. Using first occurrence.
+Warning: Duplicate symbol "ILensQueryFactory" found. Using first occurrence.
+Warning: Duplicate symbol "ILensQuery" found. Using first occurrence.
+Warning: Duplicate symbol "ILensQuery" found. Using first occurrence.
+Warning: Duplicate symbol "ReceptorInvoker" found. Using first occurrence.
+Warning: Duplicate symbol "ReceptorInvoker" found. Using first occurrence.
+Warning: Duplicate symbol "ReceptorInvoker" found. Using first occurrence.
+Warning: Duplicate symbol "IExecutionStrategy" found. Using first occurrence.
+Warning: Duplicate symbol "ForAllTenants" found. Using first occurrence.
+Warning: Duplicate symbol "ForTenant" found. Using first occurrence.
+Warning: Duplicate symbol "KeepTenant" found. Using first occurrence.
+Warning: Duplicate symbol "ServiceRegistrationOptions" found. Using first occurrence.
+Warning: Duplicate symbol "Order" found. Using first occurrence.
+Warning: Duplicate symbol "struct" found. Using first occurrence.
+Warning: Duplicate symbol "struct" found. Using first occurrence.
+Warning: Duplicate symbol "struct" found. Using first occurrence.
+
+Code-docs map written to: /Users/philcarbone/src/whizbang/whizbang-lib.github.io/src/assets/code-docs-map.json
+Total mappings: 495
+
+Unique documentation URLs: 301
+Documentation URLs:
+  - apis/graphql/lens-integration#scope
+  - apis/graphql/mutations
+  - apis/graphql/polymorphic-types
+  - apis/graphql/sorting
+  - apis/mutations/custom-request-dto#execution
+  - apis/mutations/custom-request-dto#mapping
+  - apis/mutations/hooks
+  - apis/mutations/hooks#after
+  - apis/mutations/hooks#before
+  - apis/mutations/hooks#context
+  - apis/mutations/hooks#lifecycle
+  - apis/rest/filtering
+  - apis/rest/lens-integration
+  - apis/rest/mutations
+  - apis/rest/setup
+  - apis/signalr/signalr
+  - core-concepts/diagnostics
+  - data/caching#clear-cache
+  - data/efcore-complex-types#in-place-updates
+  - data/postgres
+  - data/postgres#command-timeout
+  - data/postgres#connection-retry
+  - data/postgres#readiness
+  - data/schema-generation-pattern
+  - data/turnkey-initialization
+  - data/turnkey-initialization#multi-instance
+  - data/work-coordinator-strategies
+  - diagnostics/WHIZ070
+  - diagnostics/WHIZ071
+  - diagnostics/WHIZ400
+  - extending/attributes/auto-populate
+  - extending/attributes/generatestreamid
+  - extending/attributes/streamid
+  - extending/extensibility/database-schema-framework
+  - extending/extensibility/hooks-and-middleware
+  - extending/features/debugger-aware-clock
+  - extending/features/vector-search#auto-config
+  - extending/features/vector-search#turnkey-setup
+  - extending/internals/json-serialization-customizations
+  - extending/source-generators/attribute-utilities
+  - extending/source-generators/configuration
+  - extending/source-generators/json-contexts
+  - extending/source-generators/json-contexts#serializing-additional-types
+  - extending/source-generators/polymorphic-serialization
+  - extending/source-generators/topic-filter-discovery
+  - extending/source-generators/type-symbol-extensions
+  - fundamentals/dispatcher/dispatcher
+  - fundamentals/dispatcher/dispatcher#auto-cascade-to-outbox
+  - fundamentals/dispatcher/dispatcher#automatic-message-cascade
+  - fundamentals/dispatcher/dispatcher#cascade-to-outbox
+  - fundamentals/dispatcher/dispatcher#deferred-event-channel
+  - fundamentals/dispatcher/dispatcher#dispatch-options
+  - fundamentals/dispatcher/dispatcher#event-store-only
+  - fundamentals/dispatcher/dispatcher#localsendmanyasync
+  - fundamentals/dispatcher/dispatcher#routed-message-cascading
+  - fundamentals/dispatcher/invoke-result
+  - fundamentals/dispatcher/routing#domain-topic-inbox
+  - fundamentals/dispatcher/routing#domain-topic-provisioning
+  - fundamentals/dispatcher/routing#event-namespace-registry
+  - fundamentals/dispatcher/routing#event-namespace-source
+  - fundamentals/dispatcher/routing#event-subscription-discovery
+  - fundamentals/dispatcher/routing#inbox-routing
+  - fundamentals/dispatcher/routing#inbox-subscription
+  - fundamentals/dispatcher/routing#message-kind
+  - fundamentals/dispatcher/routing#outbox-routing
+  - fundamentals/dispatcher/routing#own-namespace-of
+  - fundamentals/dispatcher/routing#routing-options
+  - fundamentals/dispatcher/routing#subscribe-to-namespace-of
+  - fundamentals/dispatcher/routing#transport-subscription-builder
+  - fundamentals/dispatcher/routing#with-routing
+  - fundamentals/dispatcher/rpc-extraction
+  - fundamentals/dispatcher/rpc-extraction#discriminated-unions
+  - fundamentals/events/event-store-query
+  - fundamentals/events/event-streams
+  - fundamentals/events/events
+  - fundamentals/events/stream-id
+  - fundamentals/events/stream-id#auto-generation
+  - fundamentals/events/system-events
+  - fundamentals/events/system-events#access-denied
+  - fundamentals/events/system-events#access-granted
+  - fundamentals/events/system-events#audit
+  - fundamentals/events/system-events#audit-builder
+  - fundamentals/events/system-events#audit-mode
+  - fundamentals/events/system-events#audit-model
+  - fundamentals/events/system-events#audit-projection
+  - fundamentals/events/system-events#configuration
+  - fundamentals/events/system-events#emitter
+  - fundamentals/events/system-events#permission-changed
+  - fundamentals/events/system-events#registration
+  - fundamentals/events/system-events#scope-context-established
+  - fundamentals/events/system-events#stream
+  - fundamentals/events/system-events#subscribe-to-audit
+  - fundamentals/events/system-events#transport-filtering
+  - fundamentals/identity/assembly-registry
+  - fundamentals/identity/fuzzy-matching
+  - fundamentals/identity/time-provider
+  - fundamentals/identity/type-formatting
+  - fundamentals/identity/type-matching
+  - fundamentals/identity/type-qualification
+  - fundamentals/identity/whizbang-ids
+  - fundamentals/identity/whizbang-ids#analyzer
+  - fundamentals/identity/whizbang-ids#generic-whizbang-id
+  - fundamentals/identity/whizbang-ids#guid-metadata
+  - fundamentals/identity/whizbang-ids#tracked-guid
+  - fundamentals/lenses/lens-query-factory
+  - fundamentals/lenses/lenses
+  - fundamentals/lenses/multi-model-queries
+  - fundamentals/lenses/scoped-lenses
+  - fundamentals/lenses/scoped-lenses#configuration
+  - fundamentals/lenses/scoped-lenses#ef-core-implementation
+  - fundamentals/lenses/scoped-lenses#filter-modes
+  - fundamentals/lenses/scoped-queries
+  - fundamentals/lenses/scoped-queries#default-scope
+  - fundamentals/lenses/scoped-queries#query-scope
+  - fundamentals/lenses/scoped-queries#scope-override
+  - fundamentals/lenses/scoped-queries#scoped-lens-access
+  - fundamentals/lenses/scoped-queries#scoped-multi-lens-access
+  - fundamentals/lenses/temporal-query
+  - fundamentals/lifecycle/lifecycle#pause-resume
+  - fundamentals/lifecycle/lifecycle-coordinator
+  - fundamentals/lifecycle/lifecycle-coordinator#context
+  - fundamentals/lifecycle/lifecycle-coordinator#diagnostics
+  - fundamentals/lifecycle/lifecycle-coordinator#perspective-context
+  - fundamentals/lifecycle/lifecycle-coordinator#tracking
+  - fundamentals/lifecycle/lifecycle-coordinator#tracking-state
+  - fundamentals/lifecycle/lifecycle-coordinator#whenall
+  - fundamentals/lifecycle/lifecycle-stages
+  - fundamentals/lifecycle/lifecycle-stages#immediate-async
+  - fundamentals/lifecycle/lifecycle-stages#post-lifecycle
+  - fundamentals/messages/cascade-context
+  - fundamentals/messages/cascade-context#enrichers
+  - fundamentals/messages/cascade-context#pointer-properties
+  - fundamentals/messages/delivery-receipts
+  - fundamentals/messages/envelope-registry
+  - fundamentals/messages/envelope-serialization
+  - fundamentals/messages/message-associations
+  - fundamentals/messages/message-context
+  - fundamentals/messages/message-context#caller-info
+  - fundamentals/messages/message-context-extraction
+  - fundamentals/messages/message-tags
+  - fundamentals/messages/message-tags#configuration
+  - fundamentals/messages/message-tags#dispatcher-registry
+  - fundamentals/messages/message-tags#hook-registration
+  - fundamentals/messages/message-tags#hooks
+  - fundamentals/messages/message-tags#metric-tag
+  - fundamentals/messages/message-tags#metric-type
+  - fundamentals/messages/message-tags#processing
+  - fundamentals/messages/message-tags#registration
+  - fundamentals/messages/message-tags#registry
+  - fundamentals/messages/message-tags#signal-priority
+  - fundamentals/messages/message-tags#signal-tag
+  - fundamentals/messages/message-tags#span-kind
+  - fundamentals/messages/message-tags#tag-context
+  - fundamentals/messages/message-tags#telemetry-tag
+  - fundamentals/messages/messages
+  - fundamentals/persistence/observability
+  - fundamentals/persistence/persistence#modes
+  - fundamentals/persistence/persistence#per-receptor-strategy
+  - fundamentals/perspectives/association-metadata
+  - fundamentals/perspectives/event-completion
+  - fundamentals/perspectives/event-completion#dispatcher-integration
+  - fundamentals/perspectives/multi-stream
+  - fundamentals/perspectives/perspective-sync
+  - fundamentals/perspectives/perspective-sync#auto-registration
+  - fundamentals/perspectives/perspective-sync#awaiter-identity
+  - fundamentals/perspectives/perspective-sync#callbacks
+  - fundamentals/perspectives/perspective-sync#cross-scope-sync
+  - fundamentals/perspectives/perspective-sync#dispatcher-integration
+  - fundamentals/perspectives/perspective-sync#event-tracking
+  - fundamentals/perspectives/perspective-sync#explicit-event-tracking
+  - fundamentals/perspectives/perspective-sync#fire-behavior
+  - fundamentals/perspectives/perspective-sync#is-fully-synced
+  - fundamentals/perspectives/perspective-sync#scoped-tracker-accessor
+  - fundamentals/perspectives/perspective-sync#sync-context
+  - fundamentals/perspectives/perspective-sync#tracked-events
+  - fundamentals/perspectives/perspective-sync#tracker-implementation
+  - fundamentals/perspectives/perspective-sync#type-registry
+  - fundamentals/perspectives/perspectives
+  - fundamentals/perspectives/perspectives#pure-services
+  - fundamentals/perspectives/perspectives#rebuild
+  - fundamentals/perspectives/perspectives#rebuild-events
+  - fundamentals/perspectives/perspectives#rewind-events
+  - fundamentals/perspectives/perspectives#status-model
+  - fundamentals/perspectives/perspectives-with-actions
+  - fundamentals/perspectives/physical-fields
+  - fundamentals/perspectives/polymorphic-discriminator
+  - fundamentals/perspectives/polymorphic-types
+  - fundamentals/perspectives/rebuild
+  - fundamentals/perspectives/registry
+  - fundamentals/perspectives/snapshots
+  - fundamentals/perspectives/stream-locking
+  - fundamentals/perspectives/sync
+  - fundamentals/perspectives/table-naming
+  - fundamentals/perspectives/temporal
+  - fundamentals/perspectives/vector-fields
+  - fundamentals/receptors/lifecycle-receptors
+  - fundamentals/receptors/lifecycle-receptors#event-cascading
+  - fundamentals/receptors/lifecycle-receptors#processing-mode
+  - fundamentals/receptors/lifecycle-receptors#replay-safety
+  - fundamentals/receptors/receptors
+  - fundamentals/receptors/receptors#synchronous-receptors
+  - fundamentals/security/audit-logging
+  - fundamentals/security/audit-logging#command-auditing
+  - fundamentals/security/audit-logging#levels
+  - fundamentals/security/audit-logging#selective-auditing
+  - fundamentals/security/message-security#asynclocal-context-flow
+  - fundamentals/security/message-security#callbacks
+  - fundamentals/security/message-security#cross-tenant-operations
+  - fundamentals/security/message-security#envelope-reconstruction
+  - fundamentals/security/message-security#exceptions
+  - fundamentals/security/message-security#explicit-security-context-api
+  - fundamentals/security/message-security#extraction
+  - fundamentals/security/message-security#extractors
+  - fundamentals/security/message-security#lifecycle-receptors
+  - fundamentals/security/message-security#message-context-accessor
+  - fundamentals/security/message-security#registration
+  - fundamentals/security/message-security#scoped-message-context
+  - fundamentals/security/message-security#security-context-helper
+  - fundamentals/security/message-security#security-context-in-event-cascades
+  - fundamentals/security/message-security#service-bus-metadata
+  - fundamentals/security/message-security#transport-metadata
+  - fundamentals/security/multi-tenancy
+  - fundamentals/security/scope-propagation
+  - fundamentals/security/scope-propagation#cross-tenant-impersonation
+  - fundamentals/security/scope-propagation#cross-tenant-operations
+  - fundamentals/security/scope-propagation#impersonation-operations
+  - fundamentals/security/scope-propagation#preserve-ambient-tenant
+  - fundamentals/security/scope-propagation#system-operations
+  - fundamentals/security/scope-propagation#tenant-scoped-impersonation
+  - fundamentals/security/scope-propagation#tenant-scoped-system-operations
+  - fundamentals/security/scoping#filter-composition
+  - fundamentals/security/scoping#filter-patterns
+  - fundamentals/security/scoping#marker-interfaces
+  - fundamentals/security/scoping#perspective-scope
+  - fundamentals/security/security#column-level-security
+  - fundamentals/security/security#exceptions
+  - fundamentals/security/security#extractors
+  - fundamentals/security/security#masking-strategies
+  - fundamentals/security/security#permission-based-rls
+  - fundamentals/security/security#principal-filtering
+  - fundamentals/security/security#role-definition
+  - fundamentals/security/security#roles
+  - fundamentals/security/security#row-level-security
+  - fundamentals/security/security#scope-context
+  - fundamentals/security/security#scope-context-accessor
+  - fundamentals/security/security#security-principals
+  - messaging/commands-events
+  - messaging/transports/azure-service-bus
+  - messaging/transports/azure-service-bus#admin-client
+  - messaging/transports/azure-service-bus#auto-provisioning
+  - messaging/transports/azure-service-bus#connection-retry
+  - messaging/transports/azure-service-bus#publish-auto-provisioning
+  - messaging/transports/azure-service-bus#routing-filters
+  - messaging/transports/azure-service-bus#subscription-naming
+  - messaging/transports/rabbitmq
+  - messaging/transports/rabbitmq#connection-retry
+  - messaging/transports/service-bus-consumer
+  - messaging/transports/transport-consumer
+  - messaging/transports/transport-consumer#additional-destinations
+  - messaging/transports/transport-consumer#auto-configuration
+  - messaging/transports/transport-consumer#subscription-resilience
+  - messaging/transports/transports
+  - messaging/work-coordination
+  - operations/configuration/all-services
+  - operations/configuration/lens-services
+  - operations/configuration/perspective-services
+  - operations/configuration/service-registration
+  - operations/configuration/service-registration-options
+  - operations/configuration/whizbang-options
+  - operations/configuration/whizbang-options#tag-processing-mode
+  - operations/diagnostics/serializable-property-analyzer
+  - operations/diagnostics/whiz059
+  - operations/diagnostics/whiz062
+  - operations/diagnostics/whiz070
+  - operations/diagnostics/whiz080
+  - operations/diagnostics/whiz090
+  - operations/diagnostics/whiz300
+  - operations/diagnostics/whiz802
+  - operations/diagnostics/whiz803
+  - operations/diagnostics/whiz807
+  - operations/infrastructure/database-limits
+  - operations/infrastructure/migrations
+  - operations/infrastructure/migrations#migration-events
+  - operations/infrastructure/policies
+  - operations/observability/diagnostics#system-diagnostics
+  - operations/observability/metrics
+  - operations/observability/opentelemetry-integration
+  - operations/observability/opentelemetry-integration#metrics
+  - operations/observability/opentelemetry-integration#registration
+  - operations/observability/tracing#components
+  - operations/observability/tracing#configuration
+  - operations/observability/tracing#parent-context
+  - operations/observability/verbosity-levels
+  - operations/testing/lifecycle-synchronization
+  - operations/workers/execution-lifecycle
+  - operations/workers/perspective-worker
+  - operations/workers/perspective-worker#dedup-observer
+  - operations/workers/perspective-worker#event-deduplication
+  - operations/workers/perspective-worker#security-context
+  - validation/invalid-stream-id
+  - validation/stream-id-guard

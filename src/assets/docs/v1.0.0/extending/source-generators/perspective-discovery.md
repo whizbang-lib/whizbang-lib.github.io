@@ -1,5 +1,6 @@
 ---
 title: Perspective Discovery
+pageType: concept
 version: 1.0.0
 category: Source Generators
 order: 2

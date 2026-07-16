@@ -1,5 +1,6 @@
 ---
 title: "Multi-Instance Coordination"
+pageType: concept
 version: 1.0.0
 category: "Messaging"
 order: 8

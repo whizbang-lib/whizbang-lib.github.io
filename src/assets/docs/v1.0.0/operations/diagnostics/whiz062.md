@@ -1,5 +1,6 @@
 ---
 title: 'WHIZ062: Property Uses Non-Serializable Interface Type'
+pageType: troubleshooting
 description: >-
   Error diagnostic when a message property uses a non-generic interface type
   that cannot be serialized for AOT

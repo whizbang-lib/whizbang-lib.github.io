@@ -1,5 +1,6 @@
 ---
 title: Multi-Tenant SaaS
+pageType: concept
 version: 1.0.0
 category: Customization Examples
 order: 1

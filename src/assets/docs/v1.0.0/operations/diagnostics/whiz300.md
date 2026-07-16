@@ -1,5 +1,6 @@
 ---
 title: 'WHIZ300: Inconsistent Perspective Model Types'
+pageType: troubleshooting
 description: >-
   Error diagnostic when a perspective class implements multiple perspective
   interfaces with different TModel types

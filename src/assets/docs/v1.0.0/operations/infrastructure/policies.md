@@ -1,5 +1,6 @@
 ---
 title: Policy-Based Routing
+pageType: concept
 version: 1.0.0
 category: Infrastructure
 order: 4

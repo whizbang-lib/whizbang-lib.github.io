@@ -1,5 +1,6 @@
 ---
 title: Transport DLQ Recovery
+pageType: concept
 version: 1.0.0
 category: Dead-Letter Queue
 order: 4

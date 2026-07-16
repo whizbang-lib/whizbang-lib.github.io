@@ -1,5 +1,6 @@
 ---
 title: Migration Tracking
+pageType: concept
 version: 1.0.0
 category: Infrastructure
 order: 5

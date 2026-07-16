@@ -1,5 +1,6 @@
 ---
 title: Type Symbol Extensions
+pageType: concept
 version: 1.0.0
 category: Source Generators
 order: 11

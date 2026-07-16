@@ -1,5 +1,6 @@
 ---
 title: "Vector Similarity Search"
+pageType: concept
 version: 1.0.0
 category: "Lenses"
 order: 7

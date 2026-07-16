@@ -1,5 +1,6 @@
 ---
 title: In-Memory Transport
+pageType: concept
 version: 1.0.0
 category: Transports
 order: 2

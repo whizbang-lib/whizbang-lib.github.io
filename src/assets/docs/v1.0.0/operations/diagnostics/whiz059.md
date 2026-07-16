@@ -1,5 +1,6 @@
 ---
 title: 'WHIZ059: GUID Interception Suppressed'
+pageType: troubleshooting
 description: >-
   Informational diagnostic indicating a GUID creation call was not intercepted
   due to suppression

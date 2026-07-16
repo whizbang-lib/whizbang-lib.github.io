@@ -1,5 +1,6 @@
 ---
 title: Recovery Worker & Policy Matrix
+pageType: reference
 version: 1.0.0
 category: Dead-Letter Queue
 order: 2

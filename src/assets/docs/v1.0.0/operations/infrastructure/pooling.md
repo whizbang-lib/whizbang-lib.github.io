@@ -1,5 +1,6 @@
 ---
 title: Object Pooling
+pageType: concept
 version: 1.0.0
 category: Infrastructure
 order: 3

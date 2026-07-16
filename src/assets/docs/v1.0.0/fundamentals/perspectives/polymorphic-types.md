@@ -1,5 +1,6 @@
 ---
 title: Polymorphic Types in Perspectives
+pageType: concept
 version: 1.0.0
 category: Perspectives
 codeReferences:

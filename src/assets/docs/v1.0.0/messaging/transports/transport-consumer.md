@@ -1,5 +1,6 @@
 ---
 title: Transport Consumer
+pageType: concept
 version: 1.0.0
 category: Core Concepts
 description: >-

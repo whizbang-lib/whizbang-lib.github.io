@@ -1,19 +1,23 @@
 {
-  "totalDiagrams": 39,
+  "totalDiagrams": 43,
   "byType": {
-    "graph": 7,
-    "sequenceDiagram": 30,
-    "flowchart": 1,
+    "graph": 9,
+    "sequenceDiagram": 31,
+    "flowchart": 2,
     "stateDiagram": 1
   },
   "byFile": {
     "src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md": 6,
     "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md": 3,
     "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md": 2,
+    "src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md": 1,
+    "src/assets/docs/v1.0.0/fundamentals/workers/perspective-worker-notify.md": 1,
+    "src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md": 1,
     "src/assets/docs/v1.0.0/messaging/failure-handling.md": 2,
     "src/assets/docs/v1.0.0/messaging/idempotency-patterns.md": 3,
     "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md": 10,
     "src/assets/docs/v1.0.0/messaging/work-coordination.md": 5,
+    "src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md": 1,
     "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md": 1,
     "src/assets/docs/v1.0.0/operations/testing/lifecycle-synchronization.md": 2,
     "src/assets/docs/v1.0.0/operations/workers/execution-lifecycle.md": 1,
@@ -94,7 +98,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-      "line": 35,
+      "line": 69,
       "diagramType": "graph",
       "firstLine": "graph LR",
       "lineCount": 13,
@@ -102,11 +106,35 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-      "line": 229,
+      "line": 265,
       "diagramType": "sequenceDiagram",
       "firstLine": "sequenceDiagram",
       "lineCount": 19,
       "preview": "sequenceDiagram\n    participant D as Dispatcher\n    participant R as Receptor"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
+      "line": 512,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 25,
+      "preview": "sequenceDiagram\n  autonumber\n  participant P as Producer"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/perspective-worker-notify.md",
+      "line": 22,
+      "diagramType": "graph",
+      "firstLine": "graph LR",
+      "lineCount": 5,
+      "preview": "graph LR\n  Producer[Producer commits<br/>wh_perspective_events row] -->|trigger fires| PG[(PostgreSQL<br/>NOTIFY 'perspective')]\n  PG -->|LISTEN dispatch| Listener[IWorkNotificationListener]"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md",
+      "line": 34,
+      "diagramType": "graph",
+      "firstLine": "graph LR",
+      "lineCount": 8,
+      "preview": "graph LR\n  Worker[Background worker<br/>tier-1+2 eligible] -->|Borrow| Pool[Pinned pool<br/>Size=1..N]\n  Pool -->|Direct| PG[(PostgreSQL<br/>port 5432)]"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/failure-handling.md",
@@ -267,6 +295,14 @@
       "firstLine": "sequenceDiagram",
       "lineCount": 17,
       "preview": "sequenceDiagram\n    participant I1 as Instance 1\n    participant DB as PostgreSQL"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
+      "line": 108,
+      "diagramType": "flowchart",
+      "firstLine": "flowchart LR",
+      "lineCount": 15,
+      "preview": "flowchart LR\n  P[Producer call site]\n  S{Storage<br/>EmptyStreamIdGuard}"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",

@@ -1,5 +1,6 @@
 ---
 title: Custom Health Checks
+pageType: concept
 version: 1.0.0
 category: Extensibility
 order: 6

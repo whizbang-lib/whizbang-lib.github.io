@@ -1,5 +1,6 @@
 ---
 title: Perspective-event Dead-lettering
+pageType: concept
 version: 1.0.0
 category: Dead-Letter Queue
 order: 5

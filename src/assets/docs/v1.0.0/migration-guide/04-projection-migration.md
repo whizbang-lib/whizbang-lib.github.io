@@ -1,5 +1,6 @@
 ---
 title: Projection Migration
+pageType: guide
 version: 1.0.0
 category: Migration Guide
 order: 5

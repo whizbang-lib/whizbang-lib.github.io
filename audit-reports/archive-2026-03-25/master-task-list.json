@@ -1,0 +1,159 @@
+{
+  "generatedAt": "2026-03-25",
+  "totalTasks": 150,
+  "byPriority": { "P0": 27, "P1": 73, "P2": 50 },
+  "byType": {
+    "docs-update": 58,
+    "frontmatter": 46,
+    "code-sample-fix": 19,
+    "new-content": 15,
+    "redundancy": 5,
+    "diagram-fix": 3,
+    "link-fix": 3,
+    "persona-gaps": 1
+  },
+  "executionBatches": [
+    {
+      "batch": "B01",
+      "name": "Missing Pages (docs referenced by code)",
+      "priority": "P0",
+      "effort": "L",
+      "description": "Create pages that <docs> tags point to but don't exist. These block code-docs link validation.",
+      "taskIds": ["2C-001", "2C-002", "2C-003", "2C-004", "2D-001", "2D-002", "2F-001", "2H-001", "2H-002", "2H-003", "2I-001", "2I-002", "2E-011"],
+      "taskCount": 13,
+      "pages_to_create": [
+        "fundamentals/perspectives/perspectives-with-actions.md (IPerspectiveWithActionsFor, ApplyResult, ModelAction)",
+        "fundamentals/perspectives/snapshots.md (IPerspectiveSnapshotStore)",
+        "fundamentals/perspectives/stream-locking.md (IPerspectiveStreamLocker)",
+        "fundamentals/messages/cascade-context.md (IScopeContext, CascadeContext, InitiatingContext)",
+        "fundamentals/messages/message-context-extraction.md (EnvelopeContextExtractor)",
+        "data/efcore-complex-types.md (UpdateMetadataInPlace, UpdateScopeInPlace)",
+        "operations/observability/metrics.md (all 6 metrics classes)",
+        "operations/diagnostics/whiz300.md (PerspectiveModelConsistencyAnalyzer)",
+        "operations/infrastructure/database-limits.md",
+        "extending/attributes/auto-populate.md (20 types for auto-populate feature)",
+        "extending/source-generators/type-symbol-extensions.md"
+      ],
+      "verification": "Run node src/scripts/audit-baseline.mjs and verify broken-code-docs-links.json shows 0 broken links"
+    },
+    {
+      "batch": "B02",
+      "name": "Critical API Accuracy (Dispatcher + Lifecycle)",
+      "priority": "P0",
+      "effort": "L",
+      "description": "Fix the most critical API documentation inaccuracies — IDispatcher interface, DeliveryReceipt, LifecycleStage enum, SystemCommands signatures.",
+      "taskIds": ["2A-001", "2A-002", "2A-003", "2A-009", "2B-001", "2B-002", "2B-008", "2B-009"],
+      "taskCount": 8,
+      "files_to_modify": [
+        "fundamentals/lifecycle/lifecycle-stages.md (fix stage count: 20→25, add PostAllPerspectives, AfterReceptorCompletion)",
+        "fundamentals/dispatcher/dispatcher.md (fix IDispatcher interface, DeliveryReceipt, PublishAsync return type)",
+        "fundamentals/dispatcher/routing.md (fix RebuildPerspectiveCommand signature)",
+        "fundamentals/lifecycle/lifecycle.md (fix Task.Delay in test sample, fix SystemCommand signatures)"
+      ],
+      "verification": "Code samples should conceptually compile against current API"
+    },
+    {
+      "batch": "B03",
+      "name": "Missing Frontmatter (No YAML at all)",
+      "priority": "P0",
+      "effort": "M",
+      "description": "Add complete frontmatter to all 26 pages that have NONE. These pages are invisible to search and nav.",
+      "taskIds": ["2C-014", "2C-015", "2C-016", "2C-017", "2D-003", "2E-001", "2E-002", "2E-003", "2E-004", "2E-005", "2E-006", "2F-002", "2F-003", "2F-004", "2G-001", "2K-001", "2K-002", "2K-003"],
+      "taskCount": 18,
+      "pages": "26 pages across perspectives (4), events (1), messaging (6), data (3), apis/graphql (6), identity (5), lenses (2), security (2)",
+      "verification": "Run audit-baseline.mjs — frontmatter-gaps.json should show 0 pages missing 'title'"
+    },
+    {
+      "batch": "B04",
+      "name": "API Documentation Gaps (P1)",
+      "priority": "P1",
+      "effort": "L",
+      "description": "Fill in undocumented interfaces, methods, enums, and parameters across core docs.",
+      "taskIds": ["2A-004", "2A-005", "2A-006", "2A-007", "2A-008", "2A-022", "2A-025", "2B-003", "2B-004", "2B-005", "2B-006", "2B-007", "2B-010", "2B-011", "2B-012", "2B-013", "2C-005", "2C-006", "2C-007", "2C-008", "2C-009", "2C-010"],
+      "taskCount": 22,
+      "key_items": [
+        "ILifecycleTrackingContext + ILifecyclePerspectiveStageContext (undocumented interfaces)",
+        "LocalInvokeAndSyncAsync missing callback params + TPerspective overloads",
+        "DispatchOptions class, InvokeResult<T>, LocalInvokeWithReceiptAsync",
+        "Route.EventStoreOnly(), Route.LocalNoPersist()",
+        "DispatchMode [Flags] composition",
+        "ILifecycleContext.AttemptNumber + ProcessingMode",
+        "IPerspectiveBase marker, IGlobalPerspective 3-event limit",
+        "AwaitPerspectiveSyncAttribute SyncFireBehavior"
+      ],
+      "verification": "Read each modified page and verify all public members match code"
+    },
+    {
+      "batch": "B05",
+      "name": "Frontmatter Completion (codeReferences + tags)",
+      "priority": "P1",
+      "effort": "L",
+      "description": "Fill in missing codeReferences, tags with synonyms, and other partial frontmatter gaps across ALL sections.",
+      "taskIds": ["2A-014", "2A-015", "2A-016", "2B-016", "2B-017", "2B-018", "2C-018", "2C-019", "2C-020", "2D-012", "2D-014", "2D-015", "2E-007", "2E-008", "2E-009", "2E-010", "2F-005", "2F-006", "2F-007", "2F-012", "2G-002", "2H-004", "2I-003", "2J-001", "2J-002", "2K-004", "2K-005", "2K-011"],
+      "taskCount": 28,
+      "scope": "~100 pages need codeReferences added. ~80 pages need tag synonym expansion.",
+      "verification": "Run audit-baseline.mjs — frontmatter-gaps.json should show significant improvement in coverage percentages"
+    },
+    {
+      "batch": "B06",
+      "name": "Content Verification (per-section)",
+      "priority": "P1",
+      "effort": "L",
+      "description": "Deep source-code verification for sections that got baseline-only analysis. Read each page and corresponding library source.",
+      "taskIds": ["2D-004", "2D-005", "2D-006", "2D-007", "2D-008", "2D-009", "2D-010", "2E-012", "2E-013", "2E-014", "2F-008", "2F-009", "2G-003", "2H-005", "2I-004", "2J-003", "2J-004", "2K-006", "2K-007", "2K-008", "2K-009"],
+      "taskCount": 21,
+      "approach": "Each task requires reading the doc page AND the referenced library source. Best split into per-section sub-sessions.",
+      "verification": "Compare each page's API descriptions against current source code"
+    },
+    {
+      "batch": "B07",
+      "name": "Code Sample Metadata Cleanup",
+      "priority": "P2",
+      "effort": "L",
+      "description": "Fix auto-generated code sample metadata across all pages: meaningful descriptions, proper tags, testFile/testMethod links.",
+      "taskIds": ["2A-023", "2A-024", "2B-019", "2B-020", "2B-021", "2B-022", "2C-021", "2D-013", "2E-015", "2F-011", "2G-004", "2H-006", "2I-005", "2J-006", "2K-010"],
+      "taskCount": 15,
+      "scope": "~3118 code samples, 139 without metadata, ~2979 with auto-generated poor metadata. Consider building a script to assist.",
+      "verification": "Run audit-baseline.mjs — code-samples-inventory.json should show improved metadata coverage"
+    },
+    {
+      "batch": "B08",
+      "name": "Diagrams, Redundancy, and Cross-Links",
+      "priority": "P2",
+      "effort": "M",
+      "description": "Fix diagram issues, resolve content redundancy, add missing cross-links.",
+      "taskIds": ["2A-017", "2A-018", "2A-019", "2B-023", "2B-024", "2C-012", "2C-013"],
+      "taskCount": 7,
+      "items": [
+        "Pipeline diagrams missing PostAllPerspectives stages",
+        "Mermaid sequence diagram needs PostAllPerspectives",
+        "Duplicate pipeline diagram between lifecycle-coordinator.md and lifecycle-stages.md",
+        "ASCII flow diagrams should be mermaid",
+        "System commands duplicated in routing.md and lifecycle.md",
+        "2 association pages + 2 sync pages potential overlap"
+      ],
+      "verification": "Visual review of diagrams, check for content duplication"
+    },
+    {
+      "batch": "B09",
+      "name": "Remaining P2 Items",
+      "priority": "P2",
+      "effort": "M",
+      "description": "Remaining low-priority items: persona gaps, contributor docs, minor fixes.",
+      "taskIds": ["2A-010", "2A-011", "2A-012", "2A-013", "2A-020", "2A-021", "2B-014", "2B-015", "2B-025", "2B-026", "2C-011", "2C-022", "2C-023", "2C-024", "2C-025", "2D-011", "2F-010", "2J-005"],
+      "taskCount": 18,
+      "verification": "Per-item verification"
+    }
+  ],
+  "recommendedExecutionOrder": [
+    "B03 — Missing Frontmatter (quick wins, unblocks search/nav)",
+    "B01 — Missing Pages (unblocks code-docs validation)",
+    "B02 — Critical API Accuracy (core docs must be correct)",
+    "B04 — API Documentation Gaps (fill in what exists)",
+    "B05 — Frontmatter Completion (improve search/discovery)",
+    "B06 — Content Verification (deep source comparison)",
+    "B07 — Code Sample Metadata (consider scripting)",
+    "B08 — Diagrams and Redundancy",
+    "B09 — Remaining Items"
+  ]
+}

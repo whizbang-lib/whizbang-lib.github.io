@@ -1,5 +1,6 @@
 ---
 title: Exactly-Once Receptor Firing
+pageType: concept
 version: 1.0.0
 category: Core Concepts
 order: 11

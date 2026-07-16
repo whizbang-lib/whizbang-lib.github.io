@@ -1,5 +1,6 @@
 ---
 title: GraphQL Setup
+pageType: guide
 version: 1.0.0
 category: GraphQL
 order: 2
