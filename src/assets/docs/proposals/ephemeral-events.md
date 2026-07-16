@@ -228,6 +228,45 @@ Pruning old ephemeral pointers never weakens the guard — the guard keys off th
 
 **Migration.** The split lands *before* the reaper. All existing `wh_event_store` rows fold in as `storage_class = 0` (everything today is Sourced) — pointer + body populated by a straight copy — then the event-store SQL functions (append, dedup, `commit_sequence` stamp, replay reads) repoint to the two tables. Pre-1.0, with no production data to rewrite, is the cheapest possible time to do it.
 
+## Out-of-order arrivals: rewind, the grace window, and ephemeral snapshots
+
+Ephemeral events still arrive **out of order** in a short window (transport reordering, retries, concurrent producers). When a straggler with an earlier `commit_sequence` lands after later events were applied, the perspective must **rewind** — re-apply from the inversion point forward, in the correct order. So rewind is not something to forbid for ephemeral streams; it is *required* for them. This is where **rebuild** and **rewind** part ways:
+
+- **Rebuild-from-zero** re-reads a stream's *entire* history — most of which is legitimately reaped. Never valid for ephemeral; the runtime guard **refuses** it.
+- **Rewind** is *bounded* — recent events only. It stays **allowed** for ephemeral, made safe by the two mechanisms below.
+
+### The grace window (keeps the bodies)
+
+An ephemeral body is not reaped the instant it is consumed; it is retained for a **rewind grace window** so an out-of-order straggler still has the bodies it needs to re-apply. The reaper's gate gains a second, age-based condition:
+
+```sql{title: "Reaper gate with the grace window" description: "An ephemeral body is reaped only once it is consumed AND older than the (per-type or global) rewind grace window." category: "Design" difficulty: "ADVANCED" tags: ["ephemeral", "reaper", "rewind", "grace-window"]}
+DELETE FROM wh_event_body eb USING wh_event_store es
+WHERE es.event_id = eb.event_id
+  AND es.created_at < NOW() - (COALESCE(type_grace_seconds, global_grace_seconds) * INTERVAL '1 second')  -- aged past grace
+  AND NOT EXISTS (unprocessed wh_perspective_events for the event);                                        -- consumed
+```
+
+Grace is **globally configurable** (a `wh_settings` default, **300 s**) and **overridable per type** via `[Ephemeral(RewindGrace = …)]` — the generator stamps the override, a small `event_type → grace` lookup is populated at startup, and the reaper's age test resolves `COALESCE(type, global)` per event. This softens "instant expire" to "expire ~5 min after consumption" for the *body* only (the pointer is untouched). A straggler later than the window loses its reorder — a small, transient, logged inaccuracy, acceptable for data that is explicitly not the durable source of truth; widen the window for a transport that reorders more aggressively.
+
+### Snapshots (the rewind floor)
+
+The grace window keeps recent *bodies*; a rewind also needs a **base state** to rewind *from*, because everything below the reap boundary is gone. That base state is a **snapshot** — and for an ephemeral perspective the snapshot **is** the rewind floor. Three properties:
+
+1. **Snapshot-before-reap.** The reaper must not drop an event's body until that event is captured in a snapshot for every consuming `(stream, perspective)` — so the gate gains a third condition: **consumed AND aged-past-grace AND snapshot-covered** (`snapshot_commit_sequence ≥ the event's commit_sequence`). Snapshotting is *part of* the cleanup.
+2. **Single-slot.** Only the *latest* snapshot matters — you can never rewind below the reap boundary — so old ephemeral snapshots are pruned (keep the latest at/above the boundary). Snapshot storage stays bounded.
+3. **Authoritative.** The snapshot is the source of truth (never `RebuildFromEvents`) — a new `Authoritative` value on the existing `SnapshotUpgradePolicy`.
+
+### Why "mixed" perspectives are not a third case
+
+Snapshots (`CreateSnapshotAsync(streamId, perspectiveName, …)` with a `snapshot_commit_sequence` anchor), cursors, and rewind are all keyed **per-`(stream, perspective)`**, and streams are **homogeneous** (all-Sourced or all-Ephemeral). So ephemeral-ness is a **per-stream** property, and the policy is per-stream:
+
+| `(stream, perspective)` | Replay floor | Snapshots | Rebuild-from-zero |
+|---|---|---|---|
+| **Sourced stream** | event zero | optional (perf cache) | allowed |
+| **Ephemeral stream** | latest snapshot | mandatory · frequent · single-slot · authoritative | refused |
+
+A "mixed" perspective is simply one that touches some ephemeral streams **and** some sourced streams; each `(stream, perspective)` pair runs its own policy independently. There is no special mixed plumbing — the existing per-stream granularity plus the homogeneous-stream invariant does the work, so **normal, mixed, and ephemeral perspectives all flow through one mechanism** that branches on a single per-stream bit. *(One edge: a **collective** perspective — the `__collective__` sink folding many streams into one shared model — is not per-stream and needs its own snapshot story; rare, handled separately.)*
+
 ## Transient storage: in-memory or a TTL'd row (developer picks)
 
 Where the authoritative ephemeral *state* lives is **orthogonal** to ephemeral-ness, chosen per perspective:
