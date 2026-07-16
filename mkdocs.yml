@@ -59,6 +59,7 @@ nav:
     - Installation Guide: getting-started/installation.md
     - Quick Start Tutorial: getting-started/quick-start.md
     - Project Structure Guide: getting-started/project-structure.md
+    - Glossary: getting-started/glossary.md
 - Learn:
     - Tutorial:
         - ECommerce Tutorial Overview: learn/tutorial/tutorial-overview.md
@@ -85,9 +86,12 @@ nav:
         - Events: fundamentals/events/events.md
         - Stream ID: fundamentals/events/stream-id.md
         - Event Streams: fundamentals/events/event-streams.md
+        - Event Upcasting: fundamentals/events/event-upcasting.md
     - Dispatcher:
         - Dispatcher Deep Dive: fundamentals/dispatcher/dispatcher.md
         - Namespace-Based Routing: fundamentals/dispatcher/routing.md
+        - PublishOnceAsync — Exactly-Once Event Emission: fundamentals/dispatcher/publish-once.md
+        - SyncMode — Read-After-Write Dispatch: fundamentals/dispatcher/sync-mode.md
         - RPC Response Extraction: fundamentals/dispatcher/rpc-extraction.md
     - Messages:
         - 'Message Context & Tracing': fundamentals/messages/message-context.md
@@ -99,15 +103,21 @@ nav:
         - Envelope Registry: fundamentals/messages/envelope-registry.md
         - Envelope Serialization: fundamentals/messages/envelope-serialization.md
         - Message Associations: fundamentals/messages/message-associations.md
+    - Messaging:
+        - Composite Events: fundamentals/messaging/composite-events.md
+        - Collective Events: fundamentals/messaging/collective-events.md
+        - Apply Hooks: fundamentals/messaging/apply-hooks.md
     - Receptors:
         - Receptors Guide: fundamentals/receptors/receptors.md
         - Lifecycle Receptors: fundamentals/receptors/lifecycle-receptors.md
+        - Exactly-Once Receptor Firing: fundamentals/receptors/exactly-once-firing.md
     - Perspectives:
         - Multi-Stream Perspectives: fundamentals/perspectives/multi-stream.md
         - Perspectives Guide: fundamentals/perspectives/perspectives.md
         - Perspective Association Info: fundamentals/perspectives/association-metadata.md
         - Perspective Synchronization: fundamentals/perspectives/perspective-sync.md
         - Perspectives with Actions: fundamentals/perspectives/perspectives-with-actions.md
+        - Versioned Apply — Strict Cross-Pod Ordering: fundamentals/perspectives/versioned-apply.md
         - Event Completion Awaiter: fundamentals/perspectives/event-completion.md
         - Perspective Registry: fundamentals/perspectives/registry.md
         - Perspective Table Naming: fundamentals/perspectives/table-naming.md
@@ -116,12 +126,17 @@ nav:
         - Perspective Rebuild: fundamentals/perspectives/rebuild.md
         - Perspective Snapshots: fundamentals/perspectives/snapshots.md
         - Perspective Stream Locking: fundamentals/perspectives/stream-locking.md
+        - Perspective Rewind: fundamentals/perspectives/rewind.md
+        - Apply Exactly-Once Contract: fundamentals/perspectives/apply-exactly-once.md
         - Physical Fields: fundamentals/perspectives/physical-fields.md
         - Polymorphic Discriminator: fundamentals/perspectives/polymorphic-discriminator.md
         - PerspectiveAssociationInfo: fundamentals/perspectives/association-info.md
         - Polymorphic Types in Perspectives: fundamentals/perspectives/polymorphic-types.md
         - Vector Fields: fundamentals/perspectives/vector-fields.md
         - Perspective Sync: fundamentals/perspectives/sync.md
+    - Sagas:
+        - Whizbang.Sagas — Multi-Stream Saga Coordination: fundamentals/sagas/whizbang-sagas.md
+        - 'Completion Orchestration & Adaptive Watchdog': fundamentals/sagas/completion-orchestration.md
     - Lenses:
         - Lens Query Factory: fundamentals/lenses/lens-query-factory.md
         - Scoped Lens Queries: fundamentals/lenses/scoped-queries.md
@@ -143,6 +158,12 @@ nav:
         - 'TypeMatcher: Type Name Matching Utilities': fundamentals/identity/type-matching.md
         - 'TypeQualification: Type Name Formatting Control': fundamentals/identity/type-qualification.md
         - Time Provider: fundamentals/identity/time-provider.md
+        - 'Pinned-Type Ledger: Safe, Governed Type Renames': fundamentals/identity/pinned-type-ledger.md
+    - Body Offloads:
+        - Body Offload (Claim-Check Pattern): fundamentals/offloads/message-body-store.md
+        - Providers:
+            - InMemory Body Store: fundamentals/offloads/providers/in-memory.md
+            - Azure Blob Body Store: fundamentals/offloads/providers/azure-blob.md
     - Security:
         - Multi-Tenancy Patterns: fundamentals/security/multi-tenancy.md
         - Security: fundamentals/security/security.md
@@ -151,10 +172,17 @@ nav:
         - Scope Propagation: fundamentals/security/scope-propagation.md
         - Implementing Multi-Tenancy: fundamentals/security/implementing-multi-tenancy.md
         - Message Security Context Propagation: fundamentals/security/message-security.md
+        - 'HTTP Security Headers & Method Filtering': fundamentals/security/http-security-headers.md
         - Scoping: fundamentals/security/scoping.md
     - Persistence:
         - 'Observability & Message Hops': fundamentals/persistence/observability.md
+        - Caller Information Capture: fundamentals/persistence/caller-info-capture.md
         - Persistence: fundamentals/persistence/persistence.md
+    - Workers:
+        - Pinned Worker Connection Pool: fundamentals/workers/pinned-connection-pool.md
+        - PerspectiveWorker NOTIFY Wake: fundamentals/workers/perspective-worker-notify.md
+        - Instance Liveness — Advisory Lock + Heartbeat Fallback: fundamentals/workers/instance-liveness.md
+        - Worker Classification — A through F: fundamentals/workers/worker-classification.md
 - Messaging:
     - Outbox Pattern: messaging/outbox-pattern.md
     - Inbox Pattern: messaging/inbox-pattern.md
@@ -166,10 +194,12 @@ nav:
     - Multi-Instance Coordination: messaging/multi-instance-coordination.md
     - Topic Filters: messaging/topic-filters.md
     - Work Coordination: messaging/work-coordination.md
+    - Composite Events: messaging/composite-events.md
     - Transports:
         - Azure Service Bus Transport: messaging/transports/azure-service-bus.md
         - RabbitMQ Transport: messaging/transports/rabbitmq.md
         - In-Memory Transport: messaging/transports/in-memory.md
+        - Infrastructure Mapping: messaging/transports/infrastructure-mapping.md
         - Transports Component: messaging/transports/transports.md
         - Transport Consumer: messaging/transports/transport-consumer.md
 - Data:
@@ -199,6 +229,7 @@ nav:
         - GraphQL Sorting: apis/graphql/sorting.md
         - Polymorphic Types: apis/graphql/polymorphic-types.md
         - GraphQL Scoping: apis/graphql/scoping.md
+        - Production Hardening: apis/graphql/production-hardening.md
     - Mutations:
         - Mutation Hooks: apis/mutations/hooks.md
         - Custom Request DTOs: apis/mutations/custom-request-dto.md
@@ -213,6 +244,7 @@ nav:
         - AddPerspectiveServices: operations/configuration/perspective-services.md
         - AddLensServices: operations/configuration/lens-services.md
         - AddAllWhizbangServices: operations/configuration/all-services.md
+        - Empty Stream ID Policy: operations/configuration/empty-stream-id-policy.md
     - Observability:
         - Trace Verbosity Levels: operations/observability/verbosity-levels.md
         - Tracing: operations/observability/tracing.md
@@ -220,6 +252,7 @@ nav:
         - Diagnostics: operations/observability/diagnostics.md
         - Logging Categories: operations/observability/logging-categories.md
         - Metrics Reference: operations/observability/metrics.md
+        - Stuck Row Sentinel: operations/observability/stuck-row-sentinel.md
     - Infrastructure:
         - .NET Aspire Integration: operations/infrastructure/aspire-integration.md
         - Health Checks: operations/infrastructure/health-checks.md
@@ -228,14 +261,22 @@ nav:
         - Migration Tracking: operations/infrastructure/migrations.md
         - Policy Engine Component: operations/infrastructure/policy-engine.md
         - Database Identifier Limits: operations/infrastructure/database-limits.md
+    - Dead-Letter Queue:
+        - Internal DLQ (wh_dead_letters): operations/dead-letter-queue/internal-dlq.md
+        - 'Recovery Worker & Policy Matrix': operations/dead-letter-queue/recovery.md
+        - Operator HTTP API: operations/dead-letter-queue/operator-api.md
+        - Transport DLQ Recovery: operations/dead-letter-queue/transport-recovery.md
+        - Perspective-event Dead-lettering: operations/dead-letter-queue/perspective-events.md
     - Workers:
         - Perspective Worker: operations/workers/perspective-worker.md
         - Execution Lifecycle: operations/workers/execution-lifecycle.md
         - Database Readiness: operations/workers/database-readiness.md
+        - 'Process Work Batch — Lease & Heartbeat Semantics': operations/workers/process-work-batch-lease-semantics.md
     - Testing:
         - 'Testing Receptors & Perspectives': operations/testing/testing-receptors.md
         - Lifecycle Synchronization: operations/testing/lifecycle-synchronization.md
     - Diagnostics:
+        - Runtime Error Reference: operations/diagnostics/error-reference.md
         - 'WHIZ080: Multiple Handlers for RPC Message': operations/diagnostics/whiz080.md
         - 'WHIZ090: MessageTag Parameter Naming': operations/diagnostics/whiz090.md
         - 'WHIZ300: Inconsistent Perspective Model Types': operations/diagnostics/whiz300.md
@@ -248,8 +289,10 @@ nav:
         - 'WHIZ807: Physical Fields Discovered': operations/diagnostics/whiz807.md
         - 'WHIZ071: Missing Pgvector Package': operations/diagnostics/whiz071.md
         - 'WHIZ030: Perspective Event Missing StreamKey': operations/diagnostics/whiz030.md
+        - 'WHIZ121: Pinned-Type Ledger Entry Has No Living Type': operations/diagnostics/whiz121.md
         - 'WHIZ070: Missing Pgvector.EntityFrameworkCore Package': operations/diagnostics/whiz070.md
         - 'WHIZ031: Multiple StreamKey Attributes': operations/diagnostics/whiz031.md
+        - 'WHIZ120: Pinned Type Renamed Without Ledger Acknowledgment': operations/diagnostics/whiz120.md
     - 'Deployment & Scaling':
         - Performance Tuning: operations/deployment/performance-tuning.md
         - Native AOT: operations/deployment/native-aot.md
@@ -292,6 +335,7 @@ nav:
     - Internals:
         - 'Message Lifecycle & Architecture': extending/internals/message-lifecycle.md
         - JSON Serialization Customizations: extending/internals/json-serialization-customizations.md
+        - Event Ordering Invariant: extending/internals/event-ordering-invariant.md
     - Features:
         - Debugger-Aware Clock: extending/features/debugger-aware-clock.md
         - Vector Search: extending/features/vector-search.md

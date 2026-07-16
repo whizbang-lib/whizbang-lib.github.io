@@ -3450,102 +3450,6 @@
         "wordCount": 490
       },
       {
-        "slug": "drafts/contributing/data-engines/implementing-icapabilities",
-        "title": "Implementing IWorkCoordinatorCapabilities",
-        "category": "contributing",
-        "order": 3,
-        "description": "\n# Implementing `IWorkCoordinatorCapabilities`\n\n`IWorkCoordinatorCapabilities` declares which optional features your engine supports. Whizbang queries it at startup and adapts: features your engine doesn't have fall back to slower-but-correct alternatives.\n\n## The capability matrix\n\n| Capability | Postgres | SQL Server (future) | MySQL (future) | SQLite (future) |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 4,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/implementing-icapabilities.md",
-        "wordCount": 635
-      },
-      {
-        "slug": "drafts/contributing/data-engines/implementing-iworkcoordinator",
-        "title": "Implementing IWorkCoordinator",
-        "category": "contributing",
-        "order": 2,
-        "description": "\n# Implementing `IWorkCoordinator`\n\n`IWorkCoordinator` is the central contract between Whizbang's worker layer and your engine. 11 methods, each a thin wrapper around a SQL function.\n\n## Method-by-method\n\n| Method | Calls SQL function | Notes |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 3,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/implementing-iworkcoordinator.md",
-        "wordCount": 528
-      },
-      {
-        "slug": "drafts/contributing/data-engines/implementing-notifications",
-        "title": "Implementing notifications",
-        "category": "contributing",
-        "order": 5,
-        "description": "\n# Implementing notifications\n\nIf your engine supports server-side pub/sub, implement `IWorkNotificationListener` to wake C# workers immediately when new work arrives. If not, set `SupportsServerSideNotifications = false` and Whizbang's polling fallback handles correctness.\n\n## The contract\n\n```csharp\npublic interface IWorkNotificationListener {\n  bool IsHealthy { get; }\n  DateTimeOffset? LastSignalAt { get; }\n  event Action<WorkSignalCategory>? OnSignal;\n  event Action<bool>? OnHealthChanged;\n}\n```\n\nThe listener is a `BackgroundService` that:\n1. Opens a long-lived connection that bypasses any session-state-breaking pooler.\n2. Subscribes to the engine's pub/sub mechanism for the `wh_work` channel (or equivalent).\n3. Dispatches received notifications to `OnSignal(WorkSignalCategory)`.\n4. Reconnects with exponential backoff on disconnect.\n5. Surfaces health via `IsHealthy` + `OnHealthChanged`.\n\n## Postgres reference\n\n`Whizbang.Data.Postgres/Notifications/PgWorkNotificationListener.cs` is the reference. ~120 lines:\n\n```csharp\npublic sealed partial class PgWorkNotificationListener : BackgroundService, IWorkNotificationListener {\n  protected override async Task ExecuteAsync(CancellationToken stoppingToken) {\n    if (string.IsNullOrWhiteSpace(_options.DirectConnectionString) || _options.DisableNotifications) {\n      return;  // NoOp mode\n    }\n\n    var attempt = 0;\n    while (!stoppingToken.IsCancellationRequested) {\n      try {\n        await using var conn = new NpgsqlConnection(_options.DirectConnectionString);\n        conn.Notification += _onNotification;\n        await conn.OpenAsync(stoppingToken);\n\n        await using (var cmd = new NpgsqlCommand(\"LISTEN wh_work\", conn)) {\n          await cmd.ExecuteNonQueryAsync(stoppingToken);\n        }\n\n        _setHealthy(true);\n        attempt = 0;\n\n        while (!stoppingToken.IsCancellationRequested) {\n          // WaitAsync blocks until a notification arrives or keepalive timeout.\n          // On keepalive: SELECT 1 to prove the connection is alive.\n        }\n      } catch (Exception ex) when (ex is not OperationCanceledException) {\n        _setHealthy(false);\n        attempt++;\n        var delay = _computeBackoff(attempt);\n        await Task.Delay(delay, stoppingToken);\n      }\n    }\n  }\n}\n```\n\n## Engine equivalents\n\n| Engine | Mechanism | Bypass requirement |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 4,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/implementing-notifications.md",
-        "wordCount": 633
-      },
-      {
-        "slug": "drafts/contributing/data-engines/overview",
-        "title": "Overview",
-        "category": "contributing",
-        "order": 1,
-        "description": "\n# Adding a data engine to Whizbang\n\nWhizbang separates \"engine\" (the database) from \"ORM\" (the .NET data access layer). Each axis extends independently.\n\n## Project layout\n\n```\nWhizbang.Core/                          Engine-agnostic interfaces & types\n  Messaging/IWorkCoordinator.cs         The 11-method contract\n  Messaging/IWorkCoordinatorCapabilities.cs\n  Messaging/<DTOs>.cs                   Per-method request/result records\n  Notifications/IWorkNotificationListener.cs\n\nWhizbang.Data.<Engine>/                 Engine-specific shared layer\n  Migrations/*.sql                      SQL functions (single source of truth)\n  Notifications/Pg<...>NotificationListener.cs   Engine's notification listener\n\nWhizbang.Data.<ORM>.<Engine>/           Binding layer per ORM × engine combo\n  <ORM><Engine>WorkCoordinator.cs       Implements IWorkCoordinator\n  <ORM><Engine>Capabilities.cs          Implements IWorkCoordinatorCapabilities\n  <ORM><Engine>Extensions.cs            DI registration: AddWhizbang<ORM><Engine>()\n```\n\nToday's shipping shape:\n\n| Engine | ORM packages |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 3,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/overview.md",
-        "wordCount": 490
-      },
-      {
-        "slug": "drafts/contributing/data-engines/sql-function-contracts",
-        "title": "SQL function contracts",
-        "category": "contributing",
-        "order": 4,
-        "description": "\n# SQL function contracts\n\nEach engine implements 11 SQL functions that Whizbang's C# layer calls. These are the contract — the test suite validates conformance.\n\n## Function summary\n\n| Function | Hot path? | Atomicity | Purpose |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 5,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/sql-function-contracts.md",
-        "wordCount": 957
-      },
-      {
-        "slug": "drafts/contributing/data-engines/testing-a-new-engine",
-        "title": "Testing a new engine",
-        "category": "contributing",
-        "order": 6,
-        "description": "",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 4,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/testing-a-new-engine.md",
-        "wordCount": 647
-      },
-      {
-        "slug": "drafts/contributing/data-engines/worked-example-sqlite",
-        "title": "Worked example - SQLite (polling-only, minimum-capability)",
-        "category": "contributing",
-        "order": 8,
-        "description": "\n# Worked example: SQLite engine (polling-only)\n\nA walk-through of adding a SQLite engine to Whizbang. SQLite is the **minimum-capability** test case — no server-side notifications, no advisory locks, no bulk copy, no native arrays. The system still works, just on the polling-only path.\n\nThis example demonstrates that an engine doesn't need to be feature-complete to host Whizbang.\n\n## Capability declaration\n\n```csharp\npublic sealed class SqliteCapabilities : IWorkCoordinatorCapabilities {\n  public string EngineName => \"sqlite\";\n  public bool SupportsServerSideNotifications => false;  // No native pub/sub\n  public bool SupportsBulkCopy => false;                  // No COPY equivalent\n  public bool SupportsAdvisoryLocks => false;             // No advisory locks\n  public bool SupportsNativeArrayParameters => false;     // No array type\n  public bool SupportsListenOverPooler => false;          // Notifications disabled anyway\n  public bool SupportsSavepoints => true;                 // SQLite supports SAVEPOINT\n}\n```\n\n## What changes vs Postgres\n\n### No notifications\n\n`Whizbang.Data.Sqlite` doesn't ship a `SqliteWorkNotificationListener`. DI binds `NoOpWorkNotificationListener` automatically. ClaimWorker sees `IsHealthy = false` permanently and stays on aggressive polling cadence.\n\nThis is **fully correct** — polling fallback discovers all work. Idle CPU is higher than Postgres-with-notifications, but that's expected for SQLite (typically embedded / single-process scenarios where idle CPU isn't the binding constraint).\n\n### No native arrays\n\nThe Postgres `claim_work` accepts `UUID[]`. SQLite has no array type. Two options:\n\n1. **Pass JSON arrays**: change function signatures to accept `TEXT` (JSON-encoded array), parse inside the function via `json_each`.\n2. **One id per call**: collapse arrays to single calls. Slower per round-trip but simplest.\n\nFor a SQLite implementation targeting low-throughput single-process apps, single-id-per-call is fine.\n\n### No COPY\n\nSame reasoning as arrays — for SQLite's typical workload, parameterized `UPDATE ... WHERE id IN (?, ?, ...)` is acceptable. Batched flushers will use parameterized arrays via the JSON or single-call approach.\n\n### No advisory locks\n\nThe deadlock-safety fence in `claim_work` falls back to deterministic row-level lock ordering (the primary mechanism Whizbang uses anyway). SQLite's `BEGIN IMMEDIATE` provides the same guarantee with even simpler semantics.\n\n### Savepoints supported\n\nSQLite supports `SAVEPOINT` natively. `commit_handler_batch` works as documented — per-handler isolation, single fsync at outer commit.\n\n## SQL function differences\n\nSQLite syntax differs from Postgres in several places:\n\n| Concept | Postgres | SQLite |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 4,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/worked-example-sqlite.md",
-        "wordCount": 748
-      },
-      {
-        "slug": "drafts/contributing/data-engines/worked-example-sqlserver",
-        "title": "Worked example - SQL Server (high-capability)",
-        "category": "contributing",
-        "order": 7,
-        "description": "\n# Worked example: SQL Server engine\n\nA walk-through of adding SQL Server as a Whizbang engine. SQL Server is the **high-capability** test case — it has equivalents for nearly all of Postgres's features, just expressed differently.\n\n## Capability declaration\n\n```csharp\npublic sealed class SqlServerCapabilities : IWorkCoordinatorCapabilities {\n  public string EngineName => \"sqlserver\";\n  public bool SupportsServerSideNotifications => true;   // Service Broker\n  public bool SupportsBulkCopy => true;                   // BULK INSERT / SqlBulkCopy\n  public bool SupportsAdvisoryLocks => true;              // sp_getapplock\n  public bool SupportsNativeArrayParameters => false;     // No array type — TVPs instead\n  public bool SupportsListenOverPooler => true;            // Service Broker has its own session model\n  public bool SupportsSavepoints => true;                  // SAVE TRANSACTION\n}\n```\n\n## Engine equivalents\n\n| Postgres | SQL Server | Notes |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 6,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/contributing/data-engines/worked-example-sqlserver.md",
-        "wordCount": 1006
-      },
-      {
         "slug": "drafts/core-concepts/cascade-context",
         "title": "Cascade Context",
         "category": "Core Concepts",
@@ -3808,6 +3712,18 @@
         "readingTime": 6,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/metrics/overview.md",
         "wordCount": 1003
+      },
+      {
+        "slug": "drafts/migration-guide/cli-wizard",
+        "title": "CLI Migration Wizard",
+        "category": "migration-guide",
+        "order": 999,
+        "description": "Interactive wizard for migrating from Marten/Wolverine to Whizbang",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 11,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/migration-guide/cli-wizard.md",
+        "wordCount": 2190
       },
       {
         "slug": "drafts/operations/work-pump-smoke-test",
@@ -4138,5 +4054,155 @@
       "description": "Declined proposals archived for reference"
     },
     "docs": []
+  },
+  {
+    "state": "contributors",
+    "metadata": {
+      "folderType": "state",
+      "state": "contributors",
+      "description": "Guides for contributing to the Whizbang library, its documentation site, and its tooling"
+    },
+    "docs": [
+      {
+        "slug": "contributors/data-engines/implementing-icapabilities",
+        "title": "Implementing IWorkCoordinatorCapabilities",
+        "category": "data-engines",
+        "order": 3,
+        "description": "\n# Implementing `IWorkCoordinatorCapabilities`\n\n`IWorkCoordinatorCapabilities` declares which optional features your engine supports. Whizbang queries it at startup and adapts: features your engine doesn't have fall back to slower-but-correct alternatives.\n\n## The capability matrix\n\n| Capability | Postgres | SQL Server (future) | MySQL (future) | SQLite (future) |\n|",
+        "tags": [],
+        "version": "contributors",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/data-engines/implementing-icapabilities.md",
+        "wordCount": 635
+      },
+      {
+        "slug": "contributors/data-engines/implementing-iworkcoordinator",
+        "title": "Implementing IWorkCoordinator",
+        "category": "data-engines",
+        "order": 2,
+        "description": "\n# Implementing `IWorkCoordinator`\n\n`IWorkCoordinator` is the central contract between Whizbang's worker layer and your engine. 11 methods, each a thin wrapper around a SQL function.\n\n## Method-by-method\n\n| Method | Calls SQL function | Notes |\n|",
+        "tags": [],
+        "version": "contributors",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/data-engines/implementing-iworkcoordinator.md",
+        "wordCount": 528
+      },
+      {
+        "slug": "contributors/data-engines/implementing-notifications",
+        "title": "Implementing notifications",
+        "category": "data-engines",
+        "order": 5,
+        "description": "\n# Implementing notifications\n\nIf your engine supports server-side pub/sub, implement `IWorkNotificationListener` to wake C# workers immediately when new work arrives. If not, set `SupportsServerSideNotifications = false` and Whizbang's polling fallback handles correctness.\n\n## The contract\n\n```csharp\npublic interface IWorkNotificationListener {\n  bool IsHealthy { get; }\n  DateTimeOffset? LastSignalAt { get; }\n  event Action<WorkSignalCategory>? OnSignal;\n  event Action<bool>? OnHealthChanged;\n}\n```\n\nThe listener is a `BackgroundService` that:\n1. Opens a long-lived connection that bypasses any session-state-breaking pooler.\n2. Subscribes to the engine's pub/sub mechanism for the `wh_work` channel (or equivalent).\n3. Dispatches received notifications to `OnSignal(WorkSignalCategory)`.\n4. Reconnects with exponential backoff on disconnect.\n5. Surfaces health via `IsHealthy` + `OnHealthChanged`.\n\n## Postgres reference\n\n`Whizbang.Data.Postgres/Notifications/PgWorkNotificationListener.cs` is the reference. ~120 lines:\n\n```csharp\npublic sealed partial class PgWorkNotificationListener : BackgroundService, IWorkNotificationListener {\n  protected override async Task ExecuteAsync(CancellationToken stoppingToken) {\n    if (string.IsNullOrWhiteSpace(_options.DirectConnectionString) || _options.DisableNotifications) {\n      return;  // NoOp mode\n    }\n\n    var attempt = 0;\n    while (!stoppingToken.IsCancellationRequested) {\n      try {\n        await using var conn = new NpgsqlConnection(_options.DirectConnectionString);\n        conn.Notification += _onNotification;\n        await conn.OpenAsync(stoppingToken);\n\n        await using (var cmd = new NpgsqlCommand(\"LISTEN wh_work\", conn)) {\n          await cmd.ExecuteNonQueryAsync(stoppingToken);\n        }\n\n        _setHealthy(true);\n        attempt = 0;\n\n        while (!stoppingToken.IsCancellationRequested) {\n          // WaitAsync blocks until a notification arrives or keepalive timeout.\n          // On keepalive: SELECT 1 to prove the connection is alive.\n        }\n      } catch (Exception ex) when (ex is not OperationCanceledException) {\n        _setHealthy(false);\n        attempt++;\n        var delay = _computeBackoff(attempt);\n        await Task.Delay(delay, stoppingToken);\n      }\n    }\n  }\n}\n```\n\n## Engine equivalents\n\n| Engine | Mechanism | Bypass requirement |\n|",
+        "tags": [],
+        "version": "contributors",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/data-engines/implementing-notifications.md",
+        "wordCount": 633
+      },
+      {
+        "slug": "contributors/data-engines/overview",
+        "title": "Overview",
+        "category": "data-engines",
+        "order": 1,
+        "description": "\n# Adding a data engine to Whizbang\n\nWhizbang separates \"engine\" (the database) from \"ORM\" (the .NET data access layer). Each axis extends independently.\n\n## Project layout\n\n```\nWhizbang.Core/                          Engine-agnostic interfaces & types\n  Messaging/IWorkCoordinator.cs         The 11-method contract\n  Messaging/IWorkCoordinatorCapabilities.cs\n  Messaging/<DTOs>.cs                   Per-method request/result records\n  Notifications/IWorkNotificationListener.cs\n\nWhizbang.Data.<Engine>/                 Engine-specific shared layer\n  Migrations/*.sql                      SQL functions (single source of truth)\n  Notifications/Pg<...>NotificationListener.cs   Engine's notification listener\n\nWhizbang.Data.<ORM>.<Engine>/           Binding layer per ORM × engine combo\n  <ORM><Engine>WorkCoordinator.cs       Implements IWorkCoordinator\n  <ORM><Engine>Capabilities.cs          Implements IWorkCoordinatorCapabilities\n  <ORM><Engine>Extensions.cs            DI registration: AddWhizbang<ORM><Engine>()\n```\n\nToday's shipping shape:\n\n| Engine | ORM packages |\n|",
+        "tags": [],
+        "version": "contributors",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/data-engines/overview.md",
+        "wordCount": 490
+      },
+      {
+        "slug": "contributors/data-engines/sql-function-contracts",
+        "title": "SQL function contracts",
+        "category": "data-engines",
+        "order": 4,
+        "description": "\n# SQL function contracts\n\nEach engine implements 11 SQL functions that Whizbang's C# layer calls. These are the contract — the test suite validates conformance.\n\n## Function summary\n\n| Function | Hot path? | Atomicity | Purpose |\n|",
+        "tags": [],
+        "version": "contributors",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/data-engines/sql-function-contracts.md",
+        "wordCount": 957
+      },
+      {
+        "slug": "contributors/data-engines/testing-a-new-engine",
+        "title": "Testing a new engine",
+        "category": "data-engines",
+        "order": 6,
+        "description": "",
+        "tags": [],
+        "version": "contributors",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/data-engines/testing-a-new-engine.md",
+        "wordCount": 647
+      },
+      {
+        "slug": "contributors/data-engines/worked-example-sqlite",
+        "title": "Worked example - SQLite (polling-only, minimum-capability)",
+        "category": "data-engines",
+        "order": 8,
+        "description": "\n# Worked example: SQLite engine (polling-only)\n\nA walk-through of adding a SQLite engine to Whizbang. SQLite is the **minimum-capability** test case — no server-side notifications, no advisory locks, no bulk copy, no native arrays. The system still works, just on the polling-only path.\n\nThis example demonstrates that an engine doesn't need to be feature-complete to host Whizbang.\n\n## Capability declaration\n\n```csharp\npublic sealed class SqliteCapabilities : IWorkCoordinatorCapabilities {\n  public string EngineName => \"sqlite\";\n  public bool SupportsServerSideNotifications => false;  // No native pub/sub\n  public bool SupportsBulkCopy => false;                  // No COPY equivalent\n  public bool SupportsAdvisoryLocks => false;             // No advisory locks\n  public bool SupportsNativeArrayParameters => false;     // No array type\n  public bool SupportsListenOverPooler => false;          // Notifications disabled anyway\n  public bool SupportsSavepoints => true;                 // SQLite supports SAVEPOINT\n}\n```\n\n## What changes vs Postgres\n\n### No notifications\n\n`Whizbang.Data.Sqlite` doesn't ship a `SqliteWorkNotificationListener`. DI binds `NoOpWorkNotificationListener` automatically. ClaimWorker sees `IsHealthy = false` permanently and stays on aggressive polling cadence.\n\nThis is **fully correct** — polling fallback discovers all work. Idle CPU is higher than Postgres-with-notifications, but that's expected for SQLite (typically embedded / single-process scenarios where idle CPU isn't the binding constraint).\n\n### No native arrays\n\nThe Postgres `claim_work` accepts `UUID[]`. SQLite has no array type. Two options:\n\n1. **Pass JSON arrays**: change function signatures to accept `TEXT` (JSON-encoded array), parse inside the function via `json_each`.\n2. **One id per call**: collapse arrays to single calls. Slower per round-trip but simplest.\n\nFor a SQLite implementation targeting low-throughput single-process apps, single-id-per-call is fine.\n\n### No COPY\n\nSame reasoning as arrays — for SQLite's typical workload, parameterized `UPDATE ... WHERE id IN (?, ?, ...)` is acceptable. Batched flushers will use parameterized arrays via the JSON or single-call approach.\n\n### No advisory locks\n\nThe deadlock-safety fence in `claim_work` falls back to deterministic row-level lock ordering (the primary mechanism Whizbang uses anyway). SQLite's `BEGIN IMMEDIATE` provides the same guarantee with even simpler semantics.\n\n### Savepoints supported\n\nSQLite supports `SAVEPOINT` natively. `commit_handler_batch` works as documented — per-handler isolation, single fsync at outer commit.\n\n## SQL function differences\n\nSQLite syntax differs from Postgres in several places:\n\n| Concept | Postgres | SQLite |\n|",
+        "tags": [],
+        "version": "contributors",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/data-engines/worked-example-sqlite.md",
+        "wordCount": 748
+      },
+      {
+        "slug": "contributors/data-engines/worked-example-sqlserver",
+        "title": "Worked example - SQL Server (high-capability)",
+        "category": "data-engines",
+        "order": 7,
+        "description": "\n# Worked example: SQL Server engine\n\nA walk-through of adding SQL Server as a Whizbang engine. SQL Server is the **high-capability** test case — it has equivalents for nearly all of Postgres's features, just expressed differently.\n\n## Capability declaration\n\n```csharp\npublic sealed class SqlServerCapabilities : IWorkCoordinatorCapabilities {\n  public string EngineName => \"sqlserver\";\n  public bool SupportsServerSideNotifications => true;   // Service Broker\n  public bool SupportsBulkCopy => true;                   // BULK INSERT / SqlBulkCopy\n  public bool SupportsAdvisoryLocks => true;              // sp_getapplock\n  public bool SupportsNativeArrayParameters => false;     // No array type — TVPs instead\n  public bool SupportsListenOverPooler => true;            // Service Broker has its own session model\n  public bool SupportsSavepoints => true;                  // SAVE TRANSACTION\n}\n```\n\n## Engine equivalents\n\n| Postgres | SQL Server | Notes |\n|",
+        "tags": [],
+        "version": "contributors",
+        "readingTime": 6,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/data-engines/worked-example-sqlserver.md",
+        "wordCount": 1006
+      },
+      {
+        "slug": "contributors/overview",
+        "title": "Contributing to Whizbang",
+        "category": "General",
+        "order": 1,
+        "description": "How to contribute to the Whizbang library, documentation, and tooling — workflow, standards, and where everything lives",
+        "tags": "contributing, development-workflow, documentation, tdd",
+        "version": "contributors",
+        "status": "current",
+        "pageType": "overview",
+        "audience": [
+          "contributor"
+        ],
+        "readingTime": 2,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/overview.md",
+        "wordCount": 375
+      }
+    ]
+  },
+  {
+    "state": "spec",
+    "metadata": {
+      "folderType": "state",
+      "state": "spec",
+      "description": "Platform-neutral functional specification — behavioral contracts for porting Whizbang to other platforms"
+    },
+    "docs": [
+      {
+        "slug": "spec/overview",
+        "title": "Functional Specification",
+        "category": "General",
+        "order": 1,
+        "description": "Platform-neutral behavioral spec of Whizbang subsystems — what a port must implement, with the test suite as the executable contract",
+        "tags": "specification, porting, behavioral-contracts, architecture",
+        "version": "spec",
+        "status": "current",
+        "pageType": "overview",
+        "audience": [
+          "porter"
+        ],
+        "readingTime": 2,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/spec/overview.md",
+        "wordCount": 336
+      }
+    ]
   }
 ]

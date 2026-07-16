@@ -11,7 +11,7 @@ async function getVersionFolders() {
     .map(entry => entry.name)
     .sort(); // Sort versions
 }
-const STATE_FOLDERS = ['drafts', 'proposals', 'backlog', 'declined'];
+const STATE_FOLDERS = ['drafts', 'proposals', 'backlog', 'declined', 'contributors', 'spec'];
 
 // Map kebab-case folder names to display names
 const FOLDER_DISPLAY_NAMES = {
