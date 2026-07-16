@@ -250,11 +250,12 @@ Grace is **globally configurable** (a `wh_settings` default, **300 s**) and **ov
 
 ### Snapshots (the rewind floor)
 
-The grace window keeps recent *bodies*; a rewind also needs a **base state** to rewind *from*, because everything below the reap boundary is gone. That base state is a **snapshot** — and for an ephemeral perspective the snapshot **is** the rewind floor. Three properties:
+The grace window keeps recent *bodies*; a rewind also needs a **base state** to rewind *from*, because everything below the reap boundary is gone. That base state is a **snapshot** — and for an ephemeral perspective the snapshot **is** the rewind floor. Four properties:
 
-1. **Snapshot-before-reap.** The reaper must not drop an event's body until that event is captured in a snapshot for every consuming `(stream, perspective)` — so the gate gains a third condition: **consumed AND aged-past-grace AND snapshot-covered** (`snapshot_commit_sequence ≥ the event's commit_sequence`). Snapshotting is *part of* the cleanup.
-2. **Single-slot.** Only the *latest* snapshot matters — you can never rewind below the reap boundary — so old ephemeral snapshots are pruned (keep the latest at/above the boundary). Snapshot storage stays bounded.
-3. **Authoritative.** The snapshot is the source of truth (never `RebuildFromEvents`) — a new `Authoritative` value on the existing `SnapshotUpgradePolicy`.
+1. **Its own, more-aggressive cadence.** Ephemeral perspectives snapshot far more often than the standard `SnapshotEveryNEvents` default — **separate ephemeral settings**, because an ephemeral stream must keep a *fresh* floor within its (short) grace window.
+2. **Driven by cleanup, not just event count.** The decisive trigger is the reap itself: before a maintenance cycle reaps a `(stream, perspective)`'s consumed, aged-past-grace bodies, it first **drives a snapshot** of that perspective through the reap boundary (a bootstrap snapshot from the current authoritative model). This catches the low-volume / idle stream that would never hit an event-count threshold — the snapshot happens exactly when, and only when, cleanup needs it. No blind timer, and no need for a "reap it anyway past a ceiling" valve that would lose the floor.
+3. **Coverage gate (the SQL backstop).** The reaper deletes a body only once every consuming `(stream, perspective)` has a snapshot at/past the event's `commit_sequence` (`snapshot_commit_sequence ≥ es.commit_sequence`), so the reap can never outrun the floor even if the reap-driven snapshot missed a pair.
+4. **Single-slot + authoritative.** Only the *latest* snapshot matters (you can never rewind below the reap boundary), so ephemeral prunes to one (`MaxSnapshotsPerStream = 1`); and the snapshot is the source of truth — a new `Authoritative` value on the existing `SnapshotUpgradePolicy` (never `RebuildFromEvents`).
 
 ### Why "mixed" perspectives are not a third case
 
