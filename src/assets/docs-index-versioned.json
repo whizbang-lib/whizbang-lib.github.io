@@ -241,12 +241,12 @@
         "title": "EF Core Complex Types",
         "category": "Data Access",
         "order": 3,
-        "description": "EF Core 10 ComplexProperty().ToJson() patterns for perspective metadata and scope - in-place updates, collection handling, and index corruption prevention",
-        "tags": "ef-core, complex-types, json, jsonb, perspectives, metadata, scope, in-place-updates, complexproperty",
+        "description": "EF Core 10 ComplexProperty().ToJson() for perspective data, metadata, and scope - the generated ConfigureWhizbang() configuration, the concrete store and scope-aware lens query, in-place updates, and index corruption prevention",
+        "tags": "ef-core, complex-types, json, jsonb, perspectives, metadata, scope, in-place-updates, complexproperty, source-generator, perspective-store, lens-query, tenant-scope",
         "version": "v1.0.0",
-        "readingTime": 7,
+        "readingTime": 11,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/data/efcore-complex-types.md",
-        "wordCount": 1303
+        "wordCount": 2155
       },
       {
         "slug": "v1.0.0/data/efcore-integration",
@@ -775,12 +775,12 @@
         "title": "Namespace-Based Routing",
         "category": "Core Concepts",
         "order": 2,
-        "description": "Namespace-based routing in Whizbang determines how commands and events flow between services. Commands use a shared inbox topic with namespace filtering, while events publish to namespace-specific topics for pub/sub distribution with automatic subscription discovery.",
-        "tags": "routing, namespace-routing, message-routing, inbox, topics, pub-sub",
+        "description": "Namespace-based routing in Whizbang determines how commands and events flow between services. Commands use a shared inbox topic with namespace filtering, while events publish to namespace-specific topics for pub/sub distribution with automatic subscription discovery. Owned-domain routing keeps a service's own commands local while its events still broadcast, with transport-layer echo suppression discarding self-delivered copies.",
+        "tags": "routing, namespace-routing, message-routing, inbox, topics, pub-sub, owned-domains, echo-suppression",
         "version": "v1.0.0",
-        "readingTime": 26,
+        "readingTime": 32,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-        "wordCount": 5060
+        "wordCount": 6336
       },
       {
         "slug": "v1.0.0/fundamentals/dispatcher/rpc-extraction",
@@ -841,6 +841,18 @@
         "readingTime": 6,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/events/event-streams.md",
         "wordCount": 1044
+      },
+      {
+        "slug": "v1.0.0/fundamentals/events/event-upcasting",
+        "title": "Event Upcasting",
+        "category": "Core Concepts",
+        "order": 14,
+        "description": "Transform stored events into their current shape on read — backfill, type change, or re-key — without ever rewriting the immutable event log.",
+        "tags": "events, event-sourcing, upcasting, versioning, schema-evolution, re-key, aot",
+        "version": "v1.0.0",
+        "readingTime": 10,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/events/event-upcasting.md",
+        "wordCount": 1918
       },
       {
         "slug": "v1.0.0/fundamentals/events/events",
@@ -1210,9 +1222,9 @@
         "description": "Declarative cross-cutting concerns via message tag attributes and hooks - notifications, telemetry, metrics, and audit logging without polluting business logic",
         "tags": "tags, attributes, hooks, notifications, telemetry, metrics, cross-cutting",
         "version": "v1.0.0",
-        "readingTime": 36,
+        "readingTime": 34,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-        "wordCount": 7124
+        "wordCount": 6739
       },
       {
         "slug": "v1.0.0/fundamentals/messages/messages",
@@ -1227,16 +1239,40 @@
         "wordCount": 1169
       },
       {
+        "slug": "v1.0.0/fundamentals/messaging/apply-hooks",
+        "title": "Apply Hooks",
+        "category": "Fundamentals",
+        "order": 8,
+        "description": "\n# Apply hooks\n\nPluggable logic that modifies **what a perspective's `Apply` produced**, gated by the\nmodel's type. There are two hooks over two apply paths, with a deliberately **identical\nsurface** — so one hook body can run on both:\n\n| | Collective path | Per-event path |\n|",
+        "tags": [],
+        "version": "v1.0.0",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/apply-hooks.md",
+        "wordCount": 832
+      },
+      {
         "slug": "v1.0.0/fundamentals/messaging/collective-events",
         "title": "Collective Events",
         "category": "Fundamentals",
         "order": 7,
-        "description": "\n# Collective events\n\nA first-class persistable event that mutates **every stream in a scope**\nas a unit. The producer expresses scope + mutation; the projection\nrunner applies it as **one SQL UPDATE per affected projection table**\nwhose `WHERE` clause is just the scope predicate. No per-row enumeration,\nno per-row tracking, no per-row tax.\n\nCanonical use cases:\n\n- \"Archive every non-active job in tenant T\"\n- \"Remove all jobs in tenant T\"\n- \"Change state of every matching job\"\n- \"Flag all entities older than Y\" (where Y is captured on the event payload)\n\nWhen the producer expresses **intent + scope** rather than a list of\nevents, this is the primitive — one event row, one SQL UPDATE, one\ncategory-level observed event.\n\n## When to reach for it\n\n```\nProducer wants to mutate multiple streams in one operation\n  │\n  ├─ Is the mutation uniform across all targeted streams?\n  │   ├─ NO  → ICompositeEvent (hand-crafted per-stream batch)\n  │   └─ YES\n  │       │\n  │       ├─ Does the producer want to name an explicit list of streams?\n  │       │   ├─ YES → ICompositeEvent (enumerate them)\n  │       │   └─ NO  → ICollectiveEvent ← THIS — scope IS the descriptor\n```\n\n## Composite vs collective — pick one per producer intent\n\n`ICollectiveEvent` sits **next to** `ICompositeEvent` — additive, not a\nreplacement. They solve different problems and ship on different runtime\npaths.\n\n| Dimension | `ICompositeEvent` | `ICollectiveEvent` |\n|",
+        "description": "\n# Collective events\n\nA first-class persistable event that mutates **every row in a scope**\nas a unit. The producer expresses **scope + a uniform mutation**; the\nprojection runner applies it as **one predicate SQL `UPDATE` per\naffected projection table** whose `WHERE` clause is the scope predicate\n(optionally refined per-perspective by the handler). No per-row\nenumeration, no per-row event replication, no per-row tracking, no\nper-row tax.\n\nCanonical use cases:\n\n- \"Archive every job in tenant T\"\n- \"Remove all jobs in tenant T\" (soft-delete via a status column)\n- \"Change the state of every matching job in a scope\"\n- \"Apply this template to every Draft/Approved/Published job in a tenant\"\n\nWhen the producer expresses **intent + scope** rather than a list of\nevents, this is the primitive — one event row, one SQL `UPDATE`, one\ncategory-level observed event.\n\n## When to reach for it\n\n```\nProducer wants to mutate multiple streams in one operation\n  │\n  ├─ Is the mutation uniform across all targeted streams?\n  │   ├─ NO  → ICompositeEvent (hand-crafted per-stream batch)\n  │   └─ YES\n  │       │\n  │       ├─ Does the producer want to name an explicit list of streams?\n  │       │   ├─ YES → ICompositeEvent (enumerate them)\n  │       │   └─ NO  → ICollectiveEvent ← THIS — scope IS the descriptor\n```\n\nPick **collective** when the mutation is uniform across a scope and you\ndo **not** need a per-entity event for it. Pick **composite** when each\nstream gets a distinct payload. Pick neither (stay individual) when a\nper-entity event is consumed downstream — a notification, an\nacknowledgment, an audit entry, or a receptor keyed off the per-entity\nevent.\n\n## Composite vs collective — pick one per producer intent\n\n`ICollectiveEvent` sits **next to** `ICompositeEvent` — additive, not a\nreplacement. They solve different problems and ship on different runtime\npaths. The two contracts share **no inheritance**: `ICollectiveEvent`\nextends `IEvent`, and the two run separate code paths end-to-end.\n\n| Dimension | `ICompositeEvent` | `ICollectiveEvent` |\n|",
         "tags": [],
         "version": "v1.0.0",
-        "readingTime": 14,
+        "readingTime": 24,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
-        "wordCount": 2617
+        "wordCount": 4719
+      },
+      {
+        "slug": "v1.0.0/fundamentals/messaging/composite-events",
+        "title": "Composite Events",
+        "category": "Fundamentals",
+        "order": 6,
+        "description": "Bundle many inner events into one transport hop — one outbox row, one publish, one receive — that fans out into N per-inner-event inbox rows at the dispatch seam, inside the durable inbox/retry/DLQ envelope. Composites are never event-stored; only the expanded inner events persist.",
+        "tags": "composite-events, fan-out, bulk, inner-events, no-rebroadcast, dispatch-seam",
+        "version": "v1.0.0",
+        "readingTime": 16,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/composite-events.md",
+        "wordCount": 3050
       },
       {
         "slug": "v1.0.0/fundamentals/offloads/message-body-store",
@@ -1255,12 +1291,12 @@
         "title": "Azure Blob Body Store",
         "category": "Fundamentals",
         "order": 2,
-        "description": "Production body-store provider backed by Azure Blob Storage. Works identically against the Azurite emulator and live Azure Blob via standard connection-string conventions.",
-        "tags": "offload, providers, azure-blob, azurite, production",
+        "description": "Production body-store provider backed by Azure Blob Storage. Works identically against the Azurite emulator and live Azure Blob via standard connection-string conventions. Wire it in one config-driven call or register providers by hand.",
+        "tags": "offload, providers, azure-blob, azurite, production, configuration",
         "version": "v1.0.0",
-        "readingTime": 4,
+        "readingTime": 9,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
-        "wordCount": 769
+        "wordCount": 1778
       },
       {
         "slug": "v1.0.0/fundamentals/offloads/providers/in-memory",
@@ -1275,16 +1311,28 @@
         "wordCount": 349
       },
       {
+        "slug": "v1.0.0/fundamentals/persistence/caller-info-capture",
+        "title": "Caller Information Capture",
+        "category": "Observability",
+        "order": 7,
+        "description": "How Whizbang records the exact source location (method, file, line) that created each MessageHop, using C# caller-info compiler attributes with no reflection or stack walking.",
+        "tags": "caller-info, observability, message-hops, debugging, compiler-attributes",
+        "version": "v1.0.0",
+        "readingTime": 8,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/persistence/caller-info-capture.md",
+        "wordCount": 1464
+      },
+      {
         "slug": "v1.0.0/fundamentals/persistence/observability",
         "title": "Observability & Message Hops",
         "category": "Core Concepts",
         "order": 6,
-        "description": "Understand Whizbang's hop-based observability architecture - MessageEnvelope and MessageHop for distributed tracing and debugging",
-        "tags": "observability, message-hops, distributed-tracing, debugging, telemetry",
+        "description": "Whizbang's hop-based observability - MessageEnvelope and MessageHop carry a complete journey (routing, scope, policy decisions, caller info) through every service. Query it with ITraceStore for time-travel debugging of distributed flows.",
+        "tags": "observability, message-hops, distributed-tracing, time-travel, debugging, trace-store, causation, correlation",
         "version": "v1.0.0",
-        "readingTime": 11,
+        "readingTime": 13,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
-        "wordCount": 2156
+        "wordCount": 2590
       },
       {
         "slug": "v1.0.0/fundamentals/persistence/persistence",
@@ -1390,9 +1438,9 @@
         "description": "Master Whizbang Perspectives - pure function event handlers that maintain eventually consistent read models optimized for queries",
         "tags": "perspectives, read-models, cqrs, eventual-consistency, event-driven, pure-functions, streamkey",
         "version": "v1.0.0",
-        "readingTime": 20,
+        "readingTime": 24,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-        "wordCount": 3853
+        "wordCount": 4783
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/physical-fields",
@@ -1453,6 +1501,18 @@
         "readingTime": 6,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/registry.md",
         "wordCount": 1070
+      },
+      {
+        "slug": "v1.0.0/fundamentals/perspectives/rewind",
+        "title": "Perspective Rewind",
+        "category": "Fundamentals",
+        "order": 13,
+        "description": "How Whizbang detects and repairs out-of-order (late-arriving) events in perspective processing — the RewindRequired flag, snapshot-or-full replay, the bounded catch-up loop, startup scan, and rewind observability.",
+        "tags": "perspectives, rewind, late-arriving-events, out-of-order, replay, snapshots, startup-scan, observability, operational",
+        "version": "v1.0.0",
+        "readingTime": 15,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/rewind.md",
+        "wordCount": 2889
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/snapshots",
@@ -2016,7 +2076,7 @@
         "version": "v1.0.0",
         "readingTime": 6,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/composite-events.md",
-        "wordCount": 1037
+        "wordCount": 1015
       },
       {
         "slug": "v1.0.0/messaging/failure-handling",
@@ -2125,6 +2185,18 @@
         "readingTime": 13,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/in-memory.md",
         "wordCount": 2546
+      },
+      {
+        "slug": "v1.0.0/messaging/transports/infrastructure-mapping",
+        "title": "Infrastructure Mapping",
+        "category": "Transports",
+        "order": 3,
+        "description": "How Whizbang's provider-agnostic abstractions - topic, stream, partition, and sequence - map onto concrete message transports (in-memory, RabbitMQ, Azure Service Bus)",
+        "tags": "transports, topic, stream, partition, partition-router, sequence, policies, routing, rabbitmq, azure-service-bus, provider-agnostic",
+        "version": "v1.0.0",
+        "readingTime": 10,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/infrastructure-mapping.md",
+        "wordCount": 1975
       },
       {
         "slug": "v1.0.0/messaging/transports/rabbitmq",
@@ -2535,6 +2607,18 @@
         "wordCount": 2348
       },
       {
+        "slug": "v1.0.0/operations/diagnostics/error-reference",
+        "title": "Runtime Error Reference",
+        "category": "Operations & Configuration",
+        "order": 1,
+        "description": "Alphabetical catalog of Whizbang runtime error messages — what triggers each one, what the framework does next, and how to fix it. Every entry has a stable heading anchor for deep-linking from incident notes and runbooks.",
+        "tags": "errors, error-reference, troubleshooting, runtime, logs, dead-letter-queue, transport, perspectives, rebuild, serialization",
+        "version": "v1.0.0",
+        "readingTime": 11,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+        "wordCount": 2084
+      },
+      {
         "slug": "v1.0.0/operations/diagnostics/serializable-property-analyzer",
         "title": "Serializable Property Analyzer",
         "category": "Diagnostics",
@@ -2878,9 +2962,9 @@
         "description": "Dynamic message routing and configuration via predicate-based policies - multi-tenancy, environment-based routing, and execution strategies",
         "tags": "policies, routing, multi-tenancy, execution-strategy, policy-engine, decision-trail",
         "version": "v1.0.0",
-        "readingTime": 12,
+        "readingTime": 17,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
-        "wordCount": 2201
+        "wordCount": 3380
       },
       {
         "slug": "v1.0.0/operations/infrastructure/policy-engine",
@@ -3103,6 +3187,18 @@
         "wordCount": 959
       },
       {
+        "slug": "drafts/attributes/pinned-id",
+        "title": "PinnedId Attribute",
+        "category": "Attributes",
+        "order": 20,
+        "description": "Declares a stable, namespace-proof identifier for a concrete message or perspective type so stored events survive namespace restructuring.",
+        "tags": "attributes, pinned-id, stable-identity, namespaces, event-sourcing, source-generator, aot",
+        "version": "drafts",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/attributes/pinned-id.md",
+        "wordCount": 490
+      },
+      {
         "slug": "drafts/contributing/data-engines/implementing-icapabilities",
         "title": "Implementing IWorkCoordinatorCapabilities",
         "category": "contributing",
@@ -3223,6 +3319,18 @@
         "wordCount": 1715
       },
       {
+        "slug": "drafts/core-concepts/pinned-identity",
+        "title": "Pinned Identity",
+        "category": "Core Concepts",
+        "order": 30,
+        "description": "Stable, namespace-proof identity for stored messages and perspectives via [PinnedId] + a universal type registry.",
+        "tags": "core-concepts, pinned-identity, stable-identity, namespaces, event-sourcing, migrations, aot",
+        "version": "drafts",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/core-concepts/pinned-identity.md",
+        "wordCount": 728
+      },
+      {
         "slug": "drafts/decisions/work-pump-decomposition/dual-connection-notifications",
         "title": "Dual Connection Notifications",
         "category": "decisions",
@@ -3281,6 +3389,18 @@
         "readingTime": 3,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/decisions/work-pump-decomposition/sql-function-decomposition.md",
         "wordCount": 570
+      },
+      {
+        "slug": "drafts/fundamentals/signal-bus/signal-bus",
+        "title": "System Signal Bus",
+        "category": "Architecture & Design",
+        "order": 20,
+        "description": "\n# System Signal Bus\n\nWhizbang's control plane — waking the work pump, arming scheduled timers, reacting to rebalances and instance failures — is coordinated by lightweight **signals** delivered over PostgreSQL `LISTEN`/`NOTIFY` with a polling fallback. The **System Signal Bus** unifies these into one typed, multicast, developer-extensible abstraction (`ISignalBus`) built on a **doorbell-not-data** discipline and a **hybrid reliability** model: best-effort signals for low latency, a durable log for the few signals that must not be missed, and periodic reconciliation as the correctness backstop.\n\n:::planned\nThe System Signal Bus is a foundational capability. **The core (F1) is implemented (unreleased):** the\ntransport-agnostic bus, the cross-assembly signal-type registry + generator (with `[WireName]`), the\nPostgres push transport (broadcast **and** targeted) plus polling pull-sources, the durable `wh_signals`\nlog, the instance-lifecycle signals, and the work-pump migration onto the bus are all in place. It\n**generalizes the existing `Whizbang.Core/Notifications` subsystem** rather than replacing it — current\nbehavior is preserved (the existing notification regression suite stays green throughout). Signals that\nbelong to later phases (scheduling, destruction, rebalance, commit-order) are noted as *planned* below.\n:::\n\n## Motivation\n\nToday the control plane uses `LISTEN`/`NOTIFY` in several *bespoke, per-use* wirings: an instance-routed work-availability channel (`wh_work_i_<id>`), a commit-order channel (`wh_committed`), and an app-facing pub/sub channel family (`wh_app_<topic>`). Each has its own producer, subscriber, and fallback logic. Cluster events — a partition **rebalance**, an instance **joining**, an instance **dying** — are handled implicitly inside individual workers rather than surfaced as first-class events that *any* subsystem (or the application developer) can react to.\n\nThe Signal Bus makes that control plane **one typed, multicast bus**:\n\n- **Typed & multicast** — publish a `TSignal`; any number of internal or developer subscribers receive it.\n- **Foundational** — the work pump, the temporal engine (scheduled/recurring events), and the ephemeral reaper all become *consumers* of the same bus.\n- **Extensible** — developers subscribe to system signals (\"on rebalance, warm my cache\") and publish their own.\n\n## What exists today\n\nThe bus builds directly on the mature `Whizbang.Core/Notifications` subsystem:\n\n| Existing abstraction | Role | Becomes |\n|",
+        "tags": "signal-bus, notifications, listen-notify, control-plane, rebalance, instance-lifecycle, reliability",
+        "version": "drafts",
+        "readingTime": 12,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/signal-bus/signal-bus.md",
+        "wordCount": 2379
       },
       {
         "slug": "drafts/fundamentals/work-coordinator/app-signals",
@@ -3593,6 +3713,18 @@
         "wordCount": 1403
       },
       {
+        "slug": "proposals/ephemeral-events",
+        "title": "Ephemeral Events",
+        "category": "Architecture & Design",
+        "order": 22,
+        "description": "\n# Ephemeral Events\n\nWhizbang's default is **event sourcing**: an event is an immutable fact appended to a durable log, the log is the source of truth, and perspectives are rebuildable projections. But some data doesn't want those guarantees — a \"user is typing\" ping, an open-tabs layout, a chat message that only needs to live ~90 days. **Ephemeral Events** make the *event-driven* path first-class and opt-in, running side-by-side with the event-sourced path in the same product: you emit events, write perspectives, and read lenses **exactly as today**, and only the event's declared **mode** changes what the runtime does with the data underneath.\n\n:::planned\nEphemeral Events are a proposed capability (unreleased, not yet started). This proposal covers **E1** — the core mode, the compile-time guardrails, and the first destruction strategy (**`WhenConsumed`**). Destruction hooks + TTL ([E2](#scope-what-e1-does-and-does-not-cover)), archival/compaction (A1), carry-forward (E3), and GDPR crypto-shredding (G1) are separate later phases that build on this foundation and the [Temporal Engine](temporal-engine).\n:::\n\n## Motivation\n\nThree cases want state-based, self-destructing behavior — and today each would force a developer out of Whizbang into a separate channel (Redis, a CRDT, an ad-hoc table):\n\n- **Transient UI / presence** — \"user is typing,\" cursor position, open panels. Barely needs durability; self-destructs on session end or idle. Losing it is fine.\n- **Chat-style history** — keep the current thread state, let the keystroke-by-keystroke detail disappear after a window. The snapshot is enough; the full history isn't worth storing forever.\n- **Perspective-as-source-of-truth** — deliberately *degrade* event sourcing to traditional state-based storage for data that needs no replay/audit. Events drive the read model, then self-destruct; the perspective row becomes authoritative.\n\nThe industry never event-sources this data — Phoenix Presence is an in-memory CRDT, Yjs Awareness is a *separate* channel explicitly \"not stored in the doc,\" NATS `InterestPolicy` deletes on ack. The consistent signal is that transient state is its own mechanism. Whizbang's contribution is to keep it in the **same programming model** — no second API to learn — while being honest that the durability semantics differ.\n\n## Two modes per event: Sourced vs Ephemeral\n\nThis is **not** a new tier bolted onto the event store. It is a per-event **consistency mode** with two values, chosen by opt-in:\n\n| | **Sourced** (default, today) | **Ephemeral** (new, opt-in) |\n|",
+        "tags": "ephemeral, self-destructing, sourced, consumption-gated, viral, analyzer, transient-state, retention",
+        "version": "proposals",
+        "readingTime": 28,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/ephemeral-events.md",
+        "wordCount": 5432
+      },
+      {
         "slug": "proposals/event-store-projections",
         "title": "Event Store & Projection Architecture",
         "category": "Architecture & Design",
@@ -3701,6 +3833,18 @@
         "wordCount": 1643
       },
       {
+        "slug": "proposals/temporal-engine",
+        "title": "Temporal Engine",
+        "category": "Architecture & Design",
+        "order": 21,
+        "description": "\n# Temporal Engine\n\nWhizbang already fires *delayed* work — a failed message re-dispatches at `scheduled_for`, and a saga arms a watchdog that wakes it later. The **Temporal Engine** promotes that into one first-class mechanism: **scheduled events** (fire at a specific time), **recurring events** (cron or interval), and **saga/deadline timeouts** — all as time-triggered transitions on a single durable schedule table, dispatched over the [System Signal Bus](../fundamentals/signal-bus/signal-bus).\n\n:::planned\nThe Temporal Engine is a proposed capability (unreleased, not yet started). It **generalizes the existing `scheduled_for` delayed-retry mechanism** and the sagas watchdog rather than replacing them — both become consumers of the same engine.\n:::\n\n## Motivation\n\nTime-based behavior is currently spread across three bespoke mechanisms:\n\n- **Delayed retry** — `wh_outbox`/`wh_inbox.scheduled_for` set by the failure-backoff procs; the claim gate skips rows until `scheduled_for <= NOW()`; a low-cadence backup tick emits `notify_scheduled_retry_due()` to wake the owning instance.\n- **Saga deadlines** — `BaseSagaService` re-emits an `ISagaCompletionWatchdogTickEvent` into the outbox with `scheduled_for = now + budget` on every tick, re-arming until the saga completes or is abandoned.\n- **Nothing first-class** for \"run this at 09:00 every weekday\" or \"fire this once next Tuesday.\"\n\nThe Temporal Engine unifies these under **one engine, four time-triggered transitions**:\n\n| Transition | Trigger | Meaning |\n|",
+        "tags": "temporal, scheduling, recurring, cron, saga-deadlines, signal-bus, wh_schedules",
+        "version": "proposals",
+        "readingTime": 10,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/temporal-engine.md",
+        "wordCount": 1859
+      },
+      {
         "slug": "proposals/testing-development-tools",
         "title": "Testing & Development Tools",
         "category": "Architecture & Design",
@@ -3711,6 +3855,18 @@
         "readingTime": 10,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/testing-development-tools.md",
         "wordCount": 1825
+      },
+      {
+        "slug": "proposals/type-definition-fingerprint",
+        "title": "Type-Definition Fingerprint & Lineage",
+        "category": "Architecture & Design",
+        "order": 23,
+        "description": "\n# Type-Definition Fingerprint & Lineage\n\nWhen an event type's **definition** changes in code — its behavioral settings (Sourced ↔ Ephemeral, TTL, destruction) or its **payload schema** (properties added/removed/retyped) — the events already stored under the *old* definition become **drift**: rows the runtime must find and reconcile (reclassify their storage treatment, or upcast their payload). This proposal defines a single foundational mechanism — a **per-type fingerprint** (content hashes of a type's definition) plus a **lineage graph** (how one definition superseded another, and the migration that bridges them) — that detects that drift cheaply on startup and drives the right reconciliation.\n\n:::planned\nUnreleased design proposal. It generalizes the detection layer behind **[Ephemeral Events](ephemeral-events)** reclassification (#13c) and is the substrate the future **event-versioning / upcasting** and **GDPR** phases consume. The reclassification *primitive* and coordinator capability already exist; this proposal covers the *detection + automation* layer that supersedes the interim row-scan detector.\n:::\n\n## Motivation\n\nThree separate features all need the same underlying question answered — *\"which stored events were written under a definition that no longer matches the code, and how do I bring them current?\"*:\n\n- **Ephemeral reclassification** — a type gains `[Ephemeral]`; its historical Sourced rows must be stamped ephemeral + offloaded so the reaper can reclaim them.\n- **Event versioning / upcasting** — a type's payload schema evolves; older events must be transformed to the current shape (eagerly or lazily on read).\n- **GDPR / crypto-shred targeting** — find the specific events whose *content* carries a given subject's data.\n\nBuilding three bespoke detectors would triplicate the hardest part (finding affected rows correctly and cheaply). One fingerprint substrate serves all three.\n\n## The model\n\n### Per-type fingerprint (small, in-memory)\n\nThe source generator computes, at compile time, a set of **canonical content hashes** describing each message type, and stamps them onto the generated `MessageTypeCatalogEntry` (alongside the existing `PinnedId`, `FormerNames`, and `Ephemeral` metadata). Each hash has a **kind**:\n\n| Kind | Covers | Changes when… | Drives |\n|",
+        "tags": "fingerprint, type-versioning, schema-hash, settings-hash, lineage, reclassification, upcasting, drift-detection",
+        "version": "proposals",
+        "readingTime": 7,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/type-definition-fingerprint.md",
+        "wordCount": 1387
       }
     ]
   },
