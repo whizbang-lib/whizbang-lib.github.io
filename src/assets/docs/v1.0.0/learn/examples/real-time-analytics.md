@@ -27,39 +27,25 @@ Build **real-time analytics dashboards** with Whizbang featuring streaming metri
 
 ## Architecture
 
-```
-┌────────────────────────────────────────────────────────────┐
-│  Real-Time Analytics Architecture                          │
-│                                                             │
-│  ┌─────────────┐                                           │
-│  │Azure Service│  Domain Events (OrderCreated, etc.)       │
-│  │     Bus     │──────────────────┐                        │
-│  └─────────────┘                  │                        │
-│                                    ▼                        │
-│              ┌────────────────────────────────┐            │
-│              │ Analytics Worker               │            │
-│              │  - DailySalesPerspective       │            │
-│              │  - RealtimeMetricsPerspective  │            │
-│              └──────────┬─────────────────────┘            │
-│                         │                                   │
-│                         ▼                                   │
-│              ┌────────────────────────────────┐            │
-│              │ PostgreSQL + Redis Cache       │            │
-│              └──────────┬─────────────────────┘            │
-│                         │                                   │
-│                         ▼                                   │
-│              ┌────────────────────────────────┐            │
-│              │ SignalR Hub                    │            │
-│              │  - Broadcast metrics to clients│            │
-│              └──────────┬─────────────────────┘            │
-│                         │                                   │
-│                         ▼                                   │
-│              ┌────────────────────────────────┐            │
-│              │  Web Clients (Dashboards)      │            │
-│              │  - Live KPI updates            │            │
-│              │  - Charts auto-refresh         │            │
-│              └────────────────────────────────┘            │
-└────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph RTA["Real-Time Analytics Architecture"]
+        ASB["Azure Service Bus"]
+        Worker["Analytics Worker<br/>- DailySalesPerspective<br/>- RealtimeMetricsPerspective"]
+        Storage["PostgreSQL + Redis Cache"]
+        Hub["SignalR Hub<br/>- Broadcast metrics to clients"]
+        Clients["Web Clients (Dashboards)<br/>- Live KPI updates<br/>- Charts auto-refresh"]
+
+        ASB -->|"Domain Events (OrderCreated, etc.)"| Worker
+        Worker --> Storage
+        Storage --> Hub
+        Hub --> Clients
+    end
+
+    class ASB layer-command
+    class Worker layer-read
+    class Storage layer-event
+    class Hub,Clients layer-core
 ```
 
 ---

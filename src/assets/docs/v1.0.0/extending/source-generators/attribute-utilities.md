@@ -56,12 +56,20 @@ Without shared utilities, each generator must implement its own extraction logic
 
 The `AttributeData` type exposes attribute values through two properties:
 
-```
-AttributeData
-├── NamedArguments      → KeyValuePairs for named arguments
-│   └── [Tag = "value", Exclude = true]
-└── ConstructorArguments → Indexed values from constructor
-    └── ["value", true]  (positional)
+```mermaid
+flowchart TD
+    AD["AttributeData"]
+    NA["NamedArguments<br/>KeyValuePairs for named arguments"]
+    NAex["[Tag = #quot;value#quot;, Exclude = true]"]
+    CA["ConstructorArguments<br/>Indexed values from constructor"]
+    CAex["[#quot;value#quot;, true]  (positional)"]
+
+    AD --> NA
+    NA --> NAex
+    AD --> CA
+    CA --> CAex
+
+    class AD,NA,CA layer-infrastructure
 ```
 
 ### 2. Value Precedence
@@ -337,16 +345,24 @@ This ensures generators work with:
 
 `AttributeUtilities` lives in `Whizbang.Generators.Shared`, which is ILMerged into all generator assemblies:
 
-```
-Whizbang.Generators.dll
-├── Whizbang.Generators (main)
-└── Whizbang.Generators.Shared (merged)
-    └── AttributeUtilities.cs
+```mermaid
+flowchart TD
+    subgraph DLL1["Whizbang.Generators.dll"]
+        Main1["Whizbang.Generators (main)"]
+        Shared1["Whizbang.Generators.Shared (merged)"]
+        AU1["AttributeUtilities.cs"]
+        Shared1 --> AU1
+    end
 
-Whizbang.Transports.HotChocolate.Generators.dll
-├── Whizbang.Transports.HotChocolate.Generators (main)
-└── Whizbang.Generators.Shared (merged)
-    └── AttributeUtilities.cs (same code!)
+    subgraph DLL2["Whizbang.Transports.HotChocolate.Generators.dll"]
+        Main2["Whizbang.Transports.HotChocolate.Generators (main)"]
+        Shared2["Whizbang.Generators.Shared (merged)"]
+        AU2["AttributeUtilities.cs (same code!)"]
+        Shared2 --> AU2
+    end
+
+    class Main1,Main2 layer-infrastructure
+    class Shared1,Shared2,AU1,AU2 layer-core
 ```
 
 This means:

@@ -47,47 +47,26 @@ lastMaintainedCommit: '01f07906'
 
 ### Pipeline Execution Flow
 
-```
-IDispatcher.SendAsync(command)
-  │
-  │ 1. Create pipeline
-  ▼
-┌────────────────────────────────────────────────────────┐
-│  Pipeline Chain (behaviors + receptor)                 │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐ │
-│  │  LoggingBehavior                                 │ │
-│  │  ├─ Before: Log request                          │ │
-│  │  ├─ Call next() → ValidationBehavior             │ │
-│  │  └─ After: Log response                          │ │
-│  └──────────────────────────────────────────────────┘ │
-│                  │                                      │
-│                  ▼                                      │
-│  ┌──────────────────────────────────────────────────┐ │
-│  │  ValidationBehavior                              │ │
-│  │  ├─ Before: Validate request                     │ │
-│  │  ├─ Call next() → RetryBehavior                  │ │
-│  │  └─ After: No post-processing                    │ │
-│  └──────────────────────────────────────────────────┘ │
-│                  │                                      │
-│                  ▼                                      │
-│  ┌──────────────────────────────────────────────────┐ │
-│  │  RetryBehavior                                   │ │
-│  │  ├─ Before: No pre-processing                    │ │
-│  │  ├─ Call next() → OrderReceptor (with retry)     │ │
-│  │  └─ After: No post-processing                    │ │
-│  └──────────────────────────────────────────────────┘ │
-│                  │                                      │
-│                  ▼                                      │
-│  ┌──────────────────────────────────────────────────┐ │
-│  │  OrderReceptor.HandleAsync()                     │ │
-│  │  └─ Business logic execution                     │ │
-│  └──────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────┘
-  │
-  │ 2. Return result
-  ▼
-Response
+```mermaid
+flowchart TD
+    Send["IDispatcher.SendAsync(command)"]
+    Response["Response"]
+
+    subgraph Chain["Pipeline Chain (behaviors + receptor)"]
+        Logging["LoggingBehavior<br/>Before: Log request<br/>Call next() → ValidationBehavior<br/>After: Log response"]
+        Validation["ValidationBehavior<br/>Before: Validate request<br/>Call next() → RetryBehavior<br/>After: No post-processing"]
+        Retry["RetryBehavior<br/>Before: No pre-processing<br/>Call next() → OrderReceptor (with retry)<br/>After: No post-processing"]
+        Receptor["OrderReceptor.HandleAsync()<br/>Business logic execution"]
+
+        Logging --> Validation
+        Validation --> Retry
+        Retry --> Receptor
+    end
+
+    Send -->|"1. Create pipeline"| Chain
+    Chain -->|"2. Return result"| Response
+
+    class Logging,Validation,Retry,Receptor layer-core
 ```
 
 ---

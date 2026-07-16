@@ -900,11 +900,15 @@ Without deduplication, the runner would call Apply a second time for events that
 
 The cache operates in two phases:
 
-```
-┌─────────────┐     ActivateRetention()     ┌─────────────┐     TTL expires     ┌─────────────┐
-│   InFlight   │ ──────────────────────────> │   Retained   │ ─────────────────> │   Evicted    │
-│  (no expiry) │    (after DB ack)           │  (TTL active) │                   │  (removed)   │
-└─────────────┘                              └─────────────┘                     └─────────────┘
+```mermaid
+stateDiagram-v2
+    direction LR
+    InFlight: InFlight (no expiry)
+    Retained: Retained (TTL active)
+    Evicted: Evicted (removed)
+
+    InFlight --> Retained: ActivateRetention() (after DB ack)
+    Retained --> Evicted: TTL expires
 ```
 
 - **InFlight**: Added after Apply completes. Cannot expire — guards until the database confirms the completion was processed.

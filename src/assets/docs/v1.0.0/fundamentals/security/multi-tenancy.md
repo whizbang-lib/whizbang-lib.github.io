@@ -38,29 +38,23 @@ Comprehensive guide to **multi-tenancy architectures** with Whizbang - database-
 
 ### Architecture
 
-```
-┌────────────────────────────────────────────────────┐
-│  Multi-Tenant SaaS Application                     │
-│                                                     │
-│  ┌──────────────────┐                              │
-│  │  Tenant Resolver │                              │
-│  │  - Header/JWT    │                              │
-│  │  - Subdomain     │                              │
-│  └────────┬─────────┘                              │
-│           │                                         │
-│           ▼                                         │
-│  ┌──────────────────┐                              │
-│  │ Connection Pool  │                              │
-│  │  Manager         │                              │
-│  └────────┬─────────┘                              │
-│           │                                         │
-│  ┌────────┼───────────────────────────┐            │
-│  │        │                           │            │
-│  ▼        ▼                           ▼            │
-│ ┌─────┐ ┌─────┐                   ┌─────┐         │
-│ │DB-A │ │DB-B │       ...         │DB-Z │         │
-│ └─────┘ └─────┘                   └─────┘         │
-└────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph App["Multi-Tenant SaaS Application"]
+        Resolver["Tenant Resolver<br/>- Header/JWT<br/>- Subdomain"]
+        Pool["Connection Pool<br/>Manager"]
+        DBA["DB-A"]
+        DBB["DB-B"]
+        Dots["..."]
+        DBZ["DB-Z"]
+
+        Resolver --> Pool
+        Pool --> DBA
+        Pool --> DBB
+        Pool --> DBZ
+        DBB ~~~ Dots
+        Dots ~~~ DBZ
+    end
 ```
 
 ### Tenant Context (AsyncLocal)
@@ -535,28 +529,24 @@ var orders = await connection.QueryAsync<OrderRow>(
 
 ### Architecture
 
-```
-┌────────────────────────────────────────────────────────┐
-│  Tenant Databases                                      │
-│  ┌─────┐  ┌─────┐             ┌─────┐                 │
-│  │DB-A │  │DB-B │    ...      │DB-Z │                 │
-│  └──┬──┘  └──┬──┘             └──┬──┘                 │
-│     │        │                   │                     │
-│     └────────┼───────────────────┘                     │
-│              │ Events                                  │
-│              ▼                                          │
-│  ┌───────────────────────────┐                         │
-│  │ Analytics Worker          │                         │
-│  │  - CrossTenantPerspective │                         │
-│  └──────────┬────────────────┘                         │
-│             │                                           │
-│             ▼                                           │
-│  ┌───────────────────────────┐                         │
-│  │ Shared Analytics Database │                         │
-│  │  - Aggregated metrics     │                         │
-│  │  - All tenants            │                         │
-│  └───────────────────────────┘                         │
-└────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Tenants["Tenant Databases"]
+        DBA["DB-A"]
+        DBB["DB-B"]
+        Dots["..."]
+        DBZ["DB-Z"]
+        DBB ~~~ Dots
+        Dots ~~~ DBZ
+    end
+
+    Worker["Analytics Worker<br/>- CrossTenantPerspective"]
+    Shared["Shared Analytics Database<br/>- Aggregated metrics<br/>- All tenants"]
+
+    DBA -->|"Events"| Worker
+    DBB -->|"Events"| Worker
+    DBZ -->|"Events"| Worker
+    Worker --> Shared
 ```
 
 ### Cross-Tenant Perspective

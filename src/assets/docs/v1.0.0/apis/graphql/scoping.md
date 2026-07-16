@@ -23,23 +23,14 @@ Whizbang's scope middleware provides automatic multi-tenancy and security filter
 
 The `WhizbangScopeMiddleware` extracts scope information from HTTP requests (JWT claims and headers) and makes it available to lens queries for automatic filtering.
 
-```
-HTTP Request
-    │
-    ├── JWT Claims (tenant_id, sub, groups, ...)
-    ├── Headers (X-Tenant-Id, X-User-Id, ...)
-    │
-    ▼
-WhizbangScopeMiddleware
-    │
-    ├── Extracts scope values
-    ├── Creates IScopeContext
-    │
-    ▼
-IScopeContextAccessor.Current
-    │
-    ▼
-Lens Query (automatic filtering)
+```mermaid
+flowchart TD
+    Request["HTTP Request<br/>- JWT Claims (tenant_id, sub, groups, ...)<br/>- Headers (X-Tenant-Id, X-User-Id, ...)"]
+    Middleware["WhizbangScopeMiddleware<br/>- Extracts scope values<br/>- Creates IScopeContext"]
+    Accessor["IScopeContextAccessor.Current"]
+    Lens["Lens Query (automatic filtering)"]
+
+    Request --> Middleware --> Accessor --> Lens
 ```
 
 ## Setup

@@ -45,42 +45,25 @@ lastMaintainedCommit: '01f07906'
 
 ### PolicyContextPool Design
 
+```mermaid
+flowchart TD
+    subgraph Pool["PolicyContextPool (Static)"]
+        Bag["ConcurrentBag&lt;PolicyContext&gt;<br/>(Thread-safe, lock-free pool)<br/>[Context1] [Context2] [Context3] ... [Context1024]<br/>Max Size: 1024 (overflow discarded)"]
+    end
 ```
-┌────────────────────────────────────────────────────────┐
-│  PolicyContextPool (Static)                            │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐ │
-│  │  ConcurrentBag<PolicyContext>                    │ │
-│  │  (Thread-safe, lock-free pool)                   │ │
-│  │                                                   │ │
-│  │  [Context1] [Context2] [Context3] ... [Context1024]  │
-│  │                                                   │ │
-│  │  Max Size: 1024 (overflow discarded)             │ │
-│  └──────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────┘
 
 Message Processing Lifecycle:
 
-1. Rent from Pool
-   ↓
-   context = PolicyContextPool.Rent(message, envelope, services, environment);
-   ↓
-2. Initialize with Message
-   ↓
-   context.Initialize(message, envelope, services, environment);
-   ↓
-3. Use Context in Processing
-   ↓
-   var config = await policyEngine.MatchAsync(context);
-   await HandleMessageAsync(message, context);
-   ↓
-4. Return to Pool
-   ↓
-   PolicyContextPool.Return(context);
-   ↓
-   context.Reset() → clears references
-   ↓
-   Added to pool (if not full) or GC'd (if full)
+```mermaid
+flowchart TD
+    Rent["1. Rent from Pool<br/>context = PolicyContextPool.Rent(message, envelope, services, environment);"]
+    Initialize["2. Initialize with Message<br/>context.Initialize(message, envelope, services, environment);"]
+    Use["3. Use Context in Processing<br/>var config = await policyEngine.MatchAsync(context);<br/>await HandleMessageAsync(message, context);"]
+    Return["4. Return to Pool<br/>PolicyContextPool.Return(context);"]
+    Reset["context.Reset() → clears references"]
+    Outcome["Added to pool (if not full) or GC'd (if full)"]
+
+    Rent --> Initialize --> Use --> Return --> Reset --> Outcome
 ```
 
 ---

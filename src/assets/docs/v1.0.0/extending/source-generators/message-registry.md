@@ -47,35 +47,17 @@ public record CreateOrder(Guid CustomerId, OrderItem[] Items) : ICommand;
 
 ### 1. Compile-Time Discovery
 
-```
-┌──────────────────────────────────────────────────┐
-│  MessageRegistryGenerator (Roslyn)              │
-│                                                  │
-│  Discovers 4 types of constructs:               │
-│                                                  │
-│  1. Messages (ICommand, IEvent)                 │
-│  2. Dispatchers (SendAsync, PublishAsync calls) │
-│  3. Receptors (IReceptor implementations)       │
-│  4. Perspectives (IPerspectiveOf implementations)│
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  Generated: MessageRegistry.g.cs                 │
-│                                                  │
-│  Contains:                                       │
-│  - Embedded JSON with message-to-handler mapping│
-│  - File paths and line numbers for navigation   │
-│  - Message type metadata (command vs event)     │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  Build Process: Copy to .whizbang/               │
-│                                                  │
-│  message-registry.json                           │
-│  └─ Used by VSCode extension for tooling        │
-└──────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Generator["MessageRegistryGenerator (Roslyn)<br/><br/>Discovers 4 types of constructs:<br/><br/>1. Messages (ICommand, IEvent)<br/>2. Dispatchers (SendAsync, PublishAsync calls)<br/>3. Receptors (IReceptor implementations)<br/>4. Perspectives (IPerspectiveOf implementations)"]
+    Generated["Generated: MessageRegistry.g.cs<br/><br/>Contains:<br/>- Embedded JSON with message-to-handler mapping<br/>- File paths and line numbers for navigation<br/>- Message type metadata (command vs event)"]
+    Build["Build Process: Copy to .whizbang/<br/><br/>message-registry.json<br/>— Used by VSCode extension for tooling"]
+
+    Generator --> Generated
+    Generated --> Build
+
+    class Generator layer-infrastructure
+    class Generated,Build layer-core
 ```
 
 ### 2. Generated File
@@ -529,23 +511,14 @@ var allData = messageTypes.Collect()
 
 ### Performance Characteristics
 
-```
-First compilation (100 messages, 200 handlers):
-├─ Message discovery: 30ms
-├─ Dispatcher discovery: 40ms
-├─ Receptor discovery: 20ms
-├─ Perspective discovery: 15ms
-├─ JSON generation: 5ms
-└─ Total: 110ms
-
-Incremental compilation (change 1 receptor):
-├─ Message cache: 0ms (unchanged)
-├─ Dispatcher cache: 0ms (unchanged)
-├─ Receptor discovery: 20ms (changed)
-├─ Perspective cache: 0ms (unchanged)
-├─ JSON generation: 5ms
-└─ Total: 25ms (85ms saved!)
-```
+| Phase | First compilation (100 messages, 200 handlers) | Incremental compilation (change 1 receptor) |
+|-------|-----------------------------------------------|---------------------------------------------|
+| Message discovery | 30ms | 0ms (cache, unchanged) |
+| Dispatcher discovery | 40ms | 0ms (cache, unchanged) |
+| Receptor discovery | 20ms | 20ms (changed) |
+| Perspective discovery | 15ms | 0ms (cache, unchanged) |
+| JSON generation | 5ms | 5ms |
+| **Total** | **110ms** | **25ms (85ms saved!)** |
 
 ---
 

@@ -35,7 +35,7 @@
     "pageType": "overview",
     "readingTime": 3,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/apis/graphql/index.md",
-    "wordCount": 492
+    "wordCount": 456
   },
   {
     "slug": "v1.0.0/apis/graphql/lens-integration",
@@ -87,7 +87,7 @@
     "pageType": "concept",
     "readingTime": 5,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/apis/graphql/scoping.md",
-    "wordCount": 985
+    "wordCount": 982
   },
   {
     "slug": "v1.0.0/apis/graphql/setup",
@@ -295,7 +295,7 @@
     "pageType": "concept",
     "readingTime": 18,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/data/event-store.md",
-    "wordCount": 3441
+    "wordCount": 3419
   },
   {
     "slug": "v1.0.0/data/perspectives-storage",
@@ -334,7 +334,7 @@
     "pageType": "concept",
     "readingTime": 11,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/data/schema-generation-pattern.md",
-    "wordCount": 2065
+    "wordCount": 2032
   },
   {
     "slug": "v1.0.0/data/schema-migration",
@@ -347,7 +347,7 @@
     "pageType": "concept",
     "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/data/schema-migration.md",
-    "wordCount": 1331
+    "wordCount": 1297
   },
   {
     "slug": "v1.0.0/data/turnkey-initialization",
@@ -509,7 +509,7 @@
     "pageType": "concept",
     "readingTime": 16,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/extensibility/custom-receptors.md",
-    "wordCount": 3160
+    "wordCount": 3108
   },
   {
     "slug": "v1.0.0/extending/extensibility/custom-serializers",
@@ -585,9 +585,9 @@
     "tags": "extensibility, pipeline-behavior, middleware, hooks, cross-cutting-concerns, aop",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 10,
+    "readingTime": 9,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/extensibility/hooks-and-middleware.md",
-    "wordCount": 1894
+    "wordCount": 1784
   },
   {
     "slug": "v1.0.0/extending/extensibility/plugin-architecture",
@@ -678,7 +678,7 @@
     "pageType": "concept",
     "readingTime": 9,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/aggregate-ids.md",
-    "wordCount": 1693
+    "wordCount": 1670
   },
   {
     "slug": "v1.0.0/extending/source-generators/attribute-utilities",
@@ -691,7 +691,7 @@
     "pageType": "concept",
     "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/attribute-utilities.md",
-    "wordCount": 1323
+    "wordCount": 1343
   },
   {
     "slug": "v1.0.0/extending/source-generators/configuration",
@@ -704,7 +704,7 @@
     "pageType": "concept",
     "readingTime": 5,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/configuration.md",
-    "wordCount": 941
+    "wordCount": 915
   },
   {
     "slug": "v1.0.0/extending/source-generators/json-contexts",
@@ -717,7 +717,7 @@
     "pageType": "concept",
     "readingTime": 12,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/json-contexts.md",
-    "wordCount": 2262
+    "wordCount": 2230
   },
   {
     "slug": "v1.0.0/extending/source-generators/message-registry",
@@ -730,7 +730,7 @@
     "pageType": "concept",
     "readingTime": 13,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/message-registry.md",
-    "wordCount": 2454
+    "wordCount": 2421
   },
   {
     "slug": "v1.0.0/extending/source-generators/perspective-discovery",
@@ -743,7 +743,7 @@
     "pageType": "concept",
     "readingTime": 13,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/perspective-discovery.md",
-    "wordCount": 2513
+    "wordCount": 2535
   },
   {
     "slug": "v1.0.0/extending/source-generators/polymorphic-serialization",
@@ -756,7 +756,7 @@
     "pageType": "concept",
     "readingTime": 8,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/polymorphic-serialization.md",
-    "wordCount": 1438
+    "wordCount": 1427
   },
   {
     "slug": "v1.0.0/extending/source-generators/receptor-discovery",
@@ -769,7 +769,7 @@
     "pageType": "concept",
     "readingTime": 13,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/receptor-discovery.md",
-    "wordCount": 2488
+    "wordCount": 2480
   },
   {
     "slug": "v1.0.0/extending/source-generators/topic-filter-discovery",
@@ -782,7 +782,7 @@
     "pageType": "concept",
     "readingTime": 12,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/topic-filter-discovery.md",
-    "wordCount": 2209
+    "wordCount": 2210
   },
   {
     "slug": "v1.0.0/extending/source-generators/type-symbol-extensions",
@@ -806,9 +806,9 @@
     "tags": "dispatcher, messaging, commands, events, patterns",
     "version": "v1.0.0",
     "pageType": "overview",
-    "readingTime": 43,
+    "readingTime": 44,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-    "wordCount": 8565
+    "wordCount": 8645
   },
   {
     "slug": "v1.0.0/fundamentals/dispatcher/publish-once",
@@ -834,7 +834,7 @@
     "pageType": "concept",
     "readingTime": 32,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-    "wordCount": 6338
+    "wordCount": 6369
   },
   {
     "slug": "v1.0.0/fundamentals/dispatcher/rpc-extraction",
@@ -884,9 +884,9 @@
     "tags": "event-store, event-sourcing, append-only, streams, IEventStore, persistence",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 6,
+    "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/events/event-store.md",
-    "wordCount": 1193
+    "wordCount": 1206
   },
   {
     "slug": "v1.0.0/fundamentals/events/event-streams",
@@ -899,7 +899,7 @@
     "pageType": "concept",
     "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/events/event-streams.md",
-    "wordCount": 1046
+    "wordCount": 1075
   },
   {
     "slug": "v1.0.0/fundamentals/events/event-upcasting",
@@ -912,7 +912,7 @@
     "pageType": "concept",
     "readingTime": 10,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/events/event-upcasting.md",
-    "wordCount": 1920
+    "wordCount": 1934
   },
   {
     "slug": "v1.0.0/fundamentals/events/events",
@@ -964,7 +964,7 @@
     "pageType": "concept",
     "readingTime": 25,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
-    "wordCount": 4831
+    "wordCount": 4857
   },
   {
     "slug": "v1.0.0/fundamentals/identity/assembly-registry",
@@ -977,7 +977,7 @@
     "pageType": "concept",
     "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/identity/assembly-registry.md",
-    "wordCount": 1007
+    "wordCount": 1039
   },
   {
     "slug": "v1.0.0/fundamentals/identity/fuzzy-matching",
@@ -1094,7 +1094,7 @@
     "pageType": "overview",
     "readingTime": 14,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/lenses/lenses.md",
-    "wordCount": 2720
+    "wordCount": 2719
   },
   {
     "slug": "v1.0.0/fundamentals/lenses/multi-model-queries",
@@ -1159,7 +1159,7 @@
     "pageType": "concept",
     "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/lenses/temporal-query.md",
-    "wordCount": 1289
+    "wordCount": 1301
   },
   {
     "slug": "v1.0.0/fundamentals/lenses/vector-search",
@@ -1183,9 +1183,9 @@
     "tags": "lifecycle, coordinator, tracking, PostLifecycle, WhenAll, pipeline",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 11,
+    "readingTime": 12,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-coordinator.md",
-    "wordCount": 2184
+    "wordCount": 2236
   },
   {
     "slug": "v1.0.0/fundamentals/lifecycle/lifecycle-stages",
@@ -1196,9 +1196,9 @@
     "tags": "lifecycle, stages, hooks, message-processing, timing, coordinator",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 16,
+    "readingTime": 17,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
-    "wordCount": 3170
+    "wordCount": 3241
   },
   {
     "slug": "v1.0.0/fundamentals/lifecycle/lifecycle",
@@ -1224,7 +1224,7 @@
     "pageType": "concept",
     "readingTime": 12,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
-    "wordCount": 2381
+    "wordCount": 2360
   },
   {
     "slug": "v1.0.0/fundamentals/messages/delivery-receipts",
@@ -1250,7 +1250,7 @@
     "pageType": "concept",
     "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/envelope-registry.md",
-    "wordCount": 1104
+    "wordCount": 1112
   },
   {
     "slug": "v1.0.0/fundamentals/messages/envelope-serialization",
@@ -1263,7 +1263,7 @@
     "pageType": "concept",
     "readingTime": 5,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/envelope-serialization.md",
-    "wordCount": 933
+    "wordCount": 936
   },
   {
     "slug": "v1.0.0/fundamentals/messages/message-associations",
@@ -1276,7 +1276,7 @@
     "pageType": "concept",
     "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/message-associations.md",
-    "wordCount": 1103
+    "wordCount": 1109
   },
   {
     "slug": "v1.0.0/fundamentals/messages/message-context-extraction",
@@ -1302,7 +1302,7 @@
     "pageType": "concept",
     "readingTime": 13,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/message-context.md",
-    "wordCount": 2529
+    "wordCount": 2461
   },
   {
     "slug": "v1.0.0/fundamentals/messages/message-tags",
@@ -1326,9 +1326,9 @@
     "tags": "messages, commands, events, queries, marker-interface",
     "version": "v1.0.0",
     "pageType": "overview",
-    "readingTime": 6,
+    "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/messages.md",
-    "wordCount": 1171
+    "wordCount": 1214
   },
   {
     "slug": "v1.0.0/fundamentals/messaging/apply-hooks",
@@ -1348,13 +1348,13 @@
     "title": "Collective Events",
     "category": "Fundamentals",
     "order": 7,
-    "description": "\n# Collective events\n\nA first-class persistable event that mutates **every row in a scope**\nas a unit. The producer expresses **scope + a uniform mutation**; the\nprojection runner applies it as **one predicate SQL `UPDATE` per\naffected projection table** whose `WHERE` clause is the scope predicate\n(optionally refined per-perspective by the handler). No per-row\nenumeration, no per-row event replication, no per-row tracking, no\nper-row tax.\n\nCanonical use cases:\n\n- \"Archive every job in tenant T\"\n- \"Remove all jobs in tenant T\" (soft-delete via a status column)\n- \"Change the state of every matching job in a scope\"\n- \"Apply this template to every Draft/Approved/Published job in a tenant\"\n\nWhen the producer expresses **intent + scope** rather than a list of\nevents, this is the primitive — one event row, one SQL `UPDATE`, one\ncategory-level observed event.\n\n## When to reach for it\n\n```\nProducer wants to mutate multiple streams in one operation\n  │\n  ├─ Is the mutation uniform across all targeted streams?\n  │   ├─ NO  → ICompositeEvent (hand-crafted per-stream batch)\n  │   └─ YES\n  │       │\n  │       ├─ Does the producer want to name an explicit list of streams?\n  │       │   ├─ YES → ICompositeEvent (enumerate them)\n  │       │   └─ NO  → ICollectiveEvent ← THIS — scope IS the descriptor\n```\n\nPick **collective** when the mutation is uniform across a scope and you\ndo **not** need a per-entity event for it. Pick **composite** when each\nstream gets a distinct payload. Pick neither (stay individual) when a\nper-entity event is consumed downstream — a notification, an\nacknowledgment, an audit entry, or a receptor keyed off the per-entity\nevent.\n\n## Composite vs collective — pick one per producer intent\n\n`ICollectiveEvent` sits **next to** `ICompositeEvent` — additive, not a\nreplacement. They solve different problems and ship on different runtime\npaths. The two contracts share **no inheritance**: `ICollectiveEvent`\nextends `IEvent`, and the two run separate code paths end-to-end.\n\n| Dimension | `ICompositeEvent` | `ICollectiveEvent` |\n|",
+    "description": "\n# Collective events\n\nA first-class persistable event that mutates **every row in a scope**\nas a unit. The producer expresses **scope + a uniform mutation**; the\nprojection runner applies it as **one predicate SQL `UPDATE` per\naffected projection table** whose `WHERE` clause is the scope predicate\n(optionally refined per-perspective by the handler). No per-row\nenumeration, no per-row event replication, no per-row tracking, no\nper-row tax.\n\nCanonical use cases:\n\n- \"Archive every job in tenant T\"\n- \"Remove all jobs in tenant T\" (soft-delete via a status column)\n- \"Change the state of every matching job in a scope\"\n- \"Apply this template to every Draft/Approved/Published job in a tenant\"\n\nWhen the producer expresses **intent + scope** rather than a list of\nevents, this is the primitive — one event row, one SQL `UPDATE`, one\ncategory-level observed event.\n\n## When to reach for it\n\n```mermaid\nflowchart TD\n    Start[\"Producer wants to mutate multiple streams in one operation\"]\n    Q1{\"Is the mutation uniform across<br/>all targeted streams?\"}\n    Composite1[\"ICompositeEvent<br/>(hand-crafted per-stream batch)\"]\n    Q2{\"Does the producer want to name<br/>an explicit list of streams?\"}\n    Composite2[\"ICompositeEvent<br/>(enumerate them)\"]\n    Collective[\"ICollectiveEvent ← THIS<br/>scope IS the descriptor\"]\n\n    Start --> Q1\n    Q1 -->|NO| Composite1\n    Q1 -->|YES| Q2\n    Q2 -->|YES| Composite2\n    Q2 -->|NO| Collective\n\n    style Collective fill:#d4edda,stroke:#28a745,stroke-width:2px\n```\n\nPick **collective** when the mutation is uniform across a scope and you\ndo **not** need a per-entity event for it. Pick **composite** when each\nstream gets a distinct payload. Pick neither (stay individual) when a\nper-entity event is consumed downstream — a notification, an\nacknowledgment, an audit entry, or a receptor keyed off the per-entity\nevent.\n\n## Composite vs collective — pick one per producer intent\n\n`ICollectiveEvent` sits **next to** `ICompositeEvent` — additive, not a\nreplacement. They solve different problems and ship on different runtime\npaths. The two contracts share **no inheritance**: `ICollectiveEvent`\nextends `IEvent`, and the two run separate code paths end-to-end.\n\n| Dimension | `ICompositeEvent` | `ICollectiveEvent` |\n|",
     "tags": [],
     "version": "v1.0.0",
     "pageType": "concept",
     "readingTime": 24,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
-    "wordCount": 4766
+    "wordCount": 4757
   },
   {
     "slug": "v1.0.0/fundamentals/messaging/composite-events",
@@ -1367,7 +1367,7 @@
     "pageType": "concept",
     "readingTime": 16,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/composite-events.md",
-    "wordCount": 3052
+    "wordCount": 3048
   },
   {
     "slug": "v1.0.0/fundamentals/offloads/message-body-store",
@@ -1432,7 +1432,7 @@
     "pageType": "concept",
     "readingTime": 13,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
-    "wordCount": 2592
+    "wordCount": 2551
   },
   {
     "slug": "v1.0.0/fundamentals/persistence/persistence",
@@ -1495,9 +1495,9 @@
     "tags": "perspectives, synchronization, event-completion, rpc, waiting, local-invoke, dispatch-options, all-perspectives",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 10,
+    "readingTime": 9,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/event-completion.md",
-    "wordCount": 1852
+    "wordCount": 1779
   },
   {
     "slug": "v1.0.0/fundamentals/perspectives/multi-stream",
@@ -1510,7 +1510,7 @@
     "pageType": "concept",
     "readingTime": 13,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/multi-stream.md",
-    "wordCount": 2456
+    "wordCount": 2443
   },
   {
     "slug": "v1.0.0/fundamentals/perspectives/perspective-sync",
@@ -1521,9 +1521,9 @@
     "tags": "perspectives, synchronization, read-your-writes, consistency, lenses, sync, awaiter, debugger-aware",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 28,
+    "readingTime": 27,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-    "wordCount": 5444
+    "wordCount": 5400
   },
   {
     "slug": "v1.0.0/fundamentals/perspectives/perspectives-with-actions",
@@ -1549,7 +1549,7 @@
     "pageType": "overview",
     "readingTime": 24,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-    "wordCount": 4785
+    "wordCount": 4764
   },
   {
     "slug": "v1.0.0/fundamentals/perspectives/physical-fields",
@@ -1614,7 +1614,7 @@
     "pageType": "concept",
     "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/registry.md",
-    "wordCount": 1072
+    "wordCount": 1022
   },
   {
     "slug": "v1.0.0/fundamentals/perspectives/rewind",
@@ -1781,9 +1781,9 @@
     "tags": "sagas, completion, watchdog, scheduling, abandon, stall-detection",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 7,
+    "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/sagas/completion-orchestration.md",
-    "wordCount": 1209
+    "wordCount": 1185
   },
   {
     "slug": "v1.0.0/fundamentals/sagas/whizbang-sagas",
@@ -1809,7 +1809,7 @@
     "pageType": "concept",
     "readingTime": 11,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/security/audit-logging.md",
-    "wordCount": 2138
+    "wordCount": 2112
   },
   {
     "slug": "v1.0.0/fundamentals/security/http-security-headers",
@@ -1835,7 +1835,7 @@
     "pageType": "concept",
     "readingTime": 10,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/security/implementing-multi-tenancy.md",
-    "wordCount": 1931
+    "wordCount": 1881
   },
   {
     "slug": "v1.0.0/fundamentals/security/message-security",
@@ -1846,9 +1846,9 @@
     "tags": "message-security, security-context, extractors, distributed-security, scope-context, transport-metadata, audit",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 23,
+    "readingTime": 22,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/security/message-security.md",
-    "wordCount": 4409
+    "wordCount": 4309
   },
   {
     "slug": "v1.0.0/fundamentals/security/multi-tenancy",
@@ -1861,7 +1861,7 @@
     "pageType": "concept",
     "readingTime": 12,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/security/multi-tenancy.md",
-    "wordCount": 2365
+    "wordCount": 2256
   },
   {
     "slug": "v1.0.0/fundamentals/security/scope-propagation",
@@ -1898,9 +1898,9 @@
     "tags": "security, message-security, scoping, distributed-systems, audit, context-propagation",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 11,
+    "readingTime": 10,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/security/security-context-propagation.md",
-    "wordCount": 2003
+    "wordCount": 1937
   },
   {
     "slug": "v1.0.0/fundamentals/security/security",
@@ -2017,7 +2017,7 @@
     "pageType": "guide",
     "readingTime": 15,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/getting-started/project-structure.md",
-    "wordCount": 2869
+    "wordCount": 2914
   },
   {
     "slug": "v1.0.0/getting-started/quick-start",
@@ -2041,9 +2041,9 @@
     "tags": "event-sourcing, cqrs, event-store, snapshots, temporal-queries",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 11,
+    "readingTime": 10,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/examples/event-sourcing-cqrs.md",
-    "wordCount": 2010
+    "wordCount": 1945
   },
   {
     "slug": "v1.0.0/learn/examples/microservices-orchestration",
@@ -2056,7 +2056,7 @@
     "pageType": "concept",
     "readingTime": 9,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/examples/microservices-orchestration.md",
-    "wordCount": 1710
+    "wordCount": 1633
   },
   {
     "slug": "v1.0.0/learn/examples/multi-tenant-saas",
@@ -2067,9 +2067,9 @@
     "tags": "multi-tenancy, saas, tenant-isolation, database-per-tenant",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 9,
+    "readingTime": 8,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/examples/multi-tenant-saas.md",
-    "wordCount": 1627
+    "wordCount": 1552
   },
   {
     "slug": "v1.0.0/learn/examples/real-time-analytics",
@@ -2080,9 +2080,9 @@
     "tags": "real-time, analytics, signalr, streaming, dashboards, websockets",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 8,
+    "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/examples/real-time-analytics.md",
-    "wordCount": 1462
+    "wordCount": 1385
   },
   {
     "slug": "v1.0.0/learn/tutorial/analytics-service",
@@ -2093,9 +2093,9 @@
     "tags": "tutorial, analytics-service, perspectives, time-series, reporting, dashboards",
     "version": "v1.0.0",
     "pageType": "tutorial",
-    "readingTime": 12,
+    "readingTime": 11,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/tutorial/analytics-service.md",
-    "wordCount": 2203
+    "wordCount": 2130
   },
   {
     "slug": "v1.0.0/learn/tutorial/customer-service",
@@ -2106,9 +2106,9 @@
     "tags": "tutorial, customer-service, bff, perspectives, cqrs, read-models",
     "version": "v1.0.0",
     "pageType": "tutorial",
-    "readingTime": 12,
+    "readingTime": 11,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/tutorial/customer-service.md",
-    "wordCount": 2225
+    "wordCount": 2063
   },
   {
     "slug": "v1.0.0/learn/tutorial/deployment",
@@ -2121,7 +2121,7 @@
     "pageType": "tutorial",
     "readingTime": 10,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/tutorial/deployment.md",
-    "wordCount": 1980
+    "wordCount": 1885
   },
   {
     "slug": "v1.0.0/learn/tutorial/inventory-service",
@@ -2134,7 +2134,7 @@
     "pageType": "tutorial",
     "readingTime": 14,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/tutorial/inventory-service.md",
-    "wordCount": 2746
+    "wordCount": 2606
   },
   {
     "slug": "v1.0.0/learn/tutorial/notification-service",
@@ -2145,9 +2145,9 @@
     "tags": "tutorial, notification-service, email, sms, event-driven",
     "version": "v1.0.0",
     "pageType": "tutorial",
-    "readingTime": 14,
+    "readingTime": 13,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/tutorial/notification-service.md",
-    "wordCount": 2633
+    "wordCount": 2566
   },
   {
     "slug": "v1.0.0/learn/tutorial/order-management",
@@ -2160,7 +2160,7 @@
     "pageType": "tutorial",
     "readingTime": 12,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/tutorial/order-management.md",
-    "wordCount": 2349
+    "wordCount": 2206
   },
   {
     "slug": "v1.0.0/learn/tutorial/payment-processing",
@@ -2173,7 +2173,7 @@
     "pageType": "tutorial",
     "readingTime": 14,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/tutorial/payment-processing.md",
-    "wordCount": 2797
+    "wordCount": 2651
   },
   {
     "slug": "v1.0.0/learn/tutorial/shipping-service",
@@ -2184,9 +2184,9 @@
     "tags": "tutorial, shipping-service, carrier-api, tracking, event-driven",
     "version": "v1.0.0",
     "pageType": "tutorial",
-    "readingTime": 12,
+    "readingTime": 11,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/tutorial/shipping-service.md",
-    "wordCount": 2248
+    "wordCount": 2164
   },
   {
     "slug": "v1.0.0/learn/tutorial/testing-strategy",
@@ -2199,7 +2199,7 @@
     "pageType": "tutorial",
     "readingTime": 9,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/tutorial/testing-strategy.md",
-    "wordCount": 1735
+    "wordCount": 1695
   },
   {
     "slug": "v1.0.0/learn/tutorial/tutorial-overview",
@@ -2212,7 +2212,7 @@
     "pageType": "tutorial",
     "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/learn/tutorial/tutorial-overview.md",
-    "wordCount": 1399
+    "wordCount": 1326
   },
   {
     "slug": "v1.0.0/messaging/commands-events",
@@ -2251,7 +2251,7 @@
     "pageType": "concept",
     "readingTime": 12,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/failure-handling.md",
-    "wordCount": 2314
+    "wordCount": 2298
   },
   {
     "slug": "v1.0.0/messaging/idempotency-patterns",
@@ -2277,7 +2277,7 @@
     "pageType": "concept",
     "readingTime": 13,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/inbox-pattern.md",
-    "wordCount": 2428
+    "wordCount": 2429
   },
   {
     "slug": "v1.0.0/messaging/message-envelopes",
@@ -2290,7 +2290,7 @@
     "pageType": "concept",
     "readingTime": 9,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/message-envelopes.md",
-    "wordCount": 1664
+    "wordCount": 1643
   },
   {
     "slug": "v1.0.0/messaging/multi-instance-coordination",
@@ -2303,7 +2303,7 @@
     "pageType": "concept",
     "readingTime": 18,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
-    "wordCount": 3598
+    "wordCount": 3588
   },
   {
     "slug": "v1.0.0/messaging/outbox-pattern",
@@ -2316,7 +2316,7 @@
     "pageType": "concept",
     "readingTime": 12,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/outbox-pattern.md",
-    "wordCount": 2229
+    "wordCount": 2208
   },
   {
     "slug": "v1.0.0/messaging/topic-filters",
@@ -2340,9 +2340,9 @@
     "tags": "transports, azure-service-bus, messaging, topics, subscriptions, correlation-filters, aspire, aot",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 25,
+    "readingTime": 24,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-    "wordCount": 4828
+    "wordCount": 4672
   },
   {
     "slug": "v1.0.0/messaging/transports/in-memory",
@@ -2355,7 +2355,7 @@
     "pageType": "concept",
     "readingTime": 13,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/in-memory.md",
-    "wordCount": 2548
+    "wordCount": 2496
   },
   {
     "slug": "v1.0.0/messaging/transports/infrastructure-mapping",
@@ -2379,9 +2379,9 @@
     "tags": "transports, rabbitmq, messaging, topic-exchange, dead-letter-queue, channel-pool, aot, testcontainers",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 26,
+    "readingTime": 25,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-    "wordCount": 5148
+    "wordCount": 4802
   },
   {
     "slug": "v1.0.0/messaging/transports/transport-consumer",
@@ -2431,9 +2431,9 @@
     "tags": "work-coordinator, atomic-operations, batch-processing, distributed-coordination, lease-management",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 13,
+    "readingTime": 12,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/work-coordinator.md",
-    "wordCount": 2410
+    "wordCount": 2380
   },
   {
     "slug": "v1.0.0/migration-guide/01-concept-mapping",
@@ -2729,9 +2729,9 @@
     "tags": "deployment, blue-green, canary, rolling-update, feature-flags, kubernetes",
     "version": "v1.0.0",
     "pageType": "guide",
-    "readingTime": 11,
+    "readingTime": 10,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/deployment/deployment-strategies.md",
-    "wordCount": 2136
+    "wordCount": 1993
   },
   {
     "slug": "v1.0.0/operations/deployment/monitoring",
@@ -2783,7 +2783,7 @@
     "pageType": "guide",
     "readingTime": 12,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/deployment/scaling.md",
-    "wordCount": 2310
+    "wordCount": 2231
   },
   {
     "slug": "v1.0.0/operations/deployment/security",
@@ -3139,7 +3139,7 @@
     "pageType": "concept",
     "readingTime": 11,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/infrastructure/aspire-integration.md",
-    "wordCount": 2178
+    "wordCount": 2085
   },
   {
     "slug": "v1.0.0/operations/infrastructure/database-limits",
@@ -3165,7 +3165,7 @@
     "pageType": "concept",
     "readingTime": 12,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/infrastructure/health-checks.md",
-    "wordCount": 2267
+    "wordCount": 2232
   },
   {
     "slug": "v1.0.0/operations/infrastructure/migrations",
@@ -3191,7 +3191,7 @@
     "pageType": "concept",
     "readingTime": 17,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
-    "wordCount": 3382
+    "wordCount": 3325
   },
   {
     "slug": "v1.0.0/operations/infrastructure/policy-engine",
@@ -3217,7 +3217,7 @@
     "pageType": "concept",
     "readingTime": 11,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/infrastructure/pooling.md",
-    "wordCount": 2089
+    "wordCount": 2056
   },
   {
     "slug": "v1.0.0/operations/observability/diagnostics",
@@ -3373,7 +3373,7 @@
     "pageType": "concept",
     "readingTime": 27,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-    "wordCount": 5257
+    "wordCount": 5249
   },
   {
     "slug": "v1.0.0/operations/workers/process-work-batch-lease-semantics",
@@ -3387,22 +3387,5 @@
     "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/process-work-batch-lease-semantics.md",
     "wordCount": 1103
-  },
-  {
-    "slug": "v1.0.0/tools/mcp-server",
-    "title": "MCP Documentation Server",
-    "category": "tools",
-    "order": 1,
-    "description": "Give your AI assistant direct access to Whizbang docs, code examples, code↔test navigation, and live CI test status via the Model Context Protocol",
-    "tags": "mcp, ai, tooling, claude, cursor, documentation-server",
-    "version": "v1.0.0",
-    "pageType": "guide",
-    "audience": [
-      "consumer",
-      "contributor"
-    ],
-    "readingTime": 3,
-    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/tools/mcp-server.md",
-    "wordCount": 432
   }
 ]

@@ -57,64 +57,46 @@ For basic receptor usage, see [Receptors Guide](../../fundamentals/receptors/rec
 
 ### Receptor Execution Pipeline
 
-```
-┌────────────────────────────────────────────────────────┐
-│  Dispatcher.InvokeAsync<TMessage, TResponse>()         │
-└────────────────────┬───────────────────────────────────┘
-                     │
-                     ↓
-           ┌─────────────────────┐
-           │  Resolve Receptor   │ ← DI Container
-           │  IReceptor<T, R>    │
-           └──────────┬──────────┘
-                      │
-                      ↓
-         ┌────────────────────────┐
-         │  Pipeline Behaviors    │ ← IPipelineBehavior<T, R>
-         │  (Logging, Validation) │
-         └──────────┬─────────────┘
-                    │
-                    ↓
-    ┌───────────────────────────────────┐
-    │  receptor.HandleAsync(message)    │ ← Your Custom Receptor
-    │                                   │
-    │  Lifecycle:                       │
-    │  1. Constructor (DI)              │
-    │  2. HandleAsync (business logic)  │
-    │  3. Dispose (if IAsyncDisposable) │
-    └───────────────┬───────────────────┘
-                    │
-                    ↓
-           ┌────────────────┐
-           │  Return TResponse │
-           └────────────────┘
+```mermaid
+flowchart TD
+    Dispatcher["Dispatcher.InvokeAsync&lt;TMessage, TResponse&gt;()"]
+    Resolve["Resolve Receptor<br/>IReceptor&lt;T, R&gt;"]
+    Behaviors["Pipeline Behaviors<br/>(Logging, Validation)"]
+    Handle["receptor.HandleAsync(message)<br/><br/>Lifecycle:<br/>1. Constructor (DI)<br/>2. HandleAsync (business logic)<br/>3. Dispose (if IAsyncDisposable)"]
+    Return["Return TResponse"]
+
+    DI["DI Container"] -.-> Resolve
+    IPB["IPipelineBehavior&lt;T, R&gt;"] -.-> Behaviors
+    Custom["Your Custom Receptor"] -.-> Handle
+
+    Dispatcher --> Resolve
+    Resolve --> Behaviors
+    Behaviors --> Handle
+    Handle --> Return
+
+    class Dispatcher,Resolve,Behaviors,Handle,Return layer-core
 ```
 
 ### Custom Receptor Base Class Pattern
 
-```
-┌────────────────────────────────────────────────┐
-│  ReceptorBase<TMessage, TResponse>             │
-│                                                │
-│  + Constructor(IServiceProvider)               │
-│  + abstract ValidateAsync(message)             │
-│  + abstract ExecuteAsync(message)              │
-│  + LogInformation(message)                     │
-│  + GetService<T>()                             │
-│  + HandleAsync(message) [sealed]               │
-│    ├─ ValidateAsync(message)                   │
-│    ├─ ExecuteAsync(message)                    │
-│    └─ Log result                               │
-└────────────────────────────────────────────────┘
-                    ▲
-                    │ Inherits
-                    │
-    ┌───────────────┴──────────────┐
-    │  CreateOrderReceptor          │
-    │                               │
-    │  + ValidateAsync(message)     │ ← Override
-    │  + ExecuteAsync(message)      │ ← Override
-    └───────────────────────────────┘
+```mermaid
+classDiagram
+    class ReceptorBase~TMessage,TResponse~ {
+        +Constructor(IServiceProvider)
+        +ValidateAsync(message)*
+        +ExecuteAsync(message)*
+        +LogInformation(message)
+        +GetService~T~()
+        +HandleAsync(message) [sealed]
+    }
+    class CreateOrderReceptor {
+        +ValidateAsync(message)
+        +ExecuteAsync(message)
+    }
+    ReceptorBase <|-- CreateOrderReceptor : Inherits
+
+    note for ReceptorBase "ValidateAsync and ExecuteAsync are abstract. HandleAsync (sealed) calls: ValidateAsync(message), ExecuteAsync(message), then logs the result."
+    note for CreateOrderReceptor "Overrides ValidateAsync and ExecuteAsync"
 ```
 
 ---

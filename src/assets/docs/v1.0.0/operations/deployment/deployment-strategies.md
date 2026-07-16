@@ -38,35 +38,26 @@ Comprehensive guide to **deployment strategies** for Whizbang applications - blu
 
 ### Architecture
 
-```
-┌────────────────────────────────────────────────────┐
-│  Blue-Green Deployment                             │
-│                                                     │
-│  ┌──────────────┐                                  │
-│  │ Load Balancer│                                  │
-│  └──────┬───────┘                                  │
-│         │                                           │
-│         │ Traffic (100%)                            │
-│         ▼                                           │
-│  ┌──────────────┐          ┌──────────────┐        │
-│  │  Blue (v1.0) │          │ Green (v1.1) │        │
-│  │  - Live      │          │ - Staging    │        │
-│  │  - 3 pods    │          │ - 3 pods     │        │
-│  └──────────────┘          └──────────────┘        │
-│                                                     │
-│  After validation:                                 │
-│  ┌──────────────┐                                  │
-│  │ Load Balancer│                                  │
-│  └──────┬───────┘                                  │
-│         │                                           │
-│         │ Traffic (100%)                            │
-│         ▼                                           │
-│  ┌──────────────┐          ┌──────────────┐        │
-│  │  Blue (v1.0) │          │ Green (v1.1) │        │
-│  │  - Idle      │          │ - Live       │        │
-│  │  - 3 pods    │          │ - 3 pods     │        │
-│  └──────────────┘          └──────────────┘        │
-└────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Initial["Blue-Green Deployment"]
+        LB1["Load Balancer"]
+        Blue1["Blue (v1.0)<br/>- Live<br/>- 3 pods"]
+        Green1["Green (v1.1)<br/>- Staging<br/>- 3 pods"]
+        LB1 -->|"Traffic (100%)"| Blue1
+    end
+
+    subgraph Swapped["After validation"]
+        LB2["Load Balancer"]
+        Blue2["Blue (v1.0)<br/>- Idle<br/>- 3 pods"]
+        Green2["Green (v1.1)<br/>- Live<br/>- 3 pods"]
+        LB2 -->|"Traffic (100%)"| Green2
+    end
+
+    style Blue1 fill:#cce5ff,stroke:#004085,stroke-width:2px,color:#000
+    style Blue2 fill:#cce5ff,stroke:#004085,stroke-width:2px,color:#000
+    style Green1 fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style Green2 fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
 ```
 
 ### Kubernetes Manifests
@@ -220,31 +211,23 @@ kubectl scale deployment/order-service-blue --replicas=3
 
 ### Architecture
 
-```
-┌────────────────────────────────────────────────────┐
-│  Canary Deployment                                 │
-│                                                     │
-│  ┌──────────────┐                                  │
-│  │ Load Balancer│                                  │
-│  └──────┬───────┘                                  │
-│         │                                           │
-│    ┌────┴────┐                                     │
-│    │         │                                      │
-│    ▼ 90%     ▼ 10% (canary)                        │
-│  ┌─────┐  ┌─────┐                                  │
-│  │ v1.0│  │v1.1 │                                  │
-│  │ 9pods│  │1pod │                                  │
-│  └─────┘  └─────┘                                  │
-│                                                     │
-│  After validation: 50/50                           │
-│    ┌────┴────┐                                     │
-│    │         │                                      │
-│    ▼ 50%     ▼ 50%                                 │
-│  ┌─────┐  ┌─────┐                                  │
-│  │ v1.0│  │v1.1 │                                  │
-│  │ 5pods│  │5pods│                                  │
-│  └─────┘  └─────┘                                  │
-└────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Initial["Canary Deployment"]
+        LB1["Load Balancer"]
+        V10a["v1.0<br/>9 pods"]
+        V11a["v1.1<br/>1 pod"]
+        LB1 -->|"90%"| V10a
+        LB1 -->|"10% (canary)"| V11a
+    end
+
+    subgraph Later["After validation: 50/50"]
+        LB2["Load Balancer"]
+        V10b["v1.0<br/>5 pods"]
+        V11b["v1.1<br/>5 pods"]
+        LB2 -->|"50%"| V10b
+        LB2 -->|"50%"| V11b
+    end
 ```
 
 ### Kubernetes with Istio

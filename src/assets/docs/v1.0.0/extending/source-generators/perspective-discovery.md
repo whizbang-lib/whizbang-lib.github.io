@@ -113,35 +113,18 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 
 ### 1. Compile-Time Discovery
 
-```
-┌──────────────────────────────────────────────────┐
-│  Your Code                                       │
-│                                                  │
-│  public class OrderSummaryPerspective           │
-│      : IPerspectiveOf<OrderCreated> {           │
-│    public async Task UpdateAsync(               │
-│        OrderCreated @event,                     │
-│        CancellationToken ct) { ... }            │
-│  }                                               │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  PerspectiveDiscoveryGenerator (Roslyn)         │
-│                                                  │
-│  1. Scan syntax tree for classes                │
-│  2. Filter classes with base types              │
-│  3. Check for IPerspectiveOf<TEvent>            │
-│  4. Extract: Class, Event types (can be many!)  │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  Generated Code                                  │
-│                                                  │
-│  PerspectiveRegistrations.g.cs                  │
-│  └─ services.AddScoped<IPerspectiveOf<...>>()  │
-└──────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Code["Your Code<br/><br/>public class OrderSummaryPerspective<br/>: IPerspectiveOf&lt;OrderCreated&gt; {<br/>public async Task UpdateAsync(<br/>OrderCreated @event,<br/>CancellationToken ct) { ... }<br/>}"]
+    Generator["PerspectiveDiscoveryGenerator (Roslyn)<br/><br/>1. Scan syntax tree for classes<br/>2. Filter classes with base types<br/>3. Check for IPerspectiveOf&lt;TEvent&gt;<br/>4. Extract: Class, Event types (can be many!)"]
+    Generated["Generated Code<br/><br/>PerspectiveRegistrations.g.cs<br/>— services.AddScoped&lt;IPerspectiveOf&lt;...&gt;&gt;()"]
+
+    Code --> Generator
+    Generator --> Generated
+
+    class Code layer-read
+    class Generator layer-infrastructure
+    class Generated layer-core
 ```
 
 ### 2. Generated File
@@ -352,23 +335,29 @@ public class CustomerStatisticsPerspective :
 
 ### Perspective Invocation Flow
 
-```
-1. Receptor handles command, returns event
-   └─> OrderCreated event
+```mermaid
+flowchart TD
+    S1["1. Receptor handles command, returns event<br/>→ OrderCreated event"]
+    S2["2. Event published to Event Store<br/>→ Stored in wh_events table"]
+    S3["3. Event Store Coordinator processes event<br/>→ Resolves IPerspectiveOf&lt;OrderCreated&gt; implementations"]
+    P1["OrderSummaryPerspective.UpdateAsync(OrderCreated)"]
+    P2["CustomerStatisticsPerspective.UpdateAsync(OrderCreated)"]
+    P3["InventoryPerspective.UpdateAsync(OrderCreated)"]
+    S5["5. Checkpoints updated<br/>→ wh_perspective_checkpoints table"]
 
-2. Event published to Event Store
-   └─> Stored in wh_events table
+    S1 --> S2
+    S2 --> S3
+    S3 -->|"4. Perspectives invoked (parallel)"| P1
+    S3 -->|"4. Perspectives invoked (parallel)"| P2
+    S3 -->|"4. Perspectives invoked (parallel)"| P3
+    P1 --> S5
+    P2 --> S5
+    P3 --> S5
 
-3. Event Store Coordinator processes event
-   └─> Resolves IPerspectiveOf<OrderCreated> implementations
-
-4. Perspectives invoked (parallel)
-   ├─> OrderSummaryPerspective.UpdateAsync(OrderCreated)
-   ├─> CustomerStatisticsPerspective.UpdateAsync(OrderCreated)
-   └─> InventoryPerspective.UpdateAsync(OrderCreated)
-
-5. Checkpoints updated
-   └─> wh_perspective_checkpoints table
+    class S1 layer-core
+    class S2,S3 layer-event
+    class P1,P2,P3 layer-read
+    class S5 layer-event
 ```
 
 ### Checkpoint-Based Processing
@@ -466,18 +455,15 @@ internal sealed record PerspectiveInfo(
 ```
 
 **Performance**:
-```
-First compilation:
-├─ Scan syntax tree: 50ms
-├─ Extract perspective info: 20ms
-├─ Generate registration file: 5ms
-└─ Total: 75ms
-
-Subsequent compilation (no changes):
-├─ Check cache: 1ms (inputs unchanged)
-├─ Skip generation: 0ms
-└─ Total: 1ms (74ms saved!)
-```
+| Scenario | Step | Time |
+|----------|------|------|
+| First compilation | Scan syntax tree | 50ms |
+| | Extract perspective info | 20ms |
+| | Generate registration file | 5ms |
+| | **Total** | **75ms** |
+| Subsequent compilation (no changes) | Check cache | 1ms (inputs unchanged) |
+| | Skip generation | 0ms |
+| | **Total** | **1ms (74ms saved!)** |
 
 ### Syntactic Filtering
 

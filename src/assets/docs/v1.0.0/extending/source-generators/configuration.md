@@ -24,28 +24,16 @@ Whizbang source generators read configuration from MSBuild properties, enabling 
 
 Configuration utilities provide a bridge between MSBuild project properties and the incremental source generator pipeline:
 
-```
-┌──────────────────────────────────────────────────┐
-│  .csproj / Directory.Build.props                │
-│                                                  │
-│  <WhizbangStripTableNameSuffixes>true</...>     │
-│  <WhizbangTableNameSuffixesToStrip>...</...>    │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  ConfigurationUtilities                          │
-│                                                  │
-│  Reads AnalyzerConfigOptions                    │
-│  Returns TableNameConfig                         │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  Source Generators                               │
-│                                                  │
-│  Use config for table names, code generation    │
-└──────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Props[".csproj / Directory.Build.props<br/><br/>&lt;WhizbangStripTableNameSuffixes&gt;true&lt;/...&gt;<br/>&lt;WhizbangTableNameSuffixesToStrip&gt;...&lt;/...&gt;"]
+    Utils["ConfigurationUtilities<br/><br/>Reads AnalyzerConfigOptions<br/>Returns TableNameConfig"]
+    Generators["Source Generators<br/><br/>Use config for table names, code generation"]
+
+    Props --> Utils
+    Utils --> Generators
+
+    class Props,Utils,Generators layer-infrastructure
 ```
 
 ---

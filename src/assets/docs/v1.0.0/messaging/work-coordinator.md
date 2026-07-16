@@ -29,22 +29,13 @@ The Work Coordinator solves a critical problem: **How do you atomically coordina
 
 ### What It Coordinates
 
-```
-┌─────────────────────────────────────────────────────┐
-│ Single Atomic Database Transaction                  │
-│                                                     │
-│ 1. Delete completed outbox messages                │
-│ 2. Update failed outbox messages (retry counts)    │
-│ 3. Insert new outbox messages                      │
-│ 4. Delete completed inbox messages                 │
-│ 5. Update failed inbox messages                    │
-│ 6. Insert new inbox messages                       │
-│ 7. Update receptor processing records              │
-│ 8. Update perspective checkpoint records           │
-│ 9. Claim new outbox/inbox work (via leasing)       │
-│ 10. Return claimed work to caller                   │
-│                                                     │
-└─────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph TX["Single Atomic Database Transaction"]
+        Steps["1. Delete completed outbox messages<br/>2. Update failed outbox messages (retry counts)<br/>3. Insert new outbox messages<br/>4. Delete completed inbox messages<br/>5. Update failed inbox messages<br/>6. Insert new inbox messages<br/>7. Update receptor processing records<br/>8. Update perspective checkpoint records<br/>9. Claim new outbox/inbox work (via leasing)<br/>10. Return claimed work to caller"]
+    end
+
+    class Steps layer-event
 ```
 
 **Key Insight**: All operations **succeed together or fail together** (atomicity via database transaction).

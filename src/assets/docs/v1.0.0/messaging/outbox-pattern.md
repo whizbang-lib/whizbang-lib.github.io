@@ -56,23 +56,15 @@ public async Task<OrderCreated> HandleAsync(CreateOrder message, CancellationTok
 
 **The Fix**: Store the event in the database (same transaction), then publish it later.
 
-```
-┌─────────────────────────────────────────────────┐
-│ Database Transaction                            │
-│                                                 │
-│ 1. INSERT INTO orders (...) VALUES (...)       │
-│ 2. INSERT INTO wh_outbox (...) VALUES (...)    │  ← Event stored atomically!
-│                                                 │
-└─────────────────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────────────┐
-│ Background Worker (polls outbox)                │
-│                                                 │
-│ 3. SELECT * FROM wh_outbox WHERE status = ...  │
-│ 4. Publish to Azure Service Bus                │
-│ 5. UPDATE wh_outbox SET status = 'Published'   │
-│                                                 │
-└─────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    TX["Database Transaction<br/><br/>1. INSERT INTO orders (...) VALUES (...)<br/>2. INSERT INTO wh_outbox (...) VALUES (...) — Event stored atomically!"]
+    Worker["Background Worker (polls outbox)<br/><br/>3. SELECT * FROM wh_outbox WHERE status = ...<br/>4. Publish to Azure Service Bus<br/>5. UPDATE wh_outbox SET status = 'Published'"]
+
+    TX --> Worker
+
+    class TX layer-event
+    class Worker layer-command
 ```
 
 **Benefits**:

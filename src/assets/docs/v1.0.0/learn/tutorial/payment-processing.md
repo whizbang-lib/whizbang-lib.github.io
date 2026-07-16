@@ -32,44 +32,33 @@ This is **Part 3** of the ECommerce Tutorial. Complete [Inventory Service](inven
 
 ## What You'll Build
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Payment Service Architecture                               │
-│                                                              │
-│  ┌─────────────┐                                            │
-│  │Azure Service│  InventoryReserved event                   │
-│  │     Bus     │──────────────────────┐                     │
-│  └─────────────┘                      │                     │
-│                                        ▼                     │
-│                          ┌────────────────────────┐         │
-│                          │  Inbox Pattern         │         │
-│                          └──────────┬─────────────┘         │
-│                                     │                        │
-│                                     ▼                        │
-│                          ┌────────────────────────┐         │
-│                          │ ProcessPaymentReceptor │         │
-│                          │  - Call gateway API    │         │
-│                          │  - Retry logic         │         │
-│                          │  - Store transaction   │         │
-│                          └──────────┬─────────────┘         │
-│                                     │                        │
-│                      ┌──────────────┼──────────────┐        │
-│                      │              │              │        │
-│                      ▼              ▼              ▼        │
-│                 ┌─────────┐   ┌─────────┐   ┌──────────┐   │
-│                 │Postgres │   │ Outbox  │   │ Payment  │   │
-│                 │Payments │   │ Table   │   │ Gateway  │   │
-│                 │  Table  │   │         │   │   API    │   │
-│                 └─────────┘   └─────────┘   └──────────┘   │
-│                                     │                        │
-│                      ┌──────────────┼──────────────┐        │
-│                      │              │              │        │
-│                      ▼              ▼              ▼        │
-│              ┌──────────────┐  ┌──────────────┐  ┌────────┐│
-│              │PaymentProcessed│ │PaymentFailed │ │Outbox  ││
-│              │     Event      │ │    Event     │ │Worker  ││
-│              └──────────────┘  └──────────────┘  └────────┘│
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph PSA["Payment Service Architecture"]
+        ASB["Azure Service Bus"]
+        Inbox["Inbox Pattern"]
+        Receptor["ProcessPaymentReceptor<br/>- Call gateway API<br/>- Retry logic<br/>- Store transaction"]
+        PaymentsTable["Postgres Payments Table"]
+        OutboxTable["Outbox Table"]
+        Gateway["Payment Gateway API"]
+        Processed["PaymentProcessed Event"]
+        Failed["PaymentFailed Event"]
+        OutboxWorker["Outbox Worker"]
+
+        ASB -->|"InventoryReserved event"| Inbox
+        Inbox --> Receptor
+        Receptor --> PaymentsTable
+        Receptor --> OutboxTable
+        Receptor --> Gateway
+        OutboxTable --> Processed
+        OutboxTable --> Failed
+        OutboxTable --> OutboxWorker
+    end
+
+    class ASB,OutboxTable,OutboxWorker layer-command
+    class Inbox,Receptor layer-core
+    class PaymentsTable,Processed,Failed layer-event
+    class Gateway layer-infrastructure
 ```
 
 **Features**:
@@ -860,34 +849,32 @@ SELECT * FROM payments WHERE order_id = '<order-id>';
 
 ### Saga Pattern - Distributed Transactions
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Saga: Order Processing (Happy Path)                    │
-│                                                          │
-│  1. CreateOrder → OrderCreated                          │
-│       ↓                                                  │
-│  2. OrderCreated → ReserveInventory → InventoryReserved │
-│       ↓                                                  │
-│  3. InventoryReserved → ProcessPayment → PaymentProcessed│
-│       ↓                                                  │
-│  4. PaymentProcessed → CreateShipment → ShipmentCreated │
-│       ↓                                                  │
-│  5. ShipmentCreated → SendNotification → NotificationSent│
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph HappyPath["Saga: Order Processing (Happy Path)"]
+        H1["CreateOrder"] --> H2["OrderCreated"]
+        H2 --> H3["ReserveInventory"] --> H4["InventoryReserved"]
+        H4 --> H5["ProcessPayment"] --> H6["PaymentProcessed"]
+        H6 --> H7["CreateShipment"] --> H8["ShipmentCreated"]
+        H8 --> H9["SendNotification"] --> H10["NotificationSent"]
+    end
 
-┌─────────────────────────────────────────────────────────┐
-│  Saga: Payment Failure (Compensation)                   │
-│                                                          │
-│  1. CreateOrder → OrderCreated                          │
-│       ↓                                                  │
-│  2. OrderCreated → ReserveInventory → InventoryReserved │
-│       ↓                                                  │
-│  3. InventoryReserved → ProcessPayment → PaymentFailed  │
-│       ↓                                                  │
-│  4. PaymentFailed → ReleaseInventory → InventoryReleased│
-│       ↓                                                  │
-│  5. InventoryReleased → CancelOrder → OrderCancelled    │
-└─────────────────────────────────────────────────────────┘
+    class H1,H3,H5,H7,H9 layer-command
+    class H2,H4,H6,H8,H10 layer-event
+```
+
+```mermaid
+flowchart TD
+    subgraph Compensation["Saga: Payment Failure (Compensation)"]
+        C1["CreateOrder"] --> C2["OrderCreated"]
+        C2 --> C3["ReserveInventory"] --> C4["InventoryReserved"]
+        C4 --> C5["ProcessPayment"] --> C6["PaymentFailed"]
+        C6 --> C7["ReleaseInventory"] --> C8["InventoryReleased"]
+        C8 --> C9["CancelOrder"] --> C10["OrderCancelled"]
+    end
+
+    class C1,C3,C5,C7,C9 layer-command
+    class C2,C4,C6,C8,C10 layer-event
 ```
 
 **Compensating transactions**:
