@@ -52,10 +52,10 @@ async function testServer() {
   // Test 2: Read a specific documentation file
   console.log('🔍 Test 2: Reading specific documentation...');
   try {
-    const content = await readDocsResource('doc://getting-started', fileLoader);
+    const content = await readDocsResource('doc://v1.0.0/getting-started/quick-start', fileLoader);
 
     if (content && content.includes('# Getting Started')) {
-      console.log('   ✅ Successfully read getting-started.md');
+      console.log('   ✅ Successfully read v1.0.0/getting-started/quick-start.md');
       console.log(`   Content length: ${content.length} characters`);
       testsPassed++;
     } else {
