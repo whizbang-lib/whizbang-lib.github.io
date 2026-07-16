@@ -32,7 +32,7 @@ export async function listRoadmapResources(fileLoader: FileLoader): Promise<Reso
               name: `[Roadmap] ${title}`,
               mimeType: 'text/markdown',
               description: description || `Planned feature: ${title}`,
-              metadata
+              _meta: metadata
             });
           }
         } catch (error) {
@@ -62,7 +62,7 @@ export async function listRoadmapResources(fileLoader: FileLoader): Promise<Reso
         name: `${statusBadge} ${title}`,
         mimeType: 'text/markdown',
         description: description || `Planned feature: ${title}`,
-        metadata
+        _meta: metadata
       });
     } catch (error) {
       console.error(`Failed to process roadmap doc ${file.path}:`, error);
@@ -77,8 +77,8 @@ export async function listRoadmapResources(fileLoader: FileLoader): Promise<Reso
       'planned': 3
     };
 
-    const metaA = a.metadata as Record<string, any> || {};
-    const metaB = b.metadata as Record<string, any> || {};
+    const metaA = (a._meta ?? {}) as Record<string, any>;
+    const metaB = (b._meta ?? {}) as Record<string, any>;
     const statusA = (metaA['status'] as string) || 'planned';
     const statusB = (metaB['status'] as string) || 'planned';
     const orderA = (metaA['order'] as number) || 999;
@@ -139,7 +139,7 @@ export function filterRoadmapByStatus(
   }
 
   return resources.filter((r) => {
-    const meta = r.metadata as Record<string, any> || {};
+    const meta = (r._meta ?? {}) as Record<string, any>;
     return meta['status'] === status;
   });
 }

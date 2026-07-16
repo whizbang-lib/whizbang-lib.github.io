@@ -1,6 +1,6 @@
 {
   "name": "@whizbang/docs-mcp-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "MCP server providing programmatic access to Whizbang library documentation",
   "type": "module",
   "main": "build/index.js",
@@ -9,6 +9,7 @@
   },
   "files": [
     "build/**/*",
+    "bundled-assets/**/*",
     "README.md",
     "LICENSE"
   ],
@@ -18,8 +19,9 @@
     "start": "node build/index.js",
     "test": "node test-server.mjs",
     "inspector": "npx @modelcontextprotocol/inspector node build/index.js",
-    "prepublishOnly": "npm run build",
-    "clean": "rm -rf build"
+    "prepublishOnly": "npm run build && npm run bundle-assets",
+    "clean": "rm -rf build",
+    "bundle-assets": "node scripts/bundle-assets.mjs"
   },
   "keywords": [
     "mcp",
@@ -37,7 +39,7 @@
     "directory": "mcp-docs-server"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.23.8",
     "gray-matter": "^4.0.3",
     "minisearch": "^7.1.2",
@@ -48,6 +50,6 @@
     "typescript": "^5.8.3"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.17.0"
   }
 }

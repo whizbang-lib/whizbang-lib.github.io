@@ -36,3 +36,4 @@ coverage/
 .env
 .env.local
 .env.*.local
+bundled-assets/
