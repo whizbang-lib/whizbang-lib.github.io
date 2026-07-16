@@ -1199,6 +1199,11 @@
           "order": 6,
           "pages": [
             {
+              "slug": "v1.0.0/operations/diagnostics/error-reference",
+              "title": "Runtime Error Reference",
+              "order": 1
+            },
+            {
               "slug": "v1.0.0/operations/diagnostics/serializable-property-analyzer",
               "title": "Serializable Property Analyzer",
               "order": 999
@@ -1798,6 +1803,19 @@
             }
           ],
           "children": []
+        },
+        {
+          "name": "signal-bus",
+          "title": "Signal Bus",
+          "order": 999,
+          "pages": [
+            {
+              "slug": "drafts/fundamentals/signal-bus",
+              "title": "System Signal Bus",
+              "order": 20
+            }
+          ],
+          "children": []
         }
       ]
     },
@@ -1956,6 +1974,21 @@
           "slug": "proposals/deployment-operations",
           "title": "Deployment & Operations",
           "order": 15
+        },
+        {
+          "slug": "proposals/temporal-engine",
+          "title": "Temporal Engine",
+          "order": 21
+        },
+        {
+          "slug": "proposals/ephemeral-events",
+          "title": "Ephemeral Events",
+          "order": 22
+        },
+        {
+          "slug": "proposals/type-definition-fingerprint",
+          "title": "Type-Definition Fingerprint & Lineage",
+          "order": 23
         }
       ],
       "children": []
