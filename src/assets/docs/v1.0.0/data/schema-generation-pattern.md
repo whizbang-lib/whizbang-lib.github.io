@@ -28,33 +28,24 @@ Whizbang uses a **database-agnostic schema definition pattern** where infrastruc
 
 **Solution**: Define schema once using `TableDefinition`, `ColumnDefinition`, `IndexDefinition`, then transform to database-specific SQL via `ISchemaBuilder` implementations.
 
-```
-┌─────────────────────────────┐
-│  C# Schema Definitions      │
-│  (Database-Agnostic)        │
-│                             │
-│  - InboxSchema              │
-│  - OutboxSchema             │
-│  - EventStoreSchema         │
-│  - PerspectiveCheckpoints   │
-└──────────────┬──────────────┘
-               │
-               ▼
-      ┌────────────────┐
-      │ ISchemaBuilder │
-      └────────┬───────┘
-               │
-      ┌────────┼────────┐
-      │        │        │
-      ▼        ▼        ▼
-┌─────────┐ ┌────────┐ ┌────────┐
-│ Postgres│ │ SQLite │ │ MySQL  │
-│ Builder │ │ Builder│ │ Builder│
-└────┬────┘ └───┬────┘ └───┬────┘
-     │          │           │
-     ▼          ▼           ▼
-  Postgres   SQLite      MySQL
-    DDL        DDL         DDL
+```mermaid
+flowchart TD
+    Definitions["C# Schema Definitions<br/>(Database-Agnostic)<br/>- InboxSchema<br/>- OutboxSchema<br/>- EventStoreSchema<br/>- PerspectiveCheckpoints"]
+    Builder["ISchemaBuilder"]
+    PostgresBuilder["Postgres Builder"]
+    SQLiteBuilder["SQLite Builder"]
+    MySQLBuilder["MySQL Builder"]
+    PostgresDDL["Postgres DDL"]
+    SQLiteDDL["SQLite DDL"]
+    MySQLDDL["MySQL DDL"]
+
+    Definitions --> Builder
+    Builder --> PostgresBuilder
+    Builder --> SQLiteBuilder
+    Builder --> MySQLBuilder
+    PostgresBuilder --> PostgresDDL
+    SQLiteBuilder --> SQLiteDDL
+    MySQLBuilder --> MySQLDDL
 ```
 
 ---

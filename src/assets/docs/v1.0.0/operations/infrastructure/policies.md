@@ -55,56 +55,39 @@ lastMaintainedCommit: '01f07906'
 
 ### Policy Evaluation Flow
 
+```mermaid
+flowchart TD
+    subgraph Processing["Message Processing"]
+        Rent["1. Rent PolicyContext from pool<br/>context = PolicyContextPool.Rent(message, ...)"]
+        Evaluate["2. Evaluate policies<br/>config = await policyEngine.MatchAsync(context)"]
+        Use["3. Use configuration<br/>- Topic routing<br/>- Execution strategy<br/>- Partitioning<br/>- Concurrency"]
+
+        Rent --> Evaluate --> Use
+    end
 ```
-┌────────────────────────────────────────────────────────┐
-│  Message Processing                                    │
-│                                                         │
-│  1. Rent PolicyContext from pool                       │
-│     context = PolicyContextPool.Rent(message, ...)     │
-│                                                         │
-│  2. Evaluate policies                                  │
-│     config = await policyEngine.MatchAsync(context)    │
-│                                                         │
-│  3. Use configuration                                  │
-│     - Topic routing                                    │
-│     - Execution strategy                               │
-│     - Partitioning                                     │
-│     - Concurrency                                      │
-└────────────────────────────────────────────────────────┘
 
 PolicyEngine Evaluation:
 
-┌────────────────────────────────────────────────────────┐
-│  PolicyEngine.MatchAsync(context)                      │
-│                                                         │
-│  Policies evaluated in order (first match wins):       │
-│  ├─ Policy 1: TenantRouting                            │
-│  │  ├─ Predicate: context.GetMetadata("tenantId") == "tenant-a"
-│  │  ├─ Matched: ✅                                     │
-│  │  └─ Configuration: Topic = "tenant-a-events"        │
-│  │                                                      │
-│  │  ⭐ RETURN (first match - skip remaining policies)  │
-│  │                                                      │
-│  ├─ Policy 2: EnvironmentRouting (skipped)             │
-│  └─ Policy 3: DefaultRouting (skipped)                 │
-└────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Match["PolicyEngine.MatchAsync(context)<br/>Policies evaluated in order (first match wins)"]
+    Policy1["Policy 1: TenantRouting<br/>Predicate: context.GetMetadata(&quot;tenantId&quot;) == &quot;tenant-a&quot;<br/>Matched: ✅<br/>Configuration: Topic = &quot;tenant-a-events&quot;"]
+    Return["⭐ RETURN (first match - skip remaining policies)"]
+    Policy2["Policy 2: EnvironmentRouting (skipped)"]
+    Policy3["Policy 3: DefaultRouting (skipped)"]
 
-PolicyDecisionTrail (Observability):
-
-┌────────────────────────────────────────────────────────┐
-│  context.Trail.Decisions                               │
-│                                                         │
-│  [0] PolicyName: "TenantRouting"                       │
-│      Rule: "predicate"                                 │
-│      Matched: ✅                                       │
-│      Reason: "Policy predicate matched"                │
-│                                                         │
-│  [1] PolicyName: "EnvironmentRouting"                  │
-│      Rule: "predicate"                                 │
-│      Matched: ❌                                       │
-│      Reason: "Policy predicate did not match"          │
-└────────────────────────────────────────────────────────┘
+    Match --> Policy1
+    Policy1 --> Return
+    Match -.-> Policy2
+    Match -.-> Policy3
 ```
+
+PolicyDecisionTrail (Observability) - `context.Trail.Decisions`:
+
+| Index | PolicyName | Rule | Matched | Reason |
+|-------|------------|------|---------|--------|
+| [0] | "TenantRouting" | "predicate" | ✅ | "Policy predicate matched" |
+| [1] | "EnvironmentRouting" | "predicate" | ❌ | "Policy predicate did not match" |
 
 ---
 

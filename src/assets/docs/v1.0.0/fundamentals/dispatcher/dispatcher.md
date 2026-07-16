@@ -187,18 +187,27 @@ public sealed class DeliveryReceipt : IDeliveryReceipt {
 
 ### SendAsync Flow
 
-```
-Client
-  ├─> dispatcher.SendAsync(command)
-  ├─> Envelope created (MessageId, CorrelationId)
-  ├─> Receptor invoked locally
-  ├─> Event stored in Outbox
-  └─> DeliveryReceipt returned
+```mermaid
+graph TB
+    subgraph Client["Client"]
+        C1["dispatcher.SendAsync(command)"]
+        C2["Envelope created (MessageId, CorrelationId)"]
+        C3["Receptor invoked locally"]
+        C4["Event stored in Outbox"]
+        C5["DeliveryReceipt returned"]
+        C1 --> C2 --> C3 --> C4 --> C5
+    end
 
-Background Worker
-  ├─> Polls Outbox
-  ├─> Publishes event to transport (Azure Service Bus)
-  └─> Marks message as Published
+    subgraph Worker["Background Worker"]
+        W1["Polls Outbox"]
+        W2["Publishes event to transport (Azure Service Bus)"]
+        W3["Marks message as Published"]
+        W1 --> W2 --> W3
+    end
+
+    style C4 fill:#fff3cd,stroke:#ffc107
+    style W1 fill:#fff3cd,stroke:#ffc107
+    style W2 fill:#fff3cd,stroke:#ffc107
 ```
 
 **Key Points**:
@@ -292,13 +301,18 @@ public async Task<ActionResult<OrderCreated>> CreateOrder(
 
 ### LocalInvokeAsync Flow
 
-```
-Client
-  ├─> dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command)
-  ├─> Lookup receptor in registry (compile-time, zero reflection)
-  ├─> Invoke receptor.HandleAsync(command)
-  ├─> Return typed response
-  └─> < 20ns overhead (zero allocations)
+```mermaid
+graph TB
+    subgraph Client["Client"]
+        L1["dispatcher.LocalInvokeAsync&lt;CreateOrder, OrderCreated&gt;(command)"]
+        L2["Lookup receptor in registry (compile-time, zero reflection)"]
+        L3["Invoke receptor.HandleAsync(command)"]
+        L4["Return typed response"]
+        L5["&lt; 20ns overhead (zero allocations)"]
+        L1 --> L2 --> L3 --> L4 --> L5
+    end
+
+    style L3 fill:#d4edda,stroke:#28a745
 ```
 
 **Key Points**:
@@ -677,15 +691,25 @@ public async Task<ActionResult<OrderCreated>> CreateOrder(
 
 ### PublishAsync Flow
 
-```
-Client
-  ├─> dispatcher.PublishAsync(event)
-  ├─> Find all perspectives for event type
-  ├─> Invoke each perspective.UpdateAsync(event)
-  │   ├─> OrderSummaryPerspective.UpdateAsync(OrderCreated)
-  │   ├─> InventoryPerspective.UpdateAsync(OrderCreated)
-  │   └─> AnalyticsPerspective.UpdateAsync(OrderCreated)
-  └─> All perspectives updated (parallel execution)
+```mermaid
+graph TB
+    subgraph Client["Client"]
+        P1["dispatcher.PublishAsync(event)"]
+        P2["Find all perspectives for event type"]
+        P3["Invoke each perspective.UpdateAsync(event)"]
+        P4["OrderSummaryPerspective.UpdateAsync(OrderCreated)"]
+        P5["InventoryPerspective.UpdateAsync(OrderCreated)"]
+        P6["AnalyticsPerspective.UpdateAsync(OrderCreated)"]
+        P7["All perspectives updated (parallel execution)"]
+        P1 --> P2 --> P3
+        P3 --> P4 --> P7
+        P3 --> P5 --> P7
+        P3 --> P6 --> P7
+    end
+
+    style P4 fill:#cce5ff,stroke:#004085
+    style P5 fill:#cce5ff,stroke:#004085
+    style P6 fill:#cce5ff,stroke:#004085
 ```
 
 **Key Points**:
@@ -1433,18 +1457,29 @@ public class ComplexReceptor : IReceptor<ComplexCommand, (Result, (Event1, Event
 
 The auto-cascade system uses the `ITuple` interface for efficient, AOT-compatible message extraction:
 
-```
-Receptor Returns
-  ├─> Dispatcher receives result
-  ├─> MessageExtractor.ExtractMessages(result)
-  │   ├─> Checks if result implements IMessage (IEvent or ICommand) → yield return
-  │   ├─> Checks if result implements ITuple → extract each item recursively
-  │   ├─> Checks if result implements IEnumerable<IMessage> → yield return each
-  │   ├─> Checks if result implements IEnumerable<IEvent> → yield return each
-  │   └─> Checks if result implements IEnumerable<ICommand> → yield return each
-  └─> For each extracted IMessage:
-      └─> GetUntypedReceptorPublisher(messageType).Invoke(message)
-          └─> All receptors for that message type invoked
+```mermaid
+graph TB
+    R["Receptor Returns"]
+    X1["Dispatcher receives result"]
+    X2["MessageExtractor.ExtractMessages(result)"]
+    K1["Checks if result implements IMessage (IEvent or ICommand) → yield return"]
+    K2["Checks if result implements ITuple → extract each item recursively"]
+    K3["Checks if result implements IEnumerable&lt;IMessage&gt; → yield return each"]
+    K4["Checks if result implements IEnumerable&lt;IEvent&gt; → yield return each"]
+    K5["Checks if result implements IEnumerable&lt;ICommand&gt; → yield return each"]
+    F1["For each extracted IMessage:<br/>GetUntypedReceptorPublisher(messageType).Invoke(message)"]
+    F2["All receptors for that message type invoked"]
+
+    R --> X1 --> X2
+    X2 --> K1 --> F1
+    X2 --> K2 --> F1
+    X2 --> K3 --> F1
+    X2 --> K4 --> F1
+    X2 --> K5 --> F1
+    F1 --> F2
+
+    style X2 fill:#d4edda,stroke:#28a745
+    style F2 fill:#d4edda,stroke:#28a745
 ```
 
 **Key Points**:

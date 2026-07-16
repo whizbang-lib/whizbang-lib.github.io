@@ -107,21 +107,24 @@ sequenceDiagram
 
 **Timing Diagram**:
 
-```
-Time →
-0s         300s        600s        610s        620s
-│          │           │           │           │
-I1 ━━━━━━━━━━━━━━━━━━━━┃ Crash
-                       │
-                       ├──── Heartbeat valid (10 min window)
-                       │
-                       │                       I2 calls ProcessWorkBatch
-                       │                       │
-                       ├─ Stale threshold ────→│
-                       │                       │
-                       │                       ├→ I1 deleted (CASCADE)
-                       │                       ├→ Partitions released
-                       │                       └→ I2 claims partitions
+```mermaid
+flowchart LR
+    Crash["I1 Crash<br/>(~600s)"]
+    Valid["Heartbeat valid<br/>(10 min window)"]
+    Call["I2 calls ProcessWorkBatch<br/>(stale threshold passed)"]
+    Del["I1 deleted (CASCADE)"]
+    Rel["Partitions released"]
+    Claim["I2 claims partitions"]
+
+    Crash --> Valid
+    Valid -->|"Stale threshold"| Call
+    Call --> Del
+    Call --> Rel
+    Call --> Claim
+
+    class Crash layer-event
+    class Valid,Call layer-command
+    class Del,Rel,Claim layer-core
 ```
 
 **Decision Matrix**:
@@ -230,25 +233,22 @@ sequenceDiagram
 
 **Timing Diagram**:
 
-```
-Time →
-0s              60s             120s
-│               │               │
-M1 ━━━━━━━━━┃ Fail
-           │
-           ├→ scheduled_for = now + 60s
-           │
-M2, M3     ├→ Leases cleared (Status=0)
-blocked    │
-           │
-           ├──── M2, M3 cannot be claimed
-           │
-           │               ProcessWorkBatch
-           │               │
-           └─ Scheduled ──→│
-                           │
-                           ├→ M1 claimable (scheduled_for <= now)
-                           └→ M2, M3 claimable (no blocking)
+```mermaid
+flowchart LR
+    Fail["M1 Fail (0s)<br/>scheduled_for = now + 60s<br/>Leases cleared (Status=0)"]
+    Blocked["M2, M3 blocked<br/>(cannot be claimed)"]
+    PWB["ProcessWorkBatch<br/>(~60s)"]
+    C1["M1 claimable<br/>(scheduled_for <= now)"]
+    C2["M2, M3 claimable<br/>(no blocking)"]
+
+    Fail --> Blocked
+    Blocked -->|"Scheduled time reached"| PWB
+    PWB --> C1
+    PWB --> C2
+
+    class Fail layer-event
+    class Blocked,PWB layer-command
+    class C1,C2 layer-core
 ```
 
 **Decision Matrix**:

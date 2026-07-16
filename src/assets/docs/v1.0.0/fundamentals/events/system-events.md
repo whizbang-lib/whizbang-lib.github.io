@@ -35,23 +35,41 @@ System events are **internal events emitted by Whizbang** for observability, aud
 
 ## Core Concept
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Domain Infrastructure (Events, Commands, Perspectives)          │
-│       │                                                          │
-│       ▼                                                          │
-│  System Event Emitter                                           │
-│       │                                                          │
-│       ├─► EventAudited (domain event stored)                    │
-│       ├─► CommandAudited (command processed)                    │
-│       ├─► ScopeContextEstablished (security context set)        │
-│       ├─► AccessGranted/AccessDenied (authorization)            │
-│       └─► PermissionChanged (role/permission changes)           │
-│                                                                  │
-│  ↓ Stored in dedicated $wb-system stream                        │
-│  ↓ Consumed by perspectives (same as domain events)             │
-│  ↓ LocalOnly by default (no network traffic)                    │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    DI["Domain Infrastructure (Events, Commands, Perspectives)"]
+    EM["System Event Emitter"]
+    E1["EventAudited (domain event stored)"]
+    E2["CommandAudited (command processed)"]
+    E3["ScopeContextEstablished (security context set)"]
+    E4["AccessGranted/AccessDenied (authorization)"]
+    E5["PermissionChanged (role/permission changes)"]
+    S1["Stored in dedicated $wb-system stream"]
+    S2["Consumed by perspectives (same as domain events)"]
+    S3["LocalOnly by default (no network traffic)"]
+
+    DI --> EM
+    EM --> E1
+    EM --> E2
+    EM --> E3
+    EM --> E4
+    EM --> E5
+    E1 --> S1
+    E2 --> S1
+    E3 --> S1
+    E4 --> S1
+    E5 --> S1
+    S1 --> S2 --> S3
+
+    style DI fill:#d4edda,stroke:#28a745
+    style EM fill:#d4edda,stroke:#28a745
+    style E1 fill:#fff3cd,stroke:#ffc107
+    style E2 fill:#fff3cd,stroke:#ffc107
+    style E3 fill:#fff3cd,stroke:#ffc107
+    style E4 fill:#fff3cd,stroke:#ffc107
+    style E5 fill:#fff3cd,stroke:#ffc107
+    style S1 fill:#fff3cd,stroke:#ffc107
+    style S2 fill:#cce5ff,stroke:#004085
 ```
 
 **Key principles**:

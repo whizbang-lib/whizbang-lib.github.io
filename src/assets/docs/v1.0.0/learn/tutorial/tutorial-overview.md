@@ -24,32 +24,29 @@ Build a **complete e-commerce system** using Whizbang to learn all framework fea
 
 A distributed e-commerce platform with 7 microservices:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  ECommerce Platform Architecture                            │
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │   Order      │  │  Inventory   │  │   Payment    │     │
-│  │   Service    │  │   Service    │  │   Service    │     │
-│  │  (Commands)  │  │  (Commands)  │  │  (Commands)  │     │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
-│         │                  │                  │             │
-│         └──────────────────┼──────────────────┘             │
-│                            │                                │
-│                  ┌─────────▼─────────┐                      │
-│                  │  Azure Service    │                      │
-│                  │      Bus          │                      │
-│                  │   (Event Hub)     │                      │
-│                  └─────────┬─────────┘                      │
-│                            │                                │
-│         ┌──────────────────┼──────────────────┐             │
-│         │                  │                  │             │
-│  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐     │
-│  │Notification  │  │   Shipping   │  │  Analytics   │     │
-│  │   Service    │  │   Service    │  │   Service    │     │
-│  │  (Events)    │  │  (Events)    │  │(Perspectives)│     │
-│  └──────────────┘  └──────────────┘  └──────────────┘     │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph EPA["ECommerce Platform Architecture"]
+        OrderSvc["Order Service<br/>(Commands)"]
+        InventorySvc["Inventory Service<br/>(Commands)"]
+        PaymentSvc["Payment Service<br/>(Commands)"]
+        Bus["Azure Service Bus<br/>(Event Hub)"]
+        NotificationSvc["Notification Service<br/>(Events)"]
+        ShippingSvc["Shipping Service<br/>(Events)"]
+        AnalyticsSvc["Analytics Service<br/>(Perspectives)"]
+
+        OrderSvc --> Bus
+        InventorySvc --> Bus
+        PaymentSvc --> Bus
+        Bus --> NotificationSvc
+        Bus --> ShippingSvc
+        Bus --> AnalyticsSvc
+    end
+
+    class OrderSvc,InventorySvc,PaymentSvc layer-command
+    class Bus layer-event
+    class NotificationSvc,ShippingSvc layer-core
+    class AnalyticsSvc layer-read
 ```
 
 ### Services
@@ -284,15 +281,23 @@ OrderCreated event → Published to Azure Service Bus
 
 ### Saga Pattern (Distributed Transactions)
 
-```
-1. CreateOrder → OrderCreated
-2. OrderCreated → ReserveInventory → InventoryReserved
-3. InventoryReserved → ProcessPayment → PaymentProcessed
-4. PaymentProcessed → CreateShipment → ShipmentCreated
-5. ShipmentCreated → SendShippingNotification → NotificationSent
+```mermaid
+flowchart TD
+    subgraph Saga["Saga: Order Processing"]
+        S1["CreateOrder"] --> S2["OrderCreated"]
+        S2 --> S3["ReserveInventory"] --> S4["InventoryReserved"]
+        S4 --> S5["ProcessPayment"] --> S6["PaymentProcessed"]
+        S6 --> S7["CreateShipment"] --> S8["ShipmentCreated"]
+        S8 --> S9["SendShippingNotification"] --> S10["NotificationSent"]
+    end
 
-Compensation (if payment fails):
-- PaymentFailed → ReleaseInventory → InventoryReleased
+    subgraph Comp["Compensation (if payment fails)"]
+        direction LR
+        C1["PaymentFailed"] --> C2["ReleaseInventory"] --> C3["InventoryReleased"]
+    end
+
+    class S1,S3,S5,S7,S9,C2 layer-command
+    class S2,S4,S6,S8,S10,C1,C3 layer-event
 ```
 
 ## Development Workflow

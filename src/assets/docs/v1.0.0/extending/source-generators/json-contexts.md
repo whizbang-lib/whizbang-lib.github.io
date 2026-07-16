@@ -60,27 +60,15 @@ var deserialized = JsonSerializer.Deserialize<CreateOrder>(json, options);
 
 ### 1. Compile-Time Discovery
 
-```
-┌──────────────────────────────────────────────────┐
-│  MessageJsonContextGenerator (Roslyn)            │
-│                                                  │
-│  Discovers:                                      │
-│  1. Messages (ICommand, IEvent)                 │
-│  2. Nested types (OrderItem in List<OrderItem>) │
-│  3. Collection types (List<T>)                  │
-│  4. WhizbangId types (MessageId, ProductId)     │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  Generated Files                                 │
-│                                                  │
-│  1. MessageJsonContext.g.cs                      │
-│     └─ JsonTypeInfo for all discovered types    │
-│                                                  │
-│  2. WhizbangJsonContext.g.cs (facade)            │
-│     └─ Public API for JsonSerializerOptions     │
-└──────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Generator["MessageJsonContextGenerator (Roslyn)<br/><br/>Discovers:<br/>1. Messages (ICommand, IEvent)<br/>2. Nested types (OrderItem in List&lt;OrderItem&gt;)<br/>3. Collection types (List&lt;T&gt;)<br/>4. WhizbangId types (MessageId, ProductId)"]
+    Generated["Generated Files<br/><br/>1. MessageJsonContext.g.cs<br/>— JsonTypeInfo for all discovered types<br/><br/>2. WhizbangJsonContext.g.cs (facade)<br/>— Public API for JsonSerializerOptions"]
+
+    Generator --> Generated
+
+    class Generator layer-infrastructure
+    class Generated layer-core
 ```
 
 ---

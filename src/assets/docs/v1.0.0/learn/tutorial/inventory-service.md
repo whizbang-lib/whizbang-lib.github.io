@@ -32,43 +32,29 @@ This is **Part 2** of the ECommerce Tutorial. Complete [Order Management](order-
 
 ## What You'll Build
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Inventory Service Architecture                             │
-│                                                              │
-│  ┌─────────────┐                                            │
-│  │Azure Service│  OrderCreated event                        │
-│  │     Bus     │──────────────────────┐                     │
-│  └─────────────┘                      │                     │
-│                                        ▼                     │
-│                          ┌────────────────────────┐         │
-│                          │  Inbox Pattern         │         │
-│                          │  (Exactly-Once)        │         │
-│                          └──────────┬─────────────┘         │
-│                                     │                        │
-│                                     ▼                        │
-│                          ┌────────────────────────┐         │
-│                          │ ReserveInventoryReceptor│        │
-│                          │  - Check stock         │         │
-│                          │  - Reserve units       │         │
-│                          │  - Publish event       │         │
-│                          └──────────┬─────────────┘         │
-│                                     │                        │
-│                      ┌──────────────┼──────────────┐        │
-│                      │              │              │        │
-│                      ▼              ▼              ▼        │
-│                 ┌─────────┐   ┌─────────┐   ┌──────────┐   │
-│                 │Postgres │   │ Outbox  │   │Perspective│  │
-│                 │Inventory│   │ Table   │   │  (Read    │  │
-│                 │  Table  │   │         │   │  Model)   │  │
-│                 └─────────┘   └─────────┘   └──────────┘   │
-│                                     │                        │
-│                                     ▼                        │
-│                          ┌────────────────────────┐         │
-│                          │ Azure Service Bus      │         │
-│                          │ InventoryReserved      │         │
-│                          └────────────────────────┘         │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph ISA["Inventory Service Architecture"]
+        ASBIn["Azure Service Bus"]
+        Inbox["Inbox Pattern<br/>(Exactly-Once)"]
+        Receptor["ReserveInventoryReceptor<br/>- Check stock<br/>- Reserve units<br/>- Publish event"]
+        InventoryTable["Postgres Inventory Table"]
+        OutboxTable["Outbox Table"]
+        Perspective["Perspective<br/>(Read Model)"]
+        ASBOut["Azure Service Bus<br/>InventoryReserved"]
+
+        ASBIn -->|"OrderCreated event"| Inbox
+        Inbox --> Receptor
+        Receptor --> InventoryTable
+        Receptor --> OutboxTable
+        Receptor --> Perspective
+        OutboxTable --> ASBOut
+    end
+
+    class ASBIn,ASBOut,OutboxTable layer-command
+    class Inbox,Receptor layer-core
+    class InventoryTable layer-event
+    class Perspective layer-read
 ```
 
 **Features**:
@@ -757,30 +743,19 @@ SELECT * FROM inventory_summary WHERE product_id = 'prod-456';
 
 ### Inbox Pattern (Exactly-Once Processing)
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Inbox Pattern - Exactly-Once Processing            │
-│                                                      │
-│  ┌──────────────────────────────────┐               │
-│  │  Azure Service Bus               │               │
-│  │  - Message delivered to worker   │               │
-│  └──────────────┬───────────────────┘               │
-│                 │                                    │
-│                 ▼                                    │
-│  ┌──────────────────────────────────┐               │
-│  │  PostgreSQL Transaction          │               │
-│  │                                   │               │
-│  │  1. INSERT INTO inbox (msg_id)   │ ← Dedupe!    │
-│  │  2. Process message (receptor)   │               │
-│  │  3. UPDATE inbox SET processed   │               │
-│  │                                   │               │
-│  │  COMMIT;                          │               │
-│  └──────────────────────────────────┘               │
-│                                                      │
-│  If duplicate message arrives:                      │
-│  - INSERT fails (unique constraint on msg_id)       │
-│  - Message skipped (already processed)              │
-└─────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph IP["Inbox Pattern - Exactly-Once Processing"]
+        ASB["Azure Service Bus<br/>- Message delivered to worker"]
+        TX["PostgreSQL Transaction<br/>1. INSERT INTO inbox (msg_id) ← Dedupe!<br/>2. Process message (receptor)<br/>3. UPDATE inbox SET processed<br/>COMMIT;"]
+        Dup["If duplicate message arrives:<br/>- INSERT fails (unique constraint on msg_id)<br/>- Message skipped (already processed)"]
+
+        ASB --> TX
+        TX ~~~ Dup
+    end
+
+    class ASB layer-command
+    class TX layer-event
 ```
 
 **Benefits**:
@@ -790,15 +765,25 @@ SELECT * FROM inventory_summary WHERE product_id = 'prod-456';
 
 ### Compensation (Saga Pattern)
 
-```
-Success Flow:
-OrderCreated → InventoryReserved → PaymentProcessed → ShipmentCreated
+```mermaid
+flowchart TD
+    subgraph Success["Success Flow"]
+        direction LR
+        S1["OrderCreated"] --> S2["InventoryReserved"] --> S3["PaymentProcessed"] --> S4["ShipmentCreated"]
+    end
 
-Failure Flow (Insufficient Inventory):
-OrderCreated → InventoryInsufficient → CancelOrder (compensation)
+    subgraph FailInv["Failure Flow (Insufficient Inventory)"]
+        direction LR
+        F1["OrderCreated"] --> F2["InventoryInsufficient"] --> F3["CancelOrder (compensation)"]
+    end
 
-Failure Flow (Payment Failed):
-OrderCreated → InventoryReserved → PaymentFailed → ReleaseInventory (compensation)
+    subgraph FailPay["Failure Flow (Payment Failed)"]
+        direction LR
+        P1["OrderCreated"] --> P2["InventoryReserved"] --> P3["PaymentFailed"] --> P4["ReleaseInventory (compensation)"]
+    end
+
+    class S1,S2,S3,S4,F1,F2,P1,P2,P3 layer-event
+    class F3,P4 layer-command
 ```
 
 **Compensation handler**:

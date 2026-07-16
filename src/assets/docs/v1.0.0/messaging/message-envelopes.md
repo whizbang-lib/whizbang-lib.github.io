@@ -29,30 +29,16 @@ See [Observability & Message Hops](../fundamentals/persistence/observability.md)
 
 ### Complete Journey
 
-```
-Service A (OrderService)
-  ├─> CreateOrder command arrives
-  ├─> Envelope created with Current hop
-  ├─> Receptor processes, creates OrderCreated event
-  ├─> Event stored in Outbox with inherited hops
-  ├─> Background worker publishes to Azure Service Bus
-  └─> Envelope serialized with all hops
+```mermaid
+flowchart TD
+    A["Service A (OrderService)<br/><br/>CreateOrder command arrives<br/>Envelope created with Current hop<br/>Receptor processes, creates OrderCreated event<br/>Event stored in Outbox with inherited hops<br/>Background worker publishes to Azure Service Bus<br/>Envelope serialized with all hops"]
+    B["Service B (InventoryWorker)<br/><br/>Message arrives from Azure Service Bus<br/>Envelope deserialized (hops restored!)<br/>Stored in Inbox with all original hops<br/>Receptor processes, adds new Current hop<br/>InventoryReserved event created<br/>Published to Azure Service Bus with accumulated hops"]
+    C["Service C (PaymentWorker)<br/><br/>Message arrives with hops from A + B<br/>Complete trace from HTTP request → Payment!"]
 
-      ↓ Azure Service Bus
+    A -->|"Azure Service Bus"| B
+    B -->|"Azure Service Bus"| C
 
-Service B (InventoryWorker)
-  ├─> Message arrives from Azure Service Bus
-  ├─> Envelope deserialized (hops restored!)
-  ├─> Stored in Inbox with all original hops
-  ├─> Receptor processes, adds new Current hop
-  ├─> InventoryReserved event created
-  └─> Published to Azure Service Bus with accumulated hops
-
-      ↓ Azure Service Bus
-
-Service C (PaymentWorker)
-  ├─> Message arrives with hops from A + B
-  └─> Complete trace from HTTP request → Payment!
+    class A,B,C layer-command
 ```
 
 **Key Insight**: Hops **accumulate** across services, providing end-to-end trace.

@@ -83,13 +83,28 @@ Because stage transitions go through a single code path, there is no way for a s
 
 When an event goes through **multiple processing paths** (e.g., `Route.Both()`), PostLifecycle must fire only after ALL paths complete. The coordinator tracks expected completions:
 
-```
-Route.Both() example:
-  ┌─ Local path: Dispatcher processes → signals "local done"
-  │
-Event ──┤                                                     ──→ WhenAll ──→ PostLifecycle (once)
-  │
-  └─ Distributed path: Outbox → Transport → Inbox → Perspectives → signals "distributed done"
+`Route.Both()` example:
+
+```mermaid
+graph LR
+    E["Event"]
+    LD["Dispatcher processes"]
+    LS["signals &quot;local done&quot;"]
+    O["Outbox"]
+    T["Transport"]
+    I["Inbox"]
+    P["Perspectives"]
+    DS["signals &quot;distributed done&quot;"]
+    W["WhenAll"]
+    PL["PostLifecycle (once)"]
+
+    E -->|"Local path"| LD --> LS --> W
+    E -->|"Distributed path"| O --> T --> I --> P --> DS --> W
+    W --> PL
+
+    style E fill:#fff3cd,stroke:#ffc107
+    style W fill:#d4edda,stroke:#28a745
+    style PL fill:#d4edda,stroke:#28a745
 ```
 
 ### Usage
@@ -125,13 +140,29 @@ await coordinator.SignalSegmentCompleteAsync(
 
 When an event is processed by **multiple perspectives**, `PostAllPerspectivesAsync` must fire only after ALL perspectives complete. The coordinator tracks expected perspective completions per event:
 
-```
-Event arrives → 5 perspectives registered
-  ├─ PerspectiveA completes → signal "A done" (1/5)
-  ├─ PerspectiveB completes → signal "B done" (2/5)
-  ├─ PerspectiveC completes → signal "C done" (3/5)
-  ├─ PerspectiveD completes → signal "D done" (4/5)
-  └─ PerspectiveE completes → signal "E done" (5/5) → PostAllPerspectivesAsync fires
+```mermaid
+graph TB
+    E["Event arrives → 5 perspectives registered"]
+    PA["PerspectiveA completes → signal &quot;A done&quot; (1/5)"]
+    PB["PerspectiveB completes → signal &quot;B done&quot; (2/5)"]
+    PC["PerspectiveC completes → signal &quot;C done&quot; (3/5)"]
+    PD["PerspectiveD completes → signal &quot;D done&quot; (4/5)"]
+    PE["PerspectiveE completes → signal &quot;E done&quot; (5/5)"]
+    F["PostAllPerspectivesAsync fires"]
+
+    E --> PA
+    E --> PB
+    E --> PC
+    E --> PD
+    E --> PE
+    PE --> F
+
+    style PA fill:#cce5ff,stroke:#004085
+    style PB fill:#cce5ff,stroke:#004085
+    style PC fill:#cce5ff,stroke:#004085
+    style PD fill:#cce5ff,stroke:#004085
+    style PE fill:#cce5ff,stroke:#004085
+    style F fill:#d4edda,stroke:#28a745
 ```
 
 ### Key Behaviors

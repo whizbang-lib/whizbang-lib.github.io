@@ -27,30 +27,20 @@ lastMaintainedCommit: '01f07906'
 
 When using `LocalInvokeAsync` for RPC-style dispatching, the response returns immediately after cascade completes. However, perspectives may still be processing the cascaded events:
 
-```
-LocalInvokeAsync(CreateOrderCommand)
-         │
-         ▼
-┌──────────────────────┐
-│   Handler executes   │  ◄── Emits OrderCreatedEvent
-│   Returns OrderId    │
-└──────────────────────┘
-         │
-         ▼
-┌──────────────────────┐
-│   Cascade completes  │  ◄── Event sent to perspective worker
-└──────────────────────┘
-         │
-         ▼
-   Response returned!   ◄── But perspective hasn't processed yet!
-         │
-         │ (gap - perspectives still processing)
-         ▼
-┌──────────────────────┐
-│ Perspective Worker   │  ◄── Processes OrderCreatedEvent async
-│ OrderPerspective     │
-│ ReportingPerspective │
-└──────────────────────┘
+```mermaid
+flowchart TD
+    Invoke["LocalInvokeAsync(CreateOrderCommand)"]
+    Handler["Handler executes<br/>Returns OrderId<br/>(Emits OrderCreatedEvent)"]
+    Cascade["Cascade completes<br/>(Event sent to perspective worker)"]
+    Response["Response returned!<br/>(But perspective hasn't processed yet!)"]
+    Worker["Perspective Worker<br/>OrderPerspective<br/>ReportingPerspective<br/>(Processes OrderCreatedEvent async)"]
+
+    Invoke --> Handler
+    Handler --> Cascade
+    Cascade --> Response
+    Response -->|"gap - perspectives still processing"| Worker
+
+    style Response fill:#f8d7da,stroke:#dc3545,stroke-width:2px
 ```
 
 **The solution**: Use `IEventCompletionAwaiter` or `DispatchOptions.WithPerspectiveWait()` to wait for all perspectives to finish.
@@ -131,27 +121,20 @@ The `Dispatcher` integrates with event completion through the `_waitForPerspecti
 
 ### Integration Architecture
 
-```
-LocalInvokeAsync with DispatchOptions
-         │
-         ▼
-1. Check for [AwaitPerspectiveSync] (if present)
-   _awaitPerspectiveSyncIfNeededAsync()
-         │
-         ▼
-2. Invoke receptor
-   var result = await invoker(message);
-         │
-         ▼
-3. Auto-cascade events from result
-   _cascadeEventsFromResultAsync()
-         │
-         ▼
-4. Wait for ALL perspectives (if requested)
-   _waitForPerspectivesIfNeededAsync(options)
-         │
-         ▼
-5. Return result
+```mermaid
+flowchart TD
+    Invoke["LocalInvokeAsync with DispatchOptions"]
+    Step1["1. Check for [AwaitPerspectiveSync] (if present)<br/>_awaitPerspectiveSyncIfNeededAsync()"]
+    Step2["2. Invoke receptor<br/>var result = await invoker(message);"]
+    Step3["3. Auto-cascade events from result<br/>_cascadeEventsFromResultAsync()"]
+    Step4["4. Wait for ALL perspectives (if requested)<br/>_waitForPerspectivesIfNeededAsync(options)"]
+    Step5["5. Return result"]
+
+    Invoke --> Step1
+    Step1 --> Step2
+    Step2 --> Step3
+    Step3 --> Step4
+    Step4 --> Step5
 ```
 
 ### Implementation
@@ -379,40 +362,20 @@ public interface IEventCompletionAwaiter : IAwaiterIdentity {
 
 The event completion system uses per-perspective tracking:
 
-```
-Event emitted (EventId = abc123)
-         │
-         ▼
-┌──────────────────────────────────────┐
-│        SyncEventTracker              │
-│ ┌──────────────────────────────────┐ │
-│ │ Tracked Events (per-perspective) │ │
-│ │  (abc123, OrderPerspective)      │ │
-│ │  (abc123, ReportingPerspective)  │ │
-│ └──────────────────────────────────┘ │
-└──────────────────────────────────────┘
-         │
-         │  Perspective workers process event
-         ▼
-┌──────────────────────────────────────┐
-│ OrderPerspective calls               │
-│ MarkProcessedByPerspective(abc123,   │
-│   "OrderPerspective")                │
-│                                      │
-│ Removes only: (abc123, OrderPersp.)  │
-│ Still tracked: (abc123, Reporting)   │
-└──────────────────────────────────────┘
-         │
-         │  When ALL perspectives done:
-         ▼
-┌──────────────────────────────────────┐
-│ ReportingPerspective calls           │
-│ MarkProcessedByPerspective(abc123,   │
-│   "ReportingPerspective")            │
-│                                      │
-│ No more entries for abc123           │
-│ → Signals WaitForAllPerspectivesAsync│
-└──────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Emit["Event emitted (EventId = abc123)"]
+
+    subgraph Tracker["SyncEventTracker"]
+        Tracked["Tracked Events (per-perspective)<br/>(abc123, OrderPerspective)<br/>(abc123, ReportingPerspective)"]
+    end
+
+    Mark1["OrderPerspective calls<br/>MarkProcessedByPerspective(abc123, #quot;OrderPerspective#quot;)<br/><br/>Removes only: (abc123, OrderPersp.)<br/>Still tracked: (abc123, Reporting)"]
+    Mark2["ReportingPerspective calls<br/>MarkProcessedByPerspective(abc123, #quot;ReportingPerspective#quot;)<br/><br/>No more entries for abc123<br/>→ Signals WaitForAllPerspectivesAsync"]
+
+    Emit --> Tracker
+    Tracker -->|"Perspective workers process event"| Mark1
+    Mark1 -->|"When ALL perspectives done"| Mark2
 ```
 
 ### Key Methods

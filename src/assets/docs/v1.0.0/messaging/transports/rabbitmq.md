@@ -55,71 +55,54 @@ The **RabbitMQ transport** provides reliable, distributed messaging using Rabbit
 
 ### Topic Exchange Pattern
 
-```
-┌────────────────────────────────────────────────────────┐
-│  RabbitMQ Broker                                       │
-│                                                         │
-│  ┌────────────────────────────────────────────────┐   │
-│  │  Exchange: "products" (topic)                  │   │
-│  │                                                 │   │
-│  │  ┌──────────────────────────────────────────┐ │   │
-│  │  │  Queue: "inventory-products-queue"       │ │   │
-│  │  │  Binding: "product.*"                    │ │   │
-│  │  │  → Inventory Service                     │ │   │
-│  │  └──────────────────────────────────────────┘ │   │
-│  │                                                 │   │
-│  │  ┌──────────────────────────────────────────┐ │   │
-│  │  │  Queue: "analytics-products-queue"       │ │   │
-│  │  │  Binding: "product.created"              │ │   │
-│  │  │  → Analytics Service                     │ │   │
-│  │  └──────────────────────────────────────────┘ │   │
-│  │                                                 │   │
-│  │  ┌──────────────────────────────────────────┐ │   │
-│  │  │  Queue: "notifications-queue"            │ │   │
-│  │  │  Binding: "#" (all messages)             │ │   │
-│  │  │  → Notification Service                  │ │   │
-│  │  └──────────────────────────────────────────┘ │   │
-│  └────────────────────────────────────────────────┘   │
-│                                                         │
-│  ┌────────────────────────────────────────────────┐   │
-│  │  Dead Letter Exchange: "products.dlx" (fanout) │   │
-│  │                                                 │   │
-│  │  ┌──────────────────────────────────────────┐ │   │
-│  │  │  Dead Letter Queue: "inventory-queue.dlq"│ │   │
-│  │  └──────────────────────────────────────────┘ │   │
-│  └────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Broker["RabbitMQ Broker"]
+        subgraph Exchange["Exchange: #quot;products#quot; (topic)"]
+            Q1["Queue: #quot;inventory-products-queue#quot;<br/>Binding: #quot;product.*#quot;"]
+            Q2["Queue: #quot;analytics-products-queue#quot;<br/>Binding: #quot;product.created#quot;"]
+            Q3["Queue: #quot;notifications-queue#quot;<br/>Binding: #quot;#35;#quot; (all messages)"]
+        end
+
+        subgraph DLX["Dead Letter Exchange: #quot;products.dlx#quot; (fanout)"]
+            DLQ["Dead Letter Queue: #quot;inventory-queue.dlq#quot;"]
+        end
+    end
+
+    Svc1["Inventory Service"]
+    Svc2["Analytics Service"]
+    Svc3["Notification Service"]
+
+    Q1 --> Svc1
+    Q2 --> Svc2
+    Q3 --> Svc3
+
+    class Q1,Q2,Q3,DLQ layer-command
+    class Svc1,Svc2,Svc3 layer-core
 ```
 
 ### Channel Pool Architecture
 
 RabbitMQ channels are **not thread-safe**, so Whizbang uses a channel pool for concurrent publishing:
 
-```
-┌───────────────────────────────────────────┐
-│  RabbitMQChannelPool                      │
-│                                           │
-│  ┌─────────────────────────────────────┐ │
-│  │  Available Channels (Semaphore)     │ │
-│  │  Max: 10 (configurable)             │ │
-│  │                                      │ │
-│  │  ┌──────┐ ┌──────┐ ┌──────┐        │ │
-│  │  │ CH 1 │ │ CH 2 │ │ CH 3 │  ...   │ │
-│  │  └──────┘ └──────┘ └──────┘        │ │
-│  └─────────────────────────────────────┘ │
-└───────────────────────────────────────────┘
-         ▲                  │
-         │ Rent             │ Return
-         │                  ▼
-┌─────────────────────────────────────────┐
-│  Publisher (TransportPublishStrategy)   │
-│                                          │
-│  using (var channel =                   │
-│      await pool.RentChannelAsync()) {   │
-│    // Publish message                   │
-│    // Channel auto-returns on dispose   │
-│  }                                       │
-└─────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Pool["RabbitMQChannelPool"]
+        subgraph Avail["Available Channels (Semaphore)<br/>Max: 10 (configurable)"]
+            CH1["CH 1"]
+            CH2["CH 2"]
+            CH3["CH 3"]
+            CHmore["..."]
+        end
+    end
+
+    Publisher["Publisher (TransportPublishStrategy)<br/><br/>using (var channel =<br/>await pool.RentChannelAsync()) {<br/>// Publish message<br/>// Channel auto-returns on dispose<br/>}"]
+
+    Publisher -->|"Rent"| Pool
+    Pool -->|"Return"| Publisher
+
+    class CH1,CH2,CH3,CHmore layer-command
+    class Publisher layer-core
 ```
 
 **Subscriptions** get dedicated channels (no pooling) for long-lived operations.
@@ -128,75 +111,35 @@ RabbitMQ channels are **not thread-safe**, so Whizbang uses a channel pool for c
 
 #### Publishing
 
-```
-Publisher (Order Service)
-  │
-  │ 1. PublishAsync(envelope, destination)
-  │    Destination.Address: "orders"
-  │    Destination.RoutingKey: "order.created"
-  ▼
-┌─────────────────────────────────────┐
-│  RabbitMQTransport                  │
-│                                     │
-│  - Rent channel from pool           │
-│  - Declare exchange (idempotent)    │
-│  - Serialize MessageEnvelope        │
-│  - Set BasicProperties:             │
-│    • MessageId                      │
-│    • CorrelationId                  │
-│    • EnvelopeType (for deser)       │
-│  - BasicPublish(exchange, key)      │
-│  - Return channel to pool           │
-└─────────────────────────────────────┘
-  │
-  │ 2. BasicPublish()
-  ▼
-┌─────────────────────────────────────┐
-│  RabbitMQ Exchange: "orders"        │
-│  Type: topic                        │
-└─────────────────────────────────────┘
-  │
-  │ 3. Route by pattern
-  │    Routing Key: "order.created"
-  ▼
-┌─────────────────────────────────────┐
-│  Queue: "fulfillment-orders-queue"  │
-│  Binding: "order.*"                 │
-└─────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Publisher["Publisher (Order Service)"]
+    Transport["RabbitMQTransport<br/><br/>- Rent channel from pool<br/>- Declare exchange (idempotent)<br/>- Serialize MessageEnvelope<br/>- Set BasicProperties:<br/>• MessageId<br/>• CorrelationId<br/>• EnvelopeType (for deser)<br/>- BasicPublish(exchange, key)<br/>- Return channel to pool"]
+    Exchange["RabbitMQ Exchange: #quot;orders#quot;<br/>Type: topic"]
+    Queue["Queue: #quot;fulfillment-orders-queue#quot;<br/>Binding: #quot;order.*#quot;"]
+
+    Publisher -->|"1. PublishAsync(envelope, destination)<br/>Destination.Address: #quot;orders#quot;<br/>Destination.RoutingKey: #quot;order.created#quot;"| Transport
+    Transport -->|"2. BasicPublish()"| Exchange
+    Exchange -->|"3. Route by pattern<br/>Routing Key: #quot;order.created#quot;"| Queue
+
+    class Publisher layer-core
+    class Transport,Exchange,Queue layer-command
 ```
 
 #### Subscribing
 
-```
-Subscriber (Fulfillment Service)
-  │
-  │ 1. SubscribeAsync(handler, destination)
-  │    Destination.Address: "orders"
-  │    Destination.RoutingKey: "fulfillment-orders-queue"
-  ▼
-┌─────────────────────────────────────┐
-│  RabbitMQTransport                  │
-│                                     │
-│  - Create dedicated channel         │
-│  - Set QoS prefetch (default: 10)  │
-│  - Declare exchange                 │
-│  - Declare queue with DLX           │
-│  - Bind queue to exchange           │
-│  - Create AsyncEventingBasicConsumer│
-└─────────────────────────────────────┘
-  │
-  │ 2. Receive BasicDeliver event
-  ▼
-┌─────────────────────────────────────┐
-│  Message Handler                    │
-│                                     │
-│  - Check subscription.IsActive      │
-│  - Deserialize via EnvelopeType     │
-│  - Invoke handler (Receptor)        │
-│  - BasicAck on success              │
-│  - BasicNack + requeue on failure   │
-│  - BasicNack → DLQ after max retries│
-└─────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Subscriber["Subscriber (Fulfillment Service)"]
+    Transport["RabbitMQTransport<br/><br/>- Create dedicated channel<br/>- Set QoS prefetch (default: 10)<br/>- Declare exchange<br/>- Declare queue with DLX<br/>- Bind queue to exchange<br/>- Create AsyncEventingBasicConsumer"]
+    Handler["Message Handler<br/><br/>- Check subscription.IsActive<br/>- Deserialize via EnvelopeType<br/>- Invoke handler (Receptor)<br/>- BasicAck on success<br/>- BasicNack + requeue on failure<br/>- BasicNack → DLQ after max retries"]
+
+    Subscriber -->|"1. SubscribeAsync(handler, destination)<br/>Destination.Address: #quot;orders#quot;<br/>Destination.RoutingKey: #quot;fulfillment-orders-queue#quot;"| Transport
+    Transport -->|"2. Receive BasicDeliver event"| Handler
+
+    class Subscriber layer-core
+    class Transport layer-command
+    class Handler layer-core
 ```
 
 ---
@@ -320,10 +263,10 @@ http://localhost:5050
 http://localhost:4200
 
 # BFF Swagger UI
-http://localhost:<bff-port>/swagger
+http://localhost:5234/swagger
 
 # BFF GraphQL Playground
-http://localhost:<bff-port>/graphql
+http://localhost:5234/graphql
 ```
 
 **4. View RabbitMQ Topology**:
@@ -385,10 +328,10 @@ http://localhost:5050
 http://localhost:4200
 
 # BFF Swagger UI
-http://localhost:<bff-port>/swagger
+http://localhost:5234/swagger
 
 # BFF GraphQL Playground
-http://localhost:<bff-port>/graphql
+http://localhost:5234/graphql
 ```
 
 **Note**: Azure Service Bus Emulator has **no management UI**. Use Aspire Dashboard to monitor service health.
@@ -893,49 +836,17 @@ When `AutoDeclareDeadLetterExchange = true` (default), the transport automatical
 
 ### Message Retry Flow
 
-```
-┌─────────────────────┐
-│  Main Queue         │
-│  "orders-queue"     │
-│                     │
-│  Delivery attempt 1 │
-│  ────────────────►  │
-│       Nack          │
-│  ◄────────────────  │
-│                     │
-│  Delivery attempt 2 │
-│  ────────────────►  │
-│       Nack          │
-│  ◄────────────────  │
-│                     │
-│  ...                │
-│                     │
-│  Attempt 10 (max)   │
-│  ────────────────►  │
-│       Nack          │
-│  ◄──────────────┘   │
-│                     │
-│  x-dead-letter-     │
-│  exchange set       │
-└──────│──────────────┘
-       │
-       │ Message moved to DLX
-       ▼
-┌─────────────────────┐
-│  Dead Letter        │
-│  Exchange           │
-│  "orders.dlx"       │
-└──────│──────────────┘
-       │
-       │ Fanout routing
-       ▼
-┌─────────────────────┐
-│  Dead Letter Queue  │
-│  "orders-queue.dlq" │
-│                     │
-│  Permanently failed │
-│  messages stored    │
-└─────────────────────┘
+```mermaid
+flowchart TD
+    Main["Main Queue #quot;orders-queue#quot;<br/><br/>Delivery attempt 1 → Nack<br/>Delivery attempt 2 → Nack<br/>...<br/>Attempt 10 (max) → Nack<br/><br/>x-dead-letter-exchange set"]
+    DLX["Dead Letter Exchange<br/>#quot;orders.dlx#quot;"]
+    DLQ["Dead Letter Queue #quot;orders-queue.dlq#quot;<br/><br/>Permanently failed messages stored"]
+
+    Main -->|"Message moved to DLX"| DLX
+    DLX -->|"Fanout routing"| DLQ
+
+    class Main layer-command
+    class DLX,DLQ layer-event
 ```
 
 ### Inspecting Failed Messages

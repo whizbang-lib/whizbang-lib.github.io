@@ -31,35 +31,24 @@ This is **Part 6** of the ECommerce Tutorial. Complete [Shipping Service](shippi
 
 ## What You'll Build
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  Customer Service Architecture (BFF)                         │
-│                                                               │
-│  ┌─────────────┐                                             │
-│  │Azure Service│  OrderCreated, PaymentProcessed, etc.       │
-│  │     Bus     │──────────────────────────┐                  │
-│  └─────────────┘                          │                  │
-│                                            ▼                  │
-│                          ┌────────────────────────────┐      │
-│                          │  Perspectives (Event       │      │
-│                          │  Handlers for Read Models) │      │
-│                          │  - OrderSummaryPerspective │      │
-│                          │  - CustomerActivityPersp.  │      │
-│                          └──────────┬─────────────────┘      │
-│                                     │                         │
-│                                     ▼                         │
-│                          ┌────────────────────────┐          │
-│                          │  PostgreSQL Read Models│          │
-│                          │  (Denormalized Views)  │          │
-│                          └──────────┬─────────────┘          │
-│                                     │                         │
-│                                     ▼                         │
-│  ┌──────────────┐        ┌────────────────────────┐          │
-│  │  HTTP Client │───────▶│  HTTP API (REST)       │          │
-│  │  (Frontend)  │        │  GET /customers/{id}   │          │
-│  └──────────────┘        │  GET /orders/{id}      │          │
-│                          └────────────────────────┘          │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph CSA["Customer Service Architecture (BFF)"]
+        ASB["Azure Service Bus"]
+        Perspectives["Perspectives (Event Handlers for Read Models)<br/>- OrderSummaryPerspective<br/>- CustomerActivityPersp."]
+        ReadModels["PostgreSQL Read Models<br/>(Denormalized Views)"]
+        API["HTTP API (REST)<br/>GET /customers/{id}<br/>GET /orders/{id}"]
+        Client["HTTP Client<br/>(Frontend)"]
+
+        ASB -->|"OrderCreated, PaymentProcessed, etc."| Perspectives
+        Perspectives --> ReadModels
+        ReadModels --> API
+        Client --> API
+    end
+
+    class ASB layer-command
+    class Perspectives,ReadModels layer-read
+    class API,Client layer-core
 ```
 
 **Features**:
@@ -692,31 +681,26 @@ curl http://localhost:5001/api/orders/order-abc123
 
 ### CQRS (Command Query Responsibility Segregation)
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  CQRS Pattern                                            │
-│                                                          │
-│  WRITE SIDE (Commands)                                  │
-│  ┌──────────────────────────────────┐                   │
-│  │  Order Service                   │                   │
-│  │  - CreateOrder command           │                   │
-│  │  - Publishes OrderCreated event  │                   │
-│  └──────────────┬───────────────────┘                   │
-│                 │                                        │
-│                 ▼                                        │
-│  ┌──────────────────────────────────┐                   │
-│  │  Azure Service Bus (Events)      │                   │
-│  └──────────────┬───────────────────┘                   │
-│                 │                                        │
-│                 ▼                                        │
-│  READ SIDE (Queries)                                    │
-│  ┌──────────────────────────────────┐                   │
-│  │  Customer Service                │                   │
-│  │  - OrderSummaryPerspective       │                   │
-│  │  - Denormalized order_summary    │                   │
-│  │  - Fast queries (no joins!)      │                   │
-│  └──────────────────────────────────┘                   │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph CQRS["CQRS Pattern"]
+        subgraph WRITE["WRITE SIDE (Commands)"]
+            OrderSvc["Order Service<br/>- CreateOrder command<br/>- Publishes OrderCreated event"]
+        end
+
+        Bus["Azure Service Bus (Events)"]
+
+        subgraph READ["READ SIDE (Queries)"]
+            CustomerSvc["Customer Service<br/>- OrderSummaryPerspective<br/>- Denormalized order_summary<br/>- Fast queries (no joins!)"]
+        end
+
+        OrderSvc --> Bus
+        Bus --> CustomerSvc
+    end
+
+    class OrderSvc layer-command
+    class Bus layer-event
+    class CustomerSvc layer-read
 ```
 
 **Benefits**:
@@ -752,22 +736,19 @@ public class OrderSummaryPerspective :
 
 ### BFF (Backend for Frontend)
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  BFF Pattern                                             │
-│                                                          │
-│  ┌──────────────┐                                       │
-│  │  Web Client  │───────┐                               │
-│  └──────────────┘       │                               │
-│                         ▼                               │
-│  ┌──────────────┐   ┌──────────────────┐               │
-│  │Mobile Client │───▶│ Customer Service │               │
-│  └──────────────┘   │      (BFF)       │               │
-│                     │  - Tailored DTOs │               │
-│                     │  - Aggregated data│               │
-│                     │  - Client-specific│               │
-│                     └──────────────────┘               │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph BFF["BFF Pattern"]
+        WebClient["Web Client"]
+        MobileClient["Mobile Client"]
+        CustomerSvcBff["Customer Service<br/>(BFF)<br/>- Tailored DTOs<br/>- Aggregated data<br/>- Client-specific"]
+
+        WebClient --> CustomerSvcBff
+        MobileClient --> CustomerSvcBff
+    end
+
+    class WebClient,MobileClient layer-command
+    class CustomerSvcBff layer-core
 ```
 
 **Key characteristics**:

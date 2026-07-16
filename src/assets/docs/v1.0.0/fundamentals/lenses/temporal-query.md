@@ -21,25 +21,21 @@ Temporal lens queries enable time-travel, history tracking, and activity feed pa
 
 While standard `ILensQuery<T>` works with `PerspectiveRow<T>` (one row per stream, UPSERT pattern), `ITemporalLensQuery<T>` works with `TemporalPerspectiveRow<T>` (one row per event, INSERT pattern):
 
-```
-Standard Perspective (UPSERT):
-┌─────────────────────────────────────┐
-│ Stream: Order-123                   │
-│ ───────────────────────────────────│
-│ [Row 1] ← Latest state only        │
-└─────────────────────────────────────┘
+**Standard Perspective (UPSERT)** — Stream: Order-123
 
-Temporal Perspective (INSERT):
-┌─────────────────────────────────────┐
-│ Stream: Order-123                   │
-│ ───────────────────────────────────│
-│ [Row 1] OrderCreated     10:00 AM  │
-│ [Row 2] ItemAdded        10:05 AM  │
-│ [Row 3] ItemAdded        10:07 AM  │
-│ [Row 4] OrderShipped     2:30 PM   │
-│ [Row 5] OrderDelivered   Next Day  │
-└─────────────────────────────────────┘
-```
+| Row | Contents |
+|-----|----------|
+| Row 1 | Latest state only |
+
+**Temporal Perspective (INSERT)** — Stream: Order-123
+
+| Row | Event | Time |
+|-----|-------|------|
+| Row 1 | OrderCreated | 10:00 AM |
+| Row 2 | ItemAdded | 10:05 AM |
+| Row 3 | ItemAdded | 10:07 AM |
+| Row 4 | OrderShipped | 2:30 PM |
+| Row 5 | OrderDelivered | Next Day |
 
 ## ITemporalLensQuery Interface
 

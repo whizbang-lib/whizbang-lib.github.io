@@ -33,26 +33,20 @@ lastMaintainedCommit: '01f07906'
 - Partition key extracted from events identifies the model
 - Example: `CustomerStatisticsPerspective` - aggregates order events from many order streams into one customer model
 
-```
-Single-Stream (IPerspectiveFor):
-┌─────────────────┐
-│  Order Stream 1 │ ──────> Order Summary Model 1
-└─────────────────┘
-┌─────────────────┐
-│  Order Stream 2 │ ──────> Order Summary Model 2
-└─────────────────┘
+```mermaid
+flowchart TB
+    subgraph Single["Single-Stream (IPerspectiveFor)"]
+        direction LR
+        S1["Order Stream 1"] --> SM1["Order Summary Model 1"]
+        S2["Order Stream 2"] --> SM2["Order Summary Model 2"]
+    end
 
-
-Multi-Stream (IGlobalPerspectiveFor):
-┌─────────────────┐
-│  Order Stream 1 │ ──┐
-└─────────────────┘   │
-┌─────────────────┐   │    Customer Statistics Model
-│  Order Stream 2 │ ──┼──> (Partition Key: CustomerId)
-└─────────────────┘   │
-┌─────────────────┐   │
-│  Order Stream 3 │ ──┘
-└─────────────────┘
+    subgraph Multi["Multi-Stream (IGlobalPerspectiveFor)"]
+        direction LR
+        M1["Order Stream 1"] --> CSM["Customer Statistics Model<br/>(Partition Key: CustomerId)"]
+        M2["Order Stream 2"] --> CSM
+        M3["Order Stream 3"] --> CSM
+    end
 ```
 
 ---

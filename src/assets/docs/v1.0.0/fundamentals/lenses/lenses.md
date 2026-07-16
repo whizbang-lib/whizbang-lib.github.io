@@ -63,26 +63,30 @@ For simple Dapper-based lenses that don't use EF Core, implement `ILensQuery` di
 
 **Perspectives** and **Lenses** work together to implement CQRS:
 
-```
-┌──────────── WRITE SIDE ─────────────┐
-│                                      │
-│  Command → Receptor → Event          │
-│                                      │
-└────────────┬─────────────────────────┘
-             │
-             │ dispatcher.PublishAsync()
-             ↓
-┌──────────── READ SIDE ──────────────┐
-│                                      │
-│  Event → Perspective → Read Model    │  ← Perspectives WRITE
-│             ↓                        │
-│  Read Model Table (denormalized)    │
-│             ↓                        │
-│  Lens → Query Read Model             │  ← Lenses READ
-│             ↓                        │
-│  Return DTO to Client                │
-│                                      │
-└──────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph WS["WRITE SIDE"]
+        W1["Command"] --> W2["Receptor"] --> W3["Event"]
+    end
+
+    subgraph RS["READ SIDE"]
+        R1["Event"] --> R2["Perspective"]
+        R2 -->|"Perspectives WRITE"| R3["Read Model"]
+        R3 --> R4["Read Model Table (denormalized)"]
+        R4 -->|"Lenses READ"| R5["Lens → Query Read Model"]
+        R5 --> R6["Return DTO to Client"]
+    end
+
+    W3 -->|"dispatcher.PublishAsync()"| R1
+
+    style W1 fill:#fff3cd,stroke:#ffc107
+    style W2 fill:#d4edda,stroke:#28a745
+    style W3 fill:#fff3cd,stroke:#ffc107
+    style R1 fill:#fff3cd,stroke:#ffc107
+    style R2 fill:#cce5ff,stroke:#004085
+    style R3 fill:#cce5ff,stroke:#004085
+    style R4 fill:#cce5ff,stroke:#004085
+    style R5 fill:#cce5ff,stroke:#004085
 ```
 
 **Division of Labor**:

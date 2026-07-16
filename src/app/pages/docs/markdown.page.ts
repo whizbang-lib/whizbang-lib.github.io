@@ -698,19 +698,18 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    // Extract mermaid blocks BEFORE markdown processing
+    // Extract mermaid blocks BEFORE markdown processing.
+    // Collect all matches up front: exec() while mutating the scanned string
+    // advances lastIndex past unseen content and silently skips every other
+    // block on pages with multiple diagrams.
     this.mermaidBlocks = [];
     const mermaidRegex = /```mermaid\s*\r?\n([\s\S]*?)```/g;
-    let mermaidMatch;
-    let mermaidIndex = 0;
-
-    while ((mermaidMatch = mermaidRegex.exec(processedContent)) !== null) {
-      const mermaidCode = mermaidMatch[1];
+    const mermaidMatches = [...processedContent.matchAll(mermaidRegex)];
+    mermaidMatches.forEach((match, mermaidIndex) => {
       const placeholder = `<!--MERMAID_PLACEHOLDER_${mermaidIndex}-->`;
-      this.mermaidBlocks.push({ placeholder, code: mermaidCode });
-      processedContent = processedContent.replace(mermaidMatch[0], placeholder);
-      mermaidIndex++;
-    }
+      this.mermaidBlocks.push({ placeholder, code: match[1] });
+      processedContent = processedContent.replace(match[0], placeholder);
+    });
     
     // Extract video IDs
     const videoMatches = processedContent.match(/<wb-video\s+id="([^"]+)"><\/wb-video>/g);

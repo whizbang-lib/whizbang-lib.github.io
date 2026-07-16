@@ -33,36 +33,14 @@ When Whizbang creates perspective tables, it registers metadata about each persp
 
 ### Registration Flow
 
-```
-┌─────────────────────┐
-│  Source Generator   │
-│  (compile time)     │
-├─────────────────────┤
-│ Generates metadata: │
-│ - CLR type name     │
-│ - Table name        │
-│ - Schema JSON       │
-│ - Schema hash       │
-└─────────┬───────────┘
-          │
-          ▼
-┌─────────────────────┐
-│  Application Start  │
-│  (runtime)          │
-├─────────────────────┤
-│ Calls reconcile_    │
-│ perspective_        │
-│ registry()          │
-└─────────┬───────────┘
-          │
-          ▼
-┌─────────────────────┐
-│  Database           │
-├─────────────────────┤
-│ - Inserts new types │
-│ - Detects renames   │
-│ - Detects drift     │
-└─────────────────────┘
+```mermaid
+flowchart TD
+    Generator["Source Generator<br/>(compile time)<br/><br/>Generates metadata:<br/>- CLR type name<br/>- Table name<br/>- Schema JSON<br/>- Schema hash"]
+    AppStart["Application Start<br/>(runtime)<br/><br/>Calls reconcile_perspective_registry()"]
+    Database["Database<br/><br/>- Inserts new types<br/>- Detects renames<br/>- Detects drift"]
+
+    Generator --> AppStart
+    AppStart --> Database
 ```
 
 ### Registry Table Schema

@@ -26,33 +26,28 @@ Build **multi-tenant SaaS applications** with Whizbang featuring tenant isolatio
 
 ## Architecture
 
-```
-┌────────────────────────────────────────────────────────────┐
-│  Multi-Tenant SaaS Architecture                            │
-│                                                             │
-│  ┌──────────────┐                                          │
-│  │  HTTP Request│  X-Tenant-Id: tenant-a                   │
-│  └──────┬───────┘                                          │
-│         │                                                   │
-│         ▼                                                   │
-│  ┌────────────────────────────┐                            │
-│  │  Tenant Identification     │                            │
-│  │  Middleware                │                            │
-│  └──────┬─────────────────────┘                            │
-│         │                                                   │
-│         ▼                                                   │
-│  ┌────────────────────────────┐                            │
-│  │  Tenant-Aware Dispatcher   │                            │
-│  │  (Routes to tenant DB)     │                            │
-│  └──────┬─────────────────────┘                            │
-│         │                                                   │
-│         ├──────────────┬──────────────┬─────────────┐      │
-│         ▼              ▼              ▼             ▼      │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
-│  │ Tenant A │  │ Tenant B │  │ Tenant C │  │ Shared   │  │
-│  │    DB    │  │    DB    │  │    DB    │  │    DB    │  │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘  │
-└────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph MTSA["Multi-Tenant SaaS Architecture"]
+        Request["HTTP Request<br/>X-Tenant-Id: tenant-a"]
+        Middleware["Tenant Identification<br/>Middleware"]
+        Dispatcher["Tenant-Aware Dispatcher<br/>(Routes to tenant DB)"]
+        TenantA["Tenant A<br/>DB"]
+        TenantB["Tenant B<br/>DB"]
+        TenantC["Tenant C<br/>DB"]
+        SharedDB["Shared<br/>DB"]
+
+        Request --> Middleware
+        Middleware --> Dispatcher
+        Dispatcher --> TenantA
+        Dispatcher --> TenantB
+        Dispatcher --> TenantC
+        Dispatcher --> SharedDB
+    end
+
+    class Request layer-command
+    class Middleware,Dispatcher layer-core
+    class TenantA,TenantB,TenantC,SharedDB layer-event
 ```
 
 **Key features**:

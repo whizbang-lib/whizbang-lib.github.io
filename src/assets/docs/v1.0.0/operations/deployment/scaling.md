@@ -164,36 +164,21 @@ data:
 
 **PostgreSQL with read replicas**:
 
-```
-┌────────────────────────────────────────────────────┐
-│  Database Scaling - Read Replicas                 │
-│                                                     │
-│  ┌───────────────┐                                 │
-│  │ Order Service │                                 │
-│  └───────┬───────┘                                 │
-│          │                                          │
-│          │ Writes                                   │
-│          ▼                                          │
-│  ┌────────────────┐                                │
-│  │ Primary (Write)│──────┐                         │
-│  └────────────────┘      │ Replication             │
-│                          │                          │
-│                     ┌────┴────┐                    │
-│                     │         │                     │
-│                     ▼         ▼                     │
-│              ┌─────────┐ ┌─────────┐               │
-│              │Replica-1│ │Replica-2│               │
-│              │ (Read)  │ │ (Read)  │               │
-│              └─────────┘ └─────────┘               │
-│                     ▲         ▲                     │
-│                     │ Reads   │                     │
-│                     └─────────┘                     │
-│                          │                          │
-│                  ┌───────┴────────┐                │
-│                  │  Order Service │                │
-│                  │  (Read Queries)│                │
-│                  └────────────────┘                │
-└────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph ReadReplicas["Database Scaling - Read Replicas"]
+        Writer["Order Service"]
+        Primary["Primary (Write)"]
+        Replica1["Replica-1<br/>(Read)"]
+        Replica2["Replica-2<br/>(Read)"]
+        Reader["Order Service<br/>(Read Queries)"]
+
+        Writer -->|"Writes"| Primary
+        Primary -->|"Replication"| Replica1
+        Primary -->|"Replication"| Replica2
+        Reader -->|"Reads"| Replica1
+        Reader -->|"Reads"| Replica2
+    end
 ```
 
 **Connection factory**:

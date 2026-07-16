@@ -65,16 +65,22 @@ category-level observed event.
 
 ## When to reach for it
 
-```
-Producer wants to mutate multiple streams in one operation
-  │
-  ├─ Is the mutation uniform across all targeted streams?
-  │   ├─ NO  → ICompositeEvent (hand-crafted per-stream batch)
-  │   └─ YES
-  │       │
-  │       ├─ Does the producer want to name an explicit list of streams?
-  │       │   ├─ YES → ICompositeEvent (enumerate them)
-  │       │   └─ NO  → ICollectiveEvent ← THIS — scope IS the descriptor
+```mermaid
+flowchart TD
+    Start["Producer wants to mutate multiple streams in one operation"]
+    Q1{"Is the mutation uniform across<br/>all targeted streams?"}
+    Composite1["ICompositeEvent<br/>(hand-crafted per-stream batch)"]
+    Q2{"Does the producer want to name<br/>an explicit list of streams?"}
+    Composite2["ICompositeEvent<br/>(enumerate them)"]
+    Collective["ICollectiveEvent ← THIS<br/>scope IS the descriptor"]
+
+    Start --> Q1
+    Q1 -->|NO| Composite1
+    Q1 -->|YES| Q2
+    Q2 -->|YES| Composite2
+    Q2 -->|NO| Collective
+
+    style Collective fill:#d4edda,stroke:#28a745,stroke-width:2px
 ```
 
 Pick **collective** when the mutation is uniform across a scope and you
