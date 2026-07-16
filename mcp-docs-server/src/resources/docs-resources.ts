@@ -33,7 +33,7 @@ export async function listDocsResources(fileLoader: FileLoader): Promise<Resourc
         name: title,
         mimeType: 'text/markdown',
         description: description || `Documentation: ${title}`,
-        metadata: createResourceMetadata(parsed.frontmatter)
+        _meta: createResourceMetadata(parsed.frontmatter)
       });
     } catch (error) {
       console.error(`Failed to process doc ${file.path}:`, error);
@@ -43,8 +43,8 @@ export async function listDocsResources(fileLoader: FileLoader): Promise<Resourc
 
   // Sort by category and order
   resources.sort((a, b) => {
-    const metaA = a.metadata as Record<string, any> || {};
-    const metaB = b.metadata as Record<string, any> || {};
+    const metaA = (a._meta ?? {}) as Record<string, any>;
+    const metaB = (b._meta ?? {}) as Record<string, any>;
     const categoryA = (metaA['category'] as string) || '';
     const categoryB = (metaB['category'] as string) || '';
     const orderA = (metaA['order'] as number) || 999;

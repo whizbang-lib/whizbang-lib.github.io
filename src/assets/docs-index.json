@@ -754,9 +754,9 @@
     "tags": "source-generators, json, serialization, polymorphic, inheritance, aot, native-aot, type-discriminator",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 7,
+    "readingTime": 8,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/polymorphic-serialization.md",
-    "wordCount": 1348
+    "wordCount": 1438
   },
   {
     "slug": "v1.0.0/extending/source-generators/receptor-discovery",
@@ -1354,7 +1354,7 @@
     "pageType": "concept",
     "readingTime": 24,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
-    "wordCount": 4721
+    "wordCount": 4766
   },
   {
     "slug": "v1.0.0/fundamentals/messaging/composite-events",
@@ -1588,7 +1588,7 @@
     "pageType": "concept",
     "readingTime": 4,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/polymorphic-types.md",
-    "wordCount": 691
+    "wordCount": 768
   },
   {
     "slug": "v1.0.0/fundamentals/perspectives/rebuild",
@@ -3387,5 +3387,22 @@
     "readingTime": 6,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/process-work-batch-lease-semantics.md",
     "wordCount": 1103
+  },
+  {
+    "slug": "v1.0.0/tools/mcp-server",
+    "title": "MCP Documentation Server",
+    "category": "tools",
+    "order": 1,
+    "description": "Give your AI assistant direct access to Whizbang docs, code examples, code↔test navigation, and live CI test status via the Model Context Protocol",
+    "tags": "mcp, ai, tooling, claude, cursor, documentation-server",
+    "version": "v1.0.0",
+    "pageType": "guide",
+    "audience": [
+      "consumer",
+      "contributor"
+    ],
+    "readingTime": 3,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/tools/mcp-server.md",
+    "wordCount": 432
   }
 ]

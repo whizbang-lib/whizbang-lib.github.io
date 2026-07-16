@@ -1626,6 +1626,20 @@
         }
       ],
       "children": []
+    },
+    {
+      "name": "tools",
+      "title": "Tools",
+      "order": 95,
+      "pages": [
+        {
+          "slug": "v1.0.0/tools/mcp-server",
+          "title": "MCP Documentation Server",
+          "order": 1
+        }
+      ],
+      "children": [],
+      "icon": "wrench"
     }
   ],
   "drafts": [

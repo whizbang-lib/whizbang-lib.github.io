@@ -4,21 +4,34 @@ MCP server providing programmatic access to Whizbang .NET library documentation 
 
 ## Features
 
-- 📚 Access all documentation via MCP resources
+- 📚 Access all documentation via MCP resources (a versioned snapshot is bundled in the npm package — works offline, no repo checkout needed)
 - 🔍 Full-text and semantic search
 - 💻 Browse C# code examples
+- ✅ **Live test status** — `get-test-status` fetches real CI pass/fail results from the docs site (never bundled, never stale)
+- 🔗 Code↔docs↔tests navigation (`get-code-location`, `get-tests-for-code`, …)
 - 🚀 Discover roadmap/planned features
 - 🤖 Reusable prompts for common tasks
 
+## Two modes
+
+| Mode | Who | Docs content source |
+|---|---|---|
+| **Consumer** (default when installed from npm) | Developers using the library | `bundled-assets/` snapshot baked at publish time (see `bundle-info.json` for the source commit) |
+| **Contributor** | Working in the docs repo | Live repo files — automatic when running from a checkout, or set `DOCS_PATH=/path/to/whizbang-lib.github.io/src/assets/docs` |
+
+Live test-status is always fetched from https://whizba.ng regardless of mode.
+
 ## Installation
 
-### Global Installation (Recommended)
+### Consumers (Recommended)
+
+No install step needed — reference it with `npx` in your MCP client config (below), or install globally:
 
 ```bash
 npm install -g @whizbang/docs-mcp-server
 ```
 
-### Local Development
+### Contributors (from the docs repo)
 
 ```bash
 cd mcp-docs-server
