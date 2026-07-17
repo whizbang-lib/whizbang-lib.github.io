@@ -1,6 +1,8 @@
 ---
 title: Scope Propagation
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 8
@@ -11,8 +13,20 @@ codeReferences:
   - src/Whizbang.Core/Security/ScopeDelta.cs
   - src/Whizbang.Core/Security/ScopePropJsonConverter.cs
   - src/Whizbang.Core/Dispatch/DispatcherSecurityExtensions.cs
+  - src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs
   - src/Whizbang.Core/Dispatch/SystemDispatcherBuilder.cs
   - src/Whizbang.Core/Dispatch/ImpersonationDispatcherBuilder.cs
+  - src/Whizbang.Core/Observability/MessageEnvelope.cs
+  - src/Whizbang.Core/Lenses/TenantConstants.cs
+  - src/Whizbang.Core/Lenses/PerspectiveScope.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Security/ScopeDeltaTests.cs
+  - tests/Whizbang.Core.Tests/Security/ScopeDeltaApplyToTests.cs
+  - tests/Whizbang.Core.Tests/Security/ScopeDeltaExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/Security/ScopePropJsonConverterTests.cs
+  - tests/Whizbang.Core.Tests/Dispatch/DispatcherSecurityBuilderTests.cs
+  - tests/Whizbang.Core.Tests/Dispatch/SystemDispatcherBuilderTests.cs
+  - tests/Whizbang.Core.Tests/Dispatch/ImpersonationDispatcherBuilderTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -134,10 +148,10 @@ To get the current full scope, call `GetCurrentScope()` on the envelope:
 
 ```csharp{title="Rebuilding Full Scope" description="To get the current full scope, call GetCurrentScope() on the envelope:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Rebuilding", "Full"]}
 var envelope = /* received message envelope */;
-var fullScope = envelope.GetCurrentScope();
+var fullScope = envelope.GetCurrentScope();  // MessageEnvelope.GetCurrentScope() → ScopeContext?
 
 // Now you can check permissions, roles, etc.
-if (fullScope?.HasPermission(Permission.Write)) {
+if (fullScope?.HasPermission(Permission.Write("orders")) == true) {
   // Authorized
 }
 ```

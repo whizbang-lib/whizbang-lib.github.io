@@ -1,6 +1,8 @@
 ---
 title: Pinned Worker Connection Pool
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Fundamentals
 order: 6
@@ -12,13 +14,21 @@ tags: 'workers, connections, pgbouncer, performance, throughput'
 codeReferences:
   - src/Whizbang.Core/Workers/WhizbangPinnedPoolOptions.cs
   - src/Whizbang.Core/Workers/PinnedPoolServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Workers/IPinnedConnectionPool.cs
+  - src/Whizbang.Core/Observability/PinnedPoolMetrics.cs
+  - src/Whizbang.Data.Postgres/PostgresPinnedPoolServiceCollectionExtensions.cs
+  - src/Whizbang.Data.Postgres/PinnedConnectionPool.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/PinnedConnectionPoolPrimitivesTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PinnedPoolRegistrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/PinnedConnectionPoolIntegrationTests.cs
 ---
 
 # Pinned Worker Connection Pool
 
 Whizbang background workers normally share the pgbouncer-fronted connection pool with application traffic. Each transaction's return to the pool triggers `DISCARD ALL` to reset session state — a cheap call individually (~60 µs) but one that fires on *every* transaction, including the hot polling loops.
 
-On a measured production-shaped workload (slot 3 dev, alpha `0.674.1-alpha.32`, 16,759-event import), `DISCARD ALL` accounted for **22.5 % of total database time**. The pinned worker connection pool eliminates that overhead for the workers that actually drive the hot path.
+On the production-shaped bulk-import workload that motivated the feature, `DISCARD ALL` accounted for **22.5 % of total database time**. The pinned worker connection pool eliminates that overhead for the workers that actually drive the hot path.
 
 ## When to enable
 
@@ -54,13 +64,13 @@ Eligibility is **tier-driven**, not per-worker config. The tiers reflect measure
 | Worker | Why it's tier 1 |
 |---|---|
 | `ClaimWorker` | Hot poll loop — calls `claim_work` + 3× `claim_orphaned_*` per wake; biggest single DB-time consumer |
-| `OutboxPublishWorker` | Polls `fetch_outbox_batch`, publishes, flushes completions |
-| `HeartbeatWorker` | Upserts `wh_service_instances` every ~5 s; always-on |
-| `LeaseRenewalWorker` | Updates `wh_active_streams.lease_expiry` every ~10 s; always-on |
+| `OutboxPublishWorker` | Drains outbox work (`fetch_outbox_batch`), publishes, flushes completions |
+| `HeartbeatWorker` | Upserts `wh_service_instances` on its cadence (30 s default, 60 s when the alive-lock is held); always-on |
+| `LeaseRenewalWorker` | Flushes batched `wh_active_streams.lease_expiry` renewals as requests arrive; always-on |
 
 ### Tier 2 — flush channels (opt-in, default on)
 
-Controlled by `IncludeFlushWorkers` (default `true` once `Enabled=true`).
+Controlled by `IncludeFlushWorkers` (default `true`).
 
 | Worker | What it flushes |
 |---|---|
@@ -74,9 +84,9 @@ Controlled by `IncludeFlushWorkers` (default `true` once `Enabled=true`).
 These workers do not borrow from the pinned pool — pinning them would cost a connection slot for marginal benefit.
 
 - `TransportConsumerWorker`, `ServiceBusConsumerWorker` — transport I/O dominates; DB time is a small share.
-- `PerspectiveMigrationWorker` — one-shot at startup.
+- `PerspectiveMigrationWorker`, `OrphanInboxJanitor` — one-shot at startup.
 - `MaintenanceWorker`, `BackupTickCoordinator`, `WhizbangShutdownService`, `IdleActivityTouchHookBinder` — periodic at minute-scale or lifecycle-only.
-- `OrphanInboxJanitor`, `DeadLetterRecoveryWorker`, `RecentlyProcessedEventCacheSweepWorker` — periodic at minute-scale, marginal benefit.
+- `DeadLetterRecoveryWorker`, `RecentlyProcessedEventCacheSweepWorker` — periodic at minute-scale, marginal benefit.
 
 ### Opting in a custom worker
 
@@ -107,7 +117,7 @@ The options class is `WhizbangPinnedPoolOptions`. The registration helper takes 
 | `Enabled` | bool | `false` | Master switch. `false` → workers stay on pgbouncer. |
 | `Size` | int | `1` | Number of pinned connections held open. |
 | `IncludeFlushWorkers` | bool | `true` | Whether tier-2 flush workers also pin. |
-| `ExcludeWorkers` | string[] | `[]` | CLR short names of workers to skip. Escape hatch. |
+| `ExcludeWorkers` | IList&lt;string&gt; | `[]` | CLR short names (no namespace) of workers to skip. Escape hatch. |
 | `ConnectionLifetimeSeconds` | int | `1800` | Auto-recycle a connection after this many seconds. |
 | `BorrowTimeoutMilliseconds` | int | `5000` | How long a worker waits to borrow before throwing. |
 
@@ -160,7 +170,12 @@ services.AddWhizbangPinnedWorkerPool(opts => {
   // and any other settings come through this single call.
   builder.Configuration.GetSection("Whizbang:Workers:PinnedPool").Bind(opts);
 });
+// Swap the default no-op pool for the PostgreSQL implementation
+// (from Whizbang.Data.Postgres; call AFTER AddWhizbangPinnedWorkerPool).
+services.AddWhizbangPostgresPinnedPool();
 ```
+
+`AddWhizbangPinnedWorkerPool` alone registers only the options, the eligibility registry, and a `NoOpPinnedConnectionPool` default. The PostgreSQL-backed pool is swapped in by `AddWhizbangPostgresPinnedPool()` (in `Whizbang.Data.Postgres`), which is safe to call unconditionally — it leaves the no-op in place when `Enabled=false` or no connection string resolves.
 
 The simpler "everything in code" shape, when you don't want config-driven values (test/dev):
 
@@ -176,6 +191,7 @@ services.AddWhizbangPinnedWorkerPool(opts => {
   opts.ConnectionString = builder.Configuration.GetConnectionString("WorkerDirect");
   opts.Enabled = true;
 });
+services.AddWhizbangPostgresPinnedPool();
 ```
 
 ### Tuning size
@@ -230,18 +246,19 @@ At `Size=1` and 50 pods, that's **100 direct PG conns** plus whatever pgbouncer 
 
 ## Validation
 
-When `Enabled=true`, the registration extension validates `Size > 0` at startup. If neither `ConnectionStringName` nor `ConnectionString` resolves to a non-empty string, the feature silently no-ops — workers continue using pgbouncer. This is intentional: it lets you ship the registration code into all environments and toggle on per-environment via configuration.
+The registration extension validates `Size > 0` at startup when `Enabled=true` and an inline `ConnectionString` is set — catching the "Size left at 0 while enabled" misconfiguration before it silently degrades to pgbouncer overhead. If neither `ConnectionStringName` nor `ConnectionString` resolves to a non-empty string, the feature silently no-ops — workers continue using pgbouncer. This is intentional: it lets you ship the registration code into all environments and toggle on per-environment via configuration.
 
 ## Observability
 
-Two metrics surface the pinned pool's behaviour:
+Three metrics surface the pinned pool's behaviour (meter `Whizbang.Workers.PinnedPool`):
 
 | Metric | Type | Tags | What it shows |
 |---|---|---|---|
-| `whizbang.workers.pinned_pool.borrow.duration` | histogram (ms) | `worker_name` | Time from borrow request to connection handed out — should be near-zero in steady state. |
-| `whizbang.workers.pinned_pool.borrow.timeouts` | counter | `worker_name` | Borrow-timeout count — if non-zero, raise `Size` or investigate which worker is holding too long. |
+| `whizbang.workers.pinned_pool.borrow.duration` | histogram (ms) | `worker` | Time from borrow request to connection handed out — should be near-zero in steady state. |
+| `whizbang.workers.pinned_pool.borrow.timeouts` | counter | `worker` | Borrow-timeout count — if non-zero, raise `Size` or investigate which worker is holding too long. |
+| `whizbang.workers.pinned_pool.connection_recycles` | counter | — | Connection recycles driven by `ConnectionLifetimeSeconds`. |
 
-Pair these with the `pg_stat_statements` query in [Connection budget](#connection-budget) to confirm the post-enable `DISCARD ALL` share has dropped.
+Pair these with `pg_stat_statements` to confirm the post-enable `DISCARD ALL` share has dropped.
 
 ## Migration from un-pinned
 
@@ -249,5 +266,6 @@ The feature is purely additive — no code changes required in workers. Worker c
 
 ## Related
 
-- [pgbouncer topology overview](../work-coordinator/notifications-and-pgbouncer.md) — how NOTIFY + worker traffic split across direct and pooled connections.
-- [Slot-3 perf measurement (2026-06-10)](../../proposals/slot-3-perf-baseline.md) — the measurement that motivated this feature.
+- [Worker classification](./worker-classification.md) — which workers are NOTIFY-driven, channel-driven, or timer-driven.
+- [Instance liveness](./instance-liveness.md) — the direct LISTEN connection and the advisory-lock liveness signal.
+- [PerspectiveWorker NOTIFY wake](./perspective-worker-notify.md) — the LISTEN/NOTIFY consumer side.

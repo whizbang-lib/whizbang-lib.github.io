@@ -1,6 +1,8 @@
 ---
 title: Scoping
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 description: Multi-tenancy and data isolation through composable scope filters, enabling tenant, user, organization, and principal-based access patterns.
@@ -9,6 +11,18 @@ codeReferences:
   - src/Whizbang.Core/Lenses/ScopeFilter.cs
   - src/Whizbang.Core/Lenses/ScopeFilterBuilder.cs
   - src/Whizbang.Core/Lenses/PerspectiveScope.cs
+  - src/Whizbang.Core/Lenses/IScopedLensFactory.cs
+  - src/Whizbang.Core/Lenses/ScopedLensFactory.cs
+  - src/Whizbang.Core/Security/SecurityPrincipalId.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Scoping/PerspectiveScopeTests.cs
+  - tests/Whizbang.Core.Tests/Scoping/MarkerInterfaceTests.cs
+  - tests/Whizbang.Core.Tests/Scoping/PerspectiveScopeFilterByFieldsTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ScopeFilterTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ScopeFilterBuilderTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryImplTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -21,7 +35,7 @@ Whizbang's scoping system provides flexible multi-tenancy and data isolation thr
 Scoping in Whizbang separates data isolation concerns from your domain models:
 
 - **PerspectiveScope** - Metadata stored with each row (TenantId, UserId, etc.)
-- **ScopeFilter** - Composable flags for query filtering
+- **ScopeFilters** - Composable flags enum for query filtering
 - **ScopeFilterBuilder** - Builds filter info from flags and context
 - **IScopedLensFactory** - Resolves lenses with scope filters applied
 
@@ -177,11 +191,11 @@ You can use both together - the marker interface for domain logic and Perspectiv
 
 ## Scope Filters
 
-`ScopeFilter` is a flags enum for composable filtering.
+`ScopeFilters` (note the plural — the enum type is `ScopeFilters`, declared in `ScopeFilter.cs`) is a flags enum for composable filtering.
 
-```csharp{title="Scope Filters" description="ScopeFilter is a flags enum for composable filtering." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Filters"]}
+```csharp{title="Scope Filters" description="ScopeFilters is a flags enum for composable filtering." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Filters"]}
 [Flags]
-public enum ScopeFilter {
+public enum ScopeFilters {
   None = 0,           // No filtering (global access)
   Tenant = 1 << 0,    // Filter by TenantId
   Organization = 1 << 1,
@@ -197,13 +211,13 @@ Combine filters with bitwise OR:
 
 ```csharp{title="Filter Composition" description="Combine filters with bitwise OR:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Filter", "Composition"]}
 // Single filter
-var tenantOnly = ScopeFilter.Tenant;
+var tenantOnly = ScopeFilters.Tenant;
 
 // Multiple filters (AND'd together)
-var tenantAndUser = ScopeFilter.Tenant | ScopeFilter.User;
+var tenantAndUser = ScopeFilters.Tenant | ScopeFilters.User;
 
 // Complex combination
-var complex = ScopeFilter.Tenant | ScopeFilter.Organization | ScopeFilter.Principal;
+var complex = ScopeFilters.Tenant | ScopeFilters.Organization | ScopeFilters.Principal;
 ```
 
 ### Filter Application
@@ -223,7 +237,7 @@ When both `User` and `Principal` filters are specified, they're OR'd together (n
 ```csharp{title="Special OR Logic" description="When both User and Principal filters are specified, they're OR'd together (not AND'd)." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Special", "Logic"]}
 // Get my orders and orders shared with my groups
 var lens = factory.GetMyOrSharedLens<IOrderLens>();
-// Equivalent to: Tenant | User | Principal
+// Equivalent to: ScopeFilters.Tenant | ScopeFilters.User | ScopeFilters.Principal
 
 // Generated: WHERE TenantId = ? AND (UserId = ? OR AllowedPrincipals ?| [...])
 ```
@@ -236,18 +250,18 @@ var lens = factory.GetMyOrSharedLens<IOrderLens>();
 public static class ScopeFilterExtensions {
   // Tenant + User isolation
   // WHERE TenantId = ? AND UserId = ?
-  public static ScopeFilter TenantUser =>
-    ScopeFilter.Tenant | ScopeFilter.User;
+  public static ScopeFilters TenantUser =>
+    ScopeFilters.Tenant | ScopeFilters.User;
 
   // Tenant + Principal-based access
   // WHERE TenantId = ? AND AllowedPrincipals ?| [...]
-  public static ScopeFilter TenantPrincipal =>
-    ScopeFilter.Tenant | ScopeFilter.Principal;
+  public static ScopeFilters TenantPrincipal =>
+    ScopeFilters.Tenant | ScopeFilters.Principal;
 
   // Tenant + User's own OR shared with them (special OR logic)
   // WHERE TenantId = ? AND (UserId = ? OR AllowedPrincipals ?| [...])
-  public static ScopeFilter TenantUserOrPrincipal =>
-    ScopeFilter.Tenant | ScopeFilter.User | ScopeFilter.Principal;
+  public static ScopeFilters TenantUserOrPrincipal =>
+    ScopeFilters.Tenant | ScopeFilters.User | ScopeFilters.Principal;
 }
 ```
 
@@ -260,7 +274,7 @@ var sharedWithMe = ScopeFilterExtensions.TenantPrincipal;
 var myOrShared = ScopeFilterExtensions.TenantUserOrPrincipal;
 
 // Or compose your own
-var custom = ScopeFilter.Tenant | ScopeFilter.Organization;
+var custom = ScopeFilters.Tenant | ScopeFilters.Organization;
 ```
 
 ## Scope Filter Builder
@@ -270,11 +284,11 @@ var custom = ScopeFilter.Tenant | ScopeFilter.Organization;
 ```csharp{title="Scope Filter Builder" description="ScopeFilterBuilder builds filter information from flags and the current scope context." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Filter"]}
 // Build filter info
 var filterInfo = ScopeFilterBuilder.Build(
-  ScopeFilter.Tenant | ScopeFilter.User,
+  ScopeFilters.Tenant | ScopeFilters.User,
   scopeContext);
 
 // Filter info contains:
-filterInfo.Filters;        // ScopeFilter.Tenant | ScopeFilter.User
+filterInfo.Filters;        // ScopeFilters.Tenant | ScopeFilters.User
 filterInfo.TenantId;       // "tenant-123"
 filterInfo.UserId;         // "user-456"
 filterInfo.UseOrLogicForUserAndPrincipal;  // false
@@ -284,7 +298,7 @@ filterInfo.UseOrLogicForUserAndPrincipal;  // false
 
 ```csharp{title="ScopeFilterInfo" description="ScopeFilterInfo" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "ScopeFilterInfo"]}
 public readonly record struct ScopeFilterInfo {
-  public ScopeFilter Filters { get; init; }
+  public ScopeFilters Filters { get; init; }
   public string? TenantId { get; init; }
   public string? UserId { get; init; }
   public string? OrganizationId { get; init; }
@@ -301,11 +315,11 @@ public readonly record struct ScopeFilterInfo {
 
 ```csharp{title="Validation" description="`ScopeFilterBuilder." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Validation"]}
 // Throws InvalidOperationException if TenantId is null
-ScopeFilterBuilder.Build(ScopeFilter.Tenant, contextWithoutTenant);
+ScopeFilterBuilder.Build(ScopeFilters.Tenant, contextWithoutTenant);
 // "Tenant filter requested but TenantId is not set in scope context."
 
 // Throws if SecurityPrincipals is empty
-ScopeFilterBuilder.Build(ScopeFilter.Principal, contextWithoutPrincipals);
+ScopeFilterBuilder.Build(ScopeFilters.Principal, contextWithoutPrincipals);
 // "Principal filter requested but SecurityPrincipals is empty in scope context."
 ```
 
@@ -315,16 +329,16 @@ The factory resolves lenses with scope filters automatically applied.
 
 ```csharp{title="IScopedLensFactory" description="The factory resolves lenses with scope filters automatically applied." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "IScopedLensFactory"]}
 // Get lens with specific filters
-var lens = factory.GetLens<IOrderLens>(ScopeFilter.Tenant);
+var lens = factory.GetLens<IOrderLens>(ScopeFilters.Tenant);
 
 // Get lens with filters + permission check
 var lens = factory.GetLens<IOrderLens>(
-  ScopeFilter.Tenant,
+  ScopeFilters.Tenant,
   Permission.Read("orders"));
 
 // Convenience methods
-factory.GetGlobalLens<T>();       // ScopeFilter.None
-factory.GetTenantLens<T>();       // ScopeFilter.Tenant
+factory.GetGlobalLens<T>();       // ScopeFilters.None
+factory.GetTenantLens<T>();       // ScopeFilters.Tenant
 factory.GetUserLens<T>();         // Tenant | User
 factory.GetOrganizationLens<T>(); // Tenant | Organization
 factory.GetCustomerLens<T>();     // Tenant | Customer
@@ -356,9 +370,9 @@ await perspective.UpsertAsync(streamId, order, new PerspectiveScope {
   TenantId = currentTenant
 });
 
-// Query within tenant
+// Query within tenant — the factory pre-applies the filter to the lens's Query
 var lens = factory.GetTenantLens<IOrderLens>();
-var orders = await lens.GetAllAsync();  // Only current tenant's orders
+var orders = await lens.Query.ToListAsync();  // Only current tenant's rows
 ```
 
 ### User Ownership
@@ -374,7 +388,7 @@ await perspective.UpsertAsync(streamId, savedSearch, new PerspectiveScope {
 
 // Query user's records
 var lens = factory.GetUserLens<ISavedSearchLens>();
-var searches = await lens.GetAllAsync();  // Only current user's searches
+var searches = await lens.Query.ToListAsync();  // Only current user's rows
 ```
 
 ### Group-Based Sharing
@@ -394,7 +408,7 @@ await perspective.UpsertAsync(streamId, report, new PerspectiveScope {
 
 // Query records shared with caller's groups
 var lens = factory.GetPrincipalLens<IReportLens>();
-var reports = await lens.GetAllAsync();  // Reports accessible to caller
+var reports = await lens.Query.ToListAsync();  // Rows accessible to caller
 ```
 
 ### My Records OR Shared With Me
@@ -404,7 +418,7 @@ Combining user ownership and group sharing:
 ```csharp{title="My Records OR Shared With Me" description="Combining user ownership and group sharing:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Records", "Shared"]}
 // Get lens for "my records + shared"
 var lens = factory.GetMyOrSharedLens<IDocumentLens>();
-var docs = await lens.GetAllAsync();
+var docs = await lens.Query.ToListAsync();
 
 // Returns documents where:
 // - UserId = current user, OR

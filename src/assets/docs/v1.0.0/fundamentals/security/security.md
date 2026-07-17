@@ -1,6 +1,8 @@
 ---
 title: Security
 pageType: overview
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 6
@@ -11,10 +13,36 @@ description: >-
 tags: 'security, permissions, roles, rbac, abac, scope-context, principals, row-level-security, column-level-security, masking'
 codeReferences:
   - src/Whizbang.Core/Security/IScopeContext.cs
+  - src/Whizbang.Core/Security/ScopeContext.cs
+  - src/Whizbang.Core/Security/IScopeContextAccessor.cs
   - src/Whizbang.Core/Security/Role.cs
+  - src/Whizbang.Core/Security/RoleBuilder.cs
   - src/Whizbang.Core/Security/Permission.cs
+  - src/Whizbang.Core/Security/SecurityPrincipalId.cs
   - src/Whizbang.Core/Security/SecurityOptions.cs
+  - src/Whizbang.Core/Security/IPermissionExtractor.cs
   - src/Whizbang.Core/Security/Attributes/ScopedAttribute.cs
+  - src/Whizbang.Core/Security/Attributes/FieldPermissionAttribute.cs
+  - src/Whizbang.Core/Security/Exceptions/AccessDeniedException.cs
+  - src/Whizbang.Core/Lenses/IScopedLensFactory.cs
+  - src/Whizbang.Core/Lenses/ScopeFilter.cs
+  - src/Whizbang.Core/Lenses/PerspectiveScope.cs
+  - src/Whizbang.Core/SystemEvents/Security/AccessDenied.cs
+  - src/Whizbang.Core/SystemEvents/Security/AccessGranted.cs
+  - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangJsonDbFunctions.cs
+  - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangDbContextOptionsExtensions.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Security/PermissionTests.cs
+  - tests/Whizbang.Core.Tests/Security/RoleTests.cs
+  - tests/Whizbang.Core.Tests/Security/RoleBuilderTests.cs
+  - tests/Whizbang.Core.Tests/Security/SecurityPrincipalIdTests.cs
+  - tests/Whizbang.Core.Tests/Security/SecurityPrincipalIdJsonConverterTests.cs
+  - tests/Whizbang.Core.Tests/Security/ScopeContextTests.cs
+  - tests/Whizbang.Core.Tests/Security/ScopeContextAccessorTests.cs
+  - tests/Whizbang.Core.Tests/Security/PermissionExtractorTests.cs
+  - tests/Whizbang.Core.Tests/Security/AccessDeniedExceptionTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ScopeFilterTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -90,9 +118,9 @@ managerRole.HasPermission(Permission.Delete("reports")); // false
 The `RoleBuilder` provides a fluent API for defining roles with permissions:
 
 ```csharp{title="Role Definition" description="The RoleBuilder provides a fluent API for defining roles with permissions:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Role", "Definition"]}
-public class RoleBuilder {
+public sealed class RoleBuilder(string name) {
   public RoleBuilder HasPermission(Permission permission);
-  public RoleBuilder HasPermission(string resource, string action);
+  public RoleBuilder HasPermission(string permission);    // "resource:action"
   public RoleBuilder HasReadPermission(string resource);
   public RoleBuilder HasWritePermission(string resource);
   public RoleBuilder HasDeletePermission(string resource);
@@ -106,7 +134,7 @@ var role = new RoleBuilder("OrderManager")
   .HasReadPermission("orders")
   .HasWritePermission("orders")
   .HasReadPermission("customers")
-  .HasPermission("orders", "export")
+  .HasPermission("orders:export")
   .Build();
 ```
 
@@ -191,6 +219,9 @@ public interface IScopeContext {
   IReadOnlySet<Permission> Permissions { get; }
   IReadOnlySet<SecurityPrincipalId> SecurityPrincipals { get; }
   IReadOnlyDictionary<string, string> Claims { get; }
+  string? ActualPrincipal { get; }          // Who is really acting (RunAs scenarios)
+  string? EffectivePrincipal { get; }       // Who the action is performed as
+  SecurityContextType ContextType { get; }  // User, System, Service, ...
 
   // Helper methods
   bool HasPermission(Permission permission);
@@ -199,6 +230,7 @@ public interface IScopeContext {
   bool HasRole(string roleName);
   bool HasAnyRole(params string[] roleNames);
   bool IsMemberOfAny(params SecurityPrincipalId[] principals);
+  bool IsMemberOfAll(params SecurityPrincipalId[] principals);
 }
 ```
 
@@ -234,6 +266,14 @@ Access the current scope context via `IScopeContextAccessor`, which uses `AsyncL
 ```csharp{title="Scope Context Accessor" description="Access the current scope context via IScopeContextAccessor, which uses AsyncLocal for request-scoped propagation." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Scope", "Context"]}
 public interface IScopeContextAccessor {
   IScopeContext? Current { get; set; }
+
+  // The message context that initiated the current operation (correlation/causation)
+  IMessageContext? InitiatingContext { get; set; }
+
+  // Convenience accessors
+  string? UserId => InitiatingContext?.UserId;
+  string? TenantId => InitiatingContext?.TenantId;
+  IScopeContext? ScopeContext => Current;
 }
 
 // Usage in a service
@@ -252,10 +292,10 @@ public class OrderService {
 
     if (!context.HasPermission(Permission.Read("orders"))) {
       throw new AccessDeniedException(
+        requiredPermission: Permission.Read("orders"),
         resourceType: "Order",
         resourceId: orderId,
-        requiredPermission: Permission.Read("orders"),
-        reason: AccessDenialReason.InsufficientPermissions
+        reason: AccessDenialReason.InsufficientPermission
       );
     }
 

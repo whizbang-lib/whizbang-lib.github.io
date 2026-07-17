@@ -1,6 +1,8 @@
 ---
 title: Security Context Propagation
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 7
@@ -11,7 +13,25 @@ codeReferences:
   - src/Whizbang.Core/Messaging/SecurityContextEventStoreDecorator.cs
   - src/Whizbang.Core/Security/SecurityContextHelper.cs
   - src/Whizbang.Core/Security/IMessageSecurityContextProvider.cs
+  - src/Whizbang.Core/Security/DefaultMessageSecurityContextProvider.cs
+  - src/Whizbang.Core/Security/Extractors/MessageHopSecurityExtractor.cs
+  - src/Whizbang.Core/Security/SecurityExtraction.cs
+  - src/Whizbang.Core/Security/ImmutableScopeContext.cs
+  - src/Whizbang.Core/Security/MessageSecurityOptions.cs
+  - src/Whizbang.Core/Security/MessageSecurityServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Security/ISecurityContextCallback.cs
+  - src/Whizbang.Core/Observability/MessageHop.cs
+  - src/Whizbang.Core/SystemEvents/Security/ScopeContextEstablished.cs
+  - src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
   - src/Whizbang.Core/Transports/ServiceBusTransportMetadata.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Security/MessageHopSecurityExtractorTests.cs
+  - tests/Whizbang.Core.Tests/Security/MessageSecurityContextProviderTests.cs
+  - tests/Whizbang.Core.Tests/Security/MessageSecurityIntegrationTests.cs
+  - tests/Whizbang.Core.Tests/Security/MessageSecurityOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Security/MessageSecurityServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/Security/ImmutableScopeContextTests.cs
+  - tests/Whizbang.Core.Tests/Security/ScopeContextAccessorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -59,24 +79,21 @@ flowchart TD
 
 ### Step 1: HTTP Request Establishes Context
 
-The `WhizbangScopeMiddleware` extracts security context from HTTP requests:
+The `WhizbangScopeMiddleware` (shipped in `Whizbang.Transports.HotChocolate`) extracts security context from HTTP headers and JWT claims. Register with `AddWhizbangScope()` / `UseWhizbangScope()` and configure via `WhizbangScopeOptions`:
 
 ```csharp{title="Step 1: HTTP Request Establishes Context" description="The WhizbangScopeMiddleware extracts security context from HTTP requests:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "HTTP"]}
-// Startup.cs
-app.UseWhizbangScopeMiddleware(options => {
-  options.ExtractFromJwt = true;
-  options.JwtClaimMappings = new Dictionary<string, string> {
-    ["tenant_id"] = "TenantId",
-    ["sub"] = "UserId",
-    ["org_id"] = "OrganizationId"
-  };
-  options.ExtractRolesFromClaim = "roles";
-  options.ExtractPermissionsFromClaim = "permissions";
+// Program.cs
+builder.Services.AddWhizbangScope(options => {
+  options.TenantIdClaimTypes = ["tenant_id"];        // JWT claim(s) for tenant
+  options.UserIdClaimTypes = ["sub", "oid"];         // JWT claim(s) for user
+  options.TenantIdHeaderName = "X-Tenant-Id";        // header fallback
 });
+
+app.UseWhizbangScope();
 ```
 
 This middleware:
-- Extracts claims from JWT bearer tokens
+- Extracts claims from JWT bearer tokens (and header fallbacks)
 - Maps claims to `IScopeContext` properties
 - Populates `IScopeContextAccessor.Current`
 - Makes context available to downstream code

@@ -1,6 +1,8 @@
 ---
 title: Instance Liveness — Advisory Lock + Heartbeat Fallback
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Fundamentals
 order: 8
@@ -11,8 +13,12 @@ description: >-
 tags: 'liveness, heartbeat, advisory-lock, recovery, workers'
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/055_InstanceAliveAdvisoryLock.sql
+  - src/Whizbang.Data.Postgres/Migrations/011_CleanupStaleInstances.sql
+  - src/Whizbang.Data.Postgres/Notifications/PgSharedNotifyConnection.cs
   - src/Whizbang.Core/Workers/IInstanceAliveLockSource.cs
   - src/Whizbang.Core/Workers/HeartbeatWorker.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
 ---
 
 # Instance liveness — advisory lock + heartbeat fallback
@@ -24,7 +30,7 @@ Whizbang has two independent signals for "this instance is alive," wired in slic
 | Signal | Source | Latency | When used |
 |---|---|---|---|
 | **Advisory lock** (primary) | Session-level lock claimed by `PgSharedNotifyConnection` on its direct (non-pgbouncer) LISTEN conn at open. Released by PostgreSQL when the session ends — TCP close, pod death, network reset. | Sub-second (TCP keepalive timeout, typically 10–30 s) | Available when the direct conn is wired. |
-| **Heartbeat table** (fallback) | `wh_service_instances.last_heartbeat_at` updated by `HeartbeatWorker` on its cadence. Stale rows removed by `cleanup_stale_instances` after `p_stale_cutoff`. | 30 s (heartbeat cadence × 6 + cutoff buffer) | Always available — the table write is the universal fallback. |
+| **Heartbeat table** (fallback) | `wh_service_instances.last_heartbeat_at` updated by `HeartbeatWorker` on its cadence. Stale rows removed by `cleanup_stale_instances` after `p_stale_cutoff`. | ~30–60 s (heartbeat cadence 30 s + stale cutoff) | Always available — the table write is the universal fallback. |
 
 The new SQL function `is_instance_alive(instance_id, threshold_seconds)` returns TRUE if EITHER signal indicates alive:
 
@@ -63,7 +69,7 @@ The 30 s `cleanup_stale_instances` recovery guarantee is preserved in both cases
 | Migration | What changed |
 |---|---|
 | **055** (new) | `claim_instance_alive_lock(uuid) → bool` and `is_instance_alive(uuid, threshold) → bool` |
-| **011** (modified) | `cleanup_stale_instances` skip-while-locked clause added |
+| **011** (modified) | `cleanup_stale_instances` skip-while-locked clause added; a later revision (v0.687) added an optional `p_definitive_dead_cutoff` parameter that bypasses the lock guard when the heartbeat is so old the instance is definitely dead (covers OOMKilled pods whose advisory lock lingers on a half-open TCP session until OS keepalive fires) |
 
 ## Operator notes
 

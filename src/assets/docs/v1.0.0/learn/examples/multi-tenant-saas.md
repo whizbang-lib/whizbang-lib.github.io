@@ -1,6 +1,8 @@
 ---
 title: Multi-Tenant SaaS
-pageType: concept
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Customization Examples
 order: 1
@@ -15,12 +17,19 @@ codeReferences:
   - samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Endpoints/SuperAdmin/GetOrdersByTenantEndpoint.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Dispatch/SystemDispatcherBuilderTests.cs
+  - samples/ECommerce/tests/ECommerce.BFF.API.Tests/SuperAdminEndpointTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Multi-Tenant SaaS
 
 Build **multi-tenant SaaS applications** with Whizbang featuring tenant isolation, per-tenant databases, cross-tenant analytics, and tenant-specific customizations.
+
+:::updated
+Tenancy is **first-class in Whizbang**: every `IMessageContext` carries a `TenantId`, perspective rows carry a tenant scope (`row.Scope.TenantId`), and the dispatcher exposes explicit tenant-scope builders — `dispatcher.AsSystem().ForTenant("tenant-123")`, `.ForAllTenants()` (uses `TenantConstants.AllTenants`, `"*"`), and `.KeepTenant()`. The per-tenant-database plumbing below (middleware, connection resolver) is one deployment architecture layered on top; the shipped ECommerce sample instead uses shared tables with tenant-scoped rows queried through lenses.
+:::
 
 ---
 
@@ -241,188 +250,136 @@ builder.Services.AddSingleton<ITenantDatabaseResolver, TenantDatabaseResolver>()
 **CreateOrderReceptor.cs**:
 
 ```csharp{title="Tenant-Aware Receptors" description="**CreateOrderReceptor." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Tenant-Aware", "Receptors"]}
-public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-  private readonly NpgsqlConnection _db;  // Tenant-specific database
-  private readonly IMessageContext _context;
-  private readonly ILogger<CreateOrderReceptor> _logger;
+using Whizbang.Core;
 
-  public async Task<OrderCreated> HandleAsync(
-    CreateOrder command,
-    CancellationToken ct = default
+public class CreateOrderReceptor(
+  IDispatcher dispatcher,
+  ILogger<CreateOrderReceptor> logger
+) : IReceptor<CreateOrderCommand, OrderCreatedEvent> {
+
+  public async ValueTask<OrderCreatedEvent> HandleAsync(
+    CreateOrderCommand message,
+    CancellationToken cancellationToken = default
   ) {
-    var tenantId = TenantContext.CurrentTenantId
-      ?? throw new InvalidOperationException("Tenant context not set");
-
-    _logger.LogInformation(
-      "Creating order for tenant {TenantId}, customer {CustomerId}",
-      tenantId,
-      command.CustomerId
+    // The tenant travels with the message: IMessageContext.TenantId was stamped
+    // when the command was dispatched, and Whizbang persists it on the envelope,
+    // the event store rows, and the perspective row scope.
+    logger.LogInformation(
+      "Creating order {OrderId} for customer {CustomerId}",
+      message.OrderId,
+      message.CustomerId
     );
 
-    // Database operations automatically scoped to tenant
-    await using var tx = await _db.BeginTransactionAsync(ct);
+    var orderCreated = new OrderCreatedEvent {
+      OrderId = message.OrderId,
+      CustomerId = message.CustomerId,
+      LineItems = message.LineItems,
+      TotalAmount = message.TotalAmount,
+      CreatedAt = DateTime.UtcNow
+    };
 
-    try {
-      // Insert order (tenant-specific table)
-      await _db.ExecuteAsync(
-        """
-        INSERT INTO orders (order_id, customer_id, total_amount, tenant_id, created_at)
-        VALUES (@OrderId, @CustomerId, @TotalAmount, @TenantId, NOW())
-        """,
-        new {
-          OrderId = Guid.NewGuid().ToString("N"),
-          CustomerId = command.CustomerId,
-          TotalAmount = command.Items.Sum(i => i.Quantity * i.UnitPrice),
-          TenantId = tenantId
-        },
-        transaction: tx
-      );
+    // Published event inherits the tenant scope from the command's envelope
+    await dispatcher.PublishAsync(orderCreated);
 
-      // ... rest of implementation
-
-      await tx.CommitAsync(ct);
-      return @event;
-    } catch {
-      await tx.RollbackAsync(ct);
-      throw;
-    }
+    return orderCreated;
   }
 }
 ```
+
+The receptor body contains **no tenant plumbing** — tenant scope flows through the message envelope. If you run database-per-tenant, resolve the tenant connection in your DI registration (as shown above) rather than inside receptors.
 
 ---
 
 ## Message Context Propagation
 
-**Automatic tenant ID propagation in events**:
+Tenant propagation is built in — `IMessageContext` has a first-class `TenantId` property:
 
-**TenantAwareMessageContext.cs**:
-
-```csharp{title="Message Context Propagation" description="**TenantAwareMessageContext." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Message", "Context"]}
-public class TenantAwareMessageContext : IMessageContext {
-  private readonly IMessageContext _inner;
-
-  public TenantAwareMessageContext(IMessageContext inner) {
-    _inner = inner;
-  }
-
-  public Guid MessageId => _inner.MessageId;
-  public Guid? CorrelationId => _inner.CorrelationId;
-  public Guid? CausationId => _inner.CausationId;
-  public string? UserId => _inner.UserId;
-
-  public IDictionary<string, string> Metadata {
-    get {
-      var metadata = new Dictionary<string, string>(_inner.Metadata);
-
-      // Auto-inject tenant ID
-      if (TenantContext.CurrentTenantId != null) {
-        metadata["tenant_id"] = TenantContext.CurrentTenantId;
-      }
-
-      return metadata;
-    }
-  }
+```csharp{title="Message Context Propagation" description="IMessageContext tenant support" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Message", "Context"]}
+public interface IMessageContext {
+  MessageId MessageId { get; }
+  CorrelationId CorrelationId { get; }
+  MessageId CausationId { get; }
+  DateTimeOffset Timestamp { get; }
+  string? UserId { get; }
+  string? TenantId { get; }   // ← first-class tenant scope
+  IReadOnlyDictionary<string, object> Metadata { get; }
+  // ... plus security scope and caller info
 }
 ```
 
-**Program.cs**:
+**Explicit tenant scoping at dispatch** — for system/maintenance operations, make the tenant scope explicit with the security builder:
 
-```csharp{title="Message Context Propagation (2)" description="Message Context Propagation" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Message", "Context"]}
-builder.Services.Decorate<IMessageContext, TenantAwareMessageContext>();
+```csharp{title="Message Context Propagation (2)" description="Dispatcher tenant-scope builders" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Message", "Context"]}
+// Cross-tenant system operation (TenantId = TenantConstants.AllTenants, "*")
+await dispatcher.AsSystem().ForAllTenants().SendAsync(new ReindexAllTenantsCommand());
+
+// System operation scoped to one tenant
+await dispatcher.AsSystem().ForTenant("tenant-123").SendAsync(new TenantMaintenanceCommand());
+
+// System operation preserving the ambient tenant
+await dispatcher.AsSystem().KeepTenant().SendAsync(new MaintenanceCommand());
 ```
 
-**Result**: All events automatically include `tenant_id` in metadata.
+**Result**: every event envelope, event store row, and perspective row carries its tenant scope — cascaded messages inherit it automatically.
 
 ---
 
 ## Cross-Tenant Analytics
 
-### Shared Analytics Database
+### Cross-Tenant Queries via Lenses
 
-**AnalyticsDbConnection.cs**:
+Perspective rows carry their tenant scope, so cross-tenant analytics is a **lens query over `row.Scope.TenantId`** — no metadata parsing, no separate ingestion pipeline. From the ECommerce sample:
 
-```csharp{title="Shared Analytics Database" description="**AnalyticsDbConnection." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Shared", "Analytics"]}
-public class AnalyticsDbConnectionFactory {
-  private readonly string _connectionString;
+**samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs** (excerpt):
 
-  public AnalyticsDbConnectionFactory(IConfiguration configuration) {
-    _connectionString = configuration.GetConnectionString("AnalyticsDb")
-      ?? throw new InvalidOperationException("AnalyticsDb connection string not configured");
+```csharp{title="Cross-Tenant Lens Queries" description="**OrderLens." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Cross-Tenant", "Analytics"]}
+using Microsoft.EntityFrameworkCore;
+using Whizbang.Core.Lenses;
+
+public class OrderLens(ILensQuery<OrderReadModel> query, ILogger<OrderLens> logger) : IOrderLens {
+
+  public async Task<IEnumerable<OrderReadModel>> GetByTenantIdAsync(string tenantId, CancellationToken cancellationToken = default) {
+    return await query.DefaultScope.Query
+      .Where(row => row.Scope.TenantId == tenantId)
+      .OrderByDescending(row => row.CreatedAt)
+      .Select(row => row.Data)
+      .ToListAsync(cancellationToken);
   }
 
-  public NpgsqlConnection CreateConnection() {
-    return new NpgsqlConnection(_connectionString);
-  }
-}
-```
-
-### Cross-Tenant Analytics Perspective
-
-**CrossTenantSalesPerspective.cs**:
-
-```csharp{title="Cross-Tenant Analytics Perspective" description="**CrossTenantSalesPerspective." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Cross-Tenant", "Analytics"]}
-public class CrossTenantSalesPerspective : IPerspectiveOf<OrderCreated> {
-  private readonly AnalyticsDbConnectionFactory _analyticsDbFactory;
-  private readonly ILogger<CrossTenantSalesPerspective> _logger;
-
-  public CrossTenantSalesPerspective(
-    AnalyticsDbConnectionFactory analyticsDbFactory,
-    ILogger<CrossTenantSalesPerspective> logger
-  ) {
-    _analyticsDbFactory = analyticsDbFactory;
-    _logger = logger;
-  }
-
-  public async Task HandleAsync(
-    OrderCreated @event,
-    CancellationToken ct = default
-  ) {
-    // Extract tenant ID from event metadata
-    var tenantId = @event.Metadata.GetValueOrDefault("tenant_id")
-      ?? throw new InvalidOperationException("Tenant ID not found in event metadata");
-
-    using var analyticsDb = _analyticsDbFactory.CreateConnection();
-    await analyticsDb.OpenAsync(ct);
-
-    // Aggregate across all tenants in shared analytics database
-    await analyticsDb.ExecuteAsync(
-      """
-      INSERT INTO cross_tenant_daily_sales (date, tenant_id, total_orders, total_revenue)
-      VALUES (CURRENT_DATE, @TenantId, 1, @TotalAmount)
-      ON CONFLICT (date, tenant_id) DO UPDATE SET
-        total_orders = cross_tenant_daily_sales.total_orders + 1,
-        total_revenue = cross_tenant_daily_sales.total_revenue + @TotalAmount
-      """,
-      new {
-        TenantId = tenantId,
-        TotalAmount = @event.TotalAmount
-      }
-    );
-
-    _logger.LogInformation(
-      "Cross-tenant analytics updated for tenant {TenantId}: +${Amount}",
-      tenantId,
-      @event.TotalAmount
-    );
+  public async Task<IEnumerable<OrderReadModel>> GetByStatusAsync(string tenantId, string status, CancellationToken cancellationToken = default) {
+    return await query.DefaultScope.Query
+      .Where(row => row.Scope.TenantId == tenantId && row.Data.Status == status)
+      .OrderByDescending(row => row.CreatedAt)
+      .Select(row => row.Data)
+      .ToListAsync(cancellationToken);
   }
 }
 ```
 
-**Schema (shared analytics database)**:
+**Super-admin endpoint** (**samples/ECommerce/ECommerce.BFF.API/Endpoints/SuperAdmin/GetOrdersByTenantEndpoint.cs**):
 
-```sql{title="Cross-Tenant Analytics Perspective (2)" description="Schema (shared analytics database):" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Cross-Tenant", "Analytics"]}
-CREATE TABLE cross_tenant_daily_sales (
-  date DATE NOT NULL,
-  tenant_id TEXT NOT NULL,
-  total_orders BIGINT NOT NULL DEFAULT 0,
-  total_revenue NUMERIC(12, 2) NOT NULL DEFAULT 0,
-  PRIMARY KEY (date, tenant_id)
-);
+```csharp{title="Cross-Tenant Endpoint" description="Super-admin cross-tenant endpoint" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Cross-Tenant", "Analytics"]}
+using FastEndpoints;
 
-CREATE INDEX idx_cross_tenant_sales_date ON cross_tenant_daily_sales(date DESC);
-CREATE INDEX idx_cross_tenant_sales_tenant ON cross_tenant_daily_sales(tenant_id);
+/// <summary>
+/// Get all orders for a specific tenant (super-admin view)
+/// </summary>
+public class GetOrdersByTenantEndpoint(IOrderLens orderLens) : EndpointWithoutRequest<IEnumerable<OrderReadModel>> {
+
+  public override void Configure() {
+    Get("/superadmin/orders/tenant/{tenantId}");
+    AllowAnonymous(); // TODO: Add authentication and super-admin authorization
+  }
+
+  public override async Task HandleAsync(CancellationToken ct) {
+    var tenantId = Route<string>("tenantId")!;
+    var orders = await orderLens.GetByTenantIdAsync(tenantId, ct);
+    Response = orders;
+  }
+}
 ```
+
+For pre-aggregated cross-tenant rollups (daily sales per tenant), materialize a perspective whose model keys on `(date, tenantId)` — the pure `Apply` pattern from the tutorials applies unchanged.
 
 ---
 
@@ -524,16 +481,21 @@ public class TenantFeatureService {
 **Usage**:
 
 ```csharp{title="Tenant-Specific Customizations (2)" description="Tenant-Specific Customizations" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant-Specific", "Customizations"]}
-public async Task<OrderCreated> HandleAsync(CreateOrder command, CancellationToken ct) {
+public async ValueTask<OrderCreatedEvent> HandleAsync(
+  CreateOrderCommand message,
+  CancellationToken cancellationToken = default
+) {
+  // ... create and publish orderCreated as usual ...
+
   // Check if tenant has analytics feature
   var hasAnalytics = await _featureService.IsFeatureEnabledAsync("analytics");
 
   if (hasAnalytics) {
     // Publish additional analytics events
-    await PublishAnalyticsEventAsync(@event, ct);
+    await dispatcher.PublishAsync(new OrderAnalyticsRequestedEvent { OrderId = message.OrderId });
   }
 
-  return @event;
+  return orderCreated;
 }
 ```
 
@@ -541,9 +503,10 @@ public async Task<OrderCreated> HandleAsync(CreateOrder command, CancellationTok
 
 ## Key Takeaways
 
-✅ **Database Per Tenant** - Strongest isolation, independent scaling
-✅ **Tenant Context Propagation** - Automatic tenant ID in all messages
-✅ **Cross-Tenant Analytics** - Shared database for platform-wide metrics
+✅ **First-Class Tenancy** - `IMessageContext.TenantId`, tenant-scoped perspective rows, `AsSystem().ForTenant(...)` builders
+✅ **Database Per Tenant** - Strongest isolation, independent scaling (optional architecture)
+✅ **Tenant Context Propagation** - Tenant scope travels on every envelope automatically
+✅ **Cross-Tenant Analytics** - Lens queries over `row.Scope.TenantId`
 ✅ **Tenant Onboarding** - Automated provisioning with migrations
 ✅ **Feature Flags** - Tenant-specific customizations
 
