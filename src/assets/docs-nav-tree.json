@@ -565,7 +565,7 @@
             },
             {
               "slug": "v1.0.0/fundamentals/identity/type-qualification",
-              "title": "TypeQualification: Type Name Formatting Control",
+              "title": "TypeQualifications: Type Name Formatting Control",
               "order": 29
             },
             {
@@ -1199,7 +1199,7 @@
             },
             {
               "slug": "v1.0.0/operations/workers/process-work-batch-lease-semantics",
-              "title": "Process Work Batch — Lease & Heartbeat Semantics",
+              "title": "Work Pump — Lease & Heartbeat Semantics",
               "order": 4
             }
           ],
@@ -1240,12 +1240,12 @@
             },
             {
               "slug": "v1.0.0/operations/diagnostics/whiz030",
-              "title": "WHIZ030: Perspective Event Missing StreamKey",
+              "title": "WHIZ030: Perspective Event Missing StreamId",
               "order": 999
             },
             {
               "slug": "v1.0.0/operations/diagnostics/whiz031",
-              "title": "WHIZ031: Multiple StreamKey Attributes",
+              "title": "WHIZ031: Multiple StreamId Attributes",
               "order": 999
             },
             {
@@ -1995,6 +1995,11 @@
           "slug": "proposals/ephemeral-events",
           "title": "Ephemeral Events",
           "order": 22
+        },
+        {
+          "slug": "proposals/destruction-hooks-ttl",
+          "title": "Destruction Hooks & TTL",
+          "order": 23
         },
         {
           "slug": "proposals/type-definition-fingerprint",
