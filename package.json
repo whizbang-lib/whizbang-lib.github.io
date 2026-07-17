@@ -51,7 +51,7 @@
   "devDependencies": {
     "@angular-devkit/build-angular": "^22.0.7",
     "@angular/cli": "~22.0.6",
-    "@angular/compiler-cli": "~22.0.6",
+    "@angular/compiler-cli": "~22.0.7",
     "@tailwindcss/postcss": "^4.1.10",
     "@types/node": "^26.1.1",
     "@xenova/transformers": "^2.17.2",
