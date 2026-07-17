@@ -1,5 +1,8 @@
 ---
 title: Perspective Stream Locking
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Perspectives
 order: 12
@@ -13,6 +16,11 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveStreamLocker.cs
   - src/Whizbang.Core/Perspectives/PerspectiveStreamLockOptions.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperPerspectiveStreamLocker.cs
+  - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  - src/Whizbang.Data.Schema/Schemas/PerspectiveCursorsSchema.cs
+testReferences:
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperPerspectiveStreamLockerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerRewindTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -148,7 +156,7 @@ The Dapper implementation stores lock state directly on the `wh_perspective_curs
 |--------|------|---------|
 | `stream_lock_instance_id` | `uuid` | Which instance holds the lock (NULL = unlocked) |
 | `stream_lock_expiry` | `timestamptz` | When the lock expires (NULL = unlocked) |
-| `stream_lock_reason` | `text` | Why the lock was acquired (observability) |
+| `stream_lock_reason` | `varchar(50)` | Why the lock was acquired (observability) |
 
 This avoids a separate lock table and uses atomic SQL `UPDATE ... WHERE` for lock acquisition, ensuring correctness without application-level distributed locking.
 
@@ -160,7 +168,7 @@ The `reason` parameter is stored for observability. Standard reasons used by Whi
 |--------|-----------|
 | `"rewind"` | Late-arriving event rewind ([Snapshots](snapshots.md)) |
 | `"bootstrap"` | Initial snapshot creation for existing streams |
-| `"purge"` | Stream data purge/cleanup |
+| `"purge"` | Stream data purge/cleanup (reserved -- documented on the interface but not yet emitted by any built-in operation at this commit) |
 
 ## Implementation
 
@@ -170,11 +178,13 @@ Whizbang ships a Dapper/Npgsql implementation:
 |----------------|---------|
 | `DapperPerspectiveStreamLocker` | `Whizbang.Data.Dapper.Postgres` |
 
+Registering a locker is optional: `PerspectiveWorker` takes `IPerspectiveStreamLocker` as a nullable dependency. When none is registered (e.g., the EF Core Postgres package does not ship one), rewind and bootstrap run without stream locks -- the in-process `PerspectiveApplyCoordinator` still serializes Apply calls per (stream, perspective) within a single instance.
+
 ## Failure Modes
 
 | Scenario | Behavior |
 |----------|----------|
 | Lock holder crashes | Lock expires after `LockTimeout`, next instance acquires it |
 | Keepalive fails | Lock eventually expires; operation may be interrupted |
-| Lock not acquired | `PerspectiveWorker` skips the stream/perspective and retries on next batch |
-| Database unreachable | Lock operations throw; `PerspectiveWorker` retries with backoff |
+| Lock not acquired | `PerspectiveWorker` skips the stream/perspective and retries on the next polling cycle |
+| Rewind fails mid-operation | Failure is isolated (logged, error metric incremented); the stream retries on the next polling cycle; the lock is released in a `finally` block |

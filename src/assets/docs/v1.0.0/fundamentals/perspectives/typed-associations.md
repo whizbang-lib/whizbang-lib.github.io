@@ -1,5 +1,8 @@
 ---
 title: "GetPerspectiveAssociations: Strongly-Typed Perspective Queries"
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Perspectives"
 order: 9
@@ -10,6 +13,9 @@ description: >-
 tags: 'typed-associations, perspective-associations, source-generated, type-safety, aot, delegates'
 codeReferences:
   - src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs
+  - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/PerspectiveDiscoveryGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -400,9 +406,11 @@ var associations3 = PerspectiveRegistrationExtensions
 
 ### Multiple Perspectives
 
-If multiple perspectives handle the same model/event combination, all are returned:
+:::updated
+At commit `1b31f58d`, when **multiple perspectives handle the same model/event combination**, `GetPerspectiveAssociations<TModel, TEvent>` returns only the **first** matching perspective, not all of them. The generator emits one type-check block per (perspective, event) pair, and each block returns a single-element array immediately -- a second perspective with an identical `(TModel, TEvent)` signature is unreachable. Perspectives with *different* model or event types are unaffected. If you need every handler for a model/event pair, use the string-based `GetMessageAssociations(serviceName)` API, which returns one `MessageAssociation` entry per perspective.
+:::
 
-```csharp{title="Multiple Perspectives" description="If multiple perspectives handle the same model/event combination, all are returned:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "C#", "Multiple"]}
+```csharp{title="Multiple Perspectives" description="Two perspectives sharing the same model/event pair - only the first is returned by the typed API:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "C#", "Multiple"]}
 // Two perspectives handling ProductModel + ProductCreatedEvent
 public class InventoryPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> { }
 public class CatalogPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> { }
@@ -410,13 +418,12 @@ public class CatalogPerspective : IPerspectiveFor<ProductModel, ProductCreatedEv
 var associations = PerspectiveRegistrationExtensions
     .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);
 
-// Returns: [InventoryPerspective, CatalogPerspective]
+// Returns: [InventoryPerspective] — first match only (see callout above)
 Console.WriteLine($"Found {associations.Count} perspectives");
 
-// Apply both
-foreach (var assoc in associations) {
-    model = assoc.ApplyDelegate(model, evt);
-}
+// String-based discovery still sees both:
+var all = PerspectiveRegistrationExtensions.GetMessageAssociations(serviceName);
+// Contains entries for both InventoryPerspective and CatalogPerspective
 ```
 
 ## Performance Considerations

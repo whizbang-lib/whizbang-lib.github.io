@@ -1,5 +1,8 @@
 ---
 title: REST Filtering
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: REST
 order: 2
@@ -9,11 +12,15 @@ description: >-
 tags: 'rest, filtering, sorting, paging, query-parameters, lensrequest'
 codeReferences:
   - src/Whizbang.Transports.FastEndpoints/Models/LensRequest.cs
+  - src/Whizbang.Transports.FastEndpoints/Models/LensResponse.cs
   - src/Whizbang.Transports.FastEndpoints/Endpoints/LensEndpointBase.cs
   - src/Whizbang.Transports.FastEndpoints/Attributes/RestLensAttribute.cs
+  - src/Whizbang.Transports.FastEndpoints.Generators/RestLensEndpointGenerator.cs
 testReferences:
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/LensRequestTests.cs
+  - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/LensResponseTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/LensEndpointBaseTests.cs
+  - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/RestLensAttributeTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -28,7 +35,11 @@ REST filtering provides:
 - **Query Parameter Binding** - Standard URL patterns for filters
 - **Sort Expressions** - Ascending/descending with multiple fields
 - **Pagination** - Page-based navigation with configurable limits
-- **Extensible Hooks** - Customize filtering behavior via partial classes
+- **Extensible Hooks** - `LensEndpointBase<TModel>` hooks and parsing helpers for custom endpoints
+
+:::updated
+Shipped behavior at this commit: generated lens endpoints bind `page`, `pageSize`, `sort`, and `filter[...]` parameters into `LensRequest` and fully implement **paging** (with a default `OrderBy(x => x.Id)` for stable pagination). Applying `Filter` and `Sort` to the query inside *generated* endpoints is not yet wired up — use the `LensRequest` values with the `ParseSortExpression`/`CalculatePaging` helpers in a custom endpoint to apply them today.
+:::
 
 ## LensRequest Model
 
@@ -152,14 +163,16 @@ public interface IStatusLens : ILensQuery<StatusReadModel> { }
 ### LensResponse
 
 ```csharp{title="LensResponse" description="LensResponse" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "LensResponse"]}
-public class LensResponse<T> {
-    public IReadOnlyList<T> Data { get; init; }
-    public int Page { get; init; }
-    public int PageSize { get; init; }
-    public int TotalCount { get; init; }
-    public int TotalPages { get; init; }
-    public bool HasNextPage { get; init; }
-    public bool HasPreviousPage { get; init; }
+public class LensResponse<TModel> where TModel : class {
+    public IReadOnlyList<TModel> Data { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+
+    // Computed from TotalCount, PageSize, and Page
+    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
+    public bool HasNextPage => Page < TotalPages;
+    public bool HasPreviousPage => Page > 1;
 }
 ```
 
@@ -187,10 +200,10 @@ public class LensResponse<T> {
 
 ## Sort Expression Parsing
 
-The `LensEndpointBase` provides a helper for parsing sort strings:
+The `LensEndpointBase<TModel>` class provides a static helper for parsing sort strings:
 
 ```csharp{title="Sort Expression Parsing" description="The LensEndpointBase provides a helper for parsing sort strings:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Sort", "Expression"]}
-protected IReadOnlyList<SortExpression> ParseSortExpression(string? sort);
+protected static IReadOnlyList<SortExpression> ParseSortExpression(string? sort);
 
 public readonly record struct SortExpression(string Field, bool Descending);
 ```
@@ -212,7 +225,7 @@ var sorts = ParseSortExpression("-createdAt,name,+status");
 The base class provides bounds-checked paging:
 
 ```csharp{title="Paging Calculation" description="The base class provides bounds-checked paging:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Paging", "Calculation"]}
-protected (int skip, int take) CalculatePaging(
+protected static (int skip, int take) CalculatePaging(
     LensRequest request,
     int defaultPageSize,
     int maxPageSize);
@@ -229,11 +242,11 @@ var (skip, take) = CalculatePaging(request, 10, 100);
 
 ## Customizing Filter Behavior
 
-Extend the generated endpoint to add custom filtering:
+`LensEndpointBase<TModel>` exposes `OnBeforeQueryAsync` and `OnAfterQueryAsync` hooks for endpoints that inherit from it:
 
-```csharp{title="Customizing Filter Behavior" description="Extend the generated endpoint to add custom filtering:" category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "Customizing", "Filter"]}
-public partial class OrderLensEndpoint {
-    protected override async ValueTask OnBeforeQueryAsync(LensRequest request, CancellationToken ct) {
+```csharp{title="Customizing Filter Behavior" description="Override LensEndpointBase hooks to add custom filtering:" category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "Customizing", "Filter"]}
+public class OrderLensEndpoint : LensEndpointBase<OrderReadModel> {
+    protected override ValueTask OnBeforeQueryAsync(LensRequest request, CancellationToken ct) {
         // Add default filters
         request.Filter ??= new Dictionary<string, string>();
 
@@ -242,11 +255,22 @@ public partial class OrderLensEndpoint {
             request.Filter["isDeleted"] = "false";
         }
 
-        // Log the query
-        _logger.LogInformation("Querying orders: {@Request}", request);
+        return ValueTask.CompletedTask;
+    }
+
+    protected override ValueTask OnAfterQueryAsync(
+        LensRequest request,
+        LensResponse<OrderReadModel> response,
+        CancellationToken ct) {
+        // Post-process the response
+        return ValueTask.CompletedTask;
     }
 }
 ```
+
+:::updated
+Endpoints *generated* from `[RestLens]` currently inherit FastEndpoints' `Endpoint<LensRequest, LensResponse<TModel>>` directly, not `LensEndpointBase<TModel>`, so these hooks are not available on generated endpoints yet. Generated endpoints are emitted as `partial` classes for extension.
+:::
 
 ## Client Examples
 

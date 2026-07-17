@@ -1,20 +1,20 @@
 {
-  "generatedAt": "2026-03-26T15:31:26.795Z",
+  "generatedAt": "2026-07-16T20:49:25.853Z",
   "docsRoot": "src/assets/docs/v1.0.0",
-  "libraryPath": "/Users/philcarbone/src/whizbang/whizbang",
+  "libraryPath": "/private/tmp/claude-501/-Users-philcarbone-src/9568df8f-a78c-48d3-970d-55a03bf74cda/scratchpad/whizbang-develop",
   "highlights": {
-    "totalPages": 255,
-    "pagesWithFrontmatterGaps": 255,
-    "totalCodeSamples": 3254,
-    "codeSamplesWithoutMetadata": 103,
-    "undocumentedPublicTypes": 515,
-    "brokenCodeDocsLinks": 0,
-    "totalMermaidDiagrams": 39,
+    "totalPages": 297,
+    "pagesWithFrontmatterGaps": 297,
+    "totalCodeSamples": 3412,
+    "codeSamplesWithoutMetadata": 121,
+    "undocumentedPublicTypes": 666,
+    "brokenCodeDocsLinks": 203,
+    "totalMermaidDiagrams": 43,
     "unclosedCallouts": 0,
-    "searchChunksWithMarkdownLeaks": 5,
-    "potentiallyStalePages": 286,
-    "brokenInternalLinks": 0,
-    "personaCoverageGaps": 15
+    "searchChunksWithMarkdownLeaks": 9,
+    "potentiallyStalePages": 412,
+    "brokenInternalLinks": 19,
+    "personaCoverageGaps": 19
   },
   "reports": [
     "frontmatter-gaps.json",

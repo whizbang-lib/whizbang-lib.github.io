@@ -1,5 +1,8 @@
 ---
 title: Apply Hooks
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 order: 8
 codeReferences:
   - src/Whizbang.Core/Perspectives/Hooks/IApplyHook.cs
@@ -17,6 +20,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PerEventApplyHooksTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveApplierIntegrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperPostgresPerspectiveStoreTests.cs
 ---
 
 # Apply hooks

@@ -1,5 +1,8 @@
 ---
 title: "Temporal Perspectives"
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Perspectives"
 order: 8
@@ -12,12 +15,24 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/ITemporalPerspectiveFor.cs
   - src/Whizbang.Core/Perspectives/ITemporalPerspectiveStore.cs
   - src/Whizbang.Core/Perspectives/TemporalActionType.cs
+  - src/Whizbang.Core/Lenses/TemporalPerspectiveRow.cs
+  - src/Whizbang.Core/Lenses/ITemporalLensQuery.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/ITemporalPerspectiveForTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/ITemporalPerspectiveStoreTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/TemporalActionTypeTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/TemporalPerspectiveRowTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ITemporalLensQueryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Temporal Perspectives
 
 Temporal perspectives create append-only logs where each event creates a NEW row rather than updating existing rows. This pattern is ideal for activity feeds, audit logs, and full history tracking.
+
+:::updated
+At commit `1b31f58d`, temporal perspectives are **contract-only**: the interfaces on this page (`ITemporalPerspectiveFor`, `ITemporalPerspectiveStore`, `ITemporalLensQuery`, `TemporalPerspectiveRow`) ship in `Whizbang.Core` and are covered by unit tests, but no storage provider implements `ITemporalPerspectiveStore` or `ITemporalLensQuery` yet, and the source generators do not yet discover `ITemporalPerspectiveFor` implementations. End-to-end temporal processing (automatic INSERT of temporal rows and the query examples below) requires a provider implementation that has not shipped.
+:::
 
 ## Overview
 

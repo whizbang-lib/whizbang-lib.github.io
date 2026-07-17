@@ -1,5 +1,8 @@
 ---
 title: "MatchStrictness: Fuzzy Type Matching Control"
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Core Concepts"
 order: 26
@@ -10,6 +13,10 @@ description: >-
 tags: 'fuzzy-matching, match-strictness, type-matching, flags, type-comparison, identity'
 codeReferences:
   - src/Whizbang.Core/MatchStrictness.cs
+  - src/Whizbang.Core/TypeMatcher.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/MatchStrictnessTests.cs
+  - tests/Whizbang.Core.Tests/TypeMatcherTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -89,7 +96,7 @@ Each flag controls a specific transformation applied to type strings before comp
 | `IgnoreCase` | 1 | Case-insensitive comparison |
 | `IgnoreVersion` | 2 | Strip version, culture, and public key token |
 | `IgnoreAssembly` | 4 | Remove assembly name |
-| `IgnoreNamespace` | 8 | Extract simple type name only |
+| `IgnoreNamespace` | 8 | Extract simple type name only (strips any assembly suffix first, so it effectively implies `IgnoreAssembly`) |
 
 **Transformation Order** (applied sequentially):
 1. **IgnoreVersion** → Strip version/culture/token
@@ -240,7 +247,7 @@ Flags are combined using bitwise OR, and each flag adds a transformation:
 var ignoreCase = MatchStrictness.IgnoreCase;
 
 // Two flags
-var ignoreVer sionAndCase = MatchStrictness.IgnoreVersion | MatchStrictness.IgnoreCase;
+var ignoreVersionAndCase = MatchStrictness.IgnoreVersion | MatchStrictness.IgnoreCase;
 
 // Three flags
 var flexible = MatchStrictness.IgnoreVersion | MatchStrictness.IgnoreAssembly | MatchStrictness.IgnoreCase;
@@ -322,7 +329,7 @@ public IEnumerable<Type> FindEventHandlers(string eventTypeName) {
 
     // Match by simple name, ignore assembly and namespace
     return allTypes.Where(t => {
-        var typeName = TypeFormatter.FormatType(t, TypeQualification.Simple);
+        var typeName = TypeFormatter.FormatType(t, TypeQualifications.Simple);
         return TypeMatcher.Matches(
             typeName,
             eventTypeName,
@@ -543,9 +550,9 @@ if (TypeMatcher.Matches(userProvidedType, "AdminCommand", strictness)) {
     ExecuteAdminCommand(); // Dangerous - could match many types!
 }
 
-// ✅ CORRECT: Use stricter matching for security
-var strictness = MatchStrictness.FullyQualified;
-if (TypeMatcher.Matches(userProvidedType, expectedType, strictness)) {
+// ✅ CORRECT: Use exact matching against a fully qualified name for security
+var strictness = MatchStrictness.Exact;
+if (TypeMatcher.Matches(userProvidedType, expectedFullyQualifiedType, strictness)) {
     ExecuteAdminCommand();
 }
 ```
@@ -572,7 +579,7 @@ bool match = TypeMatcher.Matches(
 
 ## See Also
 
-- [TypeQualification](type-qualification.md) - Formatting types for matching
+- [TypeQualifications](type-qualification.md) - Formatting types for matching
 - [TypeFormatter](type-formatting.md) - Formatting Type objects to strings
 - [TypeMatcher](type-matching.md) - Type matching with MatchStrictness
 - [Perspectives](../perspectives/perspectives.md) - Message associations using fuzzy matching

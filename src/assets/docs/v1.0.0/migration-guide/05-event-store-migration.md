@@ -1,5 +1,8 @@
 ---
 title: Event Store Migration
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Migration Guide
 order: 6
@@ -7,7 +10,13 @@ description: Migrating from Marten's event store to Whizbang's IEventStore
 tags: 'migration, event-store, marten, events, streams'
 codeReferences:
   - src/Whizbang.Core/Messaging/IEventStore.cs
+  - src/Whizbang.Core/Messaging/InMemoryEventStore.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EventStoreAppendBatchTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPostgresEventStoreTests.cs
+  - tests/Whizbang.Migrate.Tests/Transformers/EventStoreTransformerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -22,9 +31,9 @@ This guide covers migrating from Marten's document store and event sourcing to W
 | Session | `IDocumentSession` | Direct `IEventStore` injection |
 | Append | `session.Events.Append()` | `eventStore.AppendAsync<T>()` |
 | Save | `session.SaveChangesAsync()` | Implicit (per-append) |
-| Stream ID | Inferred or explicit | Always explicit |
-| Envelope | Automatic | `MessageEnvelope<T>` |
-| Versioning | `ExpectedVersion` | Sequence-based |
+| Stream ID | Inferred or explicit | Explicit parameter (or `[StreamId]` property) |
+| Envelope | Automatic | Automatic (`MessageEnvelope<T>` created/retrieved for you) |
+| Versioning | `ExpectedVersion` | Monotonic sequence numbers assigned per stream |
 
 ## Basic Event Store Operations
 
@@ -62,18 +71,13 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         CreateOrder message,
         CancellationToken ct = default) {
 
-        var streamId = Guid.CreateVersion7();
+        Guid streamId = TrackedGuid.NewMedo();  // time-ordered UUIDv7
         var @event = new OrderCreated(streamId, message.CustomerId, message.Items);
 
-        var envelope = new MessageEnvelope<OrderCreated> {
-            MessageId = MessageId.From(Guid.CreateVersion7()),
-            Payload = @event,
-            Hops = new List<MessageHop> {
-                MessageHop.Create(CorrelationId.From(Guid.CreateVersion7()))
-            }
-        };
-
-        await _eventStore.AppendAsync(streamId, envelope, ct);
+        // The message overload creates the envelope for you. If the message was
+        // dispatched through IDispatcher, its existing envelope is retrieved from
+        // IEnvelopeRegistry so tracing context (hops, correlation, causation) is preserved.
+        await _eventStore.AppendAsync(streamId, @event, ct);
         return @event;
     }
 }
@@ -102,13 +106,10 @@ public async Task<Order> RehydrateOrderAsync(Guid orderId) {
 
 ```csharp{title="Reading Events (2)" description="Reading Events" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Reading", "Events"]}
 public async Task<Order> RehydrateOrderAsync(Guid orderId, CancellationToken ct) {
-    var events = await _eventStore.ReadAsync<IOrderEvent>(
-        orderId,
-        fromSequence: 0,
-        ct);
-
     var order = new Order();
-    await foreach (var envelope in events) {
+
+    // ReadAsync returns IAsyncEnumerable<MessageEnvelope<T>> - no await on the call itself
+    await foreach (var envelope in _eventStore.ReadAsync<IOrderEvent>(orderId, fromSequence: 0, ct)) {
         order.Apply(envelope.Payload);
     }
     return order;
@@ -134,20 +135,20 @@ await session.SaveChangesAsync();
 **Whizbang**:
 
 ```csharp{title="Multiple Events in One Append (2)" description="Multiple Events in One Append" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Multiple", "Events", "One"]}
-// Append multiple events individually
-var events = new IOrderEvent[] {
-    new OrderCreated(orderId),
-    new OrderItemAdded(orderId, item1),
-    new OrderItemAdded(orderId, item2)
-};
+// Append multiple events individually (ordered per stream)
+await _eventStore.AppendAsync(orderId, new OrderCreated(orderId), ct);
+await _eventStore.AppendAsync(orderId, new OrderItemAdded(orderId, item1), ct);
+await _eventStore.AppendAsync(orderId, new OrderItemAdded(orderId, item2), ct);
 
-foreach (var @event in events) {
-    var envelope = CreateEnvelope(@event);
-    await _eventStore.AppendAsync(orderId, envelope, ct);
-}
-
-// Or use batch append if available
-await _eventStore.AppendManyAsync(orderId, envelopes, ct);
+// Or use AppendBatchAsync for bulk appends (single round-trip on
+// backends that override it; entries land in the supplied order)
+await _eventStore.AppendBatchAsync(
+    new[] {
+        (orderId, envelope1),
+        (orderId, envelope2),
+        (orderId, envelope3)
+    },
+    ct);
 ```
 
 ## Stream Management
@@ -164,10 +165,9 @@ session.Events.Append(newStreamId, firstEvent);
 **Whizbang** (explicit stream):
 
 ```csharp{title="Starting a Stream (2)" description="Whizbang (explicit stream):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Starting", "Stream"]}
-// Whizbang creates stream on first append
-var streamId = Guid.CreateVersion7();  // Use UUIDv7 for time-ordering
-var envelope = CreateEnvelope(firstEvent);
-await _eventStore.AppendAsync(streamId, envelope, ct);
+// Whizbang also creates the stream on first append
+Guid streamId = TrackedGuid.NewMedo();  // UUIDv7 for time-ordering
+await _eventStore.AppendAsync(streamId, firstEvent, ct);
 ```
 
 ### Checking Stream Existence
@@ -182,8 +182,10 @@ var exists = state != null;
 **Whizbang**:
 
 ```csharp{title="Checking Stream Existence (2)" description="Checking Stream Existence" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Checking", "Stream", "Existence"]}
-var events = await _eventStore.ReadAsync<IEvent>(streamId, fromSequence: 0, ct);
-var exists = await events.AnyAsync(ct);
+// GetLastSequenceAsync returns the highest sequence number in the stream,
+// or -1 when the stream doesn't exist or is empty
+var lastSequence = await _eventStore.GetLastSequenceAsync(streamId, ct);
+var exists = lastSequence >= 0;
 ```
 
 ## Concurrency Control
@@ -200,17 +202,14 @@ await session.SaveChangesAsync();  // Throws if version != 5
 
 ```csharp{title="Whizbang Sequence-Based" description="Whizbang Sequence-Based" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Whizbang", "Sequence-Based"]}
 // Whizbang: Sequence-based concurrency
-// Events have monotonic sequence numbers per stream
-// Concurrency handled at append time
+// Events get monotonic sequence numbers per stream, assigned at append time
+// by the store's internal sequence provider - there is no expectedVersion parameter.
 
-var envelope = new MessageEnvelope<OrderUpdated> {
-    MessageId = MessageId.From(Guid.CreateVersion7()),
-    Payload = @event,
-    // Sequence is assigned automatically
-};
+await _eventStore.AppendAsync(streamId, @event, ct);
 
-await _eventStore.AppendAsync(streamId, envelope, ct);
-// Throws ConcurrencyException if sequence conflict
+// Concurrent appends to the same stream are resolved internally:
+// the PostgreSQL stores retry on sequence conflicts with backoff and
+// only surface an exception after exhausting the retry budget.
 ```
 
 ## Session Patterns
@@ -228,23 +227,22 @@ session.Store(document);
 await session.SaveChangesAsync();  // All-or-nothing
 ```
 
-### Whizbang Transactional
+### Whizbang Batched Append
 
-```csharp{title="Whizbang Transactional" description="Whizbang Transactional" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Transactional"]}
-// Whizbang: Use EF Core transaction or explicit transaction
-await using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
-
-try {
-    await _eventStore.AppendAsync(order1Id, envelope1, ct);
-    await _eventStore.AppendAsync(order2Id, envelope2, ct);
-    await _dbContext.SaveChangesAsync(ct);
-
-    await transaction.CommitAsync(ct);
-} catch {
-    await transaction.RollbackAsync(ct);
-    throw;
-}
+```csharp{title="Whizbang Batched Append" description="Whizbang Batched Append" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Transactional"]}
+// Whizbang: each AppendAsync commits independently - there is no session.
+// For multi-event writes, use AppendBatchAsync. Entries land in the supplied
+// order; backends MAY execute the batch in a single transaction (the default
+// implementation loops serially and makes no atomicity guarantee).
+await _eventStore.AppendBatchAsync(
+    new[] {
+        (order1Id, envelope1),
+        (order2Id, envelope2)
+    },
+    ct);
 ```
+
+> **Note**: In typical Whizbang applications, atomicity between business writes and event persistence is provided by the work coordinator (outbox pattern) rather than a user-managed transaction — see [Outbox Migration](07-outbox-migration.md).
 
 ## Query Patterns
 
@@ -263,55 +261,51 @@ var recentOrders = await session.Events
 ### Whizbang Event Queries
 
 ```csharp{title="Whizbang Event Queries" description="Whizbang Event Queries" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Event", "Queries"]}
-// Whizbang: Query via event store
-var events = await _eventStore.GetEventsBetweenAsync<OrderCreated>(
-    fromPosition: lastCheckpoint,
-    toPosition: currentPosition,
-    ct);
+// Whizbang: range queries are per stream, bounded by event IDs
+// (afterEventId is exclusive; pass null to start from the beginning)
+List<MessageEnvelope<OrderCreated>> events =
+    await _eventStore.GetEventsBetweenAsync<OrderCreated>(
+        streamId,
+        afterEventId: lastCheckpointEventId,
+        upToEventId: currentEventId,
+        ct);
 
-await foreach (var envelope in events) {
+foreach (var envelope in events) {
     // Process event
 }
-```
 
-## MessageEnvelope Creation Helper
-
-Create a helper method for consistent envelope creation:
-
-```csharp{title="MessageEnvelope Creation Helper" description="Create a helper method for consistent envelope creation:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "MessageEnvelope", "Creation", "Helper"]}
-public static class EnvelopeFactory {
-    public static MessageEnvelope<T> Create<T>(
-        T payload,
-        CorrelationId? correlationId = null,
-        CausationId? causationId = null) where T : IEvent {
-
-        return new MessageEnvelope<T> {
-            MessageId = MessageId.From(Guid.CreateVersion7()),
-            Payload = payload,
-            Hops = new List<MessageHop> {
-                MessageHop.Create(
-                    correlationId ?? CorrelationId.From(Guid.CreateVersion7()),
-                    causationId)
-            }
-        };
-    }
+// Cross-type reads for one stream use ReadPolymorphicAsync:
+await foreach (var envelope in _eventStore.ReadPolymorphicAsync(
+    streamId, fromEventId: null, eventTypes: new[] { typeof(OrderCreated), typeof(OrderShipped) }, ct)) {
+    // envelope.Payload is IEvent
 }
-
-// Usage
-var envelope = EnvelopeFactory.Create(orderCreatedEvent);
-await _eventStore.AppendAsync(streamId, envelope, ct);
 ```
+
+There is no cross-stream LINQ query surface on `IEventStore` — for query-shaped access, use a perspective + lens (see [Projection Migration](04-projection-migration.md)).
+
+## Envelopes Are Created For You
+
+You rarely construct `MessageEnvelope<T>` by hand. It has several `required` members (`MessageId`, `Payload`, `DispatchContext`, `Hops`) that the framework populates:
+
+- **Dispatched messages**: `IDispatcher` creates the envelope and registers it with `IEnvelopeRegistry`.
+- **Direct appends**: the `AppendAsync(streamId, message, ct)` overload looks up the message's existing envelope via `IEnvelopeRegistry` (preserving hops, correlation, and causation) or creates a minimal one if none exists.
+
+```csharp{title="Envelope-Free Append" description="Let the framework manage envelopes:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "MessageEnvelope", "Creation", "Helper"]}
+// Preferred: append the message; envelope handling is automatic
+await _eventStore.AppendAsync(streamId, orderCreatedEvent, ct);
+```
+
+The envelope-taking overload `AppendAsync(streamId, envelope, ct)` exists for advanced scenarios where you already hold a `MessageEnvelope<T>` (for example, relaying events received from a transport).
 
 ## Migration Checklist
 
 - [ ] Replace `IDocumentStore` with `IEventStore`
 - [ ] Replace `IDocumentSession` with direct `IEventStore` injection
-- [ ] Replace `session.Events.Append()` with `eventStore.AppendAsync<T>()`
-- [ ] Create `MessageEnvelope<T>` for each event
-- [ ] Use `Guid.CreateVersion7()` for new stream IDs
-- [ ] Remove `session.SaveChangesAsync()` (Whizbang auto-commits)
-- [ ] Update concurrency handling to sequence-based
-- [ ] Update event queries to use `IEventStore` methods
+- [ ] Replace `session.Events.Append()` with `eventStore.AppendAsync<T>()` (message overload — envelopes are automatic)
+- [ ] Use `TrackedGuid.NewMedo()` for new stream IDs (time-ordered UUIDv7)
+- [ ] Remove `session.SaveChangesAsync()` (each append commits; use `AppendBatchAsync` for bulk)
+- [ ] Remove `expectedVersion` arguments (sequences are assigned automatically)
+- [ ] Move cross-stream event queries to perspectives + lenses
 
 ---
 

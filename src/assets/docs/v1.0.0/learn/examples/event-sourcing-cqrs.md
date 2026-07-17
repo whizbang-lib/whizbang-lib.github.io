@@ -1,5 +1,8 @@
 ---
 title: Event Sourcing & CQRS
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Customization Examples
 order: 2
@@ -14,6 +17,11 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IEventStoreQueryTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -21,39 +29,39 @@ lastMaintainedCommit: '01f07906'
 
 Implement **full event sourcing with CQRS** using Whizbang - event store, aggregate reconstruction, snapshots, temporal queries, and read model projections.
 
+:::updated
+Whizbang **ships an event store**: `IEventStore` (append via `MessageEnvelope`, `wh_event_store` table in Postgres), `IEventStoreQuery` for stream reads, and `IPerspectiveSnapshotStore` for snapshots — all registered by `AddWhizbang().WithEFCore<TDbContext>().WithDriver.Postgres`. In a Whizbang application you normally publish events with `IDispatcher.PublishAsync` and let perspectives (`IPerspectiveFor<TModel, TEvents...>`) materialize read models. The hand-rolled store and repository below are a **teaching walkthrough of the mechanics** — useful for understanding what the framework does under the hood, not something you need to build yourself.
+:::
+
 ---
 
 ## Architecture
 
-```
-┌────────────────────────────────────────────────────────────┐
-│  Event Sourcing Architecture                               │
-│                                                             │
-│  WRITE SIDE (Commands)                                     │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  1. Load Aggregate from Event Store                  │  │
-│  │  2. Execute Command (domain logic)                   │  │
-│  │  3. Generate Events                                  │  │
-│  │  4. Persist Events to Event Store                    │  │
-│  │  5. Publish Events to Bus                            │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  Event Store (Append-Only Log)                       │  │
-│  │  ┌────────┬────────┬────────┬────────┬────────┐      │  │
-│  │  │Event 1 │Event 2 │Event 3 │Event 4 │Event 5 │      │  │
-│  │  └────────┴────────┴────────┴────────┴────────┘      │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                          │                                  │
-│                          ▼                                  │
-│  READ SIDE (Queries)                                       │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  Projections (Perspectives)                          │  │
-│  │  - OrderSummaryProjection                            │  │
-│  │  - CustomerActivityProjection                        │  │
-│  │  - InventoryProjection                               │  │
-│  └──────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph ESA["Event Sourcing Architecture"]
+        direction TB
+
+        subgraph WRITE["WRITE SIDE (Commands)"]
+            WriteSteps["1. Load Aggregate from Event Store<br/>2. Execute Command (domain logic)<br/>3. Generate Events<br/>4. Persist Events to Event Store<br/>5. Publish Events to Bus"]
+        end
+
+        subgraph STORE["Event Store (Append-Only Log)"]
+            direction LR
+            E1["Event 1"] ~~~ E2["Event 2"] ~~~ E3["Event 3"] ~~~ E4["Event 4"] ~~~ E5["Event 5"]
+        end
+
+        subgraph READ["READ SIDE (Queries)"]
+            Projections["Projections (Perspectives)<br/>- OrderSummaryProjection<br/>- CustomerActivityProjection<br/>- InventoryProjection"]
+        end
+
+        WRITE ~~~ STORE
+        STORE --> READ
+    end
+
+    class WriteSteps layer-command
+    class E1,E2,E3,E4,E5 layer-event
+    class Projections layer-read
 ```
 
 ---
@@ -99,29 +107,37 @@ CREATE INDEX idx_snapshots_stream_id ON event_store_snapshots(stream_id);
 **OrderEvents.cs**:
 
 ```csharp{title="Domain Events" description="**OrderEvents." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Domain", "Events"]}
+using Whizbang.Core;
+
 public record OrderCreatedEvent(
+  [property: StreamId] Guid OrderId,
   string CustomerId,
   OrderItem[] Items,
   decimal TotalAmount,
   DateTime CreatedAt
-);
+) : IEvent;
 
 public record PaymentProcessedEvent(
+  [property: StreamId] Guid OrderId,
   string PaymentId,
   decimal Amount,
   DateTime ProcessedAt
-);
+) : IEvent;
 
 public record OrderShippedEvent(
+  [property: StreamId] Guid OrderId,
   string TrackingNumber,
   DateTime ShippedAt
-);
+) : IEvent;
 
 public record OrderCancelledEvent(
+  [property: StreamId] Guid OrderId,
   string Reason,
   DateTime CancelledAt
-);
+) : IEvent;
 ```
+
+Events implement `IEvent`, and `[StreamId]` marks the stream (aggregate) identifier — Whizbang's source generator derives a zero-reflection stream ID extractor from it.
 
 ---
 
@@ -150,6 +166,7 @@ public class OrderAggregate {
     var totalAmount = items.Sum(i => i.Quantity * i.UnitPrice);
 
     var @event = new OrderCreatedEvent(
+      OrderId: orderId,
       CustomerId: customerId,
       Items: items,
       TotalAmount: totalAmount,
@@ -179,6 +196,7 @@ public class OrderAggregate {
     }
 
     var @event = new PaymentProcessedEvent(
+      OrderId: OrderId,
       PaymentId: paymentId,
       Amount: amount,
       ProcessedAt: DateTime.UtcNow
@@ -194,6 +212,7 @@ public class OrderAggregate {
     }
 
     var @event = new OrderShippedEvent(
+      OrderId: OrderId,
       TrackingNumber: trackingNumber,
       ShippedAt: DateTime.UtcNow
     );
@@ -208,6 +227,7 @@ public class OrderAggregate {
     }
 
     var @event = new OrderCancelledEvent(
+      OrderId: OrderId,
       Reason: reason,
       CancelledAt: DateTime.UtcNow
     );
@@ -218,7 +238,7 @@ public class OrderAggregate {
 
   // Event application (state transitions)
   private void Apply(OrderCreatedEvent @event) {
-    OrderId = Guid.NewGuid();
+    OrderId = @event.OrderId;
     CustomerId = @event.CustomerId;
     TotalAmount = @event.TotalAmount;
     Status = OrderStatus.Pending;
@@ -454,46 +474,52 @@ public record SnapshotRow(int Version, string State);
 **CreateOrderReceptor.cs**:
 
 ```csharp{title="Command Handler (Receptor)" description="**CreateOrderReceptor." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Command", "Handler"]}
-public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-  private readonly EventStoreRepository _eventStore;
-  private readonly IMessageBus _bus;
-  private readonly ILogger<CreateOrderReceptor> _logger;
+using Whizbang.Core;
+using Whizbang.Core.ValueObjects;
 
-  public async Task<OrderCreated> HandleAsync(
-    CreateOrder command,
-    CancellationToken ct = default
+public class CreateOrderReceptor(
+  EventStoreRepository eventStore,
+  IDispatcher dispatcher,
+  ILogger<CreateOrderReceptor> logger
+) : IReceptor<CreateOrder, OrderCreatedEvent> {
+
+  public async ValueTask<OrderCreatedEvent> HandleAsync(
+    CreateOrder message,
+    CancellationToken cancellationToken = default
   ) {
-    // 1. Create aggregate
+    // 1. Create aggregate (TrackedGuid.NewMedo() = time-ordered UUIDv7)
     var aggregate = OrderAggregate.Create(
-      orderId: Guid.NewGuid(),
-      customerId: command.CustomerId,
-      items: command.Items
+      orderId: TrackedGuid.NewMedo().Value,
+      customerId: message.CustomerId,
+      items: message.Items
     );
 
     // 2. Save to event store
-    await _eventStore.SaveAsync(aggregate, ct);
+    await eventStore.SaveAsync(aggregate, cancellationToken);
 
-    // 3. Publish events to bus
+    // 3. Publish events (dispatcher routes to local perspectives + outbox)
     foreach (var @event in aggregate.GetUncommittedEvents()) {
-      await _bus.PublishAsync(@event, ct);
+      await dispatcher.PublishAsync(@event);
     }
 
-    _logger.LogInformation(
+    logger.LogInformation(
       "Order {OrderId} created for customer {CustomerId}",
       aggregate.OrderId,
-      command.CustomerId
+      message.CustomerId
     );
 
-    return new OrderCreated(
-      OrderId: aggregate.OrderId.ToString(),
-      CustomerId: command.CustomerId,
-      Items: command.Items,
+    return new OrderCreatedEvent(
+      OrderId: aggregate.OrderId,
+      CustomerId: message.CustomerId,
+      Items: message.Items,
       TotalAmount: aggregate.TotalAmount,
       CreatedAt: DateTime.UtcNow
     );
   }
 }
 ```
+
+Note the receptor contract: `ValueTask<TResponse> HandleAsync(TMessage message, CancellationToken cancellationToken = default)` — and `IDispatcher.PublishAsync(eventData)` (no CancellationToken parameter; it returns `Task<IDeliveryReceipt>`).
 
 ---
 
@@ -547,131 +573,87 @@ Console.WriteLine($"Order status yesterday: {orderYesterday?.Status}");
 
 ## Projections (Read Models)
 
-**OrderSummaryProjection.cs**:
+In Whizbang, projections are **perspectives**: `IPerspectiveFor<TModel, TEvent1, ..., TEventN>` with pure `Apply` functions. The framework loads the current model by stream ID, calls `Apply`, and persists the result — no SQL in your code.
 
-```csharp{title="Projections (Read Models)" description="**OrderSummaryProjection." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Projections", "Read"]}
-public class OrderSummaryProjection :
-  IPerspectiveOf<OrderCreatedEvent>,
-  IPerspectiveOf<PaymentProcessedEvent>,
-  IPerspectiveOf<OrderShippedEvent> {
+**OrderSummaryPerspective.cs**:
 
-  private readonly NpgsqlConnection _db;
-  private readonly ILogger<OrderSummaryProjection> _logger;
+```csharp{title="Projections (Read Models)" description="**OrderSummaryPerspective." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Projections", "Read"]}
+using Whizbang;
+using Whizbang.Core;
+using Whizbang.Core.Perspectives;
 
-  public async Task HandleAsync(
-    OrderCreatedEvent @event,
-    CancellationToken ct = default
-  ) {
-    await _db.ExecuteAsync(
-      """
-      INSERT INTO order_summary (order_id, customer_id, total_amount, status, created_at)
-      VALUES (@OrderId, @CustomerId, @TotalAmount, 'Pending', @CreatedAt)
-      """,
-      new {
-        OrderId = Guid.NewGuid(),  // From event metadata
-        CustomerId = @event.CustomerId,
-        TotalAmount = @event.TotalAmount,
-        CreatedAt = @event.CreatedAt
-      }
-    );
+[WhizbangSerializable]
+public record OrderSummary {
+  [StreamId]
+  public Guid OrderId { get; init; }
+  public string CustomerId { get; init; } = "";
+  public decimal TotalAmount { get; init; }
+  public string Status { get; init; } = "Pending";
+  public DateTime CreatedAt { get; init; }
+  public DateTime? PaymentProcessedAt { get; init; }
+  public DateTime? ShippedAt { get; init; }
+  public string? TrackingNumber { get; init; }
+}
+
+public class OrderSummaryPerspective :
+  IPerspectiveFor<OrderSummary, OrderCreatedEvent, PaymentProcessedEvent, OrderShippedEvent> {
+
+  public OrderSummary Apply(OrderSummary currentData, OrderCreatedEvent @event) {
+    return new OrderSummary {
+      OrderId = @event.OrderId,
+      CustomerId = @event.CustomerId,
+      TotalAmount = @event.TotalAmount,
+      Status = "Pending",
+      CreatedAt = @event.CreatedAt
+    };
   }
 
-  public async Task HandleAsync(
-    PaymentProcessedEvent @event,
-    CancellationToken ct = default
-  ) {
-    await _db.ExecuteAsync(
-      """
-      UPDATE order_summary
-      SET status = 'PaymentProcessed', payment_processed_at = @ProcessedAt
-      WHERE order_id = @OrderId
-      """,
-      new {
-        OrderId = Guid.NewGuid(),  // From event metadata
-        ProcessedAt = @event.ProcessedAt
-      }
-    );
+  public OrderSummary Apply(OrderSummary currentData, PaymentProcessedEvent @event) {
+    return currentData with {
+      Status = "PaymentProcessed",
+      PaymentProcessedAt = @event.ProcessedAt
+    };
   }
 
-  public async Task HandleAsync(
-    OrderShippedEvent @event,
-    CancellationToken ct = default
-  ) {
-    await _db.ExecuteAsync(
-      """
-      UPDATE order_summary
-      SET status = 'Shipped', shipped_at = @ShippedAt, tracking_number = @TrackingNumber
-      WHERE order_id = @OrderId
-      """,
-      new {
-        OrderId = Guid.NewGuid(),  // From event metadata
-        ShippedAt = @event.ShippedAt,
-        TrackingNumber = @event.TrackingNumber
-      }
-    );
+  public OrderSummary Apply(OrderSummary currentData, OrderShippedEvent @event) {
+    return currentData with {
+      Status = "Shipped",
+      ShippedAt = @event.ShippedAt,
+      TrackingNumber = @event.TrackingNumber
+    };
   }
 }
 ```
+
+**Rules for `Apply` methods**: pure functions — no I/O, no side effects, deterministic. Use event timestamps, never `DateTime.UtcNow`. The `[StreamId]` on the model ties each row to its event stream.
 
 ---
 
 ## Rebuilding Projections
 
-**Rebuild all projections from event store**:
+Because perspectives are pure `Apply` functions over an append-only event log, a read model can always be rebuilt by replaying the stream. Whizbang ships this as a first-class API — `IPerspectiveRebuilder`:
 
-```csharp{title="Rebuilding Projections" description="Rebuild all projections from event store:" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Rebuilding", "Projections"]}
-public class ProjectionRebuilder {
-  private readonly EventStoreRepository _eventStore;
-  private readonly OrderSummaryProjection _projection;
-  private readonly ILogger<ProjectionRebuilder> _logger;
+```csharp{title="Rebuilding Projections" description="Rebuild projections from the event store:" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Rebuilding", "Projections"]}
+using Whizbang.Core.Perspectives;
+
+public class RebuildService(IPerspectiveRebuilder rebuilder, ILogger<RebuildService> logger) {
 
   public async Task RebuildOrderSummaryAsync(CancellationToken ct = default) {
-    _logger.LogInformation("Starting projection rebuild...");
+    logger.LogInformation("Starting perspective rebuild...");
 
-    // 1. Truncate read model
-    await _db.ExecuteAsync("TRUNCATE TABLE order_summary");
+    // Blue-green: builds into a shadow table, then swaps — zero read downtime
+    var result = await rebuilder.RebuildBlueGreenAsync("OrderSummary", ct);
 
-    // 2. Replay all events
-    var events = await _db.QueryAsync<EventRow>(
-      """
-      SELECT stream_id, event_type, event_data
-      FROM event_store
-      WHERE stream_type = 'Order'
-      ORDER BY event_version ASC
-      """
-    );
+    // Alternatives:
+    // await rebuilder.RebuildInPlaceAsync("OrderSummary", ct);        // truncate + replay
+    // await rebuilder.RebuildStreamsAsync("OrderSummary", streamIds, ct); // targeted streams
 
-    var count = 0;
-    foreach (var eventRow in events) {
-      var @event = DeserializeEvent(eventRow.EventType, eventRow.EventData);
-
-      // Apply event to projection
-      await ApplyToProjectionAsync(@event, ct);
-
-      count++;
-      if (count % 1000 == 0) {
-        _logger.LogInformation("Processed {Count} events...", count);
-      }
-    }
-
-    _logger.LogInformation("Projection rebuild complete. {Count} events processed.", count);
-  }
-
-  private async Task ApplyToProjectionAsync(object @event, CancellationToken ct) {
-    switch (@event) {
-      case OrderCreatedEvent e:
-        await _projection.HandleAsync(e, ct);
-        break;
-      case PaymentProcessedEvent e:
-        await _projection.HandleAsync(e, ct);
-        break;
-      case OrderShippedEvent e:
-        await _projection.HandleAsync(e, ct);
-        break;
-    }
+    logger.LogInformation("Rebuild complete: {Result}", result);
   }
 }
 ```
+
+Conceptually the rebuild loop is: truncate (or shadow) the read model, read every event for the stream type in order, and fold each one through the perspective's `Apply` — exactly what the framework does, with checkpointing and progress tracking (`GetRebuildStatusAsync`) included.
 
 ---
 

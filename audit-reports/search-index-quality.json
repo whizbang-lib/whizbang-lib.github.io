@@ -1,11 +1,34 @@
 {
-  "totalDocuments": 316,
-  "totalChunksWithIssues": 5,
+  "totalDocuments": 383,
+  "totalChunksWithIssues": 9,
   "issuesByPattern": {
-    "code-metadata": 2,
-    "markdown-header": 3
+    "markdown-header": 6,
+    "table-syntax": 1,
+    "code-metadata": 2
   },
   "sampleIssues": [
+    {
+      "document": "drafts/contributing/data-engines/worked-example-sqlite",
+      "chunkId": "drafts/contributing/data-engines/worked-example-sqlite-chunk-1",
+      "preview": "works as documented — per-handler isolation, single fsync at outer commit SQL function differences SQLite syntax differs from Postgres in several places: The empty-call short-circuit pattern is the sa",
+      "leaks": [
+        {
+          "pattern": "markdown-header",
+          "desc": "Raw markdown header (#)"
+        }
+      ]
+    },
+    {
+      "document": "drafts/decisions/work-pump-decomposition/engine-orm-extension-model",
+      "chunkId": "drafts/decisions/work-pump-decomposition/engine-orm-extension-model-chunk-0",
+      "preview": "Engine + ORM extension model\nStatus\nAccepted (2026-04-26)\nContext\nWhizbang ships with a Postgres + EFCore reference implementation, but the architecture must accommodate other engines (SQL Server, MyS",
+      "leaks": [
+        {
+          "pattern": "table-syntax",
+          "desc": "Raw table syntax (|)"
+        }
+      ]
+    },
     {
       "document": "proposals/multi-tenancy",
       "chunkId": "proposals/multi-tenancy-chunk-0",
@@ -54,6 +77,28 @@
       "document": "v1.0.0/messaging/transports/azure-service-bus",
       "chunkId": "v1.0.0/messaging/transports/azure-service-bus-chunk-5",
       "preview": "design allows services to run in restricted environments where infrastructure is pre-provisioned via infrastructure-as-code tools like Terraform or Bicep Routing Pattern Filters When using wildcard ro",
+      "leaks": [
+        {
+          "pattern": "markdown-header",
+          "desc": "Raw markdown header (#)"
+        }
+      ]
+    },
+    {
+      "document": "v1.0.0/messaging/transports/infrastructure-mapping",
+      "chunkId": "v1.0.0/messaging/transports/infrastructure-mapping-chunk-3",
+      "preview": "single uniform mechanism: Azure Service Bus turns the stream into a session It reads StreamId out of the destination metadata and sets message SessionId = streamId, giving FIFO ordering per session Bu",
+      "leaks": [
+        {
+          "pattern": "markdown-header",
+          "desc": "Raw markdown header (#)"
+        }
+      ]
+    },
+    {
+      "document": "v1.0.0/operations/diagnostics/error-reference",
+      "chunkId": "v1.0.0/operations/diagnostics/error-reference-chunk-6",
+      "preview": "cap — a safety guard against unbounded memory use on receivers Fix: Raise the provider's max-download setting if the size is legitimate; otherwise investigate why the payload grew beyond expectations ",
       "leaks": [
         {
           "pattern": "markdown-header",

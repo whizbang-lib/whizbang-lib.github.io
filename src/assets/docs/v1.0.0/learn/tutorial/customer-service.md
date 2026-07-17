@@ -1,5 +1,8 @@
 ---
 title: Customer Service (BFF)
+pageType: tutorial
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Tutorial
 order: 7
@@ -14,7 +17,10 @@ codeReferences:
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/InventoryLevelsPerspective.cs
   - samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs
-  - samples/ECommerce/ECommerce.BFF.API/GraphQL/CatalogQueries.cs
+  - samples/ECommerce/ECommerce.BFF.API/Lenses/IOrderLens.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
+testReferences:
+  - samples/ECommerce/tests/ECommerce.BFF.API.Tests/OrderReadModelTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -30,35 +36,24 @@ This is **Part 6** of the ECommerce Tutorial. Complete [Shipping Service](shippi
 
 ## What You'll Build
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  Customer Service Architecture (BFF)                         │
-│                                                               │
-│  ┌─────────────┐                                             │
-│  │Azure Service│  OrderCreated, PaymentProcessed, etc.       │
-│  │     Bus     │──────────────────────────┐                  │
-│  └─────────────┘                          │                  │
-│                                            ▼                  │
-│                          ┌────────────────────────────┐      │
-│                          │  Perspectives (Event       │      │
-│                          │  Handlers for Read Models) │      │
-│                          │  - OrderSummaryPerspective │      │
-│                          │  - CustomerActivityPersp.  │      │
-│                          └──────────┬─────────────────┘      │
-│                                     │                         │
-│                                     ▼                         │
-│                          ┌────────────────────────┐          │
-│                          │  PostgreSQL Read Models│          │
-│                          │  (Denormalized Views)  │          │
-│                          └──────────┬─────────────┘          │
-│                                     │                         │
-│                                     ▼                         │
-│  ┌──────────────┐        ┌────────────────────────┐          │
-│  │  HTTP Client │───────▶│  HTTP API (REST)       │          │
-│  │  (Frontend)  │        │  GET /customers/{id}   │          │
-│  └──────────────┘        │  GET /orders/{id}      │          │
-│                          └────────────────────────┘          │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph CSA["Customer Service Architecture (BFF)"]
+        ASB["Azure Service Bus"]
+        Perspectives["Read-Model Projections<br/>- OrderSummaryPerspective (pure Apply)<br/>- CustomerActivityReceptor"]
+        ReadModels["PostgreSQL Read Models<br/>(Denormalized Views)"]
+        API["HTTP API (REST)<br/>GET /customers/{id}<br/>GET /orders/{id}"]
+        Client["HTTP Client<br/>(Frontend)"]
+
+        ASB -->|"OrderCreatedEvent, PaymentProcessedEvent, etc."| Perspectives
+        Perspectives --> ReadModels
+        ReadModels --> API
+        Client --> API
+    end
+
+    class ASB layer-command
+    class Perspectives,ReadModels layer-read
+    class API,Client layer-core
 ```
 
 **Features**:
@@ -71,37 +66,40 @@ This is **Part 6** of the ECommerce Tutorial. Complete [Shipping Service](shippi
 
 ---
 
-## Step 1: Database Schema (Read Models)
+## Step 1: Read Models
 
-### Order Summary View
+### Order Summary Read Model
 
-**ECommerce.CustomerService.API/Database/Migrations/001_CreateOrderSummaryTable.sql**:
+Whizbang perspectives materialize into **framework-managed tables** — each read model is stored as a `PerspectiveRow<TModel>` (data as JSONB plus indexed scope columns), created automatically by `EnsureWhizbangDatabaseInitializedAsync()` at startup. You don't hand-write a migration for it; you just declare the model:
 
-```sql{title="Order Summary View" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Order", "Summary"]}
-CREATE TABLE IF NOT EXISTS order_summary (
-  order_id TEXT PRIMARY KEY,
-  customer_id TEXT NOT NULL,
-  total_amount NUMERIC(10, 2) NOT NULL,
-  status TEXT NOT NULL,  -- 'Pending', 'PaymentProcessed', 'Shipped', 'Delivered', 'Cancelled'
-  item_count INTEGER NOT NULL,
-  shipping_address JSONB NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  payment_id TEXT,
-  payment_status TEXT,
-  payment_processed_at TIMESTAMP,
-  shipment_id TEXT,
-  tracking_number TEXT,
-  estimated_delivery TIMESTAMP,
-  actual_delivery TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
+**ECommerce.CustomerService.API/Lenses/OrderSummaryModel.cs**:
 
-CREATE INDEX idx_order_summary_customer_id ON order_summary(customer_id);
-CREATE INDEX idx_order_summary_status ON order_summary(status);
-CREATE INDEX idx_order_summary_created_at ON order_summary(created_at DESC);
+```csharp{title="Order Summary Read Model" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Order", "Summary"]}
+using ECommerce.Contracts.Commands;
+using Whizbang.Core;
+
+namespace ECommerce.CustomerService.API.Lenses;
+
+/// <summary>Denormalized order view - one row per order stream.</summary>
+public record OrderSummaryModel {
+  [StreamId]
+  public required OrderId OrderId { get; init; }
+  public required CustomerId CustomerId { get; init; }
+  public required string Status { get; init; }  // 'Pending', 'PaymentProcessed', 'Shipped'
+  public decimal TotalAmount { get; init; }
+  public int ItemCount { get; init; }
+  public DateTime CreatedAt { get; init; }
+  public string? PaymentTransactionId { get; init; }
+  public string? ShipmentId { get; init; }
+  public string? TrackingNumber { get; init; }
+}
 ```
 
+The `[StreamId]` attribute marks the property that identifies the stream the model belongs to — here, one read model row per order.
+
 ### Customer Activity View
+
+Customer activity aggregates **across many order streams** into one row per customer, so it doesn't fit the per-stream perspective model — we project it with a receptor into a custom table instead (the same pattern the [Analytics Service](analytics-service.md) uses):
 
 **ECommerce.CustomerService.API/Database/Migrations/002_CreateCustomerActivityTable.sql**:
 
@@ -126,153 +124,89 @@ CREATE INDEX idx_customer_activity_last_order_at ON customer_activity(last_order
 
 ### Order Summary Perspective
 
+A perspective is a set of **pure `Apply` functions** — no I/O, no side effects. The perspective worker loads the current model, calls `Apply`, and persists the result through the framework-managed `IPerspectiveStore<T>`:
+
 **ECommerce.CustomerService.API/Perspectives/OrderSummaryPerspective.cs**:
 
 ```csharp{title="Order Summary Perspective" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Order", "Summary"]}
-using Whizbang.Core;
 using ECommerce.Contracts.Events;
-using Npgsql;
-using Dapper;
+using ECommerce.CustomerService.API.Lenses;
+using Whizbang.Core.Perspectives;
 
 namespace ECommerce.CustomerService.API.Perspectives;
 
+/// <summary>
+/// Materializes order events into the OrderSummaryModel read model.
+/// Apply methods are pure functions - no I/O, no side effects, deterministic.
+/// </summary>
 public class OrderSummaryPerspective :
-  IPerspectiveOf<OrderCreated>,
-  IPerspectiveOf<PaymentProcessed>,
-  IPerspectiveOf<ShipmentCreated> {
+  IPerspectiveFor<OrderSummaryModel, OrderCreatedEvent, PaymentProcessedEvent, ShipmentCreatedEvent> {
 
-  private readonly NpgsqlConnection _db;
-  private readonly ILogger<OrderSummaryPerspective> _logger;
-
-  public OrderSummaryPerspective(
-    NpgsqlConnection db,
-    ILogger<OrderSummaryPerspective> logger
-  ) {
-    _db = db;
-    _logger = logger;
+  // OrderCreatedEvent sets the initial state
+  public OrderSummaryModel Apply(OrderSummaryModel currentData, OrderCreatedEvent @event) {
+    return new OrderSummaryModel {
+      OrderId = @event.OrderId,
+      CustomerId = @event.CustomerId,
+      Status = "Pending",
+      TotalAmount = @event.TotalAmount,
+      ItemCount = @event.LineItems.Count,
+      CreatedAt = @event.CreatedAt
+    };
   }
 
-  // Handle OrderCreated event
-  public async Task HandleAsync(
-    OrderCreated @event,
-    CancellationToken ct = default
-  ) {
-    await _db.ExecuteAsync(
-      """
-      INSERT INTO order_summary (
-        order_id, customer_id, total_amount, status, item_count, shipping_address, created_at, updated_at
-      )
-      VALUES (@OrderId, @CustomerId, @TotalAmount, @Status, @ItemCount, @ShippingAddress::jsonb, @CreatedAt, NOW())
-      ON CONFLICT (order_id) DO UPDATE SET
-        updated_at = NOW()
-      """,
-      new {
-        OrderId = @event.OrderId,
-        CustomerId = @event.CustomerId,
-        TotalAmount = @event.TotalAmount,
-        Status = "Pending",
-        ItemCount = @event.Items.Length,
-        ShippingAddress = System.Text.Json.JsonSerializer.Serialize(@event.ShippingAddress),
-        CreatedAt = @event.CreatedAt
-      }
-    );
-
-    _logger.LogInformation(
-      "Order summary created for order {OrderId}",
-      @event.OrderId
-    );
+  // PaymentProcessedEvent updates payment info
+  public OrderSummaryModel Apply(OrderSummaryModel currentData, PaymentProcessedEvent @event) {
+    return currentData with {
+      Status = "PaymentProcessed",
+      PaymentTransactionId = @event.TransactionId
+    };
   }
 
-  // Handle PaymentProcessed event
-  public async Task HandleAsync(
-    PaymentProcessed @event,
-    CancellationToken ct = default
-  ) {
-    await _db.ExecuteAsync(
-      """
-      UPDATE order_summary
-      SET
-        status = 'PaymentProcessed',
-        payment_id = @PaymentId,
-        payment_status = @PaymentStatus,
-        payment_processed_at = @ProcessedAt,
-        updated_at = NOW()
-      WHERE order_id = @OrderId
-      """,
-      new {
-        OrderId = @event.OrderId,
-        PaymentId = @event.PaymentId,
-        PaymentStatus = @event.Status.ToString(),
-        ProcessedAt = @event.ProcessedAt
-      }
-    );
-
-    _logger.LogInformation(
-      "Order summary updated with payment for order {OrderId}",
-      @event.OrderId
-    );
-  }
-
-  // Handle ShipmentCreated event
-  public async Task HandleAsync(
-    ShipmentCreated @event,
-    CancellationToken ct = default
-  ) {
-    await _db.ExecuteAsync(
-      """
-      UPDATE order_summary
-      SET
-        status = 'Shipped',
-        shipment_id = @ShipmentId,
-        tracking_number = @TrackingNumber,
-        estimated_delivery = @EstimatedDelivery,
-        updated_at = NOW()
-      WHERE order_id = @OrderId
-      """,
-      new {
-        OrderId = @event.OrderId,
-        ShipmentId = @event.ShipmentId,
-        TrackingNumber = @event.TrackingNumber,
-        EstimatedDelivery = @event.EstimatedDelivery
-      }
-    );
-
-    _logger.LogInformation(
-      "Order summary updated with shipment for order {OrderId}",
-      @event.OrderId
-    );
+  // ShipmentCreatedEvent updates shipment info
+  public OrderSummaryModel Apply(OrderSummaryModel currentData, ShipmentCreatedEvent @event) {
+    return currentData with {
+      Status = "Shipped",
+      ShipmentId = @event.ShipmentId,
+      TrackingNumber = @event.TrackingNumber
+    };
   }
 }
 ```
 
-**Key pattern**: **Single perspective handles multiple events** to build a denormalized view.
+**Key pattern**: **Single perspective handles multiple events** to build a denormalized view — one type parameter for the model, one for each event type it applies.
 
-### Customer Activity Perspective
+:::note
+Notice there's no logging, no `NpgsqlConnection`, no timestamps from `DateTime.UtcNow`. `Apply` must be a pure function so event replays reconstruct identical state. Persistence, retries, and exactly-once bookkeeping are the perspective worker's job.
+:::
 
-**ECommerce.CustomerService.API/Perspectives/CustomerActivityPerspective.cs**:
+### Customer Activity Projection (Receptor)
 
-```csharp{title="Customer Activity Perspective" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Customer", "Activity"]}
+Customer activity spans many order streams (one row per customer, aggregated across orders), so it's projected by a **receptor** into the custom `customer_activity` table:
+
+**ECommerce.CustomerService.API/Receptors/CustomerActivityReceptor.cs**:
+
+```csharp{title="Customer Activity Projection Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Customer", "Activity"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
 using Dapper;
 
-namespace ECommerce.CustomerService.API.Perspectives;
+namespace ECommerce.CustomerService.API.Receptors;
 
-public class CustomerActivityPerspective : IPerspectiveOf<OrderCreated> {
+public class CustomerActivityReceptor : IReceptor<OrderCreatedEvent> {
   private readonly NpgsqlConnection _db;
-  private readonly ILogger<CustomerActivityPerspective> _logger;
+  private readonly ILogger<CustomerActivityReceptor> _logger;
 
-  public CustomerActivityPerspective(
+  public CustomerActivityReceptor(
     NpgsqlConnection db,
-    ILogger<CustomerActivityPerspective> logger
+    ILogger<CustomerActivityReceptor> logger
   ) {
     _db = db;
     _logger = logger;
   }
 
-  public async Task HandleAsync(
-    OrderCreated @event,
+  public async ValueTask HandleAsync(
+    OrderCreatedEvent @event,
     CancellationToken ct = default
   ) {
     await _db.ExecuteAsync(
@@ -289,9 +223,9 @@ public class CustomerActivityPerspective : IPerspectiveOf<OrderCreated> {
         updated_at = NOW()
       """,
       new {
-        CustomerId = @event.CustomerId,
+        CustomerId = @event.CustomerId.ToString(),
         TotalAmount = @event.TotalAmount,
-        OrderId = @event.OrderId,
+        OrderId = @event.OrderId.ToString(),
         CreatedAt = @event.CreatedAt
       }
     );
@@ -310,44 +244,7 @@ public class CustomerActivityPerspective : IPerspectiveOf<OrderCreated> {
 
 ### DTOs
 
-**ECommerce.CustomerService.API/Models/OrderSummaryDto.cs**:
-
-```csharp{title="DTOs" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "DTOs"]}
-namespace ECommerce.CustomerService.API.Models;
-
-public record OrderSummaryDto(
-  string OrderId,
-  string CustomerId,
-  decimal TotalAmount,
-  string Status,
-  int ItemCount,
-  ShippingAddressDto ShippingAddress,
-  DateTime CreatedAt,
-  PaymentInfoDto? PaymentInfo,
-  ShipmentInfoDto? ShipmentInfo
-);
-
-public record ShippingAddressDto(
-  string Street,
-  string City,
-  string State,
-  string ZipCode,
-  string Country
-);
-
-public record PaymentInfoDto(
-  string PaymentId,
-  string Status,
-  DateTime ProcessedAt
-);
-
-public record ShipmentInfoDto(
-  string ShipmentId,
-  string TrackingNumber,
-  DateTime EstimatedDelivery,
-  DateTime? ActualDelivery
-);
-```
+The order endpoints return the `OrderSummaryModel` read model directly — it was shaped for the frontend in the first place (that's the BFF pattern). The customer endpoints map the custom `customer_activity` table to a DTO:
 
 **ECommerce.CustomerService.API/Models/CustomerActivityDto.cs**:
 
@@ -370,9 +267,12 @@ public record CustomerActivityDto(
 
 ```csharp{title="Controllers" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Controllers"]}
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Dapper;
+using ECommerce.CustomerService.API.Lenses;
 using ECommerce.CustomerService.API.Models;
+using Whizbang.Core.Lenses;
 
 namespace ECommerce.CustomerService.API.Controllers;
 
@@ -380,14 +280,14 @@ namespace ECommerce.CustomerService.API.Controllers;
 [Route("api/[controller]")]
 public class CustomersController : ControllerBase {
   private readonly NpgsqlConnection _db;
-  private readonly ILogger<CustomersController> _logger;
+  private readonly ILensQuery<OrderSummaryModel> _orders;
 
   public CustomersController(
     NpgsqlConnection db,
-    ILogger<CustomersController> logger
+    ILensQuery<OrderSummaryModel> orders
   ) {
     _db = db;
-    _logger = logger;
+    _orders = orders;
   }
 
   [HttpGet("{customerId}")]
@@ -418,43 +318,17 @@ public class CustomersController : ControllerBase {
   }
 
   [HttpGet("{customerId}/orders")]
-  [ProducesResponseType(typeof(OrderSummaryDto[]), StatusCodes.Status200OK)]
-  public async Task<IActionResult> GetCustomerOrders(string customerId) {
-    var orders = await _db.QueryAsync<OrderSummaryRow>(
-      """
-      SELECT
-        order_id, customer_id, total_amount, status, item_count, shipping_address,
-        created_at, payment_id, payment_status, payment_processed_at,
-        shipment_id, tracking_number, estimated_delivery, actual_delivery
-      FROM order_summary
-      WHERE customer_id = @CustomerId
-      ORDER BY created_at DESC
-      """,
-      new { CustomerId = customerId }
-    );
+  [ProducesResponseType(typeof(OrderSummaryModel[]), StatusCodes.Status200OK)]
+  public async Task<IActionResult> GetCustomerOrders(string customerId, CancellationToken ct) {
+    // Query the framework-managed read model through the lens.
+    // row.Scope.CustomerId is an indexed scope column - no JSONB scan.
+    var orders = await _orders.DefaultScope.Query
+      .Where(row => row.Scope.CustomerId == customerId)
+      .OrderByDescending(row => row.CreatedAt)
+      .Select(row => row.Data)
+      .ToListAsync(ct);
 
-    var dtos = orders.Select(o => new OrderSummaryDto(
-      OrderId: o.OrderId,
-      CustomerId: o.CustomerId,
-      TotalAmount: o.TotalAmount,
-      Status: o.Status,
-      ItemCount: o.ItemCount,
-      ShippingAddress: System.Text.Json.JsonSerializer.Deserialize<ShippingAddressDto>(o.ShippingAddress)!,
-      CreatedAt: o.CreatedAt,
-      PaymentInfo: o.PaymentId != null ? new PaymentInfoDto(
-        PaymentId: o.PaymentId,
-        Status: o.PaymentStatus!,
-        ProcessedAt: o.PaymentProcessedAt!.Value
-      ) : null,
-      ShipmentInfo: o.ShipmentId != null ? new ShipmentInfoDto(
-        ShipmentId: o.ShipmentId,
-        TrackingNumber: o.TrackingNumber!,
-        EstimatedDelivery: o.EstimatedDelivery!.Value,
-        ActualDelivery: o.ActualDelivery
-      ) : null
-    )).ToArray();
-
-    return Ok(dtos);
+    return Ok(orders);
   }
 }
 
@@ -466,89 +340,37 @@ public record CustomerActivityRow(
   DateTime? LastOrderAt,
   DateTime? FirstOrderAt
 );
-
-public record OrderSummaryRow(
-  string OrderId,
-  string CustomerId,
-  decimal TotalAmount,
-  string Status,
-  int ItemCount,
-  string ShippingAddress,  // JSONB
-  DateTime CreatedAt,
-  string? PaymentId,
-  string? PaymentStatus,
-  DateTime? PaymentProcessedAt,
-  string? ShipmentId,
-  string? TrackingNumber,
-  DateTime? EstimatedDelivery,
-  DateTime? ActualDelivery
-);
 ```
 
 **ECommerce.CustomerService.API/Controllers/OrdersController.cs**:
 
 ```csharp{title="Controllers - OrdersController" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Controllers"]}
 using Microsoft.AspNetCore.Mvc;
-using Npgsql;
-using Dapper;
-using ECommerce.CustomerService.API.Models;
+using ECommerce.CustomerService.API.Lenses;
+using Whizbang.Core.Lenses;
 
 namespace ECommerce.CustomerService.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 public class OrdersController : ControllerBase {
-  private readonly NpgsqlConnection _db;
-  private readonly ILogger<OrdersController> _logger;
+  private readonly ILensQuery<OrderSummaryModel> _orders;
 
-  public OrdersController(
-    NpgsqlConnection db,
-    ILogger<OrdersController> logger
-  ) {
-    _db = db;
-    _logger = logger;
+  public OrdersController(ILensQuery<OrderSummaryModel> orders) {
+    _orders = orders;
   }
 
-  [HttpGet("{orderId}")]
-  [ProducesResponseType(typeof(OrderSummaryDto), StatusCodes.Status200OK)]
+  [HttpGet("{orderId:guid}")]
+  [ProducesResponseType(typeof(OrderSummaryModel), StatusCodes.Status200OK)]
   [ProducesResponseType(StatusCodes.Status404NotFound)]
-  public async Task<IActionResult> GetOrder(string orderId) {
-    var order = await _db.QuerySingleOrDefaultAsync<OrderSummaryRow>(
-      """
-      SELECT
-        order_id, customer_id, total_amount, status, item_count, shipping_address,
-        created_at, payment_id, payment_status, payment_processed_at,
-        shipment_id, tracking_number, estimated_delivery, actual_delivery
-      FROM order_summary
-      WHERE order_id = @OrderId
-      """,
-      new { OrderId = orderId }
-    );
+  public async Task<IActionResult> GetOrder(Guid orderId, CancellationToken ct) {
+    var order = await _orders.DefaultScope.GetByIdAsync(orderId, ct);
 
     if (order == null) {
       return NotFound();
     }
 
-    return Ok(new OrderSummaryDto(
-      OrderId: order.OrderId,
-      CustomerId: order.CustomerId,
-      TotalAmount: order.TotalAmount,
-      Status: order.Status,
-      ItemCount: order.ItemCount,
-      ShippingAddress: System.Text.Json.JsonSerializer.Deserialize<ShippingAddressDto>(order.ShippingAddress)!,
-      CreatedAt: order.CreatedAt,
-      PaymentInfo: order.PaymentId != null ? new PaymentInfoDto(
-        PaymentId: order.PaymentId,
-        Status: order.PaymentStatus!,
-        ProcessedAt: order.PaymentProcessedAt!.Value
-      ) : null,
-      ShipmentInfo: order.ShipmentId != null ? new ShipmentInfoDto(
-        ShipmentId: order.ShipmentId,
-        TrackingNumber: order.TrackingNumber!,
-        EstimatedDelivery: order.EstimatedDelivery!.Value,
-        ActualDelivery: order.ActualDelivery
-      ) : null
-    ));
+    return Ok(order);
   }
 }
 ```
@@ -561,31 +383,58 @@ public class OrdersController : ControllerBase {
 
 ```csharp{title="Step 4: Service Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"]}
 using Whizbang.Core;
-using Whizbang.Data.Postgres;
+using Whizbang.Core.Messaging;
+using Whizbang.Core.Observability;
+using Whizbang.Core.Routing;
+using Whizbang.Core.Workers;
+using Whizbang.Data.EFCore.Postgres;
 using Whizbang.Transports.AzureServiceBus;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add Whizbang
-builder.Services.AddWhizbang(options => {
-  options.ServiceName = "CustomerService";
-  options.EnableInbox = true;
-});
+// 1. Aspire service defaults (telemetry, health checks, service discovery)
+builder.AddServiceDefaults();
 
-// 2. Add PostgreSQL
-builder.Services.AddScoped<NpgsqlConnection>(sp => {
+// 2. Azure Service Bus transport
+var serviceBusConnection = builder.Configuration.GetConnectionString("servicebus")
+    ?? throw new InvalidOperationException("Azure Service Bus connection string 'servicebus' not found");
+builder.Services.AddAzureServiceBusTransport(serviceBusConnection);
+builder.Services.AddAzureServiceBusHealthChecks();
+
+// 3. Core plumbing
+builder.Services.AddSingleton<IServiceInstanceProvider, ServiceInstanceProvider>();
+builder.Services.AddSingleton<OrderedStreamProcessor>();
+
+// 4. Unified Whizbang API — routing + EF Core Postgres driver + transport consumer.
+//    Registers IInbox/IOutbox/IEventStore plus IPerspectiveStore<T> and
+//    ILensQuery<T> for every discovered perspective model (OrderSummaryModel).
+builder.Services
+  .AddWhizbang()
+  .WithRouting(routing => {
+    routing
+      .OwnDomains("ecommerce.customer.commands")
+      .SubscribeTo("ecommerce.orders.events")
+      .Inbox.UseSharedTopic("inbox");
+  })
+  .WithEFCore<CustomerDbContext>()
+  .WithDriver.Postgres
+  .AddTransportConsumer();
+
+// 5. Receptors + perspectives (generated registrations)
+builder.Services.AddReceptors();
+builder.Services.AddPerspectiveRunners();
+builder.Services.AddScoped<ECommerce.CustomerService.API.Perspectives.OrderSummaryPerspective>();
+builder.Services.AddWhizbangDispatcher();
+builder.Services.AddHostedService<PerspectiveWorker>();
+
+// 6. Direct Npgsql connection for the custom customer_activity table
+builder.Services.AddScoped<NpgsqlConnection>(_ => {
   var connectionString = builder.Configuration.GetConnectionString("CustomerDb");
   return new NpgsqlConnection(connectionString);
 });
 
-// 3. Add Azure Service Bus
-builder.AddAzureServiceBus("messaging");
-
-// 4. Add Aspire service defaults
-builder.AddServiceDefaults();
-
-// 5. Add controllers
+// 7. Controllers
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -601,7 +450,13 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
-await app.MigrateDatabaseAsync();
+// Initialize Whizbang schema (Inbox/Outbox/EventStore + PerspectiveRow<T> tables)
+using (var scope = app.Services.CreateScope()) {
+  var dbContext = scope.ServiceProvider.GetRequiredService<CustomerDbContext>();
+  var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+  await dbContext.EnsureWhizbangDatabaseInitializedAsync(logger);
+}
+
 app.Run();
 ```
 
@@ -622,17 +477,17 @@ Wait for events to propagate through system (~10 seconds).
 ### 2. Query Customer Activity
 
 ```bash{title="Query Customer Activity" description="Query Customer Activity" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Customer"]}
-curl http://localhost:5001/api/customers/cust-123
+curl http://localhost:5001/api/customers/0193d5a0-5678-7abc-9def-0123456789ab
 ```
 
 **Response**:
 
 ```json{title="Query Customer Activity (2)" description="Query Customer Activity" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Customer"]}
 {
-  "customerId": "cust-123",
+  "customerId": "0193d5a0-5678-7abc-9def-0123456789ab",
   "totalOrders": 1,
   "totalSpent": 39.98,
-  "lastOrderId": "order-abc123",
+  "lastOrderId": "0193d5a0-1234-7abc-9def-0123456789ab",
   "lastOrderAt": "2024-12-12T10:30:00Z",
   "firstOrderAt": "2024-12-12T10:30:00Z"
 }
@@ -641,7 +496,7 @@ curl http://localhost:5001/api/customers/cust-123
 ### 3. Query Customer Orders
 
 ```bash{title="Query Customer Orders" description="Query Customer Orders" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Customer"]}
-curl http://localhost:5001/api/customers/cust-123/orders
+curl http://localhost:5001/api/customers/0193d5a0-5678-7abc-9def-0123456789ab/orders
 ```
 
 **Response**:
@@ -649,30 +504,15 @@ curl http://localhost:5001/api/customers/cust-123/orders
 ```json{title="Query Customer Orders (2)" description="Query Customer Orders" category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Query", "Customer"]}
 [
   {
-    "orderId": "order-abc123",
-    "customerId": "cust-123",
-    "totalAmount": 39.98,
+    "orderId": "0193d5a0-1234-7abc-9def-0123456789ab",
+    "customerId": "0193d5a0-5678-7abc-9def-0123456789ab",
     "status": "Shipped",
+    "totalAmount": 39.98,
     "itemCount": 1,
-    "shippingAddress": {
-      "street": "123 Main St",
-      "city": "Springfield",
-      "state": "IL",
-      "zipCode": "62701",
-      "country": "USA"
-    },
     "createdAt": "2024-12-12T10:30:00Z",
-    "paymentInfo": {
-      "paymentId": "pay-xyz789",
-      "status": "Captured",
-      "processedAt": "2024-12-12T10:31:00Z"
-    },
-    "shipmentInfo": {
-      "shipmentId": "ship-def456",
-      "trackingNumber": "123456789012",
-      "estimatedDelivery": "2024-12-15T12:00:00Z",
-      "actualDelivery": null
-    }
+    "paymentTransactionId": "txn-xyz789",
+    "shipmentId": "ship-def456",
+    "trackingNumber": "123456789012"
   }
 ]
 ```
@@ -680,7 +520,7 @@ curl http://localhost:5001/api/customers/cust-123/orders
 ### 4. Query Single Order
 
 ```bash{title="Query Single Order" description="Query Single Order" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Query", "Single"]}
-curl http://localhost:5001/api/orders/order-abc123
+curl http://localhost:5001/api/orders/0193d5a0-1234-7abc-9def-0123456789ab
 ```
 
 **Response**: Same as above (single order).
@@ -691,31 +531,26 @@ curl http://localhost:5001/api/orders/order-abc123
 
 ### CQRS (Command Query Responsibility Segregation)
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  CQRS Pattern                                            │
-│                                                          │
-│  WRITE SIDE (Commands)                                  │
-│  ┌──────────────────────────────────┐                   │
-│  │  Order Service                   │                   │
-│  │  - CreateOrder command           │                   │
-│  │  - Publishes OrderCreated event  │                   │
-│  └──────────────┬───────────────────┘                   │
-│                 │                                        │
-│                 ▼                                        │
-│  ┌──────────────────────────────────┐                   │
-│  │  Azure Service Bus (Events)      │                   │
-│  └──────────────┬───────────────────┘                   │
-│                 │                                        │
-│                 ▼                                        │
-│  READ SIDE (Queries)                                    │
-│  ┌──────────────────────────────────┐                   │
-│  │  Customer Service                │                   │
-│  │  - OrderSummaryPerspective       │                   │
-│  │  - Denormalized order_summary    │                   │
-│  │  - Fast queries (no joins!)      │                   │
-│  └──────────────────────────────────┘                   │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph CQRS["CQRS Pattern"]
+        subgraph WRITE["WRITE SIDE (Commands)"]
+            OrderSvc["Order Service<br/>- CreateOrder command<br/>- Publishes OrderCreated event"]
+        end
+
+        Bus["Azure Service Bus (Events)"]
+
+        subgraph READ["READ SIDE (Queries)"]
+            CustomerSvc["Customer Service<br/>- OrderSummaryPerspective<br/>- Denormalized order_summary<br/>- Fast queries (no joins!)"]
+        end
+
+        OrderSvc --> Bus
+        Bus --> CustomerSvc
+    end
+
+    class OrderSvc layer-command
+    class Bus layer-event
+    class CustomerSvc layer-read
 ```
 
 **Benefits**:
@@ -727,46 +562,44 @@ curl http://localhost:5001/api/orders/order-abc123
 ### Event-Driven Read Models
 
 ```csharp{title="Event-Driven Read Models" description="Event-Driven Read Models" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Event-Driven", "Read"]}
-// Single perspective updates from multiple events
+// Single perspective applies multiple events - pure functions only
 public class OrderSummaryPerspective :
-  IPerspectiveOf<OrderCreated>,       // Sets initial state
-  IPerspectiveOf<PaymentProcessed>,   // Updates payment info
-  IPerspectiveOf<ShipmentCreated> {   // Updates shipment info
+  IPerspectiveFor<OrderSummaryModel,
+                  OrderCreatedEvent,       // Sets initial state
+                  PaymentProcessedEvent,   // Updates payment info
+                  ShipmentCreatedEvent> {  // Updates shipment info
 
-  public async Task HandleAsync(OrderCreated @event) {
-    // INSERT initial order summary
+  public OrderSummaryModel Apply(OrderSummaryModel currentData, OrderCreatedEvent @event) {
+    // return initial order summary
   }
 
-  public async Task HandleAsync(PaymentProcessed @event) {
-    // UPDATE with payment details
+  public OrderSummaryModel Apply(OrderSummaryModel currentData, PaymentProcessedEvent @event) {
+    // return currentData with payment details
   }
 
-  public async Task HandleAsync(ShipmentCreated @event) {
-    // UPDATE with shipment details
+  public OrderSummaryModel Apply(OrderSummaryModel currentData, ShipmentCreatedEvent @event) {
+    // return currentData with shipment details
   }
 }
 ```
 
-**Result**: Single `order_summary` row with data from 3 different events.
+**Result**: A single `OrderSummaryModel` row with data from 3 different events — persistence handled by the perspective worker, not the perspective.
 
 ### BFF (Backend for Frontend)
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  BFF Pattern                                             │
-│                                                          │
-│  ┌──────────────┐                                       │
-│  │  Web Client  │───────┐                               │
-│  └──────────────┘       │                               │
-│                         ▼                               │
-│  ┌──────────────┐   ┌──────────────────┐               │
-│  │Mobile Client │───▶│ Customer Service │               │
-│  └──────────────┘   │      (BFF)       │               │
-│                     │  - Tailored DTOs │               │
-│                     │  - Aggregated data│               │
-│                     │  - Client-specific│               │
-│                     └──────────────────┘               │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph BFF["BFF Pattern"]
+        WebClient["Web Client"]
+        MobileClient["Mobile Client"]
+        CustomerSvcBff["Customer Service<br/>(BFF)<br/>- Tailored DTOs<br/>- Aggregated data<br/>- Client-specific"]
+
+        WebClient --> CustomerSvcBff
+        MobileClient --> CustomerSvcBff
+    end
+
+    class WebClient,MobileClient layer-command
+    class CustomerSvcBff layer-core
 ```
 
 **Key characteristics**:
@@ -784,18 +617,28 @@ public class OrderSummaryPerspective :
 ```csharp{title="Unit Test - Perspective" description="Unit Test - Perspective" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
 public async Task OrderSummaryPerspective_OrderCreated_CreatesOrderSummaryAsync() {
-  // Arrange
-  var db = new MockNpgsqlConnection();
-  var perspective = new OrderSummaryPerspective(db, mockLogger);
-  var @event = new OrderCreated(...);
+  // Arrange - pure functions need no mocks, no database
+  var perspective = new OrderSummaryPerspective();
+  var @event = new OrderCreatedEvent {
+    OrderId = OrderId.New(),
+    CustomerId = CustomerId.New(),
+    LineItems = [new OrderLineItem {
+      ProductId = ProductId.New(),
+      ProductName = "Widget",
+      Quantity = 2,
+      UnitPrice = 19.99m
+    }],
+    TotalAmount = 39.98m,
+    CreatedAt = new DateTime(2024, 12, 12, 10, 30, 0)
+  };
 
   // Act
-  await perspective.HandleAsync(@event);
+  var summary = perspective.Apply(null!, @event);
 
   // Assert
-  var summary = db.GetOrderSummary(@event.OrderId);
   await Assert.That(summary).IsNotNull();
   await Assert.That(summary.Status).IsEqualTo("Pending");
+  await Assert.That(summary.ItemCount).IsEqualTo(1);
 }
 ```
 
@@ -806,7 +649,7 @@ public async Task OrderSummaryPerspective_OrderCreated_CreatesOrderSummaryAsync(
 Continue to **[Analytics Service](analytics-service.md)** to:
 - Build real-time analytics dashboards
 - Aggregate events across all services
-- Implement time-series perspectives
+- Implement time-series projection receptors
 - Create daily/monthly reports
 
 ---

@@ -1,5 +1,8 @@
 ---
 title: Perspective Sync
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Perspectives
 codeReferences:
@@ -7,6 +10,14 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/Sync/SyncInquiryResult.cs
   - src/Whizbang.Core/Perspectives/Sync/IPerspectiveSyncAwaiter.cs
   - src/Whizbang.Core/Perspectives/Sync/PerspectiveSyncOptions.cs
+  - src/Whizbang.Core/Perspectives/Sync/SyncResult.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncInquiryTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/PerspectiveSyncAwaiterTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/PerspectiveSyncAwaiterStreamTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/WaitForStreamAsyncIntegrationTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/ScopedEventTrackerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -55,7 +66,7 @@ public sealed record SyncInquiry {
     // Optional: Discover pending events from outbox
     public bool DiscoverPendingFromOutbox { get; init; }
 
-    // Auto-generated correlation ID
+    // Auto-generated correlation ID (defaults to TrackedGuid.NewMedo())
     public Guid InquiryId { get; init; }
 }
 ```
@@ -113,17 +124,21 @@ public sealed record SyncInquiryResult {
 ### Checking Sync Status
 
 ```csharp{title="Checking Sync Status" description="Checking Sync Status" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Checking", "Sync"]}
-var result = await workCoordinator.CheckSyncAsync(inquiry);
+// IWorkCoordinator resolves inquiries in batch
+var results = await workCoordinator.ResolveSyncInquiriesAsync([inquiry]);
+var result = results[0];
 
 if (result.IsFullySynced) {
     // All events have been processed - safe to read
-    var order = await lens.GetAsync<OrderPerspective>(orderId);
+    var order = await orderLensQuery.GetByIdAsync(orderId);
 }
 else {
     // Still pending
     Console.WriteLine($"Waiting for {result.PendingCount} events");
 }
 ```
+
+Inquiries can also piggyback on a work batch: set `ProcessWorkBatchRequest.PerspectiveSyncInquiries` and read the answers from `WorkBatch.SyncInquiryResults`.
 
 ## IsFullySynced Logic
 
@@ -145,7 +160,7 @@ var inquiry = new SyncInquiry {
 // IsFullySynced checks: Are ALL expected events in ProcessedEventIds?
 ```
 
-This prevents the false positive where `PendingCount == 0` because events haven't reached `wh_perspective_events` yet (still in outbox).
+`ExpectedEventIds` is stamped onto the result by the caller (e.g., `PerspectiveSyncAwaiter` sets it from events tracked by `IScopedEventTracker`). This prevents the false positive where `PendingCount == 0` because events haven't reached `wh_perspective_events` yet (still in outbox).
 
 ### Without Explicit Tracking (Legacy)
 
@@ -158,33 +173,36 @@ public bool IsFullySynced => PendingCount == 0;
 
 ## Using PerspectiveSyncAwaiter
 
-The `PerspectiveSyncAwaiter` provides a high-level API for waiting on perspective sync:
+The `IPerspectiveSyncAwaiter` provides a high-level API for waiting on perspective sync:
 
-```csharp{title="Using PerspectiveSyncAwaiter" description="The PerspectiveSyncAwaiter provides a high-level API for waiting on perspective sync:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Using", "PerspectiveSyncAwaiter"]}
-// Wait for perspective to catch up with tracked events
-await syncAwaiter.WaitForPerspectiveAsync<OrderPerspective>(
+```csharp{title="Using PerspectiveSyncAwaiter" description="The IPerspectiveSyncAwaiter provides a high-level API for waiting on perspective sync:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Using", "PerspectiveSyncAwaiter"]}
+// Wait for all pending events on the stream to be processed
+var result = await syncAwaiter.WaitForStreamAsync(
+    typeof(OrderPerspective),
     orderId,
-    timeout: TimeSpan.FromSeconds(5)
-);
+    eventTypes: null,          // null = wait for ALL events on the stream
+    timeout: TimeSpan.FromSeconds(5));
 
-// Now safe to read
-var order = await lens.GetAsync<OrderPerspective>(orderId);
+if (result.Outcome == SyncOutcome.Synced) {
+    // Now safe to read
+    var order = await orderLensQuery.GetByIdAsync(orderId);
+}
 ```
 
-### With Event Tracking
+### With Scope-Based Event Tracking
+
+Events dispatched in the current scope are tracked automatically by the `Dispatcher` via `IScopedEventTracker` -- there is no manual `BeginTracking()` call. Use `WaitAsync` with a filter to wait for the current scope's events:
 
 ```csharp{title="With Event Tracking" description="With Event Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Event", "Tracking"]}
-// Track events during command handling
-using var tracker = scopedEventTracker.BeginTracking();
+// Dispatcher tracks emitted events in the current scope automatically
+await dispatcher.SendAsync(new CreateOrderCommand { /* ... */ });
 
-await dispatcher.DispatchAsync(new CreateOrderCommand { ... });
-
-// Wait for tracked events to be processed
-await syncAwaiter.WaitForPerspectiveAsync<OrderPerspective>(
-    orderId,
-    tracker.GetTrackedEventIds(),
-    timeout: TimeSpan.FromSeconds(5)
-);
+// Wait for the current scope's tracked events to be processed
+var result = await syncAwaiter.WaitAsync(
+    typeof(OrderPerspective),
+    SyncFilter.CurrentScope()
+        .WithTimeout(TimeSpan.FromSeconds(5))
+        .Build());
 ```
 
 ## Cross-Scope Sync
@@ -207,38 +225,42 @@ This queries the outbox to find events that haven't been processed yet, enabling
 ### Read-Your-Writes Consistency
 
 ```csharp{title="Read-Your-Writes Consistency" description="Read-Your-Writes Consistency" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Read-Your-Writes", "Consistency"]}
-public async Task<OrderDto> CreateOrderAsync(CreateOrderRequest request) {
-    using var tracker = _eventTracker.BeginTracking();
+public async Task<OrderDto?> CreateOrderAsync(CreateOrderRequest request) {
+    var orderId = TrackedGuid.NewMedo();
 
-    // Dispatch command
-    var orderId = await _dispatcher.DispatchAsync(
-        new CreateOrderCommand(request.CustomerId, request.Items)
+    // Dispatch command (Dispatcher tracks emitted events in the current scope)
+    await _dispatcher.SendAsync(
+        new CreateOrderCommand(orderId, request.CustomerId, request.Items)
     );
 
-    // Wait for perspective
-    await _syncAwaiter.WaitForPerspectiveAsync<OrderPerspective>(
+    // Wait for the perspective to process the stream's pending events
+    await _syncAwaiter.WaitForStreamAsync(
+        typeof(OrderPerspective),
         orderId,
-        tracker.GetTrackedEventIds()
+        eventTypes: null,
+        timeout: TimeSpan.FromSeconds(5)
     );
 
     // Return fresh data
-    return await _lens.GetAsync<OrderDto>(orderId);
+    return await _orderLensQuery.GetByIdAsync(orderId);
 }
 ```
 
 ### Timeout Handling
 
+`WaitForStreamAsync` and `WaitAsync` do **not** throw on timeout -- they return a `SyncResult` whose `Outcome` is `SyncOutcome.TimedOut`. (The attribute-based flow, `[AwaitPerspectiveSync]` handled inside the `Dispatcher`, is what throws `PerspectiveSyncTimeoutException`.)
+
 ```csharp{title="Timeout Handling" description="Timeout Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Timeout", "Handling"]}
-try {
-    await syncAwaiter.WaitForPerspectiveAsync<OrderPerspective>(
-        orderId,
-        timeout: TimeSpan.FromSeconds(5)
-    );
-}
-catch (TimeoutException) {
+var result = await syncAwaiter.WaitForStreamAsync(
+    typeof(OrderPerspective),
+    orderId,
+    eventTypes: null,
+    timeout: TimeSpan.FromSeconds(5));
+
+if (result.Outcome == SyncOutcome.TimedOut) {
     // Perspective didn't catch up in time
     // Options: retry, return stale data with warning, or fail
-    _logger.Warning("Perspective sync timeout for order {OrderId}", orderId);
+    _logger.LogWarning("Perspective sync timeout for order {OrderId}", orderId);
     throw new ServiceUnavailableException("Order data temporarily unavailable");
 }
 ```
@@ -248,10 +270,12 @@ catch (TimeoutException) {
 ```csharp{title="Conditional Sync" description="Conditional Sync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Conditional", "Sync"]}
 // Only sync for specific operations
 if (request.RequiresFreshData) {
-    await syncAwaiter.WaitForPerspectiveAsync<OrderPerspective>(orderId);
+    await syncAwaiter.WaitForStreamAsync(
+        typeof(OrderPerspective), orderId,
+        eventTypes: null, timeout: TimeSpan.FromSeconds(5));
 }
 
-return await lens.GetAsync<OrderDto>(orderId);
+return await orderLensQuery.GetByIdAsync(orderId);
 ```
 
 ## Best Practices
@@ -275,8 +299,9 @@ var inquiry = new SyncInquiry {
     IncludeProcessedEventIds = true   // See which events are done
 };
 
-var result = await workCoordinator.CheckSyncAsync(inquiry);
-_logger.Debug(
+var results = await workCoordinator.ResolveSyncInquiriesAsync([inquiry]);
+var result = results[0];
+_logger.LogDebug(
     "Sync status: Pending={Pending}, Processed={Processed}, EventIds={PendingIds}",
     result.PendingCount,
     result.ProcessedCount,

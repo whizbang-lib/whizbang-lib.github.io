@@ -1,5 +1,8 @@
 ---
 title: Concept Mapping
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Migration Guide
 order: 2
@@ -10,6 +13,12 @@ codeReferences:
   - src/Whizbang.Core/IDispatcher.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
   - src/Whizbang.Core/Messaging/IEventStore.cs
+  - src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/IEventStoreDefaultMethodTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EventStoreAppendBatchTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherLocalInvokeAndSyncTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherDeliveryReceiptTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -23,12 +32,12 @@ This guide maps concepts from the Marten/Wolverine ("Critter Stack") to their Wh
 |------------------|----------|-----------------|
 | `IDocumentStore` | `IEventStore` | Stream-based, generic `AppendAsync<TMessage>()` |
 | `IDocumentSession` | Injected via DI | No session concept; use `IEventStore` directly |
-| `session.Events.Append()` | `eventStore.AppendAsync<T>(streamId, envelope)` | Explicit stream ID, `MessageEnvelope` wrapper |
+| `session.Events.Append()` | `eventStore.AppendAsync(streamId, @event)` | Explicit stream ID; envelope auto-resolved from the dispatch (or pass a `MessageEnvelope<T>` explicitly) |
 | `IHandle<TMessage>` | `IReceptor<TMessage, TResult>` | Returns typed result, source-generator discovered |
 | `IHandle<TMessage>` (void) | `IReceptor<TMessage>` | Void receptor for side-effect-only handlers |
 | `[WolverineHandler]` | *No attribute needed* | Source generator discovers `IReceptor` implementations |
 | `SingleStreamProjection<T>` | `IPerspectiveFor<TModel, TEvent...>` | Pure function `Apply()`, variadic for multiple events |
-| `MultiStreamProjection<T>` | `IGlobalPerspectiveFor<TModel>` | Global perspectives for cross-stream aggregation |
+| `MultiStreamProjection<T>` | `IGlobalPerspectiveFor<TModel, TPartitionKey, TEvent…>` | Global perspectives for cross-stream aggregation, partitioned by an explicit key |
 | Async projections (daemon) | `PerspectiveWorker` | Background worker with checkpointing |
 | `UseDurableOutbox()` | Built-in outbox via `IWorkCoordinator` | Database-backed with configurable strategies |
 | `IMessageBus` | `IDispatcher` | Three patterns: `SendAsync`, `LocalInvokeAsync`, `PublishAsync` |
@@ -97,7 +106,7 @@ public class CreateOrderWithNotificationReceptor : IReceptor<CreateOrderWithNoti
         CancellationToken ct = default) {
 
         var result = new OrderCreated(message.OrderId);
-        await _dispatcher.PublishAsync(new SendEmail(message.CustomerEmail), ct);
+        await _dispatcher.PublishAsync(new SendEmail(message.CustomerEmail));
         return result;
     }
 }
@@ -186,12 +195,10 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
         var @event = new OrderCreated(message.OrderId, message.Items);
 
-        var envelope = new MessageEnvelope<OrderCreated> {
-            MessageId = MessageId.From(Guid.CreateVersion7()),
-            Payload = @event
-        };
-
-        await _eventStore.AppendAsync(message.OrderId, envelope, ct);
+        // Raw-message overload: the envelope (with tracing context) is resolved
+        // automatically from the dispatch via IEnvelopeRegistry. An explicit
+        // AppendAsync(streamId, MessageEnvelope<T>, ct) overload also exists.
+        await _eventStore.AppendAsync(message.OrderId, @event, ct);
         return @event;
     }
 }
@@ -221,12 +228,12 @@ await _bus.InvokeAsync<OrderCreated>(command);
 ```csharp{title="Whizbang Dispatcher" description="Whizbang Dispatcher" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Dispatcher"]}
 // Whizbang: Three distinct patterns
 // 1. SendAsync - Command with delivery receipt (can go over wire)
-var receipt = await _dispatcher.SendAsync(command);
+IDeliveryReceipt receipt = await _dispatcher.SendAsync(command);
 
-// 2. LocalInvokeAsync - In-process RPC (< 20ns, zero allocation)
+// 2. LocalInvokeAsync - In-process RPC (ValueTask-based, pooled fast path)
 var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
 
-// 3. PublishAsync - Event broadcasting (fire-and-forget)
+// 3. PublishAsync - Event broadcasting (also returns a delivery receipt)
 await _dispatcher.PublishAsync(@event);
 ```
 

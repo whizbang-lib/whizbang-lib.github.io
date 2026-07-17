@@ -1,5 +1,8 @@
 ---
 title: GenerateStreamId Attribute
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Attributes
 order: 3
@@ -11,6 +14,10 @@ codeReferences:
   - src/Whizbang.Core/GenerateStreamIdAttribute.cs
   - src/Whizbang.Generators/StreamIdGenerator.cs
   - src/Whizbang.Core/Validation/StreamIdGuard.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/GenerateStreamIdGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/StreamIdGeneratorTests.cs
+  - tests/Whizbang.Core.Tests/Validation/StreamIdGuardTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

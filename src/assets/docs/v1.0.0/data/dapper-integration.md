@@ -1,5 +1,8 @@
 ---
 title: Dapper Integration
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Data Access
 order: 1
@@ -8,28 +11,28 @@ description: >-
   perspectives and lenses - simple SQL, minimal overhead
 tags: 'dapper, data-access, postgresql, sql, micro-orm'
 codeReferences:
-  - src/Whizbang.Data.Dapper.Postgres/IDbConnectionFactory.cs
+  - src/Whizbang.Core/Data/IDbConnectionFactory.cs
   - src/Whizbang.Data.Dapper.Postgres/PostgresConnectionFactory.cs
-  - samples/ECommerce/ECommerce.BFF.API/Perspectives/OrderSummaryPerspective.cs
-  - samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs
+  - src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs
+testReferences:
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/ServiceCollectionExtensionsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Dapper Integration
 
-**Dapper** is Whizbang's recommended micro-ORM for lightweight, high-performance data access in **Perspectives** and **Lenses**. It provides simple SQL execution with minimal overhead - perfect for read models.
+**Dapper** is the micro-ORM behind Whizbang's `Whizbang.Data.Dapper.Postgres` driver, which implements Whizbang's PostgreSQL persistence (event store, work coordinator, perspective store, sequence provider). The same package's `IDbConnectionFactory` abstraction is also useful in your own application for lightweight, high-performance SQL - custom read services, reporting queries, and hand-tuned lens implementations.
 
 ## Why Dapper?
 
 | Feature | Dapper | EF Core |
 |---------|--------|---------|
-| **Performance** | ~20x faster queries | Slower (change tracking overhead) |
+| **Performance** | Faster (no change tracking) | Change tracking overhead |
 | **Control** | Full SQL control | LINQ translated to SQL |
 | **Learning curve** | Simple (just SQL) | Complex (LINQ, migrations, tracking) |
-| **Use case** | Perspectives/Lenses | Complex domain models |
-| **Recommended for** | ✅ Read models | Write models |
+| **Use case** | Hand-tuned SQL queries | LINQ-based lens queries |
 
-**Whizbang Philosophy**: Use **Dapper for reads** (perspectives, lenses), **EF Core for writes** (optional, if needed).
+**Whizbang perspective note**: shipped perspectives implement `IPerspectiveFor<TModel, TEvent...>` with pure `Apply` methods - the framework persists perspective models for you (via the Dapper or EF Core driver). You do not write SQL inside a perspective. Use direct Dapper SQL for custom queries outside the perspective pipeline. See [Drivers](drivers.md).
 
 ---
 
@@ -40,22 +43,24 @@ dotnet add package Whizbang.Data.Dapper.Postgres
 ```
 
 **Includes**:
-- `IDbConnectionFactory` - Connection factory interface
-- `PostgresConnectionFactory` - PostgreSQL implementation
-- Dapper (latest version)
+- `PostgresConnectionFactory` - PostgreSQL implementation of `IDbConnectionFactory` (the interface itself lives in `Whizbang.Core.Data`)
+- Whizbang's Dapper-based PostgreSQL stores (event store, work coordinator, perspective store, sequence provider)
+- Dapper
 - Npgsql (PostgreSQL driver)
 
 ---
 
 ## IDbConnectionFactory
 
-Whizbang uses **`IDbConnectionFactory`** pattern for database connections.
+Whizbang uses the **`IDbConnectionFactory`** pattern (defined in `Whizbang.Core.Data`) for database connections.
 
 ### Interface
 
 ```csharp{title="Interface" description="Interface" category="Implementation" difficulty="BEGINNER" tags=["Data", "Interface"]}
+namespace Whizbang.Core.Data;
+
 public interface IDbConnectionFactory {
-    IDbConnection CreateConnection();
+    Task<IDbConnection> CreateConnectionAsync(CancellationToken cancellationToken = default);
 }
 ```
 
@@ -67,16 +72,21 @@ public interface IDbConnectionFactory {
 
 ### PostgreSQL Implementation
 
+The PostgreSQL factory opens the connection before returning it, ensuring proper async initialization:
+
 ```csharp{title="PostgreSQL Implementation" description="PostgreSQL Implementation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "PostgreSQL", "Implementation"]}
 public class PostgresConnectionFactory : IDbConnectionFactory {
     private readonly string _connectionString;
 
     public PostgresConnectionFactory(string connectionString) {
+        ArgumentNullException.ThrowIfNull(connectionString);
         _connectionString = connectionString;
     }
 
-    public IDbConnection CreateConnection() {
-        return new NpgsqlConnection(_connectionString);
+    public async Task<IDbConnection> CreateConnectionAsync(CancellationToken cancellationToken = default) {
+        var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        return connection;
     }
 }
 ```
@@ -94,8 +104,10 @@ public class PostgresConnectionFactory : IDbConnectionFactory {
 // Program.cs
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
 
-builder.Services.AddWhizbangDapper(connectionString);
-// OR manually:
+// Registers the connection factory plus all Whizbang PostgreSQL stores
+builder.Services.AddWhizbangPostgres(connectionString, jsonOptions);
+
+// OR register just the factory manually:
 builder.Services.AddSingleton<IDbConnectionFactory>(
     new PostgresConnectionFactory(connectionString)
 );
@@ -108,10 +120,10 @@ builder.Services.AddSingleton<IDbConnectionFactory>(
 ### Query Single Row
 
 ```csharp{title="Query Single Row" description="Query Single Row" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Query", "Single", "Row"]}
-public class OrderLens : ILensQuery {
+public class OrderQueries {
     private readonly IDbConnectionFactory _db;
 
-    public OrderLens(IDbConnectionFactory db) {
+    public OrderQueries(IDbConnectionFactory db) {
         _db = db;
     }
 
@@ -119,32 +131,34 @@ public class OrderLens : ILensQuery {
         Guid orderId,
         CancellationToken ct = default) {
 
-        await using var conn = _db.CreateConnection();
+        using var conn = await _db.CreateConnectionAsync(ct);
 
         return await conn.QuerySingleOrDefaultAsync<OrderSummary>(
-            """
-            SELECT
-                order_id,
-                customer_id,
-                total,
-                status,
-                created_at
-            FROM order_summaries
-            WHERE order_id = @OrderId
-            """,
-            new { OrderId = orderId },
-            commandTimeout: 30,
-            cancellationToken: ct
+            new CommandDefinition(
+                """
+                SELECT
+                    order_id,
+                    customer_id,
+                    total,
+                    status,
+                    created_at
+                FROM order_summaries
+                WHERE order_id = @OrderId
+                """,
+                new { OrderId = orderId },
+                commandTimeout: 30,
+                cancellationToken: ct
+            )
         );
     }
 }
 ```
 
 **Key Points**:
-- Use `await using` for automatic disposal
+- `CreateConnectionAsync` returns an **already-opened** connection - wrap it in `using` for disposal
 - `QuerySingleOrDefaultAsync` returns null if not found
 - Pass parameters as anonymous object
-- Always pass `CancellationToken`
+- Pass the `CancellationToken` via Dapper's `CommandDefinition`
 
 ### Query Multiple Rows
 
@@ -153,23 +167,25 @@ public async Task<OrderSummary[]> GetOrdersByCustomerAsync(
     Guid customerId,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    using var conn = await _db.CreateConnectionAsync(ct);
 
     var orders = await conn.QueryAsync<OrderSummary>(
-        """
-        SELECT
-            order_id,
-            customer_id,
-            total,
-            status,
-            created_at
-        FROM order_summaries
-        WHERE customer_id = @CustomerId
-        ORDER BY created_at DESC
-        """,
-        new { CustomerId = customerId },
-        commandTimeout: 30,
-        cancellationToken: ct
+        new CommandDefinition(
+            """
+            SELECT
+                order_id,
+                customer_id,
+                total,
+                status,
+                created_at
+            FROM order_summaries
+            WHERE customer_id = @CustomerId
+            ORDER BY created_at DESC
+            """,
+            new { CustomerId = customerId },
+            commandTimeout: 30,
+            cancellationToken: ct
+        )
     );
 
     return orders.ToArray();
@@ -179,29 +195,31 @@ public async Task<OrderSummary[]> GetOrdersByCustomerAsync(
 ### Execute Non-Query
 
 ```csharp{title="Execute Non-Query" description="Execute Non-Query" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Execute", "Non-Query"]}
-public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
+public class OrderSummaryWriter {
     private readonly IDbConnectionFactory _db;
 
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-        await using var conn = _db.CreateConnection();
+    public async Task InsertAsync(OrderCreated @event, CancellationToken ct = default) {
+        using var conn = await _db.CreateConnectionAsync(ct);
 
         await conn.ExecuteAsync(
-            """
-            INSERT INTO order_summaries (
-                order_id, customer_id, total, status, created_at
-            ) VALUES (
-                @OrderId, @CustomerId, @Total, @Status, @CreatedAt
+            new CommandDefinition(
+                """
+                INSERT INTO order_summaries (
+                    order_id, customer_id, total, status, created_at
+                ) VALUES (
+                    @OrderId, @CustomerId, @Total, @Status, @CreatedAt
+                )
+                """,
+                new {
+                    @event.OrderId,
+                    @event.CustomerId,
+                    @event.Total,
+                    Status = "Created",
+                    @event.CreatedAt
+                },
+                commandTimeout: 30,
+                cancellationToken: ct
             )
-            """,
-            new {
-                @event.OrderId,
-                @event.CustomerId,
-                @event.Total,
-                Status = "Created",
-                @event.CreatedAt
-            },
-            commandTimeout: 30,
-            cancellationToken: ct
         );
     }
 }
@@ -219,21 +237,23 @@ public async Task<Product[]> GetProductsByCategoryAsync(
     string category,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    using var conn = await _db.CreateConnectionAsync(ct);
 
     var products = await conn.QueryAsync<Product>(
-        """
-        SELECT
-            product_id,
-            name,
-            price,
-            metadata
-        FROM products
-        WHERE metadata->>'category' = @Category
-        ORDER BY name
-        """,
-        new { Category = category },
-        cancellationToken: ct
+        new CommandDefinition(
+            """
+            SELECT
+                product_id,
+                name,
+                price,
+                metadata
+            FROM products
+            WHERE metadata->>'category' = @Category
+            ORDER BY name
+            """,
+            new { Category = category },
+            cancellationToken: ct
+        )
     );
 
     return products.ToArray();
@@ -245,19 +265,21 @@ public async Task UpdateProductMetadataAsync(
     Dictionary<string, string> metadata,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    using var conn = await _db.CreateConnectionAsync(ct);
 
     await conn.ExecuteAsync(
-        """
-        UPDATE products
-        SET metadata = @Metadata::jsonb
-        WHERE product_id = @ProductId
-        """,
-        new {
-            ProductId = productId,
-            Metadata = JsonSerializer.Serialize(metadata)
-        },
-        cancellationToken: ct
+        new CommandDefinition(
+            """
+            UPDATE products
+            SET metadata = @Metadata::jsonb
+            WHERE product_id = @ProductId
+            """,
+            new {
+                ProductId = productId,
+                Metadata = JsonSerializer.Serialize(metadata)
+            },
+            cancellationToken: ct
+        )
     );
 }
 ```
@@ -269,15 +291,17 @@ public async Task<Product[]> GetProductsByIdsAsync(
     Guid[] productIds,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    using var conn = await _db.CreateConnectionAsync(ct);
 
     var products = await conn.QueryAsync<Product>(
-        """
-        SELECT * FROM products
-        WHERE product_id = ANY(@ProductIds)
-        """,
-        new { ProductIds = productIds },
-        cancellationToken: ct
+        new CommandDefinition(
+            """
+            SELECT * FROM products
+            WHERE product_id = ANY(@ProductIds)
+            """,
+            new { ProductIds = productIds },
+            cancellationToken: ct
+        )
     );
 
     return products.ToArray();
@@ -292,17 +316,19 @@ public async Task UpsertInventoryAsync(
     int quantity,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    using var conn = await _db.CreateConnectionAsync(ct);
 
     await conn.ExecuteAsync(
-        """
-        INSERT INTO inventory (product_id, available)
-        VALUES (@ProductId, @Quantity)
-        ON CONFLICT (product_id) DO UPDATE
-        SET available = EXCLUDED.available
-        """,
-        new { ProductId = productId, Quantity = quantity },
-        cancellationToken: ct
+        new CommandDefinition(
+            """
+            INSERT INTO inventory (product_id, available)
+            VALUES (@ProductId, @Quantity)
+            ON CONFLICT (product_id) DO UPDATE
+            SET available = EXCLUDED.available
+            """,
+            new { ProductId = productId, Quantity = quantity },
+            cancellationToken: ct
+        )
     );
 }
 ```
@@ -319,34 +345,37 @@ public async Task CreateOrderWithItemsAsync(
     OrderItem[] items,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
-    await conn.OpenAsync(ct);
-
-    await using var transaction = await conn.BeginTransactionAsync(ct);
+    // Connection is already open when returned by the factory
+    using var conn = await _db.CreateConnectionAsync(ct);
+    using var transaction = conn.BeginTransaction();
 
     try {
         // Insert order
         await conn.ExecuteAsync(
-            "INSERT INTO orders (order_id, customer_id, total, status, created_at) VALUES (@OrderId, @CustomerId, @Total, @Status, @CreatedAt)",
-            order,
-            transaction: transaction,
-            cancellationToken: ct
+            new CommandDefinition(
+                "INSERT INTO orders (order_id, customer_id, total, status, created_at) VALUES (@OrderId, @CustomerId, @Total, @Status, @CreatedAt)",
+                order,
+                transaction: transaction,
+                cancellationToken: ct
+            )
         );
 
         // Insert order items
         foreach (var item in items) {
             await conn.ExecuteAsync(
-                "INSERT INTO order_items (order_item_id, order_id, product_id, quantity, unit_price) VALUES (@OrderItemId, @OrderId, @ProductId, @Quantity, @UnitPrice)",
-                item,
-                transaction: transaction,
-                cancellationToken: ct
+                new CommandDefinition(
+                    "INSERT INTO order_items (order_item_id, order_id, product_id, quantity, unit_price) VALUES (@OrderItemId, @OrderId, @ProductId, @Quantity, @UnitPrice)",
+                    item,
+                    transaction: transaction,
+                    cancellationToken: ct
+                )
             );
         }
 
-        await transaction.CommitAsync(ct);
+        transaction.Commit();
 
     } catch {
-        await transaction.RollbackAsync(ct);
+        transaction.Rollback();
         throw;
     }
 }
@@ -357,7 +386,7 @@ public async Task CreateOrderWithItemsAsync(
 ```csharp{title="Transaction Scope (Distributed Transactions)" description="Transaction Scope (Distributed Transactions)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Transaction", "Scope", "Distributed"]}
 using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
 
-await using var conn = _db.CreateConnection();
+using var conn = await _db.CreateConnectionAsync(ct);
 
 // All operations in this scope are transactional
 await conn.ExecuteAsync("INSERT INTO orders ...");
@@ -392,8 +421,8 @@ public class GuidTypeHandler : SqlMapper.TypeHandler<Guid> {
 
 ```csharp{title="Column Name Mapping" description="Column Name Mapping" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Column", "Name", "Mapping"]}
 // Explicit column mapping
-public async Task<OrderSummary?> GetOrderAsync(Guid orderId) {
-    await using var conn = _db.CreateConnection();
+public async Task<OrderSummary?> GetOrderAsync(Guid orderId, CancellationToken ct = default) {
+    using var conn = await _db.CreateConnectionAsync(ct);
 
     return await conn.QuerySingleOrDefaultAsync<OrderSummary>(
         """
@@ -424,9 +453,8 @@ public async Task<OrderSummary?> GetOrderAsync(Guid orderId) {
 var orders = await conn.QueryAsync<OrderSummary>(sql);
 
 // ⚠️ Unbuffered - streams rows (use for large result sets)
-var orders = await conn.QueryAsync<OrderSummary>(sql, buffered: false);
-
-await foreach (var order in orders) {
+// Requires a DbConnection (e.g. NpgsqlConnection)
+await foreach (var order in dbConn.QueryUnbufferedAsync<OrderSummary>(sql)) {
     // Process one at a time (low memory)
 }
 ```
@@ -434,16 +462,18 @@ await foreach (var order in orders) {
 ### Batch Operations
 
 ```csharp{title="Batch Operations" description="Batch Operations" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Batch", "Operations"]}
-// ✅ Batch insert (single roundtrip)
+// ✅ Batch insert - pass a collection and Dapper executes the statement once per item
 await conn.ExecuteAsync(
     "INSERT INTO order_items (order_item_id, order_id, product_id, quantity) VALUES (@OrderItemId, @OrderId, @ProductId, @Quantity)",
-    items  // Pass array - Dapper executes once per item
+    items
 );
 
-// ❌ Loop insert (multiple roundtrips)
+// ❌ Manual loop with per-item overhead
 foreach (var item in items) {
     await conn.ExecuteAsync("INSERT INTO order_items ...", item);  // Slow!
 }
+
+// For true bulk loads on PostgreSQL, prefer Npgsql's binary COPY
 ```
 
 ### Connection Pooling
@@ -519,7 +549,7 @@ public class OrderLensIntegrationTests {
     }
 
     private async Task SeedTestDataAsync() {
-        await using var conn = _db.CreateConnection();
+        using var conn = await _db.CreateConnectionAsync();
         await conn.ExecuteAsync(
             "INSERT INTO order_summaries (order_id, customer_id, total, status, created_at) VALUES (@OrderId, @CustomerId, @Total, @Status, @CreatedAt)",
             new {
@@ -540,8 +570,8 @@ public class OrderLensIntegrationTests {
 
 ### DO ✅
 
-- ✅ Use `await using` for connections (automatic disposal)
-- ✅ Pass `CancellationToken` to all async methods
+- ✅ Use `using` for connections (automatic disposal - the factory returns them already opened)
+- ✅ Pass `CancellationToken` via Dapper's `CommandDefinition`
 - ✅ Use `QuerySingleOrDefaultAsync` for single row (returns null if not found)
 - ✅ Use `QueryAsync` for multiple rows
 - ✅ Use `ExecuteAsync` for non-queries (INSERT, UPDATE, DELETE)
@@ -553,10 +583,10 @@ public class OrderLensIntegrationTests {
 
 ### DON'T ❌
 
-- ❌ Forget `await using` (connection leak!)
+- ❌ Forget `using` (connection leak!)
 - ❌ Use string concatenation for SQL (SQL injection risk)
 - ❌ Ignore `CancellationToken` (can't cancel long queries)
-- ❌ Open connections manually (let Dapper handle it)
+- ❌ Re-open connections returned by `CreateConnectionAsync` (they arrive open)
 - ❌ Use `Query` instead of `QueryAsync` (blocks thread)
 - ❌ Use `Execute` instead of `ExecuteAsync` (blocks thread)
 - ❌ Skip transactions for multi-statement operations (data inconsistency)
@@ -566,29 +596,35 @@ public class OrderLensIntegrationTests {
 
 ## Common Patterns
 
-### Pattern 1: Perspective Update
+### Pattern 1: Idempotent Projection Writer
 
-```csharp{title="Pattern 1: Perspective Update" description="Pattern 1: Perspective Update" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Perspective", "Update"]}
-public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
+:::updated
+Whizbang perspectives do not write SQL - they implement `IPerspectiveFor<TModel, TEvent...>` with pure `Apply` methods and the framework persists the model. Use this pattern only for **custom** projections maintained outside the perspective pipeline.
+:::
+
+```csharp{title="Pattern 1: Idempotent Projection Writer" description="Pattern 1: Idempotent Projection Writer" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Projection", "Update"]}
+public class OrderSummaryWriter {
     private readonly IDbConnectionFactory _db;
 
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-        await using var conn = _db.CreateConnection();
+    public async Task WriteAsync(OrderCreated @event, CancellationToken ct = default) {
+        using var conn = await _db.CreateConnectionAsync(ct);
 
         await conn.ExecuteAsync(
-            """
-            INSERT INTO order_summaries (order_id, customer_id, total, status, created_at)
-            VALUES (@OrderId, @CustomerId, @Total, @Status, @CreatedAt)
-            ON CONFLICT (order_id) DO NOTHING
-            """,
-            new {
-                @event.OrderId,
-                @event.CustomerId,
-                @event.Total,
-                Status = "Created",
-                @event.CreatedAt
-            },
-            cancellationToken: ct
+            new CommandDefinition(
+                """
+                INSERT INTO order_summaries (order_id, customer_id, total, status, created_at)
+                VALUES (@OrderId, @CustomerId, @Total, @Status, @CreatedAt)
+                ON CONFLICT (order_id) DO NOTHING
+                """,
+                new {
+                    @event.OrderId,
+                    @event.CustomerId,
+                    @event.Total,
+                    Status = "Created",
+                    @event.CreatedAt
+                },
+                cancellationToken: ct
+            )
         );
     }
 }
@@ -604,16 +640,18 @@ public class OrderLens : ILensQuery {
         int limit,
         CancellationToken ct = default) {
 
-        await using var conn = _db.CreateConnection();
+        using var conn = await _db.CreateConnectionAsync(ct);
 
         var orders = await conn.QueryAsync<OrderSummary>(
-            """
-            SELECT * FROM order_summaries
-            ORDER BY created_at DESC
-            LIMIT @Limit
-            """,
-            new { Limit = limit },
-            cancellationToken: ct
+            new CommandDefinition(
+                """
+                SELECT * FROM order_summaries
+                ORDER BY created_at DESC
+                LIMIT @Limit
+                """,
+                new { Limit = limit },
+                cancellationToken: ct
+            )
         );
 
         return orders.ToArray();
@@ -628,20 +666,22 @@ public async Task<OrderStatistics> GetOrderStatisticsAsync(
     Guid customerId,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    using var conn = await _db.CreateConnectionAsync(ct);
 
     return await conn.QuerySingleAsync<OrderStatistics>(
-        """
-        SELECT
-            COUNT(*) AS TotalOrders,
-            SUM(total) AS TotalSpent,
-            AVG(total) AS AverageOrderValue,
-            MAX(created_at) AS LastOrderDate
-        FROM order_summaries
-        WHERE customer_id = @CustomerId
-        """,
-        new { CustomerId = customerId },
-        cancellationToken: ct
+        new CommandDefinition(
+            """
+            SELECT
+                COUNT(*) AS TotalOrders,
+                SUM(total) AS TotalSpent,
+                AVG(total) AS AverageOrderValue,
+                MAX(created_at) AS LastOrderDate
+            FROM order_summaries
+            WHERE customer_id = @CustomerId
+            """,
+            new { CustomerId = customerId },
+            cancellationToken: ct
+        )
     );
 }
 ```

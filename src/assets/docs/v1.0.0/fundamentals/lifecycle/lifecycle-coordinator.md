@@ -1,5 +1,8 @@
 ---
 title: Lifecycle Coordinator
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 11
@@ -12,9 +15,19 @@ codeReferences:
   - src/Whizbang.Core/Lifecycle/ILifecycleCoordinator.cs
   - src/Whizbang.Core/Lifecycle/LifecycleCoordinator.cs
   - src/Whizbang.Core/Lifecycle/ILifecycleTracking.cs
+  - src/Whizbang.Core/Lifecycle/ILifecycleTrackingContext.cs
+  - src/Whizbang.Core/Lifecycle/ILifecyclePerspectiveStageContext.cs
   - src/Whizbang.Core/Lifecycle/LifecycleTrackingState.cs
   - src/Whizbang.Core/Lifecycle/DebugAwareStopwatch.cs
   - src/Whizbang.Core/Lifecycle/StageRecord.cs
+  - src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Lifecycle/LifecycleCoordinatorTests.cs
+  - tests/Whizbang.Core.Tests/Lifecycle/LifecycleCoordinatorSituationTests.cs
+  - tests/Whizbang.Core.Tests/Lifecycle/PostLifecyclePipelineTests.cs
+  - tests/Whizbang.Core.Tests/Lifecycle/DebugAwareStopwatchTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerPostLifecycleTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerPostLifecycleTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -59,15 +72,15 @@ Between entry and exit, the worker advances the event through stages using `Adva
 When a worker calls `tracking.AdvanceToAsync(stage)`, the coordinator:
 1. Updates the current stage on the tracking instance
 2. Resolves `IReceptorInvoker` from the scoped service provider
-3. Invokes all receptors registered at that stage
+3. Invokes all receptors registered at that stage — Detached stages fire-and-forget in their own scope; Inline stages are awaited before returning
 4. Processes all message tags (tags fire at **every** stage as lifecycle observers)
-5. Fires `ImmediateAsync` after the stage completes
+5. Fires `ImmediateDetached` after the stage completes
 
 Because stage transitions go through a single code path, there is no way for a stage to fire twice for the same event.
 
 ### PostLifecycle Guarantee
 
-`PostLifecycleAsync` and `PostLifecycleInline` are special — they are the **final stages** in an event's lifecycle. The coordinator guarantees they fire exactly once per event, at the end of whichever worker is the last to process it:
+`PostLifecycleDetached` and `PostLifecycleInline` are special — they are the **final stages** in an event's lifecycle. The coordinator guarantees they fire exactly once per event, at the end of whichever worker is the last to process it:
 
 | Scenario | Who fires PostLifecycle |
 |----------|----------------------|
@@ -82,13 +95,28 @@ Because stage transitions go through a single code path, there is no way for a s
 
 When an event goes through **multiple processing paths** (e.g., `Route.Both()`), PostLifecycle must fire only after ALL paths complete. The coordinator tracks expected completions:
 
-```
-Route.Both() example:
-  ┌─ Local path: Dispatcher processes → signals "local done"
-  │
-Event ──┤                                                     ──→ WhenAll ──→ PostLifecycle (once)
-  │
-  └─ Distributed path: Outbox → Transport → Inbox → Perspectives → signals "distributed done"
+`Route.Both()` example:
+
+```mermaid
+graph LR
+    E["Event"]
+    LD["Dispatcher processes"]
+    LS["signals &quot;local done&quot;"]
+    O["Outbox"]
+    T["Transport"]
+    I["Inbox"]
+    P["Perspectives"]
+    DS["signals &quot;distributed done&quot;"]
+    W["WhenAll"]
+    PL["PostLifecycle (once)"]
+
+    E -->|"Local path"| LD --> LS --> W
+    E -->|"Distributed path"| O --> T --> I --> P --> DS --> W
+    W --> PL
+
+    style E fill:#fff3cd,stroke:#ffc107
+    style W fill:#d4edda,stroke:#28a745
+    style PL fill:#d4edda,stroke:#28a745
 ```
 
 ### Usage
@@ -122,20 +150,37 @@ await coordinator.SignalSegmentCompleteAsync(
 
 ## Perspective WhenAll
 
-When an event is processed by **multiple perspectives**, `PostAllPerspectivesAsync` must fire only after ALL perspectives complete. The coordinator tracks expected perspective completions per event:
+When an event is processed by **multiple perspectives**, `PostAllPerspectivesDetached` must fire only after ALL perspectives complete. The coordinator tracks expected perspective completions per event:
 
-```
-Event arrives → 5 perspectives registered
-  ├─ PerspectiveA completes → signal "A done" (1/5)
-  ├─ PerspectiveB completes → signal "B done" (2/5)
-  ├─ PerspectiveC completes → signal "C done" (3/5)
-  ├─ PerspectiveD completes → signal "D done" (4/5)
-  └─ PerspectiveE completes → signal "E done" (5/5) → PostAllPerspectivesAsync fires
+```mermaid
+graph TB
+    E["Event arrives → 5 perspectives registered"]
+    PA["PerspectiveA completes → signal &quot;A done&quot; (1/5)"]
+    PB["PerspectiveB completes → signal &quot;B done&quot; (2/5)"]
+    PC["PerspectiveC completes → signal &quot;C done&quot; (3/5)"]
+    PD["PerspectiveD completes → signal &quot;D done&quot; (4/5)"]
+    PE["PerspectiveE completes → signal &quot;E done&quot; (5/5)"]
+    F["PostAllPerspectivesDetached fires"]
+
+    E --> PA
+    E --> PB
+    E --> PC
+    E --> PD
+    E --> PE
+    PE --> F
+
+    style PA fill:#cce5ff,stroke:#004085
+    style PB fill:#cce5ff,stroke:#004085
+    style PC fill:#cce5ff,stroke:#004085
+    style PD fill:#cce5ff,stroke:#004085
+    style PE fill:#cce5ff,stroke:#004085
+    style F fill:#d4edda,stroke:#28a745
 ```
 
 ### Key Behaviors
 
-- **Terminal stages always fire**: `PostAllPerspectivesAsync/Inline` and `PostLifecycleAsync/Inline` fire at the end of every event lifecycle — even when zero perspectives exist. The WhenAll gate controls **timing** (wait for all to complete), not **whether** stages fire.
+- **Terminal stages always fire**: `PostAllPerspectivesDetached/Inline` and `PostLifecycleDetached/Inline` fire at the end of every event lifecycle — even when zero perspectives exist (`AreAllPerspectivesComplete` returns `true` when no expectations are registered). The WhenAll gate controls **timing** (wait for all to complete), not **whether** stages fire.
+- **Short-circuits still signal**: Fast-return paths (cooldown, deduplication, already-processed checks) must still call `SignalPerspectiveComplete` for their perspective — otherwise the WhenAll gate never opens and PostAllPerspectives/PostLifecycle never fire. `SignalPerspectiveComplete` is idempotent, so re-signaling the same perspective is safe.
 - **Cross-batch tracking**: Perspectives may be processed across multiple batch cycles. The coordinator preserves tracking state between batches so the WhenAll gate fires exactly once.
 - **Registry-based expectations**: At startup, `PerspectiveWorker` builds a map from `IPerspectiveRunnerRegistry` (event type → all perspective names). This ensures expectations include ALL perspectives, not just those in the current batch.
 - **Debounce cleanup**: Tracking entries have a sliding inactivity window. Each stage transition and perspective signal resets the timer, preventing premature cleanup while perspectives are still processing.
@@ -155,9 +200,9 @@ coordinator.SignalPerspectiveComplete(eventId, "PerspectiveC");
 // Check gate
 if (coordinator.AreAllPerspectivesComplete(eventId)) {
   // Fire PostAllPerspectives + PostLifecycle
-  await tracking.AdvanceToAsync(LifecycleStage.PostAllPerspectivesAsync, sp, ct);
+  await tracking.AdvanceToAsync(LifecycleStage.PostAllPerspectivesDetached, sp, ct);
   await tracking.AdvanceToAsync(LifecycleStage.PostAllPerspectivesInline, sp, ct);
-  await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleAsync, sp, ct);
+  await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleDetached, sp, ct);
   await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleInline, sp, ct);
 }
 ```
@@ -191,6 +236,8 @@ The coordinator emits OTel metrics via `LifecycleCoordinatorMetrics` (meter: `Wh
 | `whizbang.lifecycle_coordinator.post_lifecycle_fired` | Counter | PostLifecycle stage executions |
 | `whizbang.lifecycle_coordinator.stage_transitions` | Counter | Stage transitions (tag: `stage`) |
 | `whizbang.lifecycle_coordinator.stale_tracking_cleaned` | Counter | Stale tracking entries cleaned by inactivity threshold |
+| `whizbang.lifecycle_coordinator.post_lifecycle_errors` | Counter | PostLifecycle stage errors that were isolated (per-event error isolation) |
+| `whizbang.lifecycle_coordinator.stale_tracking_preserved_partial_perspectives` | Counter | Stale entries preserved because perspectives were partially complete |
 
 :::new
 Lifecycle coordinator metrics are automatically registered via `AddWhizbang()`.
@@ -246,8 +293,11 @@ public interface ILifecycleTracking {
   LifecycleStage CurrentStage { get; }
   bool IsComplete { get; }
 
-  // Advance to the next stage — invokes receptors, tags, ImmediateAsync
+  // Advance to the next stage — invokes receptors, tags, then ImmediateDetached
   ValueTask AdvanceToAsync(LifecycleStage stage, IServiceProvider scopedProvider, CancellationToken ct);
+
+  // Wait for in-flight detached tasks (graceful shutdown / testing)
+  ValueTask DrainDetachedAsync();
 
   // Batch advancement for game-loop workers
   static ValueTask AdvanceBatchAsync(
@@ -309,7 +359,7 @@ public class PerformanceMonitorReceptor : IReceptor<IEvent> {
     }
 
     // Register a dynamic hook for a later stage
-    _tracking.OnStage(LifecycleStage.PostLifecycleAsync, async (ctx, token) => {
+    _tracking.OnStage(LifecycleStage.PostLifecycleDetached, async (ctx, token) => {
       Console.WriteLine($"Total lifecycle time: {ctx.TotalElapsed}");
     });
 
@@ -369,7 +419,7 @@ public class PerspectiveAuditReceptor : IReceptor<IEvent> {
 // ENTRY: Begin tracking for each unique event in the batch
 foreach (var (eventId, (envelope, streamId)) in batchProcessedEvents) {
   coordinator.BeginTracking(eventId, envelope,
-    LifecycleStage.PrePerspectiveAsync, MessageSource.Local, streamId);
+    LifecycleStage.PrePerspectiveDetached, MessageSource.Local, streamId);
 }
 
 // Advance all events through stages together (game loop)
@@ -378,7 +428,7 @@ foreach (var (eventId, (envelope, streamId)) in batchProcessedEvents) {
 // PostLifecycle: once per event (final stage)
 foreach (var (eventId, (envelope, streamId)) in batchProcessedEvents) {
   var tracking = coordinator.GetTracking(eventId)!;
-  await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleAsync, scopedProvider, ct);
+  await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleDetached, scopedProvider, ct);
   await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleInline, scopedProvider, ct);
   coordinator.AbandonTracking(eventId);  // EXIT: processing complete
 }
@@ -389,10 +439,10 @@ foreach (var (eventId, (envelope, streamId)) in batchProcessedEvents) {
 ```csharp{title="Dispatcher Integration" description="Independent lifecycle for local dispatch" category="Architecture" difficulty="INTERMEDIATE" tags=["Lifecycle", "Dispatcher", "Local"]}
 // ENTRY: Begin tracking
 var tracking = coordinator.BeginTracking(
-  messageId, envelope, LifecycleStage.PostLifecycleAsync, MessageSource.Local);
+  messageId, envelope, LifecycleStage.PostLifecycleDetached, MessageSource.Local);
 
 // Fire PostLifecycle
-await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleAsync, scopedProvider, ct);
+await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleDetached, scopedProvider, ct);
 await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleInline, scopedProvider, ct);
 
 // EXIT: processing complete
@@ -436,7 +486,7 @@ services.AddWhizbang(options => {
 
 ## Related Topics
 
-- [Lifecycle Stages](lifecycle-stages.md) - All 22 lifecycle stages reference
+- [Lifecycle Stages](lifecycle-stages.md) - All 24 lifecycle stages reference
 - [Lifecycle Receptors](../receptors/lifecycle-receptors.md) - `[FireAt]` attribute and `ILifecycleContext`
 - [Testing: Lifecycle Synchronization](../../operations/testing/lifecycle-synchronization.md) - Test patterns with lifecycle hooks
 - [Message Tags](../messages/message-tags.md) - Tags fire at every stage as lifecycle observers

@@ -1,5 +1,8 @@
 ---
 title: 'WHIZ802: VectorField Invalid Dimensions'
+pageType: troubleshooting
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   Error diagnostic when a [VectorField] attribute has invalid dimensions value
 version: 1.0.0
@@ -27,10 +30,14 @@ lastMaintainedCommit: '01f07906'
 
 This error occurs when a `[VectorField]` attribute is applied with an invalid dimensions value. The dimensions parameter must be a positive integer representing the number of elements in the vector.
 
+:::updated
+As shipped, the `WHIZ802` descriptor is defined in `DiagnosticDescriptors.cs` but the compile-time dimensions check is not yet wired into the schema generator. An invalid dimensions value currently surfaces when the generated DDL is applied: the generator emits the value verbatim into the column type (e.g. `vector(0)`), which PostgreSQL rejects because pgvector requires dimensions greater than zero. Fix the attribute value as shown below either way.
+:::
+
 ## Diagnostic Message
 
 ```
-[VectorField] on 'ProductDto.Embedding' has invalid dimensions -1. Dimensions must be a positive integer.
+[VectorField] on ProductDto.Embedding has invalid dimensions -1. Dimensions must be a positive integer.
 ```
 
 ## Common Causes

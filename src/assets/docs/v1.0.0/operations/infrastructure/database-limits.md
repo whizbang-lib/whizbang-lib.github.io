@@ -1,5 +1,8 @@
 ---
 title: Database Identifier Limits
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Infrastructure
 order: 7
@@ -13,6 +16,12 @@ codeReferences:
   - src/Whizbang.Generators.Shared/Limits/IDbProviderLimits.cs
   - src/Whizbang.Generators.Shared/Utilities/IdentifierValidation.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/Limits/PostgresLimits.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/Utilities/IdentifierValidationTests.cs
+  - tests/Whizbang.Generators.Tests/Limits/PostgresLimitsTests.cs
+  - >-
+    tests/Whizbang.Generators.Tests/EFCorePerspectiveConfigurationGeneratorDiagnosticsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -64,6 +73,9 @@ public sealed class PostgresLimits : IDbProviderLimits {
   public int MaxColumnNameBytes => MAX_IDENTIFIER_BYTES;  // 63 bytes
   public int MaxIndexNameBytes => MAX_IDENTIFIER_BYTES;   // 63 bytes
   public string ProviderName => "PostgreSQL";
+
+  public static PostgresLimits Instance { get; } = new();
+  private PostgresLimits() { }
 }
 ```
 
@@ -127,18 +139,25 @@ error = IdentifierValidation.ValidateColumnName("my_column_name", limits);
 error = IdentifierValidation.ValidateIndexName("ix_my_table_my_column", limits);
 
 // Boolean helpers for quick checks
-bool isValid = IdentifierValidation.IsTableNameValid("orders", limits);     // true
-bool isValid = IdentifierValidation.IsColumnNameValid("order_id", limits);  // true
-bool isValid = IdentifierValidation.IsIndexNameValid("ix_orders_id", limits); // true
+bool tableOk = IdentifierValidation.IsTableNameValid("orders", limits);      // true
+bool columnOk = IdentifierValidation.IsColumnNameValid("order_id", limits);  // true
+bool indexOk = IdentifierValidation.IsIndexNameValid("ix_orders_id", limits); // true
 ```
 
 ### Source Generator Integration
 
 Whizbang's EF Core source generators call `IdentifierValidation` during code generation. When a generated identifier exceeds the provider limit, the generator emits a compile-time error diagnostic:
 
+| Diagnostic | Meaning |
+|-----------|---------|
+| `WHIZ820` | Table name exceeds database limit |
+| `WHIZ821` | Column name exceeds database limit |
+| `WHIZ822` | Index name exceeds database limit (pattern `ix_{table}_{column}`) |
+
 ```
-error WHIZ0XX: Table name 'perspective_row_very_long_aggregate_name_with_extra_context'
-is 62 bytes, exceeding PostgreSQL limit of 63 bytes
+error WHIZ820: Perspective model 'CustomerOrderFulfillmentStatusHistoryProjectionView' generates
+table name 'wh_per_customer_order_fulfillment_status_history_projection_view' (64 bytes) which
+exceeds PostgreSQL limit of 63 bytes. Shorten the model name or configure suffix stripping.
 ```
 
 This means you see the error in your IDE immediately, not when running migrations.
@@ -155,11 +174,11 @@ Perspective table names are derived from the model type name. Long model names c
 // Model type name is long
 public class CustomerOrderFulfillmentStatusView { }
 
-// Generated table name may be:
-// "perspective_row_customer_order_fulfillment_status_view"
-// = 55 bytes (within 63-byte PostgreSQL limit)
+// Generated table name (wh_per_ prefix + snake_case model name):
+// "wh_per_customer_order_fulfillment_status_view"
+// = 45 bytes (within 63-byte PostgreSQL limit)
 
-// But with a prefix or schema, it could exceed the limit
+// A longer model name can push the generated name past 63 bytes
 ```
 
 ### Generated Index Names
@@ -167,12 +186,12 @@ public class CustomerOrderFulfillmentStatusView { }
 Composite index names combine table and column names, which can easily exceed limits:
 
 ```csharp{title="Generated Index Names" description="Composite index names may exceed identifier limits" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Index", "Names"]}
-// Index name pattern: ix_{table}_{column1}_{column2}
-// Example: ix_perspective_row_order_view_customer_id_order_date
-// = 53 bytes (within limit)
+// Index name pattern for indexed physical fields: ix_{table}_{column}
+// Example: ix_wh_per_order_view_customer_id
+// = 32 bytes (within limit)
 
 // Long names can exceed:
-// ix_perspective_row_customer_fulfillment_status_view_customer_id
+// ix_wh_per_customer_fulfillment_status_view_customer_reference_id
 // = 64 bytes (exceeds 63-byte PostgreSQL limit!)
 ```
 

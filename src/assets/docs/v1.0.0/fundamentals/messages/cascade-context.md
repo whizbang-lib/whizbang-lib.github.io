@@ -1,5 +1,8 @@
 ---
 title: Cascade Context & Security Propagation
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 6
@@ -15,9 +18,21 @@ codeReferences:
   - src/Whizbang.Core/Security/IScopeContextAccessor.cs
   - src/Whizbang.Core/Security/ScopeContextAccessor.cs
   - src/Whizbang.Core/Security/ScopedMessageContext.cs
+  - src/Whizbang.Core/Security/SecurityContextHelper.cs
+  - src/Whizbang.Core/Messaging/ReceptorInvoker.cs
+  - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
+  - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/IMessageContext.cs
   - src/Whizbang.Core/MessageContext.cs
-lastMaintainedCommit: '01f07906'
+testReferences:
+  - tests/Whizbang.Observability.Tests/CascadeContextTests.cs
+  - tests/Whizbang.Observability.Tests/CascadeContextFactoryTests.cs
+  - tests/Whizbang.Core.Tests/Security/ScopeContextAccessorTests.cs
+  - tests/Whizbang.Core.Tests/Security/ScopeContextAccessorInitiatingContextTests.cs
+  - tests/Whizbang.Core.Tests/Security/ScopedMessageContextTests.cs
+  - tests/Whizbang.Core.Tests/Security/SecurityContextHelperTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxCascadeIdentityPersistenceIntegrationTests.cs
+lastMaintainedCommit: '1fe307a4'
 ---
 
 # Cascade Context & Security Propagation
@@ -26,36 +41,22 @@ When a message produces child messages, **CascadeContext** carries everything th
 
 ## How It Fits Together
 
-```
-                   Incoming Envelope
-                         |
-                         v
-               ┌─────────────────────┐
-               │ CascadeContextFactory│
-               │  .FromEnvelope()    │
-               └────────┬────────────┘
-                        |
-                        v
-               ┌─────────────────────┐
-               │   CascadeContext     │
-               │ CorrelationId       │
-               │ CausationId         │
-               │ SecurityContext      │
-               │ Metadata            │
-               └────────┬────────────┘
-                        |
-            ┌───────────┼───────────┐
-            v           v           v
-      ICascadeContextEnricher (1..N)
-            |           |           |
-            v           v           v
-       Enriched CascadeContext
-                        |
-                        v
-         MessageContext.Create(cascade)
-                        |
-                        v
-              Child Message Envelope
+```mermaid
+graph TB
+    IE["Incoming Envelope"]
+    F["CascadeContextFactory<br/>.FromEnvelope()"]
+    CC["CascadeContext<br/>CorrelationId<br/>CausationId<br/>SecurityContext<br/>Metadata"]
+    EN["ICascadeContextEnricher (1..N)"]
+    EC["Enriched CascadeContext"]
+    MC["MessageContext.Create(cascade)"]
+    CE["Child Message Envelope"]
+
+    IE --> F --> CC --> EN --> EC --> MC --> CE
+
+    style IE fill:#fff3cd,stroke:#ffc107
+    style CE fill:#fff3cd,stroke:#ffc107
+    style CC fill:#d4edda,stroke:#28a745
+    style EC fill:#d4edda,stroke:#28a745
 ```
 
 ---
@@ -261,7 +262,7 @@ public interface IMessageContext {
 }
 ```
 
-This is critical for deferred lifecycle stages (like `PostPerspectiveAsync`) where the original HTTP context is no longer available. The scope context persists because the message carries it.
+This is critical for deferred lifecycle stages (like `PostPerspectiveDetached`) where the original HTTP context is no longer available. The scope context persists because the message carries it.
 
 ---
 
@@ -317,6 +318,34 @@ public sealed class ScopeContextAccessor : IScopeContextAccessor {
 
 This ensures that when security infrastructure explicitly sets an `ImmutableScopeContext` with propagation enabled, it takes precedence.
 
+### Correlation Propagation — One Resolver {#correlation-propagation}
+
+Correlation and causation must flow **unchanged** down a whole causal tree: an inbound command, every event it produces, every event *those* events produce, and so on, all share **one** correlation id, while causation links each message to its immediate parent. Whizbang decides this in exactly **two** places — a matched pair — so the rule lives in one spot instead of being re-implemented at every context-establishment site:
+
+| Resolver | Side | Used when |
+|----------|------|-----------|
+| `CascadeContext.ResolveCascadeIdentity(sourceEnvelope)` | **publish** | stamping the hop of an event being *emitted* (outbox / event-store writers) |
+| `CascadeContext.ResolveInheritedIdentity(sourceEnvelope)` | **handle** | establishing the message context of a message being *processed* (transport workers, the local cascade, the receptor invoker, the perspective worker, composite fan-out) |
+
+`ResolveInheritedIdentity` applies a fixed priority:
+
+1. **The message's own envelope hop** — an inbound message carries its authoritative correlation/causation.
+2. **The ambient parent message context** — a *locally-cascaded* message has no envelope, so it inherits from the receptor whose handler emitted it. This branch also **rescues** an inbound message whose hop somehow lost its correlation, so a dropped hop can never silently fork a fresh correlation tree (defence in depth).
+3. **A fresh root** — only when there is genuinely no parent (a true entry point), aligned to the ambient OpenTelemetry trace.
+
+```csharp{title="ResolveInheritedIdentity" description="The single handle-side correlation resolver" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "Correlation", "Cascade"]}
+// Every message-context establishment site routes through this — never re-implement the rule inline.
+var (correlation, causation) = CascadeContext.ResolveInheritedIdentity(envelope);
+var messageContext = new MessageContext {
+    MessageId = envelope.MessageId,
+    CorrelationId = correlation,   // hop -> ambient parent (rescue) -> fresh root
+    CausationId = causation,
+    // ... scope, user, tenant ...
+};
+```
+
+> **Why one resolver?** Correlation resolution used to be copy-pasted (`envelope.GetCorrelationId() ?? CorrelationId.New()`) across every establishment site. Each copy independently decided what to do when the correlation was missing, and one site at a time drifted into minting a *fresh* correlation — which orphaned everything downstream (for example, a saga-trigger's event and its completion notification) onto a brand-new tree. Routing every site through `ResolveInheritedIdentity` means there is a **single place** to get this right, and the ambient-parent rescue removes the silent-fresh failure mode entirely.
+
 ---
 
 ## Pointer Properties {#pointer-properties}
@@ -347,7 +376,7 @@ If `InitiatingContext` changes (e.g., a new message enters the processing scope)
 | 2 | `IScopeContext.Scope` | Populated from envelope hop SecurityContext |
 | 3 | `IMessageContextAccessor.Current` | Backward-compatibility fallback |
 
-This ensures tenant context is always available, even in deferred lifecycle stages like `PostPerspectiveAsync` where the original HTTP context is gone.
+This ensures tenant context is always available, even in deferred lifecycle stages like `PostPerspectiveDetached` where the original HTTP context is gone.
 
 ---
 
@@ -387,28 +416,18 @@ var childContext = MessageContext.Create(cascade);
 
 Here is how cascade context flows through a complete message lifecycle:
 
-```
-1. HTTP Request arrives
-   └─ ScopeContextAccessor.Current = IScopeContext (from claims)
-   └─ ScopeContextAccessor.InitiatingContext = IMessageContext
+```mermaid
+graph TB
+    S1["1. HTTP Request arrives<br/>ScopeContextAccessor.Current = IScopeContext (from claims)<br/>ScopeContextAccessor.InitiatingContext = IMessageContext"]
+    S2["2. Controller dispatches command<br/>CascadeContextFactory.NewRoot()<br/>Enrichers add metadata<br/>CascadeContext { CorrelationId, CausationId, SecurityContext }"]
+    S3["3. Receptor processes command, emits event<br/>CascadeContextFactory.FromMessageContext(messageContext)<br/>Event gets new MessageId, inherits CorrelationId<br/>CausationId = command's MessageId"]
+    S4["4. Event published to outbox → Service Bus<br/>Envelope carries SecurityContext in hops"]
+    S5["5. Worker receives event<br/>CascadeContextFactory.FromEnvelope(envelope)<br/>Ambient security restored from envelope hops<br/>Child messages inherit full context chain"]
 
-2. Controller dispatches command
-   └─ CascadeContextFactory.NewRoot()
-   └─ Enrichers add metadata
-   └─ CascadeContext { CorrelationId, CausationId, SecurityContext }
+    S1 --> S2 --> S3 --> S4 --> S5
 
-3. Receptor processes command, emits event
-   └─ CascadeContextFactory.FromMessageContext(messageContext)
-   └─ Event gets new MessageId, inherits CorrelationId
-   └─ CausationId = command's MessageId
-
-4. Event published to outbox → Service Bus
-   └─ Envelope carries SecurityContext in hops
-
-5. Worker receives event
-   └─ CascadeContextFactory.FromEnvelope(envelope)
-   └─ Ambient security restored from envelope hops
-   └─ Child messages inherit full context chain
+    style S3 fill:#d4edda,stroke:#28a745
+    style S4 fill:#fff3cd,stroke:#ffc107
 ```
 
 ---

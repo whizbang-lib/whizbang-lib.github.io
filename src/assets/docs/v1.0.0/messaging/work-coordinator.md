@@ -1,166 +1,184 @@
 ---
 title: Work Coordinator
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Messaging
 order: 3
 description: >-
-  Master the Work Coordinator - atomic batch processing for Outbox, Inbox, and
-  event store tracking with lease-based coordination
+  Master the Work Coordinator - focused claim, store, commit, and completion
+  operations for Outbox, Inbox, and perspective tracking with lease-based
+  coordination
 tags: >-
   work-coordinator, atomic-operations, batch-processing,
-  distributed-coordination, lease-management
+  distributed-coordination, lease-management, claim-work
 codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Core/Messaging/ClaimWorkRequest.cs
+  - src/Whizbang.Core/Messaging/HeartbeatRequest.cs
+  - src/Whizbang.Core/Messaging/HandlerCommitRequest.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreClaimWorkTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreCommitHandlerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreRecordHeartbeatTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CompleteOutboxPublishedSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CommitHandlerBatchSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/FlushCompletionsSqlTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Work Coordinator
 
-The **Work Coordinator** (`IWorkCoordinator`) is Whizbang's atomic batch processing engine. It handles Outbox, Inbox, and event store tracking in a single database transaction with lease-based coordination for distributed work.
+The **Work Coordinator** (`IWorkCoordinator`) is Whizbang's database coordination surface. It exposes a set of **focused, single-purpose operations** — claiming, storing, completing, failing, lease renewal, heartbeating — each backed by its own PostgreSQL function and called by a dedicated background worker.
 
 > **This page is the API reference.** For conceptual architecture (lease-based coordination, virtual partition distribution, stream ordering guarantees), see [Work Coordination](work-coordination.md).
 
+:::updated
+The legacy `ProcessWorkBatchAsync` mega-call was decomposed into the focused methods below; the `process_work_batch` SQL orchestrator was dropped (migration `029_ProcessWorkBatch.sql`). `ProcessWorkBatchAsync` remains on the interface as a compatibility shim that returns an empty `WorkBatch`.
+:::
+
 ## Overview
 
-The Work Coordinator solves a critical problem: **How do you atomically coordinate multiple operations** (mark messages complete, store new events, claim work) across distributed workers?
+The Work Coordinator solves a critical problem: **How do you reliably coordinate distributed message processing** (claim work exclusively, commit handler results atomically, recover from crashes) across service instances?
 
 ### What It Coordinates
 
-```
-┌─────────────────────────────────────────────────────┐
-│ Single Atomic Database Transaction                  │
-│                                                     │
-│ 1. Delete completed outbox messages                │
-│ 2. Update failed outbox messages (retry counts)    │
-│ 3. Insert new outbox messages                      │
-│ 4. Delete completed inbox messages                 │
-│ 5. Update failed inbox messages                    │
-│ 6. Insert new inbox messages                       │
-│ 7. Update receptor processing records              │
-│ 8. Update perspective checkpoint records           │
-│ 9. Claim new outbox/inbox work (via leasing)       │
-│ 10. Return claimed work to caller                   │
-│                                                     │
-└─────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Ops["Focused Coordinator Operations (each atomic in its own call)"]
+        Claim["ClaimWorkAsync — lease orphaned/unowned work, return stream ids"]
+        Store["StoreOutboxMessagesAsync / StoreInboxMessagesAsync — persist new messages"]
+        Fetch["FetchOutboxBatchAsync / FetchInboxBatchAsync — pull leased bodies per stream"]
+        Commit["CommitHandlerBatchAsync — inbox completion + emitted messages, SAVEPOINT per handler"]
+        Complete["CompleteOutboxPublishedAsync / CompletePerspectiveAsync — batched completions"]
+        Fail["ReportFailuresAsync — batched failure reporting per category"]
+        Lease["RenewLeasesAsync — extend leases for in-flight work"]
+        Heart["RecordHeartbeatAsync / DeregisterInstanceAsync — instance lifecycle"]
+    end
+
+    class Claim layer-event
 ```
 
-**Key Insight**: All operations **succeed together or fail together** (atomicity via database transaction).
+**Key Insight**: Each operation is atomic on its own, and the handler-commit path bundles an inbox completion **plus** any messages the handler emitted into one transaction — the critical succeed-together/fail-together boundary.
 
 ---
 
 ## IWorkCoordinator Interface
 
+The core methods (each has a corresponding SQL function and a dedicated calling worker):
+
 ```csharp{title="IWorkCoordinator Interface" description="IWorkCoordinator Interface" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "IWorkCoordinator", "Interface"]}
 public interface IWorkCoordinator {
-    Task<WorkBatch> ProcessWorkBatchAsync(
-        ProcessWorkBatchRequest request,
-        CancellationToken cancellationToken = default
-    );
+    // Claim loop (called only by ClaimWorker)
+    Task<WorkBatch> ClaimWorkAsync(
+        ClaimWorkRequest request, CancellationToken cancellationToken = default);
+
+    // Instance lifecycle
+    Task RecordHeartbeatAsync(
+        HeartbeatRequest request, CancellationToken cancellationToken = default);
+    Task DeregisterInstanceAsync(
+        Guid instanceId, CancellationToken cancellationToken = default);
+
+    // Message storage
+    Task StoreOutboxMessagesAsync(
+        OutboxMessage[] messages, int partitionCount,
+        CancellationToken cancellationToken = default);
+    Task StoreInboxMessagesAsync(
+        InboxMessage[] messages, int partitionCount,
+        CancellationToken cancellationToken = default);
+
+    // Per-stream body fetch (called by drain workers)
+    Task<IReadOnlyList<OutboxBatchRow>> FetchOutboxBatchAsync(
+        IReadOnlyList<Guid> streamIds, Guid instanceId,
+        int maxPerStream = 100, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<InboxBatchRow>> FetchInboxBatchAsync(
+        IReadOnlyList<Guid> streamIds, Guid instanceId,
+        int maxPerStream = 100, CancellationToken cancellationToken = default);
+
+    // Handler commit (inbox completion + emitted messages, atomic)
+    Task CommitHandlerResultAsync(
+        HandlerCommitRequest request, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<HandlerBatchResult>> CommitHandlerBatchAsync(
+        IReadOnlyList<HandlerCommitRequest> requests, CancellationToken cancellationToken = default);
+
+    // Batched completions / failures / lease renewal
+    Task<int> CompleteOutboxPublishedAsync(
+        IReadOnlyList<Guid> ids, CancellationToken cancellationToken = default);
+    Task CompletePerspectiveAsync(
+        IReadOnlyList<PerspectiveCursorCompletion> cursors,
+        IReadOnlyList<Guid> eventWorkIds, CancellationToken cancellationToken = default);
+    Task ReportFailuresAsync(
+        WorkCategory category, IReadOnlyList<MessageFailure> failures,
+        CancellationToken cancellationToken = default);
+    Task<int> RenewLeasesAsync(
+        WorkCategory category, IReadOnlyList<Guid> ids,
+        int leaseSeconds = 300, CancellationToken cancellationToken = default);
+
+    // Scheduled retries + observability
+    Task<int> NotifyScheduledRetryDueAsync(CancellationToken cancellationToken = default);
+    Task<WorkCoordinatorStatistics> GatherStatisticsAsync(CancellationToken cancellationToken = default);
 }
 ```
 
-**Parameter Object**:
-```csharp{title="ProcessWorkBatchRequest" description="Parameter object for ProcessWorkBatchAsync" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "IWorkCoordinator", "Request"]}
-public sealed record ProcessWorkBatchRequest {
-    // Instance info
-    public required Guid InstanceId { get; init; }
-    public required string ServiceName { get; init; }
-    public required string HostName { get; init; }
-    public required int ProcessId { get; init; }
-    public Dictionary<string, JsonElement>? Metadata { get; init; }
+**Claim Parameter Object**:
+```csharp{title="ClaimWorkRequest" description="Parameter object for ClaimWorkAsync" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "IWorkCoordinator", "Request"]}
+public sealed record ClaimWorkRequest(
+    Guid InstanceId,        // Calling service instance
+    string ServiceName,     // Service name (diagnostics)
+    string HostName,        // Pod / host name (diagnostics)
+    int ProcessId,          // OS process id (diagnostics)
+    int MaxStreams = 1000,      // Cap on rows returned per call
+    int PartitionCount = 10000, // Modulo partition count
+    int LeaseSeconds = 300);    // Lease duration for claimed work
 
-    // Outbox completions and failures
-    public required MessageCompletion[] OutboxCompletions { get; init; }
-    public required MessageFailure[] OutboxFailures { get; init; }
-
-    // Inbox completions and failures
-    public required MessageCompletion[] InboxCompletions { get; init; }
-    public required MessageFailure[] InboxFailures { get; init; }
-
-    // Event store tracking - Receptors
-    public required ReceptorProcessingCompletion[] ReceptorCompletions { get; init; }
-    public required ReceptorProcessingFailure[] ReceptorFailures { get; init; }
-
-    // Event store tracking - Perspectives
-    public required PerspectiveCursorCompletion[] PerspectiveCompletions { get; init; }
-    public required PerspectiveCursorFailure[] PerspectiveFailures { get; init; }
-
-    // New work to store
-    public required OutboxMessage[] NewOutboxMessages { get; init; }
-    public required InboxMessage[] NewInboxMessages { get; init; }
-
-    // Lease renewals
-    public required Guid[] RenewOutboxLeaseIds { get; init; }
-    public required Guid[] RenewInboxLeaseIds { get; init; }
-
-    // Configuration
-    public WorkBatchOptions Flags { get; init; } = WorkBatchOptions.None;
-    public int PartitionCount { get; init; } = 10_000;
-    public int LeaseSeconds { get; init; } = 300;
-    public int StaleThresholdSeconds { get; init; } = 600;
-}
+public sealed record HeartbeatRequest(
+    Guid InstanceId,
+    string ServiceName,
+    string HostName,
+    int ProcessId,
+    JsonElement? Metadata = null);
 ```
 
 ---
 
 ## Core Concepts
 
-### Atomic Batch Processing
+### Atomic Handler Commit
 
-**Pattern**: Submit **all changes** in one call, get **all results** atomically.
+**Pattern**: A handler's inbox completion and everything it emitted commit **together or not at all**.
 
-```csharp{title="Atomic Batch Processing" description="Pattern: Submit all changes in one call, get all results atomically." category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Atomic", "Batch", "Processing"]}
-// Example: Order created, publish event, claim new work
-var batch = await _coordinator.ProcessWorkBatchAsync(
-    instanceId: workerInstanceId,
-    serviceName: "OrderService",
-    hostName: Environment.MachineName,
-    processId: Environment.ProcessId,
-    metadata: null,
-
-    // No completions/failures this time
-    outboxCompletions: [],
-    outboxFailures: [],
-    inboxCompletions: [],
-    inboxFailures: [],
-
-    // Event store tracking
-    receptorCompletions: [],
-    receptorFailures: [],
-    perspectiveCompletions: [],
-    perspectiveFailures: [],
-
-    // Store new OrderCreated event in outbox
-    newOutboxMessages: [
-        new OutboxMessage(
-            MessageId: Guid.CreateVersion7(),
-            CorrelationId: correlationId,
-            CausationId: causationId,
-            MessageType: "OrderCreated",
-            Payload: JsonSerializer.Serialize(orderCreated),
-            Topic: "orders",
-            StreamKey: customerId.ToString(),
-            PartitionKey: customerId.ToString()
+```csharp{title="Atomic Handler Commit" description="Pattern: A handler's inbox completion and its emitted messages commit atomically." category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Atomic", "Batch", "Processing"]}
+// InboxHandlerWorker batches handler results and commits them in one round-trip
+var results = await _coordinator.CommitHandlerBatchAsync(
+    [
+        new HandlerCommitRequest(
+            HandlerId: handlerId,
+            InstanceId: instanceId,
+            ServiceName: "OrderService",
+            HostName: Environment.MachineName,
+            ProcessId: Environment.ProcessId,
+            PartitionCount: 10_000,
+            InboxCompletion: new HandlerInboxCompletion(inboxMessageId, status),
+            NewOutboxMessages: emittedOutboxMessages,  // events the handler produced
+            NewInboxMessages: null
         )
     ],
-    newInboxMessages: [],
-
-    // No renewals
-    renewOutboxLeaseIds: [],
-    renewInboxLeaseIds: [],
-
-    ct: cancellationToken
+    cancellationToken
 );
 
-// batch.ClaimedOutboxMessages = newly claimed work ready to publish
+// One row per request: per-handler success/failure via SAVEPOINT isolation
+foreach (var result in results) {
+    if (!result.Success) { /* result.ErrorMessage */ }
+}
 ```
 
 **Result**:
-1. OrderCreated event stored in outbox
-2. New outbox messages claimed for this worker
-3. **All atomic** - if database commit fails, nothing happens
+1. Inbox message marked complete AND emitted events stored in outbox — one transaction
+2. N handler results commit in one round-trip with a single fsync
+3. A failing handler rolls back **only its own** SAVEPOINT; sibling handlers are unaffected
 
 ### Lease-Based Coordination
 
@@ -186,427 +204,251 @@ WHERE message_id IN (...)
 
 **Problem**: How do you distribute work evenly across workers?
 
-**Solution**: **Consistent hashing** via `partition_number`.
+**Solution**: **Consistent hashing** via `partition_number` (computed database-side by `compute_partition`).
 
-```csharp{title="Partition-Based Distribution" description="Solution: Consistent hashing via partition_number." category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Partition-Based", "Distribution"]}
-// Each message gets a partition number (0-9999)
-var partitionNumber = Math.Abs(customerId.GetHashCode()) % 10000;
+```sql{title="Partition-Based Distribution" description="Solution: Consistent hashing via partition_number." category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Partition-Based", "Distribution"]}
+-- Each message gets a partition number (0-9999) from its stream_id
+partition_number := abs(hashtext(stream_id::TEXT)) % partition_count;
 
-// Worker A might handle partitions 0-999
-// Worker B might handle partitions 1000-1999
-// Worker C might handle partitions 2000-2999
-// etc.
+-- Unowned work is claimable by the instance whose rank matches:
+--   partition_number % active_instance_count = instance_rank
 ```
 
 **Benefits**:
-- ✅ **Even distribution**: Hash function spreads messages evenly
-- ✅ **Deterministic**: Same customer always maps to same partition
-- ✅ **Scalable**: Add more workers, redistribute partitions
+- ✅ **Even distribution**: Hash function spreads streams evenly
+- ✅ **Deterministic**: Same stream always maps to same partition
+- ✅ **Scalable**: Add more workers, unowned partitions redistribute via the modulo formula
 
 ---
 
-## Parameters Explained
+## Supporting Types
 
-### Instance Information
+### Work Batch (Claim Result)
 
-```csharp{title="Instance Information" description="Instance Information" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Instance", "Information"]}
-Guid instanceId,          // Unique ID for this worker instance
-string serviceName,       // Name of service ("OrderService")
-string hostName,          // Machine name (Environment.MachineName)
-int processId,            // Process ID (Environment.ProcessId)
-Dictionary<string, JsonElement>? metadata,  // Optional metadata
-```
+```csharp{title="WorkBatch" description="Result of ClaimWorkAsync" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "WorkBatch"]}
+public record WorkBatch {
+    public required List<OutboxWork> OutboxWork { get; init; }
+    public required List<InboxWork> InboxWork { get; init; }
+    public required List<PerspectiveWork> PerspectiveWork { get; init; }
 
-**Usage**: Identifies which worker is processing messages (for observability and debugging).
-
-### Message Completions
-
-```csharp{title="Message Completions" description="Message Completions" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Message", "Completions"]}
-MessageCompletion[] outboxCompletions,
-MessageCompletion[] inboxCompletions,
-
-public record MessageCompletion(
-    Guid MessageId,
-    MessageProcessingStatus Status
-);
-
-public enum MessageProcessingStatus {
-    Stored = 1,
-    Published = 2,
-    Completed = 4,
-    Failed = 8
+    // Per-stream-drain projections: claim_work returns stream ids only;
+    // drain workers fetch bodies via FetchOutboxBatchAsync / FetchInboxBatchAsync
+    public List<Guid> OutboxStreamIds { get; init; } = [];
+    public List<Guid> InboxStreamIds { get; init; } = [];
+    public List<Guid> PerspectiveStreamIds { get; init; } = [];
 }
 ```
 
-**Usage**: Mark messages as successfully processed (delete from outbox/inbox).
+### Completions and Failures
 
-### Message Failures
+```csharp{title="Completions and Failures" description="Completion and failure records" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Message", "Completions"]}
+public record MessageCompletion {
+    public required Guid MessageId { get; init; }
+    public required MessageProcessingStatus Status { get; init; }
+}
 
-```csharp{title="Message Failures" description="Message Failures" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Message", "Failures"]}
-MessageFailure[] outboxFailures,
-MessageFailure[] inboxFailures,
+public record MessageFailure {
+    public required Guid MessageId { get; init; }
+    public required MessageProcessingStatus CompletedStatus { get; init; }
+    public required string Error { get; init; }
+    public MessageFailureReason Reason { get; init; } = MessageFailureReason.Unknown;
+}
 
-public record MessageFailure(
-    Guid MessageId,
-    MessageProcessingStatus Status,
-    string Error,
-    string? StackTrace = null
-);
+[Flags]
+public enum MessageProcessingStatus {
+    None = 0,
+    Stored = 1 << 0,        // Row persisted
+    EventStored = 1 << 1,   // Event appended to event store
+    Published = 1 << 2,     // Transport publish succeeded
+    // Bits 3-14 reserved for future pipeline stages
+    Failed = 1 << 15
+}
+
+public enum WorkCategory { Outbox, Inbox, PerspectiveEvent }
 ```
 
-**Usage**: Mark messages as failed (increment retry count, update error).
+**Usage**: `ReportFailuresAsync` increments retry counters and stamps `error`/`failure_reason`; completion methods delete rows (production) or stamp them (debug mode).
 
-### Event Store Tracking - Receptors
+### Perspective Cursor Completion
 
-```csharp{title="Event Store Tracking - Receptors" description="Event Store Tracking - Receptors" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Event", "Store", "Tracking"]}
-ReceptorProcessingCompletion[] receptorCompletions,
-ReceptorProcessingFailure[] receptorFailures,
-
-public record ReceptorProcessingCompletion(
-    Guid EventId,
-    string ReceptorName,
-    ReceptorProcessingStatus Status
-);
-
-public record ReceptorProcessingFailure(
-    Guid EventId,
-    string ReceptorName,
-    ReceptorProcessingStatus Status,
-    string Error
-);
+```csharp{title="Perspective Cursor Completion" description="Cursor advancement spec for CompletePerspectiveAsync" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Event", "Store", "Tracking"]}
+public record PerspectiveCursorCompletion {
+    public required Guid StreamId { get; init; }
+    public required string PerspectiveName { get; init; }
+    public required Guid LastEventId { get; init; }
+    public required PerspectiveProcessingStatus Status { get; init; }
+}
 ```
 
-**Purpose**: Track which **receptors** have processed which **events** (log-style, many receptors per event).
-
-**Use Cases**:
-- Side effects (sending emails, notifications)
-- Read model updates (non-ordered)
-- Analytics/metrics collection
-
-### Event Store Tracking - Perspectives
-
-```csharp{title="Event Store Tracking - Perspectives" description="Event Store Tracking - Perspectives" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Event", "Store", "Tracking"]}
-PerspectiveCursorCompletion[] perspectiveCompletions,
-PerspectiveCursorFailure[] perspectiveFailures,
-
-public record PerspectiveCursorCompletion(
-    Guid StreamId,
-    string PerspectiveName,
-    Guid LastEventId,
-    PerspectiveProcessingStatus Status
-);
-
-public record PerspectiveCursorFailure(
-    Guid StreamId,
-    string PerspectiveName,
-    Guid LastEventId,
-    PerspectiveProcessingStatus Status,
-    string Error
-);
-```
-
-**Purpose**: Track **checkpoints** for perspectives processing event streams (one checkpoint per stream/perspective pair).
-
-**Use Cases**:
-- Read model projections (ordered events per stream)
-- Temporal queries (state as of specific event)
-- Rebuilding projections from event history
+**Purpose**: Track **cursors** for perspectives processing event streams (one cursor per stream/perspective pair, stored in `wh_perspective_cursors`).
 
 **Key Difference from Receptors**:
-- **Receptors**: Many receptors can process same event independently
-- **Perspectives**: One checkpoint per (stream_id, perspective_name) pair for ordered processing
+- **Receptors**: Many receptors can process the same event independently (tracked in `wh_receptor_processing`)
+- **Perspectives**: One cursor per (stream_id, perspective_name) pair for ordered processing
 
 ### New Messages
 
-```csharp{title="New Messages" description="New Messages" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "New", "Messages"]}
-OutboxMessage[] newOutboxMessages,
-InboxMessage[] newInboxMessages,
+```csharp{title="New Messages" description="Envelope-based message records for the store methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "New", "Messages"]}
+public record OutboxMessage {
+    public required Guid MessageId { get; init; }
+    public string? Destination { get; init; }
+    public required IMessageEnvelope<JsonElement> Envelope { get; init; }
+    public required EnvelopeMetadata Metadata { get; init; }
+    public required string EnvelopeType { get; init; }
+    public Guid? StreamId { get; init; }
+    public bool IsEvent { get; init; }
+    public EventFlags Flags { get; init; }
+    public PerspectiveScope? Scope { get; init; }
+}
 
-public record OutboxMessage(
-    Guid MessageId,
-    Guid CorrelationId,
-    Guid CausationId,
-    string MessageType,
-    string Payload,  // JSON
-    string Topic,
-    string StreamKey,
-    string PartitionKey
-);
-
-public record InboxMessage(
-    Guid MessageId,
-    Guid CorrelationId,
-    Guid? CausationId,
-    string MessageType,
-    string Payload,  // JSON
-    string SourceTopic
-);
+public record InboxMessage {
+    public required Guid MessageId { get; init; }
+    public required string HandlerName { get; init; }
+    public required IMessageEnvelope<JsonElement> Envelope { get; init; }
+    public required string EnvelopeType { get; init; }
+    public required string MessageType { get; init; }
+    public Guid? StreamId { get; init; }
+    public bool IsEvent { get; init; }
+    public EventFlags Flags { get; init; }
+    public PerspectiveScope? Scope { get; init; }
+    public EnvelopeMetadata? Metadata { get; init; }
+    public Guid SourceServiceId { get; init; }
+    public long SourceCommitSequence { get; init; }
+}
 ```
 
-**Usage**: Store new events in outbox (for publishing) or inbox (for deduplication).
-
-### Lease Renewals
-
-```csharp{title="Lease Renewals" description="Lease Renewals" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Lease", "Renewals"]}
-Guid[] renewOutboxLeaseIds,
-Guid[] renewInboxLeaseIds,
-```
-
-**Usage**: Extend leases on messages being processed (prevents timeout during long operations).
-
-### Configuration
-
-```csharp{title="Configuration" description="Configuration" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Configuration"]}
-public WorkBatchOptions Flags { get; init; } = WorkBatchOptions.None;
-public int PartitionCount { get; init; } = 10_000;
-public int LeaseSeconds { get; init; } = 300;
-public int StaleThresholdSeconds { get; init; } = 600;
-```
-
-**Flags**:
-- `None`: Normal operation
-- `SkipClaim`: Don't claim new work (only process completions/failures)
-
-**Parameters**:
-- `PartitionCount`: Total partitions (10,000 recommended)
-- `LeaseSeconds`: Lease duration (300s = 5 minutes)
-- `StaleThresholdSeconds`: Stale lease threshold (600s = 10 minutes)
+**Usage**: Store new events in outbox (for publishing) or inbox (for deduplication + handler invocation). Correlation/causation and hop history travel inside the envelope's `EnvelopeMetadata`, not as top-level fields.
 
 ---
 
 ## Common Usage Patterns
 
-### Pattern 1: Store Event in Outbox
+These patterns show how the framework's built-in workers use the coordinator. Application code rarely calls `IWorkCoordinator` directly — the workers below are registered automatically.
 
-```csharp{title="Pattern 1: Store Event in Outbox" description="Pattern 1: Store Event in Outbox" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Pattern", "Store", "Event"]}
-// Receptor creates event, stores in outbox
-await _coordinator.ProcessWorkBatchAsync(
-    instanceId: instanceId,
-    serviceName: "OrderService",
-    hostName: Environment.MachineName,
-    processId: Environment.ProcessId,
-    metadata: null,
-    outboxCompletions: [],
-    outboxFailures: [],
-    inboxCompletions: [],
-    inboxFailures: [],
-    receptorCompletions: [],
-    receptorFailures: [],
-    perspectiveCompletions: [],
-    perspectiveFailures: [],
-    newOutboxMessages: [
-        new OutboxMessage(
-            MessageId: Guid.CreateVersion7(),
-            CorrelationId: command.CorrelationId.Value,
-            CausationId: command.MessageId.Value,
-            MessageType: typeof(OrderCreated).FullName!,
-            Payload: JsonSerializer.Serialize(orderCreated),
-            Topic: "orders",
-            StreamKey: customerId.ToString(),
-            PartitionKey: customerId.ToString()
-        )
-    ],
-    newInboxMessages: [],
-    renewOutboxLeaseIds: [],
-    renewInboxLeaseIds: [],
-    ct: ct
-);
-```
+### Pattern 1: Claim Work (ClaimWorker)
 
-### Pattern 2: Claim and Publish Outbox Messages
+```csharp{title="Pattern 1: Claim Work" description="ClaimWorker polls claim_work and distributes stream ids to drain channels" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Claim", "Publish"]}
+// ClaimWorker is the only caller of ClaimWorkAsync
+var batch = await coordinator.ClaimWorkAsync(new ClaimWorkRequest(
+    InstanceId: instanceId,
+    ServiceName: "OrderService",
+    HostName: Environment.MachineName,
+    ProcessId: Environment.ProcessId,
+    MaxStreams: 1000,
+    PartitionCount: 10_000,
+    LeaseSeconds: 300
+), ct);
 
-```csharp{title="Pattern 2: Claim and Publish Outbox Messages" description="Pattern 2: Claim and Publish Outbox Messages" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Claim", "Publish"]}
-// Background worker claims work
-var batch = await _coordinator.ProcessWorkBatchAsync(
-    instanceId: workerInstanceId,
-    serviceName: "OrderService",
-    hostName: Environment.MachineName,
-    processId: Environment.ProcessId,
-    metadata: null,
-    outboxCompletions: [],
-    outboxFailures: [],
-    inboxCompletions: [],
-    inboxFailures: [],
-    receptorCompletions: [],
-    receptorFailures: [],
-    perspectiveCompletions: [],
-    perspectiveFailures: [],
-    newOutboxMessages: [],
-    newInboxMessages: [],
-    renewOutboxLeaseIds: [],
-    renewInboxLeaseIds: [],
-    ct: ct
-);
-
-// Publish claimed messages
-foreach (var msg in batch.ClaimedOutboxMessages) {
-    await _transport.PublishAsync(msg.Topic, msg.MessageId, msg.Payload, ct);
+// Bodies are NOT in the batch — distribute stream ids to the drain channels
+foreach (var streamId in batch.OutboxStreamIds) {
+    await outboxDrainChannel.WriteAsync(streamId, ct);
+}
+foreach (var streamId in batch.InboxStreamIds) {
+    await inboxDrainChannel.WriteAsync(streamId, ct);
 }
 ```
 
-### Pattern 3: Report Completions After Publishing
+### Pattern 2: Drain and Publish (OutboxDrainWorker)
 
-```csharp{title="Pattern 3: Report Completions After Publishing" description="Pattern 3: Report Completions After Publishing" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Report", "Completions"]}
-var completions = new List<MessageCompletion>();
+```csharp{title="Pattern 2: Drain and Publish" description="OutboxDrainWorker fetches leased bodies per stream and publishes in FIFO order" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Report", "Completions"]}
+// Per-stream drainer: fetch all leased rows for the stream, publish in order
+var rows = await coordinator.FetchOutboxBatchAsync([streamId], instanceId, cancellationToken: ct);
 
-foreach (var msg in batch.ClaimedOutboxMessages) {
+foreach (var row in rows) {
     try {
-        await _transport.PublishAsync(msg.Topic, msg.MessageId, msg.Payload, ct);
-
-        completions.Add(new MessageCompletion(
-            MessageId: msg.MessageId,
-            Status: MessageProcessingStatus.Published
-        ));
-
+        await publishStrategy.PublishAsync(row, ct);
+        outboxCompletionChannel.Enqueue(row.MessageId);       // → CompleteOutboxPublishedAsync (batched)
     } catch (Exception ex) {
-        failures.Add(new MessageFailure(
-            MessageId: msg.MessageId,
-            Status: MessageProcessingStatus.Failed,
-            Error: ex.Message,
-            StackTrace: ex.StackTrace
-        ));
+        failureChannel.Enqueue(WorkCategory.Outbox, new MessageFailure {
+            MessageId = row.MessageId,
+            CompletedStatus = MessageProcessingStatus.Stored,
+            Error = ex.Message
+        });                                                    // → ReportFailuresAsync (batched)
     }
 }
-
-// Report back to coordinator
-await _coordinator.ProcessWorkBatchAsync(
-    instanceId: workerInstanceId,
-    serviceName: "OrderService",
-    hostName: Environment.MachineName,
-    processId: Environment.ProcessId,
-    metadata: null,
-    outboxCompletions: completions.ToArray(),
-    outboxFailures: failures.ToArray(),
-    /* ... */,
-    ct: ct
-);
 ```
 
-### Pattern 4: Store in Inbox (Deduplication)
+### Pattern 3: Batched Completions (Flush Workers)
 
-```csharp{title="Pattern 4: Store in Inbox (Deduplication)" description="Pattern 4: Store in Inbox (Deduplication)" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Pattern", "Store", "Inbox"]}
-// Worker receives message from Azure Service Bus
-try {
-    // Store in inbox (atomic - prevents duplicate processing)
-    await _coordinator.ProcessWorkBatchAsync(
-        instanceId: workerInstanceId,
-        serviceName: "InventoryWorker",
-        hostName: Environment.MachineName,
-        processId: Environment.ProcessId,
-        metadata: null,
-        outboxCompletions: [],
-        outboxFailures: [],
-        inboxCompletions: [],
-        inboxFailures: [],
-        receptorCompletions: [],
-        receptorFailures: [],
-        perspectiveCompletions: [],
-        perspectiveFailures: [],
-        newOutboxMessages: [],
-        newInboxMessages: [
-            new InboxMessage(
-                MessageId: message.MessageId,
-                CorrelationId: message.CorrelationId,
-                CausationId: message.CausationId,
-                MessageType: message.MessageType,
-                Payload: message.Payload,
-                SourceTopic: "orders"
-            )
-        ],
-        renewOutboxLeaseIds: [],
-        renewInboxLeaseIds: [],
-        ct: ct
-    );
+```csharp{title="Pattern 3: Batched Completions" description="Flush workers coalesce completions into one round-trip per batch" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Store", "Event"]}
+// OutboxCompletionFlushWorker drains the completion channel and flushes in batches
+var publishedIds = DrainPendingCompletionIds();
+var affected = await coordinator.CompleteOutboxPublishedAsync(publishedIds, ct);
+// Production: rows DELETEd. Debug mode: rows retained with published_at stamped.
 
-} catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505") {
-    // Unique constraint violation = duplicate message
-    _logger.LogWarning("Duplicate message {MessageId} detected", message.MessageId);
-    return;  // Skip processing
-}
+// FailureFlushWorker does the same for failures, per category
+await coordinator.ReportFailuresAsync(WorkCategory.Outbox, pendingFailures, ct);
+```
+
+### Pattern 4: Lease Renewal (LeaseRenewalWorker)
+
+```csharp{title="Pattern 4: Lease Renewal" description="LeaseRenewalWorker extends leases for in-flight work approaching expiry" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Pattern", "Store", "Inbox"]}
+// When in-flight items approach lease/3 from expiry, renew in batch per category
+var renewed = await coordinator.RenewLeasesAsync(
+    WorkCategory.Inbox,
+    inFlightMessageIds,
+    leaseSeconds: 300,
+    ct);
+
+// A per-item renewal cap prevents stuck work from renewing forever —
+// once the cap is hit, the lease expires and claim_orphaned_* re-issues the work
 ```
 
 ---
 
 ## PostgreSQL Implementation
 
-The Work Coordinator is implemented as a **PostgreSQL stored procedure** for optimal performance.
+Each coordinator method maps to a focused **PostgreSQL function** (hosted primarily in migration `029_ProcessWorkBatch.sql`, which also drops the legacy `process_work_batch` orchestrator).
 
-### Stored Procedure: `process_work_batch`
+### Function Map
 
-```sql{title="Stored Procedure: `process_work_batch`" description="Stored Procedure: `process_work_batch" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Stored", "Procedure:", "Process_work_batch"]}
-CREATE OR REPLACE FUNCTION process_work_batch(
+| C# Method | SQL Function | Calling Worker |
+|---|---|---|
+| `ClaimWorkAsync` | `claim_work` | `ClaimWorker` |
+| `RecordHeartbeatAsync` | `record_heartbeat` | `HeartbeatWorker` |
+| `DeregisterInstanceAsync` | `deregister_instance` | `WhizbangShutdownService` |
+| `StoreOutboxMessagesAsync` / `StoreInboxMessagesAsync` | `store_outbox_messages` / `store_inbox_messages` | Coordinator strategies |
+| `FetchOutboxBatchAsync` / `FetchInboxBatchAsync` | `fetch_outbox_batch` / `fetch_inbox_batch` | Drain workers |
+| `CommitHandlerResultAsync` / `CommitHandlerBatchAsync` | `commit_handler_result` / `commit_handler_batch` | `InboxHandlerWorker` |
+| `CompleteOutboxPublishedAsync` | `complete_outbox_published` | `OutboxCompletionFlushWorker` |
+| `CompletePerspectiveAsync` | `complete_perspective` | `PerspectiveCompletionFlushWorker` |
+| `ReportFailuresAsync` | `report_failures` | `FailureFlushWorker` |
+| `RenewLeasesAsync` | `renew_leases` | `LeaseRenewalWorker` |
+| `NotifyScheduledRetryDueAsync` | `notify_scheduled_retry_due` | Backup tick (`DefaultBackupTickRegistrar` / `BackupTickCoordinator`) |
+
+### Claim Function Signature
+
+```sql{title="Function: claim_work" description="The claim_work SQL function signature" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Stored", "Procedure:", "Claim_work"]}
+CREATE OR REPLACE FUNCTION claim_work(
     p_instance_id UUID,
-    p_service_name VARCHAR(255),
-    p_host_name VARCHAR(255),
-    p_process_id INT,
-    p_metadata JSONB,
-
-    -- Completions and failures (JSON arrays)
-    p_outbox_completions JSONB,
-    p_outbox_failures JSONB,
-    p_inbox_completions JSONB,
-    p_inbox_failures JSONB,
-
-    -- Event store tracking
-    p_receptor_completions JSONB,
-    p_receptor_failures JSONB,
-    p_perspective_completions JSONB,
-    p_perspective_failures JSONB,
-
-    -- New messages
-    p_new_outbox_messages JSONB,
-    p_new_inbox_messages JSONB,
-
-    -- Lease renewals
-    p_renew_outbox_lease_ids JSONB,
-    p_renew_inbox_lease_ids JSONB,
-
-    -- Configuration
-    p_partition_count INT DEFAULT 10000,
-    p_lease_seconds INT DEFAULT 300,
-    p_stale_threshold_seconds INT DEFAULT 600
+    p_service_name TEXT,
+    p_host_name TEXT,
+    p_process_id INTEGER,
+    p_max_streams INTEGER DEFAULT 1000,
+    p_partition_count INTEGER DEFAULT 10000,
+    p_lease_seconds INTEGER DEFAULT 300
+) RETURNS TABLE(
+    source VARCHAR(20),           -- 'outbox' | 'inbox' | 'receptor' | 'perspective'
+    work_id UUID,
+    work_stream_id UUID,
+    partition_number INTEGER,
+    destination VARCHAR(200),
+    message_type VARCHAR(500),
+    envelope_type VARCHAR(500),
+    message_data TEXT,            -- NULL: bodies fetched per stream by drain workers
+    metadata JSONB,
+    status INTEGER,
+    attempts INTEGER,
+    is_newly_stored BOOLEAN,
+    is_orphaned BOOLEAN,
+    perspective_name VARCHAR(200)
 )
-RETURNS TABLE (
-    claimed_outbox_messages JSONB,
-    claimed_inbox_messages JSONB,
-    assigned_partitions JSONB
-)
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    -- 1. Delete completed outbox messages
-    DELETE FROM wh_outbox
-    WHERE message_id IN (
-        SELECT (value->>'MessageId')::UUID
-        FROM jsonb_array_elements(p_outbox_completions)
-    );
-
-    -- 2. Update failed outbox messages
-    -- (increment attempts, update error, release lease)
-
-    -- 3. Insert new outbox messages
-    -- (with partition_number for consistent hashing)
-
-    -- 4. Delete completed inbox messages
-    -- 5. Update failed inbox messages
-    -- 6. Insert new inbox messages
-
-    -- 7. Update receptor processing records
-    -- 8. Update perspective checkpoint records
-
-    -- 9. Claim new outbox work (with leasing)
-    -- 10. Claim new inbox work (with leasing)
-
-    -- Return claimed work
-    RETURN QUERY SELECT ...;
-END;
-$$;
 ```
 
 **Benefits**:
-- ✅ **Single database roundtrip**: All operations in one call
-- ✅ **Atomic**: Transaction semantics guarantee consistency
-- ✅ **Performance**: Stored procedure is compiled, optimized by PostgreSQL
+- ✅ **Empty-call short-circuit**: idle polls cost ≤1 ms (indexed `EXISTS` probes; `claim_orphaned_*` never invoked)
+- ✅ **Stream-ids-only projection**: bytes on the wire scale with active stream count, not payload size
+- ✅ **Atomic per call**: each function is transactional; the handler-commit path bundles completion + emitted messages
 
 ---
 
@@ -614,13 +456,13 @@ $$;
 
 ### DO ✅
 
-- ✅ **Use single transaction**: All operations atomic
-- ✅ **Report completions promptly**: Don't let leases expire
+- ✅ **Let the built-in workers drive the coordinator**: They batch, coalesce, and flush correctly
+- ✅ **Report completions promptly**: Don't let leases expire (the flush workers coalesce automatically)
 - ✅ **Monitor stale leases**: Alert when lease_expiry is old
 - ✅ **Use consistent hashing**: Partition-based work distribution
 - ✅ **Log all operations**: InstanceId, ServiceName, timestamps
-- ✅ **Handle failures gracefully**: Increment retry counts, log errors
-- ✅ **Clean up old data**: Archive completed messages periodically
+- ✅ **Handle failures gracefully**: `ReportFailuresAsync` increments retry counts and records errors
+- ✅ **Rely on `perform_maintenance`**: Purges completed rows and old dedup entries on schedule
 - ✅ **Configure lease duration**: Balance fault tolerance vs recovery time
 
 ### DON'T ❌
@@ -630,7 +472,7 @@ $$;
 - ❌ Use locks instead of leases (doesn't scale)
 - ❌ Set lease duration too short (thrashing)
 - ❌ Set lease duration too long (slow recovery from crashes)
-- ❌ Process outside coordinator (breaks atomicity)
+- ❌ Commit handler results outside `CommitHandlerResultAsync`/`CommitHandlerBatchAsync` (breaks the completion+emission atomicity boundary)
 - ❌ Skip monitoring (blind to failures)
 
 ---
@@ -639,28 +481,26 @@ $$;
 
 ### Key Metrics
 
+The coordinator exposes queue-depth statistics via `GatherStatisticsAsync`:
+
 ```csharp{title="Key Metrics" description="Key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Key", "Metrics"]}
-public class WorkCoordinatorMetrics {
-    public int OutboxStoredCount { get; set; }
-    public int OutboxPublishedCount { get; set; }
-    public int OutboxFailedCount { get; set; }
-    public int InboxReceivedCount { get; set; }
-    public int InboxCompletedCount { get; set; }
-    public int InboxFailedCount { get; set; }
-    public int ActiveLeases { get; set; }
-    public int StaleLeases { get; set; }
+public record WorkCoordinatorStatistics {
+    public long PendingPerspectiveEvents { get; init; }  // wh_perspective_events unprocessed
+    public long PendingOutbox { get; init; }             // wh_outbox unprocessed
+    public long PendingInbox { get; init; }              // wh_inbox unprocessed
+    public long ActiveStreams { get; init; }             // wh_active_streams rows
 }
 ```
 
 ### Alerts
 
 **Critical**:
-- 🚨 `StaleLeases > 0` (workers crashed or stuck)
-- 🚨 `OutboxFailedCount > 0` or `InboxFailedCount > 0` (messages gave up)
+- 🚨 Rows with expired `lease_expiry` and no reclaim (workers crashed or stuck)
+- 🚨 Rows with `failure_reason = MaxAttemptsExceeded` / dead-letter growth (messages gave up)
 
 **Warning**:
-- ⚠️ `OutboxStoredCount > 10000` (backlog growing)
-- ⚠️ `ActiveLeases` growing unexpectedly (too many leases)
+- ⚠️ `PendingOutbox` or `PendingInbox` growing steadily (backlog)
+- ⚠️ `ActiveStreams` growing unexpectedly (streams not being cleaned up)
 
 ---
 

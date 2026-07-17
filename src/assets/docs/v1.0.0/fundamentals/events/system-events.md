@@ -1,5 +1,8 @@
 ---
 title: System Events
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 8
@@ -11,20 +14,32 @@ codeReferences:
   - src/Whizbang.Core/SystemEvents/ISystemEvent.cs
   - src/Whizbang.Core/SystemEvents/SystemEventEmitter.cs
   - src/Whizbang.Core/SystemEvents/ISystemEventEmitter.cs
+  - src/Whizbang.Core/SystemEvents/NullSystemEventEmitter.cs
   - src/Whizbang.Core/SystemEvents/SystemEventOptions.cs
   - src/Whizbang.Core/SystemEvents/SystemEventTransportFilter.cs
+  - src/Whizbang.Core/SystemEvents/ITransportPublishFilter.cs
   - src/Whizbang.Core/SystemEvents/SystemEventStream.cs
   - src/Whizbang.Core/SystemEvents/EventAudited.cs
   - src/Whizbang.Core/SystemEvents/CommandAudited.cs
   - src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs
   - src/Whizbang.Core/SystemEvents/AuditingEventStoreDecorator.cs
+  - src/Whizbang.Core/SystemEvents/SystemEventServiceCollectionExtensions.cs
   - src/Whizbang.Core/SystemEvents/Security/ScopeContextEstablished.cs
   - src/Whizbang.Core/SystemEvents/Security/PermissionChanged.cs
   - src/Whizbang.Core/SystemEvents/Security/AccessGranted.cs
   - src/Whizbang.Core/SystemEvents/Security/AccessDenied.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterTests.cs
+  - src/Whizbang.Core/Attributes/AuditEventAttribute.cs
   - src/Whizbang.Core/Events/System/SystemEvents.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventTransportFilterTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditingEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditPipelineBehaviorTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventSelfAuditPreventionTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/EventAuditedTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/Security/SecuritySystemEventTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -34,23 +49,41 @@ System events are **internal events emitted by Whizbang** for observability, aud
 
 ## Core Concept
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Domain Infrastructure (Events, Commands, Perspectives)          │
-│       │                                                          │
-│       ▼                                                          │
-│  System Event Emitter                                           │
-│       │                                                          │
-│       ├─► EventAudited (domain event stored)                    │
-│       ├─► CommandAudited (command processed)                    │
-│       ├─► ScopeContextEstablished (security context set)        │
-│       ├─► AccessGranted/AccessDenied (authorization)            │
-│       └─► PermissionChanged (role/permission changes)           │
-│                                                                  │
-│  ↓ Stored in dedicated $wb-system stream                        │
-│  ↓ Consumed by perspectives (same as domain events)             │
-│  ↓ LocalOnly by default (no network traffic)                    │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    DI["Domain Infrastructure (Events, Commands, Perspectives)"]
+    EM["System Event Emitter"]
+    E1["EventAudited (domain event stored)"]
+    E2["CommandAudited (command processed)"]
+    E3["ScopeContextEstablished (security context set)"]
+    E4["AccessGranted/AccessDenied (authorization)"]
+    E5["PermissionChanged (role/permission changes)"]
+    S1["Stored in dedicated $wb-system stream"]
+    S2["Consumed by perspectives (same as domain events)"]
+    S3["LocalOnly by default (no network traffic)"]
+
+    DI --> EM
+    EM --> E1
+    EM --> E2
+    EM --> E3
+    EM --> E4
+    EM --> E5
+    E1 --> S1
+    E2 --> S1
+    E3 --> S1
+    E4 --> S1
+    E5 --> S1
+    S1 --> S2 --> S3
+
+    style DI fill:#d4edda,stroke:#28a745
+    style EM fill:#d4edda,stroke:#28a745
+    style E1 fill:#fff3cd,stroke:#ffc107
+    style E2 fill:#fff3cd,stroke:#ffc107
+    style E3 fill:#fff3cd,stroke:#ffc107
+    style E4 fill:#fff3cd,stroke:#ffc107
+    style E5 fill:#fff3cd,stroke:#ffc107
+    style S1 fill:#fff3cd,stroke:#ffc107
+    style S2 fill:#cce5ff,stroke:#004085
 ```
 
 **Key principles**:
@@ -68,22 +101,23 @@ System events are **internal events emitted by Whizbang** for observability, aud
 
 ```csharp{title="Enable System Events" description="Enable System Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Enable", "System"]}
 // In Program.cs - enable the system events you need
-services.AddWhizbang(options => {
+// (call AFTER your IEventStore/storage is configured)
+services.AddSystemEvents(options => {
   // Enable event and command auditing
-  options.SystemEvents.EnableAudit();
+  options.EnableAudit();
 
   // Or enable specific categories
-  options.SystemEvents.EnableEventAudit();
-  options.SystemEvents.EnableCommandAudit();
-  options.SystemEvents.EnablePerspectiveEvents();
-  options.SystemEvents.EnableErrorEvents();
+  options.EnableEventAudit();
+  options.EnableCommandAudit();
+  options.EnablePerspectiveEvents();
+  options.EnableErrorEvents();
 
   // Or enable everything
-  options.SystemEvents.EnableAll();
+  options.EnableAll();
 
   // LocalOnly is true by default - system events stay local
   // For centralized monitoring, use Broadcast()
-  // options.SystemEvents.Broadcast();
+  // options.Broadcast();
 });
 ```
 
@@ -166,12 +200,18 @@ public sealed class SecurityAuditPerspective :
 Emitted when a domain event is appended to a stream (when `EnableEventAudit()` is configured).
 
 ```csharp{title="EventAudited" description="Emitted when a domain event is appended to a stream (when EnableEventAudit() is configured)." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "EventAudited"]}
+[AuditEvent(Exclude = true, Reason = "System event - prevents infinite self-auditing loop")]
 public sealed record EventAudited : ISystemEvent {
   /// <summary>
   /// Unique identifier for this audit event.
   /// </summary>
   [StreamId]
   public required Guid Id { get; init; }
+
+  /// <summary>
+  /// Event ID of the original domain event.
+  /// </summary>
+  public Guid OriginalEventId { get; init; }
 
   /// <summary>
   /// Type name of the original domain event (e.g., "OrderCreated").
@@ -214,6 +254,21 @@ public sealed record EventAudited : ISystemEvent {
   public string? CorrelationId { get; init; }
 
   /// <summary>
+  /// Causation ID (the message that caused the original event).
+  /// </summary>
+  public string? CausationId { get; init; }
+
+  /// <summary>
+  /// Optional reason from [AuditEvent(Reason = ...)] on the event type.
+  /// </summary>
+  public string? AuditReason { get; init; }
+
+  /// <summary>
+  /// Audit severity level. Defaults to AuditLevel.Info.
+  /// </summary>
+  public AuditLevel AuditLevel { get; init; } = AuditLevel.Info;
+
+  /// <summary>
   /// Generic scope dictionary containing all security context values.
   /// Enables flexible row-level security beyond TenantId/UserId.
   /// </summary>
@@ -243,6 +298,7 @@ public sealed record ServiceHeartbeat : IEvent {
 Emitted when a command is processed by a receptor (when `EnableCommandAudit()` is configured).
 
 ```csharp{title="CommandAudited" description="Emitted when a command is processed by a receptor (when EnableCommandAudit() is configured)." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "CommandAudited"]}
+[AuditEvent(Exclude = true, Reason = "System event - prevents infinite self-auditing loop")]
 public sealed record CommandAudited : ISystemEvent {
   /// <summary>
   /// Unique identifier for this audit entry.
@@ -266,16 +322,6 @@ public sealed record CommandAudited : ISystemEvent {
   public required DateTimeOffset Timestamp { get; init; }
 
   /// <summary>
-  /// Name of the receptor that handled the command.
-  /// </summary>
-  public string? ReceptorName { get; init; }
-
-  /// <summary>
-  /// Type of the response returned by the receptor.
-  /// </summary>
-  public string? ResponseType { get; init; }
-
-  /// <summary>
   /// Tenant context from the command scope.
   /// </summary>
   public string? TenantId { get; init; }
@@ -284,6 +330,41 @@ public sealed record CommandAudited : ISystemEvent {
   /// User ID from the command scope.
   /// </summary>
   public string? UserId { get; init; }
+
+  /// <summary>
+  /// Display name of the user, when available.
+  /// </summary>
+  public string? UserName { get; init; }
+
+  /// <summary>
+  /// Correlation ID for distributed tracing.
+  /// </summary>
+  public string? CorrelationId { get; init; }
+
+  /// <summary>
+  /// Causation ID (the message that caused this command).
+  /// </summary>
+  public string? CausationId { get; init; }
+
+  /// <summary>
+  /// Optional reason from [AuditEvent(Reason = ...)] on the command type.
+  /// </summary>
+  public string? AuditReason { get; init; }
+
+  /// <summary>
+  /// Audit severity level. Defaults to AuditLevel.Info.
+  /// </summary>
+  public AuditLevel AuditLevel { get; init; } = AuditLevel.Info;
+
+  /// <summary>
+  /// Name of the receptor that handled the command.
+  /// </summary>
+  public string? ReceptorName { get; init; }
+
+  /// <summary>
+  /// Type of the response returned by the receptor.
+  /// </summary>
+  public string? ResponseType { get; init; }
 
   /// <summary>
   /// Generic scope dictionary for flexible security context.
@@ -306,7 +387,7 @@ Emitted when a scope context is established for a request/operation.
 ```csharp{title="ScopeContextEstablished" description="Emitted when a scope context is established for a request/operation." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "ScopeContextEstablished"]}
 public sealed record ScopeContextEstablished : ISystemEvent {
   [StreamId]
-  public Guid Id { get; init; }
+  public Guid Id { get; init; } = TrackedGuid.NewMedo();
 
   /// <summary>
   /// The established scope (TenantId, UserId, etc.).
@@ -348,7 +429,7 @@ Emitted when a user's permissions or roles change.
 ```csharp{title="PermissionChanged" description="Emitted when a user's permissions or roles change." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "PermissionChanged"]}
 public sealed record PermissionChanged : ISystemEvent {
   [StreamId]
-  public Guid Id { get; init; }
+  public Guid Id { get; init; } = TrackedGuid.NewMedo();
 
   /// <summary>
   /// User whose permissions changed.
@@ -410,7 +491,7 @@ Emitted when access to a sensitive resource is granted.
 ```csharp{title="AccessGranted" description="Emitted when access to a sensitive resource is granted." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "AccessGranted"]}
 public sealed record AccessGranted : ISystemEvent {
   [StreamId]
-  public Guid Id { get; init; }
+  public Guid Id { get; init; } = TrackedGuid.NewMedo();
 
   /// <summary>
   /// Type of resource access was granted to.
@@ -428,9 +509,10 @@ public sealed record AccessGranted : ISystemEvent {
   public required Permission UsedPermission { get; init; }
 
   /// <summary>
-  /// Access filter applied (e.g., tenant-scoped).
+  /// Access filter applied (e.g., tenant-scoped). ScopeFilters is a
+  /// combinable [Flags] enum (None, Tenant, Organization, Customer, User, Principal).
   /// </summary>
-  public required ScopeFilter AccessFilter { get; init; }
+  public required ScopeFilters AccessFilter { get; init; }
 
   /// <summary>
   /// Scope context at time of access.
@@ -457,7 +539,7 @@ Emitted when access to a resource is denied due to insufficient permissions.
 ```csharp{title="AccessDenied" description="Emitted when access to a resource is denied due to insufficient permissions." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "AccessDenied"]}
 public sealed record AccessDenied : ISystemEvent {
   [StreamId]
-  public Guid Id { get; init; }
+  public Guid Id { get; init; } = TrackedGuid.NewMedo();
 
   /// <summary>
   /// Type of resource access was denied to.
@@ -548,18 +630,19 @@ public interface ISystemEventEmitter {
 }
 ```
 
-**Default implementation**: `SystemEventEmitter`
+**Implementations**: `SystemEventEmitter` (real) and `NullSystemEventEmitter` (no-op)
 
-```csharp{title="System Event Emitter - SystemEventEmitter" description="Default implementation: SystemEventEmitter" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "System", "Event"]}
-public sealed class SystemEventEmitter : ISystemEventEmitter {
-  private readonly SystemEventOptions _options;
-  private readonly IEventStore _systemEventStore;
-
+```csharp{title="System Event Emitter - SystemEventEmitter" description="SystemEventEmitter implementation sketch" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "System", "Event"]}
+public sealed class SystemEventEmitter(
+    IOptions<SystemEventOptions> options,
+    IEventStore systemEventStore) : ISystemEventEmitter {
   // Emits system events only when enabled via options
   // Respects [AuditEvent(Exclude = true)] to prevent infinite loops
-  // Serializes payloads in AOT-compatible way
+  // Serializes payloads in AOT-compatible way (JsonContextRegistry)
 }
 ```
+
+`AddWhizbang()` registers `NullSystemEventEmitter` as the default `ISystemEventEmitter` (every emit is a no-op) so injecting the emitter is always safe. Note that the built-in **event** audit path does not go through the emitter at all — it uses the [auditing decorator](#event-auditing) and the deferred outbox channel. The emitter is used by the command-audit pipeline behavior and for manual emission.
 
 **Manual emission** (advanced scenarios):
 
@@ -575,8 +658,8 @@ public class MySecurityService {
       Id = TrackedGuid.NewMedo(),
       ResourceType = "SensitiveDocument",
       ResourceId = resourceId,
-      UsedPermission = Permission.Read,
-      AccessFilter = ScopeFilter.Tenant("tenant-123"),
+      UsedPermission = Permission.Read("documents"),  // "documents:read"
+      AccessFilter = ScopeFilters.Tenant,             // tenant-scoped access
       Scope = new PerspectiveScope {
         TenantId = "tenant-123",
         UserId = userId
@@ -601,6 +684,13 @@ public sealed class SystemEventOptions {
   /// Default is true.
   /// </summary>
   public bool LocalOnly { get; set; } = true;
+
+  /// <summary>
+  /// Controls which events are audited when event audit is enabled:
+  /// AuditMode.OptOut (default) audits all events unless [AuditEvent(Exclude = true)];
+  /// AuditMode.OptIn audits only events explicitly marked with [AuditEvent].
+  /// </summary>
+  public AuditMode AuditMode { get; set; } = AuditMode.OptOut;
 
   /// <summary>
   /// Enables EventAudited system events.
@@ -631,21 +721,26 @@ public sealed class SystemEventOptions {
 
 **Configuration methods**:
 
-```csharp{title="System Event Configuration (2)" description="Configuration methods:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"]}
+```csharp{title="System Event Configuration (2)" description="Configuration methods (inside AddSystemEvents/AddSystemEventAuditing):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"]}
+// Inside services.AddSystemEvents(options => { ... }) - all methods are fluent
+
 // Enable all system events
-options.SystemEvents.EnableAll();
+options.EnableAll();
 
 // Enable audit (both events and commands)
-options.SystemEvents.EnableAudit();
+options.EnableAudit();
 
 // Enable specific categories
-options.SystemEvents.EnableEventAudit();
-options.SystemEvents.EnableCommandAudit();
-options.SystemEvents.EnablePerspectiveEvents();
-options.SystemEvents.EnableErrorEvents();
+options.EnableEventAudit();
+options.EnableCommandAudit();
+options.EnablePerspectiveEvents();
+options.EnableErrorEvents();
+
+// Only audit explicitly marked events
+options.AuditMode = AuditMode.OptIn;
 
 // Broadcast system events to transport (advanced)
-options.SystemEvents.Broadcast(); // Sets LocalOnly = false
+options.Broadcast(); // Sets LocalOnly = false
 ```
 
 **LocalOnly vs Broadcast**:
@@ -654,17 +749,17 @@ options.SystemEvents.Broadcast(); // Sets LocalOnly = false
 // Default: LocalOnly = true
 // Each service audits what it processes locally
 // No network traffic, no duplication
-services.AddWhizbang(options => {
-  options.SystemEvents.EnableAudit();
+services.AddSystemEvents(options => {
+  options.EnableAudit();
   // LocalOnly is true by default
 });
 
 // Broadcast mode: LocalOnly = false
 // System events published to transport
 // Use when you have centralized monitoring service
-services.AddWhizbang(options => {
-  options.SystemEvents.EnableAll();
-  options.SystemEvents.Broadcast(); // Sets LocalOnly = false
+services.AddSystemEvents(options => {
+  options.EnableAll();
+  options.Broadcast(); // Sets LocalOnly = false
 });
 ```
 
@@ -693,8 +788,9 @@ With `LocalOnly = true`:
 The `SystemEventTransportFilter` implements `ITransportPublishFilter` to control which events flow through the transport layer:
 
 ```csharp{title="Transport Filtering" description="The SystemEventTransportFilter implements ITransportPublishFilter to control which events flow through the transport" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Transport", "Filtering"]}
-public sealed class SystemEventTransportFilter : ITransportPublishFilter {
-  private readonly SystemEventOptions _options;
+public sealed class SystemEventTransportFilter(IOptions<SystemEventOptions> options)
+    : ITransportPublishFilter {
+  private readonly SystemEventOptions _options = options.Value;
 
   public bool ShouldPublishToTransport(object message) {
     // Domain events always publish
@@ -732,12 +828,16 @@ This ensures:
 <a id="event-auditing"></a>
 ## Event Auditing Decorator
 
-The `AuditingEventStoreDecorator` wraps your `IEventStore` implementation and automatically emits `EventAudited` system events:
+The `AuditingEventStoreDecorator` wraps your `IEventStore` implementation. On each append it builds an `EventAudited` envelope and queues it to the **deferred outbox channel** with the dedicated audit topic destination `"whizbang.core.auditevents"` — it deliberately does NOT depend on `IEventStore` or `ISystemEventEmitter` itself, which avoids circular DI:
 
-```csharp{title="Event Auditing Decorator" description="The AuditingEventStoreDecorator wraps your IEventStore implementation and automatically emits EventAudited system" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Auditing"]}
-public sealed class AuditingEventStoreDecorator : IEventStore {
-  private readonly IEventStore _inner;
-  private readonly ISystemEventEmitter _emitter;
+```csharp{title="Event Auditing Decorator" description="The AuditingEventStoreDecorator wraps your IEventStore implementation and queues EventAudited to the deferred outbox channel" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Auditing"]}
+public sealed class AuditingEventStoreDecorator(
+    IEventStore inner,
+    IDeferredOutboxChannel outboxChannel,
+    IOptions<SystemEventOptions> options) : IEventStore {
+
+  // Dedicated audit topic destination for outbox messages
+  public const string AUDIT_TOPIC_DESTINATION = "whizbang.core.auditevents";
 
   public async Task AppendAsync<TMessage>(
       Guid streamId,
@@ -746,22 +846,23 @@ public sealed class AuditingEventStoreDecorator : IEventStore {
     // First, append to the inner store
     await _inner.AppendAsync(streamId, envelope, cancellationToken);
 
-    // Get the stream position after append
-    var streamPosition = await _inner.GetLastSequenceAsync(streamId, cancellationToken);
-
-    // Emit audit event (emitter handles enabled check and exclusions)
-    await _emitter.EmitEventAuditedAsync(streamId, streamPosition, envelope, cancellationToken);
+    // Then queue an EventAudited to the deferred outbox channel
+    // (respects AuditMode and [AuditEvent(Exclude = true)])
+    await _emitAuditIfEligibleAsync(streamId, envelope, cancellationToken);
   }
 
   // ... other IEventStore methods delegate to _inner ...
 }
 ```
 
-**Registration** (automatic with `AddSystemEventAuditing`):
+**Registration**: `AddSystemEvents` decorates an already-registered `IEventStore` automatically when `EnableEventAudit()` is set. You can also decorate explicitly:
 
-```csharp{title="Event Auditing Decorator (2)" description="Registration (automatic with AddSystemEventAuditing):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Event", "Auditing"]}
+```csharp{title="Event Auditing Decorator (2)" description="Registration - automatic when EnableEventAudit is set, or explicit:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Event", "Auditing"]}
+// Automatic: IEventStore registered BEFORE AddSystemEvents gets decorated
 services.AddSingleton<IEventStore, PostgresEventStore>();
 services.AddSystemEvents(options => options.EnableEventAudit());
+
+// Explicit: decorate an existing IEventStore registration yourself
 services.DecorateEventStoreWithAuditing();
 ```
 
@@ -891,8 +992,10 @@ services.AddSystemEvents(options => {
 ```
 
 This registers:
-- `ISystemEventEmitter` for emitting system events
-- `ITransportPublishFilter` for transport filtering
+- `ITransportPublishFilter` (→ `SystemEventTransportFilter`) for transport filtering
+- The `AuditingEventStoreDecorator` around an already-registered `IEventStore`, when `EnableEventAudit()` is set
+
+(`ISystemEventEmitter` itself is registered by `AddWhizbang()`, defaulting to the no-op `NullSystemEventEmitter`.)
 
 ### Full Auditing Registration
 
@@ -904,9 +1007,8 @@ services.AddSystemEventAuditing(options => {
 ```
 
 This registers:
-- All basic system event services
+- All basic system event services (everything `AddSystemEvents` does)
 - `CommandAuditPipelineBehavior<,>` for command auditing
-- Event store decorator (if you call `DecorateEventStoreWithAuditing()`)
 
 ### Complete Setup Example
 
@@ -926,9 +1028,9 @@ builder.Services.AddSystemEventAuditing(options => {
   // LocalOnly = true by default (no transport publishing)
 });
 
-// Register perspectives that consume system events
-builder.Services.AddPerspective<AuditPerspective>();
-builder.Services.AddPerspective<SecurityAuditPerspective>();
+// Perspectives (including ones that consume system events) are discovered
+// by the source generator; register them via the generated extension:
+builder.Services.AddWhizbangPerspectives();
 
 var app = builder.Build();
 app.Run();
@@ -942,13 +1044,13 @@ app.Run();
 
 ```csharp{title="Enable Only What You Need" description="Enable Only What You Need" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Enable", "Only"]}
 // BFF: Enable full audit for compliance
-services.AddWhizbang(options => {
-  options.SystemEvents.EnableAudit();
+services.AddSystemEvents(options => {
+  options.EnableAudit();
 });
 
 // Background worker: Maybe just errors
-services.AddWhizbang(options => {
-  options.SystemEvents.EnableErrorEvents();
+services.AddSystemEvents(options => {
+  options.EnableErrorEvents();
 });
 
 // Read-only query service: No system events needed
@@ -959,8 +1061,8 @@ services.AddWhizbang();
 
 ```csharp{title="Use LocalOnly (Default)" description="Use LocalOnly (Default)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "LocalOnly", "Default"]}
 // Default behavior - system events stay local
-services.AddWhizbang(options => {
-  options.SystemEvents.EnableAudit();
+services.AddSystemEvents(options => {
+  options.EnableAudit();
   // LocalOnly = true by default
 });
 
@@ -997,20 +1099,20 @@ Never remove this attribute from system events!
 ### 5. Query System Events Like Domain Events
 
 ```csharp{title="Query System Events Like Domain Events" description="Query System Events Like Domain Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Query", "System"]}
-public interface ISecurityAuditLens : ILensQuery<SecurityAuditEntry> { }
-
 public class SecurityService {
-  private readonly ISecurityAuditLens _securityLens;
+  private readonly ILensQuery<SecurityAuditEntry> _securityLens;
 
   public async Task<IReadOnlyList<SecurityAuditEntry>> GetFailedAccessAttemptsAsync(
       string userId,
       DateTimeOffset since,
       CancellationToken ct) {
-    return await _securityLens.QueryAsync(q => q
-        .Where(e => e.EventType == "AccessDenied" &&
-                    e.UserId == userId &&
-                    e.Timestamp >= since)
-        .OrderByDescending(e => e.Timestamp), ct);
+    return await _securityLens.DefaultScope.Query
+        .Where(r => r.Data.EventType == "AccessDenied" &&
+                    r.Data.UserId == userId &&
+                    r.Data.Timestamp >= since)
+        .OrderByDescending(r => r.Data.Timestamp)
+        .Select(r => r.Data)
+        .ToListAsync(ct);
   }
 }
 ```
@@ -1023,9 +1125,9 @@ public class SecurityService {
 
 ```csharp{title="Centralized Monitoring Service" description="Centralized Monitoring Service" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Centralized", "Monitoring"]}
 // Monitoring service receives system events from all hosts
-services.AddWhizbang(options => {
-  options.SystemEvents.EnableAll();
-  options.SystemEvents.Broadcast(); // Receive from transport
+services.AddSystemEvents(options => {
+  options.EnableAll();
+  options.Broadcast(); // Receive from transport
 });
 
 // All other services use LocalOnly (default)
@@ -1048,8 +1150,8 @@ public class DocumentService {
         Id = TrackedGuid.NewMedo(),
         ResourceType = "Document",
         ResourceId = documentId.ToString(),
-        UsedPermission = Permission.Read,
-        AccessFilter = ScopeFilter.Tenant(ctx.TenantId),
+        UsedPermission = Permission.Read("documents"),
+        AccessFilter = ScopeFilters.Tenant,
         Scope = new PerspectiveScope {
           TenantId = ctx.TenantId,
           UserId = ctx.UserId
@@ -1067,24 +1169,28 @@ public class DocumentService {
 
 ```csharp{title="Multi-Tenant Audit Queries" description="Multi-Tenant Audit Queries" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Multi-Tenant", "Audit"]}
 public class AuditService {
-  private readonly IAuditLogLens _auditLens;
+  private readonly ILensQuery<AuditLogEntry> _auditLens;
 
   // Tenant admin views their own audit trail
   public async Task<IReadOnlyList<AuditLogEntry>> GetTenantAuditTrailAsync(
       string tenantId,
       CancellationToken ct) {
-    return await _auditLens.QueryAsync(q => q
-        .Where(a => a.TenantId == tenantId)
-        .OrderByDescending(a => a.Timestamp), ct);
+    return await _auditLens.DefaultScope.Query
+        .Where(r => r.Data.TenantId == tenantId)
+        .OrderByDescending(r => r.Data.Timestamp)
+        .Select(r => r.Data)
+        .ToListAsync(ct);
   }
 
   // System admin views cross-tenant audit trail
   public async Task<IReadOnlyList<AuditLogEntry>> GetSystemAuditTrailAsync(
       DateTimeOffset since,
       CancellationToken ct) {
-    return await _auditLens.QueryAsync(q => q
-        .Where(a => a.Timestamp >= since)
-        .OrderByDescending(a => a.Timestamp), ct);
+    return await _auditLens.DefaultScope.Query
+        .Where(r => r.Data.Timestamp >= since)
+        .OrderByDescending(r => r.Data.Timestamp)
+        .Select(r => r.Data)
+        .ToListAsync(ct);
   }
 }
 ```
@@ -1215,6 +1321,27 @@ public record PerspectiveRewindCompleted(
     Guid TriggeringEventId,
     Guid FinalEventId,
     int EventsReplayed,
+    DateTimeOffset StartedAt,
+    DateTimeOffset CompletedAt
+) : IEvent;
+```
+
+### StreamRewindStarted / StreamRewindCompleted
+
+Stream-level bracket events: `StreamRewindStarted` is emitted once per stream before any per-perspective rewinds begin, and `StreamRewindCompleted` once after all of them finish.
+
+```csharp{title="StreamRewindStarted / StreamRewindCompleted" description="Stream-level events bracketing all per-perspective rewinds for a stream" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Stream", "Rewind"]}
+public record StreamRewindStarted(
+    [property: StreamId] Guid StreamId,
+    string[] PerspectiveNames,
+    Guid TriggerEventId,
+    DateTimeOffset StartedAt
+) : IEvent;
+
+public record StreamRewindCompleted(
+    [property: StreamId] Guid StreamId,
+    string[] PerspectiveNames,
+    int TotalEventsReplayed,
     DateTimeOffset StartedAt,
     DateTimeOffset CompletedAt
 ) : IEvent;

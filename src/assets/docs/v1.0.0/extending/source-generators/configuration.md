@@ -1,5 +1,8 @@
 ---
 title: Configuration
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Source Generators
 order: 8
@@ -12,6 +15,10 @@ tags: >-
 codeReferences:
   - src/Whizbang.Generators.Shared/Utilities/ConfigurationUtilities.cs
   - src/Whizbang.Generators.Shared/Models/TableNameConfig.cs
+  - src/Whizbang.Generators.Shared/Utilities/NamingConventionUtilities.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/Utilities/ConfigurationUtilitiesTests.cs
+  - tests/Whizbang.Generators.Tests/Utilities/NamingConventionUtilitiesTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -23,28 +30,16 @@ Whizbang source generators read configuration from MSBuild properties, enabling 
 
 Configuration utilities provide a bridge between MSBuild project properties and the incremental source generator pipeline:
 
-```
-┌──────────────────────────────────────────────────┐
-│  .csproj / Directory.Build.props                │
-│                                                  │
-│  <WhizbangStripTableNameSuffixes>true</...>     │
-│  <WhizbangTableNameSuffixesToStrip>...</...>    │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  ConfigurationUtilities                          │
-│                                                  │
-│  Reads AnalyzerConfigOptions                    │
-│  Returns TableNameConfig                         │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  Source Generators                               │
-│                                                  │
-│  Use config for table names, code generation    │
-└──────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Props[".csproj / Directory.Build.props<br/><br/>&lt;WhizbangStripTableNameSuffixes&gt;true&lt;/...&gt;<br/>&lt;WhizbangTableNameSuffixesToStrip&gt;...&lt;/...&gt;"]
+    Utils["ConfigurationUtilities<br/><br/>Reads AnalyzerConfigOptions<br/>Returns TableNameConfig"]
+    Generators["Source Generators<br/><br/>Use config for table names, code generation"]
+
+    Props --> Utils
+    Utils --> Generators
+
+    class Props,Utils,Generators layer-infrastructure
 ```
 
 ---
@@ -82,6 +77,7 @@ public void Initialize(IncrementalGeneratorInitializationContext context) {
 |----------|------|---------|-------------|
 | `WhizbangStripTableNameSuffixes` | bool | `true` | Enable/disable suffix stripping |
 | `WhizbangTableNameSuffixesToStrip` | string | `ReadModel,Model,Projection,Dto,View` | Comma-separated list of suffixes |
+| `WhizbangMaxIdentifierLength` | int | provider default (63 for PostgreSQL) | Optional override for maximum database identifier length; read via `ConfigurationUtilities.GetMaxIdentifierLengthOverride` / `SelectMaxIdentifierLengthOverride` |
 
 ### Configuration in .csproj
 
@@ -103,43 +99,52 @@ public void Initialize(IncrementalGeneratorInitializationContext context) {
 The `TableNameConfig` record holds the parsed configuration:
 
 ```csharp{title="TableNameConfig" description="The TableNameConfig record holds the parsed configuration:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "TableNameConfig"]}
-public record TableNameConfig(
+public sealed record TableNameConfig(
     bool StripSuffixes,
     string[] SuffixesToStrip
 ) {
-    /// <summary>
-    /// Default configuration: strip common suffixes.
-    /// </summary>
-    public static TableNameConfig Default => new(
-        StripSuffixes: true,
-        SuffixesToStrip: new[] { "ReadModel", "Model", "Projection", "Dto", "View" }
-    );
+  /// <summary>
+  /// Default configuration: strip common suffixes (Model, Projection, ReadModel, Dto, View).
+  /// </summary>
+  public static TableNameConfig Default { get; } = new(
+      StripSuffixes: true,
+      SuffixesToStrip: ["ReadModel", "Model", "Projection", "Dto", "View"]
+  );
+
+  /// <summary>
+  /// Configuration that preserves all suffixes (no stripping).
+  /// </summary>
+  public static TableNameConfig NoStripping { get; } = new(
+      StripSuffixes: false,
+      SuffixesToStrip: []
+  );
 }
 ```
 
 ### Table Name Suffix Stripping
 
-When `StripSuffixes` is enabled, perspective class names are transformed for database table names:
+When `StripSuffixes` is enabled, perspective **model** type names are transformed for database table names via `NamingConventionUtilities.GenerateTableName`: the first matching suffix is stripped, the remainder is converted to snake_case, and the `wh_per_` prefix is added (no pluralization):
 
-| Class Name | Stripped Name | Table Name |
-|------------|---------------|------------|
-| `OrderReadModel` | `Order` | `orders` |
-| `ProductProjection` | `Product` | `products` |
-| `CustomerDto` | `Customer` | `customers` |
-| `InventoryView` | `Inventory` | `inventory` |
-| `UserModel` | `User` | `users` |
-| `AccountDetails` | `AccountDetails` | `account_details` |
+| Model Type Name | Stripped Name | Table Name |
+|-----------------|---------------|------------|
+| `OrderReadModel` | `Order` | `wh_per_order` |
+| `ProductProjection` | `Product` | `wh_per_product` |
+| `CustomerDto` | `Customer` | `wh_per_customer` |
+| `InventoryView` | `Inventory` | `wh_per_inventory` |
+| `UserModel` | `User` | `wh_per_user` |
+| `AccountDetails` | `AccountDetails` | `wh_per_account_details` |
 
 **Example**:
 ```csharp{title="Table Name Suffix Stripping" description="Table Name Suffix Stripping" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Table", "Name"]}
-// Perspective class
-public class OrderReadModel : IPerspectiveFor<Order, OrderCreated> {
+// Perspective read-model type
+public class OrderReadModel {
+    [StreamId]
     public Guid OrderId { get; set; }
-    public string Status { get; set; }
+    public string Status { get; set; } = "";
 }
 
-// Generated table name (with suffix stripping):
-// Table: "orders" (not "order_read_models")
+// Generated table name (with default suffix stripping):
+// Table: "wh_per_order" (not "wh_per_order_read_model")
 ```
 
 ---
@@ -179,8 +184,9 @@ public class PerspectiveSchemaGenerator : IIncrementalGenerator {
 
         foreach (var perspective in perspectives) {
             // Apply table name configuration
-            var tableName = NamingConventionUtilities.GetTableName(
-                perspective.ClassName,
+            // e.g., "OrderProjection" -> "wh_per_order" with default config
+            var tableName = NamingConventionUtilities.GenerateTableName(
+                perspective.TableBaseName,
                 config
             );
 
@@ -269,7 +275,7 @@ var suffixes = ConfigurationUtilities.ParseSuffixList("");
 
 ### Suffix Not Stripped
 
-**Symptoms**: Class suffix appears in generated table name.
+**Symptoms**: Model suffix appears in generated table name (e.g., `wh_per_order_view_model`).
 
 **Causes**:
 1. Suffix not in list

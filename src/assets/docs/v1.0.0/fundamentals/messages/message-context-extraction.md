@@ -1,5 +1,8 @@
 ---
 title: Message Context Extraction
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 7
@@ -9,6 +12,8 @@ description: >-
 tags: 'context-extraction, envelope, tracing, opentelemetry, scope, security, hops'
 codeReferences:
   - src/Whizbang.Core/Observability/EnvelopeContextExtractor.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Observability/EnvelopeContextExtractorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -31,9 +36,10 @@ Without `EnvelopeContextExtractor`, every worker and invoker would repeat this l
 
 ### ExtractedContext
 
-The extraction result is a lightweight readonly record struct:
+The extraction result is a lightweight readonly record struct, nested inside `EnvelopeContextExtractor`:
 
 ```csharp{title="ExtractedContext" description="Result of extracting context from envelope hops" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Extraction", "ExtractedContext"]}
+// Nested type: EnvelopeContextExtractor.ExtractedContext
 public readonly record struct ExtractedContext(
     ActivityContext TraceContext,  // For OpenTelemetry trace correlation
     IScopeContext? Scope);        // Security scope (null if none found)

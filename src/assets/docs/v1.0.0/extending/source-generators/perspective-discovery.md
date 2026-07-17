@@ -1,34 +1,45 @@
 ---
 title: Perspective Discovery
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Source Generators
 order: 2
 description: >-
   Compile-time perspective discovery for event-driven read models - zero
-  reflection registration and Event Store integration
+  reflection registration of pure Apply functions
 tags: >-
   source-generators, perspectives, read-models, events, roslyn, compile-time,
   zero-reflection
 codeReferences:
   - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
   - src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/PerspectiveDiscoveryGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectivePurityAnalyzerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Discovery
 
-The **PerspectiveDiscoveryGenerator** discovers all `IPerspectiveOf<TEvent>` implementations at compile-time and generates zero-reflection DI registration code. Perspectives are event-driven read models that update denormalized views in response to domain events.
+:::updated
+**Interface renamed in the shipped library (verified at commit `1b31f58d`)**: perspectives implement **`IPerspectiveFor<TModel, TEvent1, ...>`** (model first, up to 20 event types) with **pure `Apply(TModel, TEvent) → TModel` functions** — not the earlier `IPerspectiveOf<TEvent>`/`UpdateAsync` design this page previously described. The framework owns persistence: your perspective never touches the database. Apply methods MUST be pure (no I/O, no side effects, deterministic) — the `PerspectivePurityAnalyzer` enforces this at build time (WHIZ100+ errors).
+:::
+
+The **PerspectiveDiscoveryGenerator** discovers all `IPerspectiveFor<TModel, TEvent...>` implementations at compile-time and generates zero-reflection DI registration code. Perspectives are event-driven read models: pure functions that fold events into a denormalized model which the framework persists for you.
 
 ## Perspectives vs Receptors
 
 | Aspect | Perspectives | Receptors |
 |--------|-------------|----------|
-| **Purpose** | Update read models | Handle commands/queries |
+| **Purpose** | Fold events into read models | Handle commands/queries |
 | **Trigger** | Domain events | Commands/queries |
-| **Return** | void (async Task) | Typed response |
-| **Pattern** | Event-driven denormalization | Command/query handling |
-| **Invocation** | Via Event Store coordinator | Via Dispatcher |
-| **Use Case** | Build query-optimized views | Implement business logic |
+| **Signature** | `TModel Apply(TModel, TEvent)` — pure, synchronous | `ValueTask<TResponse> HandleAsync(...)` |
+| **Side Effects** | None (enforced by analyzer) | Business logic, I/O via services |
+| **Persistence** | Framework-owned (`wh_per_*` tables) | N/A |
+| **Invocation** | Generated perspective runners | Generated dispatcher |
 
 **Whizbang Pattern**: Commands → Receptors → Events → Perspectives → Read Models
 
@@ -47,55 +58,47 @@ public class OrderService {
         await _context.Orders.AddAsync(order);
 
         // 2. Update read model (tightly coupled!)
-        var summary = new OrderSummary {
-            OrderId = order.Id,
-            CustomerId = order.CustomerId,
-            Total = order.Total,
-            Status = "Created"
-        };
+        var summary = new OrderSummary { /* ... */ };
         await _context.OrderSummaries.AddAsync(summary);
 
         await _context.SaveChangesAsync();
-
         return new OrderCreated(/* ... */);
     }
 }
 ```
 
-### Whizbang Approach (Event-Driven)
+### Whizbang Approach (Event-Driven, Pure)
 
-```csharp{title="Whizbang Approach (Event-Driven)" description="Whizbang Approach (Event-Driven)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Whizbang", "Approach"]}
-// ✅ Decoupled: Command handler publishes event, perspective updates read model
+```csharp{title="Whizbang Approach (Event-Driven)" description="Receptor returns event; perspective folds it into the model as a pure function" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Whizbang", "Approach"]}
+// ✅ Receptor publishes the event - no read-model coupling
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-    public async ValueTask<OrderCreated> HandleAsync(CreateOrder message, CancellationToken ct) {
-        // 1. Business logic (write model)
-        var order = new Order(message.CustomerId, message.Items);
-
-        // 2. Return event (no direct coupling to read model!)
-        return new OrderCreated(
-            OrderId: order.Id,
+    public ValueTask<OrderCreated> HandleAsync(CreateOrder message, CancellationToken ct = default) {
+        return ValueTask.FromResult(new OrderCreated(
+            OrderId: message.OrderId,
             CustomerId: message.CustomerId,
-            Total: order.Total,
+            Total: message.Total,
             CreatedAt: DateTimeOffset.UtcNow
-        );
+        ));
     }
 }
 
-// ✅ Perspective updates read model independently
-public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
-    private readonly IDbConnectionFactory _db;
+// ✅ Read model - a plain class with a [StreamId] property
+public class OrderSummary {
+    [StreamId]
+    public Guid OrderId { get; set; }
+    public Guid CustomerId { get; set; }
+    public decimal Total { get; set; }
+    public string Status { get; set; } = "";
+}
 
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-        await using var conn = _db.CreateConnection();
-
-        await conn.ExecuteAsync(
-            """
-            INSERT INTO order_summaries (order_id, customer_id, total, status, created_at)
-            VALUES (@OrderId, @CustomerId, @Total, 'Created', @CreatedAt)
-            """,
-            @event,
-            cancellationToken: ct
-        );
+// ✅ Perspective folds events into the model - PURE function, no I/O
+public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreated> {
+    public OrderSummary Apply(OrderSummary currentData, OrderCreated eventData) {
+        currentData.OrderId = eventData.OrderId;
+        currentData.CustomerId = eventData.CustomerId;
+        currentData.Total = eventData.Total;
+        currentData.Status = "Created";
+        return currentData;
     }
 }
 ```
@@ -103,8 +106,8 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 **Benefits**:
 - ✅ **Decoupling**: Command handler doesn't know about read models
 - ✅ **Multiple Perspectives**: Many read models from same event
-- ✅ **Independent Evolution**: Change read models without touching commands
-- ✅ **Rebuild Capability**: Replay events to rebuild read models
+- ✅ **Deterministic Rebuild**: Pure Apply functions replay identically
+- ✅ **Framework Persistence**: Storage, upserts, and concurrency handled for you
 
 ---
 
@@ -112,383 +115,211 @@ public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
 
 ### 1. Compile-Time Discovery
 
+```mermaid
+flowchart TD
+    Code["Your Code<br/><br/>public class OrderSummaryPerspective<br/>: IPerspectiveFor&lt;OrderSummary, OrderCreated&gt; {<br/>public OrderSummary Apply(<br/>OrderSummary currentData,<br/>OrderCreated eventData) { ... }<br/>}"]
+    Generator["PerspectiveDiscoveryGenerator (Roslyn)<br/><br/>1. Scan classes with base lists<br/>2. Skip abstract classes<br/>3. Match IPerspectiveFor / IPerspectiveWithActionsFor<br/>with &gt;1 type argument<br/>4. Extract: Model type, Event types, model [StreamId]"]
+    Generated["Generated Code<br/><br/>PerspectiveRegistrations.g.cs<br/>— AddWhizbangPerspectives() registrations<br/>— MessageAssociation query methods"]
+
+    Code --> Generator
+    Generator --> Generated
+
+    class Code layer-read
+    class Generator layer-infrastructure
+    class Generated layer-core
 ```
-┌──────────────────────────────────────────────────┐
-│  Your Code                                       │
-│                                                  │
-│  public class OrderSummaryPerspective           │
-│      : IPerspectiveOf<OrderCreated> {           │
-│    public async Task UpdateAsync(               │
-│        OrderCreated @event,                     │
-│        CancellationToken ct) { ... }            │
-│  }                                               │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  PerspectiveDiscoveryGenerator (Roslyn)         │
-│                                                  │
-│  1. Scan syntax tree for classes                │
-│  2. Filter classes with base types              │
-│  3. Check for IPerspectiveOf<TEvent>            │
-│  4. Extract: Class, Event types (can be many!)  │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  Generated Code                                  │
-│                                                  │
-│  PerspectiveRegistrations.g.cs                  │
-│  └─ services.AddScoped<IPerspectiveOf<...>>()  │
-└──────────────────────────────────────────────────┘
-```
+
+The generator matches both `IPerspectiveFor<TModel, TEvent...>` and `IPerspectiveWithActionsFor<TModel, TEvent...>` variants; single-type-argument marker interfaces (`IPerspectiveFor<TModel>`) are skipped. The model type is the **first** type argument, and its `[StreamId]` property is located for stream addressing.
 
 ### 2. Generated File
 
-**PerspectiveRegistrations.g.cs**:
-```csharp{title="Generated File" description="**PerspectiveRegistrations." category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "File"]}
-using Microsoft.Extensions.DependencyInjection;
-using Whizbang.Core;
+**PerspectiveRegistrations.g.cs** (emitted into `{AssemblyName}.Generated`):
 
-namespace MyApp.Generated;
-
-public static class PerspectiveRegistrations {
+```csharp{title="Generated File" description="PerspectiveRegistrations.g.cs surface" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "File"]}
+public static class PerspectiveRegistrationExtensions {
     /// <summary>
-    /// Registers all discovered perspectives (5 perspective classes, 8 event handlers).
-    /// Generated at compile-time by PerspectiveDiscoveryGenerator.
+    /// Registers all discovered IPerspectiveFor implementations (Scoped).
+    /// Returns a WhizbangPerspectiveBuilder for storage-provider configuration.
     /// </summary>
-    public static IServiceCollection AddWhizbangPerspectives(
-        this IServiceCollection services) {
+    public static WhizbangPerspectiveBuilder AddWhizbangPerspectives(this IServiceCollection services) {
+        // Serializes Apply calls per (streamId, perspectiveName)
+        services.TryAddSingleton<IPerspectiveApplyCoordinator, PerspectiveApplyCoordinator>();
 
-        // OrderSummaryPerspective handles 3 events
-        services.AddScoped<IPerspectiveOf<OrderCreated>, OrderSummaryPerspective>();
-        services.AddScoped<IPerspectiveOf<OrderShipped>, OrderSummaryPerspective>();
-        services.AddScoped<IPerspectiveOf<OrderCancelled>, OrderSummaryPerspective>();
+        // One registration per perspective class, with its FULL interface signature:
+        services.AddScoped<IPerspectiveFor<OrderSummary, OrderCreated, OrderShipped>, OrderSummaryPerspective>();
+        services.AddScoped<IPerspectiveFor<CustomerStats, OrderCreated>, CustomerStatisticsPerspective>();
 
-        // CustomerStatisticsPerspective handles 2 events
-        services.AddScoped<IPerspectiveOf<OrderCreated>, CustomerStatisticsPerspective>();
-        services.AddScoped<IPerspectiveOf<OrderShipped>, CustomerStatisticsPerspective>();
-
-        // InventoryPerspective handles 3 events
-        services.AddScoped<IPerspectiveOf<OrderCreated>, InventoryPerspective>();
-        services.AddScoped<IPerspectiveOf<OrderShipped>, InventoryPerspective>();
-        services.AddScoped<IPerspectiveOf<OrderCancelled>, InventoryPerspective>();
-
-        return services;
+        return new WhizbangPerspectiveBuilder(services);
     }
+
+    // Event ↔ perspective association queries (used by tooling and sync infrastructure)
+    public static IReadOnlyList<MessageAssociation> GetMessageAssociations(string serviceName);
+    public static IEnumerable<string> GetPerspectivesForEvent(string eventType, string serviceName);
+    public static IEnumerable<string> GetEventsForPerspective(string perspectiveName, string serviceName);
+    // + overloads with MatchStrictness fuzzy matching and Regex patterns
 }
 ```
 
-**Key Observations**:
-- One perspective class can handle **multiple events** (e.g., OrderSummaryPerspective handles 3 events)
-- Multiple perspectives can handle the **same event** (e.g., OrderCreated handled by 3 perspectives)
-- Registered as **Scoped** (new instance per request/worker batch)
+The file also declares two records used by the association queries:
 
----
+```csharp{title="Association Records" description="MessageAssociation and PerspectiveAssociationInfo" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Associations"]}
+public sealed record MessageAssociation(
+  string MessageType,       // "MyApp.Events.OrderCreated, MyApp"
+  string AssociationType,   // "perspective"
+  string TargetName,        // "OrderSummaryPerspective"
+  string ServiceName        // assembly name
+);
 
-## Using Generated Registration
-
-### Registration in Program.cs
-
-```csharp{title="Registration in Program.cs" description="Registration in Program.cs" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Registration", "Program.cs"]}
-// Program.cs
-using MyApp.Generated;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Register perspectives (generated method)
-builder.Services.AddWhizbangPerspectives();
-
-// Register Event Store coordinator (triggers perspectives)
-builder.Services.AddWhizbangEventStore(/* config */);
-
-var app = builder.Build();
-app.Run();
+public sealed record PerspectiveAssociationInfo<TModel, TEvent>(
+  string MessageType,
+  string TargetName,
+  string ServiceName,
+  Func<TModel, TEvent, TModel> ApplyDelegate  // strongly-typed, AOT-compatible
+) where TEvent : IEvent;
 ```
 
-**That's it!** No manual registration, no reflection, no assembly scanning.
+**Key Observations**:
+- One perspective class can handle **multiple events** (one interface with up to 20 event type arguments)
+- Multiple perspectives can handle the **same event**
+- Registered as **Scoped** to match typical database-context lifetime
+- `AddWhizbangPerspectives()` returns a **`WhizbangPerspectiveBuilder`** so you can chain storage-provider configuration
+
+Note that `PerspectiveDiscoveryGenerator` produces the DI registrations and association metadata; the sibling `PerspectiveRunnerGenerator`/`PerspectiveInvokerGenerator` generate the runners that actually route stored events into your Apply methods.
 
 ---
 
 ## Perspective Patterns
 
-### Pattern 1: Single Event Handler
+### Pattern 1: Single Event
 
-```csharp{title="Pattern 1: Single Event Handler" description="Pattern 1: Single Event Handler" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Single"]}
-public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
-    private readonly IDbConnectionFactory _db;
-
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-        await using var conn = _db.CreateConnection();
-
-        await conn.ExecuteAsync(
-            """
-            INSERT INTO order_summaries (
-                order_id, customer_id, total, status, created_at
-            ) VALUES (
-                @OrderId, @CustomerId, @Total, 'Created', @CreatedAt
-            )
-            """,
-            @event,
-            cancellationToken: ct
-        );
+```csharp{title="Pattern 1: Single Event" description="Single event perspective" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Single"]}
+public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreated> {
+    public OrderSummary Apply(OrderSummary currentData, OrderCreated eventData) {
+        currentData.OrderId = eventData.OrderId;
+        currentData.Status = "Created";
+        return currentData;
     }
 }
 ```
 
-**Generated registration** (1 event):
-```csharp{title="Pattern 1: Single Event Handler (2)" description="Generated registration (1 event):" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Single"]}
-services.AddScoped<IPerspectiveOf<OrderCreated>, OrderSummaryPerspective>();
+**Generated registration**:
+```csharp{title="Pattern 1 Registration" description="Generated registration (1 event)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Single"]}
+services.AddScoped<IPerspectiveFor<OrderSummary, OrderCreated>, OrderSummaryPerspective>();
 ```
 
----
+### Pattern 2: Multiple Events
 
-### Pattern 2: Multiple Event Handlers
-
-```csharp{title="Pattern 2: Multiple Event Handlers" description="Pattern 2: Multiple Event Handlers" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Multiple"]}
+```csharp{title="Pattern 2: Multiple Events" description="One perspective, several events" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Multiple"]}
 public class OrderSummaryPerspective :
-    IPerspectiveOf<OrderCreated>,
-    IPerspectiveOf<OrderShipped>,
-    IPerspectiveOf<OrderCancelled> {
+    IPerspectiveFor<OrderSummary, OrderCreated, OrderShipped, OrderCancelled> {
 
-    private readonly IDbConnectionFactory _db;
-
-    // Handle OrderCreated
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-        await using var conn = _db.CreateConnection();
-        await conn.ExecuteAsync(
-            "INSERT INTO order_summaries (...) VALUES (...)",
-            @event,
-            cancellationToken: ct
-        );
+    public OrderSummary Apply(OrderSummary currentData, OrderCreated eventData) {
+        currentData.OrderId = eventData.OrderId;
+        currentData.Status = "Created";
+        return currentData;
     }
 
-    // Handle OrderShipped
-    public async Task UpdateAsync(OrderShipped @event, CancellationToken ct = default) {
-        await using var conn = _db.CreateConnection();
-        await conn.ExecuteAsync(
-            "UPDATE order_summaries SET status = 'Shipped', shipped_at = @ShippedAt WHERE order_id = @OrderId",
-            @event,
-            cancellationToken: ct
-        );
+    public OrderSummary Apply(OrderSummary currentData, OrderShipped eventData) {
+        currentData.Status = "Shipped";
+        currentData.ShippedAt = eventData.ShippedAt;  // Use event time, never DateTime.UtcNow!
+        return currentData;
     }
 
-    // Handle OrderCancelled
-    public async Task UpdateAsync(OrderCancelled @event, CancellationToken ct = default) {
-        await using var conn = _db.CreateConnection();
-        await conn.ExecuteAsync(
-            "UPDATE order_summaries SET status = 'Cancelled', cancelled_at = @CancelledAt WHERE order_id = @OrderId",
-            @event,
-            cancellationToken: ct
-        );
+    public OrderSummary Apply(OrderSummary currentData, OrderCancelled eventData) {
+        currentData.Status = "Cancelled";
+        return currentData;
     }
 }
 ```
-
-**Generated registration** (3 events):
-```csharp{title="Pattern 2: Multiple Event Handlers (2)" description="Generated registration (3 events):" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Multiple"]}
-services.AddScoped<IPerspectiveOf<OrderCreated>, OrderSummaryPerspective>();
-services.AddScoped<IPerspectiveOf<OrderShipped>, OrderSummaryPerspective>();
-services.AddScoped<IPerspectiveOf<OrderCancelled>, OrderSummaryPerspective>();
-```
-
-**Benefits**:
-- Single perspective class for related updates
-- Maintains cohesion (all order summary logic in one place)
-- Generator handles multiple interface implementations automatically
-
----
 
 ### Pattern 3: Aggregated Statistics
 
-```csharp{title="Pattern 3: Aggregated Statistics" description="Pattern 3: Aggregated Statistics" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Aggregated"]}
+```csharp{title="Pattern 3: Aggregated Statistics" description="Fold aggregations into the model" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Aggregated"]}
 public class CustomerStatisticsPerspective :
-    IPerspectiveOf<OrderCreated>,
-    IPerspectiveOf<OrderShipped> {
+    IPerspectiveFor<CustomerStats, OrderCreated, OrderShipped> {
 
-    private readonly IDbConnectionFactory _db;
-
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-        await using var conn = _db.CreateConnection();
-
-        // Increment order count and total spent
-        await conn.ExecuteAsync(
-            """
-            INSERT INTO customer_statistics (customer_id, total_orders, total_spent, last_order_at)
-            VALUES (@CustomerId, 1, @Total, @CreatedAt)
-            ON CONFLICT (customer_id) DO UPDATE SET
-                total_orders = customer_statistics.total_orders + 1,
-                total_spent = customer_statistics.total_spent + @Total,
-                last_order_at = @CreatedAt
-            """,
-            new { @event.CustomerId, @event.Total, @event.CreatedAt },
-            cancellationToken: ct
-        );
+    public CustomerStats Apply(CustomerStats currentData, OrderCreated eventData) {
+        currentData.TotalOrders += 1;
+        currentData.TotalSpent += eventData.Total;
+        currentData.LastOrderAt = eventData.CreatedAt;
+        return currentData;
     }
 
-    public async Task UpdateAsync(OrderShipped @event, CancellationToken ct = default) {
-        await using var conn = _db.CreateConnection();
-
-        // Update last shipped date
-        await conn.ExecuteAsync(
-            """
-            UPDATE customer_statistics
-            SET last_shipped_at = @ShippedAt
-            WHERE customer_id = @CustomerId
-            """,
-            new { @event.CustomerId, @event.ShippedAt },
-            cancellationToken: ct
-        );
+    public CustomerStats Apply(CustomerStats currentData, OrderShipped eventData) {
+        currentData.LastShippedAt = eventData.ShippedAt;
+        return currentData;
     }
 }
 ```
 
-**Use Case**: Pre-compute aggregations for analytics dashboards.
+**Use Case**: Pre-computed aggregations for analytics dashboards — the framework upserts the folded model.
 
 ---
 
-## Event Store Integration
+## Purity Enforcement
 
-### Perspective Invocation Flow
+Apply methods must be **pure functions**. The `PerspectivePurityAnalyzer` reports build **errors** for violations (WHIZ100-range diagnostics):
 
-```
-1. Receptor handles command, returns event
-   └─> OrderCreated event
+| ID | Violation |
+|----|-----------|
+| WHIZ100 | Apply method returns `Task` (must be synchronous) |
+| WHIZ101 | Apply method uses `async`/`await` |
+| WHIZ102 | Apply method performs database I/O |
+| WHIZ103 | Apply method performs HTTP/network calls |
 
-2. Event published to Event Store
-   └─> Stored in wh_events table
+Practical rules:
+- No `DbContext`, `IDbConnection`, HTTP clients, or file I/O inside Apply
+- Use **event timestamps**, never `DateTime.UtcNow`
+- Return the updated model; the framework persists it
 
-3. Event Store Coordinator processes event
-   └─> Resolves IPerspectiveOf<OrderCreated> implementations
+---
 
-4. Perspectives invoked (parallel)
-   ├─> OrderSummaryPerspective.UpdateAsync(OrderCreated)
-   ├─> CustomerStatisticsPerspective.UpdateAsync(OrderCreated)
-   └─> InventoryPerspective.UpdateAsync(OrderCreated)
+## Diagnostics
 
-5. Checkpoints updated
-   └─> wh_perspective_checkpoints table
-```
+### WHIZ007: Perspective Discovered
 
-### Checkpoint-Based Processing
+**Severity**: Info
 
-Each perspective tracks **last processed event** per stream:
-
-```sql{title="Checkpoint-Based Processing" description="Each perspective tracks last processed event per stream:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Checkpoint-Based", "Processing"]}
--- wh_perspective_checkpoints table
-CREATE TABLE wh_perspective_checkpoints (
-    stream_id UUID NOT NULL,
-    perspective_name VARCHAR(200) NOT NULL,
-    last_event_id UUID NOT NULL,
-    last_sequence_number BIGINT NOT NULL,
-    status VARCHAR(50) NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    PRIMARY KEY (stream_id, perspective_name)
-);
-```
+**Message**: `Found perspective '{0}' listening to {1}`
 
 **Example**:
 ```
-stream_id                           | perspective_name           | last_event_id | last_sequence_number
-------------------------------------|----------------------------|---------------|---------------------
-order-abc-123                       | OrderSummaryPerspective    | event-001     | 5
-order-abc-123                       | CustomerStatistics         | event-001     | 5
-order-abc-123                       | InventoryPerspective       | event-001     | 5
+info WHIZ007: Found perspective 'OrderSummaryPerspective' listening to OrderCreated, OrderShipped, OrderCancelled
 ```
 
-**Benefit**: Can rebuild perspectives from any checkpoint (time-travel!).
+### WHIZ030: Perspective Event Missing StreamId
+
+**Severity**: Error
+
+**Message**: `Event type '{0}' used in perspective '{1}' must have exactly one property marked with [StreamId] attribute`
+
+Every event a perspective listens to must carry a `[StreamId]` so the framework can address the model's stream.
+
+### WHIZ031: Multiple StreamId Attributes
+
+**Severity**: Error
+
+**Message**: `Event type '{0}' has multiple properties marked with [StreamId]. Only one property can be the stream ID.`
+
+Related model-side diagnostics from the runner generators: **WHIZ033** (Warning) — a perspective's *model* without a `[StreamId]` property will not get a generated runner.
 
 ---
 
-## Rebuilding Perspectives
+## AOT Compatibility
 
-### Full Rebuild
+Generated registration uses **no reflection**:
 
-```csharp{title="Full Rebuild" description="Full Rebuild" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Full", "Rebuild"]}
-public class PerspectiveRebuilder {
-    private readonly IEventStore _eventStore;
-    private readonly IServiceProvider _services;
+```csharp{title="Zero Reflection Guarantee" description="Generated registration uses no reflection" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"]}
+// ✅ Direct type registration (AOT-compatible)
+services.AddScoped<IPerspectiveFor<OrderSummary, OrderCreated>, OrderSummaryPerspective>();
 
-    public async Task RebuildAllPerspectivesAsync(CancellationToken ct = default) {
-        // 1. Truncate all perspective tables
-        await TruncatePerspectiveTables();
-
-        // 2. Reset checkpoints
-        await ResetCheckpoints();
-
-        // 3. Read all events from Event Store
-        var events = await _eventStore.ReadAllEventsAsync(fromSequence: 0);
-
-        // 4. Resolve all perspectives
-        var perspectives = GetAllPerspectives();
-
-        // 5. Replay events through perspectives
-        foreach (var @event in events) {
-            foreach (var perspective in perspectives) {
-                if (CanHandle(perspective, @event)) {
-                    await perspective.UpdateAsync(@event, ct);
-                }
-            }
-        }
-    }
-
-    private IEnumerable<IPerspectiveOf<object>> GetAllPerspectives() {
-        // Generator registers all perspectives, we can resolve them here
-        return _services.GetServices<IPerspectiveOf<OrderCreated>>()
-            .Concat(_services.GetServices<IPerspectiveOf<OrderShipped>>())
-            .Concat(_services.GetServices<IPerspectiveOf<OrderCancelled>>())
-            .Cast<IPerspectiveOf<object>>();
-    }
-}
+// ❌ Reflection-based registration (incompatible with AOT)
+var perspectiveType = typeof(IPerspectiveFor<,>).MakeGenericType(modelType, eventType);
+var implementationType = assembly.GetTypes().First(t => t.IsAssignableTo(perspectiveType));
+services.AddScoped(perspectiveType, implementationType);
 ```
 
-**Use Cases**:
-- Add new perspective to existing system
-- Fix bug in perspective logic
-- Schema migration (add new columns)
-- Analytics: "What would customer stats look like without refunds?"
-
----
-
-## Generator Performance
-
-### Incremental Caching
-
-Like ReceptorDiscoveryGenerator, uses **value-based caching**:
-
-```csharp{title="Incremental Caching" description="Like ReceptorDiscoveryGenerator, uses value-based caching:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Incremental", "Caching"]}
-internal sealed record PerspectiveInfo(
-    string ClassName,
-    string[] EventTypes  // Arrays support value equality in records!
-);
-```
-
-**Performance**:
-```
-First compilation:
-├─ Scan syntax tree: 50ms
-├─ Extract perspective info: 20ms
-├─ Generate registration file: 5ms
-└─ Total: 75ms
-
-Subsequent compilation (no changes):
-├─ Check cache: 1ms (inputs unchanged)
-├─ Skip generation: 0ms
-└─ Total: 1ms (74ms saved!)
-```
-
-### Syntactic Filtering
-
-```csharp{title="Syntactic Filtering" description="Syntactic Filtering" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Syntactic", "Filtering"]}
-// Fast syntactic check (no semantic model access)
-predicate: static (node, _) => node is ClassDeclarationSyntax { BaseList.Types.Count: > 0 },
-
-// Only runs on ~5% of nodes (those with base types)
-transform: static (ctx, ct) => ExtractPerspectiveInfo(ctx, ct)
-```
-
-**Result**: 100x faster than analyzing every node!
+The `PerspectiveAssociationInfo<TModel, TEvent>.ApplyDelegate` gives strongly-typed, delegate-based Apply invocation with zero reflection.
 
 ---
 
@@ -496,134 +327,19 @@ transform: static (ctx, ct) => ExtractPerspectiveInfo(ctx, ct)
 
 ### View Generated File
 
-Generated file written to:
+With the shipped defaults (`WhizbangEmitMessageRegistry=true` sets `EmitCompilerGeneratedFiles` and points output at the ignored cache folder):
+
 ```
-obj/Debug/net10.0/generated/Whizbang.Generators/PerspectiveDiscoveryGenerator/
+.whizbang/cache/Whizbang.Generators/Whizbang.Generators.PerspectiveDiscoveryGenerator/
 └── PerspectiveRegistrations.g.cs
 ```
 
-Or configured output:
-```xml{title="View Generated File" description="Or configured output:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
+Or configure explicitly:
+```xml{title="View Generated File" description="Explicit generated-files output" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
 <PropertyGroup>
   <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   <CompilerGeneratedFilesOutputPath>.whizbang/cache</CompilerGeneratedFilesOutputPath>
 </PropertyGroup>
-```
-
-### Build Diagnostics
-
-Generator reports discoveries:
-
-```
-Build started...
-info WHIZ003: Found perspective 'OrderSummaryPerspective' handling OrderCreated, OrderShipped, OrderCancelled
-info WHIZ003: Found perspective 'CustomerStatisticsPerspective' handling OrderCreated, OrderShipped
-info WHIZ003: Found perspective 'InventoryPerspective' handling OrderCreated, OrderShipped, OrderCancelled
-Build succeeded.
-    3 perspectives discovered (8 event handlers)
-```
-
----
-
-## Diagnostics
-
-### WHIZ003: Perspective Discovered
-
-**Severity**: Info
-
-**Message**: `Found perspective '{0}' handling {1}`
-
-**Example**:
-```
-info WHIZ003: Found perspective 'OrderSummaryPerspective' handling OrderCreated, OrderShipped, OrderCancelled
-```
-
-**When**: Reported for each discovered perspective during compilation.
-
-**Args**:
-- `{0}`: Perspective class name (e.g., OrderSummaryPerspective)
-- `{1}`: Comma-separated event types (e.g., OrderCreated, OrderShipped, OrderCancelled)
-
----
-
-## Multiple Perspectives Per Event
-
-**One event, many read models**:
-
-```csharp{title="Multiple Perspectives Per Event" description="One event, many read models:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Multiple", "Perspectives"]}
-// Event
-public record OrderCreated(
-    Guid OrderId,
-    Guid CustomerId,
-    decimal Total,
-    DateTimeOffset CreatedAt
-);
-
-// Perspective 1: Order summary view
-public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct) {
-        // Update order_summaries table
-    }
-}
-
-// Perspective 2: Customer statistics
-public class CustomerStatisticsPerspective : IPerspectiveOf<OrderCreated> {
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct) {
-        // Update customer_statistics table (aggregate)
-    }
-}
-
-// Perspective 3: Inventory reservation
-public class InventoryPerspective : IPerspectiveOf<OrderCreated> {
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct) {
-        // Update inventory table (decrement available)
-    }
-}
-```
-
-**Generator registers all three**:
-```csharp{title="Multiple Perspectives Per Event (2)" description="Generator registers all three:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Multiple", "Perspectives"]}
-services.AddScoped<IPerspectiveOf<OrderCreated>, OrderSummaryPerspective>();
-services.AddScoped<IPerspectiveOf<OrderCreated>, CustomerStatisticsPerspective>();
-services.AddScoped<IPerspectiveOf<OrderCreated>, InventoryPerspective>();
-```
-
-**Event Store Coordinator invokes all in parallel** (or configurable sequential).
-
----
-
-## AOT Compatibility
-
-### Zero Reflection Guarantee
-
-Generated registration uses **no reflection**:
-
-```csharp{title="Zero Reflection Guarantee" description="Generated registration uses no reflection:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"]}
-// ✅ Direct type registration (AOT-compatible)
-services.AddScoped<IPerspectiveOf<OrderCreated>, OrderSummaryPerspective>();
-
-// ❌ Reflection-based registration (incompatible with AOT)
-var perspectiveType = typeof(IPerspectiveOf<>).MakeGenericType(eventType);
-var implementationType = assembly.GetTypes().First(t => t.IsAssignableTo(perspectiveType));
-services.AddScoped(perspectiveType, implementationType);
-```
-
-### Native AOT Verification
-
-```xml{title="Native AOT Verification" description="Native AOT Verification" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Native", "AOT"]}
-<PropertyGroup>
-  <PublishAot>true</PublishAot>
-</PropertyGroup>
-```
-
-**Build output**:
-```
-dotnet publish -c Release
-...
-Generating native code
-  MyApp.dll -> MyApp.exe (Native AOT)
-  Startup time: < 10ms
-  Perspectives registered: 5 classes, 8 event handlers
 ```
 
 ---
@@ -632,22 +348,21 @@ Generating native code
 
 ### DO ✅
 
-- ✅ **Implement IPerspectiveOf<TEvent>** for each event your read model needs
-- ✅ **Group related updates** in one perspective class (e.g., OrderSummaryPerspective)
-- ✅ **Use UPSERT** for idempotency (ON CONFLICT DO UPDATE)
-- ✅ **Keep perspectives simple** (no complex business logic)
-- ✅ **Use Dapper** for high-performance reads/writes
-- ✅ **Design for rebuild** (assume events can be replayed)
-- ✅ **Call AddWhizbangPerspectives()** in Program.cs
+- ✅ **Implement `IPerspectiveFor<TModel, TEvent...>`** with one Apply per event type
+- ✅ **Keep Apply pure** — no I/O, no side effects, deterministic
+- ✅ **Use event timestamps** for time values
+- ✅ **Put `[StreamId]` on the model** and on every event the perspective listens to
+- ✅ **Group related events** in one perspective class
+- ✅ **Call `AddWhizbangPerspectives()`** and chain a storage provider on the returned builder
 
 ### DON'T ❌
 
-- ❌ Put business logic in perspectives (belong in receptors)
-- ❌ Query other services in perspectives (use denormalized data from event)
-- ❌ Forget idempotency (events can be replayed!)
-- ❌ Use EF Core for perspectives (Dapper is 20x faster)
+- ❌ Perform database or HTTP calls in Apply (build error via purity analyzer)
+- ❌ Use `async` Apply methods (build error)
+- ❌ Use `DateTime.UtcNow` in Apply (breaks deterministic replay)
+- ❌ Put business logic in perspectives (belongs in receptors)
 - ❌ Manually register perspectives (generator handles this)
-- ❌ Modify generated files (will be overwritten)
+- ❌ Modify generated files (regenerated every build)
 
 ---
 
@@ -655,71 +370,34 @@ Generating native code
 
 ### Problem: Perspective Not Invoked
 
-**Symptoms**: Event published but perspective's `UpdateAsync` never called.
+**Symptoms**: Event published but the perspective's model never updates.
 
 **Causes**:
-1. Perspective not implementing `IPerspectiveOf<TEvent>` correctly
-2. Missing `AddWhizbangPerspectives()` call
-3. Event type mismatch (spelling, namespace)
-
-**Solution**:
-```csharp{title="Problem: Perspective Not Invoked" description="Problem: Perspective Not Invoked" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Perspective"]}
-// ✅ Correct interface implementation
-public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct) {
-        // Implementation
-    }
-}
-
-// Program.cs
-builder.Services.AddWhizbangPerspectives();  // Required!
-```
-
-### Problem: Duplicate Perspective Updates
-
-**Symptoms**: Same event processed multiple times by perspective.
-
-**Causes**:
-1. Missing checkpoint tracking
-2. Event Store replaying events without checking checkpoints
-
-**Solution**: Use `IWorkCoordinator.ProcessWorkBatchAsync` with perspective checkpoint tracking:
-
-```csharp{title="Problem: Duplicate Perspective Updates" description="Solution: Use `IWorkCoordinator." category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Problem:", "Duplicate"]}
-await _coordinator.ProcessWorkBatchAsync(
-    /* ... */,
-    perspectiveCompletions: new[] {
-        new PerspectiveCheckpointCompletion {
-            StreamId = @event.StreamId,
-            PerspectiveName = nameof(OrderSummaryPerspective),
-            LastEventId = @event.EventId,
-            Status = PerspectiveProcessingStatus.UpToDate
-        }
-    },
-    /* ... */
-);
-```
+1. Class doesn't implement an `IPerspectiveFor<TModel, TEvent...>` variant with the event listed
+2. Missing `AddWhizbangPerspectives()` call (or no storage provider configured)
+3. Event type missing `[StreamId]` (WHIZ030 build error)
 
 ### Problem: Generator Doesn't Find Perspectives
 
-**Symptoms**: `PerspectiveRegistrations.g.cs` not generated or empty.
+**Symptoms**: `PerspectiveRegistrations.g.cs` has no registrations.
 
 **Causes**:
-1. No perspectives in project
-2. Perspectives are abstract classes (can't be instantiated)
+1. No concrete classes implement a perspective interface with >1 type argument
+2. Perspective classes are abstract (skipped — they can't be instantiated)
 
-**Solution**:
-```csharp{title="Problem: Generator Doesn't Find Perspectives" description="Problem: Generator Doesn't Find Perspectives" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Problem:", "Generator"]}
-// ✅ Concrete class
-public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
-    // Implementation
-}
+```csharp{title="Problem: Generator Doesn't Find Perspectives" description="Concrete vs abstract perspectives" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Problem:", "Generator"]}
+// ✅ Concrete class - discovered
+public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreated> { /* ... */ }
 
-// ❌ Abstract class (skipped by generator)
-public abstract class BasePerspective : IPerspectiveOf<OrderCreated> {
-    // Abstract classes can't be instantiated
-}
+// ❌ Abstract class - skipped by generator
+public abstract class BasePerspective : IPerspectiveFor<OrderSummary, OrderCreated> { /* ... */ }
 ```
+
+### Problem: Build Error WHIZ100-WHIZ103
+
+**Symptoms**: Purity analyzer errors on Apply methods.
+
+**Solution**: Remove I/O and async code from Apply. Anything requiring services or awaits belongs in a receptor; Apply only folds the event into the model.
 
 ---
 
@@ -728,8 +406,9 @@ public abstract class BasePerspective : IPerspectiveOf<OrderCreated> {
 **Source Generators**:
 - [Receptor Discovery](receptor-discovery.md) - Compile-time receptor discovery
 - [Message Registry](message-registry.md) - VSCode extension integration
-- [Aggregate IDs](aggregate-ids.md) - UUIDv7 generation for identity value objects
+- [Aggregate IDs](aggregate-ids.md) - [StreamId] discovery and extraction
 - [JSON Contexts](json-contexts.md) - AOT-compatible JSON serialization
+- [Configuration](configuration.md) - Perspective table naming configuration
 
 **Core Concepts**:
 - [Perspectives](../../fundamentals/perspectives/perspectives.md) - Event-driven read models
@@ -739,14 +418,10 @@ public abstract class BasePerspective : IPerspectiveOf<OrderCreated> {
 - [Perspectives Storage](../../data/perspectives-storage.md) - Read model schema design
 - [Event Store](../../data/event-store.md) - Event sourcing and replay
 
-**Messaging**:
-- [Work Coordinator](../../messaging/work-coordinator.md) - Atomic batch processing
-
 **Workers**:
-- [Perspective Worker](../../operations/workers/perspective-worker.md) - Checkpoint processing lifecycle and runtime behavior
+- [Perspective Worker](../../operations/workers/perspective-worker.md) - Processing lifecycle and runtime behavior
 - [Execution Lifecycle](../../operations/workers/execution-lifecycle.md) - Startup/shutdown coordination
-- [Database Readiness](../../operations/workers/database-readiness.md) - Dependency coordination
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2025-12-21*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

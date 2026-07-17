@@ -1,5 +1,8 @@
 ---
 title: 'WHIZ062: Property Uses Non-Serializable Interface Type'
+pageType: troubleshooting
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   Error diagnostic when a message property uses a non-generic interface type
   that cannot be serialized for AOT
@@ -15,6 +18,8 @@ tags:
 codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/SerializablePropertyAnalyzer.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/SerializablePropertyAnalyzerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -25,12 +30,12 @@ lastMaintainedCommit: '01f07906'
 
 ## Description
 
-This error occurs when a property on an `ICommand`, `IEvent`, or `[WhizbangSerializable]` type uses a non-generic interface type. Non-generic interfaces cannot be serialized with System.Text.Json source generation because the concrete type is not known at compile time.
+This error occurs when a property on a public `ICommand`, `IEvent`, or `[WhizbangSerializable]` type uses a non-generic interface type. Non-generic interfaces cannot be serialized with System.Text.Json source generation because the concrete type is not known at compile time.
 
 ## Diagnostic Message
 
 ```
-Property 'Items' on 'CreateOrderCommand' uses interface type 'IEnumerable' which cannot be serialized for AOT. Use a concrete type or generic collection instead.
+Property 'Items' on 'CreateOrderCommand' uses interface type 'System.Collections.IEnumerable' which cannot be serialized for AOT. Use a concrete type or generic collection instead.
 ```
 
 ## Common Causes
@@ -74,10 +79,12 @@ public record ValidCommand : ICommand {
   // All OK - generic interfaces
   public IEnumerable<string> Tags { get; init; } = [];
   public IReadOnlyList<OrderItem> Items { get; init; } = [];
-  public IDictionary<string, object> Metadata { get; init; } = new Dictionary<string, object>();
+  public IDictionary<string, string> Metadata { get; init; } = new Dictionary<string, string>();
   public IReadOnlyCollection<Guid> Ids { get; init; } = [];
 }
 ```
+
+The analyzer does not inspect type arguments of generic interfaces, so `IDictionary<string, object>` would also pass — but its `object` values would still fail AOT serialization at runtime. Keep type arguments concrete.
 
 ## Why This Matters
 
@@ -93,7 +100,7 @@ For custom interfaces, either:
 
 1. **Make them generic** with type parameters
 2. **Use concrete types** instead
-3. **Mark with `[JsonDerivedType]`** for polymorphic serialization
+3. **Use an abstract base class** instead of an interface — abstract classes are not flagged, and Whizbang's `MessageJsonContextGenerator` automatically registers derived types for polymorphic serialization (reported as WHIZ071)
 
 ### Example: Custom Interface Fix
 
@@ -121,12 +128,11 @@ public IEnumerable LegacyItems { get; init; }
 #pragma warning restore WHIZ062
 ```
 
-Or in your `.csproj`:
+Or project-wide via `.editorconfig` (`NoWarn` does not suppress Error-severity diagnostics):
 
-```xml{title="Suppressing This Diagnostic (2)" description="Or in your `." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
-<PropertyGroup>
-  <NoWarn>$(NoWarn);WHIZ062</NoWarn>
-</PropertyGroup>
+```ini{title="Suppressing This Diagnostic (2)" description="Project-wide suppression via .editorconfig:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
+[*.cs]
+dotnet_diagnostic.WHIZ062.severity = none
 ```
 
 ## Related Diagnostics

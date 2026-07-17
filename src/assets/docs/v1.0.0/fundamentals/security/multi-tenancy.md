@@ -1,5 +1,8 @@
 ---
 title: Multi-Tenancy Patterns
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Advanced Topics
 order: 4
@@ -11,6 +14,11 @@ codeReferences:
   - src/Whizbang.Core/Lenses/TenantConstants.cs
   - src/Whizbang.Core/Security/ScopeContext.cs
   - src/Whizbang.Core/Security/Attributes/ScopedAttribute.cs
+  - src/Whizbang.Core/IReceptor.cs
+  - src/Whizbang.Core/ICommand.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Security/ScopeContextTests.cs
+  - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -37,29 +45,23 @@ Comprehensive guide to **multi-tenancy architectures** with Whizbang - database-
 
 ### Architecture
 
-```
-┌────────────────────────────────────────────────────┐
-│  Multi-Tenant SaaS Application                     │
-│                                                     │
-│  ┌──────────────────┐                              │
-│  │  Tenant Resolver │                              │
-│  │  - Header/JWT    │                              │
-│  │  - Subdomain     │                              │
-│  └────────┬─────────┘                              │
-│           │                                         │
-│           ▼                                         │
-│  ┌──────────────────┐                              │
-│  │ Connection Pool  │                              │
-│  │  Manager         │                              │
-│  └────────┬─────────┘                              │
-│           │                                         │
-│  ┌────────┼───────────────────────────┐            │
-│  │        │                           │            │
-│  ▼        ▼                           ▼            │
-│ ┌─────┐ ┌─────┐                   ┌─────┐         │
-│ │DB-A │ │DB-B │       ...         │DB-Z │         │
-│ └─────┘ └─────┘                   └─────┘         │
-└────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph App["Multi-Tenant SaaS Application"]
+        Resolver["Tenant Resolver<br/>- Header/JWT<br/>- Subdomain"]
+        Pool["Connection Pool<br/>Manager"]
+        DBA["DB-A"]
+        DBB["DB-B"]
+        Dots["..."]
+        DBZ["DB-Z"]
+
+        Resolver --> Pool
+        Pool --> DBA
+        Pool --> DBB
+        Pool --> DBZ
+        DBB ~~~ Dots
+        Dots ~~~ DBZ
+    end
 ```
 
 ### Tenant Context (AsyncLocal)
@@ -193,7 +195,8 @@ public class TenantDbConnectionFactory : ITenantDbConnectionFactory {
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
   private readonly ITenantDbConnectionFactory _dbFactory;
 
-  public async Task<OrderCreated> HandleAsync(
+  // IReceptor<TMessage, TResponse>.HandleAsync returns ValueTask<TResponse>
+  public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder command,
     CancellationToken ct = default
   ) {
@@ -247,7 +250,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 **TenantOnboardingReceptor.cs**:
 
 ```csharp{title="Tenant Onboarding" description="**TenantOnboardingReceptor." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Tenant", "Onboarding"]}
-public record CreateTenant : ICommand<TenantCreated> {
+public record CreateTenant : ICommand {
   public required string TenantId { get; init; }
   public required string Name { get; init; }
   public required string AdminEmail { get; init; }
@@ -257,7 +260,7 @@ public class TenantOnboardingReceptor : IReceptor<CreateTenant, TenantCreated> {
   private readonly IConfiguration _config;
   private readonly IDbConnection _adminDb;
 
-  public async Task<TenantCreated> HandleAsync(
+  public async ValueTask<TenantCreated> HandleAsync(
     CreateTenant command,
     CancellationToken ct = default
   ) {
@@ -356,7 +359,7 @@ public class SchemaPerTenantDbConnectionFactory : ITenantDbConnectionFactory {
 ### Tenant Onboarding (Schema)
 
 ```csharp{title="Tenant Onboarding (Schema)" description="Tenant Onboarding (Schema)" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Onboarding"]}
-public async Task<TenantCreated> HandleAsync(
+public async ValueTask<TenantCreated> HandleAsync(
   CreateTenant command,
   CancellationToken ct = default
 ) {
@@ -488,7 +491,7 @@ CREATE INDEX idx_orders_tenant_id ON orders(tenant_id);
 **CreateOrderReceptor.cs**:
 
 ```csharp{title="Manual Filtering" description="**CreateOrderReceptor." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Manual", "Filtering"]}
-public async Task<OrderCreated> HandleAsync(
+public async ValueTask<OrderCreated> HandleAsync(
   CreateOrder command,
   CancellationToken ct = default
 ) {
@@ -534,39 +537,35 @@ var orders = await connection.QueryAsync<OrderRow>(
 
 ### Architecture
 
-```
-┌────────────────────────────────────────────────────────┐
-│  Tenant Databases                                      │
-│  ┌─────┐  ┌─────┐             ┌─────┐                 │
-│  │DB-A │  │DB-B │    ...      │DB-Z │                 │
-│  └──┬──┘  └──┬──┘             └──┬──┘                 │
-│     │        │                   │                     │
-│     └────────┼───────────────────┘                     │
-│              │ Events                                  │
-│              ▼                                          │
-│  ┌───────────────────────────┐                         │
-│  │ Analytics Worker          │                         │
-│  │  - CrossTenantPerspective │                         │
-│  └──────────┬────────────────┘                         │
-│             │                                           │
-│             ▼                                           │
-│  ┌───────────────────────────┐                         │
-│  │ Shared Analytics Database │                         │
-│  │  - Aggregated metrics     │                         │
-│  │  - All tenants            │                         │
-│  └───────────────────────────┘                         │
-└────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Tenants["Tenant Databases"]
+        DBA["DB-A"]
+        DBB["DB-B"]
+        Dots["..."]
+        DBZ["DB-Z"]
+        DBB ~~~ Dots
+        Dots ~~~ DBZ
+    end
+
+    Worker["Analytics Worker<br/>- CrossTenantAnalyticsReceptor"]
+    Shared["Shared Analytics Database<br/>- Aggregated metrics<br/>- All tenants"]
+
+    DBA -->|"Events"| Worker
+    DBB -->|"Events"| Worker
+    DBZ -->|"Events"| Worker
+    Worker --> Shared
 ```
 
-### Cross-Tenant Perspective
+### Cross-Tenant Analytics Receptor
 
-**CrossTenantAnalyticsPerspective.cs**:
+**CrossTenantAnalyticsReceptor.cs** — an event receptor (`IReceptor<TEvent>`) that projects into the shared analytics database:
 
-```csharp{title="Cross-Tenant Perspective" description="**CrossTenantAnalyticsPerspective." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Cross-Tenant", "Perspective"]}
-public class CrossTenantAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
+```csharp{title="Cross-Tenant Analytics Receptor" description="**CrossTenantAnalyticsReceptor." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Cross-Tenant", "Analytics"]}
+public class CrossTenantAnalyticsReceptor : IReceptor<OrderCreated> {
   private readonly IDbConnection _analyticsDb;  // Shared analytics database
 
-  public async Task HandleAsync(OrderCreated @event, CancellationToken ct = default) {
+  public async ValueTask HandleAsync(OrderCreated @event, CancellationToken ct = default) {
     // Insert into shared analytics database (includes tenant_id)
     await _analyticsDb.ExecuteAsync(
       """

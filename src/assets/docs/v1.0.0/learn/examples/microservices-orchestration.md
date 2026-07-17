@@ -1,5 +1,8 @@
 ---
 title: Microservices Orchestration
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Customization Examples
 order: 3
@@ -15,6 +18,14 @@ codeReferences:
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
   - >-
     samples/ECommerce/ECommerce.PaymentWorker/Receptors/ProcessPaymentReceptor.cs
+  - >-
+    samples/ECommerce/ECommerce.ShippingWorker/Receptors/PaymentShippingReceptor.cs
+  - src/Whizbang.Sagas/SagaServiceCollectionExtensions.cs
+testReferences:
+  - >-
+    samples/ECommerce/tests/ECommerce.ShippingWorker.Tests/CreateShipmentReceptorTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.Lifecycle.Integration.Tests/PostAllPerspectivesTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -22,48 +33,37 @@ lastMaintainedCommit: '01f07906'
 
 Implement **saga orchestration patterns** with Whizbang for distributed workflows, compensation handling, and complex multi-service coordination.
 
+:::updated
+Whizbang ships a dedicated **Whizbang.Sagas** package (saga state repositories, completion watchdogs, abandonment events — see `SagaServiceCollectionExtensions`). The hand-rolled orchestrator below teaches the underlying pattern using core primitives: **event receptors** (`IReceptor<TEvent, TCommand>`) that advance saga state and dispatch the next command via `IDispatcher.SendAsync`. The ECommerce sample's `PaymentShippingReceptor` is a minimal single-step version of exactly this pattern.
+:::
+
 ---
 
 ## Orchestration vs. Choreography
 
-```
-┌────────────────────────────────────────────────────────────┐
-│  Choreography (Decentralized)                              │
-│                                                             │
-│  OrderService → OrderCreated → InventoryService            │
-│                                      ↓                      │
-│                            InventoryReserved                │
-│                                      ↓                      │
-│                              PaymentService                 │
-│                                      ↓                      │
-│                             PaymentProcessed                │
-│                                                             │
-│  ❌ No central coordinator                                 │
-│  ❌ Hard to track overall state                            │
-│  ✅ Loose coupling                                         │
-└────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph CHOREO["Choreography (Decentralized)"]
+        OrderService["OrderService"] --> OC["OrderCreated"] --> InventoryService["InventoryService"] --> IR["InventoryReserved"] --> PaymentService["PaymentService"] --> PP["PaymentProcessed"]
+        ChoreoNotes["❌ No central coordinator<br/>❌ Hard to track overall state<br/>✅ Loose coupling"]
+    end
 
-┌────────────────────────────────────────────────────────────┐
-│  Orchestration (Centralized)                               │
-│                                                             │
-│           ┌──────────────────────┐                         │
-│           │ OrderSaga            │                         │
-│           │ (Process Manager)    │                         │
-│           └──────────┬───────────┘                         │
-│                      │                                      │
-│         ┌────────────┼────────────┐                        │
-│         │            │            │                        │
-│         ▼            ▼            ▼                        │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                │
-│  │Inventory │  │ Payment  │  │ Shipping │                │
-│  │ Service  │  │ Service  │  │ Service  │                │
-│  └──────────┘  └──────────┘  └──────────┘                │
-│                                                             │
-│  ✅ Central coordinator                                    │
-│  ✅ Easy to track state                                    │
-│  ✅ Complex workflows                                      │
-│  ❌ Tighter coupling                                       │
-└────────────────────────────────────────────────────────────┘
+    class OrderService,InventoryService,PaymentService layer-core
+    class OC,IR,PP layer-event
+```
+
+```mermaid
+flowchart TD
+    subgraph ORCH["Orchestration (Centralized)"]
+        OrderSaga["OrderSaga<br/>(Process Manager)"]
+        OrderSaga --> InvSvc["Inventory Service"]
+        OrderSaga --> PaySvc["Payment Service"]
+        OrderSaga --> ShipSvc["Shipping Service"]
+        OrchNotes["✅ Central coordinator<br/>✅ Easy to track state<br/>✅ Complex workflows<br/>❌ Tighter coupling"]
+    end
+
+    class OrderSaga layer-command
+    class InvSvc,PaySvc,ShipSvc layer-core
 ```
 
 ---
@@ -109,208 +109,114 @@ public enum SagaStep {
 
 ---
 
-## Saga Orchestrator
+## Saga Orchestrator (Event Receptors)
 
-**OrderSagaOrchestrator.cs**:
+The orchestrator is a set of **event receptors** — each saga step reacts to an event, persists saga state, and dispatches the next command with `IDispatcher.SendAsync`. This is the same shape as the ECommerce sample's `PaymentShippingReceptor` (`IReceptor<PaymentProcessedEvent, CreateShipmentCommand>`), extended with durable saga state.
 
-```csharp{title="Saga Orchestrator" description="**OrderSagaOrchestrator." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Saga", "Orchestrator"]}
-public class OrderSagaOrchestrator :
-  IPerspectiveOf<OrderCreated>,
-  IPerspectiveOf<InventoryReserved>,
-  IPerspectiveOf<InventoryInsufficient>,
-  IPerspectiveOf<PaymentProcessed>,
-  IPerspectiveOf<PaymentFailed>,
-  IPerspectiveOf<ShipmentCreated> {
+**OrderSagaReceptors.cs**:
 
-  private readonly NpgsqlConnection _db;
-  private readonly IMessageBus _bus;
-  private readonly ILogger<OrderSagaOrchestrator> _logger;
+```csharp{title="Saga Orchestrator" description="**OrderSagaReceptors." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Saga", "Orchestrator"]}
+using Whizbang.Core;
+using Whizbang.Core.ValueObjects;
 
-  // Handle OrderCreated - Start saga
-  public async Task HandleAsync(
-    OrderCreated @event,
-    CancellationToken ct = default
+// Start saga: OrderCreated → ReserveInventory
+public class OrderCreatedSagaReceptor(
+  SagaStateStore store,
+  IDispatcher dispatcher,
+  ILogger<OrderCreatedSagaReceptor> logger
+) : IReceptor<OrderCreated, ReserveInventory> {
+
+  public async ValueTask<ReserveInventory> HandleAsync(
+    OrderCreated message,
+    CancellationToken cancellationToken = default
   ) {
-    var sagaId = Guid.NewGuid().ToString("N");
-
-    // 1. Create saga state
     var state = new OrderSagaState {
-      SagaId = sagaId,
-      OrderId = @event.OrderId,
+      SagaId = TrackedGuid.NewMedo().Value.ToString("N"),
+      OrderId = message.OrderId,
       Status = SagaStatus.InProgress,
       CurrentStep = SagaStep.InventoryReserving,
       CreatedAt = DateTime.UtcNow,
       UpdatedAt = DateTime.UtcNow
     };
+    await store.SaveAsync(state, cancellationToken);
 
-    await SaveSagaStateAsync(state, ct);
+    var command = new ReserveInventory(OrderId: message.OrderId, Items: message.Items);
+    await dispatcher.SendAsync(command);
 
-    // 2. Send first command
-    var reserveInventoryCommand = new ReserveInventory(
-      OrderId: @event.OrderId,
-      Items: @event.Items
-    );
-
-    await _bus.SendCommandAsync(reserveInventoryCommand, ct);
-
-    _logger.LogInformation(
-      "Order saga {SagaId} started for order {OrderId}",
-      sagaId,
-      @event.OrderId
-    );
+    logger.LogInformation("Order saga {SagaId} started for order {OrderId}", state.SagaId, message.OrderId);
+    return command;
   }
+}
 
-  // Handle InventoryReserved - Continue saga
-  public async Task HandleAsync(
-    InventoryReserved @event,
-    CancellationToken ct = default
+// Continue saga: InventoryReserved → ProcessPayment
+public class InventoryReservedSagaReceptor(
+  SagaStateStore store,
+  IDispatcher dispatcher,
+  ILogger<InventoryReservedSagaReceptor> logger
+) : IReceptor<InventoryReserved, ProcessPayment> {
+
+  public async ValueTask<ProcessPayment> HandleAsync(
+    InventoryReserved message,
+    CancellationToken cancellationToken = default
   ) {
-    var state = await LoadSagaStateByOrderIdAsync(@event.OrderId, ct);
-    if (state == null) {
-      _logger.LogWarning("Saga not found for order {OrderId}", @event.OrderId);
-      return;
-    }
+    var state = await store.LoadByOrderIdAsync(message.OrderId, cancellationToken)
+      ?? throw new InvalidOperationException($"Saga not found for order {message.OrderId}");
 
-    // Update state
-    state = state with {
-      CurrentStep = SagaStep.PaymentProcessing,
-      UpdatedAt = DateTime.UtcNow
-    };
-    await SaveSagaStateAsync(state, ct);
+    state = state with { CurrentStep = SagaStep.PaymentProcessing, UpdatedAt = DateTime.UtcNow };
+    await store.SaveAsync(state, cancellationToken);
 
-    // Send next command
-    var processPaymentCommand = new ProcessPayment(
-      OrderId: @event.OrderId,
-      Amount: @event.TotalAmount
-    );
+    var command = new ProcessPayment(OrderId: message.OrderId, Amount: message.TotalAmount);
+    await dispatcher.SendAsync(command);
 
-    await _bus.SendCommandAsync(processPaymentCommand, ct);
-
-    _logger.LogInformation(
-      "Saga {SagaId}: Inventory reserved, processing payment",
-      state.SagaId
-    );
+    logger.LogInformation("Saga {SagaId}: Inventory reserved, processing payment", state.SagaId);
+    return command;
   }
+}
 
-  // Handle InventoryInsufficient - Compensate
-  public async Task HandleAsync(
-    InventoryInsufficient @event,
-    CancellationToken ct = default
+// Compensate: PaymentFailed → ReleaseInventory
+public class PaymentFailedSagaReceptor(
+  SagaStateStore store,
+  IDispatcher dispatcher,
+  ILogger<PaymentFailedSagaReceptor> logger
+) : IReceptor<PaymentFailed, ReleaseInventory> {
+
+  public async ValueTask<ReleaseInventory> HandleAsync(
+    PaymentFailed message,
+    CancellationToken cancellationToken = default
   ) {
-    var state = await LoadSagaStateByOrderIdAsync(@event.OrderId, ct);
-    if (state == null) return;
+    var state = await store.LoadByOrderIdAsync(message.OrderId, cancellationToken)
+      ?? throw new InvalidOperationException($"Saga not found for order {message.OrderId}");
 
-    // Update state to compensating
-    state = state with {
-      Status = SagaStatus.Compensating,
-      CurrentStep = SagaStep.OrderCreated,
-      ErrorMessage = $"Insufficient inventory for product {@event.ProductId}",
-      UpdatedAt = DateTime.UtcNow
-    };
-    await SaveSagaStateAsync(state, ct);
-
-    // Send compensation command
-    var cancelOrderCommand = new CancelOrder(
-      OrderId: @event.OrderId,
-      Reason: "Insufficient inventory"
-    );
-
-    await _bus.SendCommandAsync(cancelOrderCommand, ct);
-
-    _logger.LogWarning(
-      "Saga {SagaId}: Insufficient inventory, compensating",
-      state.SagaId
-    );
-  }
-
-  // Handle PaymentProcessed - Continue saga
-  public async Task HandleAsync(
-    PaymentProcessed @event,
-    CancellationToken ct = default
-  ) {
-    var state = await LoadSagaStateByOrderIdAsync(@event.OrderId, ct);
-    if (state == null) return;
-
-    // Update state
-    state = state with {
-      CurrentStep = SagaStep.ShipmentCreating,
-      PaymentId = @event.PaymentId,
-      UpdatedAt = DateTime.UtcNow
-    };
-    await SaveSagaStateAsync(state, ct);
-
-    // Send next command
-    var createShipmentCommand = new CreateShipment(
-      OrderId: @event.OrderId,
-      PaymentId: @event.PaymentId
-    );
-
-    await _bus.SendCommandAsync(createShipmentCommand, ct);
-
-    _logger.LogInformation(
-      "Saga {SagaId}: Payment processed, creating shipment",
-      state.SagaId
-    );
-  }
-
-  // Handle PaymentFailed - Compensate
-  public async Task HandleAsync(
-    PaymentFailed @event,
-    CancellationToken ct = default
-  ) {
-    var state = await LoadSagaStateByOrderIdAsync(@event.OrderId, ct);
-    if (state == null) return;
-
-    // Update state to compensating
     state = state with {
       Status = SagaStatus.Compensating,
       CurrentStep = SagaStep.InventoryReserved,
-      ErrorMessage = @event.Reason,
+      ErrorMessage = message.Reason,
       UpdatedAt = DateTime.UtcNow
     };
-    await SaveSagaStateAsync(state, ct);
+    await store.SaveAsync(state, cancellationToken);
 
-    // Send compensation command
-    var releaseInventoryCommand = new ReleaseInventory(
-      OrderId: @event.OrderId
-    );
+    var command = new ReleaseInventory(OrderId: message.OrderId);
+    await dispatcher.SendAsync(command);
 
-    await _bus.SendCommandAsync(releaseInventoryCommand, ct);
-
-    _logger.LogWarning(
-      "Saga {SagaId}: Payment failed, releasing inventory",
-      state.SagaId
-    );
+    logger.LogWarning("Saga {SagaId}: Payment failed, releasing inventory", state.SagaId);
+    return command;
   }
+}
 
-  // Handle ShipmentCreated - Complete saga
-  public async Task HandleAsync(
-    ShipmentCreated @event,
-    CancellationToken ct = default
-  ) {
-    var state = await LoadSagaStateByOrderIdAsync(@event.OrderId, ct);
-    if (state == null) return;
+// Remaining steps follow the same pattern:
+// - InventoryInsufficientSagaReceptor : IReceptor<InventoryInsufficient, CancelOrder>
+// - PaymentProcessedSagaReceptor     : IReceptor<PaymentProcessed, CreateShipment>
+// - ShipmentCreatedSagaReceptor      : IReceptor<ShipmentCreated>  (void receptor — marks saga Completed)
+```
 
-    // Update state to completed
-    state = state with {
-      Status = SagaStatus.Completed,
-      CurrentStep = SagaStep.OrderCompleted,
-      ShipmentId = @event.ShipmentId,
-      UpdatedAt = DateTime.UtcNow
-    };
-    await SaveSagaStateAsync(state, ct);
+**SagaStateStore.cs** (durable saga state via Dapper):
 
-    _logger.LogInformation(
-      "Saga {SagaId}: Order completed successfully",
-      state.SagaId
-    );
-  }
+```csharp{title="Saga State Store" description="**SagaStateStore." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Saga", "State"]}
+public class SagaStateStore(NpgsqlDataSource dataSource) {
 
-  private async Task SaveSagaStateAsync(
-    OrderSagaState state,
-    CancellationToken ct
-  ) {
-    await _db.ExecuteAsync(
+  public async Task SaveAsync(OrderSagaState state, CancellationToken ct) {
+    await using var db = await dataSource.OpenConnectionAsync(ct);
+    await db.ExecuteAsync(
       """
       INSERT INTO saga_state (
         saga_id, order_id, status, current_step, payment_id, shipment_id, error_message, created_at, updated_at, metadata
@@ -339,11 +245,9 @@ public class OrderSagaOrchestrator :
     );
   }
 
-  private async Task<OrderSagaState?> LoadSagaStateByOrderIdAsync(
-    string orderId,
-    CancellationToken ct
-  ) {
-    return await _db.QuerySingleOrDefaultAsync<OrderSagaState>(
+  public async Task<OrderSagaState?> LoadByOrderIdAsync(string orderId, CancellationToken ct) {
+    await using var db = await dataSource.OpenConnectionAsync(ct);
+    return await db.QuerySingleOrDefaultAsync<OrderSagaState>(
       """
       SELECT saga_id, order_id, status, current_step, payment_id, shipment_id, error_message, created_at, updated_at
       FROM saga_state
@@ -354,6 +258,10 @@ public class OrderSagaOrchestrator :
   }
 }
 ```
+
+:::updated
+Perspectives are **pure `Apply` functions** and cannot dispatch commands — orchestration logic that sends the next command belongs in **receptors** (events can have receptors). Use `PublishOnceAsync(claimKey, eventData)` on `IDispatcher` when concurrent handlers might emit the same saga event twice — the conventional claim key is the saga id.
+:::
 
 ---
 
@@ -390,15 +298,17 @@ CREATE INDEX idx_saga_state_created_at ON saga_state(created_at DESC);
 
 ```csharp{title="Timeout Handling" description="**SagaTimeoutMonitor." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Timeout", "Handling"]}
 public class SagaTimeoutMonitor : BackgroundService {
-  private readonly NpgsqlConnection _db;
-  private readonly IMessageBus _bus;
+  private readonly NpgsqlDataSource _dataSource;
+  private readonly IDispatcher _dispatcher;
   private readonly ILogger<SagaTimeoutMonitor> _logger;
 
   protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
     while (!stoppingToken.IsCancellationRequested) {
       try {
+        await using var db = await _dataSource.OpenConnectionAsync(stoppingToken);
+
         // Find sagas stuck in progress for > 10 minutes
-        var stuckSagas = await _db.QueryAsync<OrderSagaState>(
+        var stuckSagas = await db.QueryAsync<OrderSagaState>(
           """
           SELECT saga_id, order_id, status, current_step, updated_at
           FROM saga_state
@@ -434,27 +344,19 @@ public class SagaTimeoutMonitor : BackgroundService {
     switch (saga.CurrentStep) {
       case SagaStep.PaymentProcessing:
         // Release inventory
-        await _bus.SendCommandAsync(
-          new ReleaseInventory(saga.OrderId),
-          ct
-        );
+        await _dispatcher.SendAsync(new ReleaseInventory(saga.OrderId));
         break;
 
       case SagaStep.ShipmentCreating:
         // Refund payment and release inventory
-        await _bus.SendCommandAsync(
-          new RefundPayment(saga.OrderId, saga.PaymentId!),
-          ct
-        );
-        await _bus.SendCommandAsync(
-          new ReleaseInventory(saga.OrderId),
-          ct
-        );
+        await _dispatcher.SendAsync(new RefundPayment(saga.OrderId, saga.PaymentId!));
+        await _dispatcher.SendAsync(new ReleaseInventory(saga.OrderId));
         break;
     }
 
     // Update saga to compensating
-    await _db.ExecuteAsync(
+    await using var db = await _dataSource.OpenConnectionAsync(ct);
+    await db.ExecuteAsync(
       """
       UPDATE saga_state
       SET status = 'Compensating', error_message = 'Timeout', updated_at = NOW()

@@ -1,5 +1,8 @@
 ---
 title: Caching
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Components
 order: 8
@@ -8,8 +11,10 @@ description: >-
   coordination
 tags: 'caching, distributed-cache, cache-invalidation, redis'
 codeReferences:
-  - src/Whizbang.Core/Commands/ClearCacheCommand.cs
-  - src/Whizbang.Core/Caching/ICacheService.cs
+  - src/Whizbang.Core/Commands/System/SystemCommands.cs
+  - src/Whizbang.Core/IReceptor.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Commands/System/SystemCommandsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -28,96 +33,71 @@ Caching in Whizbang follows these principles:
 
 ## Clear Cache Command {#clear-cache}
 
-The `ClearCacheCommand` enables coordinated cache invalidation across distributed instances.
+The `ClearCacheCommand` is a **system command** (in `Whizbang.Core.Commands.System`) that enables coordinated cache invalidation across distributed instances. System commands are routed via the `whizbang.system.commands` namespace, and all services using `SharedTopicInboxStrategy` automatically subscribe to them.
 
 ### Usage
 
 ```csharp{title="Usage" description="Usage" category="Implementation" difficulty="BEGINNER" tags=["Data", "Usage"]}
-using Whizbang.Core.Commands;
+using Whizbang.Core.Commands.System;
 
-// Clear specific cache keys
-var command = new ClearCacheCommand {
-  Keys = new[] { "product:123", "product:456" }
-};
+// Clear a specific cache key
+var command = new ClearCacheCommand(CacheKey: "product:123");
 
-await dispatcher.PublishAsync(command);
+await dispatcher.SendAsync(command);
 // All instances receive command and clear their caches
 ```
 
 ### Command Structure
 
 ```csharp{title="Command Structure" description="Command Structure" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Command", "Structure"]}
-namespace Whizbang.Core.Commands;
+namespace Whizbang.Core.Commands.System;
 
 /// <summary>
-/// Command to clear cache entries across all service instances.
+/// Command to clear cached data across all services.
 /// </summary>
-/// <remarks>
-/// When published via the dispatcher, this command is routed to all
-/// service instances (broadcast pattern), ensuring cache consistency
-/// across distributed deployments.
-/// </remarks>
-public record ClearCacheCommand : ICommand {
-  /// <summary>
-  /// The cache keys to clear. If null or empty, clears all cache entries.
-  /// </summary>
-  public IReadOnlyList<string>? Keys { get; init; }
-
-  /// <summary>
-  /// Optional pattern for cache key matching (e.g., "product:*" for all product keys).
-  /// </summary>
-  public string? Pattern { get; init; }
-
-  /// <summary>
-  /// Optional cache region/namespace to target specific cache partitions.
-  /// </summary>
-  public string? Region { get; init; }
-}
+/// <param name="CacheKey">Optional specific cache key to clear. If null, clears all caches.</param>
+/// <param name="CacheRegion">Optional cache region/namespace to target.</param>
+[PinnedId("db190b57-50ca-4748-9929-0f090dba9e28")]
+public record ClearCacheCommand(
+    string? CacheKey = null,
+    string? CacheRegion = null
+) : ICommand;
 ```
+
+:::updated
+The shipped command takes a single optional `CacheKey` and an optional `CacheRegion`. There is no `Keys` list and no `Pattern` property - to clear multiple keys, send multiple commands or use a region; pattern semantics (e.g. treating a key like `product:*` as a wildcard) are up to your receptor implementation.
+:::
 
 ### Patterns
 
-#### Clear Specific Keys
+#### Clear a Specific Key
 
-```csharp{title="Clear Specific Keys" description="Clear Specific Keys" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "Specific", "Keys"]}
-// Clear exact keys
-await dispatcher.PublishAsync(new ClearCacheCommand {
-  Keys = new[] { "user:123", "user:456" }
-});
-```
-
-#### Clear by Pattern
-
-```csharp{title="Clear by Pattern" description="Clear by Pattern" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "Pattern"]}
-// Clear all keys matching pattern
-await dispatcher.PublishAsync(new ClearCacheCommand {
-  Pattern = "product:*"
-});
+```csharp{title="Clear a Specific Key" description="Clear a Specific Key" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "Specific", "Keys"]}
+// Clear one exact key
+await dispatcher.SendAsync(new ClearCacheCommand(CacheKey: "user:123"));
 ```
 
 #### Clear by Region
 
 ```csharp{title="Clear by Region" description="Clear by Region" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "Region"]}
 // Clear all keys in a region
-await dispatcher.PublishAsync(new ClearCacheCommand {
-  Region = "ProductCatalog"
-});
+await dispatcher.SendAsync(new ClearCacheCommand(CacheRegion: "ProductCatalog"));
 ```
 
 #### Clear All
 
 ```csharp{title="Clear All" description="Clear All" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "All"]}
 // Clear entire cache
-await dispatcher.PublishAsync(new ClearCacheCommand());
+await dispatcher.SendAsync(new ClearCacheCommand());
 ```
 
 ## Implementing a Cache Receptor
 
-Handle cache clearing in your service:
+Handle cache clearing in your service. Receptors implementing `IReceptor<TMessage, TResponse>` are discovered automatically by the source generators:
 
 ```csharp{title="Implementing a Cache Receptor" description="Handle cache clearing in your service:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Implementing", "Cache", "Receptor"]}
 using Whizbang.Core;
-using Whizbang.Core.Commands;
+using Whizbang.Core.Commands.System;
 
 public class CacheClearReceptor : IReceptor<ClearCacheCommand, CacheCleared> {
   private readonly ICacheService _cache;
@@ -134,18 +114,13 @@ public class CacheClearReceptor : IReceptor<ClearCacheCommand, CacheCleared> {
 
     var clearedKeys = 0;
 
-    if (message.Keys?.Count > 0) {
-      // Clear specific keys
-      foreach (var key in message.Keys) {
-        await _cache.RemoveAsync(key, ct);
-        clearedKeys++;
-      }
-    } else if (!string.IsNullOrEmpty(message.Pattern)) {
-      // Clear by pattern
-      clearedKeys = await _cache.RemoveByPatternAsync(message.Pattern, ct);
-    } else if (!string.IsNullOrEmpty(message.Region)) {
+    if (!string.IsNullOrEmpty(message.CacheKey)) {
+      // Clear a specific key
+      await _cache.RemoveAsync(message.CacheKey, ct);
+      clearedKeys = 1;
+    } else if (!string.IsNullOrEmpty(message.CacheRegion)) {
       // Clear region
-      clearedKeys = await _cache.ClearRegionAsync(message.Region, ct);
+      clearedKeys = await _cache.ClearRegionAsync(message.CacheRegion, ct);
     } else {
       // Clear all
       await _cache.ClearAsync(ct);
@@ -165,8 +140,6 @@ public class CacheClearReceptor : IReceptor<ClearCacheCommand, CacheCleared> {
 }
 
 public record CacheCleared : IEvent {
-  [StreamKey]
-  public Guid EventId { get; init; } = Guid.CreateVersion7();
   public int KeysCleared { get; init; }
   public DateTimeOffset ClearedAt { get; init; }
 }
@@ -174,11 +147,10 @@ public record CacheCleared : IEvent {
 
 ## ICacheService Interface
 
-Standard interface for cache implementations:
+Whizbang does not ship a cache service abstraction - define one in your application and register your own implementation:
 
-```csharp{title="ICacheService Interface" description="Standard interface for cache implementations:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "ICacheService", "Interface"]}
-namespace Whizbang.Core.Caching;
-
+```csharp{title="ICacheService Interface" description="Application-defined interface for cache implementations:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "ICacheService", "Interface"]}
+// Application-defined abstraction (not part of Whizbang)
 public interface ICacheService {
   // Get/Set
   Task<T?> GetAsync<T>(string key, CancellationToken ct = default);
@@ -203,7 +175,6 @@ Using Redis as distributed cache:
 
 ```csharp{title="Distributed Cache Example" description="Using Redis as distributed cache:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Distributed", "Cache"]}
 using StackExchange.Redis;
-using Whizbang.Core.Caching;
 
 public class RedisCacheService : ICacheService {
   private readonly IConnectionMultiplexer _redis;
@@ -288,8 +259,8 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(redisConnection);
 // Register cache service
 builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 
-// Register cache receptor
-builder.Services.AddTransient<IReceptor<ClearCacheCommand, CacheCleared>, CacheClearReceptor>();
+// CacheClearReceptor is discovered and registered automatically
+// by Whizbang's receptor source generators - no manual registration needed
 
 var app = builder.Build();
 ```
@@ -318,9 +289,7 @@ public class UpdateProductReceptor : IReceptor<UpdateProduct, (ProductUpdated, C
         Name = message.Name,
         Price = message.Price
       },
-      new ClearCacheCommand {
-        Keys = new[] { $"product:{message.ProductId}" }
-      }
+      new ClearCacheCommand(CacheKey: $"product:{message.ProductId}")
     );
   }
 }

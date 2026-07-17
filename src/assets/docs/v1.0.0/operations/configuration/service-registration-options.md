@@ -1,5 +1,8 @@
 ---
 title: ServiceRegistrationOptions
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: DI
 order: 1
@@ -8,7 +11,11 @@ description: >-
   self-registration settings
 tags: 'di, dependency-injection, service-registration, options, configuration'
 codeReferences:
+  - src/Whizbang.Core/Configuration/ServiceRegistrationOptions.cs
+  - src/Whizbang.Core/ServiceRegistrationCallbacks.cs
   - src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/ServiceRegistrationGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -20,6 +27,13 @@ lastMaintainedCommit: '01f07906'
 
 When Whizbang's source generator discovers Perspective and Lens implementations, it generates extension methods to register them with your DI container. `ServiceRegistrationOptions` controls this registration behavior.
 
+Two classes with this name exist and mirror each other:
+
+- **`Whizbang.Core.Configuration.ServiceRegistrationOptions`** — exposed as `options.Services` on [`WhizbangCoreOptions`](whizbang-options). Used by the auto-registration path: `AddWhizbang()` invokes the source-generated `ServiceRegistrationCallbacks` with these options, so discovered services are registered without any explicit call.
+- **`Whizbang.Core.Generated.ServiceRegistrationOptions`** — generated into your assembly for use with the explicit `AddLensServices` / `AddPerspectiveServices` / `AddAllWhizbangServices` methods.
+
+Both carry the same single property.
+
 ## Properties
 
 ### IncludeSelfRegistration
@@ -28,34 +42,46 @@ When Whizbang's source generator discovers Perspective and Lens implementations,
 |----------|------|---------|
 | `IncludeSelfRegistration` | `bool` | `true` |
 
-Controls whether concrete types are registered as themselves in addition to their interfaces.
+Controls whether concrete types are registered as themselves in addition to their interfaces. All generated registrations are **Transient**.
 
 **When enabled (default)**:
 ```csharp{title="IncludeSelfRegistration" description="When enabled (default):" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "IncludeSelfRegistration"]}
 // Both registrations are made
-services.AddScoped<IOrderLens, OrderLens>();  // Interface registration
-services.AddScoped<OrderLens>();               // Self-registration
+services.AddTransient<IOrderLens, OrderLens>();  // Interface registration
+services.AddTransient<OrderLens>();               // Self-registration
 ```
 
 **When disabled**:
 ```csharp{title="IncludeSelfRegistration - registration" description="When disabled:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "IncludeSelfRegistration"]}
 // Only interface registration
-services.AddScoped<IOrderLens, OrderLens>();
+services.AddTransient<IOrderLens, OrderLens>();
 ```
 
 ## Usage
 
-### Default Behavior
+### Default Behavior (Auto-Registration)
 
-```csharp{title="Default Registration" description="Register services with default options" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration"]}
-// Uses default options (IncludeSelfRegistration = true)
-services.AddPerspectiveServices();
-services.AddLensServices();
+`AddWhizbang()` auto-registers all discovered services with default options — no explicit call needed:
+
+```csharp{title="Default Registration" description="Auto-registration via AddWhizbang" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration"]}
+// Auto-registers discovered Lenses and Perspectives
+// (IncludeSelfRegistration = true)
+services.AddWhizbang();
 ```
 
 ### Customized Registration
 
-```csharp{title="Custom Registration Options" description="Disable self-registration" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration", "Options"]}
+Configure the auto-registration path through `options.Services`:
+
+```csharp{title="Configure via AddWhizbang" description="Disable self-registration for auto-registered services" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration", "Options"]}
+services.AddWhizbang(options => {
+  options.Services.IncludeSelfRegistration = false;  // Only register interfaces
+});
+```
+
+Or call the generated extension methods explicitly:
+
+```csharp{title="Custom Registration Options" description="Disable self-registration via explicit methods" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration", "Options"]}
 // Disable self-registration for all services
 services.AddPerspectiveServices(options => options.IncludeSelfRegistration = false);
 services.AddLensServices(options => options.IncludeSelfRegistration = false);
@@ -89,16 +115,18 @@ public static IServiceCollection AddLensServices(
   configure?.Invoke(options);
 
   // Interface registration (always)
-  services.AddScoped<IOrderLens, OrderLens>();
+  services.AddTransient<IOrderLens, OrderLens>();
 
   // Self-registration (conditional)
   if (options.IncludeSelfRegistration) {
-    services.AddScoped<OrderLens>();
+    services.AddTransient<OrderLens>();
   }
 
   return services;
 }
 ```
+
+The generator also emits a `[ModuleInitializer]` that wires these methods into `ServiceRegistrationCallbacks`, which is how `AddWhizbang()` invokes them automatically when your assembly loads.
 
 ## See Also
 

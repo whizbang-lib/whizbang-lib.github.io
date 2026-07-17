@@ -1,5 +1,8 @@
 ---
 title: Perspectives with Actions
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 5
@@ -13,6 +16,11 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs
   - src/Whizbang.Core/Perspectives/ApplyResult.cs
   - src/Whizbang.Core/Perspectives/ModelAction.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveWithActionsForTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/ApplyResultTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/ModelActionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -69,7 +77,7 @@ public readonly struct ApplyResult<TModel> where TModel : class {
 
     // Factory methods
     public static ApplyResult<TModel> None();           // No change (skip update)
-    public static ApplyResult<TModel> Delete();         // Soft delete (set DeletedAt)
+    public static ApplyResult<TModel> Delete();         // Soft delete (row preserved)
     public static ApplyResult<TModel> Purge();          // Hard delete (remove row)
     public static ApplyResult<TModel> Update(TModel model);  // Update model
 
@@ -86,7 +94,7 @@ public readonly struct ApplyResult<TModel> where TModel : class {
 |---|---|---|---|
 | `Update(model)` | The updated model | `None` | Upserts the model |
 | `None()` | `null` | `None` | Skips update |
-| `Delete()` | `null` | `Delete` | Soft delete (sets `DeletedAt`) |
+| `Delete()` | `null` | `Delete` | Soft delete (row preserved; see below) |
 | `Purge()` | `null` | `Purge` | Hard delete (removes row) |
 
 ### Implicit Conversions
@@ -122,7 +130,7 @@ namespace Whizbang.Core.Perspectives;
 
 public enum ModelAction {
     None = 0,    // Keep the model as-is or use the returned model
-    Delete = 1,  // Soft delete: set DeletedAt timestamp, row remains
+    Delete = 1,  // Soft delete: row remains (set DeletedAt on the model yourself)
     Purge = 2    // Hard delete: remove the row entirely
 }
 ```
@@ -131,9 +139,9 @@ public enum ModelAction {
 
 | | Delete (Soft) | Purge (Hard) |
 |---|---|---|
-| **Row in database** | Preserved with `DeletedAt` set | Removed entirely |
+| **Row in database** | Preserved (set `DeletedAt` on the model in `Apply`) | Removed entirely |
 | **Audit queries** | Queryable via temporal lens | Gone forever |
-| **Model requirement** | Must have `DateTimeOffset? DeletedAt` property | No requirement |
+| **Model requirement** | Convention: a `DateTimeOffset? DeletedAt` property your `Apply` sets | No requirement |
 | **Use case** | Orders, users, anything needing history | Temporary data, GDPR right-to-erasure |
 | **Reversible** | Yes (replay without the delete event) | Yes (rebuild from event store) |
 
@@ -149,7 +157,7 @@ using Whizbang.Core.Perspectives;
 
 // Events
 public record OrderCreatedEvent : IEvent {
-    [StreamKey]
+    [StreamId]
     public Guid OrderId { get; init; }
     public string CustomerName { get; init; } = string.Empty;
     public decimal Total { get; init; }
@@ -157,26 +165,26 @@ public record OrderCreatedEvent : IEvent {
 }
 
 public record OrderUpdatedEvent : IEvent {
-    [StreamKey]
+    [StreamId]
     public Guid OrderId { get; init; }
     public decimal? Total { get; init; }
     public DateTime UpdatedAt { get; init; }
 }
 
 public record OrderCancelledEvent : IEvent {
-    [StreamKey]
+    [StreamId]
     public Guid OrderId { get; init; }
     public DateTimeOffset CancelledAt { get; init; }
 }
 
 public record OrderPurgedEvent : IEvent {
-    [StreamKey]
+    [StreamId]
     public Guid OrderId { get; init; }
 }
 
 // Read model
 public record OrderView {
-    [StreamKey]
+    [StreamId]
     public Guid OrderId { get; init; }
     public string CustomerName { get; init; } = string.Empty;
     public decimal Total { get; init; }
@@ -235,7 +243,7 @@ using Whizbang.Core;
 using Whizbang.Core.Perspectives;
 
 public record OrderArchivedEvent : IEvent {
-    [StreamKey]
+    [StreamId]
     public Guid OrderId { get; init; }
     public bool ShouldPurge { get; init; }
     public DateTimeOffset ArchivedAt { get; init; }
@@ -267,16 +275,20 @@ Event Stream:  [Created] → [Updated] → [Cancelled]
                   ↓            ↓            ↓
 Apply Result:  model₁       model₂       Delete()
                   ↓            ↓            ↓
-Runner State:  upsert       upsert       set pendingDelete
+Runner State:  track        track        keep model, mark written
                                               ↓
-Unit of Work:              Save model + set DeletedAt + checkpoint
+Unit of Work:              Save final model + checkpoint ONCE
 ```
+
+:::updated
+Shipped behavior: `ModelAction.Delete` does **not** automatically stamp `DeletedAt`. The runner keeps the model returned by the perspective (or the prior model when `Delete()` returns null) and upserts it at the end of the batch. To record a tombstone timestamp, set `DeletedAt` on the model yourself — either in the `Apply` method via `Update(current with { DeletedAt = @event.CancelledAt })`, or by returning a modified model alongside `ModelAction.Delete` using the tuple conversion.
+:::
 
 **Runner behavior per action**:
 
 1. **`ModelAction.None`** (update): The runner keeps the returned model and continues applying events. At the end of the batch, it upserts the final model and saves the checkpoint atomically.
 
-2. **`ModelAction.Delete`** (soft delete): The runner keeps the model (which may have been updated by the perspective). At save time, the perspective store sets the `DeletedAt` timestamp on the row. The row remains in the database for audit and temporal queries.
+2. **`ModelAction.Delete`** (soft delete): The runner keeps the model (the one returned with the action, or the prior model if none was returned) and upserts it at save time. The row remains in the database for audit and temporal queries. Setting `DeletedAt` is the perspective's responsibility.
 
 3. **`ModelAction.Purge`** (hard delete): The runner sets a `pendingPurge` flag and nulls the model. All remaining events in the batch still advance the checkpoint but skip Apply calls (the model is null). At save time, the runner calls `IPerspectiveStore.PurgeAsync()` to remove the row entirely.
 
@@ -288,13 +300,13 @@ Unit of Work:              Save model + set DeletedAt + checkpoint
 
 ### For Soft Delete
 
-Models that support soft delete must include a `DateTimeOffset? DeletedAt` property:
+By convention, models that support soft delete include a `DateTimeOffset? DeletedAt` property, which the perspective's `Apply` method sets (the framework does not stamp it automatically):
 
 ```csharp{title="Soft Delete Model" description="Read model with DeletedAt property for soft-delete support" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "SoftDelete", "Model"]}
 using Whizbang.Core;
 
 public record OrderView {
-    [StreamKey]
+    [StreamId]
     public Guid OrderId { get; init; }
     public string CustomerName { get; init; } = string.Empty;
     public decimal Total { get; init; }
@@ -321,7 +333,7 @@ public class OrderPerspectiveTests {
         // Arrange
         var perspective = new OrderPerspective();
         var model = new OrderView {
-            OrderId = Guid.NewGuid(),
+            OrderId = TrackedGuid.NewMedo(),
             CustomerName = "Alice",
             Total = 99.99m
         };
@@ -343,7 +355,7 @@ public class OrderPerspectiveTests {
         // Arrange
         var perspective = new OrderPerspective();
         var model = new OrderView {
-            OrderId = Guid.NewGuid(),
+            OrderId = TrackedGuid.NewMedo(),
             CustomerName = "Bob",
             Total = 50.00m
         };
@@ -365,7 +377,7 @@ public class OrderPerspectiveTests {
 
         // Act - chain create, update, then delete
         var afterCreate = perspective.Apply(empty, new OrderCreatedEvent {
-            OrderId = Guid.NewGuid(),
+            OrderId = TrackedGuid.NewMedo(),
             CustomerName = "Carol",
             Total = 75.00m,
             CreatedAt = DateTime.UtcNow
@@ -393,7 +405,7 @@ public class OrderPerspectiveTests {
         // Arrange
         var perspective = new OrderPerspective();
         var original = new OrderView {
-            OrderId = Guid.NewGuid(),
+            OrderId = TrackedGuid.NewMedo(),
             CustomerName = "Dave",
             Total = 100.00m
         };
@@ -420,7 +432,7 @@ public class OrderPerspectiveTests {
 
 - Use `IPerspectiveFor` for events that always produce a model update
 - Use `IPerspectiveWithActionsFor` only for events that may delete
-- Include `DateTimeOffset? DeletedAt` on models that support soft delete
+- Include `DateTimeOffset? DeletedAt` on models that support soft delete, and set it in `Apply`
 - Prefer `Delete()` over `Purge()` unless data retention is explicitly not required
 - Use implicit conversions for clean, readable Apply methods
 - Test each action type (update, delete, purge) independently

@@ -1,5 +1,8 @@
 ---
 title: 'WHIZ090: MessageTag Parameter Naming'
+pageType: troubleshooting
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   Error diagnostic when a constructor parameter in a MessageTagAttribute subclass
   does not match any property name (case-insensitive)
@@ -15,6 +18,9 @@ tags:
 codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/Analyzers/MessageTagParameterAnalyzer.cs
+  - src/Whizbang.Core/Attributes/MessageTagAttribute.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/Analyzers/MessageTagParameterAnalyzerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -73,9 +79,9 @@ Parameter names are matched to property names case-insensitively:
 
 ```csharp{title="Case-Insensitive Matching" description="Parameter names are matched to property names case-insensitively:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Case-Insensitive", "Matching"]}
 // All of these are valid:
-public MyTagAttribute(string tag) { Tag = tag; }       // Exact match
-public MyTagAttribute(string TAG) { Tag = TAG; }       // All caps
-public MyTagAttribute(string Tag) { Tag = Tag; }       // PascalCase
+public MyTagAttribute(string tag) { Tag = tag; }            // Exact match
+public MyTagAttribute(string TAG) { Tag = TAG; }            // All caps
+public MyTagAttribute(string Tag) { this.Tag = Tag; }       // PascalCase
 ```
 
 ### Multiple Parameters
@@ -132,8 +138,8 @@ If you intentionally want a different parameter name, add a property that matche
 
 ```csharp{title="Option 2: Add a Property That Matches the Parameter" description="If you intentionally want a different parameter name, add a property that matches:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Option", "Add"]}
 public class MyTagAttribute : MessageTagAttribute {
-  // Property matches parameter name
-  public string TagName { get => Tag; set => Tag = value; }
+  // Property matches parameter name (init accessor because base Tag is init-only)
+  public string TagName { get => Tag; init => Tag = value; }
 
   public MyTagAttribute(string tagName) {
     TagName = tagName;  // Now 'tagName' matches 'TagName'

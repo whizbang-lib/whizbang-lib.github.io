@@ -1,5 +1,8 @@
 ---
 title: Lenses Guide
+pageType: overview
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 4
@@ -9,8 +12,13 @@ description: >-
 tags: 'lenses, queries, read-models, repositories, cqrs'
 codeReferences:
   - src/Whizbang.Core/Lenses/ILensQuery.cs
+  - src/Whizbang.Core/Lenses/IScopedLensAccess.cs
+  - src/Whizbang.Core/Data/IDbConnectionFactory.cs
   - samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs
-  - samples/ECommerce/ECommerce.BFF.API/Lenses/InventoryLens.cs
+  - samples/ECommerce/ECommerce.BFF.API/Lenses/InventoryLevelsLens.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresLensQueryTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ScopedLensQueryIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -62,26 +70,30 @@ For simple Dapper-based lenses that don't use EF Core, implement `ILensQuery` di
 
 **Perspectives** and **Lenses** work together to implement CQRS:
 
-```
-┌──────────── WRITE SIDE ─────────────┐
-│                                      │
-│  Command → Receptor → Event          │
-│                                      │
-└────────────┬─────────────────────────┘
-             │
-             │ dispatcher.PublishAsync()
-             ↓
-┌──────────── READ SIDE ──────────────┐
-│                                      │
-│  Event → Perspective → Read Model    │  ← Perspectives WRITE
-│             ↓                        │
-│  Read Model Table (denormalized)    │
-│             ↓                        │
-│  Lens → Query Read Model             │  ← Lenses READ
-│             ↓                        │
-│  Return DTO to Client                │
-│                                      │
-└──────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph WS["WRITE SIDE"]
+        W1["Command"] --> W2["Receptor"] --> W3["Event"]
+    end
+
+    subgraph RS["READ SIDE"]
+        R1["Event"] --> R2["Perspective"]
+        R2 -->|"Perspectives WRITE"| R3["Read Model"]
+        R3 --> R4["Read Model Table (denormalized)"]
+        R4 -->|"Lenses READ"| R5["Lens → Query Read Model"]
+        R5 --> R6["Return DTO to Client"]
+    end
+
+    W3 -->|"dispatcher.PublishAsync()"| R1
+
+    style W1 fill:#fff3cd,stroke:#ffc107
+    style W2 fill:#d4edda,stroke:#28a745
+    style W3 fill:#fff3cd,stroke:#ffc107
+    style R1 fill:#fff3cd,stroke:#ffc107
+    style R2 fill:#cce5ff,stroke:#004085
+    style R3 fill:#cce5ff,stroke:#004085
+    style R4 fill:#cce5ff,stroke:#004085
+    style R5 fill:#cce5ff,stroke:#004085
 ```
 
 **Division of Labor**:
@@ -93,7 +105,8 @@ For simple Dapper-based lenses that don't use EF Core, implement `ILensQuery` di
 ## Basic Example
 
 ```csharp{title="Basic Example" description="Basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Basic", "Example"]}
-using Whizbang.Core;
+using Whizbang.Core.Data;
+using Whizbang.Core.Lenses;
 using Dapper;
 
 public class OrderLens : ILensQuery {
@@ -107,9 +120,9 @@ public class OrderLens : ILensQuery {
         Guid orderId,
         CancellationToken ct = default) {
 
-        await using var conn = _db.CreateConnection();
+        using var conn = await _db.CreateConnectionAsync(ct);
 
-        return await conn.QuerySingleOrDefaultAsync<OrderSummary>(
+        return await conn.QuerySingleOrDefaultAsync<OrderSummary>(new CommandDefinition(
             """
             SELECT
                 order_id AS OrderId,
@@ -127,17 +140,16 @@ public class OrderLens : ILensQuery {
             """,
             new { OrderId = orderId },
             commandTimeout: 30,
-            cancellationToken: ct
-        );
+            cancellationToken: ct));
     }
 
     public async Task<OrderSummary[]> GetOrdersByCustomerAsync(
         Guid customerId,
         CancellationToken ct = default) {
 
-        await using var conn = _db.CreateConnection();
+        using var conn = await _db.CreateConnectionAsync(ct);
 
-        var orders = await conn.QueryAsync<OrderSummary>(
+        var orders = await conn.QueryAsync<OrderSummary>(new CommandDefinition(
             """
             SELECT
                 order_id AS OrderId,
@@ -156,8 +168,7 @@ public class OrderLens : ILensQuery {
             """,
             new { CustomerId = customerId },
             commandTimeout: 30,
-            cancellationToken: ct
-        );
+            cancellationToken: ct));
 
         return orders.ToArray();
     }
@@ -195,13 +206,12 @@ public async Task<OrderSummary?> GetOrderAsync(
     Guid orderId,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    using var conn = await _db.CreateConnectionAsync(ct);
 
-    return await conn.QuerySingleOrDefaultAsync<OrderSummary>(
+    return await conn.QuerySingleOrDefaultAsync<OrderSummary>(new CommandDefinition(
         "SELECT * FROM order_summaries WHERE order_id = @OrderId",
         new { OrderId = orderId },
-        cancellationToken: ct
-    );
+        cancellationToken: ct));
 }
 ```
 
@@ -214,17 +224,16 @@ public async Task<OrderSummary[]> GetOrdersByStatusAsync(
     string status,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    using var conn = await _db.CreateConnectionAsync(ct);
 
-    var orders = await conn.QueryAsync<OrderSummary>(
+    var orders = await conn.QueryAsync<OrderSummary>(new CommandDefinition(
         """
         SELECT * FROM order_summaries
         WHERE status = @Status
         ORDER BY created_at DESC
         """,
         new { Status = status },
-        cancellationToken: ct
-    );
+        cancellationToken: ct));
 
     return orders.ToArray();
 }
@@ -240,26 +249,24 @@ public async Task<PagedResult<OrderSummary>> GetOrdersPagedAsync(
     int pageSize,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    using var conn = await _db.CreateConnectionAsync(ct);
 
     var offset = (pageNumber - 1) * pageSize;
 
     // Get total count
-    var totalCount = await conn.ExecuteScalarAsync<int>(
+    var totalCount = await conn.ExecuteScalarAsync<int>(new CommandDefinition(
         "SELECT COUNT(*) FROM order_summaries",
-        cancellationToken: ct
-    );
+        cancellationToken: ct));
 
     // Get page of results
-    var orders = await conn.QueryAsync<OrderSummary>(
+    var orders = await conn.QueryAsync<OrderSummary>(new CommandDefinition(
         """
         SELECT * FROM order_summaries
         ORDER BY created_at DESC
         LIMIT @PageSize OFFSET @Offset
         """,
         new { PageSize = pageSize, Offset = offset },
-        cancellationToken: ct
-    );
+        cancellationToken: ct));
 
     return new PagedResult<OrderSummary>(
         Items: orders.ToArray(),
@@ -290,9 +297,9 @@ public async Task<OrderStatistics> GetOrderStatisticsAsync(
     Guid customerId,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    using var conn = await _db.CreateConnectionAsync(ct);
 
-    return await conn.QuerySingleAsync<OrderStatistics>(
+    return await conn.QuerySingleAsync<OrderStatistics>(new CommandDefinition(
         """
         SELECT
             COUNT(*) AS TotalOrders,
@@ -303,8 +310,7 @@ public async Task<OrderStatistics> GetOrderStatisticsAsync(
         WHERE customer_id = @CustomerId
         """,
         new { CustomerId = customerId },
-        cancellationToken: ct
-    );
+        cancellationToken: ct));
 }
 
 public record OrderStatistics(
@@ -324,9 +330,9 @@ public async Task<OrderSummary[]> SearchOrdersAsync(
     string searchTerm,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    using var conn = await _db.CreateConnectionAsync(ct);
 
-    var orders = await conn.QueryAsync<OrderSummary>(
+    var orders = await conn.QueryAsync<OrderSummary>(new CommandDefinition(
         """
         SELECT * FROM order_summaries
         WHERE
@@ -337,8 +343,7 @@ public async Task<OrderSummary[]> SearchOrdersAsync(
         LIMIT 100
         """,
         new { SearchPattern = $"%{searchTerm}%" },
-        cancellationToken: ct
-    );
+        cancellationToken: ct));
 
     return orders.ToArray();
 }
@@ -395,10 +400,10 @@ public async Task<CustomerOrderHistory> GetCustomerOrderHistoryAsync(
     Guid customerId,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    using var conn = await _db.CreateConnectionAsync(ct);
 
     // Join two denormalized read models
-    var result = await conn.QueryAsync<CustomerOrderHistoryItem>(
+    var result = await conn.QueryAsync<CustomerOrderHistoryItem>(new CommandDefinition(
         """
         SELECT
             os.order_id,
@@ -413,8 +418,7 @@ public async Task<CustomerOrderHistory> GetCustomerOrderHistoryAsync(
         ORDER BY os.created_at DESC
         """,
         new { CustomerId = customerId },
-        cancellationToken: ct
-    );
+        cancellationToken: ct));
 
     return new CustomerOrderHistory(
         CustomerId: customerId,
@@ -432,18 +436,17 @@ public async Task<Product[]> GetProductsByCategoryAsync(
     string category,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    using var conn = await _db.CreateConnectionAsync(ct);
 
     // Query JSON column
-    var products = await conn.QueryAsync<Product>(
+    var products = await conn.QueryAsync<Product>(new CommandDefinition(
         """
         SELECT * FROM product_catalog
         WHERE metadata->>'category' = @Category
         ORDER BY name
         """,
         new { Category = category },
-        cancellationToken: ct
-    );
+        cancellationToken: ct));
 
     return products.ToArray();
 }
@@ -455,32 +458,35 @@ public async Task<Product[]> GetProductsByCategoryAsync(
 
 ### Registration
 
-**Manual**:
-```csharp{title="Registration" description="Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"]}
-builder.Services.AddTransient<ILensQuery, OrderLens>();
-builder.Services.AddTransient<ILensQuery, InventoryLens>();
+**Framework-provided typed lenses**: `ILensQuery<TModel>` (and the multi-model variants) are registered automatically for every discovered perspective model when you wire the unified Whizbang API:
 
-// Or register by interface name
-builder.Services.AddTransient<IOrderLens, OrderLens>();
-builder.Services.AddTransient<IInventoryLens, InventoryLens>();
+```csharp{title="Registration" description="Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"]}
+// Registers IPerspectiveStore<T> and ILensQuery<T> for all
+// perspective models discovered on the DbContext:
+builder.Services
+  .AddWhizbang()
+  .WithEFCore<BffDbContext>()
+  .WithDriver.Postgres;
 ```
 
-**Auto-Discovery** (with Whizbang.Generators):
-```csharp{title="Registration (2)" description="Auto-Discovery (with Whizbang." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"]}
-builder.Services.AddDiscoveredLenses();  // Finds all ILensQuery implementations
+**Custom named lenses** (wrapping `ILensQuery<TModel>` or raw Dapper) are registered per use case:
+
+```csharp{title="Registration (2)" description="Register custom named lenses" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"]}
+builder.Services.AddScoped<IOrderLens, OrderLens>();
+builder.Services.AddScoped<IInventoryLevelsLens, InventoryLevelsLens>();
 ```
 
 ### Lifetime
 
-**Recommended**: `Transient` (new instance per request)
+**Recommended**: `Scoped` (one instance per request scope)
 
 **Why?**
-- May inject scoped services (e.g., `DbContext`)
-- Stateless (no benefit to reusing instances)
-- Lightweight (minimal allocation cost)
+- Lenses inject scoped services (`ILensQuery<TModel>` itself is scoped; EF Core `DbContext` is scoped)
+- Stateless (no benefit to reusing instances across scopes)
+- Matches the framework's own registration of `ILensQuery<TModel>`
 
 ```csharp{title="Lifetime" description="Lifetime" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Lifetime"]}
-builder.Services.AddTransient<IOrderLens, OrderLens>();
+builder.Services.AddScoped<IOrderLens, OrderLens>();
 ```
 
 ---
@@ -509,13 +515,12 @@ public class OrderLens : ILensQuery {
         }
 
         // Query database
-        await using var conn = _db.CreateConnection();
+        using var conn = await _db.CreateConnectionAsync(ct);
 
-        var order = await conn.QuerySingleOrDefaultAsync<OrderSummary>(
+        var order = await conn.QuerySingleOrDefaultAsync<OrderSummary>(new CommandDefinition(
             "SELECT * FROM order_summaries WHERE order_id = @OrderId",
             new { OrderId = orderId },
-            cancellationToken: ct
-        );
+            cancellationToken: ct));
 
         if (order is not null) {
             // Cache for 5 minutes
@@ -548,13 +553,12 @@ public class OrderLens : ILensQuery {
         }
 
         // Query database
-        await using var conn = _db.CreateConnection();
+        using var conn = await _db.CreateConnectionAsync(ct);
 
-        var order = await conn.QuerySingleOrDefaultAsync<OrderSummary>(
+        var order = await conn.QuerySingleOrDefaultAsync<OrderSummary>(new CommandDefinition(
             "SELECT * FROM order_summaries WHERE order_id = @OrderId",
             new { OrderId = orderId },
-            cancellationToken: ct
-        );
+            cancellationToken: ct));
 
         if (order is not null) {
             // Cache in Redis
@@ -574,20 +578,14 @@ public class OrderLens : ILensQuery {
 }
 ```
 
-**Cache Invalidation**: Perspectives can invalidate cache when updating read models:
+**Cache Invalidation**: Perspectives themselves CANNOT invalidate caches — a perspective's `Apply` methods are pure functions (no I/O, no side effects) so replays reconstruct identical state. Invalidate from a **receptor** subscribed to the same event instead, or rely on short TTLs:
 
-```csharp{title="Distributed Caching (Redis) - OrderSummaryPerspective" description="Cache Invalidation: Perspectives can invalidate cache when updating read models:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Distributed", "Caching"]}
-public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
-    private readonly IDbConnectionFactory _db;
-    private readonly IDistributedCache _cache;
-
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-        // Update database
-        await using var conn = _db.CreateConnection();
-        await conn.ExecuteAsync("INSERT INTO order_summaries (...) VALUES (...)", @event, ct);
-
-        // Invalidate cache
-        await _cache.RemoveAsync($"order:{@event.OrderId}", ct);
+```csharp{title="Cache invalidation via receptor" description="Cache invalidation belongs in a receptor (side-effect surface), never in a perspective's pure Apply methods." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Distributed", "Caching"]}
+public class OrderCacheInvalidationReceptor(IDistributedCache cache) : IReceptor<OrderCreatedEvent> {
+    public async ValueTask HandleAsync(OrderCreatedEvent @event, CancellationToken ct) {
+        // The perspective worker materializes the read model from the event;
+        // this receptor just evicts the stale cache entry.
+        await cache.RemoveAsync($"order:{@event.OrderId}", ct);
     }
 }
 ```
@@ -686,7 +684,7 @@ public class OrderLensIntegrationTests {
     }
 
     private async Task SeedTestDataAsync() {
-        await using var conn = _db.CreateConnection();
+        using var conn = await _db.CreateConnectionAsync();
         await conn.ExecuteAsync(
             """
             INSERT INTO order_summaries (order_id, customer_id, total, status, created_at)
@@ -720,32 +718,29 @@ public class OrderDetailsLens : ILensQuery {
         Guid orderId,
         CancellationToken ct = default) {
 
-        await using var conn = _db.CreateConnection();
+        using var conn = await _db.CreateConnectionAsync(ct);
 
         // Query 1: Order summary
-        var summary = await conn.QuerySingleOrDefaultAsync<OrderSummary>(
+        var summary = await conn.QuerySingleOrDefaultAsync<OrderSummary>(new CommandDefinition(
             "SELECT * FROM order_summaries WHERE order_id = @OrderId",
             new { OrderId = orderId },
-            ct
-        );
+            cancellationToken: ct));
 
         if (summary is null) {
             throw new NotFoundException($"Order {orderId} not found");
         }
 
         // Query 2: Order items (separate read model)
-        var items = await conn.QueryAsync<OrderItemDetail>(
+        var items = await conn.QueryAsync<OrderItemDetail>(new CommandDefinition(
             "SELECT * FROM order_item_details WHERE order_id = @OrderId",
             new { OrderId = orderId },
-            ct
-        );
+            cancellationToken: ct));
 
         // Query 3: Shipping info (separate read model)
-        var shipping = await conn.QuerySingleOrDefaultAsync<ShippingInfo>(
+        var shipping = await conn.QuerySingleOrDefaultAsync<ShippingInfo>(new CommandDefinition(
             "SELECT * FROM shipping_info WHERE order_id = @OrderId",
             new { OrderId = orderId },
-            ct
-        );
+            cancellationToken: ct));
 
         // Combine into single DTO
         return new OrderDetailsView(

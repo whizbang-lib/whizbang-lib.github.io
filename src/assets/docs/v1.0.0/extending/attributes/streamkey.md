@@ -1,364 +1,149 @@
 ---
 title: StreamKey Attribute
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
-  Marks a property as the stream key for event sourcing and perspective event
-  ordering
+  The historical StreamKey attribute has been unified into StreamId, which now
+  drives both event store stream identification and perspective event ordering
 category: Attributes
 tags:
   - attributes
   - streamkey
+  - streamid
   - perspectives
   - event-sourcing
   - source-generator
 codeReferences:
+  - src/Whizbang.Core/StreamIdAttribute.cs
   - src/Whizbang.Core/StreamIdExtractor.cs
   - src/Whizbang.Core/IStreamIdExtractor.cs
-  - src/Whizbang.Core/StreamIdAttribute.cs
+  - src/Whizbang.Generators/StreamIdGenerator.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/StreamIdGeneratorTests.cs
+  - tests/Whizbang.Core.Tests/StreamIdExtractorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # StreamKey Attribute
 
-The `[StreamKey]` attribute marks a property as the stream key for event sourcing. The stream key identifies which stream (aggregate) an event belongs to, enabling ordered event processing in perspectives.
+:::updated
+The `[StreamKey]` attribute no longer exists as a separate attribute. It has been **unified into [`[StreamId]`](./streamid)**, which now serves both purposes: identifying the event store stream an event belongs to, **and** grouping/ordering events per stream for perspective processing. Apply `[StreamId]` everywhere older documentation said `[StreamKey]`.
+:::
 
-## Namespace
+## Migration
 
-```csharp{title="Namespace" description="Namespace" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Namespace"]}
-using Whizbang.Core;
-```
-
-## Syntax
-
-```csharp{title="Syntax" description="Syntax" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Syntax"]}
-[StreamKey]
-public Guid PropertyName { get; init; }
-```
-
-## Applies To
-
-- **Event properties** (types implementing `IEvent`)
-- **Model properties** (types used as `TModel` in `IPerspectiveFor<TModel, ...>`)
-
-## Purpose
-
-The `[StreamKey]` attribute serves two critical purposes:
-
-1. **Event Ordering**: Groups events by stream for ordered processing in perspectives
-2. **Compile-Time Extraction**: Source generator creates zero-reflection `ExtractStreamId()` methods
-
-## Requirements
-
-- **Exactly one property** per type must have `[StreamKey]`
-- The property must have a `get` accessor (typically `public`)
-- The property should uniquely identify the aggregate/stream
-
-## Basic Example
-
-```csharp{title="Basic Example" description="Basic Example" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Basic", "Example"]}
+```csharp{title="StreamKey to StreamId" description="Replace StreamKey with the unified StreamId attribute" category="Usage" difficulty="BEGINNER" tags=["StreamKey", "StreamId", "Migration"]}
+// Before (historical API - no longer compiles)
 public record ProductCreatedEvent : IEvent {
-  [StreamKey]  // Identifies which product this event belongs to
+  [StreamKey]
   public Guid ProductId { get; init; }
-  public string Name { get; init; } = string.Empty;
-  public decimal Price { get; init; }
 }
 
+// After (current API)
+public record ProductCreatedEvent : IEvent {
+  [StreamId]
+  public Guid ProductId { get; init; }
+}
+```
+
+The same replacement applies to perspective model types - models mark their stream identity property with `[StreamId]`:
+
+```csharp{title="Model StreamId" description="Perspective models use StreamId to identify their stream" category="Usage" difficulty="BEGINNER" tags=["StreamId", "Perspectives", "Models"]}
 public record ProductDto {
-  [StreamKey]  // Identifies which product this model represents
+  [StreamId]  // Identifies which product this model represents
   public Guid ProductId { get; init; }
   public string Name { get; init; } = string.Empty;
   public decimal Price { get; init; }
 }
 
 public class ProductCatalogPerspective : IPerspectiveFor<ProductDto, ProductCreatedEvent> {
-  public ProductDto Apply(ProductDto currentData, ProductCreatedEvent @event) {
+  public ProductDto Apply(ProductDto currentData, ProductCreatedEvent eventData) {
     return new ProductDto {
-      ProductId = @event.ProductId,
-      Name = @event.Name,
-      Price = @event.Price
+      ProductId = eventData.ProductId,
+      Name = eventData.Name,
+      Price = eventData.Price
     };
   }
 }
 ```
 
-## How It Works
+## How Perspective Ordering Works Today
 
-### 1. Compile-Time Stream ID Extraction
+The role the historical `[StreamKey]` attribute played in perspectives is now filled by `[StreamId]`:
 
-The source generator finds properties marked with `[StreamKey]` and generates extraction methods:
+1. The source generators discover `[StreamId]` on event, command, and perspective model properties and generate zero-reflection extractors (`StreamIdExtractors` in your assembly's `.Generated` namespace).
+2. At runtime, perspective processing groups events by their extracted stream ID, so all events for one aggregate (e.g. Order #123) are applied in order within that stream.
+3. Events are applied to the model through pure `Apply()` methods; the updated model is saved with its checkpoint per stream.
 
-```csharp{title="Compile-Time Stream ID Extraction" description="The source generator finds properties marked with [StreamKey] and generates extraction methods:" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Compile-Time", "Stream"]}
-// Generated by PerspectiveRunnerGenerator
-public class ProductCatalogPerspectiveRunner : IPerspectiveRunner {
-  private static string ExtractStreamId(ProductCreatedEvent @event) {
-    return @event.ProductId.ToString();  // Uses [StreamKey] property
-  }
-}
-```
+## Requirements
 
-### 2. Event Grouping and Ordering
-
-At runtime, the `PerspectiveWorker` uses the stream ID to:
-1. Group events by stream (e.g., all events for Product A vs Product B)
-2. Process events in UUID7 timestamp order within each stream
-3. Apply events using pure `Apply()` methods
-
-### 3. Unit-of-Work Pattern
-
-Events are batched per stream:
-
-```csharp{title="Unit-of-Work Pattern" description="Events are batched per stream:" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Unit-of-Work", "Pattern"]}
-// Pseudo-code showing how PerspectiveWorker uses StreamKey
-var streamId = ExtractStreamId(@event);  // Uses [StreamKey] property
-var currentModel = await LoadModel(streamId);  // Load existing state
-var updatedModel = perspective.Apply(currentModel, @event);  // Pure function
-await SaveModel(streamId, updatedModel);  // Atomic save with checkpoint
-```
-
-## Multiple Events Example
-
-All events for the same aggregate should use the same `[StreamKey]` property:
-
-```csharp{title="Multiple Events Example" description="All events for the same aggregate should use the same [StreamKey] property:" category="Reference" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "Multiple", "Events"]}
-public record OrderCreatedEvent : IEvent {
-  [StreamKey]
-  public Guid OrderId { get; init; }
-  public Guid CustomerId { get; init; }
-  public DateTime CreatedAt { get; init; }
-}
-
-public record OrderShippedEvent : IEvent {
-  [StreamKey]
-  public Guid OrderId { get; init; }  // Same stream key as OrderCreatedEvent
-  public string TrackingNumber { get; init; } = string.Empty;
-  public DateTime ShippedAt { get; init; }
-}
-
-public record OrderCancelledEvent : IEvent {
-  [StreamKey]
-  public Guid OrderId { get; init; }  // Same stream key
-  public string Reason { get; init; } = string.Empty;
-  public DateTime CancelledAt { get; init; }
-}
-```
-
-This ensures all events for Order #123 are processed in timestamp order.
-
-## Model StreamKey
-
-Models also need `[StreamKey]` to identify which stream they represent:
-
-```csharp{title="Model StreamKey" description="Models also need [StreamKey] to identify which stream they represent:" category="Reference" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "Model", "StreamKey"]}
-public record OrderDto {
-  [StreamKey]  // Matches OrderId from events
-  public Guid OrderId { get; init; }
-  public string Status { get; init; } = string.Empty;
-  public string? TrackingNumber { get; init; }
-  public DateTime? CancelledAt { get; init; }
-}
-
-public class OrderPerspective :
-  IPerspectiveFor<OrderDto, OrderCreatedEvent, OrderShippedEvent, OrderCancelledEvent> {
-
-  public OrderDto Apply(OrderDto currentData, OrderCreatedEvent @event) {
-    return new OrderDto {
-      OrderId = @event.OrderId,  // StreamKey property
-      Status = "Created"
-    };
-  }
-
-  public OrderDto Apply(OrderDto currentData, OrderShippedEvent @event) {
-    return currentData with {
-      Status = "Shipped",
-      TrackingNumber = @event.TrackingNumber
-    };
-  }
-
-  public OrderDto Apply(OrderDto currentData, OrderCancelledEvent @event) {
-    return currentData with {
-      Status = "Cancelled",
-      CancelledAt = @event.CancelledAt
-    };
-  }
-}
-```
-
-## Property Types
-
-Common property types for `[StreamKey]`:
-
-```csharp{title="Property Types" description="Common property types for [StreamKey]:" category="Reference" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "Property", "Types"]}
-// Guid (most common - UUID7 for time-ordering)
-[StreamKey]
-public Guid ProductId { get; init; }
-
-// String (for natural keys)
-[StreamKey]
-public string AccountNumber { get; init; } = string.Empty;
-
-// Custom value object
-[StreamKey]
-public CustomerId CustomerId { get; init; }
-```
-
-The property should implement `ToString()` for conversion to stream ID string.
+- **Exactly one** `[StreamId]` property per event type used in a perspective
+- Perspective model types must also have a `[StreamId]` property, or no runner is generated
+- Property type must be `Guid`, `Guid?`, or a WhizbangId-style type (a type exposing a `Guid` value)
 
 ## Diagnostics
 
-The source generator validates `[StreamKey]` usage:
+The source generators validate `[StreamId]` usage for perspectives:
 
-### WHIZ030: Missing StreamKey
+### WHIZ030: Missing StreamId
 
-**Error**: Event used in perspective has no `[StreamKey]` property
+**Error**: An event used in a perspective has no `[StreamId]` property.
 
-```csharp{title="WHIZ030: Missing StreamKey" description="Error: Event used in perspective has no [StreamKey] property" category="Reference" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "WHIZ030:", "Missing"]}
+```csharp{title="WHIZ030: Missing StreamId" description="Error: Event used in perspective has no StreamId property" category="Diagnostics" difficulty="INTERMEDIATE" tags=["StreamId", "Diagnostics", "WHIZ030"]}
 // ❌ Causes WHIZ030
 public record ProductEvent : IEvent {
-  public Guid ProductId { get; init; }  // No [StreamKey]!
+  public Guid ProductId { get; init; }  // No [StreamId]!
 }
 
 // ✅ Fixed
 public record ProductEvent : IEvent {
-  [StreamKey]
+  [StreamId]
   public Guid ProductId { get; init; }
 }
 ```
 
 See [WHIZ030 Diagnostic](../../operations/diagnostics/whiz030.md) for details.
 
-### WHIZ031: Multiple StreamKeys
+### WHIZ031: Multiple StreamIds
 
-**Error**: Event has multiple properties with `[StreamKey]`
+**Error**: An event has multiple properties marked with `[StreamId]`.
 
-```csharp{title="WHIZ031: Multiple StreamKeys" description="Error: Event has multiple properties with [StreamKey]" category="Reference" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "WHIZ031:", "Multiple"]}
+```csharp{title="WHIZ031: Multiple StreamIds" description="Error: Event has multiple StreamId properties" category="Diagnostics" difficulty="INTERMEDIATE" tags=["StreamId", "Diagnostics", "WHIZ031"]}
 // ❌ Causes WHIZ031
 public record OrderEvent : IEvent {
-  [StreamKey]
+  [StreamId]
   public Guid OrderId { get; init; }
 
-  [StreamKey]  // Only one [StreamKey] allowed!
+  [StreamId]  // Only one [StreamId] allowed!
   public Guid CustomerId { get; init; }
 }
 
 // ✅ Fixed - Choose the primary aggregate
 public record OrderEvent : IEvent {
-  [StreamKey]  // Order is the primary aggregate
+  [StreamId]  // Order is the primary aggregate
   public Guid OrderId { get; init; }
 
-  public Guid CustomerId { get; init; }  // Related entity, not stream key
+  public Guid CustomerId { get; init; }  // Related entity, not stream ID
 }
 ```
 
 See [WHIZ031 Diagnostic](../../operations/diagnostics/whiz031.md) for details.
 
+### WHIZ033: Perspective Model Missing StreamId
+
+**Warning**: A perspective's model type has no `[StreamId]` property. The perspective will not get a generated runner until the model marks its stream identity property.
+
 ## Best Practices
 
-### ✅ DO: Use on Aggregate ID
-
-```csharp{title="✅ DO: Use on Aggregate ID" description="✅ DO: Use on Aggregate ID" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "DO:", "Aggregate"]}
-public record ProductCreatedEvent : IEvent {
-  [StreamKey]  // Primary aggregate identifier
-  public Guid ProductId { get; init; }
-  public Guid CategoryId { get; init; }  // Related entity
-}
-```
-
-### ✅ DO: Match Event and Model StreamKeys
-
-```csharp{title="✅ DO: Match Event and Model StreamKeys" description="✅ DO: Match Event and Model StreamKeys" category="Reference" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "DO:", "Match"]}
-// Event
-public record ProductEvent : IEvent {
-  [StreamKey]
-  public Guid ProductId { get; init; }
-}
-
-// Model - Same property name
-public record ProductDto {
-  [StreamKey]
-  public Guid ProductId { get; init; }
-}
-```
-
-### ✅ DO: Use UUID7 for Time-Ordered IDs
-
-```csharp{title="✅ DO: Use UUID7 for Time-Ordered IDs" description="✅ DO: Use UUID7 for Time-Ordered IDs" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "DO:", "UUID7"]}
-public record OrderCreatedEvent : IEvent {
-  [AggregateId]  // Can combine attributes
-  [StreamKey]
-  public Guid OrderId { get; init; }  // UUID7 provides time-ordering
-}
-```
-
-### ❌ DON'T: Use on Multiple Properties
-
-```csharp{title="❌ DON'T: Use on Multiple Properties" description="❌ DON'T: Use on Multiple Properties" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "DON'T:", "Multiple"]}
-// ❌ WRONG - Multiple [StreamKey]
-public record Event : IEvent {
-  [StreamKey]
-  public Guid Id1 { get; init; }
-
-  [StreamKey]  // Causes WHIZ031
-  public Guid Id2 { get; init; }
-}
-```
-
-### ❌ DON'T: Use on Non-Aggregate Properties
-
-```csharp{title="❌ DON'T: Use on Non-Aggregate Properties" description="❌ DON'T: Use on Non-Aggregate Properties" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "DON'T:", "Non-Aggregate"]}
-// ❌ WRONG - CreatedAt is not an aggregate identifier
-public record ProductEvent : IEvent {
-  public Guid ProductId { get; init; }
-
-  [StreamKey]  // Wrong property!
-  public DateTime CreatedAt { get; init; }
-}
-```
-
-## Advanced: Composite Keys
-
-If you truly need a composite key (rare in event sourcing), create a single computed property:
-
-```csharp{title="Advanced: Composite Keys" description="If you truly need a composite key (rare in event sourcing), create a single computed property:" category="Reference" difficulty="ADVANCED" tags=["Extending", "Attributes", "Advanced:", "Composite"]}
-public record OrderLineItemEvent : IEvent {
-  [StreamKey]
-  public string StreamKey => $"{OrderId}:{LineItemId}";  // Composite key
-
-  public Guid OrderId { get; init; }
-  public int LineItemId { get; init; }
-}
-```
-
-However, this indicates you may need to rethink your aggregate boundaries. Most domain events belong to a single aggregate.
-
-## Zero Reflection and AOT
-
-The `[StreamKey]` attribute enables zero-reflection stream ID extraction:
-
-**Without [StreamKey] (reflection)**:
-```csharp{title="Zero Reflection and AOT" description="Without [StreamKey] (reflection):" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Zero", "Reflection"]}
-// ❌ Runtime reflection - not AOT-compatible
-var streamId = @event.GetType()
-    .GetProperty("ProductId")
-    .GetValue(@event)
-    .ToString();
-```
-
-**With [StreamKey] (generated)**:
-```csharp{title="Zero Reflection and AOT (2)" description="With [StreamKey] (generated):" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Zero", "Reflection"]}
-// ✅ Compile-time code generation - AOT-compatible
-private static string ExtractStreamId(ProductCreatedEvent @event) {
-  return @event.ProductId.ToString();
-}
-```
-
-This generated code:
-- Works with Native AOT
-- Has zero runtime overhead
-- Is type-safe at compile-time
+- Put `[StreamId]` on the **aggregate root identifier** (e.g. `OrderId`), not on related entity IDs or timestamps
+- Use the **same property name** across all events of one aggregate and on the matching model
+- Prefer time-ordered UUIDv7 values (`TrackedGuid.NewMedo()` or [GenerateStreamId](./generatestreamid)) for stream IDs
 
 ## See Also
 
-- [Perspectives](../../fundamentals/perspectives/perspectives.md) - Pure function perspectives using StreamKey
-- [PerspectiveRunner Architecture](../../fundamentals/perspectives/perspectives.md#perspectiverunner-architecture) - How runners use StreamKey
-- [WHIZ030 Diagnostic](../../operations/diagnostics/whiz030.md) - Missing StreamKey error
-- [WHIZ031 Diagnostic](../../operations/diagnostics/whiz031.md) - Multiple StreamKey error
-- Event Sourcing - Understanding aggregates and streams
+- [StreamId Attribute](./streamid) - The unified attribute (full reference)
+- [GenerateStreamId Attribute](./generatestreamid) - Auto-generate stream IDs at dispatch time
+- [Perspectives](../../fundamentals/perspectives/perspectives.md) - Pure function perspectives
+- [WHIZ030 Diagnostic](../../operations/diagnostics/whiz030.md) - Missing StreamId error
+- [WHIZ031 Diagnostic](../../operations/diagnostics/whiz031.md) - Multiple StreamId error

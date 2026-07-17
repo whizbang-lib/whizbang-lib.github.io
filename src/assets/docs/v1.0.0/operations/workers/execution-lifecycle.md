@@ -1,5 +1,8 @@
 ---
 title: Execution Lifecycle
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Workers
 order: 2
@@ -11,8 +14,12 @@ tags: >-
   lifecycle-hooks
 codeReferences:
   - src/Whizbang.Core/Execution/IExecutionStrategy.cs
+  - src/Whizbang.Core/Execution/SerialExecutor.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
-  - src/Whizbang.Core/Messaging/IDatabaseReadinessCheck.cs
+  - src/Whizbang.Core/Workers/ISchemaReadyGate.cs
+testReferences:
+  - tests/Whizbang.Execution.Tests/ExecutionStrategyContractTests.cs
+  - tests/Whizbang.Execution.Tests/SerialExecutorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -46,8 +53,6 @@ With `IExecutionStrategy` lifecycle:
 /// Defines a strategy for executing message handlers.
 /// Implementations control ordering, concurrency, and lifecycle.
 /// </summary>
-/// <docs>components/dispatcher</docs>
-/// <docs>workers/execution-lifecycle</docs>
 public interface IExecutionStrategy {
   /// <summary>
   /// Name of the execution strategy (e.g., "Serial", "Parallel")
@@ -93,68 +98,56 @@ public interface IExecutionStrategy {
 ```mermaid
 sequenceDiagram
     participant App as Application
+    participant Init as WhizbangDatabaseInitializerService
+    participant Gate as ISchemaReadyGate
     participant ES as IExecutionStrategy
-    participant DRC as IDatabaseReadinessCheck
-    participant PW as PerspectiveWorker
-    participant WC as IWorkCoordinator
+    participant W as Workers e.g. ClaimWorker
 
     rect rgb(240, 255, 240)
-        Note over App,DRC: Phase 1: Initialization
+        Note over App,Init: Phase 1: Initialization
         App->>App: Configure services
         App->>App: Build service provider
     end
 
     rect rgb(240, 248, 255)
-        Note over App,ES: Phase 2: Start Execution Strategy
-        App->>ES: StartAsync()
-        Note over ES: Initialize channels,<br/>start background workers
-        ES-->>App: Started
-    end
-
-    rect rgb(255, 250, 240)
-        Note over PW,DRC: Phase 3: Worker Startup
-        ES->>PW: StartExecuteAsync() (BackgroundService)
-        PW->>DRC: IsReadyAsync()
-
-        alt Database Ready
-            DRC-->>PW: true
-            PW->>WC: ProcessWorkBatchAsync() (immediate)
-            Note over PW,WC: Process pending work<br/>on startup
-            WC-->>PW: Work batch processed
-        else Database Not Ready
-            DRC-->>PW: false
-            Note over PW: Wait and retry<br/>(database initializing)
+        Note over App,Gate: Phase 2: Schema Provisioning
+        App->>Init: StartAsync() (blocks host startup)
+        Init->>Init: Run migrations
+        alt Migrations succeed
+            Init->>Gate: MarkReady()
+        else Migrations fail
+            Init-->>App: throws — host aborts,<br/>gate stays closed
         end
     end
 
+    rect rgb(255, 250, 240)
+        Note over ES,W: Phase 3: Worker Startup
+        App->>ES: StartAsync()
+        Note over ES: Initialize channels,<br/>start background workers
+        App->>W: StartAsync() (BackgroundService)
+        W->>Gate: WaitForReadyAsync()
+        Gate-->>W: ready
+        Note over W: First claim cycle acts as<br/>startup catch-up for pre-existing work
+    end
+
     rect rgb(240, 255, 240)
-        Note over PW,WC: Phase 4: Normal Operation
-        loop Every PollingInterval
-            PW->>DRC: IsReadyAsync()
-            alt Ready
-                DRC-->>PW: true
-                PW->>WC: ProcessWorkBatchAsync()
-                WC-->>PW: Work batch
-            else Not Ready
-                DRC-->>PW: false
-                Note over PW: Skip polling cycle
-            end
+        Note over W: Phase 4: Normal Operation
+        loop NOTIFY-driven wake + safety-net poll
+            W->>W: Claim work, feed channels,<br/>process batches
         end
     end
 
     rect rgb(255, 240, 240)
-        Note over App,PW: Phase 5: Shutdown Signal
+        Note over App,W: Phase 5: Shutdown Signal
         App->>ES: StopAsync() (SIGTERM received)
-        ES->>PW: StopAsync() (CancellationToken)
-        Note over PW: Stop accepting<br/>new work
-        PW->>PW: Complete current batch
+        App->>W: StopAsync() (CancellationToken)
+        Note over W: Stop accepting<br/>new work
+        W->>W: Complete current batch
     end
 
     rect rgb(255, 240, 255)
-        Note over App,PW: Phase 6: Drain & Cleanup
+        Note over App,W: Phase 6: Drain & Cleanup
         App->>ES: DrainAsync()
-        ES->>PW: Await ExecuteAsync completion
-        PW-->>ES: Work drained
         ES-->>App: All work complete
         Note over App: Exit gracefully
     end
@@ -162,9 +155,9 @@ sequenceDiagram
 
 **Key Phases**:
 1. **Initialization**: Configure services, build DI container
-2. **Start Execution Strategy**: Initialize execution infrastructure
-3. **Worker Startup**: Workers start, check database readiness, process pending work
-4. **Normal Operation**: Polling loop with database readiness checks
+2. **Schema Provisioning**: Initializer runs migrations, then marks `ISchemaReadyGate` ready (on failure the gate stays closed and the host aborts)
+3. **Worker Startup**: Workers await the schema gate, then enter their main loops; the first claim cycle catches up on pre-existing work
+4. **Normal Operation**: NOTIFY-driven wake with safety-net polling
 5. **Shutdown Signal**: Stop accepting new work
 6. **Drain & Cleanup**: Wait for in-flight work, release resources
 
@@ -176,74 +169,67 @@ sequenceDiagram
 
 ### Execution Strategy Responsibilities
 
-**Example: SerialExecutionStrategy**:
-```csharp{title="Execution Strategy Responsibilities" description="Example: SerialExecutionStrategy:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"]}
-public class SerialExecutionStrategy : IExecutionStrategy {
-  private Channel<WorkItem>? _channel;
-  private Task? _worker;
+**Example: SerialExecutor** (the built-in serial strategy):
+```csharp{title="Execution Strategy Responsibilities" description="Example: SerialExecutor StartAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"]}
+public Task StartAsync(CancellationToken ct = default) {
+  lock (_stateLock) {
+    if (_state == State.Running) {
+      return Task.CompletedTask; // Idempotent
+    }
 
-  public async Task StartAsync(CancellationToken ct = default) {
-    // 1. Create bounded channel for work items
-    _channel = Channel.CreateBounded<WorkItem>(new BoundedChannelOptions(1000) {
-      FullMode = BoundedChannelFullMode.Wait
-    });
+    if (_state == State.Stopped) {
+      throw new InvalidOperationException("Cannot restart a stopped SerialExecutor");
+    }
 
-    // 2. Start background worker
-    _worker = Task.Run(() => ProcessWorkItemsAsync(ct), ct);
-
-    _logger.LogInformation("SerialExecutionStrategy started");
+    _state = State.Running;
+    _workerCts = new CancellationTokenSource();
+    _workerTask = Task.Run(() => _processWorkItemsAsync(_workerCts.Token), _workerCts.Token);
   }
 
-  private async Task ProcessWorkItemsAsync(CancellationToken ct) {
-    await foreach (var workItem in _channel.Reader.ReadAllAsync(ct)) {
-      // Process work items serially
-      await workItem.Handler(workItem.Envelope, workItem.Context, ct);
-    }
+  return Task.CompletedTask;
+}
+
+private async Task _processWorkItemsAsync(CancellationToken ct) {
+  await foreach (var workItem in _channel.Reader.ReadAllAsync(ct)) {
+    // Process work items serially
+    await workItem.ExecuteAsync();
   }
 }
 ```
 
 **What happens**:
-- Create channels, queues, or other work coordination structures
+- Create channels, queues, or other work coordination structures (SerialExecutor creates its channel in the constructor — bounded or unbounded via `channelCapacity`)
 - Start background workers or task processors
-- Initialize connections (if needed)
+- `StartAsync` is **idempotent** while running; restarting a stopped executor throws
 - Log startup completion
 
 ### BackgroundService Integration
 
-**PerspectiveWorker (BackgroundService)**:
-```csharp{title="BackgroundService Integration" description="PerspectiveWorker (BackgroundService):" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "BackgroundService", "Integration"]}
-public class PerspectiveWorker : BackgroundService {
-  protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
-    _logger.LogInformation(
-      "Perspective worker starting: Instance {InstanceId}",
-      _instanceProvider.InstanceId
-    );
+**PerspectiveWorker (BackgroundService)** — startup sequence at the top of `ExecuteAsync`:
+```csharp{title="BackgroundService Integration" description="PerspectiveWorker (BackgroundService) startup sequence" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "BackgroundService", "Integration"]}
+protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+  LogWorkerStarting(_logger, _instanceProvider.InstanceId, _instanceProvider.ServiceName,
+    _instanceProvider.HostName, _instanceProvider.ProcessId, _options.PollingIntervalMilliseconds);
 
-    // IMMEDIATE processing on startup (before first poll delay)
-    try {
-      var isDatabaseReady = await _databaseReadinessCheck.IsReadyAsync(stoppingToken);
-      if (isDatabaseReady) {
-        await ProcessWorkBatchAsync(stoppingToken);
-        _logger.LogDebug("Initial perspective checkpoint processing complete");
-      } else {
-        _logger.LogWarning("Database not ready on startup - skipping initial processing");
-      }
-    } catch (Exception ex) when (ex is not OperationCanceledException) {
-      _logger.LogError(ex, "Error processing initial perspective checkpoints");
-    }
-
-    // Enter normal polling loop
-    while (!stoppingToken.IsCancellationRequested) {
-      // ... polling logic
-    }
+  // Hook the perspective NOTIFY signal so we wake on every new
+  // wh_perspective_events insert instead of polling at PollingIntervalMilliseconds.
+  if (_perspectiveNotificationListener is not null && !_perspectiveSignalSubscribed) {
+    _perspectiveNotificationListener.OnSignal += _onPerspectiveSignal;
+    _perspectiveSignalSubscribed = true;
   }
+
+  await _initializePerspectiveRegistryAsync();          // build event-type → perspectives map
+  _processInitialCheckpoints();                          // ClaimWorker feeds leftovers via channels
+  await _reconcileOrphanedLifecyclesAsync(stoppingToken); // replay lifecycles orphaned by a crash
+  await _scanAndRepairRewindsOnStartupAsync(stoppingToken);
+
+  // ... spawn MaxConcurrentDrainConsumers channel-consumer loops
 }
 ```
 
 **Best Practices**:
-- ✅ **Check dependencies** before starting work (database readiness)
-- ✅ **Process pending work immediately** on startup (don't wait for first poll)
+- ✅ **Let upstream workers gate on dependencies** — `ClaimWorker` awaits `ISchemaReadyGate` before its first SQL; `PerspectiveWorker` consumes channels that only carry work after the gate opens
+- ✅ **Reconcile orphaned state on startup** (crashed-pod lifecycles, interrupted rewinds)
 - ✅ **Log startup events** for observability
 - ✅ **Handle startup exceptions** gracefully (don't crash worker)
 
@@ -255,21 +241,40 @@ public class PerspectiveWorker : BackgroundService {
 
 ### Execution Strategy Responsibilities
 
-**Example: SerialExecutionStrategy**:
-```csharp{title="Execution Strategy Responsibilities (2)" description="Example: SerialExecutionStrategy:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Execution", "Strategy"]}
+**Example: SerialExecutor**:
+```csharp{title="Execution Strategy Responsibilities (2)" description="Example: SerialExecutor StopAsync" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Execution", "Strategy"]}
 public async Task StopAsync(CancellationToken ct = default) {
-  // 1. Stop accepting new work
-  _channel?.Writer.Complete();
+  lock (_stateLock) {
+    if (_state == State.Stopped) {
+      return; // Already stopped
+    }
 
-  _logger.LogInformation("SerialExecutionStrategy stopped accepting new work");
+    _state = State.Stopped;
 
-  // NOTE: Do NOT wait for work to complete here - that's DrainAsync's job
+    // Stop accepting new work
+    if (!_channelCompleted) {
+      _channel.Writer.Complete();
+      _channelCompleted = true;
+    }
+  }
+
+  // Cancel + await the background worker so it exits its read loop
+  if (_workerCts != null) {
+    await _workerCts.CancelAsync();
+  }
+  if (_workerTask != null) {
+    try {
+      await _workerTask;
+    } catch (OperationCanceledException) {
+      // Expected when cancelling worker
+    }
+  }
 }
 ```
 
 **What happens**:
 - Close channels (no new writes accepted)
-- Set internal flags (`_stopping = true`)
+- Flip internal state (`State.Stopped`) — subsequent `ExecuteAsync` calls throw `InvalidOperationException`
 - Signal background workers to stop after current work
 - Log shutdown initiated
 
@@ -281,19 +286,28 @@ public async Task StopAsync(CancellationToken ct = default) {
 ### BackgroundService Integration
 
 **PerspectiveWorker**:
-```csharp{title="BackgroundService Integration (2)" description="PerspectiveWorker:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "BackgroundService", "Integration"]}
-protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
-  while (!stoppingToken.IsCancellationRequested) {
+```csharp{title="BackgroundService Integration (2)" description="PerspectiveWorker shutdown: unsubscribe signals, drain background lifecycle work" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "BackgroundService", "Integration"]}
+public override Task StopAsync(CancellationToken cancellationToken) {
+  // Unsubscribe from the NOTIFY signal so no new wakes arrive during shutdown
+  if (_perspectiveSignalSubscribed && _perspectiveNotificationListener is not null) {
+    _perspectiveNotificationListener.OnSignal -= _onPerspectiveSignal;
+    _perspectiveSignalSubscribed = false;
+  }
+  return base.StopAsync(cancellationToken);
+}
+
+// Inside ExecuteAsync — the consumer loops exit on cancellation, then a finally block
+// drains the in-flight PostLifecycle task so background work completes before the host
+// disposes scoped services (DbContext, etc.) out from under it:
+finally {
+  var finalPending = Interlocked.Exchange(ref _pendingPostLifecycle, null);
+  if (finalPending is not null) {
     try {
-      // ... process work batch
-    } catch (OperationCanceledException) {
-      // Graceful shutdown - exit loop
-      _logger.LogInformation("Perspective worker stopping (cancellation requested)");
-      break;
+      await finalPending;
+    } catch (Exception ex) when (ex is not OperationCanceledException) {
+      LogPriorPostLifecycleFaulted(_logger, ex);
     }
   }
-
-  _logger.LogInformation("Perspective worker stopped");
 }
 ```
 
@@ -324,34 +338,40 @@ t=250ms:  StopAsync() returns
 
 ### Execution Strategy Responsibilities
 
-**Example: SerialExecutionStrategy**:
-```csharp{title="Execution Strategy Responsibilities (3)" description="Example: SerialExecutionStrategy:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"]}
+**Example: SerialExecutor**:
+```csharp{title="Execution Strategy Responsibilities (3)" description="Example: SerialExecutor DrainAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"]}
 public async Task DrainAsync(CancellationToken ct = default) {
-  // 1. Wait for background worker to complete
-  if (_worker != null) {
-    try {
-      await _worker.WaitAsync(TimeSpan.FromSeconds(30), ct);
-      _logger.LogInformation("SerialExecutionStrategy drained all work");
-    } catch (TimeoutException) {
-      _logger.LogWarning("Drain timeout - some work may not have completed");
+  lock (_stateLock) {
+    if (_state != State.Running) {
+      return; // Nothing to drain
+    }
+
+    // Complete the channel writer to signal no more work
+    if (!_channelCompleted) {
+      _channel.Writer.Complete();
+      _channelCompleted = true;
     }
   }
 
-  // 2. Cleanup resources
-  _channel = null;
-  _worker = null;
+  // Wait for worker to finish processing all items
+  if (_workerTask != null) {
+    try {
+      await _workerTask;
+    } catch (OperationCanceledException) {
+      // Defensive: channel completes before worker cancellation
+    }
+  }
 }
 ```
 
 **What happens**:
-- Wait for background workers to complete (with timeout)
-- Await any pending task completion
-- Release resources (channels, connections)
-- Log drain completion
+- Complete the channel writer (no more work can be queued)
+- Await the background worker until it has processed everything already queued
+- Log/trace drain completion
 
 **Timeout Handling**:
-- Set reasonable timeout (e.g., 30 seconds)
-- Log warning if timeout exceeded
+- `DrainAsync` itself awaits completion; bound it with the `CancellationToken` (or `Task.WaitAsync(timeout)`) at the call site if your host imposes a shutdown budget
+- Log a warning if the budget is exceeded
 - Allow shutdown to proceed (don't block forever)
 
 ### Application Integration
@@ -361,7 +381,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure services
-builder.Services.AddScoped<IExecutionStrategy, SerialExecutionStrategy>();
+builder.Services.AddSingleton<IExecutionStrategy, SerialExecutor>();
 builder.Services.AddHostedService<PerspectiveWorker>();
 
 var app = builder.Build();
@@ -371,7 +391,7 @@ await app.StartAsync();
 
 // Lifecycle: StartAsync called automatically by .NET host
 // - IExecutionStrategy.StartAsync()
-// - BackgroundService.StartExecuteAsync()
+// - BackgroundService.StartAsync() → ExecuteAsync()
 
 // Normal operation
 // - Workers process events
@@ -395,102 +415,50 @@ await app.StopAsync();
 
 ---
 
-## Database Readiness Coordination
+## Schema Readiness Coordination
 
-Workers use `IDatabaseReadinessCheck` to coordinate startup with database availability:
+Workers coordinate startup with database availability through the **`ISchemaReadyGate`** signal:
 
-### Why Database Readiness Matters
+### Why Schema Readiness Matters
 
-**Without readiness checks**:
-```csharp{title="Why Database Readiness Matters" description="Without readiness checks:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"]}
-// ❌ Worker starts before database is ready
+**Without the gate**, workers race the migration runner:
+```csharp{title="Why Schema Readiness Matters" description="Without the gate:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"]}
+// ❌ Worker starts before migrations have run
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
     try {
-      await _workCoordinator.ProcessWorkBatchAsync(...);  // EXCEPTION: database not ready
+      await _claimOnceAsync(ct);  // EXCEPTION: relation "wh_outbox" does not exist
     } catch (Npgsql.NpgsqlException ex) {
-      // Database connection failed - but why?
-      // - Migrations not run yet?
-      // - Connection pool not initialized?
-      // - Database server not started?
-      // Can't distinguish startup from runtime failures
+      // Startup race or runtime failure? Can't tell from here.
     }
   }
 }
 ```
 
-**With readiness checks**:
-```csharp{title="Why Database Readiness Matters (2)" description="With readiness checks:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"]}
-// ✅ Worker waits for database before processing
-protected override async Task ExecuteAsync(CancellationToken ct) {
-  while (!ct.IsCancellationRequested) {
-    var isDatabaseReady = await _databaseReadinessCheck.IsReadyAsync(ct);
-    if (!isDatabaseReady) {
-      _logger.LogInformation("Database not ready, skipping processing");
-      await Task.Delay(_pollingInterval, ct);
-      continue;  // Skip this cycle
-    }
+**With the gate**, workers wait once before their first SQL call:
+```csharp{title="Why Schema Readiness Matters (2)" description="With the gate:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"]}
+// ✅ Worker holds off on any SQL until the schema is provisioned
+protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+  try {
+    await _schemaReadyGate.WaitForReadyAsync(stoppingToken);
+  } catch (OperationCanceledException) {
+    return;
+  }
 
-    // Database is ready - safe to process work
-    await _workCoordinator.ProcessWorkBatchAsync(...);
+  // Schema is provisioned — safe to enter the main loop
+  while (!stoppingToken.IsCancellationRequested) {
+    // ... claim and process work
   }
 }
 ```
 
 **Benefits**:
-- ✅ **Distinguish startup from runtime failures** (not ready vs connection failed)
-- ✅ **Avoid exception noise** during startup (clean logs)
-- ✅ **Graceful waiting** (poll until ready)
-- ✅ **Coordination** (multiple workers wait for same signal)
+- ✅ **No startup/runtime ambiguity** — after the gate opens, database exceptions are genuine runtime failures
+- ✅ **Registration order stops mattering** — workers registered before the driver's initializer still wait
+- ✅ **One signal, many waiters** — no per-worker polling or table-existence probes
+- ✅ **Fail-safe on migration failure** — the gate stays closed and the host aborts
 
-### Implementation Example
-
-**PostgresDatabaseReadinessCheck**:
-```csharp{title="Implementation Example" description="PostgresDatabaseReadinessCheck:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Implementation", "Example"]}
-public class PostgresDatabaseReadinessCheck : IDatabaseReadinessCheck {
-  private readonly IDbConnectionFactory _connectionFactory;
-  private readonly ILogger<PostgresDatabaseReadinessCheck> _logger;
-
-  private bool? _isReady;  // Cache result (avoid repeated checks)
-
-  public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
-    if (_isReady == true) {
-      return true;  // Already ready - skip check
-    }
-
-    try {
-      await using var connection = _connectionFactory.CreateConnection();
-      await connection.OpenAsync(ct);
-
-      // Check for required tables
-      var tableExists = await connection.ExecuteScalarAsync<bool>(
-        """
-        SELECT EXISTS (
-          SELECT 1 FROM information_schema.tables
-          WHERE table_name IN ('wh_outbox', 'wh_inbox', 'wh_events', 'wh_perspective_checkpoints')
-        )
-        """,
-        cancellationToken: ct
-      );
-
-      _isReady = tableExists;
-      return tableExists;
-
-    } catch (Npgsql.NpgsqlException ex) {
-      _logger.LogDebug("Database not ready: {Error}", ex.Message);
-      _isReady = false;
-      return false;
-    }
-  }
-}
-```
-
-**Caching Strategy**:
-- Cache `true` result (once ready, stays ready)
-- Re-check on `false` result (may become ready later)
-- No TTL expiry (database doesn't "become not ready" during runtime)
-
-See [Database Readiness](database-readiness.md) for full details.
+The gate is marked ready by `WhizbangDatabaseInitializerService` after migrations succeed. See [Database Readiness](database-readiness.md) for full details.
 
 ---
 
@@ -682,14 +650,14 @@ public async Task DrainAsync(CancellationToken ct = default) {
 [Test]
 public async Task StartAsync_ShouldBeIdempotentAsync() {
   // Arrange
-  var strategy = new SerialExecutionStrategy();
+  var strategy = new SerialExecutor();
 
   // Act
   await strategy.StartAsync();
-  await strategy.StartAsync();  // Call twice
+  await strategy.StartAsync();  // Second call should not throw
 
-  // Assert - should not throw
-  await Assert.That(strategy.Name).IsNotNull();
+  // Assert - no exception
+  await strategy.StopAsync();
 }
 ```
 
@@ -699,16 +667,20 @@ public async Task StartAsync_ShouldBeIdempotentAsync() {
 [Test]
 public async Task StopAsync_ShouldPreventNewExecutionsAsync() {
   // Arrange
-  var strategy = new SerialExecutionStrategy();
+  var strategy = new SerialExecutor();
   await strategy.StartAsync();
 
   // Act
   await strategy.StopAsync();
 
   // Assert - new executions should throw
-  await Assert.ThrowsAsync<InvalidOperationException>(async () => {
-    await strategy.ExecuteAsync(envelope, handler, context);
-  });
+  await Assert.That(async () => {
+    await strategy.ExecuteAsync<int>(
+      envelope,
+      (env, ctx) => ValueTask.FromResult(0),
+      context
+    );
+  }).Throws<InvalidOperationException>();
 }
 ```
 
@@ -718,25 +690,31 @@ public async Task StopAsync_ShouldPreventNewExecutionsAsync() {
 [Test]
 public async Task DrainAsync_ShouldWaitForPendingWorkAsync() {
   // Arrange
-  var strategy = new SerialExecutionStrategy();
+  var strategy = new SerialExecutor();
   await strategy.StartAsync();
+  var handlerStarted = new TaskCompletionSource<bool>();
+  var handlerCompleted = new TaskCompletionSource<bool>();
 
-  var workCompleted = false;
-  var handler = async (envelope, context, ct) => {
-    await Task.Delay(500, ct);  // Simulate 500ms work
-    workCompleted = true;
-    return new object();
-  };
+  // Act - start a long-running handler (completion signals, never Task.Delay)
+  var executionTask = strategy.ExecuteAsync<int>(
+    envelope,
+    async (env, ctx) => {
+      handlerStarted.SetResult(true);
+      await handlerCompleted.Task;
+      return 0;
+    },
+    context
+  );
 
-  // Queue work
-  var workTask = strategy.ExecuteAsync(envelope, handler, context);
+  await handlerStarted.Task;
+  var drainTask = strategy.DrainAsync();  // should wait for the handler
 
-  // Act - drain immediately
+  handlerCompleted.SetResult(true);
+  await executionTask;
+
+  // Assert - DrainAsync now completes
+  await drainTask;
   await strategy.StopAsync();
-  await strategy.DrainAsync();
-
-  // Assert - work should have completed
-  await Assert.That(workCompleted).IsTrue();
 }
 ```
 
@@ -748,23 +726,21 @@ public async Task DrainAsync_ShouldWaitForPendingWorkAsync() {
 
 **Problem**: Worker needs database migrations before starting.
 
-**Solution**:
+**Solution** — await `ISchemaReadyGate` (signal-based, no polling):
 ```csharp{title="Pattern 1: Initialization Dependencies" description="Pattern 1: Initialization Dependencies" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Pattern", "Initialization"]}
-public class PerspectiveWorker : BackgroundService {
-  private readonly IDatabaseReadinessCheck _dbCheck;
+public class MyDatabaseWorker : BackgroundService {
+  private readonly ISchemaReadyGate _schemaReadyGate;
 
   protected override async Task ExecuteAsync(CancellationToken ct) {
-    // Wait for database readiness before starting
-    while (!await _dbCheck.IsReadyAsync(ct)) {
-      _logger.LogInformation("Waiting for database initialization...");
-      await Task.Delay(TimeSpan.FromSeconds(5), ct);
-    }
+    // Block until WhizbangDatabaseInitializerService marks the gate ready
+    // (returns immediately if migrations already completed)
+    await _schemaReadyGate.WaitForReadyAsync(ct);
 
-    _logger.LogInformation("Database ready - starting perspective processing");
+    _logger.LogInformation("Schema ready - starting processing");
 
     // Begin normal operation
     while (!ct.IsCancellationRequested) {
-      await ProcessWorkBatchAsync(ct);
+      await ProcessBatchAsync(ct);
     }
   }
 }
@@ -795,9 +771,10 @@ public async Task DrainAsync(CancellationToken ct = default) {
 
 **Solution**:
 ```csharp{title="Pattern 3: Startup Health Checks" description="Pattern 3: Startup Health Checks" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Pattern", "Startup"]}
-// ASP.NET Core health checks
+// ASP.NET Core health checks (SchemaReadyHealthCheck wraps ISchemaReadyGate.IsReady —
+// see the Database Readiness page for the implementation)
 builder.Services.AddHealthChecks()
-  .AddCheck<DatabaseReadinessHealthCheck>("database")
+  .AddCheck<SchemaReadyHealthCheck>("schema")
   .AddCheck<ExecutionStrategyHealthCheck>("execution");
 
 app.MapHealthChecks("/health/ready", new HealthCheckOptions {
@@ -811,15 +788,16 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions {
 
 ### Problem: Worker Starts Before Database Ready
 
-**Symptoms**: Exceptions on startup, "connection refused" errors.
+**Symptoms**: Exceptions on startup, "relation does not exist" or "connection refused" errors.
 
-**Solution**: Implement `IDatabaseReadinessCheck` and poll until ready:
-```csharp{title="Problem: Worker Starts Before Database Ready" description="Solution: Implement IDatabaseReadinessCheck and poll until ready:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Worker"]}
-var isDatabaseReady = await _databaseReadinessCheck.IsReadyAsync(ct);
-if (!isDatabaseReady) {
-  await Task.Delay(_pollingInterval, ct);
-  continue;
+**Solution**: Await `ISchemaReadyGate` before the first SQL call:
+```csharp{title="Problem: Worker Starts Before Database Ready" description="Solution: Await ISchemaReadyGate before the first SQL call:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Worker"]}
+try {
+  await _schemaReadyGate.WaitForReadyAsync(stoppingToken);
+} catch (OperationCanceledException) {
+  return;
 }
+// ... safe to issue SQL from here
 ```
 
 ### Problem: Shutdown Hangs Indefinitely
@@ -893,4 +871,4 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2025-12-21*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

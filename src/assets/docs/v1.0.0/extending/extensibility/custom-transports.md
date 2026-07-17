@@ -1,5 +1,8 @@
 ---
 title: Custom Transports
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Extensibility
 order: 4
@@ -13,6 +16,18 @@ codeReferences:
   - src/Whizbang.Core/Transports/ITransport.cs
   - src/Whizbang.Core/Transports/TransportCapabilities.cs
   - src/Whizbang.Core/Transports/InProcessTransport.cs
+  - src/Whizbang.Core/Transports/ISubscription.cs
+  - src/Whizbang.Core/Transports/TransportDestination.cs
+  - src/Whizbang.Core/Transports/BulkPublish.cs
+  - src/Whizbang.Core/Workers/TransportBatchOptions.cs
+testReferences:
+  - tests/Whizbang.Transports.Tests/ITransportTests.cs
+  - tests/Whizbang.Transports.Tests/TransportCapabilitiesTests.cs
+  - tests/Whizbang.Transports.Tests/SubscribeBatchTests.cs
+  - tests/Whizbang.Transports.Tests/ISubscriptionTests.cs
+  - tests/Whizbang.Transports.Tests/InProcessTransportTests.cs
+  - tests/Whizbang.Transports.Tests/TransportDestinationTests.cs
+  - tests/Whizbang.Transports.Tests/ITransportSubscribeToDeadLetterAsyncDefaultTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -32,17 +47,17 @@ For built-in transports, see [Azure Service Bus](../../messaging/transports/azur
 
 | Scenario | Built-In Transport | Custom Transport |
 |----------|-------------------|------------------|
-| **Azure Service Bus** | ✅ Built-in | No customization needed |
-| **In-Memory (Testing)** | ✅ Built-in | No customization needed |
+| **Azure Service Bus** | ✅ Built-in (`Whizbang.Transports.AzureServiceBus`) | No customization needed |
+| **RabbitMQ** | ✅ Built-in (`Whizbang.Transports.RabbitMQ`) | No customization needed |
+| **In-Process (Testing)** | ✅ Built-in (`InProcessTransport`) | No customization needed |
 | **HTTP/REST APIs** | ❌ Not included | ✅ HTTP client transport |
 | **gRPC** | ❌ Not included | ✅ gRPC channel transport |
 | **Kafka** | ❌ Not included | ✅ Kafka producer/consumer |
-| **RabbitMQ** | ❌ Not included | ✅ AMQP channel transport |
 | **NATS** | ❌ Not included | ✅ NATS client transport |
 | **Redis Pub/Sub** | ❌ Not included | ✅ Redis channel transport |
 
 **When to implement custom transport**:
-- ✅ Existing messaging infrastructure (Kafka, RabbitMQ)
+- ✅ Existing messaging infrastructure (Kafka, NATS)
 - ✅ HTTP/gRPC microservices
 - ✅ Legacy systems integration
 - ✅ Custom protocols (IoT, WebSockets)
@@ -57,6 +72,15 @@ For built-in transports, see [Azure Service Bus](../../messaging/transports/azur
 ```csharp{title="ITransport Interface" description="ITransport Interface" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "ITransport", "Interface"]}
 namespace Whizbang.Core.Transports;
 
+/// <summary>
+/// A deserialized transport message ready for batch processing.
+/// Value type to avoid heap allocations when batching many messages.
+/// </summary>
+public readonly record struct TransportMessage(
+  IMessageEnvelope Envelope,
+  string? EnvelopeType
+);
+
 public interface ITransport {
   /// <summary>
   /// Whether transport is initialized and ready.
@@ -67,7 +91,7 @@ public interface ITransport {
   /// Initialize transport and verify connectivity.
   /// Idempotent - safe to call multiple times.
   /// </summary>
-  Task InitializeAsync(CancellationToken ct = default);
+  Task InitializeAsync(CancellationToken cancellationToken = default);
 
   /// <summary>
   /// Capabilities this transport supports.
@@ -75,23 +99,48 @@ public interface ITransport {
   TransportCapabilities Capabilities { get; }
 
   /// <summary>
+  /// Maximum per-message wire size in bytes; null means no enforced limit.
+  /// Size-aware strategies (composite events, body offload) read this
+  /// pre-flight to decide inline send vs. claim-check offload.
+  /// Default implementation returns null.
+  /// </summary>
+  long? MaxMessageSizeBytes => null;
+
+  /// <summary>
   /// Publish message (fire-and-forget).
+  /// When preSerializedBytes is set, wire transports MUST use those bytes
+  /// and skip their internal serialization.
   /// </summary>
   Task PublishAsync(
     IMessageEnvelope envelope,
     TransportDestination destination,
-    CancellationToken ct = default
+    string? envelopeType = null,
+    ReadOnlyMemory<byte>? preSerializedBytes = null,
+    CancellationToken cancellationToken = default
   );
 
   /// <summary>
-  /// Subscribe to messages from destination.
-  /// Returns subscription handle for lifecycle management.
+  /// Subscribe with transport-level batch collection. The transport collects
+  /// incoming messages into batches and invokes the handler once per batch
+  /// (size reached, sliding window timeout, or hard max timeout).
   /// </summary>
-  Task<ISubscription> SubscribeAsync(
-    Func<IMessageEnvelope, CancellationToken, Task> handler,
+  Task<ISubscription> SubscribeBatchAsync(
+    Func<IReadOnlyList<TransportMessage>, CancellationToken, Task> batchHandler,
     TransportDestination destination,
-    CancellationToken ct = default
+    TransportBatchOptions batchOptions,
+    CancellationToken cancellationToken = default
   );
+
+  /// <summary>
+  /// Push subscription on the broker's dead-letter queue/subqueue.
+  /// Default implementation throws NotSupportedException; the
+  /// TransportDeadLetterDrainWorker falls back to polling.
+  /// </summary>
+  Task<ISubscription> SubscribeToDeadLetterAsync(
+    Func<TransportMessage, CancellationToken, Task> handler,
+    TransportDestination destination,
+    CancellationToken cancellationToken = default
+  ) => throw new NotSupportedException(/* ... */);
 
   /// <summary>
   /// Send request and wait for response (request/response pattern).
@@ -100,10 +149,25 @@ public interface ITransport {
   Task<IMessageEnvelope> SendAsync<TRequest, TResponse>(
     IMessageEnvelope requestEnvelope,
     TransportDestination destination,
-    CancellationToken ct = default
+    CancellationToken cancellationToken = default
   ) where TRequest : notnull where TResponse : notnull;
+
+  /// <summary>
+  /// Publish a batch of messages to the same destination in one operation.
+  /// Default implementation throws NotSupportedException - check
+  /// Capabilities.HasFlag(TransportCapabilities.BulkPublish) first.
+  /// </summary>
+  Task<IReadOnlyList<BulkPublishItemResult>> PublishBatchAsync(
+    IReadOnlyList<BulkPublishItem> items,
+    TransportDestination destination,
+    CancellationToken cancellationToken = default
+  ) => throw new NotSupportedException(/* ... */);
 }
 ```
+
+:::note
+`SubscribeToDeadLetterAsync`, `PublishBatchAsync`, and `MaxMessageSizeBytes` have default interface implementations — a minimal custom transport only implements `IsInitialized`, `InitializeAsync`, `Capabilities`, `PublishAsync`, `SubscribeBatchAsync`, and `SendAsync`.
+:::
 
 ### Transport Capabilities
 
@@ -115,8 +179,10 @@ public enum TransportCapabilities {
   PublishSubscribe = 1 << 1,   // Pub/Sub (Kafka, Service Bus)
   Streaming = 1 << 2,          // IAsyncEnumerable streaming
   Reliable = 1 << 3,           // At-least-once delivery
-  Ordered = 1 << 4,            // FIFO ordering
-  ExactlyOnce = 1 << 5         // Exactly-once semantics
+  Ordered = 1 << 4,            // FIFO ordering within a stream/partition
+  ExactlyOnce = 1 << 5,        // Exactly-once semantics (requires Inbox/Outbox dedup)
+  BulkPublish = 1 << 6,        // Multiple messages in a single transport operation
+  All = RequestResponse | PublishSubscribe | Streaming | Reliable | Ordered | ExactlyOnce | BulkPublish
 }
 ```
 
@@ -124,12 +190,12 @@ public enum TransportCapabilities {
 
 | Transport | Capabilities |
 |-----------|-------------|
-| **HTTP** | `RequestResponse` |
-| **gRPC** | `RequestResponse \| Streaming` |
-| **Kafka** | `PublishSubscribe \| Reliable \| Ordered` |
-| **RabbitMQ** | `PublishSubscribe \| Reliable` |
-| **In-Memory** | `PublishSubscribe \| Reliable \| Ordered \| ExactlyOnce` |
-| **Azure Service Bus** | `PublishSubscribe \| Reliable \| Ordered` |
+| **HTTP** (custom) | `RequestResponse` |
+| **gRPC** (custom) | `RequestResponse \| Streaming` |
+| **Kafka** (custom) | `PublishSubscribe \| Reliable \| Ordered` |
+| **In-Process** (built-in) | `RequestResponse \| PublishSubscribe \| Ordered \| Reliable` |
+| **RabbitMQ** (built-in) | `PublishSubscribe \| Reliable \| BulkPublish` (+ `Ordered` when single-active-consumer is enabled) |
+| **Azure Service Bus** (built-in) | `PublishSubscribe \| Reliable \| BulkPublish` (+ `Ordered` when sessions are enabled) |
 
 ---
 
@@ -183,15 +249,18 @@ public class HttpTransport : ITransport {
   public Task PublishAsync(
     IMessageEnvelope envelope,
     TransportDestination destination,
-    CancellationToken ct = default
+    string? envelopeType = null,
+    ReadOnlyMemory<byte>? preSerializedBytes = null,
+    CancellationToken cancellationToken = default
   ) {
     throw new NotSupportedException("HTTP transport does not support publish (use SendAsync instead)");
   }
 
-  public Task<ISubscription> SubscribeAsync(
-    Func<IMessageEnvelope, CancellationToken, Task> handler,
+  public Task<ISubscription> SubscribeBatchAsync(
+    Func<IReadOnlyList<TransportMessage>, CancellationToken, Task> batchHandler,
     TransportDestination destination,
-    CancellationToken ct = default
+    TransportBatchOptions batchOptions,
+    CancellationToken cancellationToken = default
   ) {
     throw new NotSupportedException("HTTP transport does not support subscribe (use polling or webhooks)");
   }
@@ -251,12 +320,25 @@ builder.Services.AddSingleton<ITransport, HttpTransport>();
 
 **Usage**:
 ```csharp{title="Pattern 1: HTTP Client Transport (3)" description="Pattern 1: HTTP Client Transport" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "HTTP"]}
-var request = MessageEnvelope.Create(
-  messageId: MessageId.New(),
-  correlationId: CorrelationId.New(),
-  causationId: null,
-  payload: new CreateOrder(orderId, customerId, items)
-);
+var request = new MessageEnvelope<CreateOrder> {
+  MessageId = MessageId.New(),
+  DispatchContext = new MessageDispatchContext {
+    Mode = DispatchModes.Local,
+    Source = MessageSource.Local
+  },
+  Payload = new CreateOrder(orderId, customerId, items),
+  Hops = [
+    new MessageHop {
+      ServiceInstance = new ServiceInstanceInfo {
+        ServiceName = "order-api",
+        InstanceId = Guid.NewGuid(),
+        HostName = Environment.MachineName,
+        ProcessId = Environment.ProcessId
+      },
+      CorrelationId = CorrelationId.New()
+    }
+  ]
+};
 
 var destination = new TransportDestination(Address: "/orders/create");
 
@@ -356,15 +438,18 @@ public class GrpcTransport : ITransport {
   public Task PublishAsync(
     IMessageEnvelope envelope,
     TransportDestination destination,
-    CancellationToken ct = default
+    string? envelopeType = null,
+    ReadOnlyMemory<byte>? preSerializedBytes = null,
+    CancellationToken cancellationToken = default
   ) {
     throw new NotSupportedException("gRPC transport is request/response only (use streaming for pub/sub)");
   }
 
-  public Task<ISubscription> SubscribeAsync(
-    Func<IMessageEnvelope, CancellationToken, Task> handler,
+  public Task<ISubscription> SubscribeBatchAsync(
+    Func<IReadOnlyList<TransportMessage>, CancellationToken, Task> batchHandler,
     TransportDestination destination,
-    CancellationToken ct = default
+    TransportBatchOptions batchOptions,
+    CancellationToken cancellationToken = default
   ) {
     // For streaming gRPC, implement server-side streaming subscription
     throw new NotImplementedException("gRPC streaming subscription");
@@ -432,23 +517,31 @@ public class KafkaTransport : ITransport {
   public async Task PublishAsync(
     IMessageEnvelope envelope,
     TransportDestination destination,
+    string? envelopeType = null,
+    ReadOnlyMemory<byte>? preSerializedBytes = null,
     CancellationToken ct = default
   ) {
-    // Serialize envelope to JSON
-    var envelopeType = envelope.GetType();
-    var typeInfo = _jsonOptions.GetTypeInfo(envelopeType)
-      ?? throw new InvalidOperationException($"No JsonTypeInfo for {envelopeType.Name}");
+    // Honor the pre-serialized bytes hint when upstream already serialized once
+    string json;
+    var clrEnvelopeType = envelope.GetType();
+    var typeName = envelopeType ?? clrEnvelopeType.AssemblyQualifiedName!;
 
-    var json = JsonSerializer.Serialize(envelope, typeInfo);
+    if (preSerializedBytes is { } bytes) {
+      json = System.Text.Encoding.UTF8.GetString(bytes.Span);
+    } else {
+      var typeInfo = _jsonOptions.GetTypeInfo(clrEnvelopeType)
+        ?? throw new InvalidOperationException($"No JsonTypeInfo for {clrEnvelopeType.Name}");
+      json = JsonSerializer.Serialize(envelope, typeInfo);
+    }
 
     // Create Kafka message
     var message = new Message<string, string> {
-      Key = envelope.StreamKey ?? envelope.MessageId.Value.ToString(),  // Partition by stream
+      Key = envelope.GetCurrentStreamId() ?? envelope.MessageId.Value.ToString(),  // Partition by stream
       Value = json,
       Headers = new Headers {
         { "MessageId", System.Text.Encoding.UTF8.GetBytes(envelope.MessageId.Value.ToString()) },
-        { "CorrelationId", System.Text.Encoding.UTF8.GetBytes(envelope.CorrelationId.Value.ToString()) },
-        { "EnvelopeType", System.Text.Encoding.UTF8.GetBytes(envelopeType.AssemblyQualifiedName!) }
+        { "CorrelationId", System.Text.Encoding.UTF8.GetBytes(envelope.GetCorrelationId()?.ToString() ?? "") },
+        { "EnvelopeType", System.Text.Encoding.UTF8.GetBytes(typeName) }
       }
     };
 
@@ -468,9 +561,10 @@ public class KafkaTransport : ITransport {
     );
   }
 
-  public async Task<ISubscription> SubscribeAsync(
-    Func<IMessageEnvelope, CancellationToken, Task> handler,
+  public Task<ISubscription> SubscribeBatchAsync(
+    Func<IReadOnlyList<TransportMessage>, CancellationToken, Task> batchHandler,
     TransportDestination destination,
+    TransportBatchOptions batchOptions,
     CancellationToken ct = default
   ) {
     // Create Kafka consumer
@@ -485,11 +579,16 @@ public class KafkaTransport : ITransport {
       _consumerConfig.GroupId
     );
 
-    // Background task to consume messages
+    // Background task to consume messages in batches
     var consumeTask = Task.Run(async () => {
+      var batch = new List<TransportMessage>(batchOptions.BatchSize);
+      var results = new List<ConsumeResult<string, string>>(batchOptions.BatchSize);
+
       try {
         while (!ct.IsCancellationRequested) {
-          var consumeResult = consumer.Consume(ct);
+          // Collect a batch: flush on size, or on SlideMs of no new messages
+          // (production code also honors MaxWaitMs as a hard ceiling)
+          var consumeResult = consumer.Consume(TimeSpan.FromMilliseconds(batchOptions.SlideMs));
 
           if (consumeResult?.Message != null) {
             try {
@@ -509,30 +608,35 @@ public class KafkaTransport : ITransport {
               ) as IMessageEnvelope
                 ?? throw new InvalidOperationException("Failed to deserialize envelope");
 
-              // Invoke handler
-              await handler(envelope, ct);
-
-              // Commit offset after successful processing
-              consumer.Commit(consumeResult);
-
-              _logger.LogDebug(
-                "Processed Kafka message from topic {Topic}, partition {Partition}, offset {Offset}",
-                consumeResult.Topic,
-                consumeResult.Partition.Value,
-                consumeResult.Offset.Value
-              );
+              batch.Add(new TransportMessage(envelope, envelopeTypeName));
+              results.Add(consumeResult);
 
             } catch (Exception ex) {
               _logger.LogError(
                 ex,
-                "Error processing Kafka message from topic {Topic}, partition {Partition}, offset {Offset}",
+                "Error deserializing Kafka message from topic {Topic}, partition {Partition}, offset {Offset}",
                 consumeResult.Topic,
                 consumeResult.Partition.Value,
                 consumeResult.Offset.Value
               );
-
               // Don't commit - message will be retried
             }
+          }
+
+          // Flush when batch is full, or when the sliding window elapsed with a partial batch
+          var windowElapsed = consumeResult?.Message == null && batch.Count > 0;
+          if (batch.Count >= batchOptions.BatchSize || windowElapsed) {
+            // Invoke batch handler once per batch
+            await batchHandler(batch, ct);
+
+            // Commit offsets after successful batch processing
+            foreach (var result in results) {
+              consumer.Commit(result);
+            }
+
+            _logger.LogDebug("Processed Kafka batch of {Count} messages", batch.Count);
+            batch.Clear();
+            results.Clear();
           }
         }
       } catch (OperationCanceledException) {
@@ -542,7 +646,7 @@ public class KafkaTransport : ITransport {
       }
     }, ct);
 
-    return new KafkaSubscription(consumer, consumeTask);
+    return Task.FromResult<ISubscription>(new KafkaSubscription(consumer, consumeTask));
   }
 
   public Task<IMessageEnvelope> SendAsync<TRequest, TResponse>(
@@ -556,28 +660,48 @@ public class KafkaTransport : ITransport {
 
 /// <summary>
 /// Subscription handle for Kafka consumer.
+/// ISubscription is IDisposable with pause/resume control and an
+/// OnDisconnected event for reconnection triggers.
 /// </summary>
 internal class KafkaSubscription : ISubscription {
   private readonly IConsumer<string, string> _consumer;
   private readonly Task _consumeTask;
+  private volatile bool _isActive = true;
+  private bool _disposed;
 
   public KafkaSubscription(IConsumer<string, string> consumer, Task consumeTask) {
     _consumer = consumer;
     _consumeTask = consumeTask;
   }
 
-  public async ValueTask DisposeAsync() {
-    // Stop consuming
+  public event EventHandler<SubscriptionDisconnectedEventArgs>? OnDisconnected;
+
+  public bool IsActive => _isActive;
+
+  public Task PauseAsync() {
+    // Pause delivery (e.g., consumer.Pause(consumer.Assignment))
+    _isActive = false;
+    return Task.CompletedTask;
+  }
+
+  public Task ResumeAsync() {
+    // Resume delivery (e.g., consumer.Resume(consumer.Assignment))
+    _isActive = true;
+    return Task.CompletedTask;
+  }
+
+  public void Dispose() {
+    if (_disposed) return;
+    _disposed = true;
+
+    // Stop consuming and leave the group
     _consumer.Close();
-
-    // Wait for consume task to complete
-    try {
-      await _consumeTask.WaitAsync(TimeSpan.FromSeconds(10));
-    } catch (TimeoutException) {
-      // Consume task didn't complete in time
-    }
-
     _consumer.Dispose();
+
+    OnDisconnected?.Invoke(this, new SubscriptionDisconnectedEventArgs {
+      Reason = "Disposed",
+      IsApplicationInitiated = true
+    });
   }
 }
 ```
@@ -689,10 +813,12 @@ public class BatchingTransport : ITransport {
   public async Task PublishAsync(
     IMessageEnvelope envelope,
     TransportDestination destination,
-    CancellationToken ct = default
+    string? envelopeType = null,
+    ReadOnlyMemory<byte>? preSerializedBytes = null,
+    CancellationToken cancellationToken = default
   ) {
     // Queue message for batching
-    await _queue.Writer.WriteAsync((envelope, destination), ct);
+    await _queue.Writer.WriteAsync((envelope, destination), cancellationToken);
   }
 
   private async Task ProcessBatchesAsync(CancellationToken ct) {
@@ -726,13 +852,25 @@ public class BatchingTransport : ITransport {
   }
 
   // Other ITransport methods delegate to _innerTransport
-  public Task<ISubscription> SubscribeAsync(...) =>
-    _innerTransport.SubscribeAsync(handler, destination, ct);
+  public Task<ISubscription> SubscribeBatchAsync(
+    Func<IReadOnlyList<TransportMessage>, CancellationToken, Task> batchHandler,
+    TransportDestination destination,
+    TransportBatchOptions batchOptions,
+    CancellationToken cancellationToken = default
+  ) => _innerTransport.SubscribeBatchAsync(batchHandler, destination, batchOptions, cancellationToken);
 
-  public Task<IMessageEnvelope> SendAsync<TRequest, TResponse>(...) =>
-    _innerTransport.SendAsync<TRequest, TResponse>(requestEnvelope, destination, ct);
+  public Task<IMessageEnvelope> SendAsync<TRequest, TResponse>(
+    IMessageEnvelope requestEnvelope,
+    TransportDestination destination,
+    CancellationToken cancellationToken = default
+  ) where TRequest : notnull where TResponse : notnull =>
+    _innerTransport.SendAsync<TRequest, TResponse>(requestEnvelope, destination, cancellationToken);
 }
 ```
+
+:::note
+If the underlying broker supports batched sends natively, prefer declaring the `TransportCapabilities.BulkPublish` capability and implementing `PublishBatchAsync` instead of a wrapper — that is how the built-in RabbitMQ and Azure Service Bus transports batch outbox publishes.
+:::
 
 **Usage**:
 ```csharp{title="Pattern 5: Batching Transport (High Throughput) (2)" description="Pattern 5: Batching Transport (High Throughput)" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Batching"]}
@@ -806,22 +944,37 @@ public class KafkaTransportIntegrationTests {
 
     var destination = new TransportDestination(Address: "test-topic");
 
-    // Subscribe
-    await transport.SubscribeAsync(
-      handler: async (envelope, ct) => {
-        receivedEnvelope = envelope;
+    // Subscribe (batch handler - invoked once per batch, not per message)
+    await transport.SubscribeBatchAsync(
+      batchHandler: (batch, ct) => {
+        receivedEnvelope = batch[0].Envelope;
         messageReceived.SetResult(true);
+        return Task.CompletedTask;
       },
-      destination: destination
+      destination: destination,
+      batchOptions: new TransportBatchOptions { BatchSize = 1 }
     );
 
     // Act - Publish
-    var envelope = MessageEnvelope.Create(
-      messageId: MessageId.New(),
-      correlationId: CorrelationId.New(),
-      causationId: null,
-      payload: new TestMessage("Hello Kafka!")
-    );
+    var envelope = new MessageEnvelope<TestMessage> {
+      MessageId = MessageId.New(),
+      DispatchContext = new MessageDispatchContext {
+        Mode = DispatchModes.Local,
+        Source = MessageSource.Local
+      },
+      Payload = new TestMessage("Hello Kafka!"),
+      Hops = [
+        new MessageHop {
+          ServiceInstance = new ServiceInstanceInfo {
+            ServiceName = "test",
+            InstanceId = Guid.NewGuid(),
+            HostName = "test-host",
+            ProcessId = Environment.ProcessId
+          },
+          CorrelationId = CorrelationId.New()
+        }
+      ]
+    };
 
     await transport.PublishAsync(envelope, destination);
 

@@ -1,5 +1,8 @@
 ---
 title: "Commands and Events"
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Messaging"
 order: 5
@@ -9,9 +12,15 @@ description: >-
   conventions, and message envelope integration.
 tags: 'commands, events, queries, messaging, ICommand, IEvent, CQRS, message-types'
 codeReferences:
+  - src/Whizbang.Core/IMessage.cs
   - src/Whizbang.Core/ICommand.cs
   - src/Whizbang.Core/IEvent.cs
   - src/Whizbang.Core/IQuery.cs
+  - src/Whizbang.Core/IReceptor.cs
+  - src/Whizbang.Core/Observability/MessageEnvelope.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
+  - tests/Whizbang.Generators.Tests/MessageRegistryGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -44,13 +53,13 @@ Commands express **intent** - a request to perform an action in the system.
 
 ```csharp{title="Definition" description="Definition" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Definition"]}
 /// <summary>
-/// Marker interface for command messages
+/// Marker interface for commands - messages that represent an intent to change state.
+/// Commands are processed by Receptors which validate business rules and emit Events.
 /// </summary>
-/// <docs>messaging/commands-events</docs>
-public interface ICommand {
-  // Marker interface - no members
-}
+public interface ICommand : IMessage;
 ```
+
+`ICommand` extends `IMessage`, the base marker for every message in the system.
 
 ### Example Commands
 
@@ -98,13 +107,13 @@ Events represent **facts** - things that have already happened in the system.
 
 ```csharp{title="Definition - for" description="Definition - for" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Definition"]}
 /// <summary>
-/// Marker interface for event messages
+/// Marker interface for events - messages that represent facts about
+/// state changes that have already occurred.
 /// </summary>
-/// <docs>messaging/commands-events</docs>
-public interface IEvent {
-  // Marker interface - no members
-}
+public interface IEvent : IMessage;
 ```
+
+A third marker, `IQuery : IMessage`, exists for read-only request messages.
 
 ### Example Events
 
@@ -164,25 +173,24 @@ public record OrderCreated : IEvent {
 
 // Receptor: Handles command, produces event
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-  public async Task<OrderCreated> HandleAsync(
-    CreateOrder command,
-    IMessageContext context,
+  public async ValueTask<OrderCreated> HandleAsync(
+    CreateOrder message,
     CancellationToken cancellationToken = default
   ) {
     // Validate business rules
-    if (command.Items.Length == 0) {
+    if (message.Items.Length == 0) {
       throw new InvalidOperationException("Order must contain at least one item");
     }
 
-    // Create order
-    var orderId = Guid.CreateVersion7();
-    var totalAmount = command.Items.Sum(i => i.Price * i.Quantity);
+    // Create order (TrackedGuid.NewMedo() generates a time-ordered UUIDv7)
+    Guid orderId = TrackedGuid.NewMedo();
+    var totalAmount = message.Items.Sum(i => i.Price * i.Quantity);
 
     // Return event (fact)
     return new OrderCreated {
       OrderId = orderId,
-      CustomerId = command.CustomerId,
-      Items = command.Items,
+      CustomerId = message.CustomerId,
+      Items = message.Items,
       TotalAmount = totalAmount,
       CreatedAt = DateTimeOffset.UtcNow
     };
@@ -203,15 +211,19 @@ var createOrder = new CreateOrder {
   ]
 };
 
-var result = await dispatcher.DispatchAsync<CreateOrder, OrderCreated>(createOrder);
+// In-process, typed result:
+var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(createOrder);
+
+// Or route through the messaging pipeline (outbox/transport):
+var receipt = await dispatcher.SendAsync(createOrder);
 
 // The envelope provides:
 // - MessageId (UUIDv7)
-// - CorrelationId (for distributed tracing)
-// - CausationId (parent message)
-// - Hops (routing and metadata)
-// - SecurityContext (user, tenant)
-// - PolicyDecisionTrail (authorization audit)
+// - Hops (routing/audit trail; each hop carries CorrelationId for
+//   distributed tracing, CausationId for the parent message, scope
+//   deltas for security context, and the policy decision trail)
+// - SourceServiceId / SourceCommitSequence (origin stamps)
+// - EventFlags (category and treatment flags)
 ```
 
 See [Message Envelopes](message-envelopes.md) for details.
@@ -235,11 +247,14 @@ public class Order {
     // ... update state
   }
 
-  // Rebuild state from events
+  // Rebuild state from events (pattern matching - AOT-compatible, no reflection)
   public static Order FromEvents(IEnumerable<IEvent> events) {
     var order = new Order();
     foreach (var e in events) {
-      order.Apply((dynamic)e);
+      switch (e) {
+        case OrderCreated created: order.Apply(created); break;
+        case OrderCancelled cancelled: order.Apply(cancelled); break;
+      }
     }
     return order;
   }
@@ -253,26 +268,23 @@ See [Event Store](../data/event-store.md) for details.
 Events drive perspectives - read models optimized for queries:
 
 ```csharp{title="Perspectives (Read Models)" description="Events drive perspectives - read models optimized for queries:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Perspectives", "Read", "Models"]}
-// Perspective: Order summary read model
-public class OrderSummaryPerspective : IPerspectiveOf<OrderSummary> {
-  public async Task<OrderSummary> ProjectAsync(
-    IEvent @event,
-    OrderSummary? current,
-    CancellationToken cancellationToken = default
-  ) {
-    return @event switch {
-      OrderCreated e => new OrderSummary {
-        OrderId = e.OrderId,
-        CustomerId = e.CustomerId,
-        TotalAmount = e.TotalAmount,
-        Status = "Created",
-        CreatedAt = e.CreatedAt
-      },
-      OrderCancelled e => current with {
-        Status = "Cancelled",
-        CancelledAt = e.CancelledAt
-      },
-      _ => current ?? throw new InvalidOperationException("Unknown event type")
+// Perspective: Order summary read model.
+// Apply methods are pure functions: no I/O, no side effects, deterministic.
+public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreated, OrderCancelled> {
+  public OrderSummary Apply(OrderSummary currentData, OrderCreated eventData) {
+    return currentData with {
+      OrderId = eventData.OrderId,
+      CustomerId = eventData.CustomerId,
+      TotalAmount = eventData.TotalAmount,
+      Status = "Created",
+      CreatedAt = eventData.CreatedAt
+    };
+  }
+
+  public OrderSummary Apply(OrderSummary currentData, OrderCancelled eventData) {
+    return currentData with {
+      Status = "Cancelled",
+      CancelledAt = eventData.CancelledAt
     };
   }
 }
@@ -372,7 +384,7 @@ public record OrderCreated : IEvent {
 ```csharp{title="Event Design - OrderCreated" description="Event Design - OrderCreated" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Event", "Design", "OrderCreated"]}
 // ✅ GOOD: UUIDv7 for database-friendly, time-ordered IDs
 public record OrderCreated : IEvent {
-  public required Guid OrderId { get; init; }  // Generated via Guid.CreateVersion7()
+  public required Guid OrderId { get; init; }  // Generated via TrackedGuid.NewMedo()
   public required DateTimeOffset CreatedAt { get; init; }
 }
 

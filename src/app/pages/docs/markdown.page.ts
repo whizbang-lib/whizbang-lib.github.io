@@ -19,10 +19,11 @@ import { VersionService } from '../../services/version.service';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { trigger, transition, style, animate } from '@angular/animations';
+import { TestReferencesPanelComponent } from '../../components/test-references-panel.component';
 
 @Component({
   standalone: true,
-  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule, BreadcrumbComponent, ToastModule],
+  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule, BreadcrumbComponent, ToastModule, TestReferencesPanelComponent],
   providers: [MessageService],
   template: `
     <div>
@@ -50,6 +51,9 @@ import { trigger, transition, style, animate } from '@angular/animations';
         <div *ngFor="let example of examples()" class="my-4">
           <wb-example [id]="example"></wb-example>
         </div>
+
+        <!-- Living docs: tests verifying this page, with live CI status -->
+        <wb-test-references [testReferences]="testReferences()"></wb-test-references>
       </div>
       
       <!-- Toast notifications -->
@@ -246,6 +250,7 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
   processedContent = signal('');
   videos = signal<string[]>([]);
   examples = signal<string[]>([]);
+  testReferences = signal<string[]>([]);
   breadcrumbs = signal<BreadcrumbItem[]>([]);
   headers = signal<HeaderInfo[]>([]);
   callouts = signal<CalloutInfo[]>([]);
@@ -543,6 +548,9 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
   private loadMarkdownContent(path: string) {
     this.http.get(path, { responseType: 'text' }).subscribe({
       next: (content) => {
+        // Extract testReferences from frontmatter for the living-docs panel
+        this.testReferences.set(this.extractFrontmatterList(content, 'testReferences'));
+
         // Parse ALL code blocks (both enhanced and regular)
         const { processedContent, codeBlocks } = this.codeBlockParser.parseAllCodeBlocks(content);
         this.allCodeBlocks = codeBlocks;
@@ -690,19 +698,18 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    // Extract mermaid blocks BEFORE markdown processing
+    // Extract mermaid blocks BEFORE markdown processing.
+    // Collect all matches up front: exec() while mutating the scanned string
+    // advances lastIndex past unseen content and silently skips every other
+    // block on pages with multiple diagrams.
     this.mermaidBlocks = [];
     const mermaidRegex = /```mermaid\s*\r?\n([\s\S]*?)```/g;
-    let mermaidMatch;
-    let mermaidIndex = 0;
-
-    while ((mermaidMatch = mermaidRegex.exec(processedContent)) !== null) {
-      const mermaidCode = mermaidMatch[1];
+    const mermaidMatches = [...processedContent.matchAll(mermaidRegex)];
+    mermaidMatches.forEach((match, mermaidIndex) => {
       const placeholder = `<!--MERMAID_PLACEHOLDER_${mermaidIndex}-->`;
-      this.mermaidBlocks.push({ placeholder, code: mermaidCode });
-      processedContent = processedContent.replace(mermaidMatch[0], placeholder);
-      mermaidIndex++;
-    }
+      this.mermaidBlocks.push({ placeholder, code: match[1] });
+      processedContent = processedContent.replace(match[0], placeholder);
+    });
     
     // Extract video IDs
     const videoMatches = processedContent.match(/<wb-video\s+id="([^"]+)"><\/wb-video>/g);
@@ -779,6 +786,40 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
     } catch (error) {
       console.error('Error setting SEO metadata:', error);
     }
+  }
+
+  /**
+   * Extracts a YAML block-list field (e.g. testReferences) from raw
+   * frontmatter. parseFrontmatter() is line-based and can't handle lists.
+   */
+  private extractFrontmatterList(content: string, key: string): string[] {
+    if (!content.startsWith('---')) return [];
+    const end = content.indexOf('\n---', 3);
+    if (end === -1) return [];
+    const fm = content.substring(3, end);
+    const m = fm.match(new RegExp(`^${key}:\\s*\\n((?:[ \\t]+.+\\n?)+)`, 'm'));
+    if (!m) return [];
+    // Items are `- value`, or folded scalars `- >-` followed by an indented
+    // continuation line (used for long paths).
+    const items: string[] = [];
+    let pendingFold = false;
+    for (const raw of m[1].split('\n')) {
+      const line = raw.trim();
+      if (!line) continue;
+      if (line.startsWith('- ') || line === '-') {
+        const value = line.replace(/^-\s*/, '').replace(/^["']|["']$/g, '');
+        if (value === '>-' || value === '>' || value === '|') {
+          pendingFold = true;
+        } else if (value) {
+          items.push(value);
+          pendingFold = false;
+        }
+      } else if (pendingFold) {
+        items.push(line.replace(/^["']|["']$/g, ''));
+        pendingFold = false;
+      }
+    }
+    return items;
   }
 
   private parseFrontmatter(frontmatterContent: string): any {

@@ -1,5 +1,8 @@
 ---
 title: HTTP Security Headers & Method Filtering
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Security
 order: 10
@@ -14,6 +17,12 @@ codeReferences:
   - src/Whizbang.Hosting.AspNet/WhizbangSecurityHeadersMiddlewareExtensions.cs
   - src/Whizbang.Hosting.AspNet/WhizbangSecurityHeadersStartupFilter.cs
   - src/Whizbang.Hosting.AspNet/WhizbangKestrelExtensions.cs
+  - src/Whizbang.Hosting.AspNet/ServiceCollectionExtensions.cs
+testReferences:
+  - tests/Whizbang.Hosting.AspNet.Tests/WhizbangSecurityHeadersMiddlewareTests.cs
+  - tests/Whizbang.Hosting.AspNet.Tests/WhizbangSecurityHeadersStartupFilterTests.cs
+  - tests/Whizbang.Hosting.AspNet.Tests/WhizbangKestrelExtensionsTests.cs
+  - tests/Whizbang.Hosting.AspNet.Tests/ServiceCollectionExtensionsTests.cs
 ---
 
 # HTTP Security Headers & Method Filtering

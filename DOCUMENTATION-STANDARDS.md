@@ -613,6 +613,28 @@ If documentation is for unreleased features:
 
 To ensure examples remain accurate:
 
+### Living-docs drift check (preferred)
+
+Tag a sample with the test it comes from, and CI verifies the snippet still
+matches that test's body verbatim (whitespace/comments normalized) via
+`src/scripts/verify-sample-drift.mjs`:
+
+````markdown
+```csharp{
+title: "SendAsync returns a delivery receipt"
+testFile: "tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs"
+testMethod: "Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"
+}
+var receipt = await dispatcher.SendAsync(command);
+```
+````
+
+The snippet must be a contiguous excerpt of the test method — write the test
+first, then paste from it. If the test later changes, CI flags the page
+(warning mode today; `--strict` once adoption grows). Seed example:
+`fundamentals/dispatcher/dispatcher.md` § "Verified example". Tag samples as
+pages go through the verification sweep.
+
 ### Manual Validation
 
 1. **Extract Examples**: Pull all code examples from documentation
@@ -700,36 +722,74 @@ public class OrderAggregate : Aggregate {
 - Document internal behavior when relevant
 - Explain design decisions
 
-## Documentation Types
+## Documentation Types (pageType taxonomy)
 
-### Tutorials
+Every content page declares its type in frontmatter, following the
+[Diátaxis](https://diataxis.fr/) framework plus two pragmatic extensions
+(`overview`, `troubleshooting`). Validated by
+`src/scripts/validate-frontmatter.mjs` (warning mode until backfill review
+completes; CI-enforced via `--strict-taxonomy` after).
+
+```yaml
+---
+title: Page Title
+pageType: concept   # overview | concept | tutorial | guide | reference | troubleshooting
+audience: [consumer]  # optional; consumer (default) | contributor | porter
+verifiedAgainstCommit: f2657adc   # library repo commit the content was verified against
+verifiedDate: 2026-07-16          # when that verification happened
+---
+```
+
+**Verification stamps are earned, never backfilled.** Set
+`verifiedAgainstCommit`/`verifiedDate` only after actually reading the page
+against the referenced library source at that commit — API signatures, behavior
+claims, and examples. A page without a stamp is honest about being unverified;
+a wrong stamp is worse than none. (`lastMaintainedCommit` tracks when content
+was last *edited*; the verification stamp tracks when it was last *checked*.)
+
+A page that mixes types (e.g. tutorial steps inside a reference) is a
+candidate for splitting — that's the objective criterion the taxonomy exists
+to provide.
+
+### `tutorial` — learning-oriented
 
 - Step-by-step instructions
 - Complete working examples
 - Expected outcomes at each step
 - Clear prerequisites
 
-### Concept Guides
+### `concept` — understanding-oriented (Diátaxis "explanation")
 
 - Explain what and why
 - Use cases and scenarios
 - Design rationale
 - Related patterns
 
-### API Reference
+### `reference` — information-oriented
 
-- Complete method signatures
+- Complete method signatures / option tables
 - All parameters documented
 - Return values explained
 - Exceptions listed
 - Usage examples
 
-### How-To Guides
+### `guide` — task-oriented (Diátaxis "how-to")
 
 - Solve specific problems
 - Practical, goal-oriented
 - Assume baseline knowledge
 - Quick and focused
+
+### `overview` — section landing pages
+
+- Orient the reader in a section (`index.md`, folder-name pages)
+- Summarize child pages with links
+- Minimal standalone content
+
+### `troubleshooting` — problem/solution catalogs
+
+- Symptom → cause → fix structure
+- Diagnostic codes (WHIZ###), FAQs, error references
 
 ## Maintaining Documentation
 

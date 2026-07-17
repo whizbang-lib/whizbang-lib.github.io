@@ -1,5 +1,8 @@
 ---
 title: Multi-Model Queries
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Lenses
 order: 4
@@ -8,8 +11,16 @@ description: >-
 tags: 'lenses, multi-model, joins, linq, graphql, hotchocolate'
 codeReferences:
   - src/Whizbang.Core/Lenses/ILensQuery.cs
+  - src/Whizbang.Core/Lenses/IScopedMultiLensAccess.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresLensQuery.cs
+  - src/Whizbang.Data.EFCore.Postgres/MultiModelScopedAccess.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreInfrastructureRegistration.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Lenses/ILensQueryMultiGenericTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresLensQueryMultiGenericTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresLensQueryHighArityTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MultiModelScopedAccessTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/LensQueryTypeArgumentAnalyzerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -32,8 +43,8 @@ public class OrderResolver {
 
     // This FAILS - EF Core cannot join queries from different DbContexts!
     var result = await (
-        from o in orders.Query
-        join c in customers.Query on o.Data.CustomerId equals c.Id
+        from o in orders.DefaultScope.Query
+        join c in customers.DefaultScope.Query on o.Data.CustomerId equals c.Id
         where o.Id == orderId
         select new OrderWithCustomer(o.Data, c.Data)
     ).FirstOrDefaultAsync(ct);
@@ -55,9 +66,11 @@ public class OrderResolver {
       Guid orderId,
       CancellationToken ct) {
 
+    var scoped = query.DefaultScope;
+
     var result = await (
-        from o in query.Query<Order>()
-        join c in query.Query<Customer>() on o.Data.CustomerId equals c.Id
+        from o in scoped.Query<Order>()
+        join c in scoped.Query<Customer>() on o.Data.CustomerId equals c.Id
         where o.Id == orderId
         select new OrderWithCustomer(o.Data, c.Data)
     ).FirstOrDefaultAsync(ct);
@@ -69,19 +82,35 @@ public class OrderResolver {
 
 ## Available Interfaces
 
-Multi-generic interfaces support 2-10 type parameters:
+Multi-generic interfaces support 2-10 type parameters. Like the single-model lens, they use the **scope-before-query** API — the bare `Query<T>()` and `GetByIdAsync<T>()` members are `[Obsolete]` and delegate to `DefaultScope`:
 
 ```csharp{title="Available Interfaces" description="Multi-generic interfaces support 2-10 type parameters:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Available", "Interfaces"]}
-public interface ILensQuery<T1, T2> : ILensQuery, IAsyncDisposable
+public interface ILensQuery<T1, T2> : ILensQuery, IAsyncDisposable, IDisposable
     where T1 : class
     where T2 : class {
 
+  // Fluent scope API - select a scope, then query
+  IScopedMultiLensAccess<T1, T2> Scope(QueryScope scope);
+  IScopedMultiLensAccess<T1, T2> ScopeOverride(QueryScope scope, ScopeFilterOverride overrideValues);
+  IScopedMultiLensAccess<T1, T2> DefaultScope { get; }
+
+  // Legacy API (obsolete - delegates to DefaultScope)
+  [Obsolete("Use scope API")] IQueryable<PerspectiveRow<T>> Query<T>() where T : class;
+  [Obsolete("Use scope API")] Task<T?> GetByIdAsync<T>(Guid id, CancellationToken cancellationToken = default) where T : class;
+}
+
+// The scoped access object exposes the typed query methods
+public interface IScopedMultiLensAccess<T1, T2>
+    where T1 : class
+    where T2 : class {
   IQueryable<PerspectiveRow<T>> Query<T>() where T : class;
-  Task<T?> GetByIdAsync<T>(Guid id, CancellationToken ct = default) where T : class;
+  Task<T?> GetByIdAsync<T>(Guid id, CancellationToken cancellationToken = default) where T : class;
 }
 
 // Also available: ILensQuery<T1, T2, T3> through ILensQuery<T1, ..., T10>
 ```
+
+`DefaultScope` uses `WhizbangCoreOptions.DefaultQueryScope` (default: `QueryScope.Tenant`), so multi-model queries are tenant-filtered by default. Use `Scope(QueryScope.Global)` for unfiltered access.
 
 ## Type Safety
 
@@ -92,9 +121,10 @@ The `Query<T>()` method validates that `T` is one of the registered type paramet
 
 ```csharp{title="Type Safety" description="- Compile-time: The WHIZ400 analyzer reports errors for invalid types - Runtime: Throws ArgumentException if type is" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Type", "Safety"]}
 // Using ILensQuery<Order, Customer>
-query.Query<Order>();     // OK - Order is T1
-query.Query<Customer>();  // OK - Customer is T2
-query.Query<Product>();   // ERROR: WHIZ400 - Product is not T1 or T2
+var scoped = query.DefaultScope;
+scoped.Query<Order>();     // OK - Order is T1
+scoped.Query<Customer>();  // OK - Customer is T2
+scoped.Query<Product>();   // ERROR: WHIZ400 - Product is not T1 or T2
 ```
 
 ## Registration
@@ -111,7 +141,7 @@ EFCoreInfrastructureRegistration.RegisterMultiLensQuery<MyDbContext, Order, Cust
     });
 ```
 
-> **Note**: Requires `IDbContextFactory<MyDbContext>` to be registered (via `AddDbContextFactory` or Whizbang's internal `ScopedDbContextFactory`).
+> **Note**: Requires `IDbContextFactory<MyDbContext>` to be registered (via `AddDbContextFactory` or Whizbang's internal `ScopedDbContextFactory`), plus `IScopeContextAccessor` and `IOptions<WhizbangCoreOptions>` (both registered by `AddWhizbang()`). `RegisterMultiLensQuery` helper overloads exist for 2 and 3 model types; higher arities are constructed via `EFCorePostgresLensQuery<T1, ..., T10>` directly.
 
 ## Transient Lifecycle
 
@@ -124,20 +154,20 @@ Multi-generic `ILensQuery` is registered as **Transient**:
 ```csharp{title="Transient Lifecycle" description="- Each injection gets its own instance with its own DbContext - Prevents concurrency errors in parallel GraphQL" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Transient", "Lifecycle"]}
 // Each resolver invocation gets a fresh instance
 public class OrderResolver {
-  public async Task<Order> GetOrder(
+  public async Task<Order?> GetOrder(
       [Service] ILensQuery<Order, Customer> query, // Fresh instance
       Guid id,
       CancellationToken ct) {
 
-    return await query.GetByIdAsync<Order>(id, ct);
+    return await query.DefaultScope.GetByIdAsync<Order>(id, ct);
   }
 
-  public async Task<Customer> GetCustomer(
+  public async Task<Customer?> GetCustomer(
       [Service] ILensQuery<Order, Customer> query, // Different instance
       Guid id,
       CancellationToken ct) {
 
-    return await query.GetByIdAsync<Customer>(id, ct);
+    return await query.DefaultScope.GetByIdAsync<Customer>(id, ct);
   }
 }
 ```
@@ -147,9 +177,11 @@ public class OrderResolver {
 ### Simple Join
 
 ```csharp{title="Simple Join" description="Simple Join" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Simple", "Join"]}
+var scoped = query.DefaultScope;
+
 var ordersWithCustomers = await (
-    from o in query.Query<Order>()
-    join c in query.Query<Customer>() on o.Data.CustomerId equals c.Id
+    from o in scoped.Query<Order>()
+    join c in scoped.Query<Customer>() on o.Data.CustomerId equals c.Id
     select new { Order = o.Data, Customer = c.Data }
 ).ToListAsync(ct);
 ```
@@ -157,9 +189,11 @@ var ordersWithCustomers = await (
 ### Left Join
 
 ```csharp{title="Left Join" description="Left Join" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Left", "Join"]}
+var scoped = query.DefaultScope;
+
 var ordersWithOptionalCustomers = await (
-    from o in query.Query<Order>()
-    join c in query.Query<Customer>() on o.Data.CustomerId equals c.Id into customers
+    from o in scoped.Query<Order>()
+    join c in scoped.Query<Customer>() on o.Data.CustomerId equals c.Id into customers
     from c in customers.DefaultIfEmpty()
     select new {
       Order = o.Data,
@@ -172,10 +206,12 @@ var ordersWithOptionalCustomers = await (
 
 ```csharp{title="Multiple Joins" description="Multiple Joins" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Multiple", "Joins"]}
 // Using ILensQuery<Order, Customer, Product>
+var scoped = query.DefaultScope;
+
 var fullOrderDetails = await (
-    from o in query.Query<Order>()
-    join c in query.Query<Customer>() on o.Data.CustomerId equals c.Id
-    join p in query.Query<Product>() on o.Data.ProductId equals p.Id
+    from o in scoped.Query<Order>()
+    join c in scoped.Query<Customer>() on o.Data.CustomerId equals c.Id
+    join p in scoped.Query<Product>() on o.Data.ProductId equals p.Id
     select new {
       Order = o.Data,
       Customer = c.Data,
@@ -200,7 +236,7 @@ Multi-generic `ILensQuery` implements `IAsyncDisposable` to properly dispose the
 // In DI scenarios, disposal is automatic
 // For manual use:
 await using var query = serviceProvider.GetRequiredService<ILensQuery<Order, Customer>>();
-var result = await query.Query<Order>().ToListAsync();
+var result = await query.DefaultScope.Query<Order>().ToListAsync();
 // DbContext disposed when query is disposed
 ```
 

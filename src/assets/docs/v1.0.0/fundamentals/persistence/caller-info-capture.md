@@ -1,5 +1,8 @@
 ---
 title: Caller Information Capture
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Observability
 order: 7

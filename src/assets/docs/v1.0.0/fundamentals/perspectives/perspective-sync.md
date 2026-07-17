@@ -1,5 +1,8 @@
 ---
 title: Perspective Synchronization
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 4
@@ -24,6 +27,11 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/Sync/IEventCompletionAwaiter.cs
   - src/Whizbang.Core/Perspectives/Sync/EventCompletionAwaiter.cs
   - src/Whizbang.Core/Lenses/ISyncAwareLensQuery.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/PerspectiveSyncAwaiterTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncEventTrackerTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncFilterBuilderTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -39,22 +47,18 @@ This is the comprehensive guide for perspective synchronization. For a quick ref
 
 In event-sourced systems, perspective updates happen asynchronously via background workers. This creates a delay (typically 2-30 seconds) where perspectives aren't yet queryable:
 
-```
-Handler A emits OrderCreatedEvent
-         │
-         ▼
-┌──────────────────────┐
-│   Event Store        │  ◄── Event stored immediately
-└──────────────────────┘
-         │
-         │ (2-30 second gap)
-         ▼
-┌──────────────────────┐
-│   Perspective Worker │  ◄── Updates perspective async
-└──────────────────────┘
-         │
-         ▼
-Handler B queries OrderPerspective  ◄── May not see the order!
+```mermaid
+flowchart TD
+    HandlerA["Handler A emits OrderCreatedEvent"]
+    EventStore["Event Store<br/>(Event stored immediately)"]
+    Worker["Perspective Worker<br/>(Updates perspective async)"]
+    HandlerB["Handler B queries OrderPerspective<br/>(May not see the order!)"]
+
+    HandlerA --> EventStore
+    EventStore -->|"2-30 second gap"| Worker
+    Worker --> HandlerB
+
+    style HandlerB fill:#f8d7da,stroke:#dc3545,stroke-width:2px
 ```
 
 **The solution**: Wait for perspective synchronization before querying.
@@ -106,26 +110,16 @@ The `ISyncEventTracker` interface tracks events emitted during a scope for synch
 
 When events are emitted within a scope, the `IScopedEventTracker` immediately captures their EventIds. This enables **explicit EventId tracking** for sync operations:
 
-```
-Handler emits OrderCreatedEvent
-         │
-         ▼
-┌──────────────────────┐
-│ IScopedEventTracker  │  ◄── Captures EventId immediately
-│ [eventId: abc123]    │
-└──────────────────────┘
-         │
-         ▼
-┌──────────────────────┐
-│   Sync Inquiry       │  ◄── Sends ExpectedEventIds=[abc123]
-│   to Database        │
-└──────────────────────┘
-         │
-         ▼
-┌──────────────────────┐
-│   IsFullySynced      │  ◄── Checks: Are ALL expected events
-│   Evaluation         │      in ProcessedEventIds?
-└──────────────────────┘
+```mermaid
+flowchart TD
+    Handler["Handler emits OrderCreatedEvent"]
+    Tracker["IScopedEventTracker<br/>[eventId: abc123]<br/>(Captures EventId immediately)"]
+    Inquiry["Sync Inquiry to Database<br/>(Sends ExpectedEventIds=[abc123])"]
+    Evaluation["IsFullySynced Evaluation<br/>(Checks: Are ALL expected events<br/>in ProcessedEventIds?)"]
+
+    Handler --> Tracker
+    Tracker --> Inquiry
+    Inquiry --> Evaluation
 ```
 
 This prevents **false positives** when events are still in the outbox and haven't reached the perspective table yet. The sync awaiter compares explicit EventIds rather than just checking `PendingCount == 0`.
@@ -134,19 +128,19 @@ This prevents **false positives** when events are still in the outbox and haven'
 
 When using `[AwaitPerspectiveSync]` attributes, the incoming event being processed was emitted in a **different scope** (the original command handler). The attribute handler automatically passes the incoming event's ID to `WaitForStreamAsync`:
 
-```
-Scope A (Command Handler):              Scope B (Receptor):
-┌────────────────────────┐              ┌────────────────────────┐
-│ emits OrderCreatedEvent│              │ [AwaitPerspectiveSync] │
-│ EventId = abc123       │──────────────►│ handles OrderCreated   │
-└────────────────────────┘              │ waits for abc123       │
-                                        └────────────────────────┘
-                                                   │
-                                                   ▼
-                                        ┌────────────────────────┐
-                                        │ WaitForStreamAsync     │
-                                        │ eventIdToAwait=abc123  │
-                                        └────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph ScopeA["Scope A (Command Handler)"]
+        Emitter["emits OrderCreatedEvent<br/>EventId = abc123"]
+    end
+
+    subgraph ScopeB["Scope B (Receptor)"]
+        Receptor["[AwaitPerspectiveSync]<br/>handles OrderCreated<br/>waits for abc123"]
+        Wait["WaitForStreamAsync<br/>eventIdToAwait=abc123"]
+        Receptor --> Wait
+    end
+
+    Emitter --> Receptor
 ```
 
 This ensures the receptor waits for **the specific event it's processing**, not just any events on the stream. Without this, cross-scope sync would fail because:
@@ -690,23 +684,22 @@ The sync system tracks explicit EventIds to prevent false positives when events 
 
 Without explicit EventId tracking:
 
-```
-Handler emits OrderCreatedEvent
-         │
-         ▼
-Event stored in outbox (EventId = abc123)
-         │
-         ▼
-Sync query: "Are there pending events on stream X?"
-         │
-         ▼
-Perspective table has NO rows yet (event still in outbox)
-         │
-         ▼
-Query returns PendingCount = 0
-         │
-         ▼
-IsFullySynced = true  ❌ FALSE POSITIVE!
+```mermaid
+flowchart TD
+    Emit["Handler emits OrderCreatedEvent"]
+    Outbox["Event stored in outbox (EventId = abc123)"]
+    Query["Sync query: #quot;Are there pending events on stream X?#quot;"]
+    NoRows["Perspective table has NO rows yet (event still in outbox)"]
+    Count["Query returns PendingCount = 0"]
+    False["IsFullySynced = true ❌ FALSE POSITIVE!"]
+
+    Emit --> Outbox
+    Outbox --> Query
+    Query --> NoRows
+    NoRows --> Count
+    Count --> False
+
+    style False fill:#f8d7da,stroke:#dc3545,stroke-width:2px
 ```
 
 #### The Solution
@@ -770,18 +763,21 @@ Cross-scope sync enables one handler to wait for events emitted by another handl
 
 When using `[AwaitPerspectiveSync]` attributes, the incoming event was emitted in a **different scope**:
 
-```
-Scope A (Command Handler):              Scope B (Event Receptor):
-┌────────────────────────┐              ┌────────────────────────┐
-│ Handles CreateOrder    │              │ [AwaitPerspectiveSync] │
-│ Emits OrderCreated     │              │ Handles OrderCreated   │
-│ EventId = abc123       │──────────────►│ Wants to wait for sync │
-│ _scopedTracker: [abc] │              │ _scopedTracker: []     │
-└────────────────────────┘              └────────────────────────┘
-                                                   │
-                                                   ▼
-                                        ❌ No events in scope!
-                                        ❌ Cannot use CurrentScope filter
+```mermaid
+flowchart LR
+    subgraph ScopeA["Scope A (Command Handler)"]
+        CmdHandler["Handles CreateOrder<br/>Emits OrderCreated<br/>EventId = abc123<br/>_scopedTracker: [abc]"]
+    end
+
+    subgraph ScopeB["Scope B (Event Receptor)"]
+        Receptor["[AwaitPerspectiveSync]<br/>Handles OrderCreated<br/>Wants to wait for sync<br/>_scopedTracker: []"]
+        Problem["❌ No events in scope!<br/>❌ Cannot use CurrentScope filter"]
+        Receptor --> Problem
+    end
+
+    CmdHandler --> Receptor
+
+    style Problem fill:#f8d7da,stroke:#dc3545,stroke-width:2px
 ```
 
 #### The Solution: DiscoverPendingFromOutbox

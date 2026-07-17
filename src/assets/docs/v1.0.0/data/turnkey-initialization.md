@@ -1,5 +1,8 @@
 ---
 title: Turnkey Database Initialization
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Data Access
 order: 5
@@ -13,6 +16,11 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
   - src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs
   - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/DbContextInitializationRegistryTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationConcurrencyTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -39,7 +47,7 @@ await app.RunAsync();
 2. **Creates perspective tables** - Tables for your `PerspectiveRow<TModel>` types
 3. **Adds constraints and indexes** - Foreign keys, composite primary keys, GIN indexes on JSONB columns
 4. **Installs PostgreSQL extensions** - Creates `vector` extension if any perspectives have `[VectorField]` columns
-5. **Creates PostgreSQL functions** - `process_work_batch`, `register_message_associations`, etc.
+5. **Creates PostgreSQL functions** - `claim_work`, `store_outbox_messages`, `store_inbox_messages`, `register_message_associations`, etc.
 6. **Registers perspective associations** - Populates routing metadata for event dispatching
 
 ## Why Use It
@@ -76,6 +84,8 @@ The source generator automatically registers each `[WhizbangDbContext]`-annotate
 3. Calls `EnsureWhizbangDatabaseInitializedAsync()` on each
 
 This is AOT-compatible with no reflection - all registration happens via source-generated module initializers.
+
+In addition, `.WithDriver.Postgres` registers a `WhizbangDatabaseInitializerService` hosted service that runs the same initialization during host startup and then signals `ISchemaReadyGate`. Whizbang workers await this gate before issuing any SQL, so even if you forget the explicit `EnsureWhizbangInitializedAsync()` call, workers cannot race an uninitialized schema. The explicit call remains useful when your own startup code (seeding, health probes) needs the schema ready before `app.RunAsync()`.
 
 ## Multiple DbContexts
 
@@ -119,11 +129,12 @@ When deploying multiple instances (pods) of the same service, Whizbang coordinat
 
 ### How It Works
 
-1. **Advisory lock acquisition** — Each pod attempts to acquire a non-blocking advisory lock (`pg_try_advisory_lock`) based on the schema name. Only one pod can hold the lock at a time.
-2. **Randomized exponential backoff** — If the lock is held by another pod, the waiting pod retries with exponential backoff (100ms → 200ms → 400ms → ... capped at 20 seconds) plus random jitter. This prevents a thundering herd when many pods start simultaneously.
-3. **Schema initialization** — The pod that holds the lock runs all 7 initialization phases (tables, migrations, perspectives, constraints, associations, registry, maintenance).
-4. **Lock release** — After initialization completes (or fails), the lock is released so the next pod can proceed.
-5. **Retry indefinitely** — Pods retry forever until the lock is acquired. Only `CancellationToken` cancellation stops the retry loop.
+1. **Fast path (no lock)** — Each pod first compares stored schema hashes (in `wh_schema_migrations`) against the compile-time hashes. If nothing changed, initialization is skipped entirely — no lock is taken.
+2. **Advisory lock acquisition** — On hash mismatch (or first run), the pod attempts a non-blocking, transaction-level advisory lock (`pg_try_advisory_xact_lock`) derived from the schema name. Transaction-level locks are PgBouncer-safe: the backend connection stays pinned for the transaction, and the lock auto-releases on commit or rollback. Only one pod can hold the lock at a time.
+3. **Randomized exponential backoff** — If the lock is held by another pod, the waiting pod rolls back its transaction (freeing the pooled connection) and retries with exponential backoff (100ms → 200ms → 400ms → ... capped at 20 seconds) plus random jitter. This prevents a thundering herd when many pods start simultaneously.
+4. **Schema initialization** — The pod that holds the lock re-checks hashes inside the lock (another pod may have just finished), then runs only the changed phases: CoreInfrastructure, Migrations, PerspectiveTables, Constraints, Associations, Registry, MessageTypeRegistry.
+5. **Lock release** — The lock is transaction-scoped, so it is released automatically when the initialization transaction commits (or rolls back on failure), letting the next pod proceed.
+6. **Retry indefinitely** — Pods retry forever until the lock is acquired. Only `CancellationToken` cancellation stops the retry loop.
 
 ### Idempotency Guarantees
 
@@ -138,7 +149,7 @@ This means even if two pods manage to overlap (e.g., the first pod crashes mid-i
 
 ### Cancellation Safety
 
-The advisory lock unlock always uses `CancellationToken.None` to ensure the lock is released even if the original cancellation token has been cancelled. This prevents a cancelled pod from leaving a dangling lock that would block all other pods indefinitely.
+The advisory lock is transaction-scoped (`pg_try_advisory_xact_lock`), so it can never dangle — it dies with its transaction. The rollback path that releases the pinned connection during backoff always uses `CancellationToken.None`, so a cancelled pod still frees its pooled connection instead of leaving it stranded.
 
 ## See Also
 

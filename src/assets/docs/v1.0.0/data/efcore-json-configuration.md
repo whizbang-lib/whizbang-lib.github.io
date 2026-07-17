@@ -1,86 +1,107 @@
 ---
 title: EF Core 10 JSON Configuration
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 category: Data
 order: 10
-description: Configuring EF Core 10 with custom JSON converters for JSONB columns
+description: How Whizbang configures JSON serialization for EF Core JSONB columns via JsonContextRegistry and the turnkey NpgsqlDataSource registration
 tags: efcore, json, jsonb, postgresql, npgsql, converters
 codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/Serialization/EFCoreJsonContext.cs
   - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+  - src/Whizbang.Data.EFCore.Postgres/DbContextRegistrationRegistry.cs
+  - src/Whizbang.Core/Lenses/PerspectiveRow.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/JsonContextRegistryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
-# EF Core 10 JSON Configuration with Custom Converters
+# EF Core 10 JSON Configuration
 
 ## Overview
 
-EF Core 10 has native JSONB support for PostgreSQL. When using custom JSON converters (like WhizbangId converters from source generators), you should configure EF Core through dependency injection, NOT through NpgsqlDataSource directly.
+EF Core 10 has native JSONB support for PostgreSQL. Whizbang stores perspective data, envelope metadata, and scope information in JSONB columns, and all of it must serialize with the same source-generated, AOT-compatible JSON configuration — including custom converters like the WhizbangId converters emitted by source generators.
 
-## ✅ Correct Approach
+The key pieces:
 
-```csharp{title="✅ Correct Approach" description="✅ Correct Approach" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Correct", "Approach"]}
-// 1. Create JsonSerializerOptions with your custom converters
-var jsonOptions = WhizbangJsonContext.CreateOptions();
+- **`JsonContextRegistry`** (Whizbang.Core) — a global, cross-assembly registry of source-generated `JsonSerializerContext` instances and converters. Each assembly self-registers via `[ModuleInitializer]` at load time — no reflection, fully AOT-compatible.
+- **`JsonContextRegistry.CreateCombinedOptions()`** — builds a single `JsonSerializerOptions` from every registered context (Core infrastructure types, EF Core types, and your application types).
+- **`EFCoreJsonContext`** (Whizbang.Data.EFCore.Postgres) — registers `EnvelopeMetadata` with the registry; exposes `CreateCombinedOptions()` as a convenience.
 
-// 2. Register in DI - EF Core will use this automatically for JSONB columns
-builder.Services.AddSingleton(jsonOptions);
+## Turnkey Configuration (Recommended)
 
-// 3. Configure DbContext with simple connection string
-builder.Services.AddDbContext<MyDbContext>(options => {
-  options.UseNpgsql(connectionString);
-  // EF Core 10 automatically picks up JsonSerializerOptions from DI
-});
+With the turnkey pattern, JSON configuration is fully automatic. The source-generated registration callback creates the `NpgsqlDataSource` with the combined JSON options already applied:
+
+```csharp{title="Turnkey Configuration" description="JSON options are configured automatically by the generated registration" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Turnkey"]}
+// One line — the generated module initializer handles JSON configuration
+builder.Services.AddWhizbang()
+    .WithEFCore<MyDbContext>()
+    .WithDriver.Postgres;
 ```
 
-## ❌ Incorrect Approach (Bypasses EF Core ORM)
+Under the hood, the generated callback does the equivalent of:
 
-```csharp{title="❌ Incorrect Approach (Bypasses EF Core ORM)" description="❌ Incorrect Approach (Bypasses EF Core ORM)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Incorrect", "Approach", "Bypasses"]}
-// DON'T DO THIS - it bypasses EF Core's ORM layer
+```csharp{title="Generated Registration (simplified)" description="What the source-generated DbContext registration does for JSON" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Generated"]}
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-dataSourceBuilder.ConfigureJsonOptions(jsonOptions);
-var dataSource = dataSourceBuilder.Build();
-builder.Services.AddSingleton(dataSource);
-
-builder.Services.AddDbContext<MyDbContext>(options => {
-  options.UseNpgsql(dataSource); // Bypasses EF Core's JSON handling
-});
+dataSourceBuilder.ConfigureJsonOptions(JsonContextRegistry.CreateCombinedOptions());
+dataSourceBuilder.EnableDynamicJson();
+// dataSourceBuilder.UseVector() is added automatically when [VectorField] columns exist
 ```
 
-## Why This Matters
+:::updated{version="1.0.0"}
+Earlier drafts of this page recommended registering `JsonSerializerOptions` in DI and avoiding `NpgsqlDataSourceBuilder.ConfigureJsonOptions`. Shipped behavior is the opposite: the turnkey registration configures JSON at the **data source** level via `ConfigureJsonOptions(JsonContextRegistry.CreateCombinedOptions())` + `EnableDynamicJson()`. This is what guarantees that every JSONB read/write — EF Core queries, raw Npgsql commands, and the work-coordinator SQL surface — uses the identical converter set.
+:::
 
-**Using NpgsqlDataSource directly**:
-- Gives JSON configuration to Npgsql, not EF Core
-- Bypasses EF Core's ORM layer and change tracking
-- Breaks the abstraction - you're configuring the provider directly instead of the ORM
+## Registering Your Own Types and Converters
 
-**Using DI registration**:
-- EF Core picks up JsonSerializerOptions from DI automatically
-- Stays within EF Core's ORM layer (proper separation of concerns)
-- Follows the "use the ORM" principle
-- Cleaner code, better integration
+Frameworks and applications contribute their JSON contexts to the global registry from a module initializer:
 
-## When to Use This Pattern
-
-Use this pattern when:
-- You have custom JSON converters (like WhizbangId converters)
-- You're storing complex objects in JSONB columns (like perspective lens DTOs)
-- You want EF Core to handle JSON serialization for owned types or JSON columns
-
-## Example: Perspective Row Storage
-
-Perspective rows store lens DTOs in JSONB columns:
-
-```csharp{title="Example: Perspective Row Storage" description="Perspective rows store lens DTOs in JSONB columns:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Example:", "Perspective", "Row"]}
-public class PerspectiveRow<TLensDto> where TLensDto : class {
-  public Guid Id { get; set; }
-  public TLensDto Data { get; set; } // Stored as JSONB
+```csharp{title="Registering a JsonSerializerContext" description="Self-registration via ModuleInitializer, mirroring EFCoreJsonContext" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Registration"]}
+[JsonSourceGenerationOptions(DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+[JsonSerializable(typeof(MyLensDto))]
+public partial class MyAppJsonContext : JsonSerializerContext {
+  [ModuleInitializer]
+  internal static void Initialize() {
+    JsonContextRegistry.RegisterContext(MyAppJsonContext.Default);
+  }
 }
 ```
 
-EF Core 10 will automatically:
-- Use JsonSerializerOptions from DI to serialize TLensDto to JSONB
-- Apply your custom converters (like WhizbangId converters)
-- Track changes properly through the ORM
+`JsonContextRegistry` also supports:
+
+- `RegisterConverter(JsonConverter converter)` — for converters that source generation can't express (e.g., WhizbangId converters); instances are created at compile time by source generators
+- Priority + profile overloads (`RegisterContext(resolver, priority, profile)`) — infrastructure types from Core take precedence over application types; equal priorities preserve registration order
+
+In practice you rarely write this by hand — the Whizbang source generators emit and register the contexts for your message and perspective types automatically.
+
+## Example: Perspective Row Storage
+
+Perspective rows store your read-model DTOs in JSONB columns using the fixed `PerspectiveRow<TModel>` shape:
+
+```csharp{title="Example: Perspective Row Storage" description="PerspectiveRow<TModel> fields stored as JSONB" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Perspective", "Row"]}
+public class PerspectiveRow<TModel> where TModel : class {
+  public required Guid Id { get; init; }
+  public required TModel Data { get; set; }              // JSONB
+  public required PerspectiveMetadata Metadata { get; set; } // JSONB
+  public required PerspectiveScope Scope { get; set; }   // JSONB
+  public required DateTime CreatedAt { get; init; }
+  public required DateTime UpdatedAt { get; set; }
+  public required int Version { get; set; }
+}
+```
+
+Because the data source carries the combined options, EF Core automatically:
+
+- Serializes `TModel` to JSONB using your registered contexts and converters
+- Applies custom converters (like WhizbangId converters) consistently on both reads and writes
+- Stays AOT-compatible — no reflection-based serialization anywhere in the path
+
+## Why Data-Source-Level Configuration
+
+- **One converter set everywhere** — EF Core, Dapper, and raw `NpgsqlCommand` paths all flow through the same `NpgsqlDataSource`, so JSONB bytes are identical regardless of which layer wrote them
+- **AOT-safe** — `CreateCombinedOptions()` composes only source-generated `IJsonTypeInfoResolver`s; there is no runtime reflection fallback
+- **Zero per-service wiring** — the generated module initializer means consumers never hand-configure JSON for infrastructure types
 
 ## References
 

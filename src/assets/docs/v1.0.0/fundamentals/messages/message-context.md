@@ -1,5 +1,8 @@
 ---
 title: Message Context & Tracing
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 5
@@ -14,6 +17,9 @@ codeReferences:
   - src/Whizbang.Core/ValueObjects/CausationId.cs
   - src/Whizbang.Core/Observability/MessageEnvelope.cs
   - src/Whizbang.Core/Observability/ICallerInfo.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/ValueObjects/IdentityValueObjectTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/CorrelationIdW3CTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -31,43 +37,41 @@ Whizbang provides automatic **distributed tracing** through three key identifier
 
 ### Visual Example
 
-```
-User clicks "Create Order" button
-         ↓
-┌────────────────────────────────────────────────────────────┐
-│ CreateOrder Command                                         │
-│ MessageId:     msg-001                                      │
-│ CorrelationId: corr-abc (generated for this workflow)     │
-│ CausationId:   null (no parent)                            │
-└─────────────┬──────────────────────────────────────────────┘
-              │
-              │ OrderReceptor processes command
-              ↓
-┌────────────────────────────────────────────────────────────┐
-│ OrderCreated Event                                          │
-│ MessageId:     msg-002                                      │
-│ CorrelationId: corr-abc (same as command)                 │
-│ CausationId:   msg-001 (caused by CreateOrder)            │
-└─────────────┬──────────────────────────────────────────────┘
-              │
-              │ Publishes to Azure Service Bus
-              ↓
-    ┌─────────────────┬─────────────────┬──────────────────┐
-    │                 │                 │                  │
-    ↓                 ↓                 ↓                  ↓
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐
-│ Inventory   │  │ Payment     │  │ Shipping    │  │ Notification │
-│ Worker      │  │ Worker      │  │ Worker      │  │ Worker       │
-└─────────────┘  └─────────────┘  └─────────────┘  └──────────────┘
-      │                │                │                │
-      ↓                ↓                ↓                ↓
-┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐
-│ Inventory  │  │ Payment    │  │ Shipment   │  │ Email      │
-│ Reserved   │  │ Processed  │  │ Created    │  │ Sent       │
-│            │  │            │  │            │  │            │
-│ corr-abc   │  │ corr-abc   │  │ corr-abc   │  │ corr-abc   │
-│ msg-002    │  │ msg-002    │  │ msg-002    │  │ msg-002    │
-└────────────┘  └────────────┘  └────────────┘  └────────────┘
+```mermaid
+graph TB
+    U["User clicks &quot;Create Order&quot; button"]
+    C["CreateOrder Command<br/>MessageId: msg-001<br/>CorrelationId: corr-abc (generated for this workflow)<br/>CausationId: null (no parent)"]
+    E["OrderCreated Event<br/>MessageId: msg-002<br/>CorrelationId: corr-abc (same as command)<br/>CausationId: msg-001 (caused by CreateOrder)"]
+    IW["Inventory Worker"]
+    PW["Payment Worker"]
+    SW["Shipping Worker"]
+    NW["Notification Worker"]
+    IR["Inventory Reserved<br/>corr-abc<br/>msg-002"]
+    PP["Payment Processed<br/>corr-abc<br/>msg-002"]
+    SC["Shipment Created<br/>corr-abc<br/>msg-002"]
+    ES["Email Sent<br/>corr-abc<br/>msg-002"]
+
+    U --> C
+    C -->|"OrderReceptor processes command"| E
+    E -->|"Publishes to Azure Service Bus"| IW
+    E -->|"Publishes to Azure Service Bus"| PW
+    E -->|"Publishes to Azure Service Bus"| SW
+    E -->|"Publishes to Azure Service Bus"| NW
+    IW --> IR
+    PW --> PP
+    SW --> SC
+    NW --> ES
+
+    style C fill:#fff3cd,stroke:#ffc107
+    style E fill:#fff3cd,stroke:#ffc107
+    style IW fill:#d4edda,stroke:#28a745
+    style PW fill:#d4edda,stroke:#28a745
+    style SW fill:#d4edda,stroke:#28a745
+    style NW fill:#d4edda,stroke:#28a745
+    style IR fill:#fff3cd,stroke:#ffc107
+    style PP fill:#fff3cd,stroke:#ffc107
+    style SC fill:#fff3cd,stroke:#ffc107
+    style ES fill:#fff3cd,stroke:#ffc107
 ```
 
 **All events share `corr-abc` - enabling you to query all messages in this workflow!**
@@ -78,14 +82,18 @@ User clicks "Create Order" button
 
 **Purpose**: Unique identifier for each message (never reused).
 
-**Type**: Strongly-typed value object using UUIDv7.
+**Type**: Strongly-typed value object using UUIDv7, declared with the `[WhizbangId]` attribute. The source generator emits the members:
 
 ```csharp{title="MessageId" description="Type: Strongly-typed value object using UUIDv7." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "MessageId"]}
-public record struct MessageId(Guid Value) {
-    public static MessageId New() => new(Guid.CreateVersion7());
+[WhizbangId]
+public readonly partial struct MessageId;
 
-    public override string ToString() => Value.ToString();
-}
+// Generated members (via the WhizbangId source generator):
+// public Guid Value { get; init; }
+// public static MessageId New();          // TrackedGuid.NewMedo() — monotonic UUIDv7
+// public static MessageId From(Guid);     // validates UUIDv7
+// public static MessageId Parse(string);  // validates UUIDv7
+// public override string ToString();
 ```
 
 **Key Characteristics**:
@@ -166,16 +174,14 @@ public readonly partial struct CorrelationId {
 ### Usage
 
 ```csharp{title="Usage (2)" description="Usage (2)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Usage"]}
-// Create new correlation for HTTP request
-var correlationId = CorrelationId.New();
-
-// The dispatcher then propagates that correlation id to every message in the workflow —
-// no manual plumbing needed.
+// The dispatcher mints (or inherits) the correlation id and propagates it to
+// every message in the workflow — no manual plumbing needed.
 var command = new CreateOrder(customerId, items);
-var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
+var (result, receipt) = await _dispatcher
+    .LocalInvokeWithReceiptAsync<CreateOrder, OrderCreated>(command);
 
-// Result carries the same CorrelationId — the client's X-Correlation-ID.
-Console.WriteLine($"Correlation ID: {result.CorrelationId}");
+// The receipt carries the workflow's CorrelationId (e.g., the client's X-Correlation-ID).
+Console.WriteLine($"Correlation ID: {receipt.CorrelationId}");
 ```
 
 ### Querying by CorrelationId
@@ -211,13 +217,18 @@ public async Task<Message[]> GetWorkflowMessagesAsync(
 
 **Purpose**: Identifies the **parent message** that caused this message to exist.
 
-**Type**: Strongly-typed value object using Guid (refers to a MessageId).
+**Type**: There is **no separate `CausationId` type** — a causation id *is* the parent message's `MessageId`, so Whizbang uses `MessageId` directly (e.g., `IMessageContext.CausationId` is a `MessageId`).
 
-```csharp{title="CausationId" description="Type: Strongly-typed value object using Guid (refers to a MessageId)." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CausationId"]}
-public record struct CausationId(Guid Value) {
-    public static CausationId From(MessageId messageId) => new(messageId.Value);
+```csharp{title="CausationId" description="CausationId is just the parent's MessageId - no separate type." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CausationId"]}
+// From src/Whizbang.Core/ValueObjects/CausationId.cs:
+// "CausationId is just a MessageId of the parent/causing message.
+//  No need for a separate type - use MessageId directly."
 
-    public override string ToString() => Value.ToString();
+public interface IMessageContext {
+    MessageId MessageId { get; }
+    CorrelationId CorrelationId { get; }
+    MessageId CausationId { get; }   // parent's MessageId
+    // ...
 }
 ```
 
@@ -229,32 +240,21 @@ public record struct CausationId(Guid Value) {
 
 ### Causation Chain Example
 
-```
-CreateOrder Command
-├─ MessageId:     msg-001
-├─ CorrelationId: corr-abc
-└─ CausationId:   null (no parent)
+```mermaid
+graph TB
+    M1["CreateOrder Command<br/>MessageId: msg-001<br/>CorrelationId: corr-abc<br/>CausationId: null (no parent)"]
+    M2["OrderCreated Event<br/>MessageId: msg-002<br/>CorrelationId: corr-abc<br/>CausationId: msg-001 (caused by CreateOrder)"]
+    M3["InventoryReserved Event<br/>MessageId: msg-003<br/>CorrelationId: corr-abc<br/>CausationId: msg-002 (caused by OrderCreated)"]
+    M4["PaymentProcessed Event<br/>MessageId: msg-004<br/>CorrelationId: corr-abc<br/>CausationId: msg-003 (caused by InventoryReserved)"]
 
-      ↓ Creates ↓
+    M1 -->|"Creates"| M2
+    M2 -->|"Creates"| M3
+    M3 -->|"Creates"| M4
 
-OrderCreated Event
-├─ MessageId:     msg-002
-├─ CorrelationId: corr-abc
-└─ CausationId:   msg-001 (caused by CreateOrder)
-
-      ↓ Creates ↓
-
-InventoryReserved Event
-├─ MessageId:     msg-003
-├─ CorrelationId: corr-abc
-└─ CausationId:   msg-002 (caused by OrderCreated)
-
-      ↓ Creates ↓
-
-PaymentProcessed Event
-├─ MessageId:     msg-004
-├─ CorrelationId: corr-abc
-└─ CausationId:   msg-003 (caused by InventoryReserved)
+    style M1 fill:#fff3cd,stroke:#ffc107
+    style M2 fill:#fff3cd,stroke:#ffc107
+    style M3 fill:#fff3cd,stroke:#ffc107
+    style M4 fill:#fff3cd,stroke:#ffc107
 ```
 
 **Causation chain**: msg-001 → msg-002 → msg-003 → msg-004
@@ -271,20 +271,22 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         // Business logic...
 
         return new OrderCreated(
-            MessageId: MessageId.New(),              // New unique ID
-            CorrelationId: message.CorrelationId,    // Inherit correlation
-            CausationId: CausationId.From(message.MessageId),  // Parent is CreateOrder
             OrderId: Guid.CreateVersion7(),
             CustomerId: message.CustomerId,
             Items: message.Items,
             Total: CalculateTotal(message.Items),
             CreatedAt: DateTimeOffset.UtcNow
         );
+
+        // The event's envelope automatically receives:
+        //   MessageId    = new unique ID
+        //   CorrelationId = inherited from CreateOrder's envelope
+        //   CausationId  = CreateOrder's MessageId (the parent)
     }
 }
 ```
 
-**Whizbang handles this automatically via MessageEnvelope!**
+**Whizbang handles the identity stamping automatically via MessageEnvelope hops** — you never assign these ids on your domain events.
 
 ---
 
@@ -293,13 +295,16 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 Whizbang wraps all messages in a **MessageEnvelope** containing context:
 
 ```csharp{title="MessageEnvelope" description="Whizbang wraps all messages in a MessageEnvelope containing context:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "MessageEnvelope"]}
-public class MessageEnvelope {
-    public MessageId MessageId { get; init; }
-    public CorrelationId CorrelationId { get; init; }
-    public CausationId? CausationId { get; init; }
-    public object Payload { get; init; }  // Your actual message
-    public List<MessageHop> Hops { get; init; }  // Trace hops
-    public DateTimeOffset CreatedAt { get; init; }
+public class MessageEnvelope<TMessage> : IMessageEnvelope<TMessage> {
+    public required MessageId MessageId { get; init; }
+    public required TMessage Payload { get; init; }        // Your actual message
+    public required List<MessageHop> Hops { get; init; }   // Trace hops (each hop carries CorrelationId/CausationId/Scope)
+    public int Version { get; init; }
+    public MessageDispatchContext? DispatchContext { get; init; }
+
+    // Correlation and causation are read from the hops:
+    public CorrelationId? GetCorrelationId();
+    public MessageId? GetCausationId();
 }
 ```
 

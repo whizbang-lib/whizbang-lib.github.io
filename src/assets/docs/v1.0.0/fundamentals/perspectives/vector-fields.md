@@ -1,11 +1,25 @@
 ---
 title: Vector Fields
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Perspectives
 codeReferences:
   - src/Whizbang.Core/Perspectives/VectorFieldAttribute.cs
   - src/Whizbang.Core/Perspectives/VectorDistanceMetric.cs
   - src/Whizbang.Core/Perspectives/VectorIndexType.cs
+  - src/Whizbang.Data.EFCore.Postgres/VectorSearchExtensions.cs
+  - src/Whizbang.Data.EFCore.Postgres/PhysicalFieldMaterializationInterceptor.cs
+  - src/Whizbang.Data.EFCore.Postgres/SplitModeChangeTrackerHydrator.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/VectorFieldAttributeTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/VectorDistanceMetricTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/VectorIndexTypeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/VectorSearchExtensionsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/VectorSearchIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SplitModeProductionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -20,7 +34,7 @@ Vector fields are a specialized type of physical field designed for storing and 
 | Feature | Description |
 |---------|-------------|
 | **Storage** | Native pgvector `vector(N)` column type |
-| **Indexing** | IVFFlat or HNSW for approximate nearest neighbor |
+| **Indexing** | IVFFlat generated automatically (HNSW declared, not yet generated -- see below) |
 | **Distance metrics** | L2 (Euclidean), Cosine, Inner Product |
 | **Integration** | Works with OpenAI, Sentence Transformers, and any embedding model |
 
@@ -50,12 +64,16 @@ public record ProductSearchDto {
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `Dimensions` | `int` | (required) | Number of dimensions in the vector |
+| `Dimensions` | `int` | (required, >= 1) | Number of dimensions in the vector |
 | `DistanceMetric` | `VectorDistanceMetric` | `Cosine` | Distance metric for similarity |
 | `Indexed` | `bool` | `true` | Whether to create a vector index |
 | `IndexType` | `VectorIndexType` | `IVFFlat` | Index algorithm |
 | `IndexLists` | `int` | `100` | Number of lists for IVFFlat |
-| `ColumnName` | `string?` | `null` | Custom column name |
+| `ColumnName` | `string?` | `null` | Custom column name (defaults to snake_case of the property name) |
+
+:::updated
+At commit `1b31f58d`, the generated index DDL honors only `Indexed` and `Dimensions`: when `Indexed` is true and `Dimensions <= 2000`, the EF Core Postgres generator emits `CREATE INDEX ... USING ivfflat (column vector_cosine_ops)` -- always IVFFlat with cosine ops. `IndexType`, `DistanceMetric`, and `IndexLists` are declared on the attribute but are **not yet consumed** by index generation (no HNSW DDL, no `WITH (lists = N)`, no L2/inner-product operator classes). For vectors over 2000 dimensions the index is skipped entirely (queries still work, unaccelerated) with a comment suggesting a manual HNSW index on pgvector >= 0.7.0. The distance metric you actually query with is chosen by the query extension method you call (see Querying Vectors below), not by the attribute.
+:::
 
 ## VectorIndexType {#VectorIndexType}
 
@@ -193,32 +211,48 @@ public record DocumentSearchDto {
 }
 ```
 
+In Split mode, EF Core materializes the `Data` model from JSONB only, so physical/vector column values are hydrated back into the model after materialization. The production hydration path is `SplitModeChangeTrackerHydrator` (hooked to the `ChangeTracker.Tracked` event); `PhysicalFieldMaterializationInterceptor` (an EF Core `IMaterializationInterceptor`) is kept as a fallback, since `InitializedInstance` fires before `ComplexProperty().ToJson()` populates `Data`.
+
 ## Querying Vectors
 
-Use the lens query API with vector similarity search:
+Vector similarity search is exposed through the `VectorSearchExtensions` LINQ extensions in `Whizbang.Data.EFCore.Postgres`, applied to a lens query's `Query` property (`IQueryable<PerspectiveRow<TModel>>`). One extension method exists per distance metric -- the method you call picks the pgvector operator:
 
-```csharp{title="Querying Vectors" description="Use the lens query API with vector similarity search:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Querying", "Vectors"]}
+| Method | Operator | Metric |
+|--------|----------|--------|
+| `OrderByCosineDistance` | `<=>` | Cosine |
+| `OrderByL2Distance` | `<->` | L2 (Euclidean) |
+| `OrderByInnerProductDistance` | `<#>` | Inner product |
+| `WithinCosineDistance` / `WithinL2Distance` | `<=>` / `<->` | Threshold filter |
+
+```csharp{title="Querying Vectors" description="Use the VectorSearchExtensions LINQ API for similarity search:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Querying", "Vectors"]}
+using Whizbang.Data.EFCore.Postgres;
+
 // Find similar products
-var queryVector = await embeddingService.GetEmbeddingAsync("wireless headphones");
+float[] queryVector = await embeddingService.GetEmbeddingAsync("wireless headphones");
 
-var results = await lens.QueryAsync<ProductSearchDto>()
-    .OrderByVectorDistance(r => r.Data.ContentEmbedding, queryVector)
+var results = await productLensQuery.Query
+    .OrderByCosineDistance(m => m.ContentEmbedding, queryVector)
     .Take(10)
     .ToListAsync();
 ```
+
+The vector selector targets the **model** (`m => m.ContentEmbedding`, a `float[]?` property); overloads also accept a second column selector to compare two vector columns entirely in SQL.
 
 ### With Filters
 
 Combine vector search with traditional filters:
 
 ```csharp{title="With Filters" description="Combine vector search with traditional filters:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Filters"]}
-var results = await lens.QueryAsync<ProductSearchDto>()
+var results = await productLensQuery.Query
     .Where(r => r.Data.CategoryId == categoryId)
     .Where(r => r.Data.Price <= maxPrice)
-    .OrderByVectorDistance(r => r.Data.ContentEmbedding, queryVector)
+    .WithinCosineDistance(m => m.ContentEmbedding, queryVector, threshold: 0.5)
+    .OrderByCosineDistance(m => m.ContentEmbedding, queryVector)
     .Take(10)
     .ToListAsync();
 ```
+
+Using `[VectorField]` requires the `Pgvector.EntityFrameworkCore` package -- the `WHIZ070` compile-time diagnostic reports when it is missing.
 
 ## Common Embedding Dimensions
 

@@ -1,5 +1,8 @@
 ---
 title: Real-Time Analytics
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Customization Examples
 order: 4
@@ -11,10 +14,16 @@ codeReferences:
   - src/Whizbang.SignalR/Hooks/SignalRNotificationHook.cs
   - >-
     src/Whizbang.SignalR/DependencyInjection/SignalRServiceCollectionExtensions.cs
+  - src/Whizbang.SignalR/DependencyInjection/SignalRTagExtensions.cs
   - samples/ECommerce/ECommerce.BFF.API/Hubs/OrderStatusHub.cs
   - samples/ECommerce/ECommerce.BFF.API/Hubs/ProductInventoryHub.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/InventoryLevelsPerspective.cs
+testReferences:
+  - tests/Whizbang.SignalR.Tests/Hooks/SignalRNotificationHookTests.cs
+  - tests/Whizbang.SignalR.Tests/DependencyInjection/SignalRTagExtensionsTests.cs
+  - >-
+    tests/Whizbang.SignalR.Tests/DependencyInjection/SignalRServiceCollectionExtensionsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -22,52 +31,46 @@ lastMaintainedCommit: '01f07906'
 
 Build **real-time analytics dashboards** with Whizbang featuring streaming metrics, SignalR updates, live KPIs, and event-driven data aggregation.
 
+Two Whizbang building blocks do the work:
+
+1. **Perspectives** materialize events into metrics read models. Perspectives are **pure functions** — each `Apply` takes the current state and an event and returns new state. No I/O, no injected services, no broadcasting.
+2. **Message tags + hooks** handle the push. Tag an event with `[SignalTag]` and the built-in `SignalRNotificationHook<THub>` (from `Whizbang.SignalR`) broadcasts it to connected clients after the event is successfully processed.
+
 ---
 
 ## Architecture
 
-```
-┌────────────────────────────────────────────────────────────┐
-│  Real-Time Analytics Architecture                          │
-│                                                             │
-│  ┌─────────────┐                                           │
-│  │Azure Service│  Domain Events (OrderCreated, etc.)       │
-│  │     Bus     │──────────────────┐                        │
-│  └─────────────┘                  │                        │
-│                                    ▼                        │
-│              ┌────────────────────────────────┐            │
-│              │ Analytics Worker               │            │
-│              │  - DailySalesPerspective       │            │
-│              │  - RealtimeMetricsPerspective  │            │
-│              └──────────┬─────────────────────┘            │
-│                         │                                   │
-│                         ▼                                   │
-│              ┌────────────────────────────────┐            │
-│              │ PostgreSQL + Redis Cache       │            │
-│              └──────────┬─────────────────────┘            │
-│                         │                                   │
-│                         ▼                                   │
-│              ┌────────────────────────────────┐            │
-│              │ SignalR Hub                    │            │
-│              │  - Broadcast metrics to clients│            │
-│              └──────────┬─────────────────────┘            │
-│                         │                                   │
-│                         ▼                                   │
-│              ┌────────────────────────────────┐            │
-│              │  Web Clients (Dashboards)      │            │
-│              │  - Live KPI updates            │            │
-│              │  - Charts auto-refresh         │            │
-│              └────────────────────────────────┘            │
-└────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph RTA["Real-Time Analytics Architecture"]
+        ASB["Azure Service Bus"]
+        Worker["Analytics Worker<br/>- DailySalesPerspective (pure Apply)<br/>- Materialized metrics read models"]
+        Storage["PostgreSQL (perspective tables)"]
+        Hook["SignalRNotificationHook&lt;MetricsHub&gt;<br/>- Fires on [SignalTag] events"]
+        Hub["SignalR Hub"]
+        Clients["Web Clients (Dashboards)<br/>- Live KPI updates<br/>- Charts auto-refresh"]
+
+        ASB -->|"Domain Events (OrderCreated, etc.)"| Worker
+        Worker --> Storage
+        ASB -->|"Tagged events"| Hook
+        Hook --> Hub
+        Hub --> Clients
+        Storage -->|"Lens queries (initial state)"| Clients
+    end
+
+    class ASB layer-command
+    class Worker layer-read
+    class Storage layer-event
+    class Hook,Hub,Clients layer-core
 ```
 
 ---
 
 ## SignalR Hub
 
-**MetricsHub.cs**:
+**MetricsHub.cs** — a plain ASP.NET Core hub. Whizbang pushes through it; you can also add your own methods:
 
-```csharp{title="SignalR Hub" description="**MetricsHub." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "SignalR", "Hub"]}
+```csharp{title="SignalR Hub" description="MetricsHub definition" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "SignalR", "Hub"]}
 using Microsoft.AspNetCore.SignalR;
 
 public class MetricsHub : Hub {
@@ -83,12 +86,6 @@ public class MetricsHub : Hub {
       Context.ConnectionId
     );
 
-    // Send current metrics on connect
-    await Clients.Caller.SendAsync(
-      "ReceiveCurrentMetrics",
-      await GetCurrentMetricsAsync()
-    );
-
     await base.OnConnectedAsync();
   }
 
@@ -100,131 +97,97 @@ public class MetricsHub : Hub {
 
     return base.OnDisconnectedAsync(exception);
   }
-
-  private async Task<object> GetCurrentMetricsAsync() {
-    // Fetch current metrics from cache or database
-    return new {
-      TotalOrders = 1234,
-      TotalRevenue = 45678.90m,
-      AverageOrderValue = 37.02m,
-      Timestamp = DateTime.UtcNow
-    };
-  }
 }
 ```
 
-**Program.cs registration**:
+**Program.cs registration** — `AddWhizbangSignalR()` wires SignalR's JSON protocol to Whizbang's AOT-compatible `JsonContextRegistry`, and `options.Tags.UseSignalR<THub>()` registers the notification hook:
 
-```csharp{title="SignalR Hub (2)" description="SignalR Hub" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalR", "Hub"]}
-builder.Services.AddSignalR();
+```csharp{title="Program.cs Registration" description="Register SignalR and the Whizbang notification hook" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalR", "Hub"]}
+// AOT-compatible SignalR with Whizbang's JSON serialization
+builder.Services.AddWhizbangSignalR();
+
+// Register the SignalR notification hook for [SignalTag] events
+builder.Services.AddWhizbang(options => {
+  options.Tags.UseSignalR<MetricsHub>();
+});
 
 app.MapHub<MetricsHub>("/hubs/metrics");
 ```
 
 ---
 
-## Real-Time Metrics Perspective
+## Tagging Events for Live Push
 
-**RealtimeMetricsPerspective.cs**:
+Tag the domain events you want streamed to dashboards. `Properties` narrows the payload to just the fields clients need; `Group` targets a SignalR group (with `{PropertyName}` placeholders):
 
-```csharp{title="Real-Time Metrics Perspective" description="**RealtimeMetricsPerspective." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Real-Time", "Metrics"]}
-public class RealtimeMetricsPerspective :
-  IPerspectiveOf<OrderCreated>,
-  IPerspectiveOf<PaymentProcessed> {
+```csharp{title="Tagged Domain Events" description="SignalTag drives the real-time push" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalTag", "Events"]}
+[SignalTag(
+  Tag = "order-created",
+  Properties = ["OrderId", "TotalAmount"],
+  Priority = SignalPriority.Normal)]
+public sealed record OrderCreated(Guid OrderId, Guid CustomerId, decimal TotalAmount) : IEvent;
 
-  private readonly IHubContext<MetricsHub> _hubContext;
-  private readonly IDistributedCache _cache;
-  private readonly ILogger<RealtimeMetricsPerspective> _logger;
+[SignalTag(
+  Tag = "payment-processed",
+  Properties = ["OrderId", "Amount"],
+  Group = "tenant-{TenantId}")]  // resolved from payload/scope at runtime
+public sealed record PaymentProcessed(Guid OrderId, decimal Amount) : IEvent;
+```
 
-  public async Task HandleAsync(
-    OrderCreated @event,
-    CancellationToken ct = default
-  ) {
-    // 1. Update metrics in cache (Redis)
-    var metrics = await GetCurrentMetricsAsync(ct);
+After each tagged event is successfully processed, `SignalRNotificationHook<MetricsHub>` sends a `ReceiveNotification` message to all clients (or to the resolved group) with this shape:
 
-    metrics = metrics with {
-      TotalOrders = metrics.TotalOrders + 1,
-      TotalRevenue = metrics.TotalRevenue + @event.TotalAmount,
-      AverageOrderValue = (metrics.TotalRevenue + @event.TotalAmount) / (metrics.TotalOrders + 1),
-      LastUpdated = DateTime.UtcNow
+```csharp{title="NotificationMessage" description="The wire shape pushed to SignalR clients" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalR", "Payload"]}
+public sealed record NotificationMessage {
+  public required string Tag { get; init; }            // "order-created"
+  public required string Priority { get; init; }       // "Normal", "High", ...
+  public required string MessageType { get; init; }    // "OrderCreated"
+  public required JsonElement Payload { get; init; }   // { "OrderId": ..., "TotalAmount": ... }
+  public required DateTimeOffset Timestamp { get; init; }
+}
+```
+
+---
+
+## Metrics Perspective
+
+Perspectives materialize the metrics read model. They are pure — state in, state out. Whizbang persists the result and serves it through lenses:
+
+```csharp{title="Real-Time Metrics Perspective" description="Pure Apply functions materialize the metrics read model" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Real-Time", "Metrics"]}
+public class DailySalesPerspective :
+  IPerspectiveFor<DailySalesMetrics, OrderCreated, PaymentProcessed> {
+
+  public DailySalesMetrics Apply(DailySalesMetrics currentData, OrderCreated @event) {
+    var totalOrders = (currentData?.TotalOrders ?? 0) + 1;
+    var totalRevenue = (currentData?.TotalRevenue ?? 0) + @event.TotalAmount;
+
+    return new DailySalesMetrics {
+      TotalOrders = totalOrders,
+      TotalRevenue = totalRevenue,
+      AverageOrderValue = totalRevenue / totalOrders,
+      TotalPaymentsProcessed = currentData?.TotalPaymentsProcessed ?? 0,
+      LastUpdated = @event.CreatedAt
     };
-
-    await SaveMetricsAsync(metrics, ct);
-
-    // 2. Broadcast to all connected clients
-    await _hubContext.Clients.All.SendAsync(
-      "ReceiveMetricsUpdate",
-      new {
-        metrics.TotalOrders,
-        metrics.TotalRevenue,
-        metrics.AverageOrderValue,
-        Timestamp = DateTime.UtcNow
-      },
-      ct
-    );
-
-    _logger.LogInformation(
-      "Broadcasted metrics update: {TotalOrders} orders, ${TotalRevenue}",
-      metrics.TotalOrders,
-      metrics.TotalRevenue
-    );
   }
 
-  public async Task HandleAsync(
-    PaymentProcessed @event,
-    CancellationToken ct = default
-  ) {
-    // Update payment-specific metrics
-    var metrics = await GetCurrentMetricsAsync(ct);
-
-    metrics = metrics with {
-      TotalPaymentsProcessed = metrics.TotalPaymentsProcessed + 1,
-      LastUpdated = DateTime.UtcNow
-    };
-
-    await SaveMetricsAsync(metrics, ct);
-
-    await _hubContext.Clients.All.SendAsync(
-      "ReceivePaymentMetricsUpdate",
-      new {
-        metrics.TotalPaymentsProcessed,
-        Timestamp = DateTime.UtcNow
-      },
-      ct
-    );
-  }
-
-  private async Task<RealtimeMetrics> GetCurrentMetricsAsync(CancellationToken ct) {
-    var cached = await _cache.GetStringAsync("realtime-metrics", ct);
-    if (cached != null) {
-      return JsonSerializer.Deserialize<RealtimeMetrics>(cached)!;
+  public DailySalesMetrics Apply(DailySalesMetrics currentData, PaymentProcessed @event) {
+    if (currentData == null) {
+      return new DailySalesMetrics {
+        TotalOrders = 0,
+        TotalRevenue = 0,
+        AverageOrderValue = 0,
+        TotalPaymentsProcessed = 1,
+        LastUpdated = DateTime.UtcNow
+      };
     }
 
-    // Initialize if not exists
-    return new RealtimeMetrics {
-      TotalOrders = 0,
-      TotalRevenue = 0,
-      AverageOrderValue = 0,
-      TotalPaymentsProcessed = 0,
+    return currentData with {
+      TotalPaymentsProcessed = currentData.TotalPaymentsProcessed + 1,
       LastUpdated = DateTime.UtcNow
     };
-  }
-
-  private async Task SaveMetricsAsync(RealtimeMetrics metrics, CancellationToken ct) {
-    var json = JsonSerializer.Serialize(metrics);
-    await _cache.SetStringAsync(
-      "realtime-metrics",
-      json,
-      new DistributedCacheEntryOptions {
-        AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1)
-      },
-      ct
-    );
   }
 }
 
-public record RealtimeMetrics {
+public record DailySalesMetrics {
   public long TotalOrders { get; init; }
   public decimal TotalRevenue { get; init; }
   public decimal AverageOrderValue { get; init; }
@@ -233,13 +196,26 @@ public record RealtimeMetrics {
 }
 ```
 
+Serve the current metrics for initial dashboard load through a lens query (an API endpoint or hub method):
+
+```csharp{title="Initial Metrics Endpoint" description="Lens query serves current metrics on dashboard load" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Lens", "Metrics"]}
+app.MapGet("/api/metrics/current", async (
+    ILensQuery<DailySalesMetrics> query,
+    CancellationToken ct) => {
+  var metrics = await query.DefaultScope.Query
+    .Select(row => row.Data)
+    .FirstOrDefaultAsync(ct);
+  return metrics is null ? Results.NotFound() : Results.Ok(metrics);
+});
+```
+
 ---
 
 ## Client-Side (TypeScript)
 
-**metrics-dashboard.ts**:
+**metrics-dashboard.ts** — subscribe to `ReceiveNotification` and route by `Tag`:
 
-```typescript{title="Client-Side (TypeScript)" description="**metrics-dashboard." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Client-Side", "TypeScript"]}
+```typescript{title="Client-Side (TypeScript)" description="metrics-dashboard subscribing to Whizbang notifications" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Client-Side", "TypeScript"]}
 import * as signalR from "@microsoft/signalr";
 
 class MetricsDashboard {
@@ -257,23 +233,16 @@ class MetricsDashboard {
   }
 
   private setupEventHandlers() {
-    // Receive current metrics on connect
-    this.connection.on("ReceiveCurrentMetrics", (metrics: any) => {
-      console.log("Current metrics:", metrics);
-      this.updateDashboard(metrics);
-    });
-
-    // Receive live updates
-    this.connection.on("ReceiveMetricsUpdate", (metrics: any) => {
-      console.log("Metrics update:", metrics);
-      this.updateDashboard(metrics);
-      this.showNotification(`New order: $${metrics.TotalRevenue}`);
-    });
-
-    // Receive payment updates
-    this.connection.on("ReceivePaymentMetricsUpdate", (metrics: any) => {
-      console.log("Payment metrics update:", metrics);
-      this.updatePaymentMetrics(metrics);
+    // All Whizbang [SignalTag] pushes arrive as "ReceiveNotification"
+    this.connection.on("ReceiveNotification", (notification: any) => {
+      switch (notification.Tag) {
+        case "order-created":
+          this.onOrderCreated(notification.Payload, notification.Timestamp);
+          break;
+        case "payment-processed":
+          this.onPaymentProcessed(notification.Payload);
+          break;
+      }
     });
   }
 
@@ -281,21 +250,46 @@ class MetricsDashboard {
     try {
       await this.connection.start();
       console.log("Connected to MetricsHub");
+
+      // Fetch current metrics for initial render
+      const response = await fetch("/api/metrics/current");
+      if (response.ok) {
+        this.updateDashboard(await response.json());
+      }
     } catch (err) {
       console.error("Error connecting to MetricsHub:", err);
       setTimeout(() => this.connect(), 5000);
     }
   }
 
+  private onOrderCreated(payload: any, timestamp: string) {
+    this.incrementCounter("total-orders");
+    this.addToTotal("total-revenue", payload.TotalAmount);
+    document.getElementById("last-updated")!.textContent =
+      new Date(timestamp).toLocaleTimeString();
+    this.showNotification(`New order: $${payload.TotalAmount}`);
+  }
+
+  private onPaymentProcessed(_payload: any) {
+    this.incrementCounter("total-payments");
+  }
+
   private updateDashboard(metrics: any) {
     document.getElementById("total-orders")!.textContent = metrics.TotalOrders;
     document.getElementById("total-revenue")!.textContent = `$${metrics.TotalRevenue.toFixed(2)}`;
     document.getElementById("avg-order-value")!.textContent = `$${metrics.AverageOrderValue.toFixed(2)}`;
-    document.getElementById("last-updated")!.textContent = new Date(metrics.Timestamp).toLocaleTimeString();
+    document.getElementById("last-updated")!.textContent = new Date(metrics.LastUpdated).toLocaleTimeString();
   }
 
-  private updatePaymentMetrics(metrics: any) {
-    document.getElementById("total-payments")!.textContent = metrics.TotalPaymentsProcessed;
+  private incrementCounter(id: string) {
+    const el = document.getElementById(id)!;
+    el.textContent = String(Number(el.textContent) + 1);
+  }
+
+  private addToTotal(id: string, amount: number) {
+    const el = document.getElementById(id)!;
+    const current = Number(el.textContent!.replace(/[$,]/g, "")) || 0;
+    el.textContent = `$${(current + amount).toFixed(2)}`;
   }
 
   private showNotification(message: string) {
@@ -315,7 +309,7 @@ new MetricsDashboard();
 
 **HTML**:
 
-```html{title="Client-Side (TypeScript) (2)" description="Client-Side (TypeScript)" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Client-Side", "TypeScript"]}
+```html{title="Dashboard HTML" description="Static markup for the live KPI dashboard" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Client-Side", "TypeScript"]}
 <!DOCTYPE html>
 <html>
 <head>
@@ -381,67 +375,64 @@ new MetricsDashboard();
 
 ---
 
-## Streaming Aggregations
+## Custom Hooks for Aggregation, Throttling, and Batching
 
-**Sliding Window Analytics**:
+Unlike perspectives, **tag hooks can have dependencies and side effects** — that's what they're for. Implement `IMessageTagHook<TAttribute>` when the built-in hook isn't enough. Hooks are resolved as Scoped services and run after successful message handling.
 
-```csharp{title="Streaming Aggregations" description="Sliding Window Analytics:" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Streaming", "Aggregations"]}
-public class SlidingWindowAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
-  private readonly IDistributedCache _cache;
+### Sliding Window Aggregation
+
+```csharp{title="Sliding Window Hook" description="Custom tag hook maintaining a 5-minute sliding window" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Streaming", "Aggregations"]}
+public sealed class SlidingWindowAnalyticsHook : IMessageTagHook<SignalTagAttribute> {
   private readonly IHubContext<MetricsHub> _hubContext;
+  private readonly IDistributedCache _cache;
 
-  public async Task HandleAsync(
-    OrderCreated @event,
-    CancellationToken ct = default
-  ) {
-    // Add event to sliding window (last 5 minutes)
+  public SlidingWindowAnalyticsHook(IHubContext<MetricsHub> hubContext, IDistributedCache cache) {
+    _hubContext = hubContext;
+    _cache = cache;
+  }
+
+  public async ValueTask<JsonElement?> OnTaggedMessageAsync(
+      TagContext<SignalTagAttribute> context,
+      CancellationToken ct) {
+    if (context.Attribute.Tag != "order-created") {
+      return null; // only aggregate order events
+    }
+
+    var amount = context.Payload.GetProperty("TotalAmount").GetDecimal();
+
+    // Maintain events for the last 5 minutes
     var windowKey = "orders:last5min";
     var events = await GetWindowEventsAsync(windowKey, ct);
+    events.Add(new OrderEventData { Amount = amount, Timestamp = DateTime.UtcNow });
 
-    events.Add(new OrderEventData {
-      OrderId = @event.OrderId,
-      Amount = @event.TotalAmount,
-      Timestamp = DateTime.UtcNow
-    });
-
-    // Remove events older than 5 minutes
     var cutoff = DateTime.UtcNow.AddMinutes(-5);
     events = events.Where(e => e.Timestamp >= cutoff).ToList();
-
     await SaveWindowEventsAsync(windowKey, events, ct);
-
-    // Calculate metrics for last 5 minutes
-    var metrics = new {
-      OrderCount = events.Count,
-      TotalRevenue = events.Sum(e => e.Amount),
-      AverageOrderValue = events.Any() ? events.Average(e => e.Amount) : 0,
-      WindowStart = cutoff,
-      WindowEnd = DateTime.UtcNow
-    };
 
     // Broadcast sliding window metrics
     await _hubContext.Clients.All.SendAsync(
       "ReceiveSlidingWindowUpdate",
-      metrics,
+      new {
+        OrderCount = events.Count,
+        TotalRevenue = events.Sum(e => e.Amount),
+        AverageOrderValue = events.Count > 0 ? events.Average(e => e.Amount) : 0,
+        WindowStart = cutoff,
+        WindowEnd = DateTime.UtcNow
+      },
       ct
     );
+
+    return null; // pass original payload to the next hook
   }
 
-  private async Task<List<OrderEventData>> GetWindowEventsAsync(
-    string key,
-    CancellationToken ct
-  ) {
+  private async Task<List<OrderEventData>> GetWindowEventsAsync(string key, CancellationToken ct) {
     var cached = await _cache.GetStringAsync(key, ct);
     return cached != null
       ? JsonSerializer.Deserialize<List<OrderEventData>>(cached)!
       : new List<OrderEventData>();
   }
 
-  private async Task SaveWindowEventsAsync(
-    string key,
-    List<OrderEventData> events,
-    CancellationToken ct
-  ) {
+  private async Task SaveWindowEventsAsync(string key, List<OrderEventData> events, CancellationToken ct) {
     var json = JsonSerializer.Serialize(events);
     await _cache.SetStringAsync(
       key,
@@ -455,70 +446,109 @@ public class SlidingWindowAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
 }
 
 public record OrderEventData {
-  public required string OrderId { get; init; }
   public required decimal Amount { get; init; }
   public required DateTime Timestamp { get; init; }
 }
 ```
 
----
+Register it alongside (or instead of) the built-in hook:
 
-## Performance Optimizations
+```csharp{title="Register Custom Hook" description="Custom hooks register through the same tag options" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Hooks"]}
+builder.Services.AddWhizbang(options => {
+  options.Tags.UseSignalR<MetricsHub>();                                   // built-in push
+  options.Tags.UseHook<SignalTagAttribute, SlidingWindowAnalyticsHook>();  // custom aggregation
+});
+```
 
-### 1. Throttling
+### Throttling
 
-Limit broadcast frequency to avoid overwhelming clients:
+Limit broadcast frequency to avoid overwhelming clients. Register the hook as a singleton dependency-holder or keep state in a shared service:
 
-```csharp{title="Throttling" description="Limit broadcast frequency to avoid overwhelming clients:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Throttling"]}
-public class ThrottledMetricsPerspective : IPerspectiveOf<OrderCreated> {
-  private readonly IHubContext<MetricsHub> _hubContext;
-  private readonly SemaphoreSlim _semaphore = new(1, 1);
-  private DateTime _lastBroadcast = DateTime.MinValue;
+```csharp{title="Throttling" description="Limit broadcast frequency to avoid overwhelming clients" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Throttling"]}
+public sealed class ThrottledBroadcastHook : IMessageTagHook<SignalTagAttribute> {
+  private static readonly SemaphoreSlim _semaphore = new(1, 1);
+  private static DateTime _lastBroadcast = DateTime.MinValue;
   private static readonly TimeSpan BroadcastInterval = TimeSpan.FromSeconds(1);
 
-  public async Task HandleAsync(OrderCreated @event, CancellationToken ct) {
-    // Update metrics immediately
-    await UpdateMetricsAsync(@event, ct);
+  private readonly IHubContext<MetricsHub> _hubContext;
 
+  public ThrottledBroadcastHook(IHubContext<MetricsHub> hubContext) {
+    _hubContext = hubContext;
+  }
+
+  public async ValueTask<JsonElement?> OnTaggedMessageAsync(
+      TagContext<SignalTagAttribute> context,
+      CancellationToken ct) {
     // Throttle broadcasts (max once per second)
     await _semaphore.WaitAsync(ct);
     try {
       if (DateTime.UtcNow - _lastBroadcast >= BroadcastInterval) {
-        await BroadcastMetricsAsync(ct);
+        await _hubContext.Clients.All.SendAsync(
+          "ReceiveNotification",
+          new { context.Attribute.Tag, context.Payload, Timestamp = DateTimeOffset.UtcNow },
+          ct);
         _lastBroadcast = DateTime.UtcNow;
       }
     } finally {
       _semaphore.Release();
     }
+    return null;
   }
 }
 ```
 
-### 2. Batching
+### Batching
 
-Batch multiple updates before broadcasting:
+Buffer events in a channel and flush on an interval from a background service:
 
-```csharp{title="Batching" description="Batch multiple updates before broadcasting:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Batching"]}
-public class BatchedMetricsPerspective {
-  private readonly Channel<OrderCreated> _channel = Channel.CreateUnbounded<OrderCreated>();
+```csharp{title="Batching" description="Batch multiple updates before broadcasting" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Batching"]}
+public sealed class BatchingBroadcastHook : IMessageTagHook<SignalTagAttribute> {
+  private readonly MetricsBatchChannel _channel;
 
-  public BatchedMetricsPerspective(IHubContext<MetricsHub> hubContext) {
-    _ = Task.Run(async () => await ProcessBatchesAsync(hubContext));
+  public BatchingBroadcastHook(MetricsBatchChannel channel) {
+    _channel = channel;
   }
 
-  public async Task HandleAsync(OrderCreated @event, CancellationToken ct) {
-    await _channel.Writer.WriteAsync(@event, ct);
+  public async ValueTask<JsonElement?> OnTaggedMessageAsync(
+      TagContext<SignalTagAttribute> context,
+      CancellationToken ct) {
+    await _channel.Writer.WriteAsync(context.Payload, ct);
+    return null;
+  }
+}
+
+// Singleton channel shared by the hook and the broadcaster
+public sealed class MetricsBatchChannel {
+  private readonly Channel<JsonElement> _channel = Channel.CreateUnbounded<JsonElement>();
+  public ChannelWriter<JsonElement> Writer => _channel.Writer;
+  public ChannelReader<JsonElement> Reader => _channel.Reader;
+}
+
+// BackgroundService flushing once per second
+public sealed class MetricsBatchBroadcaster : BackgroundService {
+  private readonly MetricsBatchChannel _channel;
+  private readonly IHubContext<MetricsHub> _hubContext;
+
+  public MetricsBatchBroadcaster(MetricsBatchChannel channel, IHubContext<MetricsHub> hubContext) {
+    _channel = channel;
+    _hubContext = hubContext;
   }
 
-  private async Task ProcessBatchesAsync(IHubContext<MetricsHub> hubContext) {
-    await foreach (var batch in _channel.Reader.ReadAllAsync().Buffer(TimeSpan.FromSeconds(1), 100)) {
-      var metrics = new {
-        OrderCount = batch.Count,
-        TotalRevenue = batch.Sum(e => e.TotalAmount),
-        Timestamp = DateTime.UtcNow
-      };
+  protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+    using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+    var batch = new List<JsonElement>();
 
-      await hubContext.Clients.All.SendAsync("ReceiveBatchUpdate", metrics);
+    while (await timer.WaitForNextTickAsync(stoppingToken)) {
+      while (_channel.Reader.TryRead(out var payload)) {
+        batch.Add(payload);
+      }
+      if (batch.Count > 0) {
+        await _hubContext.Clients.All.SendAsync(
+          "ReceiveBatchUpdate",
+          new { Count = batch.Count, Items = batch, Timestamp = DateTimeOffset.UtcNow },
+          stoppingToken);
+        batch.Clear();
+      }
     }
   }
 }
@@ -528,12 +558,12 @@ public class BatchedMetricsPerspective {
 
 ## Key Takeaways
 
-✅ **SignalR** - Real-time WebSocket communication
-✅ **Event-Driven Updates** - Perspectives broadcast to clients
-✅ **Redis Caching** - Fast metric aggregation
-✅ **Sliding Windows** - Last N minutes/hours analytics
-✅ **Throttling** - Prevent client overload
-✅ **Batching** - Reduce broadcast frequency
+✅ **Perspectives are pure** - `Apply(state, event) => state`; Whizbang persists the read model
+✅ **[SignalTag] + hooks push** - `SignalRNotificationHook<THub>` broadcasts after successful handling
+✅ **AddWhizbangSignalR** - AOT-compatible JSON over SignalR via `JsonContextRegistry`
+✅ **Lenses serve initial state** - dashboards load current metrics, then apply live deltas
+✅ **Custom hooks for side effects** - sliding windows, throttling, batching live in hooks, not perspectives
+✅ **Properties narrows payloads** - only push the fields clients need
 
 ---
 
@@ -544,20 +574,22 @@ public class BatchedMetricsPerspective {
 Simpler than SignalR for one-way updates:
 
 ```csharp{title="Server-Sent Events (SSE)" description="Simpler than SignalR for one-way updates:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Server-Sent", "Events"]}
-app.MapGet("/sse/metrics", async (HttpContext context) => {
-  context.Response.Headers.Add("Content-Type", "text/event-stream");
-  context.Response.Headers.Add("Cache-Control", "no-cache");
+app.MapGet("/sse/metrics", async (HttpContext context, ILensQuery<DailySalesMetrics> query) => {
+  context.Response.Headers.ContentType = "text/event-stream";
+  context.Response.Headers.CacheControl = "no-cache";
 
   while (!context.RequestAborted.IsCancellationRequested) {
-    var metrics = await GetCurrentMetricsAsync();
+    var metrics = await query.DefaultScope.Query
+      .Select(row => row.Data)
+      .FirstOrDefaultAsync(context.RequestAborted);
     await context.Response.WriteAsync($"data: {JsonSerializer.Serialize(metrics)}\n\n");
     await context.Response.Body.FlushAsync();
 
-    await Task.Delay(TimeSpan.FromSeconds(1));
+    await Task.Delay(TimeSpan.FromSeconds(1), context.RequestAborted);
   }
 });
 ```
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

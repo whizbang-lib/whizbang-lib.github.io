@@ -1,5 +1,8 @@
 ---
 title: "Perspective Table Naming"
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Perspectives"
 order: 7
@@ -11,6 +14,12 @@ tags: 'table-naming, naming-conventions, snake-case, suffix-stripping, perspecti
 codeReferences:
   - src/Whizbang.Generators.Shared/Utilities/NamingConventionUtilities.cs
   - src/Whizbang.Generators.Shared/Models/TableNameConfig.cs
+  - src/Whizbang.Generators.Shared/Utilities/ConfigurationUtilities.cs
+  - src/Whizbang.Generators.Shared/Utilities/TypeNameUtilities.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/Utilities/NamingConventionUtilitiesTests.cs
+  - tests/Whizbang.Generators.Tests/Utilities/TypeNameUtilitiesTests.cs
+  - tests/Whizbang.Generators.Tests/Utilities/ConfigurationUtilitiesTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -20,9 +29,9 @@ Whizbang automatically generates database table names for your perspectives usin
 
 ## Default Behavior
 
-When you define a perspective, Whizbang converts the class name to snake_case and adds the `wh_per_` prefix:
+Table names are derived from the perspective's **model type** -- the `TModel` in `IPerspectiveFor<TModel, ...>` -- not from the perspective class itself. Whizbang strips any configured suffix, converts the remaining name to snake_case, and adds the `wh_per_` prefix:
 
-| C# Class Name | Default Table Name |
+| Model Type Name | Default Table Name |
 |--------------|-------------------|
 | `OrderProjection` | `wh_per_order` |
 | `CustomerDto` | `wh_per_customer` |
@@ -49,8 +58,9 @@ Configure suffix stripping in your project file:
   <!-- Enable/disable suffix stripping (default: true) -->
   <WhizbangStripTableNameSuffixes>true</WhizbangStripTableNameSuffixes>
 
-  <!-- Suffixes to strip (default list shown) -->
-  <WhizbangTableNameSuffixesToStrip>Model,Projection,ReadModel,Dto,View</WhizbangTableNameSuffixesToStrip>
+  <!-- Suffixes to strip (default list shown; first match wins, so put longer
+       suffixes like ReadModel before their substrings like Model) -->
+  <WhizbangTableNameSuffixesToStrip>ReadModel,Model,Projection,Dto,View</WhizbangTableNameSuffixesToStrip>
 </PropertyGroup>
 ```
 
@@ -77,125 +87,88 @@ Add or modify the suffixes to strip:
 
 ```xml{title="Custom Suffixes" description="Add or modify the suffixes to strip:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Custom", "Suffixes"]}
 <PropertyGroup>
-  <!-- Add custom suffixes -->
-  <WhizbangTableNameSuffixesToStrip>Model,Projection,ReadModel,Dto,View,ViewModel,State</WhizbangTableNameSuffixesToStrip>
+  <!-- Add custom suffixes (first match wins - order longer suffixes first) -->
+  <WhizbangTableNameSuffixesToStrip>ViewModel,ReadModel,Model,Projection,Dto,View,State</WhizbangTableNameSuffixesToStrip>
 </PropertyGroup>
 ```
 
 ## Explicit Table Names
 
-Override the generated name using the `[Perspective]` attribute:
+There is no per-perspective attribute for overriding the generated table name at this commit. The table name is always derived from the model type name plus the MSBuild suffix configuration. To control a table name:
 
-```csharp{title="Explicit Table Names" description="Override the generated name using the [Perspective] attribute:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Explicit", "Table"]}
-// Explicit table name - ignores all conventions
-[Perspective("custom_orders")]
-public class OrderProjection : IPerspectiveFor<OrderData, OrderCreatedEvent> {
-  // Table: wh_per_custom_orders
-}
-```
-
-This is useful when:
-- You need a specific table name for compatibility
-- The generated name would be ambiguous
-- You're renaming a perspective and want to preserve the old table name
+- **Rename the model type** -- the table name follows it
+- **Adjust the suffix list** -- add or remove suffixes project-wide via `WhizbangTableNameSuffixesToStrip`
 
 ## Naming Convention Details
 
 ### Conversion Rules
 
 1. **PascalCase to snake_case**: `OrderDetails` → `order_details`
-2. **Acronyms preserved**: `APIResponse` → `api_response`
+2. **Every uppercase letter gets an underscore** (acronyms are NOT collapsed): `APIResponse` → `a_p_i_response`
 3. **Numbers preserved**: `Order2024` → `order2024`
 4. **Suffix stripping**: `OrderProjection` → `order` (suffix removed before conversion)
+5. **Nested model types**: the containing type name is merged in (`ActiveJob.Details` → base name `ActiveJobDetails`); when the nested name starts with the containing name (`ActiveAccount.ActiveAccountModel`), just the containing name is used to avoid duplication
 
 ### Examples
 
-| Class Name | Suffix Stripped | Snake Case | Final Table |
+| Model Type Name | Suffix Stripped | Snake Case | Final Table |
 |------------|----------------|------------|-------------|
 | `OrderProjection` | `Order` | `order` | `wh_per_order` |
 | `CustomerAccountDto` | `CustomerAccount` | `customer_account` | `wh_per_customer_account` |
 | `ProductInventoryModel` | `ProductInventory` | `product_inventory` | `wh_per_product_inventory` |
-| `APIUsageView` | `APIUsage` | `api_usage` | `wh_per_api_usage` |
+| `APIUsageView` | `APIUsage` | `a_p_i_usage` | `wh_per_a_p_i_usage` |
 | `Order2024Projection` | `Order2024` | `order2024` | `wh_per_order2024` |
+
+Avoid consecutive-uppercase acronyms in model type names -- each uppercase letter becomes its own snake_case segment.
 
 ### Edge Cases
 
-| Class Name | Notes | Table Name |
+| Model Type Name | Notes | Table Name |
 |------------|-------|------------|
-| `Model` | Only suffix, no stripping | `wh_per_model` |
-| `OrderModelProjection` | Only last suffix stripped | `wh_per_order_model` |
-| `Dto` | Only suffix, no stripping | `wh_per_dto` |
+| `Model` | Name is only a suffix - strips to empty | `wh_per_` (avoid this) |
+| `OrderModelProjection` | Only the first matching suffix stripped (single pass) | `wh_per_order_model` |
+| `OrderMODEL` | Suffix matching is case-sensitive - no strip | `wh_per_order_m_o_d_e_l` |
 
 ## Table Name Conflicts
 
-If two perspectives would generate the same table name, you'll get a compile-time error:
+If two perspective model types would generate the same table name, both perspectives end up mapped to the same table -- there is no compile-time duplicate-name diagnostic at this commit:
 
-```csharp{title="Table Name Conflicts" description="If two perspectives would generate the same table name, you'll get a compile-time error:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Table", "Name"]}
-// Both would generate wh_per_order
-public class OrderProjection : IPerspectiveFor<OrderData, OrderCreatedEvent> { }
-public class OrderDto : IPerspectiveFor<OrderSummary, OrderCreatedEvent> { }
-// Error: WB1001 - Duplicate perspective table name 'wh_per_order'
+```csharp{title="Table Name Conflicts" description="Two model types that strip to the same base name collide on one table:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Table", "Name"]}
+// Both model types generate wh_per_order
+public class OrderPerspective : IPerspectiveFor<OrderDto, OrderCreatedEvent> { }
+public class OrderAdminPerspective : IPerspectiveFor<OrderModel, OrderCreatedEvent> { }
+// OrderDto -> Order -> wh_per_order; OrderModel -> Order -> wh_per_order
 ```
 
-Resolve by using explicit names:
-
-```csharp{title="Table Name Conflicts - OrderProjection" description="Resolve by using explicit names:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Table", "Name"]}
-[Perspective("order_details")]
-public class OrderProjection : IPerspectiveFor<OrderData, OrderCreatedEvent> { }
-
-[Perspective("order_summary")]
-public class OrderDto : IPerspectiveFor<OrderSummary, OrderCreatedEvent> { }
-```
+Resolve by renaming one of the model types so the stripped base names differ (e.g., `OrderModel` → `OrderAdminModel` gives `wh_per_order_admin`).
 
 ## Renaming Perspectives
 
-When you rename a perspective class, the [perspective registry](registry.md) automatically handles the table rename:
+Renaming the perspective **class** has no effect on the table name -- only the model type name matters. Two rename scenarios behave differently:
 
-### Before
+### Changing suffix configuration (registry-managed rename)
 
-```csharp{title="Before" description="Before" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Before"]}
-public class CustomerDataProjection : IPerspectiveFor<CustomerData, CustomerEvent> { }
-// Table: wh_per_customer_data
-```
+When suffix configuration changes the generated name for the **same model type**, the [perspective registry](registry.md) automatically renames the table on next application start:
 
-### After
-
-```csharp{title="After" description="After" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "After"]}
-public class CustomerProjection : IPerspectiveFor<CustomerData, CustomerEvent> { }
-// Table: wh_per_customer
-```
-
-On next application start:
-1. Registry detects table name changed
-2. Executes `ALTER TABLE wh_per_customer_data RENAME TO wh_per_customer`
+1. Registry detects table name changed for the model's `clr_type_name`
+2. Executes `ALTER TABLE IF EXISTS wh_per_customer_data RENAME TO wh_per_customer`
 3. Data preserved, no migration needed
+
+### Renaming the model type itself
+
+Renaming the model type (e.g., `CustomerData` → `Customer`) changes the registry key, so the registry sees a **new** perspective and creates a fresh table -- the old table and its data are left behind. Plan a manual migration if you need the data carried over.
 
 ## Prefix Configuration
 
-The `wh_per_` prefix is part of Whizbang's schema configuration:
-
-```csharp{title="Prefix Configuration" description="The wh_per_ prefix is part of Whizbang's schema configuration:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Prefix", "Configuration"]}
-services.AddWhizbang(options => {
-  options.Schema.InfrastructurePrefix = "wh_";    // Default
-  options.Schema.PerspectivePrefix = "wh_per_";   // Default
-});
-```
-
-Changing prefixes affects all table names:
-
-| Prefix | Table Name |
-|--------|------------|
-| `wh_per_` (default) | `wh_per_order` |
-| `app_view_` | `app_view_order` |
-| `proj_` | `proj_order` |
+The `wh_per_` prefix is fixed at this commit. It is hardcoded in the source generators and schema initializers (`SchemaConfiguration` defaults to `PerspectivePrefix = "wh_per_"`, and all built-in providers pass that value). There is no supported runtime or MSBuild option to change it.
 
 ## Best Practices
 
-1. **Use descriptive class names**: `OrderSummaryProjection` is better than `OrderProj`
+1. **Use descriptive model type names**: `OrderSummaryDto` is better than `OrdSum`
 2. **Let suffix stripping work**: Don't manually abbreviate names
-3. **Use explicit names sparingly**: Only when conventions don't fit
+3. **Avoid acronyms in model names**: `ApiUsage` gives `wh_per_api_usage`; `APIUsage` gives `wh_per_a_p_i_usage`
 4. **Be consistent**: Pick one suffix convention (`Projection`, `Dto`, etc.) for your team
-5. **Document custom names**: If using `[Perspective("...")]`, explain why
+5. **Never name a model exactly a suffix**: `Model` or `Dto` alone strips to an empty table base name
 
 ## See Also
 

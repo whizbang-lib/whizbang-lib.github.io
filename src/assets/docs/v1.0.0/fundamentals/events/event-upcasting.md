@@ -1,5 +1,8 @@
 ---
 title: Event Upcasting
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 14
@@ -149,13 +152,19 @@ consumers pay nothing.
 `UpcastingEventStoreDecorator` sits **innermost** in the `IEventStore` decorator
 stack, so every outer decorator and consumer observes upcasted events:
 
-```text
-IEventStore
-└─ AppendAndWaitEventStoreDecorator      (Layer 3, outermost)
-   └─ SyncTrackingEventStoreDecorator    (Layer 2)
-      └─ SecurityContextEventStoreDecorator  (Layer 1)
-         └─ UpcastingEventStoreDecorator     (Layer 0 — transforms on read)
-            └─ Base IEventStore (e.g. EFCoreEventStore)
+```mermaid
+graph TB
+    A["IEventStore"]
+    B["AppendAndWaitEventStoreDecorator (Layer 3, outermost)"]
+    C["SyncTrackingEventStoreDecorator (Layer 2)"]
+    D["SecurityContextEventStoreDecorator (Layer 1)"]
+    E["UpcastingEventStoreDecorator (Layer 0 — transforms on read)"]
+    F["Base IEventStore (e.g. EFCoreEventStore)"]
+
+    A --> B --> C --> D --> E --> F
+
+    style E fill:#d4edda,stroke:#28a745
+    style F fill:#fff3cd,stroke:#ffc107
 ```
 
 It applies the pipeline on all three **polymorphic** read paths:

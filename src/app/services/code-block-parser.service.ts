@@ -17,17 +17,25 @@ export class CodeBlockParser {
     let processedContent = content;
     let blockIndex = 0;
     
-    // Parse enhanced C# code blocks with metadata
-    const csharpCodeBlockRegex = /```csharp\{([^}]*)\}([\s\S]*?)```/g;
+    // Parse enhanced code blocks with metadata — ANY language, not just csharp.
+    // A csharp-only regex left ```bash{...} / ```json{...} blocks unconsumed;
+    // the regular-block pass below then mispaired their fences (its regex
+    // can't match a ```lang{ opening) and swallowed the PROSE between blocks —
+    // whole sections silently vanished from rendered pages.
+    const enhancedCodeBlockRegex = /```([\w#+-]+)\{([^}]*)\}([\s\S]*?)```/g;
     let match;
-    
-    while ((match = csharpCodeBlockRegex.exec(content)) !== null) {
-      const metadataString = match[1];
-      const code = match[2].trim();
+
+    while ((match = enhancedCodeBlockRegex.exec(content)) !== null) {
+      const language = match[1];
+      const metadataString = match[2];
+      const code = match[3].trim();
       const placeholder = `[CODE_BLOCK_${blockIndex}]`;
-      
+
       // Parse metadata
       const options = this.parseMetadata(metadataString);
+      if (!options.language) {
+        options.language = language;
+      }
       
       // Set component type based on whether it's collapsible
       if (options.showLinesOnly && Array.isArray(options.showLinesOnly) && options.showLinesOnly.length > 0) {

@@ -1,5 +1,8 @@
 ---
 title: Auto-Populate Attributes
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Attributes
 order: 5
@@ -28,6 +31,15 @@ codeReferences:
   - src/Whizbang.Core/AutoPopulate/MessageEnvelopeAutoPopulateExtensions.cs
   - src/Whizbang.Core/AutoPopulate/JsonAutoPopulateHelper.cs
   - src/Whizbang.Generators/AutoPopulateDiscoveryGenerator.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/AutoPopulate/PopulateTimestampAttributeTests.cs
+  - tests/Whizbang.Core.Tests/AutoPopulate/PopulateFromServiceAttributeTests.cs
+  - tests/Whizbang.Core.Tests/AutoPopulate/PopulateFromIdentifierAttributeTests.cs
+  - tests/Whizbang.Core.Tests/AutoPopulate/PopulateFromContextAttributeTests.cs
+  - tests/Whizbang.Core.Tests/AutoPopulate/AutoPopulateProcessorTests.cs
+  - tests/Whizbang.Core.Tests/AutoPopulate/MessageEnvelopeAutoPopulateExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/AutoPopulate/JsonAutoPopulateHelperTests.cs
+  - tests/Whizbang.Generators.Tests/AutoPopulateDiscoveryGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

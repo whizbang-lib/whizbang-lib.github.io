@@ -1,0 +1,165 @@
+{
+  "fundamentalsTopicCount": 10,
+  "extendingTopicCount": 5,
+  "operationsTopicCount": 7,
+  "dataTopicCount": 13,
+  "messagingTopicCount": 11,
+  "apisTopicCount": 4,
+  "crossReferenceGaps": 15,
+  "crossReference": [
+    {
+      "topic": "dispatcher",
+      "inFundamentals": true,
+      "inExtending": false,
+      "gap": "Missing contributor docs"
+    },
+    {
+      "topic": "events",
+      "inFundamentals": true,
+      "inExtending": false,
+      "gap": "Missing contributor docs"
+    },
+    {
+      "topic": "identity",
+      "inFundamentals": true,
+      "inExtending": false,
+      "gap": "Missing contributor docs"
+    },
+    {
+      "topic": "lenses",
+      "inFundamentals": true,
+      "inExtending": false,
+      "gap": "Missing contributor docs"
+    },
+    {
+      "topic": "lifecycle",
+      "inFundamentals": true,
+      "inExtending": false,
+      "gap": "Missing contributor docs"
+    },
+    {
+      "topic": "messages",
+      "inFundamentals": true,
+      "inExtending": false,
+      "gap": "Missing contributor docs"
+    },
+    {
+      "topic": "persistence",
+      "inFundamentals": true,
+      "inExtending": false,
+      "gap": "Missing contributor docs"
+    },
+    {
+      "topic": "perspectives",
+      "inFundamentals": true,
+      "inExtending": false,
+      "gap": "Missing contributor docs"
+    },
+    {
+      "topic": "receptors",
+      "inFundamentals": true,
+      "inExtending": false,
+      "gap": "Missing contributor docs"
+    },
+    {
+      "topic": "security",
+      "inFundamentals": true,
+      "inExtending": false,
+      "gap": "Missing contributor docs"
+    },
+    {
+      "topic": "attributes",
+      "inFundamentals": false,
+      "inExtending": true,
+      "gap": "Missing user-developer docs"
+    },
+    {
+      "topic": "extensibility",
+      "inFundamentals": false,
+      "inExtending": true,
+      "gap": "Missing user-developer docs"
+    },
+    {
+      "topic": "features",
+      "inFundamentals": false,
+      "inExtending": true,
+      "gap": "Missing user-developer docs"
+    },
+    {
+      "topic": "internals",
+      "inFundamentals": false,
+      "inExtending": true,
+      "gap": "Missing user-developer docs"
+    },
+    {
+      "topic": "source-generators",
+      "inFundamentals": false,
+      "inExtending": true,
+      "gap": "Missing user-developer docs"
+    }
+  ],
+  "allTopics": {
+    "fundamentals": [
+      "dispatcher",
+      "events",
+      "identity",
+      "lenses",
+      "lifecycle",
+      "messages",
+      "persistence",
+      "perspectives",
+      "receptors",
+      "security"
+    ],
+    "extending": [
+      "attributes",
+      "extensibility",
+      "features",
+      "internals",
+      "source-generators"
+    ],
+    "operations": [
+      "configuration",
+      "deployment",
+      "diagnostics",
+      "infrastructure",
+      "observability",
+      "testing",
+      "workers"
+    ],
+    "data": [
+      "caching",
+      "dapper-integration",
+      "drivers",
+      "efcore-complex-types",
+      "efcore-integration",
+      "efcore-json-configuration",
+      "event-store",
+      "perspectives-storage",
+      "postgres",
+      "schema-generation-pattern",
+      "schema-migration",
+      "turnkey-initialization",
+      "work-coordinator-strategies"
+    ],
+    "messaging": [
+      "commands-events",
+      "failure-handling",
+      "idempotency-patterns",
+      "inbox-pattern",
+      "message-envelopes",
+      "multi-instance-coordination",
+      "outbox-pattern",
+      "topic-filters",
+      "transports",
+      "work-coordination",
+      "work-coordinator"
+    ],
+    "apis": [
+      "graphql",
+      "mutations",
+      "rest",
+      "signalr"
+    ]
+  }
+}

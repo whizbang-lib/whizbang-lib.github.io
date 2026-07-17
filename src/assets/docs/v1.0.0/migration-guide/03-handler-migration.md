@@ -1,5 +1,8 @@
 ---
 title: Handler Migration
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Migration Guide
 order: 4
@@ -7,7 +10,14 @@ description: Converting Wolverine handlers to Whizbang Receptors
 tags: 'migration, handlers, receptors, wolverine, conversion'
 codeReferences:
   - src/Whizbang.Core/IReceptor.cs
+  - src/Whizbang.Core/IDispatcher.cs
+  - src/Whizbang.Core/Messaging/IEventStore.cs
   - src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
+  - tests/Whizbang.Core.Tests/Receptors/VoidReceptorTests.cs
+  - tests/Whizbang.Core.Integration.Tests/DispatcherReceptorIntegrationTests.cs
+  - tests/Whizbang.Migrate.Tests/Transformers/HandlerToReceptorTransformerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -49,7 +59,8 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         CreateOrder message,
         CancellationToken cancellationToken = default) {
         // Business logic
-        return ValueTask.FromResult(new OrderCreated(Guid.CreateVersion7()));
+        // TrackedGuid.NewMedo() produces a time-ordered UUIDv7 (implicitly converts to Guid)
+        return ValueTask.FromResult(new OrderCreated(TrackedGuid.NewMedo()));
     }
 }
 ```
@@ -157,13 +168,12 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         CreateOrder message,
         CancellationToken cancellationToken = default) {
 
-        var orderId = Guid.CreateVersion7();
+        Guid orderId = TrackedGuid.NewMedo();
         var orderCreated = new OrderCreated(orderId);
 
-        // Publish cascading message
+        // Publish cascading message (routed through the outbox automatically)
         await _dispatcher.PublishAsync(
-            new SendOrderConfirmation(message.CustomerEmail, orderId),
-            cancellationToken);
+            new SendOrderConfirmation(message.CustomerEmail, orderId));
 
         return orderCreated;
     }
@@ -203,19 +213,18 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         CreateOrder message,
         CancellationToken cancellationToken = default) {
 
-        var streamId = Guid.CreateVersion7();
+        Guid streamId = TrackedGuid.NewMedo();
         var @event = new OrderCreated(streamId);
 
-        var envelope = new MessageEnvelope<OrderCreated> {
-            MessageId = MessageId.From(Guid.CreateVersion7()),
-            Payload = @event
-        };
-
-        await _eventStore.AppendAsync(streamId, envelope, cancellationToken);
+        // The message overload creates (or retrieves) the envelope automatically,
+        // preserving tracing context (hops, correlation, causation).
+        await _eventStore.AppendAsync(streamId, @event, cancellationToken);
         return @event;
     }
 }
 ```
+
+> **Note**: In most Whizbang applications you don't need to append manually at all — events returned from a receptor are automatically cascaded to the event store and outbox by the dispatcher (see [Outbox Migration](07-outbox-migration.md)).
 
 ### Multiple Handlers → Multiple Receptors
 
@@ -307,12 +316,13 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 ## Migration Checklist
 
 - [ ] Remove `[WolverineHandler]` attribute
-- [ ] Implement `IReceptor<TMessage, TResult>` or `IReceptor<TMessage>`
+- [ ] Implement `IReceptor<TMessage, TResponse>` or `IReceptor<TMessage>`
 - [ ] Rename method to `HandleAsync`
-- [ ] Change return type to `ValueTask<TResult>` or `ValueTask`
+- [ ] Change return type to `ValueTask<TResponse>` or `ValueTask`
 - [ ] Add `CancellationToken` parameter
 - [ ] Convert method injection to constructor injection
 - [ ] Split multi-handler classes into separate receptors
+- [ ] Use `TrackedGuid.NewMedo()` (from `Whizbang.Core.ValueObjects`) for new IDs
 - [ ] Update namespace usings
 
 ## Automated Migration
@@ -320,14 +330,14 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 The `whizbang-migrate` tool can automate handler migration:
 
 ```bash{title="Automated Migration" description="The whizbang-migrate tool can automate handler migration:" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "Bash", "Automated", "Migration"]}
-# Analyze handlers
-whizbang migrate analyze --project ./MyApp.sln --filter handlers
+# Analyze the project (finds Wolverine handlers and Marten projections)
+whizbang-migrate analyze --project ./MyApp.sln
 
-# Preview transformations
-whizbang migrate plan --project ./MyApp.sln --filter handlers
+# Preview transformations without modifying files
+whizbang-migrate apply --project ./MyApp.sln --dry-run --include '**/*Handler.cs'
 
-# Apply with review
-whizbang migrate apply --mode guided --filter handlers
+# Apply handler transformations
+whizbang-migrate apply --project ./MyApp.sln --include '**/*Handler.cs'
 ```
 
 ---

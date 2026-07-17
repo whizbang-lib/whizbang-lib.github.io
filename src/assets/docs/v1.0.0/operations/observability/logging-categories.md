@@ -1,5 +1,8 @@
 ---
 title: Logging Categories
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Observability
 order: 4
@@ -11,8 +14,10 @@ codeReferences:
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
-  - src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs
+  - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
+  - src/Whizbang.Core/Workers/ClaimWorker.cs
   - src/Whizbang.Core/Tags/MessageTagProcessor.cs
+  - src/Whizbang.Core/Observability/WhizbangStartupLog.cs
   - src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -34,7 +39,7 @@ Silence noisy Whizbang components in development by adding overrides to your `ap
       "Whizbang.Core.Dispatcher": "None",
       "Whizbang.Core.Workers.PerspectiveWorker": "None",
       "Whizbang.Core.Workers.TransportConsumerWorker": "None",
-      "Whizbang.Core.Workers.WorkCoordinatorPublisherWorker": "None",
+      "Whizbang.Core.Workers.OutboxPublishWorker": "Warning",
       "Whizbang.Transports.RabbitMQ": "Warning"
     }
   }
@@ -60,6 +65,7 @@ To temporarily re-enable a category for debugging, set it to `"Debug"`:
 | Category | Description | Default Level |
 |----------|-------------|---------------|
 | `Whizbang.Initialization` | Top-level database initialization orchestration — schema creation, migrations, constraints, perspective registration, and maintenance. Emits a summary line at `Information` with elapsed time and migration count; all step-level detail is at `Debug`. | Information |
+| `Whizbang.Startup` | Startup banner and one-time process identity output (`WhizbangStartupLog`). Suppress the banner via the `Whizbang:ShowBanner` configuration key instead of the log level if you only want the ASCII art gone. | Information |
 
 ### Dispatcher
 
@@ -73,7 +79,8 @@ To temporarily re-enable a category for debugging, set it to `"Debug"`:
 | Category | Description | Default Level |
 |----------|-------------|---------------|
 | `Whizbang.Core.Workers.PerspectiveWorker` | Perspective batch processing diagnostics — logs work item counts, stream/perspective grouping, and empty-batch warnings. | Debug |
-| `Whizbang.Core.Workers.WorkCoordinatorPublisherWorker` | Outbox/inbox publisher worker — logs batch publish cycle results (messages published, claimed, failed). Fires every polling interval (~1s) when there is activity. Summary at `Information` on startup/shutdown; per-cycle batch results at `Debug`. | Debug |
+| `Whizbang.Core.Workers.OutboxPublishWorker` | Outbox publish worker — startup/shutdown summary at `Information`; publish failures, DLQ promotions, and missing-transport conditions at `Warning`. | Information |
+| `Whizbang.Core.Workers.ClaimWorker` | Work-claim poller — startup/shutdown and NOTIFY-gate reconnects at `Information`; tick failures and heartbeat problems at `Warning`. | Information |
 | `Whizbang.Core.Workers.TransportConsumerWorker` | Transport consumer startup and subscription management. Logs a one-line summary at `Information` on start; per-destination and per-subscription detail at `Debug`. | Information |
 
 ### Transport
@@ -145,7 +152,7 @@ This sets **all** categories starting with `Whizbang` to `Warning`, including `W
 
 | Level | Use |
 |-------|-----|
-| `Trace` | Not used by Whizbang |
+| `Trace` | Hot-path per-message breadcrumbs (e.g. `ImmediateWorkCoordinatorStrategy` dispatch steps) — off unless explicitly enabled |
 | `Debug` | Step-level detail (individual migrations, SQL operations, batch grouping, per-subscription info) |
 | `Information` | Summaries and milestones (initialization complete, worker started, batch sizes) |
 | `Warning` | Recoverable issues (schema drift, failed maintenance, connection retries) |
@@ -168,7 +175,7 @@ A good starting point for local development that keeps the console readable:
       "Whizbang.Core.Dispatcher": "None",
       "Whizbang.Core.Workers.PerspectiveWorker": "None",
       "Whizbang.Core.Workers.TransportConsumerWorker": "None",
-      "Whizbang.Core.Workers.WorkCoordinatorPublisherWorker": "None",
+      "Whizbang.Core.Workers.OutboxPublishWorker": "Warning",
       "Whizbang.Core.Tags.MessageTagProcessor": "None",
       "Whizbang.Transports.RabbitMQ": "Warning"
     }

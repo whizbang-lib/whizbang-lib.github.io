@@ -1,5 +1,8 @@
 ---
 title: Production Hardening
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: API
 order: 8
@@ -10,6 +13,8 @@ description: >-
 tags: 'graphql, security, introspection, hardening, production, errors'
 codeReferences:
   - src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateSecurityExtensions.cs
+testReferences:
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/HotChocolateSecurityExtensionsTests.cs
 ---
 
 # GraphQL Production Hardening

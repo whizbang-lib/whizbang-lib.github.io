@@ -1,0 +1,445 @@
+Library HEAD: f2657adc
+
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+fatal: empty string is not a valid pathspec. please use . instead if you meant to match all paths
+⚠️  STALE PAGES (139):
+
+  src/assets/docs/v1.0.0/apis/graphql/index.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangExtensions.cs
+  src/assets/docs/v1.0.0/apis/graphql/lens-integration.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensAttribute.cs, src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensScope.cs
+  src/assets/docs/v1.0.0/apis/graphql/scoping.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
+  src/assets/docs/v1.0.0/apis/graphql/setup.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Transports.HotChocolate/Configuration/WhizbangGraphQLOptions.cs, src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangExtensions.cs
+  src/assets/docs/v1.0.0/data/drivers.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs
+  src/assets/docs/v1.0.0/data/efcore-complex-types.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Lenses/ILensQuery.cs, src/Whizbang.Core/Lenses/PerspectiveMetadata.cs, src/Whizbang.Core/Lenses/PerspectiveScope.cs, src/Whizbang.Core/Perspectives/IPerspectiveStore.cs, src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveConfigurationGenerator.cs, src/Whizbang.Data.EFCore.Postgres.Generators/Templates/Snippets/EFCoreSnippets.cs, src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs, src/Whizbang.Data.EFCore.Postgres/EFCorePostgresLensQuery.cs, src/Whizbang.Data.EFCore.Postgres/EFCorePostgresPerspectiveStore.cs
+  src/assets/docs/v1.0.0/data/efcore-json-configuration.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+  src/assets/docs/v1.0.0/data/postgres.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Data.Postgres/PostgresConnectionRetry.cs, src/Whizbang.Data.Postgres/PostgresOptions.cs, src/Whizbang.Data.Postgres/PostgresReadinessExtensions.cs
+  src/assets/docs/v1.0.0/data/schema-generation-pattern.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Data.Schema/ISchemaBuilder.cs, src/Whizbang.Data.Schema/PostgresSchemaBuilder.cs, src/Whizbang.Data.Schema/Schemas/EventStoreSchema.cs, src/Whizbang.Data.Schema/Schemas/InboxSchema.cs, src/Whizbang.Data.Schema/Schemas/OutboxSchema.cs
+  src/assets/docs/v1.0.0/data/turnkey-initialization.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Data.EFCore.Postgres/DbContextInitializationRegistry.cs, src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs, src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs, src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
+  src/assets/docs/v1.0.0/data/work-coordinator-strategies.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs, src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs, src/Whizbang.Core/Messaging/IWorkFlusher.cs, src/Whizbang.Core/Messaging/WorkCoordinatorStrategyFactory.cs
+  src/assets/docs/v1.0.0/extending/attributes/auto-populate.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/AutoPopulate/AutoPopulateRegistration.cs, src/Whizbang.Core/AutoPopulate/PopulateKind.cs, src/Whizbang.Generators/AutoPopulateDiscoveryGenerator.cs
+  src/assets/docs/v1.0.0/extending/attributes/generatestreamid.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Validation/StreamIdGuard.cs, src/Whizbang.Generators/StreamIdGenerator.cs
+  src/assets/docs/v1.0.0/extending/attributes/streamid.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/StreamIdGenerator.cs
+  src/assets/docs/v1.0.0/extending/extensibility/custom-perspectives.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
+  src/assets/docs/v1.0.0/extending/extensibility/custom-policies.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Policies/PolicyEngine.cs
+  src/assets/docs/v1.0.0/extending/extensibility/custom-serializers.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+  src/assets/docs/v1.0.0/extending/extensibility/custom-storage.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
+  src/assets/docs/v1.0.0/extending/extensibility/custom-transports.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Transports/ITransport.cs, src/Whizbang.Core/Transports/InProcessTransport.cs
+  src/assets/docs/v1.0.0/extending/extensibility/custom-work-coordinators.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  src/assets/docs/v1.0.0/extending/extensibility/plugin-architecture.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/ServiceCollectionExtensions.cs, src/Whizbang.Core/ServiceRegistrationCallbacks.cs
+  src/assets/docs/v1.0.0/extending/features/debugger-aware-clock.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Diagnostics/DebuggerAwareClock.cs
+  src/assets/docs/v1.0.0/extending/features/vector-search.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Data.EFCore.Postgres/DbContextRegistrationRegistry.cs
+  src/assets/docs/v1.0.0/extending/internals/json-serialization-customizations.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/MessageJsonContextGenerator.cs
+  src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Dispatcher.cs, src/Whizbang.Core/IDispatcher.cs, src/Whizbang.Core/Messaging/IWorkCoordinator.cs, src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs, src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs, src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs
+  src/assets/docs/v1.0.0/extending/source-generators/attribute-utilities.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/MessageTagDiscoveryGenerator.cs
+  src/assets/docs/v1.0.0/extending/source-generators/configuration.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators.Shared/Utilities/ConfigurationUtilities.cs
+  src/assets/docs/v1.0.0/extending/source-generators/json-contexts.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/MessageJsonContextGenerator.cs
+  src/assets/docs/v1.0.0/extending/source-generators/message-registry.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/MessageRegistryGenerator.cs
+  src/assets/docs/v1.0.0/extending/source-generators/perspective-discovery.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs, src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs
+  src/assets/docs/v1.0.0/extending/source-generators/polymorphic-serialization.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/MessageJsonContextGenerator.cs
+  src/assets/docs/v1.0.0/extending/source-generators/receptor-discovery.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs, src/Whizbang.Generators/Templates/DispatcherTemplate.cs
+  src/assets/docs/v1.0.0/extending/source-generators/topic-filter-discovery.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/TopicFilterGenerator.cs
+  src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Dispatcher.cs, src/Whizbang.Core/IDispatcher.cs
+  src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Dispatch/Route.cs, src/Whizbang.Core/Dispatcher.cs, src/Whizbang.Core/Workers/TransportConsumerWorker.cs
+  src/assets/docs/v1.0.0/fundamentals/dispatcher/rpc-extraction.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Dispatch/Route.cs, src/Whizbang.Core/Dispatch/Routed.cs, src/Whizbang.Core/Internal/ResponseExtractor.cs
+  src/assets/docs/v1.0.0/fundamentals/events/event-store-query.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/IEventStoreQuery.cs, src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableEventStoreQuery.cs
+  src/assets/docs/v1.0.0/fundamentals/events/event-store.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/AppendAndWaitEventStoreDecorator.cs, src/Whizbang.Core/Messaging/IEventStore.cs
+  src/assets/docs/v1.0.0/fundamentals/events/event-streams.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/IEventStore.cs
+  src/assets/docs/v1.0.0/fundamentals/events/ledger.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/EventStoreRecord.cs, src/Whizbang.Core/Messaging/IEventStore.cs, src/Whizbang.Core/Messaging/InMemoryEventStore.cs
+  src/assets/docs/v1.0.0/fundamentals/events/system-events.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Events/System/SystemEvents.cs, src/Whizbang.Core/SystemEvents/AuditingEventStoreDecorator.cs, src/Whizbang.Core/SystemEvents/CommandAudited.cs, src/Whizbang.Core/SystemEvents/EventAudited.cs, src/Whizbang.Core/SystemEvents/Security/AccessDenied.cs, src/Whizbang.Core/SystemEvents/Security/AccessGranted.cs, src/Whizbang.Core/SystemEvents/Security/PermissionChanged.cs, src/Whizbang.Core/SystemEvents/Security/ScopeContextEstablished.cs, src/Whizbang.Core/SystemEvents/SystemEventEmitter.cs, tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterTests.cs
+  src/assets/docs/v1.0.0/fundamentals/identity/assembly-registry.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Registry/AssemblyRegistry.cs
+  src/assets/docs/v1.0.0/fundamentals/identity/fuzzy-matching.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/MatchStrictness.cs
+  src/assets/docs/v1.0.0/fundamentals/identity/pinned-type-ledger.md
+    Last maintained: 358f3b20
+    Changed files: src/Whizbang.Generators/MessageJsonContextGenerator.cs
+  src/assets/docs/v1.0.0/fundamentals/identity/type-formatting.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/TypeFormatter.cs
+  src/assets/docs/v1.0.0/fundamentals/identity/type-qualification.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/TypeQualification.cs
+  src/assets/docs/v1.0.0/fundamentals/identity/whizbang-ids.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/ValueObjects/GuidMetadata.cs, src/Whizbang.Core/ValueObjects/TrackedGuid.cs, src/Whizbang.Core/WhizbangIdProviderRegistry.cs
+  src/assets/docs/v1.0.0/fundamentals/lenses/lens-query-factory.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Lenses/FactoryOwnedLensQuery.cs, src/Whizbang.Data.EFCore.Postgres/EFCoreLensQueryFactory.cs, src/Whizbang.Data.EFCore.Postgres/ScopedDbContextFactory.cs
+  src/assets/docs/v1.0.0/fundamentals/lenses/lenses.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Lenses/ILensQuery.cs
+  src/assets/docs/v1.0.0/fundamentals/lenses/multi-model-queries.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Lenses/ILensQuery.cs, src/Whizbang.Data.EFCore.Postgres/EFCorePostgresLensQuery.cs
+  src/assets/docs/v1.0.0/fundamentals/lenses/scoped-lenses.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Lenses/IScopedLensFactory.cs, src/Whizbang.Core/Lenses/ScopeDefinition.cs, src/Whizbang.Core/Lenses/ScopedLensFactory.cs, src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableLensQuery.cs
+  src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-coordinator.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Lifecycle/ILifecycleCoordinator.cs, src/Whizbang.Core/Lifecycle/ILifecycleTracking.cs, src/Whizbang.Core/Lifecycle/LifecycleCoordinator.cs, src/Whizbang.Core/Lifecycle/LifecycleTrackingState.cs
+  src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Lifecycle/ILifecycleCoordinator.cs, src/Whizbang.Core/Lifecycle/ILifecycleTracking.cs, src/Whizbang.Core/Messaging/IReceptorRegistry.cs, src/Whizbang.Core/Messaging/LifecycleStage.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
+  src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Commands/System/SystemCommands.cs
+  src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md
+    Last maintained: 1fe307a4
+    Changed files: src/Whizbang.Core/Messaging/ReceptorInvoker.cs, src/Whizbang.Core/Observability/CascadeContext.cs, src/Whizbang.Core/Security/SecurityContextHelper.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  src/assets/docs/v1.0.0/fundamentals/messages/delivery-receipts.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Registry/StreamIdExtractorRegistry.cs
+  src/assets/docs/v1.0.0/fundamentals/messages/envelope-registry.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Observability/EnvelopeRegistry.cs
+  src/assets/docs/v1.0.0/fundamentals/messages/envelope-serialization.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/EnvelopeSerializer.cs
+  src/assets/docs/v1.0.0/fundamentals/messages/message-context-extraction.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Observability/EnvelopeContextExtractor.cs
+  src/assets/docs/v1.0.0/fundamentals/messages/message-context.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/IMessageContext.cs, src/Whizbang.Core/Observability/MessageEnvelope.cs, src/Whizbang.Core/ValueObjects/CausationId.cs, src/Whizbang.Core/ValueObjects/CorrelationId.cs
+  src/assets/docs/v1.0.0/fundamentals/perspectives/association-info.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveAssociationGenerator.cs, src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs, src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs
+  src/assets/docs/v1.0.0/fundamentals/perspectives/association-metadata.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
+  src/assets/docs/v1.0.0/fundamentals/perspectives/event-completion.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Dispatch/DispatchOptions.cs, src/Whizbang.Core/Perspectives/Sync/ISyncEventTracker.cs, src/Whizbang.Core/Perspectives/Sync/SyncEventTracker.cs
+  src/assets/docs/v1.0.0/fundamentals/perspectives/multi-stream.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs
+  src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Perspectives/Sync/ISyncEventTracker.cs, src/Whizbang.Core/Perspectives/Sync/PerspectiveSyncAwaiter.cs, src/Whizbang.Core/Perspectives/Sync/SyncEventTracker.cs
+  src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Perspectives/ApplyResult.cs, src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs, src/Whizbang.Core/Perspectives/ModelAction.cs
+  src/assets/docs/v1.0.0/fundamentals/perspectives/physical-fields.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs, src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs
+  src/assets/docs/v1.0.0/fundamentals/perspectives/polymorphic-types.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs, src/Whizbang.Data.EFCore.Postgres.Generators/PerspectiveModelPolymorphicAnalyzer.cs
+  src/assets/docs/v1.0.0/fundamentals/perspectives/rebuild.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Commands/System/SystemCommands.cs, src/Whizbang.Core/Events/System/SystemEvents.cs, src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs, src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs
+  src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs, src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs
+  src/assets/docs/v1.0.0/fundamentals/perspectives/temporal.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Perspectives/ITemporalPerspectiveFor.cs
+  src/assets/docs/v1.0.0/fundamentals/perspectives/typed-associations.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs
+  src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/FireAtAttribute.cs, src/Whizbang.Core/Messaging/ILifecycleContext.cs, src/Whizbang.Core/Messaging/IReceptorRegistry.cs, src/Whizbang.Core/Messaging/ReceptorInvoker.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  src/assets/docs/v1.0.0/fundamentals/security/audit-logging.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Attributes/AuditEventAttribute.cs, src/Whizbang.Core/SystemEvents/CommandAudited.cs, src/Whizbang.Core/SystemEvents/EventAudited.cs
+  src/assets/docs/v1.0.0/fundamentals/security/message-security.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs, src/Whizbang.Core/Security/DefaultMessageSecurityContextProvider.cs, src/Whizbang.Core/Security/Extractors/MessageHopSecurityExtractor.cs, src/Whizbang.Core/Security/IMessageContextAccessor.cs, src/Whizbang.Core/Security/IMessageSecurityContextProvider.cs, src/Whizbang.Core/Security/ISecurityContextExtractor.cs, src/Whizbang.Core/Security/MessageSecurityOptions.cs, src/Whizbang.Core/Security/MessageSecurityServiceCollectionExtensions.cs, src/Whizbang.Core/Security/SecurityContextHelper.cs
+  src/assets/docs/v1.0.0/fundamentals/security/multi-tenancy.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Security/Attributes/ScopedAttribute.cs
+  src/assets/docs/v1.0.0/fundamentals/security/scope-propagation.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Security/ScopeDelta.cs
+  src/assets/docs/v1.0.0/fundamentals/security/scoping.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Lenses/PerspectiveScope.cs, src/Whizbang.Core/Lenses/ScopeFilter.cs, src/Whizbang.Core/Lenses/ScopeFilterBuilder.cs
+  src/assets/docs/v1.0.0/fundamentals/security/security-context-propagation.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/SecurityContextEventStoreDecorator.cs, src/Whizbang.Core/Security/IMessageSecurityContextProvider.cs, src/Whizbang.Core/Security/SecurityContextHelper.cs, src/Whizbang.Core/Transports/ServiceBusTransportMetadata.cs
+  src/assets/docs/v1.0.0/fundamentals/security/security.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Security/Attributes/ScopedAttribute.cs
+  src/assets/docs/v1.0.0/getting-started/installation.md
+    Last maintained: 01f07906
+    Changed files: Directory.Build.props, Directory.Packages.props
+  src/assets/docs/v1.0.0/getting-started/introduction.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/IDispatcher.cs
+  src/assets/docs/v1.0.0/getting-started/project-structure.md
+    Last maintained: 01f07906
+    Changed files: samples/ECommerce/Directory.Build.props, samples/ECommerce/Directory.Build.targets, samples/ECommerce/ECommerce.BFF.API/Audit/AuditTagHook.cs, samples/ECommerce/ECommerce.BFF.API/BffDbContext.cs, samples/ECommerce/ECommerce.BFF.API/ECommerce.BFF.API.csproj, samples/ECommerce/ECommerce.BFF.API/GraphQL/SeedMutations.cs, samples/ECommerce/ECommerce.BFF.API/Program.cs, samples/ECommerce/ECommerce.Contracts.Tests/Commands/AdjustInventoryCommandTests.cs, samples/ECommerce/ECommerce.Contracts.Tests/Commands/DeleteProductCommandTests.cs, samples/ECommerce/ECommerce.Contracts.Tests/Commands/RestockInventoryCommandTests.cs, samples/ECommerce/ECommerce.Contracts.Tests/Commands/UpdateProductCommandTests.cs, samples/ECommerce/ECommerce.Contracts.Tests/Events/InventoryAdjustedEventTests.cs, samples/ECommerce/ECommerce.Contracts.Tests/Events/InventoryRestockedEventTests.cs, samples/ECommerce/ECommerce.Contracts.Tests/Events/ProductCreatedEventTests.cs, samples/ECommerce/ECommerce.Contracts.Tests/Events/ProductDeletedEventTests.cs, samples/ECommerce/ECommerce.Contracts.Tests/Events/ProductUpdatedEventTests.cs, samples/ECommerce/ECommerce.Contracts/Class1.cs, samples/ECommerce/ECommerce.InventoryWorker/InventoryDbContext.cs, samples/ECommerce/ECommerce.InventoryWorker/Program.cs, samples/ECommerce/ECommerce.InventoryWorker/Receptors/RestockInventoryReceptor.cs, samples/ECommerce/ECommerce.InventoryWorker/Services/ProductSeedService.cs, samples/ECommerce/ECommerce.NotificationWorker/NotificationDbContext.cs, samples/ECommerce/ECommerce.NotificationWorker/Program.cs, samples/ECommerce/ECommerce.OrderService.API/ECommerce.OrderService.API.csproj, samples/ECommerce/ECommerce.OrderService.API/OrderDbContext.cs, samples/ECommerce/ECommerce.OrderService.API/Program.cs, samples/ECommerce/ECommerce.PaymentWorker/PaymentDbContext.cs, samples/ECommerce/ECommerce.PaymentWorker/Program.cs, samples/ECommerce/ECommerce.ShippingWorker/Program.cs, samples/ECommerce/ECommerce.ShippingWorker/ShippingDbContext.cs, samples/ECommerce/ECommerce.UI/package.json, samples/ECommerce/ECommerce.UI/pnpm-lock.yaml, samples/ECommerce/README.md, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/BffWorkCoordinatorIntegrationTests.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Fixtures/AspireIntegrationFixture.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Fixtures/DirectServiceBusEmulatorFixture.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Fixtures/IntegrationTestFixture.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Fixtures/LifecycleStageTestExtensions.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Fixtures/ServiceBusBatchFixture.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Fixtures/ServiceBusBatchFixtureSource.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Fixtures/ServiceBusIntegrationFixture.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Fixtures/SharedIntegrationFixture.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Infrastructure/ServiceBusIntegrationFixtureSanityTests.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/BatchReceiveLifecycleTests.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/DistributeLifecycleTests.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/DistributeLifecycleTests.cs.bak3, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/DistributeLifecycleTests.cs.bak4, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/ImmediateAsyncLifecycleTests.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/ImmediateDetachedLifecycleTests.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/InboxLifecycleTests.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/InboxLifecycleTests.cs.bak3, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/InboxLifecycleTests.cs.bak4, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/OutboxLifecycleTests.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/OutboxLifecycleTests.cs.bak3, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/OutboxLifecycleTests.cs.bak4, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/PerspectiveLifecycleTests.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/PerspectiveLifecycleTests.cs.bak3, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/PerspectiveLifecycleTests.cs.bak4, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Lifecycle/PostPerspectiveInlineCommitTest.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/MessageSerializationTests.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Workflows/CreateProductWorkflowTests.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Workflows/RestockInventoryWorkflowTests.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Workflows/SeedProductsWorkflowTests.cs, samples/ECommerce/tests/ECommerce.AzureServiceBus.Integration.Tests/Workflows/UpdateProductWorkflowTests.cs, samples/ECommerce/tests/ECommerce.BFF.API.Tests/GraphQL/SeedMutationsTests.cs, samples/ECommerce/tests/ECommerce.InMemory.Integration.Tests/Fixtures/InMemoryIntegrationFixture.cs, samples/ECommerce/tests/ECommerce.InMemory.Integration.Tests/Workflows/CreateProductWorkflowTests.cs, samples/ECommerce/tests/ECommerce.InMemory.Integration.Tests/Workflows/LocalInvokeCascadeSyncTests.cs, samples/ECommerce/tests/ECommerce.InMemory.Integration.Tests/Workflows/TagHookLifecycleTests.cs, samples/ECommerce/tests/ECommerce.Integration.TestUtilities/Fixtures/GenericLifecycleCompletionReceptor.cs, samples/ECommerce/tests/ECommerce.Integration.TestUtilities/Fixtures/LifecycleStageFiringObserver.cs, samples/ECommerce/tests/ECommerce.Integration.TestUtilities/Fixtures/TestWorkerTimingOverrides.cs, samples/ECommerce/tests/ECommerce.InventoryWorker.Tests/Receptors/CreateProductReceptorTests.cs, samples/ECommerce/tests/ECommerce.Lifecycle.Integration.Tests/Domain/MockBatchContracts.cs, samples/ECommerce/tests/ECommerce.Lifecycle.Integration.Tests/ECommerce.Lifecycle.Integration.Tests.csproj, samples/ECommerce/tests/ECommerce.Lifecycle.Integration.Tests/Fixtures/LifecycleIntegrationFixture.cs, samples/ECommerce/tests/ECommerce.Lifecycle.Integration.Tests/PostAllPerspectivesTests.cs, samples/ECommerce/tests/ECommerce.NotificationWorker.Tests/SendNotificationReceptorTests.cs, samples/ECommerce/tests/ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs, samples/ECommerce/tests/ECommerce.PaymentWorker.Tests/ProcessPaymentReceptorTests.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/ECommerce.RabbitMQ.Integration.Tests.csproj, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Fixtures/LifecycleStageTestExtensions.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Fixtures/RabbitMqIntegrationFixture.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Fixtures/SharedRabbitMqFixtureSource.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Infrastructure/RabbitMqFixtureSanityTests.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Lifecycle/BatchReceiveLifecycleTests.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Lifecycle/DistributeLifecycleTests.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Lifecycle/ImmediateAsyncLifecycleTests.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Lifecycle/ImmediateDetachedLifecycleTests.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Lifecycle/InboxLifecycleTests.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Lifecycle/OutboxLifecycleTests.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Lifecycle/PerspectiveLifecycleTests.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Workflows/CreateProductWorkflowTests.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Workflows/RestockInventoryWorkflowTests.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Workflows/UpdateProductWorkflowTests.cs, samples/ECommerce/tests/ECommerce.ShippingWorker.Tests/CreateShipmentReceptorTests.cs
+  src/assets/docs/v1.0.0/learn/tutorial/deployment.md
+    Last maintained: 01f07906
+    Changed files: samples/ECommerce/ECommerce.InventoryWorker/Program.cs, samples/ECommerce/ECommerce.OrderService.API/Program.cs
+  src/assets/docs/v1.0.0/messaging/failure-handling.md
+    Last maintained: 01f07906
+    Changed files: tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs
+  src/assets/docs/v1.0.0/messaging/idempotency-patterns.md
+    Last maintained: 01f07906
+    Changed files: tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs
+  src/assets/docs/v1.0.0/messaging/message-envelopes.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Observability/MessageEnvelope.cs, src/Whizbang.Core/Observability/MessageHop.cs, src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
+  src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md
+    Last maintained: 01f07906
+    Changed files: tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs
+  src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs, src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs, src/Whizbang.Transports.AzureServiceBus/IServiceBusAdminClient.cs, src/Whizbang.Transports.AzureServiceBus/ServiceBusAdminClientWrapper.cs, src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs
+  src/assets/docs/v1.0.0/messaging/transports/in-memory.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Transports/InProcessTransport.cs, tests/Whizbang.Transports.Tests/InProcessTransportTests.cs
+  src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Transports.RabbitMQ/RabbitMQChannelPool.cs, src/Whizbang.Transports.RabbitMQ/RabbitMQConnectionRetry.cs, src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs, src/Whizbang.Transports.RabbitMQ/RabbitMQTransport.cs, src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs
+  src/assets/docs/v1.0.0/messaging/transports/transport-consumer.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Resilience/SubscriptionRetryHelper.cs, src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs, src/Whizbang.Core/Workers/TransportConsumerWorker.cs
+  src/assets/docs/v1.0.0/messaging/transports/transports.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Transports/BulkPublish.cs, src/Whizbang.Core/Transports/ITransport.cs
+  src/assets/docs/v1.0.0/messaging/work-coordination.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/IWorkCoordinator.cs, src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs, src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs
+  src/assets/docs/v1.0.0/messaging/work-coordinator.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/IWorkCoordinator.cs, src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs, src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
+  src/assets/docs/v1.0.0/migration-guide/01-concept-mapping.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/IDispatcher.cs, src/Whizbang.Core/Messaging/IEventStore.cs, src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
+  src/assets/docs/v1.0.0/migration-guide/02-project-setup.md
+    Last maintained: 01f07906
+    Changed files: samples/ECommerce/ECommerce.OrderService.API/Program.cs
+  src/assets/docs/v1.0.0/migration-guide/03-handler-migration.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs
+  src/assets/docs/v1.0.0/migration-guide/04-projection-migration.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Perspectives/IPerspectiveFor.cs, src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
+  src/assets/docs/v1.0.0/migration-guide/05-event-store-migration.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/IEventStore.cs, src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
+  src/assets/docs/v1.0.0/migration-guide/06-transport-configuration.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs, src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs
+  src/assets/docs/v1.0.0/migration-guide/07-outbox-migration.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  src/assets/docs/v1.0.0/migration-guide/appendix-checklist.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/IDispatcher.cs, src/Whizbang.Core/ServiceCollectionExtensions.cs
+  src/assets/docs/v1.0.0/operations/configuration/whizbang-options.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs, src/Whizbang.Core/ServiceCollectionExtensions.cs, src/Whizbang.Core/Tags/TagOptions.cs
+  src/assets/docs/v1.0.0/operations/deployment/deployment-strategies.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/ServiceCollectionExtensions.cs, src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  src/assets/docs/v1.0.0/operations/deployment/monitoring.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Observability/DispatcherMetrics.cs
+  src/assets/docs/v1.0.0/operations/deployment/native-aot.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Serialization/JsonContextRegistry.cs, src/Whizbang.Core/Serialization/JsonTypeInfoResolverExtensions.cs, src/Whizbang.Generators/MessageJsonContextGenerator.cs
+  src/assets/docs/v1.0.0/operations/deployment/performance-tuning.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Core/Workers/ProcessedEventCache.cs
+  src/assets/docs/v1.0.0/operations/deployment/scaling.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Core/Workers/TransportConsumerWorker.cs, src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs
+  src/assets/docs/v1.0.0/operations/deployment/security.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Security/ISecurityContextExtractor.cs, src/Whizbang.Core/Security/MessageSecurityOptions.cs, src/Whizbang.Core/Security/MessageSecurityServiceCollectionExtensions.cs
+  src/assets/docs/v1.0.0/operations/deployment/troubleshooting.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Diagnostics/DebuggerAwareClock.cs, src/Whizbang.Core/Generated/WhizbangDiagnostics.cs, src/Whizbang.Generators/DiagnosticDescriptors.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/serializable-property-analyzer.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/DiagnosticDescriptors.cs, src/Whizbang.Generators/SerializablePropertyAnalyzer.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz030.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/DiagnosticDescriptors.cs, src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz031.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/DiagnosticDescriptors.cs, src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz058.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/ValueObjects/TrackedGuid.cs, src/Whizbang.Generators/DiagnosticDescriptors.cs, src/Whizbang.Generators/GuidInterceptorGenerator.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz059.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/DiagnosticDescriptors.cs, src/Whizbang.Generators/GuidInterceptorGenerator.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz062.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/DiagnosticDescriptors.cs, src/Whizbang.Generators/SerializablePropertyAnalyzer.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz070.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Data.EFCore.Postgres.Generators/VectorFieldPackageReferenceAnalyzer.cs, src/Whizbang.Generators/DiagnosticDescriptors.cs, src/Whizbang.Generators/VectorDependencyAnalyzer.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz071.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs, src/Whizbang.Data.EFCore.Postgres.Generators/VectorFieldPackageReferenceAnalyzer.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz080.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/DiagnosticDescriptors.cs, src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz090.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/Analyzers/MessageTagParameterAnalyzer.cs, src/Whizbang.Generators/DiagnosticDescriptors.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz120.md
+    Last maintained: 35b3f2a5
+    Changed files: src/Whizbang.Generators/Analyzers/PinnedTypeRenameAnalyzer.cs, src/Whizbang.Generators/Ledger/PinnedTypeLedger.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz121.md
+    Last maintained: 35b3f2a5
+    Changed files: src/Whizbang.Generators/Analyzers/PinnedTypeRenameAnalyzer.cs, src/Whizbang.Generators/Ledger/PinnedTypeLedger.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz300.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/Analyzers/PerspectiveModelConsistencyAnalyzer.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz400.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs, src/Whizbang.Data.EFCore.Postgres.Generators/LensQueryTypeArgumentAnalyzer.cs, src/Whizbang.Data.EFCore.Postgres/EFCorePostgresLensQuery.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz802.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/DiagnosticDescriptors.cs, src/Whizbang.Generators/PerspectiveSchemaGenerator.cs
+  src/assets/docs/v1.0.0/operations/diagnostics/whiz807.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Generators/DiagnosticDescriptors.cs, src/Whizbang.Generators/PerspectiveSchemaGenerator.cs
+  src/assets/docs/v1.0.0/operations/infrastructure/database-limits.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Data.EFCore.Postgres.Generators/Limits/PostgresLimits.cs, src/Whizbang.Generators.Shared/Limits/IDbProviderLimits.cs
+  src/assets/docs/v1.0.0/operations/infrastructure/health-checks.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Transports/ITransportReadinessCheck.cs
+  src/assets/docs/v1.0.0/operations/infrastructure/migrations.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs, src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs, src/Whizbang.Data.Postgres/Migrations/000_MigrationTracking.sql, src/Whizbang.Data.Postgres/Migrations/032_PerformMaintenance.sql, src/Whizbang.Data.Postgres/Migrations/063_NormalizeClrTypeNamesV2.sql
+  src/assets/docs/v1.0.0/operations/infrastructure/policies.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Policies/PolicyEngine.cs
+  src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Policies/PolicyEngine.cs
+  src/assets/docs/v1.0.0/operations/observability/diagnostics.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Commands/System/SystemCommands.cs
+  src/assets/docs/v1.0.0/operations/observability/logging-categories.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Dispatcher.cs, src/Whizbang.Core/Tags/MessageTagProcessor.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Core/Workers/TransportConsumerWorker.cs, src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs, src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
+  src/assets/docs/v1.0.0/operations/observability/metrics.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Observability/DispatcherMetrics.cs, src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs, src/Whizbang.Core/Observability/LifecycleMetrics.cs, src/Whizbang.Core/Observability/PerspectiveMetrics.cs, src/Whizbang.Core/Observability/TransportMetrics.cs, src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs
+  src/assets/docs/v1.0.0/operations/observability/tracing.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Tracing/TraceComponents.cs, src/Whizbang.Core/Tracing/Tracer.cs
+  src/assets/docs/v1.0.0/operations/testing/testing-receptors.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Dispatcher.cs, src/Whizbang.Core/Messaging/ReceptorInvoker.cs, src/Whizbang.Testing/Lifecycle/LifecycleStageAwaiter.cs, src/Whizbang.Testing/Lifecycle/PerspectiveCompletionWaiter.cs
+  src/assets/docs/v1.0.0/operations/workers/database-readiness.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/IDatabaseReadinessCheck.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Data.Postgres/PostgresDatabaseReadinessCheck.cs
+  src/assets/docs/v1.0.0/operations/workers/execution-lifecycle.md
+    Last maintained: 01f07906
+    Changed files: src/Whizbang.Core/Messaging/IDatabaseReadinessCheck.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs
+
+📋 NO lastMaintainedCommit (36 pages):
+  Use --all to list them
+
+Summary: 139 stale, 76 current, 36 no commit tracked
