@@ -89,6 +89,7 @@ Plan lives at `~/.claude/plans/we-need-to-reconcile-swift-newell.md` (session-lo
 | 6 | Example validation (drift check + compile gate) | drift check DONE (verify-sample-drift.mjs, CI warning mode, seed on dispatcher.md); library compile-gate project deferred until whizbang#347 merges |
 | 7 | ASCII → mermaid (~86 files) | DONE — ~121 diagrams converted across 78 files (console output + directory trees deliberately left as text). Fixed two pre-existing renderer bugs found during verification: mermaid extraction skipped every other block (exec-while-mutating), and enhanced-metadata blocks in non-csharp languages caused fence mispairing that silently swallowed prose sections (visible on production) |
 | 8 | MCP server npm publish (@whizbang/docs-mcp-server; verify scope, fallback @whizbang-lib) | pending |
+| 2b | Per-page verification sweep (all 252 v1.0.0 pages vs library 1b31f58d) | DONE — every page stamped verifiedAgainstCommit; massive drift fixed (fabricated APIs, obsolete architecture, wrong defaults); upstream library findings in audit-reports/REBASELINE-2026-07-16.md |
 | 9 | Page split/merge per taxonomy + summary pages | pending |
 
 Decisions locked: Diátaxis taxonomy; push-based CI dispatch for test status; keep `v1.0.0/` folder until GA (UI label "pre-release"); hybrid bundle-first MCP packaging.
