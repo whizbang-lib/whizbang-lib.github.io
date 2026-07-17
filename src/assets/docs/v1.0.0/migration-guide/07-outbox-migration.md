@@ -41,10 +41,10 @@ This guarantees **at-least-once delivery** even if the message broker is tempora
 | Aspect | Wolverine | Whizbang |
 |--------|-----------|----------|
 | Configuration | `UseDurableOutbox()` | Built-in, always enabled |
-| Outbox table | `wolverine_outgoing_envelopes` | `whizbang.outbox` |
-| Inbox table | `wolverine_incoming_envelopes` | `whizbang.inbox` |
-| Background worker | Wolverine daemon | `WorkCoordinatorPublisherWorker` |
-| Retry policy | Configurable | Configurable via `IWorkCoordinatorStrategy` |
+| Outbox table | `wolverine_outgoing_envelopes` | `wh_outbox` |
+| Inbox table | `wolverine_incoming_envelopes` | `wh_inbox` |
+| Background workers | Wolverine daemon | Registered automatically by `AddWhizbang()` (`OutboxPublishWorker`, `InboxDispatchWorker`, drain workers, etc.) |
+| Batching/flush policy | Configurable | Configurable via `WorkCoordinatorOptions` (Immediate, Scoped, Interval, Batch strategies) |
 
 ## Wolverine Outbox Configuration
 
@@ -67,23 +67,22 @@ builder.Host.UseWolverine(opts => {
 
 ## Whizbang Outbox Configuration
 
-Whizbang's outbox is **built-in and always enabled**. Configure the work coordinator for your needs:
+Whizbang's outbox is **built-in and always enabled**. `AddWhizbang()` registers all background workers (outbox publishing, inbox dispatch, drain workers, dead-letter recovery) automatically — you never add hosted services yourself. Tune behavior through `WorkCoordinatorOptions`:
 
 ```csharp{title="Whizbang Outbox Configuration" description="Whizbang's outbox is built-in and always enabled." category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Outbox", "Configuration"]}
-builder.Services.AddWhizbang(options => {
-    options.UsePostgres(connectionString);
+builder.Services
+    .AddWhizbang()
+    .WithEFCore<AppDbContext>()
+    .WithDriver.Postgres;
+
+// Optional: tune the work coordinator (defaults shown)
+builder.Services.Configure<WorkCoordinatorOptions>(options => {
+    options.Strategy = WorkCoordinatorStrategy.Scoped;  // Immediate | Scoped | Interval | Batch
+    options.IntervalMilliseconds = 100;                 // used when Strategy = Interval
+    options.BatchSize = 100;                            // used when Strategy = Batch
+    options.PartitionCount = 10_000;
+    options.DebugMode = false;                          // true keeps completed rows for debugging
 });
-
-// Configure work coordinator strategy
-builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
-    new IntervalWorkCoordinatorStrategy(
-        pollInterval: TimeSpan.FromMilliseconds(100),
-        batchSize: 100,
-        maxRetries: 5,
-        retryDelay: TimeSpan.FromSeconds(1)));
-
-// Add the background worker
-builder.Services.AddHostedService<WorkCoordinatorPublisherWorker>();
 ```
 
 ## Outbox Flow Comparison
@@ -114,29 +113,26 @@ public async Task<OrderCreated> Handle(
 ### Whizbang Flow
 
 ```csharp{title="Whizbang Flow" description="Whizbang Flow" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Flow"]}
-// Whizbang: Outbox is implicit via dispatcher
+// Whizbang: Outbox is implicit - events returned from a receptor are
+// automatically cascaded to the event store and outbox by the dispatcher.
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-    private readonly IEventStore _eventStore;
-    private readonly IDispatcher _dispatcher;
-
-    public async ValueTask<OrderCreated> HandleAsync(
+    public ValueTask<OrderCreated> HandleAsync(
         CreateOrder message,
         CancellationToken ct = default) {
 
-        var @event = new OrderCreated(message.OrderId);
-
-        // Append event to event store
-        var envelope = EnvelopeFactory.Create(@event);
-        await _eventStore.AppendAsync(message.OrderId, envelope, ct);
-
-        // Publish goes through outbox automatically
-        await _dispatcher.PublishAsync(
-            new NotifyCustomer(message.CustomerEmail),
-            ct);
-
-        return @event;
+        // Returning the event is all that's needed:
+        // the work coordinator persists it (wh_event_store + wh_outbox)
+        // atomically, and the outbox workers publish it to the transport.
+        return ValueTask.FromResult(new OrderCreated(message.OrderId));
     }
 }
+
+// To publish an additional side-effect message explicitly, use the dispatcher -
+// it also goes through the outbox:
+await _dispatcher.PublishAsync(new NotifyCustomer(customerEmail));
+
+// Routing control is available via Route.* when you need it:
+// Route.Outbox(@event), Route.Both(@event), Route.EventStoreOnly(@event), ...
 ```
 
 ## Inbox Pattern (Idempotency)
@@ -154,15 +150,14 @@ opts.Policies.UseDurableInbox();
 ### Whizbang Inbox
 
 ```csharp{title="Whizbang Inbox" description="Whizbang Inbox" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Inbox"]}
-// Whizbang: Built-in inbox deduplication
-builder.Services.AddWhizbang(options => {
-    options.EnableInboxDeduplication(
-        retentionPeriod: TimeSpan.FromDays(7),
-        cleanupInterval: TimeSpan.FromHours(1));
-});
+// Whizbang: Inbox deduplication is built-in - no configuration required.
+// Messages received from the transport are recorded in wh_inbox and
+// duplicates (same MessageId) are rejected before processing.
 
-// Messages with same MessageId are automatically deduplicated
-// via whizbang.inbox table
+// Completed rows are deleted on completion; set DebugMode to keep them:
+builder.Services.Configure<WorkCoordinatorOptions>(options => {
+    options.DebugMode = true;  // keeps completed wh_inbox/wh_outbox rows for debugging
+});
 ```
 
 ## Work Coordinator Strategies
