@@ -30,7 +30,7 @@ lastMaintainedCommit: '01f07906'
 Implement **full event sourcing with CQRS** using Whizbang - event store, aggregate reconstruction, snapshots, temporal queries, and read model projections.
 
 :::updated
-Whizbang **ships an event store**: `IEventStore` (append via `MessageEnvelope`, `wh_events` table in Postgres), `IEventStoreQuery` for stream reads, and `IPerspectiveSnapshotStore` for snapshots — all registered by `AddWhizbang().WithEFCore<TDbContext>().WithDriver.Postgres`. In a Whizbang application you normally publish events with `IDispatcher.PublishAsync` and let perspectives (`IPerspectiveFor<TModel, TEvents...>`) materialize read models. The hand-rolled store and repository below are a **teaching walkthrough of the mechanics** — useful for understanding what the framework does under the hood, not something you need to build yourself.
+Whizbang **ships an event store**: `IEventStore` (append via `MessageEnvelope`, `wh_event_store` table in Postgres), `IEventStoreQuery` for stream reads, and `IPerspectiveSnapshotStore` for snapshots — all registered by `AddWhizbang().WithEFCore<TDbContext>().WithDriver.Postgres`. In a Whizbang application you normally publish events with `IDispatcher.PublishAsync` and let perspectives (`IPerspectiveFor<TModel, TEvents...>`) materialize read models. The hand-rolled store and repository below are a **teaching walkthrough of the mechanics** — useful for understanding what the framework does under the hood, not something you need to build yourself.
 :::
 
 ---

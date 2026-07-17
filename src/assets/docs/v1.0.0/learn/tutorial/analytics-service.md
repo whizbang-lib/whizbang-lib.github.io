@@ -676,9 +676,9 @@ curl "http://localhost:5002/api/analytics/products/top?limit=5"
 
 ## Key Concepts
 
-### Time-Series Perspectives
+### Time-Series Projections
 
-```csharp{title="Time-Series Perspectives" description="Time-Series Perspectives" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Time-Series", "Perspectives"]}
+```csharp{title="Time-Series Projections" description="Time-Series Projections" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Time-Series", "Projections"]}
 // Truncate timestamp to hour for hourly aggregation
 var hour = new DateTime(
   @event.CreatedAt.Year,
@@ -744,25 +744,29 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY monthly_sales_summary;
 
 ## Testing
 
-### Unit Test - Daily Sales Perspective
+### Unit Test - Daily Sales Receptor
 
-```csharp{title="Unit Test - Daily Sales Perspective" description="Unit Test - Daily Sales Perspective" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Daily Sales Receptor" description="Unit Test - Daily Sales Receptor" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
-public async Task DailySalesPerspective_OrderCreated_UpdatesDailySalesAsync() {
+public async Task DailySalesReceptor_OrderCreated_UpdatesDailySalesAsync() {
   // Arrange
   var db = new MockNpgsqlConnection();
-  var perspective = new DailySalesAnalyticsPerspective(db, mockLogger);
-  var @event = new OrderCreated(
-    OrderId: "order-123",
-    CustomerId: "cust-456",
-    Items: [new OrderItem("prod-789", 2, 19.99m, 39.98m)],
-    TotalAmount: 39.98m,
-    CreatedAt: new DateTime(2024, 12, 12, 10, 30, 0)
-    // ... other fields
-  );
+  var receptor = new DailySalesAnalyticsReceptor(db, mockLogger);
+  var @event = new OrderCreatedEvent {
+    OrderId = OrderId.New(),
+    CustomerId = CustomerId.New(),
+    LineItems = [new OrderLineItem {
+      ProductId = ProductId.New(),
+      ProductName = "Widget",
+      Quantity = 2,
+      UnitPrice = 19.99m
+    }],
+    TotalAmount = 39.98m,
+    CreatedAt = new DateTime(2024, 12, 12, 10, 30, 0)
+  };
 
   // Act
-  await perspective.HandleAsync(@event);
+  await receptor.HandleAsync(@event);
 
   // Assert
   var sales = db.GetDailySales(new DateTime(2024, 12, 12));
@@ -785,9 +789,9 @@ Continue to **[Testing Strategy](testing-strategy.md)** to:
 
 ## Key Takeaways
 
-✅ **Time-Series Perspectives** - Real-time aggregation with hour/day truncation
+✅ **Time-Series Projection Receptors** - Real-time aggregation with hour/day truncation
 ✅ **Partitioned Tables** - Performance optimization for large datasets
-✅ **Event Aggregation** - Single perspective handles all analytics
+✅ **Event Aggregation** - Receptors project domain events into analytics tables
 ✅ **Dashboard APIs** - REST endpoints for frontend dashboards
 ✅ **Materialized Views** - Pre-computed complex aggregations
 

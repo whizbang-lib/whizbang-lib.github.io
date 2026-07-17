@@ -14,6 +14,8 @@ codeReferences:
   - src/Whizbang.Core/Lenses/TenantConstants.cs
   - src/Whizbang.Core/Lenses/ILensQuery.cs
   - src/Whizbang.Core/IStreamIdExtractor.cs
+  - src/Whizbang.Core/IMessageContext.cs
+  - src/Whizbang.Core/Dispatch/SystemDispatcherBuilder.cs
   - samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Endpoints/SuperAdmin/GetOrdersByTenantEndpoint.cs

@@ -1,6 +1,8 @@
 ---
 title: Lifecycle Synchronization
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Testing
 order: 3
@@ -12,10 +14,18 @@ tags: >-
   PostPerspectiveInline
 codeReferences:
   - >-
-    samples/ECommerce/tests/ECommerce.Integration.Tests/Fixtures/PerspectiveCompletionReceptor.cs
+    samples/ECommerce/tests/ECommerce.Integration.TestUtilities/Fixtures/PerspectiveCompletionReceptor.cs
   - >-
-    samples/ECommerce/tests/ECommerce.Integration.Tests/Fixtures/LifecycleReceptorTestExtensions.cs
-  - src/Whizbang.Core/Messaging/ILifecycleReceptorRegistry.cs
+    samples/ECommerce/tests/ECommerce.Integration.TestUtilities/Fixtures/LifecycleReceptorTestExtensions.cs
+  - src/Whizbang.Core/Messaging/IReceptorRegistry.cs
+  - src/Whizbang.Core/Messaging/LifecycleStage.cs
+  - src/Whizbang.Core/Messaging/ILifecycleContext.cs
+  - src/Whizbang.Testing/Lifecycle/LifecycleStageAwaiter.cs
+  - src/Whizbang.Testing/Lifecycle/PerspectiveCompletionWaiter.cs
+testReferences:
+  - tests/Whizbang.Testing.Tests/Lifecycle/LifecycleStageAwaiterTests.cs
+  - tests/Whizbang.Testing.Tests/Lifecycle/PerspectiveCompletionWaiterTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ReceptorRegistryRuntimeRegistrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -81,7 +91,7 @@ public async Task CreateProduct_UpdatesProductCatalog_FailsRandomlyAsync() {
 
   // Assert
   var product = await _productLens.GetByIdAsync(command.ProductId);
-  Assert.That(product).IsNotNull();  // ❌ FAILS randomly!
+  await Assert.That(product).IsNotNull();  // ❌ FAILS randomly!
 }
 ```
 
@@ -129,6 +139,40 @@ sequenceDiagram
 
 **Key Guarantee**: When `PostPerspectiveInline` fires, **database writes are committed** - safe to query!
 
+`PostPerspectiveInline` fires **per perspective**. When an event feeds multiple perspectives and you need *all* of them committed, use the `PostAllPerspectivesInline` / `PostAllPerspectivesDetached` stages instead - the lifecycle coordinator fires them exactly once per event after the last perspective signals completion (WhenAll pattern). The WhenAll gate controls *when* these stages fire, never *whether* they fire.
+
+---
+
+## First-Class Awaiters: Whizbang.Testing
+
+Before hand-rolling a receptor, check the **`Whizbang.Testing`** package - it ships ready-made awaiters that encapsulate the pattern below (including the deadlock-safe `TaskCompletionSource` setup and automatic registration/cleanup):
+
+```csharp{title="LifecycleAwaiter Helper" description="First-class awaiter from the Whizbang.Testing package" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "LifecycleAwaiter", "Whizbang.Testing"]}
+using Whizbang.Testing.Lifecycle;
+
+[Test]
+public async Task CreateProduct_UpdatesProductCatalog_WithAwaiterAsync() {
+  // Register BEFORE dispatching so a fast completion can't be missed
+  using var awaiter = LifecycleAwaiter.ForPerspectiveCompletion<ProductCreatedEvent>(
+    _host,
+    perspectiveName: "ProductCatalogPerspective");
+
+  // Act
+  await _dispatcher.SendAsync(new CreateProductCommand("Widget", 9.99m));
+
+  // Deterministic completion signal - no polling, no Task.Delay
+  var evt = await awaiter.WaitAsync(timeoutMilliseconds: 15000);
+
+  // Assert - perspective data is guaranteed committed
+  var product = await _productLens.GetByIdAsync(evt.ProductId);
+  await Assert.That(product).IsNotNull();
+}
+```
+
+`LifecycleAwaiter.For<TMessage>(host, stage, ...)` targets any lifecycle stage; convenience factories exist for the common ones (`ForPerspectiveCompletion`, `ForPrePerspective`, `ForPostOutbox`, `ForPostInbox`, `ForPreDistribute`, `ForPostDistribute`, `ForImmediateDetached`). For multi-host scenarios where one event fans out to several perspectives on several hosts, use `PerspectiveCompletionWaiter<TEvent>` from the same package.
+
+The rest of this page shows the underlying pattern so you can build custom synchronization when the built-in awaiters don't fit.
+
 ---
 
 ## Basic Test Pattern
@@ -158,9 +202,9 @@ public sealed class PerspectiveCompletionReceptor<TEvent> : IReceptor<TEvent>
   }
 
   public ValueTask HandleAsync(TEvent message, CancellationToken ct) {
-    // Filter by perspective if specified
+    // Filter by perspective if specified (matches the perspective CLASS name)
     if (_context is not null && _perspectiveName is not null) {
-      if (_context.PerspectiveName != _perspectiveName) {
+      if (_context.PerspectiveType?.Name != _perspectiveName) {
         return ValueTask.CompletedTask;  // Not our perspective
       }
     }
@@ -178,13 +222,14 @@ public sealed class PerspectiveCompletionReceptor<TEvent> : IReceptor<TEvent>
 [Test]
 public async Task CreateProduct_UpdatesProductCatalog_DeterministicallyAsync() {
   // Arrange
-  var completionSource = new TaskCompletionSource<bool>();
+  // CRITICAL: RunContinuationsAsynchronously prevents deadlocks
+  var completionSource = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
   var receptor = new PerspectiveCompletionReceptor<ProductCreatedEvent>(
     completionSource,
-    perspectiveName: "ProductCatalog"  // Optional: filter by perspective
+    perspectiveName: "ProductCatalogPerspective"  // Optional: filter by perspective class name
   );
 
-  var registry = _host.Services.GetRequiredService<ILifecycleReceptorRegistry>();
+  var registry = _host.Services.GetRequiredService<IReceptorRegistry>();
   registry.Register<ProductCreatedEvent>(receptor, LifecycleStage.PostPerspectiveInline);
 
   try {
@@ -198,9 +243,9 @@ public async Task CreateProduct_UpdatesProductCatalog_DeterministicallyAsync() {
 
     // Assert - perspective data is guaranteed to be saved
     var product = await _productLens.GetByIdAsync(command.ProductId);
-    Assert.That(product).IsNotNull();
-    Assert.That(product!.Name).IsEqualTo("Widget");
-    Assert.That(product.Price).IsEqualTo(9.99m);
+    await Assert.That(product).IsNotNull();
+    await Assert.That(product!.Name).IsEqualTo("Widget");
+    await Assert.That(product.Price).IsEqualTo(9.99m);
 
   } finally {
     // Always unregister
@@ -220,7 +265,7 @@ public async Task CreateProduct_UpdatesProductCatalog_DeterministicallyAsync() {
 Create a reusable helper method in your test fixtures:
 
 ```csharp{title="Extension Method" description="Create a reusable helper method in your test fixtures:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Extension", "Method"]}
-// File: tests/ECommerce.Integration.Tests/Fixtures/LifecycleReceptorTestExtensions.cs
+// File: samples/ECommerce/tests/ECommerce.Integration.TestUtilities/Fixtures/LifecycleReceptorTestExtensions.cs
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Whizbang.Core;
@@ -240,9 +285,10 @@ public static class LifecycleReceptorTestExtensions {
 
     ArgumentNullException.ThrowIfNull(host);
 
-    var completionSource = new TaskCompletionSource<bool>();
+    // CRITICAL: RunContinuationsAsynchronously prevents deadlocks
+    var completionSource = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
     var receptor = new PerspectiveCompletionReceptor<TEvent>(completionSource, perspectiveName);
-    var registry = host.Services.GetRequiredService<ILifecycleReceptorRegistry>();
+    var registry = host.Services.GetRequiredService<IReceptorRegistry>();
 
     registry.Register<TEvent>(receptor, LifecycleStage.PostPerspectiveInline);
 
@@ -268,14 +314,14 @@ public async Task CreateProduct_UpdatesProductCatalog_SimpleAsync() {
 
   // Wait for perspective completion (one line!)
   await _host.WaitForPerspectiveCompletionAsync<ProductCreatedEvent>(
-    perspectiveName: "ProductCatalog",
+    perspectiveName: "ProductCatalogPerspective",
     timeoutMilliseconds: 15000
   );
 
   // Assert
   var product = await _productLens.GetByIdAsync(command.ProductId);
-  Assert.That(product).IsNotNull();
-  Assert.That(product!.Name).IsEqualTo("Widget");
+  await Assert.That(product).IsNotNull();
+  await Assert.That(product!.Name).IsEqualTo("Widget");
 }
 ```
 
@@ -307,9 +353,12 @@ public static async Task WaitForMultiplePerspectiveCompletionsAsync(
     return;
   }
 
-  var completionSources = eventTypes.Select(_ => new TaskCompletionSource<bool>()).ToArray();
+  // CRITICAL: RunContinuationsAsynchronously prevents deadlocks
+  var completionSources = eventTypes
+    .Select(_ => new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously))
+    .ToArray();
   var receptors = new List<object>();
-  var registry = host.Services.GetRequiredService<ILifecycleReceptorRegistry>();
+  var registry = host.Services.GetRequiredService<IReceptorRegistry>();
 
   try {
     // Register receptors for each event type
@@ -325,8 +374,8 @@ public static async Task WaitForMultiplePerspectiveCompletionsAsync(
       receptors.Add(receptor);
 
       // Register using reflection
-      var registerMethod = typeof(ILifecycleReceptorRegistry)
-        .GetMethod(nameof(ILifecycleReceptorRegistry.Register))!
+      var registerMethod = typeof(IReceptorRegistry)
+        .GetMethod(nameof(IReceptorRegistry.Register))!
         .MakeGenericMethod(eventType);
       registerMethod.Invoke(registry, new[] { receptor, LifecycleStage.PostPerspectiveInline });
     }
@@ -341,8 +390,8 @@ public static async Task WaitForMultiplePerspectiveCompletionsAsync(
       var eventType = eventTypes[i];
       var receptor = receptors[i];
 
-      var unregisterMethod = typeof(ILifecycleReceptorRegistry)
-        .GetMethod(nameof(ILifecycleReceptorRegistry.Unregister))!
+      var unregisterMethod = typeof(IReceptorRegistry)
+        .GetMethod(nameof(IReceptorRegistry.Unregister))!
         .MakeGenericMethod(eventType);
       unregisterMethod.Invoke(registry, new[] { receptor, LifecycleStage.PostPerspectiveInline });
     }
@@ -370,8 +419,8 @@ public async Task UpdateInventory_UpdatesMultiplePerspectives_DeterministicallyA
   var inventory = await _inventoryLens.GetByProductIdAsync(_productId);
   var product = await _productLens.GetByIdAsync(_productId);
 
-  Assert.That(inventory!.Quantity).IsEqualTo(100);
-  Assert.That(product!.LastModified).IsNotNull();
+  await Assert.That(inventory!.Quantity).IsEqualTo(100);
+  await Assert.That(product!.LastModified).IsNotNull();
 }
 ```
 
@@ -390,16 +439,16 @@ public async Task CreateProduct_UpdatesOnlyProductCatalog_NotInventoryAsync() {
 
   // Wait for ProductCatalog perspective specifically
   await _host.WaitForPerspectiveCompletionAsync<ProductCreatedEvent>(
-    perspectiveName: "ProductCatalog"  // Only this perspective
+    perspectiveName: "ProductCatalogPerspective"  // Only this perspective (class name)
   );
 
   // Assert - ProductCatalog updated
   var product = await _productLens.GetByIdAsync(command.ProductId);
-  Assert.That(product).IsNotNull();
+  await Assert.That(product).IsNotNull();
 
   // But Inventory perspective NOT updated yet (different event)
   var inventory = await _inventoryLens.GetByProductIdAsync(command.ProductId);
-  Assert.That(inventory).IsNull();  // Expected!
+  await Assert.That(inventory).IsNull();  // Expected!
 }
 ```
 
@@ -427,7 +476,7 @@ public async Task SlowPerspective_TimesOut_WithDiagnosticsAsync() {
     // Gather diagnostics
     var pendingWork = await _dbContext.WorkItems.CountAsync();
     var lastCheckpoint = await _dbContext.PerspectiveCheckpoints
-      .Where(p => p.PerspectiveName == "ProductCatalog")
+      .Where(p => p.PerspectiveName == "ProductCatalogPerspective")
       .FirstOrDefaultAsync();
 
     Assert.Fail(
@@ -449,10 +498,11 @@ public async Task Command_TriggersOneOfSeveralEvents_FlexiblyAsync() {
   var command = new ProcessOrderCommand(orderId: _orderId);
 
   // Create completion sources for each possible event
-  var orderCompletedSource = new TaskCompletionSource<bool>();
-  var orderFailedSource = new TaskCompletionSource<bool>();
+  // CRITICAL: RunContinuationsAsynchronously prevents deadlocks
+  var orderCompletedSource = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+  var orderFailedSource = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-  var registry = _host.Services.GetRequiredService<ILifecycleReceptorRegistry>();
+  var registry = _host.Services.GetRequiredService<IReceptorRegistry>();
 
   var completedReceptor = new PerspectiveCompletionReceptor<OrderCompletedEvent>(orderCompletedSource);
   var failedReceptor = new PerspectiveCompletionReceptor<OrderFailedEvent>(orderFailedSource);
@@ -473,10 +523,10 @@ public async Task Command_TriggersOneOfSeveralEvents_FlexiblyAsync() {
     // Assert based on which event fired
     if (completedTask == orderCompletedSource.Task) {
       var order = await _orderLens.GetByIdAsync(_orderId);
-      Assert.That(order!.Status).IsEqualTo(OrderStatus.Completed);
+      await Assert.That(order!.Status).IsEqualTo(OrderStatus.Completed);
     } else {
       var order = await _orderLens.GetByIdAsync(_orderId);
-      Assert.That(order!.Status).IsEqualTo(OrderStatus.Failed);
+      await Assert.That(order!.Status).IsEqualTo(OrderStatus.Failed);
     }
 
   } finally {
@@ -551,7 +601,7 @@ public class CreateProductWorkflowTests : ServiceBusIntegrationFixture {
 
     // Wait for perspective (uses helper from base fixture)
     await WaitForPerspectiveAsync<ProductCreatedEvent>(
-      perspectiveName: "ProductCatalog"
+      perspectiveName: "ProductCatalogPerspective"
     );
 
     // Assert
@@ -561,8 +611,8 @@ public class CreateProductWorkflowTests : ServiceBusIntegrationFixture {
     var product = await inventoryDbContext.Products
       .FirstOrDefaultAsync(p => p.Id == command.ProductId);
 
-    Assert.That(product).IsNotNull();
-    Assert.That(product!.Name).IsEqualTo("Widget");
+    await Assert.That(product).IsNotNull();
+    await Assert.That(product!.Name).IsEqualTo("Widget");
   }
 }
 ```
@@ -589,7 +639,7 @@ Console.WriteLine($"Pending work: {pendingWork.Count}");
 
 // Check perspective checkpoints
 var checkpoint = await _dbContext.PerspectiveCheckpoints
-  .FirstOrDefaultAsync(p => p.PerspectiveName == "ProductCatalog");
+  .FirstOrDefaultAsync(p => p.PerspectiveName == "ProductCatalogPerspective");
 Console.WriteLine($"Last checkpoint: {checkpoint?.LastProcessedEventId}");
 
 // Check if event was published
@@ -606,12 +656,12 @@ Console.WriteLine($"ProductCreatedEvent count: {events.Count}");
 **Possible Causes**:
 1. **Wrong perspective** - Waiting for perspective that doesn't update target data
 2. **Multiple perspectives** - Need to wait for multiple perspectives
-3. **Async stage instead of Inline** - Use `PostPerspectiveInline`, not `PostPerspectiveAsync`
+3. **Detached stage instead of Inline** - Use `PostPerspectiveInline`, not `PostPerspectiveDetached`
 
 **Fix**:
 ```csharp{title="Problem: Test Passes But Assertions Fail" description="Problem: Test Passes But Assertions Fail" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Test"]}
-// ❌ WRONG: PostPerspectiveAsync (non-blocking, no guarantee)
-[FireAt(LifecycleStage.PostPerspectiveAsync)]
+// ❌ WRONG: PostPerspectiveDetached (fire-and-forget, does not block the pipeline)
+[FireAt(LifecycleStage.PostPerspectiveDetached)]
 public class CompletionReceptor : IReceptor<ProductCreatedEvent> { }
 
 // ✅ CORRECT: PostPerspectiveInline (blocking, guarantees persistence)
@@ -634,7 +684,7 @@ public class CompletionReceptor : IReceptor<ProductCreatedEvent> { }
 // Add logging to receptor
 public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
   Console.WriteLine($"RECEPTOR FIRED: {evt.GetType().Name}");
-  Console.WriteLine($"Perspective: {_context?.PerspectiveName}");
+  Console.WriteLine($"Perspective: {_context?.PerspectiveType?.Name}");
   Console.WriteLine($"Stream: {_context?.StreamId}");
 
   _completionSource.TrySetResult(true);
@@ -644,15 +694,19 @@ public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
 
 ### Problem: Registry Not Found
 
-**Symptoms**: `GetRequiredService<ILifecycleReceptorRegistry>()` throws exception.
+**Symptoms**: `GetRequiredService<IReceptorRegistry>()` throws exception.
 
-**Fix**: Register in DI container:
+**Fix**: `IReceptorRegistry` is registered by the source-generated `AddWhizbangDispatcher()` extension (which calls `AddWhizbangReceptorRegistry()` internally). Make sure your host wiring includes it:
 ```csharp{title="Problem: Registry Not Found" description="Fix: Register in DI container:" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Registry"]}
-// In Startup.cs or Program.cs
+// In Program.cs
 services
-  .AddWhizbang()  // Automatically registers ILifecycleReceptorRegistry
+  .AddWhizbang()
   .WithEFCore<MyDbContext>()
   .WithDriver.Postgres;
+
+// Source-generated registrations (register IReceptorRegistry + receptors)
+services.AddWhizbangDispatcher();
+services.AddReceptors();
 ```
 
 ---
@@ -705,7 +759,7 @@ public async Task OldTest_UsesPollingSyncAsync() {
 
   // Assert
   var product = await _productLens.GetByIdAsync(command.ProductId);
-  Assert.That(product).IsNotNull();
+  await Assert.That(product).IsNotNull();
 }
 
 private async Task WaitForEventProcessingAsync() {
@@ -730,12 +784,12 @@ public async Task NewTest_UsesLifecycleSyncAsync() {
 
   // ✅ NEW: Deterministic lifecycle synchronization
   await _host.WaitForPerspectiveCompletionAsync<ProductCreatedEvent>(
-    perspectiveName: "ProductCatalog"
+    perspectiveName: "ProductCatalogPerspective"
   );
 
   // Assert
   var product = await _productLens.GetByIdAsync(command.ProductId);
-  Assert.That(product).IsNotNull();
+  await Assert.That(product).IsNotNull();
 }
 ```
 
@@ -750,7 +804,7 @@ public async Task NewTest_UsesLifecycleSyncAsync() {
 
 ## Related Topics
 
-- [Lifecycle Stages](../../fundamentals/lifecycle/lifecycle-stages.md) - All 18 stages with timing guarantees
+- [Lifecycle Stages](../../fundamentals/lifecycle/lifecycle-stages.md) - All 24 stages with timing guarantees
 - [Lifecycle Receptors](../../fundamentals/receptors/lifecycle-receptors.md) - API reference for [FireAt] attribute
 - Integration Testing - Complete integration test patterns
 - [PerspectiveWorker](../workers/perspective-worker.md) - Perspective processing architecture
@@ -761,7 +815,8 @@ public async Task NewTest_UsesLifecycleSyncAsync() {
 
 - **Problem**: Polling has race conditions (in-flight messages not visible in queue)
 - **Solution**: `PostPerspectiveInline` lifecycle stage guarantees persistence
-- **Pattern**: Register `PerspectiveCompletionReceptor<TEvent>` at runtime
+- **First-class**: `LifecycleAwaiter` / `PerspectiveCompletionWaiter<TEvent>` in the `Whizbang.Testing` package
+- **Pattern**: Register a completion receptor at runtime via `IReceptorRegistry`
 - **Helper**: `WaitForPerspectiveCompletionAsync<TEvent>()` extension method
 - **Benefits**: 100% test reliability, 10x faster than polling
 - **Advanced**: Multiple events, perspective filtering, any-of patterns

@@ -124,48 +124,42 @@ No manual context passing required - the dispatcher finds it via `IScopeContextA
 
 ### Step 3: Security Context Attached to MessageHop
 
-The dispatcher attaches security context to the message's hop:
+The dispatcher attaches the scope to the message's hop as a **`ScopeDelta`** (`MessageHop.Scope`) — only the *changes* from the previous hop are serialized (see [Scope Propagation](scope-propagation.md)):
 
-```csharp{title="Step 3: Security Context Attached to MessageHop" description="The dispatcher attaches security context to the message's hop:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Context"]}
-// Inside Dispatcher.SendAsync()
+```csharp{title="Step 3: Scope Attached to MessageHop" description="The dispatcher attaches the scope delta to the message's hop:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Context"]}
+// Inside the dispatcher (conceptual)
 var scopeContext = _scopeContextAccessor.Current;
 
 if (scopeContext is ImmutableScopeContext immutable && immutable.ShouldPropagate) {
   var hop = new MessageHop {
     Type = HopType.Current,
     ServiceInstance = _serviceInstance,
-    SecurityContext = new SecurityContext {
-      TenantId = scopeContext.Scope.TenantId,
-      UserId = scopeContext.Scope.UserId,
-      OrganizationId = scopeContext.Scope.OrganizationId,
-      CustomerId = scopeContext.Scope.CustomerId
-    }
+    // Full scope on the first hop; only the delta from the previous hop afterwards
+    Scope = ScopeDelta.CreateDelta(previousScope, scopeContext)
   };
 
   envelope.Hops.Add(hop);
 }
 ```
 
-**Key Point**: `ImmutableScopeContext.ShouldPropagate` controls whether security flows to downstream services.
+**Key Point**: `ImmutableScopeContext.ShouldPropagate` controls whether security flows to downstream services. `MessageHop` has no `SecurityContext` property — the scope travels as `ScopeDelta` on `MessageHop.Scope` (wire name `"sc"`).
 
 ### Step 4: Message Serialized with SecurityContext
 
-The message envelope, including hop chain with security context, is serialized and sent to the transport:
+The message envelope, including the hop chain with its scope delta, is serialized and sent to the transport. Hop properties use abbreviated wire names (`ty` = Type, `si` = ServiceInstance, `ts` = Timestamp, `sc` = Scope delta):
 
-```json{title="Step 4: Message Serialized with SecurityContext" description="The message envelope, including hop chain with security context, is serialized and sent to the transport:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Message"]}
+```json{title="Step 4: Message Serialized with Scope Delta" description="The message envelope, including hop chain with scope delta, is serialized and sent to the transport:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Message"]}
 {
   "messageId": "123e4567-e89b-12d3-a456-426614174000",
   "messageType": "MyApp.Orders.CreateOrder",
-  "payload": { "customerId": "cust-456", "items": [...] },
+  "payload": { "customerId": "cust-456", "items": [] },
   "hops": [
     {
-      "type": "Current",
-      "serviceInstance": "OrderApi-prod-1",
-      "timestamp": "2026-03-03T10:00:00Z",
-      "securityContext": {
-        "tenantId": "tenant-123",
-        "userId": "user-789",
-        "organizationId": "org-456"
+      "ty": 0,
+      "si": { "sn": "OrderApi", "ii": "3f6b…", "hn": "orderapi-prod-1", "pi": 1234 },
+      "ts": "2026-03-03T10:00:00Z",
+      "sc": {
+        "v": { "Sc": { "t": "tenant-123", "u": "user-789", "o": "org-456" } }
       }
     }
   ]
@@ -179,57 +173,57 @@ The message envelope, including hop chain with security context, is serialized a
 The `ServiceBusConsumerWorker` receives the message from the transport and deserializes the envelope:
 
 ```csharp{title="Step 5: Consumer Receives Message" description="The ServiceBusConsumerWorker receives the message from the transport and deserializes the envelope:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Consumer"]}
-// Inside ServiceBusConsumerWorker
+// Inside ServiceBusConsumerWorker (conceptual)
 var envelope = await DeserializeEnvelopeAsync(serviceBusMessage);
 
 // Create DI scope for this message
 await using var scope = _serviceProvider.CreateAsyncScope();
 
 // Establish security context BEFORE executing handlers
+// (IMessageSecurityContextProvider.EstablishContextAsync returns the IScopeContext)
 await _securityContextProvider.EstablishContextAsync(
   envelope,
   scope.ServiceProvider,
   cancellationToken);
 
-// Now dispatch to receptors
-await _dispatcher.LocalInvokeAsync(envelope.Payload, cancellationToken);
+// Now dispatch the message to its receptors (internal consumer path)
+await DispatchToReceptorsAsync(envelope, scope.ServiceProvider, cancellationToken);
 ```
 
 ### Step 6: Security Context Extracted from Hops
 
-The `MessageHopSecurityExtractor` reads the security context from the hop chain:
+The `MessageHopSecurityExtractor` merges the `ScopeDelta` from every `Current` hop (via `ScopeDelta.ApplyTo`) to rebuild the full scope — roles, permissions, principals, claims, and impersonation info included:
 
-```csharp{title="Step 6: Security Context Extracted from Hops" description="The MessageHopSecurityExtractor reads the security context from the hop chain:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Context"]}
-public class MessageHopSecurityExtractor : ISecurityContextExtractor {
-  public int Priority => 100; // Runs first
+```csharp{title="Step 6: Security Context Extracted from Hops" description="The MessageHopSecurityExtractor merges hop scope deltas into a full extraction:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Context"]}
+public sealed partial class MessageHopSecurityExtractor : ISecurityContextExtractor {
+  // Extractors run in ascending Priority order (lower runs first).
+  public int Priority => 100;
 
   public ValueTask<SecurityExtraction?> ExtractAsync(
     IMessageEnvelope envelope,
     MessageSecurityOptions options,
     CancellationToken cancellationToken = default) {
 
-    // Find most recent hop with security context
-    var hop = envelope.Hops
-      .Where(h => h.SecurityContext is not null)
-      .OrderByDescending(h => h.Timestamp)
-      .FirstOrDefault();
+    // Merge ScopeDelta from all Current hops to produce the full ScopeContext
+    var scopeContext = _mergeScopeDeltas(envelope.Hops, _logger, envelope.MessageId);
 
-    if (hop?.SecurityContext is null) {
+    // No scope in the hop chain, or empty scope (no TenantId/UserId) → nothing to extract
+    if (scopeContext is null ||
+        (string.IsNullOrEmpty(scopeContext.Scope.TenantId) &&
+         string.IsNullOrEmpty(scopeContext.Scope.UserId))) {
       return ValueTask.FromResult<SecurityExtraction?>(null);
     }
 
-    // Extract security information
+    // Map to SecurityExtraction with FULL context from the merged deltas
     return ValueTask.FromResult<SecurityExtraction?>(new SecurityExtraction {
-      Scope = new PerspectiveScope {
-        TenantId = hop.SecurityContext.TenantId,
-        UserId = hop.SecurityContext.UserId,
-        OrganizationId = hop.SecurityContext.OrganizationId,
-        CustomerId = hop.SecurityContext.CustomerId
-      },
-      Roles = new HashSet<string>(),
-      Permissions = new HashSet<Permission>(),
-      SecurityPrincipals = new HashSet<SecurityPrincipalId>(),
-      Claims = new Dictionary<string, string>(),
+      Scope = scopeContext.Scope,
+      Roles = scopeContext.Roles,
+      Permissions = scopeContext.Permissions,
+      SecurityPrincipals = scopeContext.SecurityPrincipals,
+      Claims = scopeContext.Claims,
+      ActualPrincipal = scopeContext.ActualPrincipal,
+      EffectivePrincipal = scopeContext.EffectivePrincipal,
+      ContextType = scopeContext.ContextType,
       Source = "MessageHop"
     });
   }
@@ -255,9 +249,9 @@ foreach (var callback in callbacks) {
   await callback.OnContextEstablishedAsync(context, envelope, scopedProvider, ct);
 }
 
-// 5. Emit audit event (if enabled)
+// 5. Invoke the audit callback (if EnableAuditLogging and a callback is wired)
 if (options.EnableAuditLogging) {
-  await emitter.EmitAsync(new ScopeContextEstablished {
+  onAuditEvent?.Invoke(new ScopeContextEstablished {
     Scope = context.Scope,
     Roles = context.Roles,
     Permissions = context.Permissions,
@@ -276,19 +270,17 @@ public class CreateOrderReceptor : IReceptor<CreateOrder> {
   private readonly IScopeContextAccessor _scopeAccessor;
   private readonly IScopedLensFactory _lensFactory;
 
-  public async Task ReceiveAsync(CreateOrder message, CancellationToken ct) {
+  public async ValueTask HandleAsync(CreateOrder message, CancellationToken ct) {
     var context = _scopeAccessor.Current!;
 
     // Same TenantId and UserId from original HTTP request
     Console.WriteLine($"Tenant: {context.Scope.TenantId}");
     Console.WriteLine($"User: {context.Scope.UserId}");
 
-    // Scoped queries use the propagated context
+    // Scoped READS use the propagated context (lenses are read models —
+    // writes happen through events applied by perspectives)
     var orderLens = _lensFactory.GetUserLens<IOrderLens>();
-    await orderLens.InsertAsync(new Order {
-      CustomerId = message.CustomerId,
-      Items = message.Items
-    });
+    var myOrders = await orderLens.Query.ToListAsync(ct);
   }
 }
 ```
@@ -320,13 +312,13 @@ var local = new ImmutableScopeContext(extraction, shouldPropagate: false);
 For system operations or impersonation, use explicit context:
 
 ```csharp{title="Explicit Context Override" description="For system operations or impersonation, use explicit context:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Explicit", "Context"]}
-// System context (no user)
-await dispatcher.AsSystem().SendAsync(new MaintenanceCommand());
-// SecurityContext on hop: { ContextType = System, EffectivePrincipal = "SYSTEM" }
+// System context (no user) — a tenant strategy is REQUIRED before SendAsync
+await dispatcher.AsSystem().KeepTenant().SendAsync(new MaintenanceCommand());
+// Scope delta on hop: { ContextType = System, EffectivePrincipal = "SYSTEM" }
 
-// Impersonation context
-await dispatcher.RunAs("target-user@example.com").SendAsync(command);
-// SecurityContext on hop: { ContextType = Impersonated, ActualPrincipal = "admin@...", EffectivePrincipal = "target-user@..." }
+// Impersonation context — same tenant-strategy requirement
+await dispatcher.RunAs("target-user@example.com").ForTenant("user-tenant").SendAsync(command);
+// Scope delta on hop: { ContextType = Impersonated, ActualPrincipal = "admin@...", EffectivePrincipal = "target-user@..." }
 ```
 
 ## Multi-Hop Propagation
@@ -346,28 +338,25 @@ Service C (Processor)
     ↓ All services see same TenantId, UserId
 ```
 
-Each service adds a new hop to the chain, preserving the security context:
+Each service adds a new hop to the chain. A hop without an `"sc"` (ScopeDelta) property inherits the scope unchanged from the previous hop — nothing is re-serialized when nothing changed:
 
 ```json{title="Multi-Hop Propagation" description="Each service adds a new hop to the chain, preserving the security context:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Multi-Hop", "Propagation"]}
 {
   "hops": [
     {
-      "type": "Current",
-      "serviceInstance": "ServiceA-1",
-      "securityContext": { "tenantId": "t1", "userId": "u1" }
+      "ty": 0,
+      "si": { "sn": "ServiceA" },
+      "sc": { "v": { "Sc": { "t": "t1", "u": "u1" } } }
     },
     {
-      "type": "Previous",
-      "serviceInstance": "ServiceA-1"
-    },
-    {
-      "type": "Current",
-      "serviceInstance": "ServiceB-2",
-      "securityContext": { "tenantId": "t1", "userId": "u1" }
+      "ty": 0,
+      "si": { "sn": "ServiceB" }
     }
   ]
 }
 ```
+
+(`ty: 0` = `HopType.Current`; `ty: 1` = `HopType.Causation`, a hop carried forward from the parent message for distributed tracing.)
 
 ## Audit Trail
 
@@ -375,6 +364,7 @@ Every security context establishment is audited (when `EnableAuditLogging = true
 
 ```csharp{title="Audit Trail" description="Every security context establishment is audited (when EnableAuditLogging = true):" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Audit", "Trail"]}
 public sealed record ScopeContextEstablished : ISystemEvent {
+  public Guid Id { get; init; } = TrackedGuid.NewMedo();
   public required PerspectiveScope Scope { get; init; }
   public required IReadOnlySet<string> Roles { get; init; }
   public required IReadOnlySet<Permission> Permissions { get; init; }
@@ -398,11 +388,12 @@ This enables:
 **Solution**: Use different extractors for internal vs external messages:
 
 ```csharp{title="Trust Boundaries" description="Solution: Use different extractors for internal vs external messages:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Trust", "Boundaries"]}
-// Internal service-to-service: Trust MessageHop
-services.AddSecurityExtractor<MessageHopSecurityExtractor>(); // Priority 100
+// Internal service-to-service: Trust MessageHop (built-in, Priority 100)
+services.AddSecurityExtractor<MessageHopSecurityExtractor>();
 
-// External API: Require JWT in payload
-services.AddSecurityExtractor<JwtPayloadExtractor>(); // Priority 50 (runs first)
+// External API: your own extractor that validates a JWT in the payload.
+// Extractors run in ascending Priority order — Priority 50 runs BEFORE 100.
+services.AddSecurityExtractor<JwtPayloadExtractor>(); // custom ISecurityContextExtractor, Priority 50
 ```
 
 ### 2. Token Expiration
