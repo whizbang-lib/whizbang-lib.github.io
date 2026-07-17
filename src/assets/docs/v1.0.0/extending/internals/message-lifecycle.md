@@ -174,10 +174,10 @@ sequenceDiagram
 ```
 
 **Key Points**:
-1. **Synchronous semantics**: Controller waits for result
+1. **Synchronous semantics**: Controller waits for the receptor's typed result
 2. **Atomic Event Store + Outbox**: Both persisted in single transaction
 3. **Stream-based partitioning**: Ensures same stream_id always maps to same partition
-4. **Perspective update**: Happens before response (read-your-writes consistency)
+4. **Perspective update**: Runs asynchronously via the perspective pipeline; use `AppendAndWaitAsync` / perspective sync when read-your-writes is required
 5. **Scoped strategy**: Batches operations per HTTP request, flushes on disposal
 
 ---
