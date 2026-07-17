@@ -1,6 +1,8 @@
 ---
 title: Shipping Service
 pageType: tutorial
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Tutorial
 order: 6
@@ -16,12 +18,15 @@ codeReferences:
     samples/ECommerce/ECommerce.ShippingWorker/Receptors/PaymentShippingReceptor.cs
   - samples/ECommerce/ECommerce.Contracts/Commands/CreateShipmentCommand.cs
   - samples/ECommerce/ECommerce.Contracts/Events/ShipmentCreatedEvent.cs
+testReferences:
+  - >-
+    samples/ECommerce/tests/ECommerce.ShippingWorker.Tests/CreateShipmentReceptorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Shipping Service
 
-Build the **Shipping Worker** - a background service that subscribes to `PaymentProcessed` events, creates shipments via carrier APIs (FedEx/UPS/USPS), and publishes tracking information.
+Build the **Shipping Worker** - a background service that reacts to `PaymentProcessedEvent`, dispatches `CreateShipmentCommand`, creates shipments, and publishes `ShipmentCreatedEvent` with tracking information.
 
 :::note
 This is **Part 5** of the ECommerce Tutorial. Complete [Notification Service](notification-service.md) first.
@@ -35,65 +40,183 @@ This is **Part 5** of the ECommerce Tutorial. Complete [Notification Service](no
 flowchart TD
     subgraph SSA["Shipping Service Architecture"]
         ASBIn["Azure Service Bus"]
-        Receptor["CreateShipmentReceptor<br/>- Get order details<br/>- Call carrier API<br/>- Store tracking info"]
-        ShipmentsTable["Postgres Shipments Table"]
-        OutboxTable["Outbox Table"]
+        EventReceptor["PaymentShippingReceptor<br/>(event receptor)<br/>- Dispatch CreateShipmentCommand"]
+        CmdReceptor["CreateShipmentReceptor<br/>- Call carrier API<br/>- Publish ShipmentCreatedEvent"]
+        EventStore["wh_event_store (Event Store)"]
+        OutboxTable["wh_outbox (Outbox)"]
         CarrierAPI["Carrier API<br/>(FedEx)"]
-        ASBOut["Azure Service Bus<br/>ShipmentCreated"]
+        ASBOut["Azure Service Bus<br/>ShipmentCreatedEvent"]
 
-        ASBIn -->|"PaymentProcessed event"| Receptor
-        Receptor --> ShipmentsTable
-        Receptor --> OutboxTable
-        Receptor --> CarrierAPI
+        ASBIn -->|"PaymentProcessedEvent"| EventReceptor
+        EventReceptor -->|"CreateShipmentCommand"| CmdReceptor
+        CmdReceptor --> CarrierAPI
+        CmdReceptor --> EventStore
+        CmdReceptor --> OutboxTable
         OutboxTable --> ASBOut
     end
 
     class ASBIn,ASBOut,OutboxTable layer-command
-    class Receptor layer-core
-    class ShipmentsTable layer-event
+    class EventReceptor,CmdReceptor layer-core
+    class EventStore layer-event
     class CarrierAPI layer-infrastructure
 ```
 
 **Features**:
-- ✅ Carrier API integration (FedEx example)
-- ✅ Shipment creation with tracking
-- ✅ Address validation
-- ✅ Rate shopping (cheapest/fastest)
-- ✅ Webhook integration for status updates
-- ✅ Label generation (PDF)
+- ✅ **Events can have receptors** — react to `PaymentProcessedEvent` directly
+- ✅ Event → command chaining (`PaymentProcessedEvent` → `CreateShipmentCommand`)
+- ✅ Shipment creation with tracking numbers
+- ✅ Carrier API abstraction (production pattern)
 
 ---
 
-## Step 1: Define Events
+## Step 1: Define Messages
 
-### ShipmentCreated Event
+### CreateShipmentCommand
 
-**ECommerce.Contracts/Events/ShipmentCreated.cs**:
+**ECommerce.Contracts/Commands/CreateShipmentCommand.cs**:
+
+```csharp{title="CreateShipmentCommand" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "CreateShipment", "Command"]}
+using Whizbang.Core;
+
+namespace ECommerce.Contracts.Commands;
+
+/// <summary>
+/// Command to create a shipment after payment is processed
+/// </summary>
+public record CreateShipmentCommand : ICommand {
+  public required string OrderId { get; init; }
+  public required string ShippingAddress { get; init; }
+}
+```
+
+### ShipmentCreatedEvent
+
+**ECommerce.Contracts/Events/ShipmentCreatedEvent.cs**:
 
 ```csharp{title="ShipmentCreated Event" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "ShipmentCreated", "Event"]}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
 
-public record ShipmentCreated(
-  string ShipmentId,
-  string OrderId,
-  string Carrier,
-  string TrackingNumber,
-  string LabelUrl,
-  decimal ShippingCost,
-  DateTime EstimatedDelivery,
-  DateTime CreatedAt
-) : IEvent;
+/// <summary>
+/// Event published when a shipment is created
+/// </summary>
+public record ShipmentCreatedEvent : IEvent {
+  [StreamId]
+  public required string OrderId { get; init; }
+  public required string ShipmentId { get; init; }
+  public required string TrackingNumber { get; init; }
+}
 ```
 
 ---
 
-## Step 2: Carrier API Abstraction
+## Step 2: Event Receptor (Event → Command)
 
-**ECommerce.ShippingWorker/Services/ICarrierService.cs**:
+**ECommerce.ShippingWorker/Receptors/PaymentShippingReceptor.cs**:
 
-```csharp{title="Step 2: Carrier API Abstraction" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Carrier"]}
+```csharp{title="Step 2: Event Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Event"]}
+using ECommerce.Contracts.Commands;
+using ECommerce.Contracts.Events;
+using Microsoft.Extensions.Logging;
+using Whizbang.Core;
+
+namespace ECommerce.ShippingWorker.Receptors;
+
+/// <summary>
+/// Handles PaymentProcessedEvent DIRECTLY and dispatches CreateShipmentCommand
+/// This demonstrates that EVENTS can have RECEPTORS (not just perspectives!)
+/// </summary>
+public class PaymentShippingReceptor(IDispatcher dispatcher, ILogger<PaymentShippingReceptor> logger) : IReceptor<PaymentProcessedEvent, CreateShipmentCommand> {
+
+  public async ValueTask<CreateShipmentCommand> HandleAsync(
+    PaymentProcessedEvent message,
+    CancellationToken cancellationToken = default) {
+
+    logger.LogInformation(
+      "Payment processed for order {OrderId}, initiating shipment creation",
+      message.OrderId);
+
+    // In a real system, would look up shipping address from order
+    var createShipmentCommand = new CreateShipmentCommand {
+      OrderId = message.OrderId,
+      ShippingAddress = "123 Main St, City, State 12345"
+    };
+
+    // Dispatch the command
+    await dispatcher.SendAsync(createShipmentCommand);
+
+    logger.LogInformation(
+      "Dispatched create shipment command for order {OrderId}",
+      message.OrderId);
+
+    return createShipmentCommand;
+  }
+}
+```
+
+`SendAsync` returns a `Task<IDeliveryReceipt>` — the command is routed to whichever service owns `ecommerce.shipping.commands` (this same worker, via the shared inbox topic).
+
+---
+
+## Step 3: Command Receptor
+
+**ECommerce.ShippingWorker/Receptors/CreateShipmentReceptor.cs**:
+
+```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
+using ECommerce.Contracts.Commands;
+using ECommerce.Contracts.Events;
+using Microsoft.Extensions.Logging;
+using Whizbang.Core;
+
+namespace ECommerce.ShippingWorker.Receptors;
+
+/// <summary>
+/// Handles CreateShipmentCommand and publishes ShipmentCreatedEvent
+/// </summary>
+public class CreateShipmentReceptor(IDispatcher dispatcher, ILogger<CreateShipmentReceptor> logger) : IReceptor<CreateShipmentCommand, ShipmentCreatedEvent> {
+
+  public async ValueTask<ShipmentCreatedEvent> HandleAsync(
+    CreateShipmentCommand message,
+    CancellationToken cancellationToken = default) {
+
+    logger.LogInformation(
+      "Creating shipment for order {OrderId} to address: {Address}",
+      message.OrderId,
+      message.ShippingAddress);
+
+    // Simulate shipment creation
+    // In a real system, this would integrate with a shipping provider API
+    var shipmentCreated = new ShipmentCreatedEvent {
+      OrderId = message.OrderId,
+      ShipmentId = $"SHIP-{Guid.NewGuid():N}",
+      TrackingNumber = $"TRK{Random.Shared.Next(100000, 999999)}"
+    };
+
+    // Publish the event
+    await dispatcher.PublishAsync(shipmentCreated);
+
+    logger.LogInformation(
+      "Shipment created for order {OrderId} with tracking number {TrackingNumber}",
+      message.OrderId,
+      shipmentCreated.TrackingNumber);
+
+    return shipmentCreated;
+  }
+}
+```
+
+:::updated
+`ShipmentId`/`TrackingNumber` here are **external reference strings** (carrier-style labels), not Whizbang ids — Whizbang stream and message ids are framework-generated UUIDv7 values. Earlier drafts also hand-wrote `shipments`/`tracking_events` tables and outbox SQL; the event stream plus a perspective replaces that.
+:::
+
+---
+
+## Step 4: Carrier API Abstraction (Production)
+
+The sample simulates the carrier. For production, hide the carrier behind an interface — the receptor stays the same, only the injected implementation changes:
+
+```csharp{title="Step 4: Carrier API Abstraction" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Carrier"]}
 namespace ECommerce.ShippingWorker.Services;
 
 public interface ICarrierService {
@@ -110,33 +233,10 @@ public interface ICarrierService {
 
 public record ShipmentRequest(
   string OrderId,
-  Address From,
-  Address To,
-  Package Package,
-  ShipmentOptions Options
-);
-
-public record Address(
-  string Name,
-  string Street,
-  string City,
-  string State,
-  string ZipCode,
-  string Country,
-  string? Phone = null
-);
-
-public record Package(
+  string From,
+  string To,
   decimal WeightPounds,
-  int LengthInches,
-  int WidthInches,
-  int HeightInches
-);
-
-public record ShipmentOptions(
-  string ServiceLevel,  // "Standard", "Express", "Overnight"
-  bool SignatureRequired = false,
-  bool SaturdayDelivery = false
+  string ServiceLevel  // "Standard", "Express", "Overnight"
 );
 
 public record ShipmentResult(
@@ -152,663 +252,136 @@ public record ShipmentResult(
 public record TrackingResult(
   string TrackingNumber,
   string Status,
-  DateTime? EstimatedDelivery,
-  TrackingEvent[] Events
-);
-
-public record TrackingEvent(
-  string Status,
-  string Location,
-  DateTime Timestamp
+  DateTime? EstimatedDelivery
 );
 ```
+
+A FedEx/UPS/USPS implementation is ordinary `HttpClient` code (OAuth token, POST shipment request, parse tracking/label from the response) — see the carrier's REST documentation. Wrap calls with Polly retry/circuit-breaker policies as shown in [Payment Processing](payment-processing.md).
+
+**Tracking webhooks**: carriers push status updates to an HTTP endpoint you host. Translate each webhook into a domain event (e.g., `ShipmentStatusChangedEvent`) and publish it via `IDispatcher.PublishAsync` — then perspectives keep shipment status queryable, and the Notification worker can react to it.
 
 ---
 
-## Step 3: FedEx Implementation
+## Step 5: Service Configuration
 
-**ECommerce.ShippingWorker/Services/FedExCarrierService.cs**:
+**ECommerce.ShippingWorker/Program.cs** (condensed from the sample):
 
-```csharp{title="Step 3: FedEx Implementation" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "FedEx"]}
-using System.Net.Http.Json;
-
-namespace ECommerce.ShippingWorker.Services;
-
-public class FedExCarrierService : ICarrierService {
-  private readonly HttpClient _httpClient;
-  private readonly string _accountNumber;
-  private readonly string _meterNumber;
-  private readonly ILogger<FedExCarrierService> _logger;
-
-  public FedExCarrierService(
-    HttpClient httpClient,
-    IConfiguration configuration,
-    ILogger<FedExCarrierService> logger
-  ) {
-    _httpClient = httpClient;
-    _accountNumber = configuration["FedEx:AccountNumber"]
-      ?? throw new InvalidOperationException("FedEx:AccountNumber not configured");
-    _meterNumber = configuration["FedEx:MeterNumber"]
-      ?? throw new InvalidOperationException("FedEx:MeterNumber not configured");
-    _logger = logger;
-
-    _httpClient.BaseAddress = new Uri(configuration["FedEx:ApiUrl"] ?? "https://apis-sandbox.fedex.com");
-  }
-
-  public async Task<ShipmentResult> CreateShipmentAsync(
-    ShipmentRequest request,
-    CancellationToken ct = default
-  ) {
-    try {
-      // 1. Get OAuth token
-      var token = await GetOAuthTokenAsync(ct);
-
-      // 2. Build shipment request
-      var fedexRequest = new {
-        accountNumber = new {
-          value = _accountNumber
-        },
-        requestedShipment = new {
-          shipper = new {
-            contact = new {
-              personName = request.From.Name,
-              phoneNumber = request.From.Phone ?? "5551234567"
-            },
-            address = new {
-              streetLines = new[] { request.From.Street },
-              city = request.From.City,
-              stateOrProvinceCode = request.From.State,
-              postalCode = request.From.ZipCode,
-              countryCode = request.From.Country
-            }
-          },
-          recipients = new[] {
-            new {
-              contact = new {
-                personName = request.To.Name,
-                phoneNumber = request.To.Phone ?? "5551234567"
-              },
-              address = new {
-                streetLines = new[] { request.To.Street },
-                city = request.To.City,
-                stateOrProvinceCode = request.To.State,
-                postalCode = request.To.ZipCode,
-                countryCode = request.To.Country
-              }
-            }
-          },
-          pickupType = "USE_SCHEDULED_PICKUP",
-          serviceType = MapServiceLevel(request.Options.ServiceLevel),
-          packagingType = "YOUR_PACKAGING",
-          shippingChargesPayment = new {
-            paymentType = "SENDER"
-          },
-          labelSpecification = new {
-            labelFormatType = "COMMON2D",
-            imageType = "PDF",
-            labelStockType = "PAPER_4X6"
-          },
-          requestedPackageLineItems = new[] {
-            new {
-              weight = new {
-                units = "LB",
-                value = request.Package.WeightPounds
-              },
-              dimensions = new {
-                length = request.Package.LengthInches,
-                width = request.Package.WidthInches,
-                height = request.Package.HeightInches,
-                units = "IN"
-              }
-            }
-          }
-        }
-      };
-
-      // 3. Call FedEx API
-      var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/ship/v1/shipments");
-      httpRequest.Headers.Add("Authorization", $"Bearer {token}");
-      httpRequest.Headers.Add("X-locale", "en_US");
-      httpRequest.Content = JsonContent.Create(fedexRequest);
-
-      var response = await _httpClient.SendAsync(httpRequest, ct);
-      var responseContent = await response.Content.ReadAsStringAsync(ct);
-
-      if (response.IsSuccessStatusCode) {
-        var fedexResponse = System.Text.Json.JsonSerializer.Deserialize<FedExShipmentResponse>(responseContent);
-
-        var trackingNumber = fedexResponse?.output?.transactionShipments?[0]?.masterTrackingNumber;
-        var labelUrl = fedexResponse?.output?.transactionShipments?[0]?.pieceResponses?[0]?.packageDocuments?[0]?.url;
-        var shippingCost = fedexResponse?.output?.transactionShipments?[0]?.shipmentDocuments?[0]?.netCharge;
-
-        _logger.LogInformation(
-          "FedEx shipment created for order {OrderId}, tracking: {TrackingNumber}",
-          request.OrderId,
-          trackingNumber
-        );
-
-        return new ShipmentResult(
-          Success: true,
-          ShipmentId: trackingNumber,
-          TrackingNumber: trackingNumber,
-          LabelUrl: labelUrl,
-          ShippingCost: shippingCost ?? 0,
-          EstimatedDelivery: DateTime.UtcNow.AddDays(3),  // Simplified
-          ErrorMessage: null
-        );
-      } else {
-        _logger.LogError(
-          "FedEx shipment failed for order {OrderId}: {StatusCode} - {Response}",
-          request.OrderId,
-          response.StatusCode,
-          responseContent
-        );
-
-        return new ShipmentResult(
-          Success: false,
-          ShipmentId: null,
-          TrackingNumber: null,
-          LabelUrl: null,
-          ShippingCost: null,
-          EstimatedDelivery: null,
-          ErrorMessage: $"FedEx API error: {response.StatusCode}"
-        );
-      }
-    } catch (Exception ex) {
-      _logger.LogError(ex, "FedEx shipment exception for order {OrderId}", request.OrderId);
-
-      return new ShipmentResult(
-        Success: false,
-        ShipmentId: null,
-        TrackingNumber: null,
-        LabelUrl: null,
-        ShippingCost: null,
-        EstimatedDelivery: null,
-        ErrorMessage: ex.Message
-      );
-    }
-  }
-
-  public async Task<TrackingResult> GetTrackingAsync(
-    string trackingNumber,
-    CancellationToken ct = default
-  ) {
-    // Similar implementation for tracking API
-    // For brevity, omitted
-
-    return new TrackingResult(
-      TrackingNumber: trackingNumber,
-      Status: "In Transit",
-      EstimatedDelivery: DateTime.UtcNow.AddDays(2),
-      Events: [
-        new TrackingEvent("Picked Up", "Memphis, TN", DateTime.UtcNow.AddDays(-1)),
-        new TrackingEvent("In Transit", "Indianapolis, IN", DateTime.UtcNow.AddHours(-6))
-      ]
-    );
-  }
-
-  private async Task<string> GetOAuthTokenAsync(CancellationToken ct) {
-    // FedEx OAuth token exchange
-    // Simplified for demo
-    return "fake-oauth-token";
-  }
-
-  private string MapServiceLevel(string serviceLevel) {
-    return serviceLevel switch {
-      "Standard" => "FEDEX_GROUND",
-      "Express" => "FEDEX_2_DAY",
-      "Overnight" => "FEDEX_PRIORITY_OVERNIGHT",
-      _ => "FEDEX_GROUND"
-    };
-  }
-}
-
-// FedEx API response models (simplified)
-public record FedExShipmentResponse(
-  FedExOutput? output
-);
-
-public record FedExOutput(
-  FedExTransactionShipment[]? transactionShipments
-);
-
-public record FedExTransactionShipment(
-  string? masterTrackingNumber,
-  FedExPieceResponse[]? pieceResponses,
-  FedExShipmentDocument[]? shipmentDocuments
-);
-
-public record FedExPieceResponse(
-  FedExPackageDocument[]? packageDocuments
-);
-
-public record FedExPackageDocument(
-  string? url
-);
-
-public record FedExShipmentDocument(
-  decimal? netCharge
-);
-```
-
----
-
-## Step 4: Database Schema
-
-**ECommerce.ShippingWorker/Database/Migrations/001_CreateShipmentsTable.sql**:
-
-```sql{title="Step 4: Database Schema" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Database"]}
-CREATE TABLE IF NOT EXISTS shipments (
-  shipment_id TEXT PRIMARY KEY,
-  order_id TEXT NOT NULL UNIQUE,
-  carrier TEXT NOT NULL,
-  tracking_number TEXT NOT NULL UNIQUE,
-  label_url TEXT NOT NULL,
-  shipping_cost NUMERIC(10, 2) NOT NULL,
-  estimated_delivery TIMESTAMP NOT NULL,
-  actual_delivery TIMESTAMP,
-  status TEXT NOT NULL,  -- 'Created', 'InTransit', 'Delivered', 'Exception'
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_shipments_order_id ON shipments(order_id);
-CREATE INDEX idx_shipments_tracking_number ON shipments(tracking_number);
-CREATE INDEX idx_shipments_status ON shipments(status);
-```
-
-**ECommerce.ShippingWorker/Database/Migrations/002_CreateTrackingEventsTable.sql**:
-
-```sql{title="Step 4: Database Schema (2)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Database"]}
-CREATE TABLE IF NOT EXISTS tracking_events (
-  event_id TEXT PRIMARY KEY,
-  shipment_id TEXT NOT NULL REFERENCES shipments(shipment_id),
-  status TEXT NOT NULL,
-  location TEXT NOT NULL,
-  timestamp TIMESTAMP NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_tracking_events_shipment_id ON tracking_events(shipment_id);
-CREATE INDEX idx_tracking_events_timestamp ON tracking_events(timestamp DESC);
-```
-
----
-
-## Step 5: Implement Receptor
-
-**ECommerce.ShippingWorker/Receptors/CreateShipmentReceptor.cs**:
-
-```csharp{title="Step 5: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
+```csharp{title="Step 5: Service Configuration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
 using Whizbang.Core;
-using ECommerce.Contracts.Events;
-using ECommerce.ShippingWorker.Services;
-using Npgsql;
-using Dapper;
+using Whizbang.Core.Generated;
+using Whizbang.Data.EFCore.Postgres;
+using Whizbang.Transports.AzureServiceBus;
+using ECommerce.Contracts.Generated;
+using ECommerce.ShippingWorker;
+using ECommerce.ShippingWorker.Generated;
 
-namespace ECommerce.ShippingWorker.Receptors;
+var builder = Host.CreateApplicationBuilder(args);
 
-public class CreateShipmentReceptor : IReceptor<PaymentProcessed, ShipmentCreated> {
-  private readonly NpgsqlConnection _db;
-  private readonly ICarrierService _carrierService;
-  private readonly IMessageContext _context;
-  private readonly ILogger<CreateShipmentReceptor> _logger;
+builder.AddServiceDefaults();
 
-  public CreateShipmentReceptor(
-    NpgsqlConnection db,
-    ICarrierService carrierService,
-    IMessageContext context,
-    ILogger<CreateShipmentReceptor> logger
-  ) {
-    _db = db;
-    _carrierService = carrierService;
-    _context = context;
-    _logger = logger;
-  }
+var serviceBusConnection = builder.Configuration.GetConnectionString("servicebus")
+    ?? throw new InvalidOperationException("Azure Service Bus connection string 'servicebus' not found");
 
-  public async Task<ShipmentCreated> HandleAsync(
-    PaymentProcessed @event,
-    CancellationToken ct = default
-  ) {
-    await using var tx = await _db.BeginTransactionAsync(ct);
+builder.Services.AddAzureServiceBusTransport(serviceBusConnection);
+builder.Services.AddAzureServiceBusHealthChecks();
 
-    try {
-      // 1. Check if shipment already exists (idempotency)
-      var existingShipment = await _db.QuerySingleOrDefaultAsync<ShipmentRow>(
-        """
-        SELECT shipment_id, order_id, carrier, tracking_number, label_url, shipping_cost, estimated_delivery
-        FROM shipments
-        WHERE order_id = @OrderId
-        """,
-        new { OrderId = @event.OrderId },
-        transaction: tx
-      );
+// Unified Whizbang API: routing + EF Core Postgres driver + transport consumer
+_ = builder.Services
+  .AddWhizbang()
+  .WithRouting(routing => {
+    routing
+      .OwnDomains("ecommerce.shipping.commands")
+      .SubscribeTo("ecommerce.orders.events")
+      .Inbox.UseSharedTopic("inbox");
+  })
+  .WithEFCore<ShippingDbContext>()
+  .WithDriver.Postgres
+  .AddTransportConsumer();
 
-      if (existingShipment != null) {
-        _logger.LogInformation(
-          "Shipment already exists for order {OrderId}, skipping",
-          @event.OrderId
-        );
+builder.Services.AddReceptors();
+builder.Services.AddWhizbangDispatcher();
 
-        return new ShipmentCreated(
-          ShipmentId: existingShipment.ShipmentId,
-          OrderId: existingShipment.OrderId,
-          Carrier: existingShipment.Carrier,
-          TrackingNumber: existingShipment.TrackingNumber,
-          LabelUrl: existingShipment.LabelUrl,
-          ShippingCost: existingShipment.ShippingCost,
-          EstimatedDelivery: existingShipment.EstimatedDelivery,
-          CreatedAt: DateTime.UtcNow
-        );
-      }
+var host = builder.Build();
 
-      // 2. Get order details (from Order Service DB - cross-service query for demo)
-      var order = await GetOrderAsync(@event.OrderId, ct);
-      if (order == null) {
-        throw new InvalidOperationException($"Order {event.OrderId} not found");
-      }
-
-      // 3. Build shipment request
-      var shipmentRequest = new ShipmentRequest(
-        OrderId: @event.OrderId,
-        From: new Address(
-          Name: "ECommerce Warehouse",
-          Street: "1000 Warehouse Blvd",
-          City: "Memphis",
-          State: "TN",
-          ZipCode: "38101",
-          Country: "US",
-          Phone: "9015551234"
-        ),
-        To: new Address(
-          Name: order.CustomerName,
-          Street: order.ShippingAddress.Street,
-          City: order.ShippingAddress.City,
-          State: order.ShippingAddress.State,
-          ZipCode: order.ShippingAddress.ZipCode,
-          Country: order.ShippingAddress.Country
-        ),
-        Package: new Package(
-          WeightPounds: 5.0m,  // Demo: Hard-coded weight
-          LengthInches: 12,
-          WidthInches: 10,
-          HeightInches: 8
-        ),
-        Options: new ShipmentOptions(
-          ServiceLevel: "Standard"
-        )
-      );
-
-      // 4. Call carrier API
-      var result = await _carrierService.CreateShipmentAsync(shipmentRequest, ct);
-
-      if (result.Success) {
-        var shipmentId = Guid.NewGuid().ToString("N");
-
-        // 5. Store shipment
-        await _db.ExecuteAsync(
-          """
-          INSERT INTO shipments (
-            shipment_id, order_id, carrier, tracking_number, label_url, shipping_cost, estimated_delivery, status, created_at, updated_at
-          )
-          VALUES (@ShipmentId, @OrderId, @Carrier, @TrackingNumber, @LabelUrl, @ShippingCost, @EstimatedDelivery, @Status, NOW(), NOW())
-          """,
-          new {
-            ShipmentId = shipmentId,
-            OrderId = @event.OrderId,
-            Carrier = "FedEx",
-            TrackingNumber = result.TrackingNumber,
-            LabelUrl = result.LabelUrl,
-            ShippingCost = result.ShippingCost,
-            EstimatedDelivery = result.EstimatedDelivery,
-            Status = "Created"
-          },
-          transaction: tx
-        );
-
-        // 6. Publish ShipmentCreated event
-        var shipmentCreatedEvent = new ShipmentCreated(
-          ShipmentId: shipmentId,
-          OrderId: @event.OrderId,
-          Carrier: "FedEx",
-          TrackingNumber: result.TrackingNumber!,
-          LabelUrl: result.LabelUrl!,
-          ShippingCost: result.ShippingCost!.Value,
-          EstimatedDelivery: result.EstimatedDelivery!.Value,
-          CreatedAt: DateTime.UtcNow
-        );
-
-        await PublishEventAsync(shipmentCreatedEvent, tx, ct);
-
-        await tx.CommitAsync(ct);
-
-        _logger.LogInformation(
-          "Shipment created for order {OrderId}, tracking: {TrackingNumber}, cost: ${ShippingCost}",
-          @event.OrderId,
-          result.TrackingNumber,
-          result.ShippingCost
-        );
-
-        return shipmentCreatedEvent;
-      } else {
-        throw new ShipmentCreationFailedException(
-          @event.OrderId,
-          result.ErrorMessage ?? "Shipment creation failed"
-        );
-      }
-    } catch {
-      await tx.RollbackAsync(ct);
-      throw;
-    }
-  }
-
-  private async Task<OrderRow?> GetOrderAsync(string orderId, CancellationToken ct) {
-    // Cross-service query (demo only - use event-carried state transfer in production)
-    return await _db.QuerySingleOrDefaultAsync<OrderRow>(
-      """
-      SELECT
-        o.order_id,
-        o.customer_id AS customer_name,
-        o.shipping_address
-      FROM orders o
-      WHERE o.order_id = @OrderId
-      """,
-      new { OrderId = orderId }
-    );
-  }
-
-  private async Task PublishEventAsync<TEvent>(
-    TEvent @event,
-    NpgsqlTransaction tx,
-    CancellationToken ct
-  ) where TEvent : IEvent {
-    await _db.ExecuteAsync(
-      """
-      INSERT INTO outbox (message_id, message_type, message_body, created_at)
-      VALUES (@MessageId, @MessageType, @MessageBody::jsonb, NOW())
-      """,
-      new {
-        MessageId = Guid.NewGuid(),
-        MessageType = typeof(TEvent).FullName,
-        MessageBody = System.Text.Json.JsonSerializer.Serialize(@event)
-      },
-      transaction: tx
-    );
-  }
+using (var scope = host.Services.CreateScope()) {
+  var dbContext = scope.ServiceProvider.GetRequiredService<ShippingDbContext>();
+  var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+  await dbContext.EnsureWhizbangDatabaseInitializedAsync(logger);
 }
 
-public record ShipmentRow(
-  string ShipmentId,
-  string OrderId,
-  string Carrier,
-  string TrackingNumber,
-  string LabelUrl,
-  decimal ShippingCost,
-  DateTime EstimatedDelivery
-);
-
-public record OrderRow(
-  string OrderId,
-  string CustomerName,
-  ShippingAddress ShippingAddress
-);
-
-public record ShippingAddress(
-  string Street,
-  string City,
-  string State,
-  string ZipCode,
-  string Country
-);
-
-public class ShipmentCreationFailedException : Exception {
-  public ShipmentCreationFailedException(string orderId, string message)
-    : base($"Shipment creation failed for order {orderId}: {message}") { }
-}
+host.Run();
 ```
 
 ---
 
-## Step 6: Tracking Updates (Webhook)
-
-**ECommerce.ShippingWorker/Controllers/WebhooksController.cs**:
-
-```csharp{title="Step 6: Tracking Updates (Webhook)" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Tracking"]}
-using Microsoft.AspNetCore.Mvc;
-using Npgsql;
-using Dapper;
-
-namespace ECommerce.ShippingWorker.Controllers;
-
-[ApiController]
-[Route("api/webhooks")]
-public class WebhooksController : ControllerBase {
-  private readonly NpgsqlConnection _db;
-  private readonly ILogger<WebhooksController> _logger;
-
-  public WebhooksController(
-    NpgsqlConnection db,
-    ILogger<WebhooksController> logger
-  ) {
-    _db = db;
-    _logger = logger;
-  }
-
-  [HttpPost("fedex/tracking")]
-  public async Task<IActionResult> FedExTrackingUpdate([FromBody] FedExTrackingWebhook webhook) {
-    try {
-      var trackingNumber = webhook.TrackingNumber;
-      var status = webhook.Status;
-      var location = webhook.Location;
-      var timestamp = webhook.Timestamp;
-
-      // 1. Find shipment
-      var shipment = await _db.QuerySingleOrDefaultAsync<ShipmentRow>(
-        """
-        SELECT shipment_id, order_id, tracking_number
-        FROM shipments
-        WHERE tracking_number = @TrackingNumber
-        """,
-        new { TrackingNumber = trackingNumber }
-      );
-
-      if (shipment == null) {
-        _logger.LogWarning("Shipment not found for tracking {TrackingNumber}", trackingNumber);
-        return NotFound();
-      }
-
-      // 2. Insert tracking event
-      await _db.ExecuteAsync(
-        """
-        INSERT INTO tracking_events (event_id, shipment_id, status, location, timestamp, created_at)
-        VALUES (@EventId, @ShipmentId, @Status, @Location, @Timestamp, NOW())
-        """,
-        new {
-          EventId = Guid.NewGuid().ToString("N"),
-          ShipmentId = shipment.ShipmentId,
-          Status = status,
-          Location = location,
-          Timestamp = timestamp
-        }
-      );
-
-      // 3. Update shipment status
-      if (status == "Delivered") {
-        await _db.ExecuteAsync(
-          """
-          UPDATE shipments
-          SET status = 'Delivered', actual_delivery = @Timestamp, updated_at = NOW()
-          WHERE shipment_id = @ShipmentId
-          """,
-          new { ShipmentId = shipment.ShipmentId, Timestamp = timestamp }
-        );
-      }
-
-      _logger.LogInformation(
-        "Tracking update for {TrackingNumber}: {Status} at {Location}",
-        trackingNumber,
-        status,
-        location
-      );
-
-      return Ok();
-    } catch (Exception ex) {
-      _logger.LogError(ex, "Failed to process FedEx tracking webhook");
-      return StatusCode(500);
-    }
-  }
-}
-
-public record FedExTrackingWebhook(
-  string TrackingNumber,
-  string Status,
-  string Location,
-  DateTime Timestamp
-);
-```
-
----
-
-## Step 7: Test Shipping Flow
+## Step 6: Test Shipping Flow
 
 ### 1. Create Order (Full End-to-End)
 
 ```bash{title="Create Order (Full End-to-End)" description="Create Order (Full End-to-End)" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
-  -d '{ ... }'
+  -d '{ "customerId": "...", "lineItems": [ ... ] }'
 ```
 
 ### 2. Observe Event Flow
 
 Aspire Dashboard:
-1. **Order Service**: OrderCreated
-2. **Inventory Worker**: InventoryReserved
-3. **Payment Worker**: PaymentProcessed
-4. **Shipping Worker**: ShipmentCreated (THIS STEP)
-5. **Notification Worker**: ShipmentNotification (SMS)
+1. **Order Service**: `OrderCreatedEvent`
+2. **Inventory Worker**: `InventoryReservedEvent`
+3. **Payment Worker**: `PaymentProcessedEvent`
+4. **Shipping Worker**: `PaymentShippingReceptor` → `CreateShipmentCommand` → `ShipmentCreatedEvent` (THIS STEP)
+5. **Notification Worker**: shipping notification
 
-### 3. Verify Shipment
+### 3. Verify Shipment Events
 
 ```sql{title="Verify Shipment" description="Verify Shipment" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Shipment"]}
-SELECT * FROM shipments WHERE order_id = '<order-id>';
+SELECT stream_id, event_type, created_at
+FROM wh_event_store
+WHERE event_type LIKE '%Shipment%'
+ORDER BY created_at DESC;
 ```
 
-**Expected**:
-- `tracking_number = '123456789012'`
-- `carrier = 'FedEx'`
-- `status = 'Created'`
-- `label_url` contains PDF URL
+**Expected**: a `ShipmentCreatedEvent` row streamed by `OrderId`, with `SHIP-...`/`TRK...` references in the payload.
+
+---
+
+## Testing
+
+**tests/ECommerce.ShippingWorker.Tests/CreateShipmentReceptorTests.cs** follows the same pattern as the other workers:
+
+```csharp{title="Unit Test - Create Shipment" description="Unit Test - Create Shipment" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+[Test]
+public async Task HandleAsync_CreatesShipment_PublishesEventAsync() {
+  // Arrange
+  var dispatcher = new TestDispatcher(); // records PublishAsync calls
+  var receptor = new CreateShipmentReceptor(dispatcher, NullLogger<CreateShipmentReceptor>.Instance);
+
+  var command = new CreateShipmentCommand {
+    OrderId = "order-123",
+    ShippingAddress = "123 Main St, City, State 12345"
+  };
+
+  // Act
+  var result = await receptor.HandleAsync(command);
+
+  // Assert
+  await Assert.That(result.OrderId).IsEqualTo("order-123");
+  await Assert.That(result.ShipmentId).StartsWith("SHIP-");
+  await Assert.That(result.TrackingNumber).StartsWith("TRK");
+  await Assert.That(dispatcher.PublishedEvents).Count().IsEqualTo(1);
+}
+```
 
 ---
 
 ## Key Takeaways
 
+✅ **Events Have Receptors** - `IReceptor<PaymentProcessedEvent, CreateShipmentCommand>` chains flows
+✅ **Event → Command** - `SendAsync` routes commands to the owning service
 ✅ **Carrier API Abstraction** - Swap carriers easily (FedEx, UPS, USPS)
-✅ **Idempotency** - Prevent duplicate shipments
-✅ **Webhook Integration** - Real-time tracking updates
-✅ **Label Generation** - PDF shipping labels
-✅ **Event-Driven** - ShipmentCreated triggers notifications
+✅ **Webhook → Event** - Translate carrier callbacks into domain events
+✅ **Event-Driven** - `ShipmentCreatedEvent` triggers notifications
 
 ---
 
@@ -822,4 +395,4 @@ Continue to **[Customer Service](customer-service.md)** to:
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

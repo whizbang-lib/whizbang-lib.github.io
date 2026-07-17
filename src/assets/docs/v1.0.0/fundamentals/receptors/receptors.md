@@ -1,6 +1,8 @@
 ---
 title: Receptors Guide
 pageType: overview
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 2
@@ -15,6 +17,11 @@ codeReferences:
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
   - >-
     samples/ECommerce/ECommerce.InventoryWorker/Receptors/ReserveInventoryReceptor.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
+  - tests/Whizbang.Core.Tests/Receptors/VoidReceptorTests.cs
+  - tests/Whizbang.Core.Tests/Receptors/SyncReceptorTests.cs
+  - tests/Whizbang.Core.Integration.Tests/DispatcherReceptorIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -123,16 +130,12 @@ For receptors that perform pure computation without async operations, use `ISync
 ```csharp{title="ISyncReceptor Interface" description="ISyncReceptor Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "ISyncReceptor", "Interface"]}
 namespace Whizbang.Core;
 
-public interface ISyncReceptor<in TMessage, out TResponse>
-    where TMessage : notnull {
-
+public interface ISyncReceptor<in TMessage, out TResponse> {
     TResponse Handle(TMessage message);
 }
 
 // Void variant for side-effect-only operations
-public interface ISyncReceptor<in TMessage>
-    where TMessage : notnull {
-
+public interface ISyncReceptor<in TMessage> {
     void Handle(TMessage message);
 }
 ```
@@ -167,7 +170,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCre
         CreateOrder message,
         CancellationToken ct = default) {
 
-        var orderId = Guid.CreateVersion7();
+        Guid orderId = TrackedGuid.NewMedo();
         var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
 
         return ValueTask.FromResult((
@@ -180,7 +183,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCre
 // After (clean sync pattern)
 public class CreateOrderReceptor : ISyncReceptor<CreateOrder, (OrderResult, OrderCreated)> {
     public (OrderResult, OrderCreated) Handle(CreateOrder message) {
-        var orderId = Guid.CreateVersion7();
+        Guid orderId = TrackedGuid.NewMedo();
         var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
 
         return (
@@ -251,6 +254,7 @@ var result = await _dispatcher.LocalInvokeAsync<ProcessPayment, PaymentResult>(c
 
 ```csharp{title="Basic Example" description="Basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Basic", "Example"]}
 using Whizbang.Core;
+using Whizbang.Core.ValueObjects;
 
 public record CreateOrder(
     Guid CustomerId,
@@ -282,7 +286,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         }
 
         // Business logic
-        var orderId = Guid.CreateVersion7();
+        Guid orderId = TrackedGuid.NewMedo();
         var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
 
         _logger.LogInformation(
@@ -554,7 +558,7 @@ public record CreateOrder(Guid CustomerId, OrderLineItem[] Items);
 public record OrderResult(Guid OrderId);
 
 public record OrderCreated(
-    [property: StreamKey] Guid OrderId,
+    [property: StreamId] Guid OrderId,
     Guid CustomerId,
     decimal Total,
     DateTimeOffset CreatedAt
@@ -578,7 +582,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCre
         }
 
         // Business logic
-        var orderId = Guid.CreateVersion7();
+        Guid orderId = TrackedGuid.NewMedo();
         var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
 
         _logger.LogInformation(
@@ -659,7 +663,7 @@ builder.Services.AddTransient<IReceptor<CreateOrder, OrderCreated>, CreateOrderR
 
 **Auto-Discovery** (with Whizbang.Generators):
 ```csharp{title="Registration (2)" description="Auto-Discovery (with Whizbang." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Registration"]}
-builder.Services.AddDiscoveredReceptors();  // Automatically finds all IReceptor implementations
+builder.Services.AddReceptors();  // Generated extension - registers all discovered IReceptor implementations
 ```
 
 ### Lifetime
@@ -839,10 +843,10 @@ public class CreateOrderReceptorTests {
         var receptor = new CreateOrderReceptor(logger);
 
         var command = new CreateOrder(
-            CustomerId: Guid.NewGuid(),
+            CustomerId: TrackedGuid.NewMedo(),
             Items: [
-                new OrderLineItem(Guid.NewGuid(), 2, 19.99m),
-                new OrderLineItem(Guid.NewGuid(), 1, 49.99m)
+                new OrderLineItem(TrackedGuid.NewMedo(), 2, 19.99m),
+                new OrderLineItem(TrackedGuid.NewMedo(), 1, 49.99m)
             ]
         );
 
@@ -863,7 +867,7 @@ public class CreateOrderReceptorTests {
         var receptor = new CreateOrderReceptor(logger);
 
         var command = new CreateOrder(
-            CustomerId: Guid.NewGuid(),
+            CustomerId: TrackedGuid.NewMedo(),
             Items: []  // Empty!
         );
 
@@ -909,7 +913,7 @@ public class CancelOrderReceptorTests {
         var receptor = new CancelOrderReceptor(mockDb, logger);
 
         var command = new CancelOrder(
-            OrderId: Guid.NewGuid(),  // Doesn't exist
+            OrderId: TrackedGuid.NewMedo(),  // Doesn't exist
             Reason: "Customer request"
         );
 
@@ -1116,7 +1120,7 @@ public class CompleteOrderReceptor : IReceptor<CompleteOrder, OrderCompleted> {
 - ✅ Log important decisions and errors
 - ✅ Test receptors in isolation
 - ✅ Extract complex validation into private methods
-- ✅ Use **Guid.CreateVersion7()** for IDs (time-ordered)
+- ✅ Use **TrackedGuid.NewMedo()** for IDs (time-ordered UUIDv7)
 
 ### DON'T ❌
 
@@ -1127,7 +1131,7 @@ public class CompleteOrderReceptor : IReceptor<CompleteOrder, OrderCompleted> {
 - ❌ Return null (throw exception or return error response)
 - ❌ Mix read and write logic (use separate receptors)
 - ❌ Ignore CancellationToken
-- ❌ Use Guid.NewGuid() (use Guid.CreateVersion7() for time-ordering)
+- ❌ Use Guid.NewGuid() (use TrackedGuid.NewMedo() for time-ordered UUIDv7 IDs)
 
 ---
 

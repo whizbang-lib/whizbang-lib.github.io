@@ -1,6 +1,8 @@
 ---
 title: Testing Strategy
 pageType: tutorial
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Tutorial
 order: 9
@@ -16,15 +18,26 @@ codeReferences:
   - >-
     samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Workflows/CreateProductWorkflowTests.cs
   - >-
+    samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Fixtures/RabbitMqIntegrationFixture.cs
+  - >-
     samples/ECommerce/tests/ECommerce.BFF.API.Tests/PerspectiveModelsTests.cs
   - >-
     samples/ECommerce/tests/ECommerce.PaymentWorker.Tests/ProcessPaymentReceptorTests.cs
+testReferences:
+  - >-
+    samples/ECommerce/tests/ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.NotificationWorker.Tests/SendNotificationReceptorTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Workflows/CreateProductWorkflowTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.InMemory.Integration.Tests/Workflows/CreateProductWorkflowTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Testing Strategy
 
-Build a **comprehensive testing strategy** for the ECommerce system covering unit tests, integration tests, end-to-end tests, test fixtures, and mocking patterns.
+Build a **comprehensive testing strategy** for the ECommerce system covering unit tests, integration tests, test fixtures, and mocking patterns — using **TUnit** and completion-signal-based waiting (never `Task.Delay` polling).
 
 :::note
 This is **Part 8** of the ECommerce Tutorial. Complete [Analytics Service](analytics-service.md) first.
@@ -55,520 +68,298 @@ flowchart TD
 
 ### Testing Receptors
 
-**ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs**:
+Receptors take `IDispatcher` + `ILogger` — no database mocking needed. Use a recording `TestDispatcher` and `NullLogger`.
+
+**tests/ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs** (condensed):
 
 ```csharp{title="Testing Receptors" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Receptors"]}
-using TUnit.Core;
-using TUnit.Assertions;
-using ECommerce.OrderService.API.Receptors;
 using ECommerce.Contracts.Commands;
 using ECommerce.Contracts.Events;
-using Npgsql;
-using Moq;
+using ECommerce.OrderService.API.Receptors;
+using Microsoft.Extensions.Logging.Abstractions;
+using Whizbang.Core;
+using Whizbang.Core.Observability;
+using Whizbang.Core.ValueObjects;
 
 namespace ECommerce.OrderService.Tests;
 
-[TestFixture]
 public class CreateOrderReceptorTests {
+  /// <summary>
+  /// Test double for IDispatcher that records published messages.
+  /// (Implements the remaining IDispatcher members as NotImplementedException —
+  /// see the sample file for the full implementation.)
+  /// </summary>
+  private class TestDispatcher : IDispatcher {
+    public List<object> PublishedMessages { get; } = [];
+    public int PublishCount => PublishedMessages.Count;
+
+    public Task<IDeliveryReceipt> PublishAsync<TEvent>(TEvent @event) {
+      PublishedMessages.Add(@event!);
+      return Task.FromResult<IDeliveryReceipt>(DeliveryReceipt.Delivered(MessageId.New(), "test"));
+    }
+
+    // ... remaining IDispatcher members throw NotImplementedException
+  }
+
   [Test]
-  public async Task HandleAsync_ValidOrder_CreatesOrderAndPublishesEventAsync() {
+  public async Task CreateOrderReceptor_ValidOrder_PublishesEventAsync() {
     // Arrange
-    var mockDb = new Mock<NpgsqlConnection>();
-    var mockContext = new Mock<IMessageContext>();
-    var mockLogger = new Mock<ILogger<CreateOrderReceptor>>();
+    var dispatcher = new TestDispatcher();
+    var logger = NullLogger<CreateOrderReceptor>.Instance;
+    var receptor = new CreateOrderReceptor(dispatcher, logger);
 
-    // Setup message context
-    mockContext.Setup(c => c.MessageId).Returns(Guid.NewGuid());
-    mockContext.Setup(c => c.CorrelationId).Returns(Guid.NewGuid());
-
-    var receptor = new CreateOrderReceptor(
-      mockDb.Object,
-      mockContext.Object,
-      mockLogger.Object
-    );
-
-    var command = new CreateOrder(
-      CustomerId: "cust-123",
-      Items: [
-        new OrderItem("prod-456", 2, 19.99m)
+    var command = new CreateOrderCommand {
+      OrderId = OrderId.New(),
+      CustomerId = CustomerId.New(),
+      LineItems = [
+        new OrderLineItem {
+          ProductId = ProductId.New(),
+          ProductName = "Widget",
+          Quantity = 2,
+          UnitPrice = 19.99m
+        }
       ],
-      ShippingAddress: new Address(
-        Street: "123 Main St",
-        City: "Springfield",
-        State: "IL",
-        ZipCode: "62701",
-        Country: "USA"
-      )
-    );
+      TotalAmount = 39.98m
+    };
 
     // Act
     var result = await receptor.HandleAsync(command);
 
     // Assert
-    await Assert.That(result).IsNotNull();
-    await Assert.That(result.CustomerId).IsEqualTo("cust-123");
+    await Assert.That(result.OrderId).IsEqualTo(command.OrderId);
     await Assert.That(result.TotalAmount).IsEqualTo(39.98m);
-    await Assert.That(result.Items).HasCount().EqualTo(1);
-    await Assert.That(result.Items[0].LineTotal).IsEqualTo(39.98m);
+    await Assert.That(dispatcher.PublishCount).IsEqualTo(1);
+    await Assert.That(dispatcher.PublishedMessages[0]).IsTypeOf<OrderCreatedEvent>();
   }
 
   [Test]
-  public async Task HandleAsync_EmptyItems_ThrowsValidationExceptionAsync() {
+  public async Task CreateOrderReceptor_EmptyLineItems_ThrowsInvalidOperationExceptionAsync() {
     // Arrange
-    var mockDb = new Mock<NpgsqlConnection>();
-    var mockContext = new Mock<IMessageContext>();
-    var mockLogger = new Mock<ILogger<CreateOrderReceptor>>();
+    var dispatcher = new TestDispatcher();
+    var receptor = new CreateOrderReceptor(dispatcher, NullLogger<CreateOrderReceptor>.Instance);
 
-    var receptor = new CreateOrderReceptor(
-      mockDb.Object,
-      mockContext.Object,
-      mockLogger.Object
-    );
-
-    var command = new CreateOrder(
-      CustomerId: "cust-123",
-      Items: [],  // Empty items
-      ShippingAddress: new Address("123 Main", "Springfield", "IL", "62701", "USA")
-    );
+    var command = new CreateOrderCommand {
+      OrderId = OrderId.New(),
+      CustomerId = CustomerId.New(),
+      LineItems = [],  // Empty list
+      TotalAmount = 39.98m
+    };
 
     // Act & Assert
     await Assert.That(async () => await receptor.HandleAsync(command))
-      .Throws<ValidationException>()
-      .WithMessage().Contains("at least one item");
-  }
-
-  [Test]
-  public async Task HandleAsync_DuplicateOrder_ReturnsExistingOrderAsync() {
-    // Arrange
-    var mockDb = new Mock<NpgsqlConnection>();
-    // Setup to return existing order
-    mockDb.Setup(db => db.QuerySingleOrDefaultAsync<OrderRow>(
-      It.IsAny<string>(),
-      It.IsAny<object>(),
-      It.IsAny<NpgsqlTransaction>()
-    )).ReturnsAsync(new OrderRow(
-      OrderId: "order-existing",
-      CustomerId: "cust-123",
-      TotalAmount: 39.98m
-    ));
-
-    var receptor = new CreateOrderReceptor(mockDb.Object, mockContext.Object, mockLogger.Object);
-    var command = new CreateOrder(...);
-
-    // Act
-    var result = await receptor.HandleAsync(command);
-
-    // Assert
-    await Assert.That(result.OrderId).IsEqualTo("order-existing");
+      .Throws<InvalidOperationException>()
+      .WithMessage("Order must contain at least one item");
   }
 }
 ```
 
 ### Testing Perspectives
 
-**ECommerce.CustomerService.Tests/OrderSummaryPerspectiveTests.cs**:
+Perspectives are **pure functions** — no mocks at all. Call `Apply` with a model and an event, assert on the returned model:
 
-```csharp{title="Testing Perspectives" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Perspectives"]}
-using TUnit.Core;
-using TUnit.Assertions;
-using ECommerce.CustomerService.API.Perspectives;
+```csharp{title="Testing Perspectives" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Testing", "Perspectives"]}
 using ECommerce.Contracts.Events;
-using Npgsql;
-using Dapper;
-using Moq;
+using ECommerce.Contracts.Lenses;
+using ECommerce.InventoryWorker.Perspectives;
 
-namespace ECommerce.CustomerService.Tests;
-
-[TestFixture]
-public class OrderSummaryPerspectiveTests {
+public class InventoryLevelsPerspectiveTests {
   [Test]
-  public async Task HandleAsync_OrderCreated_InsertsOrderSummaryAsync() {
-    // Arrange
-    var mockDb = new Mock<NpgsqlConnection>();
-    var mockLogger = new Mock<ILogger<OrderSummaryPerspective>>();
-
-    var perspective = new OrderSummaryPerspective(
-      mockDb.Object,
-      mockLogger.Object
-    );
-
-    var @event = new OrderCreated(
-      OrderId: "order-123",
-      CustomerId: "cust-456",
-      Items: [
-        new OrderItem("prod-789", 2, 19.99m, 39.98m)
-      ],
-      ShippingAddress: new Address("123 Main", "Springfield", "IL", "62701", "USA"),
-      TotalAmount: 39.98m,
-      CreatedAt: DateTime.UtcNow
-    );
+  public async Task Apply_InventoryReserved_IncrementsReservedAsync() {
+    // Arrange - pure function, no dependencies
+    var perspective = new InventoryLevelsPerspective();
+    var current = new InventoryLevelDto {
+      ProductId = TrackedGuid.NewMedo().Value,  // time-ordered UUIDv7
+      Quantity = 100,
+      Reserved = 0,
+      Available = 100,
+      LastUpdated = DateTime.UtcNow
+    };
+    var @event = new InventoryReservedEvent {
+      OrderId = "order-123",
+      ProductId = current.ProductId,
+      Quantity = 2,
+      ReservedAt = DateTime.UtcNow
+    };
 
     // Act
-    await perspective.HandleAsync(@event);
+    var updated = perspective.Apply(current, @event);
 
     // Assert
-    mockDb.Verify(db => db.ExecuteAsync(
-      It.Is<string>(sql => sql.Contains("INSERT INTO order_summary")),
-      It.Is<object>(param =>
-        ((dynamic)param).OrderId == "order-123" &&
-        ((dynamic)param).TotalAmount == 39.98m
-      ),
-      It.IsAny<NpgsqlTransaction>(),
-      It.IsAny<int>(),
-      It.IsAny<CommandType>()
-    ), Times.Once);
+    await Assert.That(updated.Reserved).IsEqualTo(2);
+    await Assert.That(updated.Available).IsEqualTo(98);
+    await Assert.That(updated.Quantity).IsEqualTo(100);
   }
 
   [Test]
-  public async Task HandleAsync_PaymentProcessed_UpdatesOrderSummaryAsync() {
+  public async Task Apply_InventoryReserved_NoExistingData_ReturnsNullAsync() {
     // Arrange
-    var mockDb = new Mock<NpgsqlConnection>();
-    var mockLogger = new Mock<ILogger<OrderSummaryPerspective>>();
+    var perspective = new InventoryLevelsPerspective();
+    var @event = new InventoryReservedEvent {
+      OrderId = "order-123",
+      ProductId = TrackedGuid.NewMedo().Value,  // time-ordered UUIDv7
+      Quantity = 2,
+      ReservedAt = DateTime.UtcNow
+    };
 
-    var perspective = new OrderSummaryPerspective(
-      mockDb.Object,
-      mockLogger.Object
-    );
-
-    var @event = new PaymentProcessed(
-      OrderId: "order-123",
-      PaymentId: "pay-456",
-      TransactionId: "txn-789",
-      Amount: 39.98m,
-      PaymentMethod: "card",
-      Status: PaymentStatus.Captured,
-      ProcessedAt: DateTime.UtcNow
-    );
-
-    // Act
-    await perspective.HandleAsync(@event);
+    // Act - reserving against unknown product is skipped
+    var updated = perspective.Apply(null!, @event);
 
     // Assert
-    mockDb.Verify(db => db.ExecuteAsync(
-      It.Is<string>(sql => sql.Contains("UPDATE order_summary")),
-      It.Is<object>(param =>
-        ((dynamic)param).OrderId == "order-123" &&
-        ((dynamic)param).PaymentId == "pay-456"
-      ),
-      It.IsAny<NpgsqlTransaction>(),
-      It.IsAny<int>(),
-      It.IsAny<CommandType>()
-    ), Times.Once);
+    await Assert.That(updated).IsNull();
   }
 }
 ```
+
+See **tests/ECommerce.BFF.API.Tests/PerspectiveModelsTests.cs** for the sample's perspective model tests.
 
 ---
 
 ## Integration Tests
 
-### Testing with Test Database
+### Completion Signals, Not Delays
 
-**ECommerce.OrderService.IntegrationTests/CreateOrderIntegrationTests.cs**:
+:::warning
+**Never use `Task.Delay` or polling loops to wait for eventual consistency in tests.** Flaky on slow CI, slow on fast machines. The ECommerce fixtures expose first-class completion hooks — `TaskCompletionSource` wired to worker events — so tests wait for *exactly* the work they triggered.
+:::
 
-```csharp{title="Testing with Test Database" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Test"]}
-using TUnit.Core;
-using TUnit.Assertions;
-using Microsoft.AspNetCore.Mvc.Testing;
-using ECommerce.OrderService.API;
-using ECommerce.Contracts.Commands;
-using System.Net.Http.Json;
+The fixture pattern (from **tests/ECommerce.RabbitMQ.Integration.Tests/Fixtures/RabbitMqIntegrationFixture.cs**):
 
-namespace ECommerce.OrderService.IntegrationTests;
+```csharp{title="Completion Signal Helper" description="Completion-signal helper from the sample fixture" category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Signals"]}
+/// <summary>
+/// Waits until the PerspectiveWorker has applied the expected number of events.
+/// Uses the worker's OnPerspectiveEventProcessed hook + TaskCompletionSource —
+/// no polling, no Task.Delay.
+/// </summary>
+public async Task WaitForPerspectiveProcessingAsync(
+    int expectedCompletions,
+    int timeoutMilliseconds = 30000,
+    string? hostFilter = null,
+    Guid? streamId = null) {
 
-[TestFixture]
-public class CreateOrderIntegrationTests : IAsyncDisposable {
-  private WebApplicationFactory<Program> _factory;
-  private HttpClient _client;
+  var eventCount = 0;
+  var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-  [Before(Test)]
-  public async Task SetupAsync() {
-    _factory = new WebApplicationFactory<Program>()
-      .WithWebHostBuilder(builder => {
-        builder.ConfigureServices(services => {
-          // Override connection string to use test database
-          services.Configure<ConnectionStrings>(options => {
-            options.OrdersDb = "Host=localhost;Database=orders_test;Username=postgres;Password=postgres";
-          });
-        });
-      });
-
-    _client = _factory.CreateClient();
-
-    // Clean database before each test
-    await CleanDatabaseAsync();
+  void handler(PerspectiveEventProcessedEvent e) {
+    // Optional stream-id filter eliminates cross-test contamination
+    if (streamId.HasValue && e.StreamId != streamId.Value) {
+      return;
+    }
+    var current = Interlocked.Add(ref eventCount, e.EventCount);
+    if (current >= expectedCompletions) {
+      tcs.TrySetResult(true);
+    }
   }
 
-  [After(Test)]
-  public async Task TeardownAsync() {
-    await CleanDatabaseAsync();
-  }
+  perspectiveWorker.OnPerspectiveEventProcessed += handler;
 
-  [Test]
-  public async Task POST_CreateOrder_ReturnsCreatedStatusAsync() {
-    // Arrange
-    var command = new {
-      customerId = "cust-123",
-      items = new[] {
-        new { productId = "prod-456", quantity = 2, unitPrice = 19.99 }
-      },
-      shippingAddress = new {
-        street = "123 Main St",
-        city = "Springfield",
-        state = "IL",
-        zipCode = "62701",
-        country = "USA"
-      }
-    };
-
-    // Act
-    var response = await _client.PostAsJsonAsync("/api/orders", command);
-
-    // Assert
-    await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
-
-    var result = await response.Content.ReadFromJsonAsync<OrderCreated>();
-    await Assert.That(result).IsNotNull();
-    await Assert.That(result!.CustomerId).IsEqualTo("cust-123");
-    await Assert.That(result.TotalAmount).IsEqualTo(39.98m);
-  }
-
-  [Test]
-  public async Task POST_CreateOrder_SavesOrderToDatabase_AndPublishesToOutboxAsync() {
-    // Arrange
-    var command = new { ... };
-
-    // Act
-    var response = await _client.PostAsJsonAsync("/api/orders", command);
-    var result = await response.Content.ReadFromJsonAsync<OrderCreated>();
-
-    // Assert - Query database directly
-    using var connection = new NpgsqlConnection("Host=localhost;Database=orders_test;...");
-    await connection.OpenAsync();
-
-    // Check order exists
-    var order = await connection.QuerySingleOrDefaultAsync<OrderRow>(
-      "SELECT * FROM orders WHERE order_id = @OrderId",
-      new { OrderId = result!.OrderId }
-    );
-    await Assert.That(order).IsNotNull();
-
-    // Check outbox entry exists
-    var outboxMessage = await connection.QuerySingleOrDefaultAsync<OutboxRow>(
-      "SELECT * FROM outbox WHERE message_type = @MessageType",
-      new { MessageType = typeof(OrderCreated).FullName }
-    );
-    await Assert.That(outboxMessage).IsNotNull();
-  }
-
-  private async Task CleanDatabaseAsync() {
-    using var connection = new NpgsqlConnection("Host=localhost;Database=orders_test;...");
-    await connection.OpenAsync();
-    await connection.ExecuteAsync("TRUNCATE TABLE orders, order_items, outbox CASCADE");
-  }
-
-  public async ValueTask DisposeAsync() {
-    await _client.DisposeAsync();
-    await _factory.DisposeAsync();
-  }
+  await tcs.Task.WaitAsync(TimeSpan.FromMilliseconds(timeoutMilliseconds));
 }
 ```
 
-### Testing Event Flow
+Whizbang workers expose these hooks as first-class API (useful in production observability too, not just tests).
 
-**ECommerce.IntegrationTests/OrderToPaymentFlowTests.cs**:
+### Workflow Test
+
+**tests/ECommerce.RabbitMQ.Integration.Tests/Workflows/CreateProductWorkflowTests.cs** (condensed):
 
 ```csharp{title="Testing Event Flow" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Event"]}
-using TUnit.Core;
-using TUnit.Assertions;
-using Whizbang.Testing;
+using ECommerce.Contracts.Commands;
+using ECommerce.RabbitMQ.Integration.Tests.Fixtures;
+using Medo;
 
-namespace ECommerce.IntegrationTests;
-
-[TestFixture]
-public class OrderToPaymentFlowTests {
-  private TestHarness _harness;
-
-  [Before(Test)]
-  public async Task SetupAsync() {
-    _harness = new TestHarness()
-      .AddService<OrderService>()
-      .AddService<InventoryWorker>()
-      .AddService<PaymentWorker>()
-      .UseInMemoryServiceBus();
-
-    await _harness.StartAsync();
-  }
-
-  [After(Test)]
-  public async Task TeardownAsync() {
-    await _harness.StopAsync();
-  }
-
-  [Test]
-  public async Task CreateOrder_WithSufficientInventory_ProcessesPaymentAsync() {
-    // Arrange
-    var command = new CreateOrder(...);
-
-    // Act
-    var orderCreatedEvent = await _harness.SendCommandAsync<CreateOrder, OrderCreated>(command);
-
-    // Wait for event propagation
-    await _harness.WaitForEventAsync<InventoryReserved>(
-      e => e.OrderId == orderCreatedEvent.OrderId,
-      timeout: TimeSpan.FromSeconds(10)
-    );
-
-    await _harness.WaitForEventAsync<PaymentProcessed>(
-      e => e.OrderId == orderCreatedEvent.OrderId,
-      timeout: TimeSpan.FromSeconds(10)
-    );
-
-    // Assert
-    var events = _harness.GetPublishedEvents();
-    await Assert.That(events).HasCount().EqualTo(3);  // OrderCreated, InventoryReserved, PaymentProcessed
-
-    var paymentEvent = events.OfType<PaymentProcessed>().Single();
-    await Assert.That(paymentEvent.Status).IsEqualTo(PaymentStatus.Captured);
-  }
-}
-```
-
----
-
-## End-to-End Tests
-
-**ECommerce.E2ETests/FullOrderLifecycleTests.cs**:
-
-```csharp{title="End-to-End Tests" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "End-to-End", "Tests"]}
-using TUnit.Core;
-using TUnit.Assertions;
-using Testcontainers.PostgreSql;
-using Testcontainers.AzuriteServiceBus;
-
-namespace ECommerce.E2ETests;
-
-[TestFixture]
-public class FullOrderLifecycleTests : IAsyncDisposable {
-  private PostgreSqlContainer _postgresContainer;
-  private AzuriteServiceBusContainer _serviceBusContainer;
-  private HttpClient _orderServiceClient;
-  private HttpClient _customerServiceClient;
+[Category("Integration")]
+[NotInParallel("RabbitMQ")]
+public class CreateProductWorkflowTests {
+  private static RabbitMqIntegrationFixture? _fixture;
 
   [Before(Test)]
   public async Task SetupAsync() {
-    // Start containers
-    _postgresContainer = new PostgreSqlBuilder()
-      .WithImage("postgres:16")
-      .Build();
-
-    _serviceBusContainer = new AzuriteServiceBusBuilder()
-      .WithImage("mcr.microsoft.com/azure-messaging/servicebus-emulator")
-      .Build();
-
-    await _postgresContainer.StartAsync();
-    await _serviceBusContainer.StartAsync();
-
-    // Start services with container connection strings
-    _orderServiceClient = await StartServiceAsync<OrderService>(
-      connectionString: _postgresContainer.GetConnectionString(),
-      serviceBusConnectionString: _serviceBusContainer.GetConnectionString()
-    );
-
-    _customerServiceClient = await StartServiceAsync<CustomerService>(
-      connectionString: _postgresContainer.GetConnectionString(),
-      serviceBusConnectionString: _serviceBusContainer.GetConnectionString()
-    );
-
-    // Other services...
+    _fixture = await SharedRabbitMqFixtureSource.GetFixtureAsync();
+    await _fixture.CleanupDatabaseAsync();
   }
 
   [Test]
-  public async Task CreateOrder_FullLifecycle_CompletesSuccessfullyAsync() {
+  [Timeout(120000)]
+  public async Task CreateProduct_PublishesEvent_MaterializesInBothPerspectivesAsync(CancellationToken cancellationToken) {
     // Arrange
-    var command = new {
-      customerId = "cust-123",
-      items = new[] {
-        new { productId = "prod-456", quantity = 2, unitPrice = 19.99 }
-      },
-      shippingAddress = new {
-        street = "123 Main St",
-        city = "Springfield",
-        state = "IL",
-        zipCode = "62701",
-        country = "USA"
-      }
+    var fixture = _fixture ?? throw new InvalidOperationException("Fixture not initialized");
+
+    var command = new CreateProductCommand {
+      ProductId = ProductId.From(Uuid7.NewUuid7().ToGuid()),
+      Name = "Integration Test Product",
+      Description = "A test product for integration testing",
+      Price = 99.99m,
+      ImageUrl = "/images/test-product.png",
+      InitialStock = 50
     };
 
-    // Act
-    var createResponse = await _orderServiceClient.PostAsJsonAsync("/api/orders", command);
-    var orderCreated = await createResponse.Content.ReadFromJsonAsync<OrderCreated>();
+    // Act - register the completion signal BEFORE sending the command
+    var perspectiveTask = fixture.WaitForPerspectiveProcessingAsync(
+      expectedCompletions: 4, timeoutMilliseconds: 90000);
 
-    // Wait for processing (eventually consistent)
-    await Task.Delay(TimeSpan.FromSeconds(15));
+    await fixture.Dispatcher.SendAsync(command);
 
-    // Query order summary from Customer Service (read model)
-    var orderSummary = await _customerServiceClient.GetFromJsonAsync<OrderSummaryDto>(
-      $"/api/orders/{orderCreated!.OrderId}"
-    );
+    await perspectiveTask;                    // wait for perspectives (signal-based)
+    await fixture.WaitForWorkersIdleAsync();  // ensure DB commits are flushed
 
-    // Assert
-    await Assert.That(orderSummary).IsNotNull();
-    await Assert.That(orderSummary!.Status).IsEqualTo("Shipped");
-    await Assert.That(orderSummary.PaymentInfo).IsNotNull();
-    await Assert.That(orderSummary.PaymentInfo!.Status).IsEqualTo("Captured");
-    await Assert.That(orderSummary.ShipmentInfo).IsNotNull();
-    await Assert.That(orderSummary.ShipmentInfo!.TrackingNumber).IsNotNull();
-  }
+    // Assert - query the read model via lenses
+    var product = await fixture.InventoryProductLens.GetByIdAsync(command.ProductId.Value);
+    await Assert.That(product).IsNotNull();
+    await Assert.That(product!.Name).IsEqualTo(command.Name);
 
-  public async ValueTask DisposeAsync() {
-    await _postgresContainer.StopAsync();
-    await _serviceBusContainer.StopAsync();
-    await _postgresContainer.DisposeAsync();
-    await _serviceBusContainer.DisposeAsync();
+    var inventory = await fixture.InventoryLens.GetByProductIdAsync(command.ProductId.Value);
+    await Assert.That(inventory!.Quantity).IsEqualTo(command.InitialStock);
   }
 }
 ```
 
+**Key elements**:
+- ✅ Shared fixture spins up real hosts (worker + BFF) against per-test PostgreSQL databases and a shared broker container
+- ✅ `WaitForPerspectiveProcessingAsync` — completion signal registered **before** the command is sent
+- ✅ `WaitForWorkersIdleAsync` — worker-idle signal, not a sleep
+- ✅ Assertions go through **lenses** (the same read path production uses)
+- ✅ `Uuid7.NewUuid7()` for time-ordered test IDs (never `Guid.NewGuid()` for Whizbang ids)
+
+### Transport Matrix
+
+The sample runs the same workflow suites against multiple transports:
+
+| Test project | Transport | Purpose |
+|---|---|---|
+| `ECommerce.InMemory.Integration.Tests` | In-memory | Fast feedback, no containers |
+| `ECommerce.RabbitMQ.Integration.Tests` | RabbitMQ container | Real broker semantics |
+| `ECommerce.AzureServiceBus.Integration.Tests` | ASB emulator | Production transport parity |
+| `ECommerce.Lifecycle.Integration.Tests` | RabbitMQ | Lifecycle stage ordering (PostAllPerspectives etc.) |
+
 ---
 
-## Test Fixtures
+## Test Fixtures & Data
 
-**ECommerce.Testing/Fixtures/OrderFixture.cs**:
+Use **Bogus** for realistic test data, adapted to the real contract shapes:
 
 ```csharp{title="Test Fixtures" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Test", "Fixtures"]}
 using Bogus;
 using ECommerce.Contracts.Commands;
-using ECommerce.Contracts.Events;
-
-namespace ECommerce.Testing.Fixtures;
 
 public static class OrderFixture {
-  private static readonly Faker<CreateOrder> CreateOrderFaker = new Faker<CreateOrder>()
-    .CustomInstantiator(f => new CreateOrder(
-      CustomerId: f.Random.AlphaNumeric(10),
-      Items: Enumerable.Range(0, f.Random.Int(1, 5))
-        .Select(_ => new OrderItem(
-          ProductId: f.Commerce.Product(),
-          Quantity: f.Random.Int(1, 10),
-          UnitPrice: f.Finance.Amount(5, 100)
-        ))
-        .ToArray(),
-      ShippingAddress: new Address(
-        Street: f.Address.StreetAddress(),
-        City: f.Address.City(),
-        State: f.Address.StateAbbr(),
-        ZipCode: f.Address.ZipCode(),
-        Country: "USA"
-      )
-    ));
+  private static readonly Faker _faker = new();
 
-  public static CreateOrder GenerateCreateOrderCommand() {
-    return CreateOrderFaker.Generate();
-  }
+  public static CreateOrderCommand GenerateCreateOrderCommand() {
+    var lineItems = Enumerable.Range(0, _faker.Random.Int(1, 5))
+      .Select(_ => new OrderLineItem {
+        ProductId = ProductId.New(),
+        ProductName = _faker.Commerce.ProductName(),
+        Quantity = _faker.Random.Int(1, 10),
+        UnitPrice = _faker.Finance.Amount(5, 100)
+      })
+      .ToList();
 
-  public static CreateOrder[] GenerateCreateOrderCommands(int count) {
-    return CreateOrderFaker.Generate(count).ToArray();
+    return new CreateOrderCommand {
+      OrderId = OrderId.New(),
+      CustomerId = CustomerId.New(),
+      LineItems = lineItems,
+      TotalAmount = lineItems.Sum(i => i.Quantity * i.UnitPrice)
+    };
   }
 }
 ```
@@ -593,33 +384,19 @@ public async Task SomeTest_WithRandomData_WorksCorrectlyAsync() {
 
 ## Mocking External Services
 
-**ECommerce.Testing/Mocks/MockPaymentGateway.cs**:
+Keep gateways behind interfaces (see [Payment Processing](payment-processing.md)) so unit tests stay deterministic:
 
 ```csharp{title="Mocking External Services" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Mocking", "External"]}
 using ECommerce.PaymentWorker.Services;
 
-namespace ECommerce.Testing.Mocks;
-
 public class MockPaymentGateway : IPaymentGateway {
-  private readonly List<PaymentResult> _results = [];
+  private readonly Queue<PaymentResult> _results = new();
 
-  public void SetupSuccessfulCharge(string transactionId) {
-    _results.Add(new PaymentResult(
-      Success: true,
-      TransactionId: transactionId,
-      ErrorCode: null,
-      ErrorMessage: null
-    ));
-  }
+  public void SetupSuccessfulCharge(string transactionId) =>
+    _results.Enqueue(new PaymentResult(true, transactionId, null, null));
 
-  public void SetupFailedCharge(string errorCode, string errorMessage) {
-    _results.Add(new PaymentResult(
-      Success: false,
-      TransactionId: null,
-      ErrorCode: errorCode,
-      ErrorMessage: errorMessage
-    ));
-  }
+  public void SetupFailedCharge(string errorCode, string errorMessage) =>
+    _results.Enqueue(new PaymentResult(false, null, errorCode, errorMessage));
 
   public Task<PaymentResult> ChargeAsync(
     string idempotencyKey,
@@ -631,10 +408,7 @@ public class MockPaymentGateway : IPaymentGateway {
     if (_results.Count == 0) {
       throw new InvalidOperationException("No payment results configured");
     }
-
-    var result = _results[0];
-    _results.RemoveAt(0);
-    return Task.FromResult(result);
+    return Task.FromResult(_results.Dequeue());
   }
 
   public Task<RefundResult> RefundAsync(
@@ -642,14 +416,12 @@ public class MockPaymentGateway : IPaymentGateway {
     decimal amount,
     CancellationToken ct = default
   ) {
-    return Task.FromResult(new RefundResult(
-      Success: true,
-      RefundId: Guid.NewGuid().ToString("N"),
-      ErrorMessage: null
-    ));
+    return Task.FromResult(new RefundResult(true, $"REF-{Guid.NewGuid():N}", null));
   }
 }
 ```
+
+For interface mocking beyond hand-rolled doubles, the library repo uses **Rocks** (source-generated mocks, AOT-compatible) — not reflection-based mocking frameworks.
 
 ---
 
@@ -657,8 +429,10 @@ public class MockPaymentGateway : IPaymentGateway {
 
 ### Running Tests with Coverage
 
+TUnit projects are executables — run them directly:
+
 ```bash{title="Running Tests with Coverage" description="Running Tests with Coverage" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Running", "Tests"]}
-cd ECommerce.OrderService.Tests
+cd tests/ECommerce.OrderService.Tests
 dotnet run -- --coverage --coverage-output-format cobertura --coverage-output coverage.xml
 ```
 
@@ -667,8 +441,8 @@ dotnet run -- --coverage --coverage-output-format cobertura --coverage-output co
 | Component | Target | Rationale |
 |-----------|--------|-----------|
 | **Receptors** | 90%+ | Core business logic |
-| **Perspectives** | 80%+ | Event handling logic |
-| **Controllers** | 70%+ | HTTP API endpoints |
+| **Perspectives** | 90%+ | Pure functions — cheap to cover fully |
+| **Endpoints** | 70%+ | HTTP API mapping |
 | **Services** | 80%+ | Infrastructure code |
 
 ---
@@ -676,11 +450,11 @@ dotnet run -- --coverage --coverage-output-format cobertura --coverage-output co
 ## Key Takeaways
 
 ✅ **Testing Pyramid** - 60% unit, 30% integration, 10% e2e
-✅ **Test Fixtures** - Bogus for test data generation
-✅ **Mock External Services** - Isolate unit tests from dependencies
-✅ **Integration Tests** - Test with real database and message bus
-✅ **E2E Tests** - Testcontainers for full environment simulation
-✅ **Test Coverage** - 80%+ for core business logic
+✅ **Completion Signals** - `TaskCompletionSource` + worker hooks; NEVER `Task.Delay`/polling
+✅ **Pure Perspective Tests** - `Apply(model, event)` in, model out — zero mocks
+✅ **Recording TestDispatcher** - assert on published events without infrastructure
+✅ **Transport Matrix** - same workflows against in-memory, RabbitMQ, and ASB
+✅ **Bogus + UUIDv7** - realistic data, time-ordered ids
 
 ---
 
@@ -694,4 +468,4 @@ Continue to **[Deployment](deployment.md)** to:
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

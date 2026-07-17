@@ -1,6 +1,8 @@
 ---
 title: Whizbang.Sagas — Multi-Stream Saga Coordination
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Application Blocks
 order: 1
@@ -16,6 +18,16 @@ codeReferences:
   - src/Whizbang.Sagas/Helpers/SagaItemCompletionReconciler.cs
   - src/Whizbang.Sagas/SagaItemStreams.cs
   - src/Whizbang.Sagas.Generators/SagaGenerator.cs
+testReferences:
+  - tests/Whizbang.Sagas.Tests/BaseSagaServiceTests.cs
+  - tests/Whizbang.Sagas.Tests/SagaCompletionGuardTests.cs
+  - tests/Whizbang.Sagas.Tests/SagaItemCompletionReconcilerTests.cs
+  - tests/Whizbang.Sagas.Tests/SagaItemStreamsTests.cs
+  - tests/Whizbang.Sagas.Tests/SagaLiveProgressResolversTests.cs
+  - tests/Whizbang.Sagas.Tests/SagaApplyHelperTests.cs
+  - tests/Whizbang.Sagas.Tests/SagaHookApplyHelperTests.cs
+  - tests/Whizbang.Sagas.Tests/SagaMetricsTests.cs
+  - tests/Whizbang.Sagas.Tests/Generators/SagaGeneratorSmokeTests.cs
 ---
 
 # Whizbang.Sagas — Multi-Stream Saga Coordination
@@ -46,6 +58,7 @@ That's it. The `[Saga<T>("Name")]` source generator emits, into a sibling `.g.cs
 - `SagaName` const
 - Nine sealed partial nested event classes (`InitiatedEvent`, `ItemsDispatchedEvent`, `ItemStartedEvent`, `ItemCompletedEvent`, `ItemFailedEvent`, `CompletedEvent`, `ResetEvent`, `HookStartedEvent`, `HookCompletedEvent`) — each inherits `AcmeEventBase` and implements the matching `Whizbang.Sagas.Contracts` interface
 - A typed `Service` class derived from `BaseSagaService<...>` with all factory methods filled in
+- Three recovery receptors (`SagaItemCompletedRecoveryHandler`, `SagaItemFailedRecoveryHandler`, `SagaCompletionWatchdogTickHandler`) that bridge per-item terminal events and the auto-armed watchdog tick to the framework's completion-recovery path
 - An `AddBulkOrderImportSaga()` DI extension method registering the `Service` as Scoped
 
 **Without a project event base?** Use `[Saga("Name")]` (no generic argument). The generator inherits from the framework's default `SagaEventBase` (carries `MessageId`, `OccurredAt`, `CorrelationId`, `CausationId`, `OperationName`).
@@ -86,7 +99,7 @@ services.AddWhizbangSagas(opts =>
   opts.PerItemStreamNamespace = Guid.Parse("0b36f8d4-3884-4c3c-b92b-fc6ec74775ea"));
 ```
 
-A matching PostgreSQL `saga_item_stream_id(uuid, text)` function reproduces the derivation byte-for-byte (handy for backfills).
+The derivation is reproducible byte-for-byte in SQL via a canonical `saga_item_stream_id(uuid, text)` function (shipped by consumers as needed — handy for backfills; the library does not install it).
 
 ### Atomic terminal-event emission
 
@@ -182,18 +195,22 @@ public partial class BulkOrderImportSaga {
 
 ### Nested / hierarchical sagas
 
-The item-identifier mechanism already supports nesting. A parent saga's `ItemIdentifier` is a child saga's id; when the child completes, a cross-saga receptor calls `parent.CompleteItem(parentSagaId, childId)`:
+The item-identifier mechanism already supports nesting. A parent saga's `ItemIdentifier` is a child saga's id; when the child completes, a cross-saga receptor marks the parent's item terminal via `UpdateItemAsync` / `FailItemAsync`:
 
 ```csharp{title="Parent observes children"}
 public class ChildSagaCompletedReceptor(ParentSaga.Service parent) :
     IReceptor<ChildSaga.CompletedEvent> {
   public async ValueTask HandleAsync(ChildSaga.CompletedEvent e, CancellationToken ct) {
-    var parentSagaId = ResolveParent(e.SagaId);
+    // CompletedEvent carries EntityId (the identity the child saga was initiated
+    // with) — initiate child sagas with EntityId == child saga id (the common 1:1
+    // shape) so the parent can key its item on it.
+    var childSagaId = e.EntityId;
+    var parentSagaId = ResolveParent(childSagaId);
     var parentCtx = new SagaContext(parentSagaId, parentEntityId);
     if (e.FinalStatus is SagaStatus.Completed) {
-      await parent.UpdateItemAsync(parentCtx, e.SagaId.ToString(), SagaItemState.Completed, displayName: null, ct);
+      await parent.UpdateItemAsync(parentCtx, childSagaId.ToString(), SagaItemState.Completed, displayName: null, ct);
     } else {
-      await parent.FailItemAsync(parentCtx, e.SagaId.ToString(), $"Child saga {e.FinalStatus}", null, displayName: null, ct);
+      await parent.FailItemAsync(parentCtx, childSagaId.ToString(), $"Child saga {e.FinalStatus}", null, displayName: null, ct);
     }
   }
 }

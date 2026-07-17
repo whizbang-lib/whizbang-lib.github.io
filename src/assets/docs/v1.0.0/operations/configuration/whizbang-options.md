@@ -1,6 +1,8 @@
 ---
 title: WhizbangCoreOptions
 pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Configuration
 order: 1
@@ -12,6 +14,10 @@ codeReferences:
   - src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs
   - src/Whizbang.Core/Tags/TagOptions.cs
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Configuration/WhizbangCoreOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Tags/TagOptionsTests.cs
+  - tests/Whizbang.Core.Tests/ServiceCollectionExtensionsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -35,6 +41,18 @@ services.AddWhizbang(options => {
 ```
 
 ## Properties
+
+| Property | Type | Default | Purpose |
+|----------|------|---------|---------|
+| `EnableTagProcessing` | `bool` | `true` | Master switch for message tag processing |
+| `TagProcessingMode` | `TagProcessingMode` | `AfterReceptorCompletion` | When tag hooks run in the pipeline |
+| `Tags` | `TagOptions` | — | Tag hook registration (see below) |
+| `Tracing` | `TracingOptions` | — | Handler/message tracing configuration (see [Tracing](../observability/tracing)) |
+| `Services` | `ServiceRegistrationOptions` | — | Auto-registration behavior for discovered Lenses/Perspectives (see [ServiceRegistrationOptions](service-registration-options)) |
+| `DefaultQueryScope` | `QueryScope` | `QueryScope.Tenant` | Default scope filtering for `ILensQuery<TModel>.DefaultScope` queries |
+| `ShowBanner` | `bool` | `true` | Print the ASCII art banner on startup (the version log line always prints) |
+| `ImmediateDetachedChainWarningThreshold` | `int` | `10` | Warn when ImmediateDetached dispatch chains reach a multiple of this depth (no hard limit) |
+| `EmptyStreamIdPolicy` | `EmptyStreamIdPolicy` | `Reject` | How rows with `stream_id = Guid.Empty` are handled (see [Empty Stream ID Policy](empty-stream-id-policy)) |
 
 ### EnableTagProcessing
 
@@ -92,31 +110,48 @@ Access to tag-specific configuration options. See [TagOptions](#tagoptions) belo
 
 `TagOptions` configures message tag hook registration and behavior.
 
+| Property | Type | Default | Purpose |
+|----------|------|---------|---------|
+| `HookRegistrations` | `IReadOnlyList<TagHookRegistration>` | empty | The registered hook configurations |
+| `PayloadSizeWarningThresholdBytes` | `int?` | `8192` | Log a warning when a built tag payload exceeds this size (raw JSON text length); `null` disables |
+| `PayloadSizeErrorThresholdBytes` | `int?` | `null` | Throw `InvalidOperationException` instead of dispatching when the payload exceeds this size (evaluated before hooks run); `null` disables |
+
 ### UseHook&lt;TAttribute, THook&gt;
 
 Register a hook for a specific tag attribute type:
 
-```csharp{title="Register Tag Hook" description="Register a hook for NotificationTagAttribute" category="Configuration" difficulty="BEGINNER" tags=["Configuration", "Tags", "Hooks"]}
+```csharp{title="Register Tag Hook" description="Register a hook for SignalTagAttribute" category="Configuration" difficulty="BEGINNER" tags=["Configuration", "Tags", "Hooks"]}
 services.AddWhizbang(options => {
-  options.Tags.UseHook<NotificationTagAttribute, SignalRNotificationHook>();
+  options.Tags.UseHook<SignalTagAttribute, SignalRNotificationHook<NotificationHub>>();
 });
 ```
 
 #### With Priority
 
-Control execution order with priority (lower values execute first):
+Control execution order with priority (lower values execute first). The **default priority is `-100`** (fires first):
 
 ```csharp{title="Hook Priority" description="Control hook execution order" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Tags", "Priority"]}
 services.AddWhizbang(options => {
-  options.Tags.UseHook<NotificationTagAttribute, ValidationHook>(priority: -100);  // First
-  options.Tags.UseHook<NotificationTagAttribute, NotificationHook>(priority: 0);   // Default
-  options.Tags.UseHook<NotificationTagAttribute, AuditHook>(priority: 500);        // Last
+  options.Tags.UseHook<SignalTagAttribute, ValidationHook>(priority: -100);    // First (default)
+  options.Tags.UseHook<SignalTagAttribute, NotificationHook>(priority: 0);     // After
+  options.Tags.UseHook<SignalTagAttribute, AuditHook>(priority: 500);          // Last
+});
+```
+
+#### With Lifecycle Stage
+
+`UseHook` also accepts an optional `fireAt` parameter to restrict a hook to a specific `LifecycleStage`. When `fireAt` is `null` (the default), the hook fires at all stages:
+
+```csharp{title="Stage-Restricted Hook" description="Fire a hook only at a specific lifecycle stage" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Tags", "Lifecycle"]}
+services.AddWhizbang(options => {
+  options.Tags.UseHook<SignalTagAttribute, NotificationHook>(
+    fireAt: LifecycleStage.PostPerspectiveInline);
 });
 ```
 
 ### UseUniversalHook&lt;THook&gt;
 
-Register a hook that fires for **all** tagged messages regardless of attribute type:
+Register a hook that fires for **all** tagged messages regardless of attribute type. The hook must implement `IMessageTagHook<MessageTagAttribute>`:
 
 ```csharp{title="Universal Hook" description="Hook that fires for all tagged messages" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Tags", "Universal"]}
 services.AddWhizbang(options => {
@@ -139,20 +174,26 @@ services.AddWhizbang(options => {
   options.TagProcessingMode = TagProcessingMode.AfterReceptorCompletion;
 
   // Register built-in tag hooks
-  options.Tags.UseHook<NotificationTagAttribute, SignalRNotificationHook>();
-  options.Tags.UseHook<TelemetryTagAttribute, OpenTelemetryHook>();
-  options.Tags.UseHook<MetricTagAttribute, PrometheusMetricHook>();
+  // SignalRNotificationHook<THub> ships in Whizbang.SignalR;
+  // OpenTelemetrySpanHook / OpenTelemetryMetricHook ship in Whizbang.Observability
+  options.Tags.UseHook<SignalTagAttribute, SignalRNotificationHook<NotificationHub>>();
+  options.Tags.UseHook<TelemetryTagAttribute, OpenTelemetrySpanHook>();
+  options.Tags.UseHook<MetricTagAttribute, OpenTelemetryMetricHook>();
 
-  // Register custom tag hooks
+  // Register custom tag hooks (user-defined MessageTagAttribute subclasses)
   options.Tags.UseHook<AuditEventAttribute, AuditLogHook>();
   options.Tags.UseHook<SlackNotificationAttribute, SlackHook>();
 
-  // Register hooks with priority
-  options.Tags.UseHook<NotificationTagAttribute, ValidationHook>(priority: -100);
-  options.Tags.UseHook<NotificationTagAttribute, EnrichmentHook>(priority: -50);
+  // Register hooks with priority (default is -100, lower fires first)
+  options.Tags.UseHook<SignalTagAttribute, ValidationHook>(priority: -100);
+  options.Tags.UseHook<SignalTagAttribute, EnrichmentHook>(priority: -50);
 
   // Universal hook for logging all tagged messages
   options.Tags.UseUniversalHook<TagLoggingHook>(priority: int.MaxValue);
+
+  // Payload size guards
+  options.Tags.PayloadSizeWarningThresholdBytes = 8192;  // default
+  options.Tags.PayloadSizeErrorThresholdBytes = 65536;   // default: null (disabled)
 });
 ```
 
@@ -160,10 +201,17 @@ services.AddWhizbang(options => {
 
 When you call `AddWhizbang(options => ...)`:
 
-1. **WhizbangCoreOptions** is registered as Singleton
+1. **WhizbangCoreOptions** is registered as Singleton (first call wins — `TryAddSingleton`)
 2. **TagOptions** is registered as Singleton
 3. **All hooks** are registered as Scoped (via `TryAddScoped`)
 4. **IMessageTagProcessor** is registered as Singleton with `IServiceScopeFactory`
+5. **Generated service registration callbacks** are invoked automatically — discovered Lenses and Perspectives are registered without an explicit `AddAllWhizbangServices()` call (see [ServiceRegistrationExtensions](service-registration))
+
+`AddWhizbang()` returns a `WhizbangBuilder` for chaining storage configuration (e.g., `.WithEFCore<MyDbContext>().WithDriver.Postgres`).
+
+### Multiple AddWhizbang Calls
+
+`AddWhizbang()` can be called multiple times safely. The first call wins for option values; tag hook registrations from all calls are **merged** (duplicate attribute/hook pairs are skipped). This lets different parts of your startup code register hooks independently.
 
 ### Hook Lifetime
 

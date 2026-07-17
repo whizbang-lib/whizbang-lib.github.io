@@ -1,12 +1,16 @@
 ---
 title: MCP Documentation Server
 pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 audience: [consumer, contributor]
 order: 1
 description: Give your AI assistant direct access to Whizbang docs, code examples, code↔test navigation, and live CI test status via the Model Context Protocol
 tags: mcp, ai, tooling, claude, cursor, documentation-server
 codeReferences:
   - mcp-docs-server/src/server.ts
+  - mcp-docs-server/src/index.ts
+  - mcp-docs-server/src/tools/get-test-status-tool.ts
 ---
 
 # MCP Documentation Server
@@ -57,7 +61,7 @@ The npm package bundles a versioned snapshot of these docs (works offline; `bund
 | `list-categories` / `list-docs-by-category` | Browse the docs structure |
 | `get-code-location` | Where in the library a documented concept is implemented |
 | `get-related-docs` | Which pages document a given code symbol |
-| `get-tests-for-code` / `get-code-for-test` | Navigate the code↔tests map (~1,300 linked test methods) |
+| `get-tests-for-code` / `get-code-for-test` | Navigate the code↔tests map (thousands of linked test methods) |
 | `get-test-status` | **Live pass/fail** for a test class or method from the latest library CI run |
 | `validate-doc-links` / `validate-test-links` | Integrity checks over the linking system |
 | `get-coverage-stats` | How much of the public API has linked tests |
