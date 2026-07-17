@@ -1,5 +1,8 @@
 ---
 title: Versioned Apply — Strict Cross-Pod Ordering
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Fundamentals
 order: 5
@@ -13,6 +16,9 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IVersionedApplyTarget.cs
   - src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs
   - src/Whizbang.Sagas/Models/SagaItemModel.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/VersionedApplyTargetTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CrossPodStaleReadRegressionRaceTests.cs
 ---
 
 # Versioned Apply — Strict Cross-Pod Ordering
@@ -21,7 +27,7 @@ codeReferences:
 
 Two pods are processing the same per-item stream. Each loads the projection row at roughly the same time and both see "no row" (or an earlier state). Each applies its own event and writes back. The writes go through independent transactions. If the staler write commits *last*, the row regresses — Pod A's `Completed` write gets overwritten by Pod B's stale-read `Running` write a few milliseconds later.
 
-This race was the slot-3 `019f000e` saga's per-item strand on 2026-06-25 and survived into the v0.755 re-run on 2026-06-26 (2 of 350 items stranded at `Running` even though both their `SagaItemStartedEvent` and `SagaItemCompletedEvent` were durably committed to `wh_event_store`). The framework reconciler healed the saga, but the projection itself stayed wrong.
+This race produced a real production per-item saga strand that survived even the stream-affinity gate: 2 of 350 items stranded at `Running` even though both their `SagaItemStartedEvent` and `SagaItemCompletedEvent` were durably committed to `wh_event_store`. The framework reconciler healed the saga, but the projection itself stayed wrong.
 
 The default storage contract is **deliberately permissive** for this case — see [`CrossPodStaleReadRegressionRaceTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/CrossPodStaleReadRegressionRaceTests.cs). Whizbang's chosen v0.740 solution was upstream: `PerspectiveWorker`'s `(streamId, perspectiveName)` affinity gate plus `wh_active_streams` cross-pod ownership. Together they pin a stream to one pod at a time. But the gate has narrow windows where the strand can still form (lease handoff during pod restarts, the gap between `wh_active_streams` row expiry and the next pod's claim, etc.).
 

@@ -1,5 +1,8 @@
 ---
 title: Native AOT
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Advanced Topics
 order: 3
@@ -9,8 +12,12 @@ description: >-
 tags: 'native-aot, aot, reflection, trim-safe, deployment'
 codeReferences:
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
+  - src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs
   - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
-  - src/Whizbang.Core/Serialization/JsonTypeInfoResolverExtensions.cs
+  - Directory.Build.props
+testReferences:
+  - tests/Whizbang.Core.Tests/JsonContextRegistryTests.cs
+  - tests/Whizbang.Generators.Tests/MessageJsonContextGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -67,105 +74,68 @@ Memory: 24 MB
 
 ## Whizbang is AOT-Ready
 
-Whizbang uses **source generators** instead of reflection, making it AOT-compatible by default:
+Whizbang uses **source generators** instead of reflection. At build time, `Whizbang.Generators` scans your assembly and emits:
 
-```csharp{title="Whizbang is AOT-Ready" description="Whizbang uses source generators instead of reflection, making it AOT-compatible by default:" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Whizbang", "AOT-Ready"]}
-// ❌ BAD - Reflection (not AOT-compatible)
-public class ReflectionDispatcher : IDispatcher {
-  public async Task<TResponse> DispatchAsync<TRequest, TResponse>(
-    TRequest request,
-    CancellationToken ct
-  ) {
-    var receptorType = typeof(IReceptor<,>).MakeGenericType(typeof(TRequest), typeof(TResponse));
-    var receptor = (IReceptor<TRequest, TResponse>)_services.GetService(receptorType);
-    return await receptor.HandleAsync(request, ct);
-  }
-}
+- **`GeneratedDispatcher`** - a zero-reflection `IDispatcher` implementation (registered by the generated `AddWhizbangDispatcher()` extension)
+- **`GeneratedReceptorRegistry`** - pre-compiled lookup tables mapping every message type and lifecycle stage to receptor delegates (no `MakeGenericType`, no runtime scanning)
+- **`AddReceptors()`** - explicit DI registrations for every discovered receptor
+- **`MessageJsonContext`** - a `JsonSerializerContext` covering every discovered `ICommand` / `IEvent`
 
-// ✅ GOOD - Source-generated (AOT-compatible)
-public partial class GeneratedDispatcher : IDispatcher {
-  public async Task<TResponse> DispatchAsync<TRequest, TResponse>(
-    TRequest request,
-    CancellationToken ct
-  ) {
-    return request switch {
-      CreateOrder cmd => (TResponse)(object)await DispatchCreateOrderAsync(cmd, ct),
-      UpdateOrder cmd => (TResponse)(object)await DispatchUpdateOrderAsync(cmd, ct),
-      _ => throw new InvalidOperationException($"No handler for {typeof(TRequest).Name}")
-    };
-  }
+```csharp{title="Whizbang is AOT-Ready" description="Reflection-based dispatch vs Whizbang's source-generated registry" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Whizbang", "AOT-Ready"]}
+// ❌ Reflection-based dispatch (NOT AOT-compatible) - what Whizbang avoids
+var receptorType = typeof(IReceptor<,>).MakeGenericType(messageType, responseType);
+var receptor = services.GetService(receptorType);            // runtime type construction
+var result = receptorType.GetMethod("HandleAsync")!
+  .Invoke(receptor, [message, cancellationToken]);           // reflection invoke
 
-  [MethodImpl(MethodImplOptions.AggressiveInlining)]
-  private async Task<OrderCreated> DispatchCreateOrderAsync(
-    CreateOrder command,
-    CancellationToken ct
-  ) {
-    var receptor = _services.GetRequiredService<IReceptor<CreateOrder, OrderCreated>>();
-    return await receptor.HandleAsync(command, ct);
-  }
-}
+// ✅ Whizbang's generated code (AOT-compatible) - all types known at compile time
+services.AddWhizbangDispatcher();  // registers GeneratedDispatcher + GeneratedReceptorRegistry
+services.AddReceptors();           // explicit registration of every discovered receptor
+
+// Receptor lookup is a pre-compiled table, not reflection:
+var receptors = receptorRegistry.GetReceptorsFor(typeof(OrderCreatedEvent),
+  LifecycleStage.PostInboxInline);
 ```
 
 **Key differences**:
-- ✅ **No reflection** - Direct method calls
+- ✅ **No reflection** - Pre-compiled delegates and direct method calls
 - ✅ **No `MakeGenericType`** - All types known at compile-time
-- ✅ **Inlineable** - JIT/AOT can inline small methods
+- ✅ **Analyzer-enforced** - The library builds with `IsAotCompatible`, `EnableAotAnalyzer`, and `EnableTrimAnalyzer`, and treats IL2026/IL2046/IL2075 as **errors**
 - ✅ **Trim-safe** - No dynamic type loading
+
+:::updated
+At the current commit, the AOT analyzer property group in `Directory.Build.props` applies to all shipped packages **except `Whizbang.Core`**, which is temporarily excluded while the final JSON/dispatcher AOT phases complete; `Whizbang.Core` still builds with `IsTrimmable` and `EnableTrimAnalyzer` enabled. Source generator packages target `netstandard2.0` and run at compile time only, so AOT properties don't apply to them.
+:::
 
 ---
 
 ## JSON Serialization (AOT-Compatible)
 
-Use `System.Text.Json` source generators for AOT-compatible JSON:
+Whizbang is built on `System.Text.Json` **source generation** - no reflection-based serialization anywhere in the message pipeline.
 
-**JsonContextRegistry.cs**:
+**Automatic generation**: `MessageJsonContextGenerator` (in `Whizbang.Generators`) discovers every `ICommand` / `IEvent` in your assembly and emits a `MessageJsonContext : JsonSerializerContext` with `JsonTypeInfo` for each message type, plus `MessageEnvelope<T>` wrapper registrations for transport deserialization. A `[ModuleInitializer]` registers the context into the cross-assembly **`JsonContextRegistry`** (`Whizbang.Core.Serialization`) at startup - you don't write any of this by hand.
 
-```csharp{title="JSON Serialization (AOT-Compatible)" description="**JsonContextRegistry." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "JSON", "Serialization"]}
-using System.Text.Json.Serialization;
+```csharp{title="JSON Serialization (AOT-Compatible)" description="Whizbang's cross-assembly JsonContextRegistry" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "JSON", "Serialization"]}
+using Whizbang.Core.Serialization;
 
-[JsonSerializable(typeof(CreateOrder))]
-[JsonSerializable(typeof(OrderCreated))]
-[JsonSerializable(typeof(PaymentProcessed))]
-[JsonSerializable(typeof(ShipmentCreated))]
-public partial class MessageJsonContext : JsonSerializerContext {
-}
+// Generated module initializers have already called
+// JsonContextRegistry.RegisterContext(MessageJsonContext.Default) for every
+// assembly in the app - yours and Whizbang's own framework packages.
 
-public static class JsonContextRegistry {
-  public static JsonSerializerOptions CreateOptions() {
-    return new JsonSerializerOptions {
-      TypeInfoResolver = JsonTypeInfoResolver.Combine(
-        MessageJsonContext.Default
-      )
-    };
-  }
-}
+// Combine all registered contexts into one AOT-safe options instance:
+var options = JsonContextRegistry.CreateCombinedOptions();
+
+var json = JsonSerializer.Serialize(orderCreated, options);
+var deserialized = JsonSerializer.Deserialize<OrderCreatedEvent>(json, options);
+
+// ❌ BAD - NOT AOT-compatible (reflection-based resolver)
+var badJson = JsonSerializer.Serialize(orderCreated);
 ```
 
-**Usage**:
+**Rules to keep it AOT-safe**:
 
-```csharp{title="JSON Serialization (AOT-Compatible) (2)" description="JSON Serialization (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "JSON", "Serialization"]}
-// ✅ GOOD - AOT-compatible
-var options = JsonContextRegistry.CreateOptions();
-var json = JsonSerializer.Serialize(order, options);
-var deserialized = JsonSerializer.Deserialize<OrderCreated>(json, options);
-
-// ❌ BAD - NOT AOT-compatible
-var json = JsonSerializer.Serialize(order);  // Uses reflection
-var deserialized = JsonSerializer.Deserialize<OrderCreated>(json);
-```
-
-**Whizbang MessageJsonContextGenerator**:
-
-Whizbang automatically generates `JsonSerializerContext` for all messages:
-
-```csharp{title="JSON Serialization (AOT-Compatible) - WhizbangJsonContext" description="Whizbang automatically generates JsonSerializerContext for all messages:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "JSON", "Serialization"]}
-// Generated by Whizbang.Generators.MessageJsonContextGenerator
-[JsonSerializable(typeof(CreateOrder))]
-[JsonSerializable(typeof(OrderCreated))]
-// ... all discovered messages
-public partial class WhizbangJsonContext : JsonSerializerContext {
-}
-```
+- Never add Whizbang framework types to your own `JsonSerializerContext` - each framework package ships and registers its own context.
+- If you need extra hand-written contexts or converters, register them via `JsonContextRegistry.RegisterContext(...)` / `RegisterConverter(...)` instead of building ad-hoc `JsonSerializerOptions`.
 
 ---
 
@@ -209,10 +179,9 @@ Use constructor injection with explicit registrations:
 
 ```csharp{title="Dependency Injection (AOT-Compatible)" description="Dependency Injection (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dependency", "Injection"]}
 // ✅ GOOD - Explicit registration (AOT-compatible)
-builder.Services.AddSingleton<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
-builder.Services.AddSingleton<IReceptor<UpdateOrder, OrderUpdated>, UpdateOrderReceptor>();
+builder.Services.AddScoped<IReceptor<CreateOrderCommand, OrderCreatedEvent>, CreateOrderReceptor>();
 
-// ❌ BAD - Assembly scanning (NOT AOT-compatible)
+// ❌ BAD - Runtime assembly scanning (NOT AOT-compatible)
 builder.Services.Scan(scan => scan
   .FromAssemblyOf<CreateOrderReceptor>()
   .AddClasses(classes => classes.AssignableTo(typeof(IReceptor<,>)))
@@ -223,18 +192,12 @@ builder.Services.Scan(scan => scan
 
 **Whizbang ReceptorDiscoveryGenerator**:
 
-Whizbang automatically generates DI registrations:
+You don't write these registrations by hand. `ReceptorDiscoveryGenerator` discovers receptors at **compile time** and emits the `DispatcherRegistrations` class with explicit registrations - assembly "scanning" happens in the compiler, not at runtime:
 
-```csharp{title="Dependency Injection (AOT-Compatible) -" description="Whizbang automatically generates DI registrations:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dependency", "Injection"]}
-// Generated by Whizbang.Generators.ReceptorDiscoveryGenerator
-public static class ReceptorServiceCollectionExtensions {
-  public static IServiceCollection AddGeneratedReceptors(this IServiceCollection services) {
-    services.AddSingleton<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
-    services.AddSingleton<IReceptor<UpdateOrder, OrderUpdated>, UpdateOrderReceptor>();
-    // ... all discovered receptors
-    return services;
-  }
-}
+```csharp{title="Dependency Injection (AOT-Compatible) - Generated Registrations" description="Source-generated DI wiring emitted into your assembly" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dependency", "Injection"]}
+// Program.cs - call the generated extensions
+builder.Services.AddWhizbangDispatcher();  // GeneratedDispatcher + IReceptorRegistry + IReceptorInvoker
+builder.Services.AddReceptors();           // every discovered receptor, registered explicitly
 ```
 
 ---
@@ -279,31 +242,33 @@ public class OrderDbContext : DbContext {
 
 ---
 
-## Dapper (AOT-Compatible)
+## Dapper (Use With Care Under AOT)
 
-Dapper works with AOT, but avoid dynamic SQL:
+Classic Dapper materializes rows with runtime IL emission, which trimming and Native AOT restrict. Whizbang's Dapper-based Postgres driver builds under the repository's AOT analyzers (IL2026/IL2046/IL2075 as errors), which constrains usage to analyzer-clean patterns. For your own data access under AOT:
 
-**✅ GOOD**:
+**✅ GOOD** - typed result classes with explicit column lists (analyzer-verifiable):
 
-```csharp{title="Dapper (AOT-Compatible)" description="Dapper (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dapper", "AOT-Compatible"]}
+```csharp{title="Dapper (AOT-Compatible)" description="Typed Dapper query with explicit columns" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dapper", "AOT-Compatible"]}
 var orders = await connection.QueryAsync<OrderRow>(
   """
   SELECT order_id, customer_id, total_amount
   FROM orders
   WHERE customer_id = @CustomerId
   """,
-  new { CustomerId = "cust-123" }
+  new { CustomerId = customerId }
 );
 ```
 
-**❌ BAD**:
+**❌ BAD** - `dynamic` results (no compile-time type information at all):
 
-```csharp{title="Dapper (AOT-Compatible) (2)" description="Dapper (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dapper", "AOT-Compatible"]}
+```csharp{title="Dapper (AOT-Compatible) (2)" description="Dynamic Dapper query - avoid under AOT" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dapper", "AOT-Compatible"]}
 var orders = await connection.QueryAsync(  // Dynamic type
   "SELECT * FROM orders WHERE customer_id = @CustomerId",
-  new { CustomerId = "cust-123" }
+  new { CustomerId = customerId }
 );
 ```
+
+If you publish your own app with `PublishAot=true` and lean heavily on Dapper, consider `Dapper.AOT` (source-generated materializers) or raw `NpgsqlCommand` readers for the hot paths.
 
 ---
 
@@ -400,10 +365,10 @@ var type = typeName switch {
 **Error**:
 
 ```
-System.InvalidOperationException: Serialization and deserialization of 'CreateOrder' is not supported.
+System.InvalidOperationException: Serialization and deserialization of 'CreateOrderCommand' is not supported.
 ```
 
-**Fix**: Add `[JsonSerializable(typeof(CreateOrder))]` to `JsonSerializerContext`.
+**Fix**: Message types (`ICommand` / `IEvent`) are covered automatically by the generated `MessageJsonContext` - if a *message* hits this, verify the type actually implements `ICommand`/`IEvent` and the `Whizbang.Generators` package is referenced. For non-message types you serialize yourself, add them to your own `JsonSerializerContext` and register it with `JsonContextRegistry.RegisterContext(...)`.
 
 ### Issue 3: Missing Dependencies
 

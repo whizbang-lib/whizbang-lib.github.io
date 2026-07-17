@@ -1,5 +1,8 @@
 ---
 title: Performance Tuning
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Advanced Topics
 order: 1
@@ -11,7 +14,13 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/BatchedCompletionStrategy.cs
   - src/Whizbang.Core/Workers/ProcessedEventCache.cs
+  - src/Whizbang.Core/Workers/MessageProcessingOptions.cs
+  - src/Whizbang.Core/Workers/TransportBatchOptions.cs
+  - src/Whizbang.Core/Pooling/PolicyContextPool.cs
   - src/Whizbang.Core/Observability/WhizbangMetrics.cs
+testReferences:
+  - tests/Whizbang.Policies.Tests/PolicyContextPoolTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveCompletionStrategyTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -34,40 +43,28 @@ Optimize **Whizbang performance** with zero-allocation patterns, object pooling,
 
 ## Zero-Allocation Dispatch
 
-Whizbang achieves zero allocations through direct method invocation:
+Whizbang's dispatch pipeline is **source-generated**: `Whizbang.Generators` emits a `GeneratedDispatcher` and a `GeneratedReceptorRegistry` whose receptor lookup tables are pre-compiled delegates categorized by message type and lifecycle stage - no reflection, no `MakeGenericType`, no runtime scanning.
 
-```csharp{title="Zero-Allocation Dispatch" description="Whizbang achieves zero allocations through direct method invocation:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Zero-Allocation", "Dispatch"]}
-// Generated code (ReceptorDiscoveryGenerator)
-public class GeneratedDispatcher : IDispatcher {
-  private readonly IServiceProvider _services;
+```csharp{title="Zero-Allocation Dispatch" description="Source-generated dispatch - no reflection on the hot path" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Zero-Allocation", "Dispatch"]}
+// Program.cs - the generated extensions wire the zero-reflection pipeline
+services.AddWhizbangDispatcher();  // GeneratedDispatcher + GeneratedReceptorRegistry
+services.AddReceptors();           // explicit registrations for every discovered receptor
 
-  public async Task<TResponse> DispatchAsync<TRequest, TResponse>(
-    TRequest request,
-    CancellationToken ct = default
-  ) where TRequest : ICommand<TResponse> {
-    // Direct method invocation - zero reflection, zero allocations
-    return request switch {
-      CreateOrder cmd => (TResponse)(object)await DispatchCreateOrderAsync(cmd, ct),
-      UpdateOrder cmd => (TResponse)(object)await DispatchUpdateOrderAsync(cmd, ct),
-      _ => throw new InvalidOperationException($"No handler for {typeof(TRequest).Name}")
-    };
-  }
+// Hot-path lookup is a pre-compiled table, not reflection:
+IReadOnlyList<ReceptorInfo> receptors =
+  receptorRegistry.GetReceptorsFor(typeof(OrderCreatedEvent), LifecycleStage.PostInboxInline);
 
-  private async Task<OrderCreated> DispatchCreateOrderAsync(
-    CreateOrder command,
-    CancellationToken ct
-  ) {
-    var receptor = _services.GetRequiredService<IReceptor<CreateOrder, OrderCreated>>();
-    return await receptor.HandleAsync(command, ct);
-  }
+// Void receptors use ValueTask so synchronous completions allocate nothing:
+public interface IReceptor<in TMessage> {
+  ValueTask HandleAsync(TMessage message, CancellationToken cancellationToken = default);
 }
 ```
 
 **Why this is fast**:
-- ✅ **No reflection** - Direct method calls compiled ahead-of-time
-- ✅ **No allocations** - No boxing, no temporary objects
-- ✅ **Inlineable** - JIT can inline small methods
-- ✅ **Branch prediction** - Pattern matching optimized by JIT
+- ✅ **No reflection** - Pre-compiled delegates emitted at build time
+- ✅ **ValueTask handlers** - Synchronous completions avoid Task allocations
+- ✅ **Inlineable** - JIT/AOT can inline small generated methods
+- ✅ **Measured, not guessed** - `Whizbang.Dispatcher` meter exposes `whizbang.dispatcher.send.duration`, `whizbang.dispatcher.receptor.duration`, and friends
 
 ---
 
@@ -75,48 +72,22 @@ public class GeneratedDispatcher : IDispatcher {
 
 ### 1. Policy Context Pooling
 
-Reuse `PolicyContext` objects to avoid allocations:
+Whizbang ships **`PolicyContextPool`** (`Whizbang.Core.Pooling`) - a thread-safe, lock-free pool (max 1024 pooled instances) that reuses `PolicyContext` objects instead of allocating one per message:
 
-```csharp{title="Policy Context Pooling" description="Reuse PolicyContext objects to avoid allocations:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Policy", "Context"]}
-public static class PolicyContextPool {
-  private static readonly ObjectPool<PolicyContext> Pool =
-    ObjectPool.Create<PolicyContext>();
+```csharp{title="Policy Context Pooling" description="Built-in PolicyContextPool from Whizbang.Core.Pooling" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Policy", "Context"]}
+using Whizbang.Core.Pooling;
 
-  public static PolicyContext Rent(
-    object message,
-    MessageEnvelope envelope,
-    IServiceProvider services,
-    string environment
-  ) {
-    var context = Pool.Get();
-    context.Message = message;
-    context.Envelope = envelope;
-    context.Services = services;
-    context.Environment = environment;
-    return context;
-  }
-
-  public static void Return(PolicyContext context) {
-    context.Clear();  // Reset state
-    Pool.Return(context);
-  }
-}
-```
-
-**Usage**:
-
-```csharp{title="Policy Context Pooling (2)" description="Policy Context Pooling" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Policy", "Context"]}
 var context = PolicyContextPool.Rent(message, envelope, services, "production");
 try {
   var config = await policyEngine.MatchAsync(context);
 } finally {
-  PolicyContextPool.Return(context);  // ALWAYS return to pool
+  PolicyContextPool.Return(context);  // ALWAYS return - Reset() happens inside
 }
 ```
 
-**Benchmarks**:
-- Without pooling: **1000 allocations/sec**
-- With pooling: **0 allocations/sec** (after warmup)
+`Rent` re-initializes a pooled instance (or creates one when the pool is empty); `Return` resets state and discards the instance if the pool is already full. `PolicyContext` properties are intentionally read-only from user code - initialization happens only through the pool or the constructor.
+
+**Effect**: steady-state policy evaluation allocates zero `PolicyContext` objects after warmup.
 
 ### 2. Bulk Processing Pools
 
@@ -150,113 +121,41 @@ try {
 
 ## Batching
 
-### 1. Database Batching
+### 1. Database Batching (Built In)
 
-Process multiple messages in single database transaction:
+You don't write outbox SQL yourself - Whizbang funnels **all** outbox inserts, inbox writes, completions, and failures through a single `process_work_batch` database call per flush. Instead of every message handler making its own DB round-trip, the inbox batch strategy collects messages inside a sliding window and flushes them together. Tune the window via `MessageProcessingOptions`:
 
-```csharp{title="Database Batching" description="Process multiple messages in single database transaction:" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Database", "Batching"]}
-public async Task<WorkBatch> ProcessWorkBatchAsync(
-  Guid instanceId,
-  string serviceName,
-  MessageCompletion[] outboxCompletions,  // Batch of 100
-  MessageFailure[] outboxFailures,        // Batch of failed
-  OutboxMessage[] newOutboxMessages,      // Batch of new
-  CancellationToken ct = default
-) {
-  await using var tx = await _db.BeginTransactionAsync(ct);
-
-  try {
-    // 1. Delete completed messages (single query)
-    await _db.ExecuteAsync(
-      """
-      DELETE FROM outbox
-      WHERE message_id = ANY(@MessageIds)
-      """,
-      new { MessageIds = outboxCompletions.Select(c => c.MessageId).ToArray() },
-      transaction: tx
-    );
-
-    // 2. Update failed messages (single query)
-    await _db.ExecuteAsync(
-      """
-      UPDATE outbox
-      SET
-        attempts = attempts + 1,
-        next_retry_at = NOW() + INTERVAL '5 minutes',
-        error_message = failures.error
-      FROM (SELECT UNNEST(@MessageIds::uuid[]) AS message_id, UNNEST(@Errors::text[]) AS error) failures
-      WHERE outbox.message_id = failures.message_id
-      """,
-      new {
-        MessageIds = outboxFailures.Select(f => f.MessageId).ToArray(),
-        Errors = outboxFailures.Select(f => f.ErrorMessage).ToArray()
-      },
-      transaction: tx
-    );
-
-    // 3. Insert new messages (single query)
-    await _db.ExecuteAsync(
-      """
-      INSERT INTO outbox (message_id, message_type, message_body, created_at)
-      SELECT UNNEST(@MessageIds::uuid[]), UNNEST(@MessageTypes::text[]), UNNEST(@MessageBodies::jsonb[]), NOW()
-      """,
-      new {
-        MessageIds = newOutboxMessages.Select(m => m.MessageId).ToArray(),
-        MessageTypes = newOutboxMessages.Select(m => m.MessageType).ToArray(),
-        MessageBodies = newOutboxMessages.Select(m => m.MessageBody).ToArray()
-      },
-      transaction: tx
-    );
-
-    await tx.CommitAsync(ct);
-  } catch {
-    await tx.RollbackAsync(ct);
-    throw;
-  }
-}
+```csharp{title="Database Batching" description="MessageProcessingOptions controls process_work_batch batching" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Database", "Batching"]}
+// Override defaults before AddTransportConsumer():
+services.AddSingleton(new MessageProcessingOptions {
+  MaxConcurrentMessages = 80,   // default 40 - caps concurrent handlers (each holds a DB connection)
+  InboxBatchSize = 50,          // default 100 - flush when this many messages collected
+  InboxBatchSlideMs = 100,      // default 50 - flush after this much quiet time
+  InboxBatchMaxWaitMs = 2000    // default 1000 - hard flush deadline
+});
 ```
 
-**Performance**:
-- Without batching: 100 round-trips (100ms @ 1ms each)
-- With batching: 3 round-trips (3ms)
-- **33x faster**
+`process_work_batch` is the hot path on large datasets - watch `whizbang.work_coordinator.process_batch.duration` and `whizbang.work_coordinator.batch.*` metrics when tuning these values.
 
-### 2. Message Publishing Batching
+**Performance**: batching turns ~100 DB round-trips into 1 per flush window.
 
-Batch events before publishing to Service Bus:
+### 2. Message Publishing Batching (Built In)
 
-```csharp{title="Message Publishing Batching" description="Batch events before publishing to Service Bus:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Message", "Publishing"]}
-public class BatchingPublisher {
-  private readonly Channel<OutboxMessage> _channel = Channel.CreateUnbounded<OutboxMessage>();
-  private readonly ServiceBusSender _sender;
+Transport publishing is also batched by the library. `TransportBatchOptions` controls the sliding window the outbox publisher uses when handing messages to the transport (Azure Service Bus batch sends, RabbitMQ publisher batching):
 
-  public BatchingPublisher(ServiceBusSender sender) {
-    _sender = sender;
-    _ = Task.Run(ProcessBatchesAsync);
-  }
-
-  public async Task PublishAsync(OutboxMessage message, CancellationToken ct) {
-    await _channel.Writer.WriteAsync(message, ct);
-  }
-
-  private async Task ProcessBatchesAsync() {
-    await foreach (var batch in _channel.Reader.ReadAllAsync().Buffer(TimeSpan.FromMilliseconds(100), 100)) {
-      var serviceBusBatch = await _sender.CreateMessageBatchAsync();
-
-      foreach (var message in batch) {
-        serviceBusBatch.TryAddMessage(new ServiceBusMessage(message.MessageBody));
-      }
-
-      await _sender.SendMessagesAsync(serviceBusBatch);
-    }
-  }
-}
+```csharp{title="Message Publishing Batching" description="TransportBatchOptions controls transport publish batching" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Message", "Publishing"]}
+// Register BEFORE the transport consumer builder - the library uses
+// TryAddSingleton, so your instance wins if registered first.
+services.AddSingleton(new TransportBatchOptions {
+  BatchSize = 200,   // default 200 - max messages per transport batch
+  SlideMs = 20,      // default 20 - quiet-time flush trigger
+  MaxWaitMs = 1000   // default 1000 - hard flush deadline
+});
 ```
 
-**Performance**:
-- Without batching: 100 Service Bus calls (500ms)
-- With batching: 1 Service Bus call (5ms)
-- **100x faster**
+Outbox draining uses the same sliding-window pattern (`SlidingWindowOutboxOptions`: `MaxSize` 100, `SlidingWindow` 50ms, `MaxWait` 1s defaults).
+
+**Performance**: one transport call carries up to `BatchSize` messages instead of one call per message.
 
 ---
 
@@ -296,42 +195,39 @@ PostgreSQL caches prepared statements automatically.
 
 ### 3. Indexes
 
-Create indexes for common queries:
+Whizbang's internal tables (`wh_outbox`, `wh_inbox`, perspective tables) ship with their indexes managed by the library's own migrations - **don't add or remove indexes on `wh_*` tables yourself**. Create indexes for your *application* tables' common queries:
 
-```sql{title="Indexes" description="Create indexes for common queries:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Indexes"]}
--- Outbox queries (claim work)
-CREATE INDEX idx_outbox_claim ON outbox(created_at, partition_number)
-  WHERE processed_at IS NULL;
+```sql{title="Indexes" description="Create indexes for your application tables' common queries" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Indexes"]}
+-- App-level order lookups by customer
+CREATE INDEX idx_orders_customer ON orders(customer_id, created_at DESC);
 
--- Inbox queries (deduplication)
-CREATE INDEX idx_inbox_message_id ON inbox(message_id)
-  WHERE processed_at IS NULL;
-
--- Perspective checkpoints
-CREATE INDEX idx_checkpoints_stream ON perspective_checkpoints(stream_id, perspective_name);
+-- Partial index for active rows only
+CREATE INDEX idx_orders_open ON orders(created_at)
+  WHERE status = 'open';
 ```
+
+When experimenting with indexes on large datasets, prefer a copy of the table plus `EXPLAIN ANALYZE` over experimenting against live traffic.
 
 ### 4. Partitioning
 
-Partition large tables by date:
+Partition large **application** tables by date:
 
-```sql{title="Partitioning" description="Partition large tables by date:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Partitioning"]}
-CREATE TABLE outbox (
-  message_id UUID NOT NULL,
-  created_at TIMESTAMP NOT NULL,
+```sql{title="Partitioning" description="Partition large app tables by date:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Partitioning"]}
+CREATE TABLE order_events (
+  event_id UUID NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL
   -- ... other columns
 ) PARTITION BY RANGE (created_at);
 
-CREATE TABLE outbox_2024_12 PARTITION OF outbox
-  FOR VALUES FROM ('2024-12-01') TO ('2025-01-01');
-
-CREATE TABLE outbox_2025_01 PARTITION OF outbox
-  FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+CREATE TABLE order_events_2026_07 PARTITION OF order_events
+  FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
 ```
 
 **Benefits**:
 - Faster queries (scan only relevant partitions)
 - Easier maintenance (drop old partitions)
+
+Whizbang's own queue tables stay small by design - completed `wh_outbox` / `wh_inbox` rows are deleted on completion (unless debug mode retains them), so they don't normally need partitioning.
 
 ---
 
@@ -349,17 +245,19 @@ using BenchmarkDotNet.Attributes;
 [MemoryDiagnoser]
 [SimpleJob(warmupCount: 3, iterationCount: 10)]
 public class CreateOrderBenchmark {
-  private CreateOrderReceptor _receptor;
-  private CreateOrder _command;
+  private CreateOrderReceptor _receptor = null!;
+  private CreateOrderCommand _command = null!;
 
   [GlobalSetup]
   public void Setup() {
-    _receptor = new CreateOrderReceptor(...);
-    _command = new CreateOrder(...);
+    _receptor = new CreateOrderReceptor(
+      new TestDispatcher(),
+      NullLogger<CreateOrderReceptor>.Instance);
+    _command = OrderTestData.CreateValidOrder();
   }
 
   [Benchmark]
-  public async Task<OrderCreated> CreateOrder() {
+  public async Task<OrderCreatedEvent> CreateOrder() {
     return await _receptor.HandleAsync(_command);
   }
 }
@@ -458,17 +356,18 @@ Use `ValueTask` for frequently called async methods:
 
 ```csharp{title="ValueTask for Hot Paths" description="Use ValueTask for frequently called async methods:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "ValueTask", "Hot"]}
 // ✅ GOOD - ValueTask avoids allocation if completed synchronously
-public ValueTask<OrderCreated> HandleAsync(
-  CreateOrder command,
-  CancellationToken ct = default
+// (this is why IReceptor.HandleAsync returns ValueTask)
+public ValueTask<OrderCreatedEvent> HandleAsync(
+  CreateOrderCommand command,
+  CancellationToken cancellationToken = default
 ) {
   // If cached, return synchronously (no allocation)
   if (_cache.TryGetValue(command.CustomerId, out var cached)) {
-    return new ValueTask<OrderCreated>(cached);
+    return new ValueTask<OrderCreatedEvent>(cached);
   }
 
   // Otherwise, await async operation
-  return new ValueTask<OrderCreated>(HandleSlowPathAsync(command, ct));
+  return new ValueTask<OrderCreatedEvent>(HandleSlowPathAsync(command, cancellationToken));
 }
 ```
 
@@ -476,25 +375,34 @@ public ValueTask<OrderCreated> HandleAsync(
 
 ## Concurrency Optimizations
 
-### 1. Parallel Processing
+### 1. Parallelism Is Explicit Configuration (No Auto-Tuning)
 
-Process perspectives in parallel:
+Whizbang's I/O parallelism is controlled by **explicit config knobs** - the library does **not** ship adaptive auto-tuning (AIMD, queue-depth feedback, etc.); set the knobs for your workload and validate with the `whizbang.*` metrics:
 
-```csharp{title="Parallel Processing" description="Process perspectives in parallel:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Parallel", "Processing"]}
-public async Task HandleEventAsync(object @event, CancellationToken ct) {
-  var perspectives = GetPerspectives(@event);
+| Knob | Default | Controls |
+|------|---------|----------|
+| `MessageProcessingOptions.MaxConcurrentMessages` | 40 | Concurrent message handlers across all subscriptions (each holds a DB connection) |
+| `MessageProcessingOptions.InboxBatchSize` / `InboxBatchSlideMs` / `InboxBatchMaxWaitMs` | 100 / 50 / 1000 | Inbox `process_work_batch` flush triggers |
+| `TransportBatchOptions.BatchSize` / `SlideMs` / `MaxWaitMs` | 200 / 20 / 1000 | Transport publish batch flush triggers |
+| `SlidingWindowOutboxOptions.MaxSize` / `SlidingWindow` / `MaxWait` | 100 / 50ms / 1s | Outbox drain batching |
 
-  await Parallel.ForEachAsync(
-    perspectives,
-    new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = ct },
-    async (perspective, ct) => {
-      await perspective.HandleAsync(@event, ct);
-    }
-  );
-}
+Inside the perspective worker, per-stream processing is serialized by design (per-stream semaphores plus cross-pod stream pinning) so a stream's events always apply in order - parallelism happens **across** streams, never within one. That invariant is structural; there is no knob that relaxes it.
+
+### 2. Parallel Processing in Your Own Code
+
+For app-level fan-out (not Whizbang pipeline work), `Parallel.ForEachAsync` with a bounded degree is the standard pattern:
+
+```csharp{title="Parallel Processing" description="Bounded parallel fan-out in application code" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Parallel", "Processing"]}
+await Parallel.ForEachAsync(
+  workItems,
+  new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = ct },
+  async (item, token) => {
+    await ProcessItemAsync(item, token);
+  }
+);
 ```
 
-### 2. Async Coordination
+### 3. Async Coordination
 
 Use `SemaphoreSlim` for async locking:
 
@@ -525,13 +433,13 @@ public async Task ProcessAsync() {
 
 ## Key Takeaways
 
-✅ **Zero Allocations** - Direct method invocation, no reflection
-✅ **Object Pooling** - Reuse PolicyContext, arrays (1000x fewer allocations)
-✅ **Batching** - Database batching (33x faster), message batching (100x faster)
-✅ **Indexes** - Optimize common queries
-✅ **Profiling** - BenchmarkDotNet, dotnet-trace, Application Insights
-✅ **Span<T>** - Avoid array allocations
-✅ **ValueTask** - Reduce allocations for hot paths
+✅ **Zero Allocations** - Source-generated dispatch, no reflection
+✅ **Object Pooling** - Built-in `PolicyContextPool`, `ArrayPool<T>` for buffers
+✅ **Batching Built In** - `process_work_batch` + sliding-window transport batching, tuned via options
+✅ **Explicit Parallelism Knobs** - `MaxConcurrentMessages` and batch windows are config; no auto-tuning shipped
+✅ **Indexes** - Optimize your app tables; Whizbang manages its own `wh_*` indexes
+✅ **Profiling** - BenchmarkDotNet, dotnet-trace, Application Insights, `whizbang.*` meters
+✅ **Span<T> / ValueTask** - Avoid allocations on hot paths
 
 ---
 

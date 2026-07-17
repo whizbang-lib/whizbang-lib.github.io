@@ -1,5 +1,8 @@
 ---
 title: GraphQL Filtering
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: GraphQL
 order: 4
@@ -10,6 +13,9 @@ description: >-
 tags: 'graphql, filtering, where, hotchocolate, operators, query'
 codeReferences:
   - src/Whizbang.Transports.HotChocolate/Conventions/WhizbangFilterConvention.cs
+testReferences:
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/FilterConventionTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Integration.Tests/QueryExecutionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

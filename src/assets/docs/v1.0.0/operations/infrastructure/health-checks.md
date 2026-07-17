@@ -1,5 +1,8 @@
 ---
 title: Health Checks
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Infrastructure
 order: 2
@@ -14,6 +17,10 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/PostgresHealthCheck.cs
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusReadinessCheck.cs
   - src/Whizbang.Core/Transports/ITransportReadinessCheck.cs
+testReferences:
+  - tests/Whizbang.Transports.Tests/AzureServiceBusHealthCheckTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/ServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Hosting.Azure.ServiceBus.Tests/ServiceBusReadinessCheckTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -35,8 +42,8 @@ lastMaintainedCommit: '01f07906'
 | **Monitoring Alerts** | Trigger alerts when dependencies fail | Proactive incident response |
 
 **Whizbang Health Checks**:
-- ✅ **Transport Connectivity** - Azure Service Bus, In-Memory
-- ✅ **Database Connectivity** - PostgreSQL, SQL Server
+- ✅ **Transport Connectivity** - Azure Service Bus, RabbitMQ
+- ✅ **Database Connectivity** - PostgreSQL
 - ✅ **Custom Checks** - Extensible `IHealthCheck` pattern
 - ✅ **Caching** - Avoid excessive health check overhead
 - ✅ **Aspire Integration** - Auto-wired dashboard monitoring
@@ -47,44 +54,38 @@ lastMaintainedCommit: '01f07906'
 
 ### Health Check Flow
 
+```mermaid
+flowchart TD
+    Endpoint["Health Check Endpoint: /health<br/>(Kubernetes readiness, load balancer, monitoring)"]
+    HealthChecks["Microsoft.Extensions.Diagnostics.HealthChecks<br/>(Built into ASP.NET Core)<br/>Executes all registered health checks in parallel:<br/>- AzureServiceBusHealthCheck<br/>- PostgresHealthCheck<br/>- CustomHealthCheck<br/>- ..."]
+    Response["Health Check Response"]
+
+    Endpoint -->|"HTTP GET /health"| HealthChecks
+    HealthChecks -->|"Aggregate results"| Response
 ```
-┌────────────────────────────────────────────────────────┐
-│  Health Check Endpoint: /health                        │
-│  (Kubernetes readiness, load balancer, monitoring)     │
-└────────────────┬───────────────────────────────────────┘
-                 │
-                 │ HTTP GET /health
-                 ▼
-┌────────────────────────────────────────────────────────┐
-│  Microsoft.Extensions.Diagnostics.HealthChecks         │
-│  (Built into ASP.NET Core)                             │
-│                                                         │
-│  Executes all registered health checks in parallel:    │
-│  ├─ AzureServiceBusHealthCheck                         │
-│  ├─ PostgresHealthCheck                                │
-│  ├─ CustomHealthCheck                                  │
-│  └─ ...                                                 │
-└────────────────┬───────────────────────────────────────┘
-                 │
-                 │ Aggregate results
-                 ▼
-┌────────────────────────────────────────────────────────┐
-│  Health Check Response                                 │
-│                                                         │
-│  {                                                      │
-│    "status": "Healthy",           // or Degraded, Unhealthy
-│    "results": {                                         │
-│      "azure_servicebus": {                              │
-│        "status": "Healthy",                             │
-│        "description": "Transport is available"          │
-│      },                                                 │
-│      "postgres": {                                      │
-│        "status": "Healthy",                             │
-│        "description": "Database is accessible"          │
-│      }                                                  │
-│    }                                                    │
-│  }                                                      │
-└────────────────────────────────────────────────────────┘
+
+Example health check response:
+
+```json{
+title: "Health check response"
+description: "Aggregated /health endpoint payload with per-check status"
+category: "Operations"
+difficulty: "BEGINNER"
+tags: ["Operations", "Health-Checks", "Response"]
+}
+{
+  "status": "Healthy",           // or Degraded, Unhealthy
+  "results": {
+    "azure_servicebus": {
+      "status": "Healthy",
+      "description": "Azure Service Bus transport is available"
+    },
+    "whizbang_postgres": {
+      "status": "Healthy",
+      "description": "PostgreSQL database is accessible"
+    }
+  }
+}
 ```
 
 ---
@@ -141,8 +142,8 @@ public class AzureServiceBusHealthCheck(ITransport transport) : IHealthCheck {
 ```csharp{title="PostgreSQL Health Check" description="PostgreSQL Health Check" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "PostgreSQL", "Health"]}
 using Whizbang.Data.Dapper.Postgres;
 
-builder.Services.AddPostgresConnection(connectionString);
-builder.Services.AddPostgresHealthChecks();  // ⭐ Register health check
+builder.Services.AddWhizbangPostgres(connectionString, jsonOptions);
+builder.Services.AddWhizbangPostgresHealthChecks();  // ⭐ Registers "whizbang_postgres" check
 
 app.MapHealthChecks("/health");
 ```
@@ -472,19 +473,19 @@ public class CachedDatabaseHealthCheck : IHealthCheck {
     CancellationToken cancellationToken
   ) {
     // Return cached result if available and fresh
-    if (_cachedResult != null &&
+    if (_cachedResult.HasValue &&
         _lastCheck.HasValue &&
         DateTimeOffset.UtcNow - _lastCheck.Value < _cacheDuration) {
-      return _cachedResult;
+      return _cachedResult.Value;
     }
 
     await _lock.WaitAsync(cancellationToken);
     try {
       // Double-check cache after acquiring lock
-      if (_cachedResult != null &&
+      if (_cachedResult.HasValue &&
           _lastCheck.HasValue &&
           DateTimeOffset.UtcNow - _lastCheck.Value < _cacheDuration) {
-        return _cachedResult;
+        return _cachedResult.Value;
       }
 
       // Perform actual health check
@@ -494,11 +495,11 @@ public class CachedDatabaseHealthCheck : IHealthCheck {
       _cachedResult = HealthCheckResult.Healthy("Database is accessible");
       _lastCheck = DateTimeOffset.UtcNow;
 
-      return _cachedResult;
+      return _cachedResult.Value;
     } catch (Exception ex) {
       _cachedResult = HealthCheckResult.Unhealthy("Database is not accessible", ex);
       _lastCheck = DateTimeOffset.UtcNow;
-      return _cachedResult;
+      return _cachedResult.Value;
     } finally {
       _lock.Release();
     }
@@ -639,22 +640,25 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions {
 
 **Solution**:
 ```csharp{title="Problem: Health Checks Cause Database Overload" description="Problem: Health Checks Cause Database Overload" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Health"]}
-// Add caching to reduce database load
-public class CachedPostgresHealthCheck : PostgresHealthCheck {
+// Add caching to reduce database load (wrap the inner check — CheckHealthAsync is not virtual)
+public class CachedPostgresHealthCheck(PostgresHealthCheck inner) : IHealthCheck {
   private DateTimeOffset? _lastCheck;
   private HealthCheckResult? _cachedResult;
   private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(30);  // ⭐ Cache for 30 seconds
 
-  public override async Task<HealthCheckResult> CheckHealthAsync(...) {
+  public async Task<HealthCheckResult> CheckHealthAsync(
+    HealthCheckContext context,
+    CancellationToken cancellationToken = default
+  ) {
     if (_cachedResult != null &&
         _lastCheck.HasValue &&
         DateTimeOffset.UtcNow - _lastCheck.Value < _cacheDuration) {
-      return _cachedResult;  // Return cached result
+      return _cachedResult.Value;  // Return cached result
     }
 
-    _cachedResult = await base.CheckHealthAsync(context, cancellationToken);
+    _cachedResult = await inner.CheckHealthAsync(context, cancellationToken);
     _lastCheck = DateTimeOffset.UtcNow;
-    return _cachedResult;
+    return _cachedResult.Value;
   }
 }
 ```

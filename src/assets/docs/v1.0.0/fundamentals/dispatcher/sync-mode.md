@@ -1,5 +1,8 @@
 ---
 title: SyncMode — Read-After-Write Dispatch
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Fundamentals
 order: 5
@@ -12,6 +15,9 @@ codeReferences:
   - src/Whizbang.Core/IDispatcher.cs
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Core/Perspectives/Sync/SyncMode.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherSyncModeContractTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherSyncModeBehaviorTests.cs
 ---
 
 # SyncMode — Read-After-Write Dispatch
@@ -121,8 +127,11 @@ var result = await dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderResult>(
 
 // NEW (when read-after-write needed)
 var result = await dispatcher.LocalInvokeAsync<OrderResult>(cmd);
-await dispatcher.LocalInvokeAndSyncAsync(new NoOpSyncSentinel(), SyncMode.AllProjections, cancellationToken);
 ```
+
+:::updated
+The `[Obsolete]` guidance on the typed-result overload is: prefer `LocalInvokeAsync<TMessage, TResult>(message)` for the business result, and reserve the CT-only `LocalInvokeAndSyncAsync<TMessage>(message, SyncMode, ct)` for void receptors where read-after-write is required. There is no typed-result variant of the W4 SyncMode overload at this commit — a caller that needs both a typed result and a projection wait can keep using the legacy overload until it is removed.
+:::
 
 If splitting isn't practical, the legacy overload still functions (it's `[Obsolete]`-warned, not removed). Migrate when convenient.
 
@@ -151,4 +160,4 @@ await dispatcher.LocalInvokeAndSyncAsync(cmd, SyncMode.AllProjections, linkedCts
 
 ## Observability
 
-The dispatcher emits a histogram `whizbang.dispatcher.sync_wait_ms` tagged by perspective count. P99 tail growth indicates perspectives slowing down — a deploy-time / pager-time signal, not a per-call defense.
+The dispatcher emits a histogram `whizbang.dispatcher.local_invoke_and_sync.duration` (milliseconds, "invoke + perspective wait") via `DispatcherMetrics`. P99 tail growth indicates perspectives slowing down — a deploy-time / pager-time signal, not a per-call defense.

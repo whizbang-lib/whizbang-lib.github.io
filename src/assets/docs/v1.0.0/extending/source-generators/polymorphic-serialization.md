@@ -1,5 +1,8 @@
 ---
 title: Polymorphic Serialization
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Source Generators
 order: 6
@@ -13,6 +16,9 @@ codeReferences:
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
   - src/Whizbang.Generators/InheritanceInfo.cs
   - src/Whizbang.Generators/PolymorphicTypeInfo.cs
+  - src/Whizbang.Generators/Templates/Snippets/JsonContextSnippets.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/MessageJsonContextGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -92,6 +98,10 @@ public class ProcessBatchHandler : IReceptor<ProcessBatchCommand, List<BaseEvent
 ]
 ```
 
+:::updated
+**The discriminator contract is fixed (re-verified against library commit `1b31f58d`)**: generated polymorphic factories always use the property name **`$type`** and **simple type names** as values. `[JsonPolymorphic]` on an abstract base is honored as a *discovery marker* (it triggers derived-type registration), but its `TypeDiscriminatorPropertyName` setting and custom `[JsonDerivedType]` string values are **ignored** by the generated `JsonTypeInfo` (`JsonContextSnippets.cs` — hardcoded `$type`; discriminator values come from `_extractSimpleName`). If you need custom discriminators, that is currently unsupported — using them in attributes produces payloads that cannot be read back as typed events.
+:::
+
 ---
 
 ## How It Works
@@ -100,28 +110,28 @@ public class ProcessBatchHandler : IReceptor<ProcessBatchCommand, List<BaseEvent
 
 During source generation, the `MessageJsonContextGenerator`:
 
-1. Scans all `ICommand` and `IEvent` implementations
-2. Walks up the inheritance chain for each type
-3. Records base class → derived type relationships
-4. Groups by base type to build polymorphic registry
+1. Scans all discovered message types (`ICommand`, `IEvent`, and `[WhizbangSerializable]` types)
+2. Walks up the inheritance chain for each type (stopping at `System.*` types)
+3. Records base class → derived type relationships (plus interface implementations, keeping only `ICommand`/`IEvent` among `Whizbang.Core` interfaces)
+4. Groups by base type to build the polymorphic registry
 
-```
-Discovery Phase
-├── SeedCreatedEvent : BaseEvent : IEvent
-│   └── Records: SeedCreatedEvent → BaseEvent
-│   └── Records: SeedCreatedEvent → IEvent
-├── SeedProcessedEvent : BaseEvent : IEvent
-│   └── Records: SeedProcessedEvent → BaseEvent
-│   └── Records: SeedProcessedEvent → IEvent
-└── SeedDeletedEvent : BaseEvent : IEvent
-    └── Records: SeedDeletedEvent → BaseEvent
-    └── Records: SeedDeletedEvent → IEvent
+```mermaid
+flowchart TD
+    subgraph Discovery["Discovery Phase"]
+        D1["SeedCreatedEvent : BaseEvent : IEvent<br/>Records: SeedCreatedEvent → BaseEvent<br/>Records: SeedCreatedEvent → IEvent"]
+        D2["SeedProcessedEvent : BaseEvent : IEvent<br/>Records: SeedProcessedEvent → BaseEvent<br/>Records: SeedProcessedEvent → IEvent"]
+        D3["SeedDeletedEvent : BaseEvent : IEvent<br/>Records: SeedDeletedEvent → BaseEvent<br/>Records: SeedDeletedEvent → IEvent"]
+    end
 
-Grouping Phase
-├── BaseEvent (base class)
-│   └── Derived: [SeedCreatedEvent, SeedProcessedEvent, SeedDeletedEvent]
-└── IEvent (interface)
-    └── Derived: [SeedCreatedEvent, SeedProcessedEvent, SeedDeletedEvent]
+    subgraph Grouping["Grouping Phase"]
+        G1["BaseEvent (base class)<br/>Derived: [SeedCreatedEvent, SeedProcessedEvent, SeedDeletedEvent]"]
+        G2["IEvent (interface)<br/>Derived: [SeedCreatedEvent, SeedProcessedEvent, SeedDeletedEvent]"]
+    end
+
+    Discovery --> Grouping
+
+    class D1,D2,D3 layer-event
+    class G1,G2 layer-core
 ```
 
 ### 2. Internal Data Structures
@@ -135,7 +145,7 @@ A minimal value type that tracks individual inheritance relationships discovered
 ```csharp{title="InheritanceInfo" description="A minimal value type that tracks individual inheritance relationships discovered during scanning:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "InheritanceInfo"]}
 internal sealed record InheritanceInfo(
     string DerivedTypeName,  // e.g., "global::MyApp.Events.SeedCreatedEvent"
-    string BaseTypeName,     // e.g., "global::MyApp.BaseJdxEvent"
+    string BaseTypeName,     // e.g., "global::MyApp.BaseAppEvent"
     bool IsInterface         // true if BaseTypeName is an interface
 );
 ```
@@ -150,8 +160,8 @@ An aggregated view created by grouping `InheritanceInfo` records:
 
 ```csharp{title="PolymorphicTypeInfo" description="An aggregated view created by grouping InheritanceInfo records:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "PolymorphicTypeInfo"]}
 internal sealed record PolymorphicTypeInfo(
-    string BaseTypeName,                    // "global::MyApp.BaseJdxEvent"
-    string BaseSimpleName,                  // "BaseJdxEvent"
+    string BaseTypeName,                    // "global::MyApp.BaseAppEvent"
+    string BaseSimpleName,                  // "BaseAppEvent"
     ImmutableArray<string> DerivedTypes,    // All concrete derived types
     bool IsInterface                        // true if base is an interface
 );
@@ -179,11 +189,22 @@ private JsonTypeInfo<global::MyApp.BaseEvent> CreatePolymorphic_MyApp_BaseEvent(
   polyOptions.DerivedTypes.Add(new JsonDerivedType(typeof(global::MyApp.SeedProcessedEvent), "SeedProcessedEvent"));
   polyOptions.DerivedTypes.Add(new JsonDerivedType(typeof(global::MyApp.SeedDeletedEvent), "SeedDeletedEvent"));
 
-  var jsonTypeInfo = JsonMetadataServices.CreateObjectInfo<global::MyApp.BaseEvent>(options, ...);
+  var objectInfo = new JsonObjectInfoValues<global::MyApp.BaseEvent> {
+    ObjectCreator = null,  // Base type may be abstract or interface
+    ObjectWithParameterizedConstructorCreator = null,
+    PropertyMetadataInitializer = _ => Array.Empty<JsonPropertyInfo>(),
+    ConstructorParameterMetadataInitializer = null,
+    SerializeHandler = null
+  };
+
+  var jsonTypeInfo = JsonMetadataServices.CreateObjectInfo<global::MyApp.BaseEvent>(options, objectInfo);
   jsonTypeInfo.PolymorphismOptions = polyOptions;
+  jsonTypeInfo.OriginatingResolver = this;
   return jsonTypeInfo;
 }
 ```
+
+The method name comes from `PolymorphicTypeInfo.UniqueIdentifier` (`CreatePolymorphic_` + fully qualified name with `.` replaced by `_`), and each derived-type discriminator string is the type's **simple name** (`_extractSimpleName`).
 
 ---
 
@@ -193,13 +214,13 @@ private JsonTypeInfo<global::MyApp.BaseEvent> CreatePolymorphic_MyApp_BaseEvent(
 
 ```csharp{title="User-Defined Base Classes" description="User-Defined Base Classes" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "User-Defined", "Base"]}
 // Non-abstract base class
-public class BaseJdxEvent : IEvent {
+public class BaseAppEvent : IEvent {
   public string EventId { get; init; } = "";
   public DateTime Timestamp { get; init; }
 }
 
-public class SeedCreatedEvent : BaseJdxEvent { }
-public class SeedProcessedEvent : BaseJdxEvent { }
+public class SeedCreatedEvent : BaseAppEvent { }
+public class SeedProcessedEvent : BaseAppEvent { }
 ```
 
 ### Interface Collections
@@ -253,17 +274,21 @@ public record ProcessBatchResult(BaseEvent[] Events);
 
 ---
 
-## Explicit Opt-Out
+## Explicit Opt-Out of Auto-Configuration
 
-If you want **manual control** over polymorphic serialization, add the `[JsonPolymorphic]` attribute. The generator will skip auto-configuration and use your explicit configuration:
+Adding `[JsonPolymorphic]` to a base type **excludes it from automatic polymorphic factory generation** — `_shouldSkipBaseType` in `MessageJsonContextGenerator` skips any base carrying an explicit `[JsonPolymorphic]` attribute, so no `CreatePolymorphic_*` factory is emitted for it (locked by `Generator_WithExplicitJsonPolymorphic_UsesUserAttributesAsync`):
 
-```csharp{title="Explicit Opt-Out" description="If you want manual control over polymorphic serialization, add the [JsonPolymorphic] attribute." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Explicit", "Opt-Out"]}
-// Explicit control - generator will NOT auto-configure
+```csharp{title="Explicit Opt-Out" description="Adding [JsonPolymorphic] excludes the base from auto polymorphic factory generation." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Explicit", "Opt-Out"]}
+// Generator will NOT auto-generate a polymorphic factory for this base
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "eventType")]
 [JsonDerivedType(typeof(HighPriorityEvent), "high")]
 [JsonDerivedType(typeof(LowPriorityEvent), "low")]
 public class ControlledBaseEvent : IEvent { }
 ```
+
+:::updated
+**Important caveat (verified at commit `1b31f58d`)**: opting out only suppresses the *auto-generated* factory. It does **not** make the generated context honor your custom discriminator settings — as described in the callout above, generated `JsonTypeInfo` always uses `$type` + simple names. On *abstract* types reached through property scanning, `[JsonPolymorphic]`/`[JsonDerivedType]` act as discovery markers (`_processAbstractPolymorphicType` registers the listed derived types), again with the fixed `$type` contract. Fully custom discriminators require your own resolver outside the generated context.
+:::
 
 ---
 
@@ -271,10 +296,12 @@ public class ControlledBaseEvent : IEvent { }
 
 The generator intelligently excludes:
 
-- **Abstract derived types** - Cannot be instantiated, so excluded from `DerivedTypes`
+- **Abstract derived types** - Cannot be instantiated, so excluded from `DerivedTypes` (`_getConcretePublicDerivedTypes`)
 - **Non-public types** - Internal/private types aren't accessible in generated code
-- **System.* types** - Framework types are handled by System.Text.Json
-- **Abstract base classes** - No factory is generated (only concrete/interface bases)
+- **System.* types** - Base-chain walking stops at `System.*` types; `System.*` interfaces are skipped
+- **Whizbang.Core interfaces other than `ICommand`/`IEvent`** - `IMessage`, `IHasId`, etc. are not treated as polymorphic bases
+- **Abstract base classes** - No factory from the message-inheritance path (only concrete class or interface bases) — *unless* the abstract type carries `[JsonPolymorphic]` and is reached via property scanning, in which case its `[JsonDerivedType]` entries are registered with the fixed `$type` contract
+- **Bases with explicit `[JsonPolymorphic]`** - Skipped by the automatic registry (see "Explicit Opt-Out" above)
 
 ---
 
@@ -284,12 +311,12 @@ The generator reports discovered polymorphic types:
 
 | Diagnostic | Level | Description |
 |------------|-------|-------------|
-| WHIZ071 | Info | `Discovered polymorphic base type '{0}' with {1} derived type(s)` |
+| WHIZ071 | Info | `Discovered polymorphic base type '{0}' with {1} derived type(s) for automatic JSON serialization` |
 
 Example:
 ```
-info WHIZ071: Discovered polymorphic base type 'BaseJdxEvent' with 3 derived type(s)
-info WHIZ071: Discovered polymorphic base type 'IEvent' with 15 derived type(s)
+info WHIZ071: Discovered polymorphic base type 'BaseEvent' with 3 derived type(s) for automatic JSON serialization
+info WHIZ071: Discovered polymorphic base type 'IEvent' with 15 derived type(s) for automatic JSON serialization
 ```
 
 ---

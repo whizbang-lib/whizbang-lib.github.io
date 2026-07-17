@@ -11,7 +11,7 @@ async function getVersionFolders() {
     .map(entry => entry.name)
     .sort(); // Sort versions
 }
-const STATE_FOLDERS = ['drafts', 'proposals', 'backlog', 'declined'];
+const STATE_FOLDERS = ['drafts', 'proposals', 'backlog', 'declined', 'contributors', 'spec'];
 
 // Map kebab-case folder names to display names
 const FOLDER_DISPLAY_NAMES = {
@@ -138,6 +138,8 @@ async function processDirectory(dir, relativeDir = '', versionOrState = '', out 
         difficulty: data.difficulty,
         unreleased: data.unreleased,
         status: data.status,
+        pageType: data.pageType,
+        audience: data.audience,
         completionLevel: data.completionLevel,
         readingTime: readingTimeMinutes,
         editUrl: editUrl,

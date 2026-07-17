@@ -1,5 +1,8 @@
 ---
 title: Message Associations
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 24
@@ -9,6 +12,9 @@ tags: 'message-associations, perspectives, receptors, discovery'
 codeReferences:
   - src/Whizbang.Core/Messaging/MessageAssociationRecord.cs
   - src/Whizbang.Data.Schema/Schemas/MessageAssociationsSchema.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MessageAssociationRegistrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/MessageAssociationRegistryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -106,6 +112,9 @@ public static class MessageAssociationsSchema {
     ],
     Indexes: [
       new("idx_message_associations_message_type", [Columns.MESSAGE_TYPE]),
+      new("idx_message_associations_association_type", [Columns.ASSOCIATION_TYPE]),
+      new("idx_message_associations_target_name", [Columns.TARGET_NAME]),
+      new("idx_message_associations_service_name", [Columns.SERVICE_NAME]),
       new("idx_message_associations_target_lookup",
           [Columns.ASSOCIATION_TYPE, Columns.TARGET_NAME, Columns.SERVICE_NAME])
     ],
@@ -129,20 +138,18 @@ public static class MessageAssociationsSchema {
 
 At startup, services reconcile their associations:
 
-```
-1. Service starts
-   └─> Scan assemblies for perspectives and receptors
+```mermaid
+graph TB
+    S1["1. Service starts<br/>Scan assemblies for perspectives and receptors"]
+    S2["2. Discover associations<br/>OrderSummaryPerspective handles OrderCreated, OrderShipped<br/>InventoryReceptor handles OrderCreated"]
+    S3["3. Reconcile with database<br/>Upsert new associations<br/>Remove stale associations (optional)"]
+    S4["4. Auto-create checkpoints<br/>New perspectives get checkpoints initialized"]
 
-2. Discover associations
-   └─> OrderSummaryPerspective handles OrderCreated, OrderShipped
-   └─> InventoryReceptor handles OrderCreated
+    S1 --> S2 --> S3 --> S4
 
-3. Reconcile with database
-   └─> Upsert new associations
-   └─> Remove stale associations (optional)
-
-4. Auto-create checkpoints
-   └─> New perspectives get checkpoints initialized
+    style S2 fill:#d4edda,stroke:#28a745
+    style S3 fill:#fff3cd,stroke:#ffc107
+    style S4 fill:#cce5ff,stroke:#004085
 ```
 
 ### Implementation Example
@@ -266,6 +273,15 @@ CREATE TABLE wb_message_associations (
 
 CREATE INDEX idx_message_associations_message_type
   ON wb_message_associations (message_type);
+
+CREATE INDEX idx_message_associations_association_type
+  ON wb_message_associations (association_type);
+
+CREATE INDEX idx_message_associations_target_name
+  ON wb_message_associations (target_name);
+
+CREATE INDEX idx_message_associations_service_name
+  ON wb_message_associations (service_name);
 
 CREATE INDEX idx_message_associations_target_lookup
   ON wb_message_associations (association_type, target_name, service_name);

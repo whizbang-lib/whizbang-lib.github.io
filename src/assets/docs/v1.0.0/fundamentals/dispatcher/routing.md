@@ -1,5 +1,8 @@
 ---
 title: "Namespace-Based Routing"
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Core Concepts"
 order: 2
@@ -22,6 +25,13 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOwnedDomainTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerOwnedEventDiscardTests.cs
+  - tests/Whizbang.Core.Tests/Routing/RoutingOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Routing/RoutingBuilderExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Routing/OutboxRoutingStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Routing/EventSubscriptionDiscoveryTests.cs
+  - tests/Whizbang.Core.Tests/Routing/TransportSubscriptionBuilderTests.cs
+  - tests/Whizbang.Core.Tests/Routing/MessageKindDetectorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -119,9 +129,9 @@ Event subscriptions are **automatically discovered** from your code via source g
 
 ```csharp{title="Automatic Event Subscription Discovery" description="Automatic Event Subscription Discovery" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Automatic", "Event"]}
 // This perspective automatically subscribes to "myapp.orders.events"
-[Perspective<OrderSummary>]
-public class OrderSummaryPerspective : IPerspective<OrderCreatedEvent> {
+public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreatedEvent> {
   // OrderCreatedEvent is in namespace MyApp.Orders.Events
+  public OrderSummary Apply(OrderSummary currentData, OrderCreatedEvent eventData) => /* ... */;
 }
 
 // This receptor automatically subscribes to "myapp.payments.events"
@@ -130,11 +140,11 @@ public class PaymentReceptor : IReceptor<PaymentCompletedEvent> {
 }
 ```
 
-The `EventNamespaceRegistryGenerator` source generator extracts these namespaces at compile time. The generated `IEventNamespaceRegistry` {#event-namespace-registry} provides access to discovered namespaces:
+The `EventNamespaceRegistryGenerator` source generator extracts these namespaces at compile time. It emits an `IEventNamespaceSource` per assembly and registers it with the static `EventNamespaceRegistry` {#event-namespace-registry}:
 
 ```csharp{title="Automatic Event Subscription Discovery -" description="The EventNamespaceRegistryGenerator source generator extracts these namespaces at compile time." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Automatic", "Event"]}
 // Generated code (example)
-public sealed class GeneratedEventNamespaceRegistry : IEventNamespaceRegistry {
+internal sealed class EventNamespaceSource : IEventNamespaceSource {
   public IReadOnlySet<string> GetPerspectiveEventNamespaces() =>
     new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
       "myapp.orders.events"
@@ -281,7 +291,7 @@ All commands go to a single "inbox" topic with namespace-based filtering:
 
 ```csharp{title="SharedTopicInboxStrategy (Default)" description="All commands go to a single 'inbox' topic with namespace-based filtering:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "SharedTopicInboxStrategy", "Default"]}
 services.Configure<RoutingOptions>(opts => {
-  opts.Inbox.UseSharedTopic("inbox");  // Default
+  opts.Inbox.UseSharedTopic("inbox");  // Default strategy; no-arg default topic is "whizbang.inbox"
 });
 ```
 
@@ -303,48 +313,28 @@ The `IEventNamespaceRegistry` is a zero-reflection, AOT-compatible interface tha
 ### How It Works
 
 The source generator (`EventNamespaceRegistryGenerator`) scans your assembly for:
-- **Perspectives**: Types implementing `IPerspective<TEvent>` or `IPerspectiveFor<TModel, TEvent1, ...>`
-- **Receptors**: Types implementing `IReceptor<TEvent>` where `TEvent : IEvent`
+- **Perspectives**: Types implementing `IPerspectiveFor<TModel, TEvent1, ...>`
+- **Receptors**: Types implementing `IReceptor<TEvent>` (and `IReceptor<TEvent, TResponse>`) where `TEvent : IEvent`
 
-It extracts the namespaces of all event types and generates an implementation of `IEventNamespaceRegistry`:
+It extracts the namespaces of all event types into a per-assembly `IEventNamespaceSource`. The `IEventNamespaceRegistry` interface aggregates those sources:
 
-```csharp{title="How It Works" description="It extracts the namespaces of all event types and generates an implementation of IEventNamespaceRegistry:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Works"]}
-// Generated code (example)
-public sealed class GeneratedEventNamespaceRegistry : IEventNamespaceRegistry {
-    public IReadOnlySet<string> GetPerspectiveEventNamespaces() =>
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
-            "myapp.orders.events"
-        };
-
-    public IReadOnlySet<string> GetReceptorEventNamespaces() =>
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
-            "myapp.payments.events"
-        };
-
-    public IReadOnlySet<string> GetAllEventNamespaces() {
-        var all = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        all.UnionWith(GetPerspectiveEventNamespaces());
-        all.UnionWith(GetReceptorEventNamespaces());
-        return all;
-    }
+```csharp{title="How It Works" description="The IEventNamespaceRegistry interface aggregating per-assembly namespace sources" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Works"]}
+public interface IEventNamespaceRegistry {
+    IReadOnlySet<string> GetPerspectiveEventNamespaces();
+    IReadOnlySet<string> GetReceptorEventNamespaces();
+    IReadOnlySet<string> GetAllEventNamespaces();
 }
 ```
 
 ### Usage
 
-The registry is used internally by `EventSubscriptionDiscovery` to determine which event namespaces your service should subscribe to:
+Discovered namespaces are used internally by `EventSubscriptionDiscovery` to determine which event namespaces your service should subscribe to. For diagnostics, read the static `EventNamespaceRegistry` (each assembly's generated source self-registers via a `[ModuleInitializer]`):
 
-```csharp{title="Usage" description="The registry is used internally by EventSubscriptionDiscovery to determine which event namespaces your service should" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Usage"]}
-// Inject the registry (typically not needed directly)
+```csharp{title="Usage" description="Reading discovered event namespaces from the static EventNamespaceRegistry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Usage"]}
+// Typically not needed directly — EventSubscriptionDiscovery consumes this for you
 public class MyService {
-    private readonly IEventNamespaceRegistry _registry;
-
-    public MyService(IEventNamespaceRegistry registry) {
-        _registry = registry;
-    }
-
     public void LogSubscriptions() {
-        var namespaces = _registry.GetAllEventNamespaces();
+        var namespaces = EventNamespaceRegistry.GetAllNamespaces();
         foreach (var ns in namespaces) {
             Console.WriteLine($"Subscribing to: {ns}");
         }
@@ -396,9 +386,9 @@ Each destination contains:
 
 ```csharp{title="Destination Structure" description="Each destination contains:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Destination", "Structure"]}
 public record TransportDestination(
-    string Address,        // Topic/queue name (e.g., "inbox", "myapp.orders.events")
-    string? RoutingKey,    // Routing key pattern (e.g., "#", "myapp.users.commands.#")
-    IReadOnlyDictionary<string, JsonElement>? Metadata
+    string Address,                                          // Topic/queue name (e.g., "inbox", "myapp.orders.events")
+    string? RoutingKey = null,                               // Routing key pattern (e.g., "#", "myapp.users.commands.#")
+    IReadOnlyDictionary<string, JsonElement>? Metadata = null
 );
 ```
 
@@ -458,7 +448,7 @@ The `SharedTopicInboxStrategy` routes all commands to a single shared "inbox" to
 ```csharp{title="Configuration" description="Configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"]}
 services.Configure<RoutingOptions>(opts => {
     opts.OwnDomains("myapp.users.commands");
-    opts.Inbox.UseSharedTopic("inbox");  // Default
+    opts.Inbox.UseSharedTopic("inbox");  // Default strategy; no-arg default topic is "whizbang.inbox"
 });
 ```
 
@@ -513,7 +503,7 @@ The `SharedTopicOutboxStrategy` publishes events to namespace-specific topics, a
 
 ```csharp{title="Configuration (2)" description="Configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"]}
 services.Configure<RoutingOptions>(opts => {
-    opts.Outbox.UseSharedTopic();  // Or UseNamespaceTopics()
+    opts.Outbox.UseSharedTopic("inbox");  // Commands → shared inbox topic; events → namespace topics
 });
 ```
 
@@ -534,8 +524,7 @@ Services subscribe to event namespaces automatically based on their perspectives
 
 ```csharp{title="Subscription Flow" description="Services subscribe to event namespaces automatically based on their perspectives and receptors:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Subscription", "Flow"]}
 // This perspective automatically subscribes to "myapp.orders.events"
-[Perspective<OrderSummary>]
-public class OrderSummaryPerspective : IPerspective<OrderCreatedEvent> {
+public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreatedEvent> {
     // ...
 }
 ```
@@ -585,18 +574,15 @@ services.Configure<RoutingOptions>(opts => {
 
 ## Domain Topic Outbox {#domain-topic-outbox}
 
-The `DomainTopicOutboxStrategy` publishes events to domain-specific outbox topics rather than namespace topics.
+The `DomainTopicOutboxStrategy` (the **default** outbox strategy) publishes every message — commands and events alike — to its namespace-derived topic. The topic is the message type's lowercased namespace; the routing key is the lowercased type name.
 
 ### How It Works
 
-Events are published to domain topics with a configurable suffix:
-
-```csharp{title="How It Works (3)" description="Events are published to domain topics with a configurable suffix:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Works"]}
-// Domain: myapp.orders
+```csharp{title="How It Works (3)" description="Messages are published to their namespace topic with the type name as routing key:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Works"]}
 // Event: OrderCreatedEvent (namespace: MyApp.Orders.Events)
 
 // Published to:
-// - Topic: "myapp.orders.out"  (domain + suffix)
+// - Topic: "myapp.orders.events"  (full namespace)
 // - RoutingKey: "ordercreatedevent"
 ```
 
@@ -604,15 +590,20 @@ Events are published to domain topics with a configurable suffix:
 
 ```csharp{title="Configuration (4)" description="Configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"]}
 services.Configure<RoutingOptions>(opts => {
-    opts.Outbox.UseDomainTopics(".out");  // Suffix is customizable
+    opts.Outbox.UseDomainTopics();  // Default; namespace-derived topics for all messages
 });
+
+// Custom topic resolution via ITopicRoutingStrategy
+var strategy = new DomainTopicOutboxStrategy(new NamespaceRoutingStrategy());
 ```
 
 ### When to Use
 
-- **Legacy integration** - Matching existing topic naming conventions
+- **Pure pub/sub topologies** - Every message flows through namespace topics
 - **Domain-based routing** - When domains should own their entire message flow
-- **Infrastructure isolation** - Separate broker resources per domain
+- **Infrastructure isolation** - Separate broker resources per namespace
+
+Use `Outbox.UseSharedTopic(...)` instead when commands should funnel through a single shared inbox topic (with namespace routing keys) while events still publish to namespace topics.
 
 ## Domain Topic Provisioning {#domain-topic-provisioning}
 
@@ -697,6 +688,14 @@ public interface IInfrastructureProvisioner {
     Task ProvisionOwnedDomainsAsync(
         IReadOnlySet<string> ownedDomains,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ensures a single topic/exchange exists (on-demand provisioning during publish).
+    /// Default implementation is a no-op for transports that don't need pre-creation.
+    /// </summary>
+    Task EnsureTopicExistsAsync(
+        string topicName,
+        CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
 ```
 
@@ -753,9 +752,9 @@ Each destination contains:
 
 ```csharp{title="Destination Structure - TransportDestination" description="Each destination contains:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Destination", "Structure"]}
 public record TransportDestination(
-    string Address,        // Topic/queue name
-    string? RoutingKey,    // Routing key pattern (e.g., "#" for all)
-    IReadOnlyDictionary<string, JsonElement>? Metadata
+    string Address,                                          // Topic/queue name
+    string? RoutingKey = null,                               // Routing key pattern (e.g., "#" for all)
+    IReadOnlyDictionary<string, JsonElement>? Metadata = null
 );
 ```
 
@@ -821,9 +820,9 @@ Inbox subscriptions are created by routing strategies and consumed by the `Trans
 // Routing strategy creates subscription
 var strategy = new SharedTopicInboxStrategy("inbox");
 var subscription = strategy.GetSubscription(
-    ownedDomains: new[] { "myapp.users.commands" },
+    ownedDomains: new HashSet<string> { "myapp.users.commands" },
     serviceName: "UserService",
-    messageKind: MessageKind.Command
+    kind: MessageKind.Command
 );
 
 // Builder converts to TransportDestination
@@ -838,35 +837,38 @@ Outbox routing determines where events are published after being saved to the ou
 ### Strategy Selection
 
 ```csharp{title="Strategy Selection" description="Strategy Selection" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Strategy", "Selection"]}
-// Namespace-based topics (default for events)
-opts.Outbox.UseSharedTopic();  // Or UseNamespaceTopics()
+// Namespace-derived topics for all messages (default)
+opts.Outbox.UseDomainTopics();
 
-// Domain-based topics
-opts.Outbox.UseDomainTopics(".out");
+// Commands → shared inbox topic; events → namespace topics
+opts.Outbox.UseSharedTopic("inbox");
+
+// Custom strategy
+opts.Outbox.UseCustom(new MyOutboxRoutingStrategy());
 ```
 
 ### How Outbox Routing Works
 
-1. **Event is saved to outbox** with destination metadata
-2. **Outbox publisher reads event** from database
-3. **Routing strategy transforms destination** based on event namespace
-4. **Event is published** to resolved topic with routing key
+1. **Message is saved to outbox** with destination metadata
+2. **Outbox publisher reads message** from database
+3. **Routing strategy resolves the destination** based on message type and kind
+4. **Message is published** to the resolved topic with routing key
 
 ### Routing Strategy Interface
 
 ```csharp{title="Routing Strategy Interface" description="Routing Strategy Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Routing", "Strategy"]}
 public interface IOutboxRoutingStrategy {
     /// <summary>
-    /// Resolves the final publish destination for an outbox message.
+    /// Gets the destination for publishing a message.
     /// </summary>
-    /// <param name="messageType">Type of message being published.</param>
-    /// <param name="outboxDestination">Destination from outbox record.</param>
-    /// <param name="messageKind">Kind of message (Command, Event, Query).</param>
-    /// <returns>Resolved topic and routing key for publishing.</returns>
-    OutboxDestination Resolve(
+    /// <param name="messageType">The message type being published.</param>
+    /// <param name="ownedDomains">Domains this service owns (from OwnDomains() registration).</param>
+    /// <param name="kind">Message kind (usually Event).</param>
+    /// <returns>Transport destination for publishing.</returns>
+    TransportDestination GetDestination(
         Type messageType,
-        string outboxDestination,
-        MessageKind messageKind);
+        IReadOnlySet<string> ownedDomains,
+        MessageKind kind);
 }
 ```
 
@@ -874,36 +876,37 @@ public interface IOutboxRoutingStrategy {
 
 ```csharp{title="Example: SharedTopicOutboxStrategy" description="Example: SharedTopicOutboxStrategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "SharedTopicOutboxStrategy"]}
 var strategy = new SharedTopicOutboxStrategy("inbox");
+var ownedDomains = new HashSet<string>();
 
 // Command resolution
-var dest = strategy.Resolve(
+var dest = strategy.GetDestination(
     typeof(CreateUserCommand),
-    outboxDestination: "createuser",  // From outbox
+    ownedDomains,
     MessageKind.Command
 );
-// Result: Topic = "inbox", RoutingKey = "myapp.users.commands.createusercommand"
+// Result: Address = "inbox", RoutingKey = "myapp.users.commands.createusercommand"
 
 // Event resolution
-var dest = strategy.Resolve(
+var dest = strategy.GetDestination(
     typeof(UserCreatedEvent),
-    outboxDestination: "usercreated",  // From outbox
+    ownedDomains,
     MessageKind.Event
 );
-// Result: Topic = "myapp.users.events", RoutingKey = "usercreatedevent"
+// Result: Address = "myapp.users.events", RoutingKey = "usercreatedevent"
 ```
 
 ### Example: DomainTopicOutboxStrategy
 
 ```csharp{title="Example: DomainTopicOutboxStrategy" description="Example: DomainTopicOutboxStrategy" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Example:", "DomainTopicOutboxStrategy"]}
-var strategy = new DomainTopicOutboxStrategy(".out");
+var strategy = new DomainTopicOutboxStrategy();
 
 // Event resolution
-var dest = strategy.Resolve(
+var dest = strategy.GetDestination(
     typeof(UserCreatedEvent),
-    outboxDestination: "usercreated",
+    new HashSet<string>(),
     MessageKind.Event
 );
-// Result: Topic = "myapp.users.out", RoutingKey = "usercreatedevent"
+// Result: Address = "myapp.users.events", RoutingKey = "usercreatedevent"
 ```
 
 ## Inbox Routing {#inbox-routing}
@@ -932,16 +935,16 @@ opts.Inbox.UseDomainTopics(".in");
 ```csharp{title="Routing Strategy Interface - IInboxRoutingStrategy" description="Routing Strategy Interface - IInboxRoutingStrategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Routing", "Strategy"]}
 public interface IInboxRoutingStrategy {
     /// <summary>
-    /// Gets the inbox subscription configuration for this service.
+    /// Gets the subscription configuration for receiving commands.
     /// </summary>
     /// <param name="ownedDomains">Domains this service owns.</param>
     /// <param name="serviceName">Name of this service.</param>
-    /// <param name="messageKind">Kind of messages (typically Command).</param>
-    /// <returns>Inbox subscription configuration.</returns>
+    /// <param name="kind">Message kind (Command or Query).</param>
+    /// <returns>Subscription configuration with topic and filter.</returns>
     InboxSubscription GetSubscription(
         IReadOnlySet<string> ownedDomains,
         string serviceName,
-        MessageKind messageKind);
+        MessageKind kind);
 }
 ```
 
@@ -951,14 +954,15 @@ public interface IInboxRoutingStrategy {
 var strategy = new SharedTopicInboxStrategy("inbox");
 
 var subscription = strategy.GetSubscription(
-    ownedDomains: new[] { "myapp.users.commands", "myapp.inventory.commands" },
+    ownedDomains: new HashSet<string> { "myapp.users.commands", "myapp.inventory.commands" },
     serviceName: "UserService",
-    MessageKind.Command
+    kind: MessageKind.Command
 );
 
 // Result:
 // - Topic: "inbox"
-// - FilterExpression: "#"
+// - FilterExpression: "whizbang.core.commands.system.#,myapp.users.commands.#,myapp.inventory.commands.#"
+//   (comma-joined routing patterns)
 // - Metadata["RoutingPatterns"]: [
 //     "whizbang.core.commands.system.#",  // Always included
 //     "myapp.users.commands.#",
@@ -972,13 +976,13 @@ var subscription = strategy.GetSubscription(
 var strategy = new DomainTopicInboxStrategy(".in");
 
 var subscription = strategy.GetSubscription(
-    ownedDomains: new[] { "myapp.users.commands" },
+    ownedDomains: new HashSet<string> { "myapp.users.commands" },
     serviceName: "UserService",
-    MessageKind.Command
+    kind: MessageKind.Command
 );
 
 // Result:
-// - Topic: "myapp.users.commands.in"
+// - Topic: "myapp.users.commands.in"  (first owned domain + suffix)
 // - FilterExpression: null (topic is the filter)
 // - Metadata: null
 ```
@@ -1022,10 +1026,12 @@ public interface IEventNamespaceSource {
 
 [System.Runtime.CompilerServices.ModuleInitializer]
 internal static void RegisterEventNamespaces() {
-    EventNamespaceRegistry.RegisterSource(new GeneratedEventNamespaceSource());
+    EventNamespaceRegistry.Register(EventNamespaceSource.Instance);
 }
 
-internal sealed class GeneratedEventNamespaceSource : IEventNamespaceSource {
+internal sealed class EventNamespaceSource : IEventNamespaceSource {
+    public static readonly EventNamespaceSource Instance = new();
+
     private static readonly IReadOnlySet<string> _perspectiveNamespaces =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
             "myapp.orders.events",
@@ -1222,20 +1228,20 @@ public record UserCreatedEvent(Guid Id) : IMessage;
 Message kind determines the routing strategy:
 
 ```csharp{title="Usage in Routing" description="Message kind determines the routing strategy:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Usage", "Routing"]}
-// In OutboxRoutingStrategy
-var kind = MessageKindDetector.Detect<CreateUserCommand>();
+// In an IOutboxRoutingStrategy implementation
+var kind = MessageKindDetector.Detect(typeof(CreateUserCommand));
 // Result: MessageKind.Command
 
 if (kind == MessageKind.Command) {
     // Route to inbox
-    return new OutboxDestination(
-        Topic: "inbox",
+    return new TransportDestination(
+        Address: "inbox",
         RoutingKey: "myapp.users.commands.createusercommand"
     );
 } else if (kind == MessageKind.Event) {
     // Route to namespace topic
-    return new OutboxDestination(
-        Topic: "myapp.users.events",
+    return new TransportDestination(
+        Address: "myapp.users.events",
         RoutingKey: "usercreatedevent"
     );
 }
@@ -1368,18 +1374,32 @@ service-name check:
 - Last hop's service name **equals** this service → self-echo → discard.
 - Last hop's service name **differs** → legitimate cross-service command → process.
 
-```
-Event published by ChatService (owns "JDX.Contracts.Chat")
-  ├── Local fast path: ChatService processes immediately
-  └── Transport broadcast:
-        arrives at ChatService inbox → DISCARDED (owned event echo, unconditional)
-        arrives at BffService inbox  → PROCESSED (cross-service delivery)
+```mermaid
+graph TB
+    E["Event published by ChatService (owns &quot;JDX.Contracts.Chat&quot;)"]
+    EL["Local fast path: ChatService processes immediately"]
+    ET["Transport broadcast"]
+    ET1["arrives at ChatService inbox → DISCARDED (owned event echo, unconditional)"]
+    ET2["arrives at BffService inbox → PROCESSED (cross-service delivery)"]
 
-Command sent by BffService into ChatService's owned namespace
-  └── arrives at ChatService inbox → PROCESSED (last hop = "BffService" ≠ "ChatService")
+    CA["Command sent by BffService into ChatService's owned namespace"]
+    CA1["arrives at ChatService inbox → PROCESSED (last hop = &quot;BffService&quot; ≠ &quot;ChatService&quot;)"]
 
-Command emitted by ChatService into its own namespace, echoed back
-  └── arrives at ChatService inbox → DISCARDED (last hop = "ChatService", self-echo)
+    CB["Command emitted by ChatService into its own namespace, echoed back"]
+    CB1["arrives at ChatService inbox → DISCARDED (last hop = &quot;ChatService&quot;, self-echo)"]
+
+    E --> EL
+    E --> ET
+    ET --> ET1
+    ET --> ET2
+    CA --> CA1
+    CB --> CB1
+
+    style EL fill:#d4edda,stroke:#28a745
+    style ET2 fill:#d4edda,stroke:#28a745
+    style CA1 fill:#d4edda,stroke:#28a745
+    style ET1 fill:#f8d7da,stroke:#dc3545
+    style CB1 fill:#f8d7da,stroke:#dc3545
 ```
 
 Both discard paths log at `Debug`: an owned-event echo logs *"Owned event echo discarded: {MessageType}
@@ -1468,8 +1488,7 @@ opts.OwnDomains("myapp.users.comands");  // Typo won't be caught until runtime
 
 ```csharp{title="Let Auto-Discovery Do the Work" description="Let Auto-Discovery Do the Work" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Let", "Auto-Discovery"]}
 // ✅ GOOD: Events discovered automatically
-[Perspective<OrderSummary>]
-public class OrderSummaryPerspective : IPerspective<OrderCreatedEvent> {
+public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreatedEvent> {
   // Auto-subscribes to "myapp.orders.events"
 }
 
@@ -1494,7 +1513,7 @@ services.Configure<RoutingOptions>(opts => {
 ```csharp{title="Validate Subscriptions at Startup" description="Validate Subscriptions at Startup" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Validate", "Subscriptions"]}
 // Ensure all expected namespaces are subscribed
 var discovery = services.GetRequiredService<EventSubscriptionDiscovery>();
-var namespaces = discovery.DiscoverAll();
+var namespaces = discovery.DiscoverEventNamespaces();
 
 logger.LogInformation(
     "Subscribed to {Count} event namespaces: {Namespaces}",

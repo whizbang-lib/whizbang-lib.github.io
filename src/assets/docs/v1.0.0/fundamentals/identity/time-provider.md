@@ -1,5 +1,8 @@
 ---
 title: Time Provider
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 30
@@ -9,6 +12,8 @@ tags: 'time, testing, dependency-injection, aot'
 codeReferences:
   - src/Whizbang.Core/ITimeProvider.cs
   - src/Whizbang.Core/SystemTimeProvider.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/SystemTimeProviderTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -78,6 +83,7 @@ public sealed class SystemTimeProvider : ITimeProvider {
   public SystemTimeProvider() : this(TimeProvider.System) { }
 
   public SystemTimeProvider(TimeProvider timeProvider) {
+    ArgumentNullException.ThrowIfNull(timeProvider);
     _timeProvider = timeProvider;
   }
 
@@ -115,7 +121,7 @@ public class OrderService {
 
   public Order CreateOrder(CreateOrderRequest request) {
     return new Order {
-      Id = Guid.CreateVersion7(),
+      Id = TrackedGuid.NewMedo(),  // Whizbang's UUIDv7 factory (implicitly converts to Guid)
       CustomerId = request.CustomerId,
       CreatedAt = _timeProvider.GetUtcNow(),  // Testable!
       Items = request.Items

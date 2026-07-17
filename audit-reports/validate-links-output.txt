@@ -1,3 +1,55 @@
 Validating documentation links...
 
-✅ All 1269 links are valid.
+❌ Broken links found: 24
+
+  Markdown Links (24):
+    src/assets/docs/drafts/attributes/auto-populate.md:354
+      [Message Context](../../fundamentals/messages/message-context.md)
+    src/assets/docs/proposals/ephemeral-events.md:315
+      [Signal Bus](../fundamentals/signal-bus/signal-bus)
+    src/assets/docs/proposals/open-questions.md:151
+      [**Philosophy**](../philosophy.md)
+    src/assets/docs/proposals/temporal-engine.md:10
+      [System Signal Bus](../fundamentals/signal-bus/signal-bus)
+    src/assets/docs/roadmap/FEATURE-EVOLUTION.md:49
+      [View →](../projections.md)
+    src/assets/docs/v1.0.0/fundamentals/messaging/composite-events.md:77
+      [collective events](/docs/fundamentals/messaging/collective-events)
+    src/assets/docs/v1.0.0/fundamentals/messaging/composite-events.md:85
+      [message-body offload](/docs/fundamentals/offloads/message-body-store)
+    src/assets/docs/v1.0.0/fundamentals/offloads/message-body-store.md:138
+      [composite events](/docs/fundamentals/messaging/composite-events)
+    src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md:26
+      [body offload](/docs/fundamentals/offloads/message-body-store)
+    src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md:182
+      [Body Offload (Claim-Check Pattern)](/docs/fundamentals/offloads/message-body-store)
+    src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md:227
+      [Body Offload (Claim-Check Pattern)](/docs/fundamentals/offloads/message-body-store)
+    src/assets/docs/v1.0.0/fundamentals/offloads/providers/in-memory.md:55
+      [Whizbang.Offloads.AzureBlob](/docs/fundamentals/offloads/providers/azure-blob)
+    src/assets/docs/v1.0.0/fundamentals/perspectives/apply-exactly-once.md:76
+      [Drain mode](drain-mode)
+    src/assets/docs/v1.0.0/fundamentals/perspectives/apply-exactly-once.md:78
+      [Lifecycle receptors](../lifecycle/lifecycle-receptors)
+    src/assets/docs/v1.0.0/fundamentals/workers/perspective-worker-notify.md:53
+      [Notifications & pgbouncer](../work-coordinator/notifications-and-pgbouncer.md)
+    src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md:251
+      [pgbouncer topology overview](../work-coordinator/notifications-and-pgbouncer.md)
+    src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md:252
+      [Slot-3 perf measurement (2026-06-10)](../../proposals/slot-3-perf-baseline.md)
+    src/assets/docs/v1.0.0/fundamentals/workers/worker-classification.md:78
+      [Notifications & pgbouncer](../work-coordinator/notifications-and-pgbouncer.md)
+    src/assets/docs/v1.0.0/messaging/composite-events.md:33
+      [body offload feature](/docs/fundamentals/offloads/message-body-store)
+    src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md:197
+      [Message Failure Reasons](../../fundamentals/work-coordinator/configuration-reference.md)
+    src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md:28
+      [Lifecycle Failure Capture](../dead-letter-queue/lifecycle-failure-capture.md)
+    src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md:66
+      [`MaintenanceWorkerOptions`](../../fundamentals/work-coordinator/configuration-reference.md)
+    src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md:82
+      [`OutboxDrainWorkerOptions.MaxOutboxAttempts`](../../fundamentals/work-coordinator/per-stream-drain.md)
+    src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md:195
+      [Maintenance Worker](../../fundamentals/work-coordinator/maintenance.md)
+
+Checked 1683 links total.

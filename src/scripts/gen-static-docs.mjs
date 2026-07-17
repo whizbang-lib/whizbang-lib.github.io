@@ -14,7 +14,7 @@ const OUTPUT_FILE = 'docs.html';
 
 // Folders to process in order
 const VERSION_PATTERN = /^v\d+\.\d+\.\d+$/;
-const STATE_FOLDERS = ['drafts', 'proposals', 'backlog'];
+const STATE_FOLDERS = ['drafts', 'proposals', 'backlog', 'contributors', 'spec'];
 const SPECIAL_FOLDERS = ['migrate-from-marten-wolverine', 'roadmap'];
 
 // Simple markdown to HTML conversion (basic but sufficient for AI)

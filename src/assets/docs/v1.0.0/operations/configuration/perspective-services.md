@@ -1,5 +1,8 @@
 ---
 title: AddPerspectiveServices
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: DI
 order: 3
@@ -8,12 +11,19 @@ description: >-
 tags: 'di, dependency-injection, perspectives, service-registration'
 codeReferences:
   - src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs
+  - src/Whizbang.Generators/ServiceRegistrationGenerator.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/ServiceRegistrationGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # AddPerspectiveServices
 
 `AddPerspectiveServices` is a source-generated extension method that registers all discovered Perspective implementations with the dependency injection container.
+
+:::updated
+`AddWhizbang()` invokes this method automatically via `ServiceRegistrationCallbacks` — an explicit call is only needed when registering services without `AddWhizbang()`, or with different options.
+:::
 
 ## Signature
 
@@ -54,58 +64,53 @@ builder.Services.AddPerspectiveServices(options =>
 ## What Gets Registered
 
 The source generator discovers classes that:
-- Implement `IPerspective<TEvent>` or derived interfaces
+- Implement `IPerspectiveFor<TModel, TEvent...>` or `IPerspectiveWithActionsFor<TModel, TEvent...>` — either directly (with closed generic arguments) or through a user-defined interface that extends one of them
 - Are not abstract
-- Have accessible constructors
 
 For each discovered Perspective, it generates:
 
 ```csharp{title="Generated Registration" description="Example of generated Perspective registration" category="DI" difficulty="INTERMEDIATE" tags=["DI", "SourceGenerator"]}
 // Interface registration
-services.AddScoped<IOrderPerspective, OrderPerspective>();
+services.AddTransient<IPerspectiveFor<OrderSummary, OrderCreated, OrderShipped>, OrderSummaryPerspective>();
 
 // Self-registration (when IncludeSelfRegistration = true)
-services.AddScoped<OrderPerspective>();
+services.AddTransient<OrderSummaryPerspective>();
 ```
+
+When the class implements a user-defined interface extending a Whizbang perspective interface, the registration targets the user interface instead.
 
 ## Registration Lifetime
 
-All Perspectives are registered as **Scoped** services:
-- Matches DbContext lifetime
-- Fresh instance per request/scope
-- Proper cleanup after scope disposal
+All Perspectives are registered as **Transient** services:
+- Fresh instance per resolution
+- No accidental state sharing — perspectives are pure functions
+- Any scoped dependencies come from the resolving scope
 
 ## Example Perspective
 
+Perspectives are **pure functions** — each `Apply` method takes the current read-model state and an event, and returns the new state. No I/O, no injected services:
+
 ```csharp{title="Example Perspective Implementation" description="A Perspective that gets discovered and registered" category="Domain Logic" difficulty="INTERMEDIATE" tags=["Perspectives", "EventSourcing"]}
-public interface IOrderPerspective : IPerspective<OrderCreated>, IPerspective<OrderShipped> {
-  Task<OrderSummary?> GetOrderAsync(OrderId orderId, CancellationToken ct);
-}
+public class OrderSummaryPerspective :
+  IPerspectiveFor<OrderSummary, OrderCreated, OrderShipped> {
 
-public class OrderPerspective : IOrderPerspective {
-  private readonly AppDbContext _db;
+  public OrderSummary Apply(OrderSummary currentData, OrderCreated @event) =>
+    new OrderSummary {
+      OrderId = @event.OrderId,
+      CustomerId = @event.CustomerId,
+      Status = OrderStatus.Created,
+      CreatedAt = @event.CreatedAt
+    };
 
-  public OrderPerspective(AppDbContext db) {
-    _db = db;
-  }
-
-  public async Task HandleAsync(OrderCreated @event, CancellationToken ct) {
-    _db.OrderSummaries.Add(new OrderSummary { ... });
-    await _db.SaveChangesAsync(ct);
-  }
-
-  public async Task HandleAsync(OrderShipped @event, CancellationToken ct) {
-    var order = await _db.OrderSummaries.FindAsync(@event.OrderId, ct);
-    order.Status = OrderStatus.Shipped;
-    await _db.SaveChangesAsync(ct);
-  }
-
-  public Task<OrderSummary?> GetOrderAsync(OrderId orderId, CancellationToken ct) =>
-    _db.OrderSummaries.FirstOrDefaultAsync(o => o.Id == orderId, ct);
+  public OrderSummary Apply(OrderSummary currentData, OrderShipped @event) =>
+    currentData with {
+      Status = OrderStatus.Shipped,
+      ShippedAt = @event.ShippedAt
+    };
 }
 ```
 
-The generator automatically discovers `OrderPerspective` and generates registration code.
+The generator automatically discovers `OrderSummaryPerspective` and generates registration code.
 
 ## Combining with Other Registrations
 
@@ -115,14 +120,14 @@ var builder = WebApplication.CreateBuilder(args);
 // Database
 builder.Services.AddDbContext<AppDbContext>(...);
 
-// Core Whizbang
+// Core Whizbang (auto-registers discovered Perspectives and Lenses)
 builder.Services.AddWhizbang();
 
-// Perspective message handlers (for dispatch routing)
+// Perspective runners (for perspective materialization)
 builder.Services.AddWhizbangPerspectives();
 
-// Generated service registrations
-builder.Services.AddPerspectiveServices();  // DI registration
+// Explicit generated registrations — only when bypassing AddWhizbang()
+builder.Services.AddPerspectiveServices();
 builder.Services.AddLensServices();         // Or use AddAllWhizbangServices()
 ```
 

@@ -1,5 +1,8 @@
 ---
 title: Project Structure Guide
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Getting Started
 order: 4
@@ -8,10 +11,13 @@ description: >-
   separation of concerns, and multi-service architectures
 tags: 'project-structure, architecture, organization, best-practices'
 codeReferences:
-  - samples/ECommerce/
-  - samples/ECommerce/ECommerce.Messages/
-  - samples/ECommerce/ECommerce.OrderService.API/
-  - samples/ECommerce/ECommerce.BFF.API/
+  - samples/ECommerce/ECommerce.Contracts/Commands/CreateOrderCommand.cs
+  - samples/ECommerce/ECommerce.OrderService.API/Program.cs
+  - samples/ECommerce/ECommerce.BFF.API/Program.cs
+  - samples/ECommerce/ECommerce.AppHost/Program.cs
+testReferences:
+  - samples/ECommerce/ECommerce.Contracts.Tests/Commands/CreateProductCommandTests.cs
+  - samples/ECommerce/ECommerce.IntegrationTests/OrderServiceIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -84,21 +90,26 @@ MyApp/
 ### Program.cs Setup
 
 ```csharp{title="Program.cs Setup" description="Program.cs Setup" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Program.cs", "Setup"]}
+using Microsoft.EntityFrameworkCore;
 using Whizbang.Core;
-using Whizbang.Data.Dapper.Postgres;
+using Whizbang.Data.EFCore.Postgres;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Whizbang Core
-builder.Services.AddWhizbangCore();
-
-// Auto-discovery (with Whizbang.Generators)
-builder.Services.AddDiscoveredReceptors();
-builder.Services.AddDiscoveredPerspectives();
-
-// Data access
+// EF Core DbContext (provides Inbox/Outbox/EventStore via [WhizbangDbContext])
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
-builder.Services.AddWhizbangDapper(connectionString);
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+// Unified Whizbang registration with the EF Core Postgres driver
+builder.Services
+    .AddWhizbang()
+    .WithEFCore<AppDbContext>()
+    .WithDriver.Postgres;
+
+// Generated registrations (produced by Whizbang.Generators)
+builder.Services.AddReceptors();
+builder.Services.AddWhizbangDispatcher();
 
 // Controllers
 builder.Services.AddControllers();
@@ -106,6 +117,12 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+// Initialize Whizbang schema (generated, idempotent)
+using (var scope = app.Services.CreateScope()) {
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await dbContext.EnsureWhizbangDatabaseInitializedAsync();
+}
 
 if (app.Environment.IsDevelopment()) {
     app.UseSwagger();
@@ -124,12 +141,15 @@ app.Run();
 **Commands** (imperative - intent to change state):
 ```csharp{title="Message Organization" description="Commands (imperative - intent to change state):" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Message", "Organization"]}
 // Messages/Commands/CreateOrder.cs
+using Whizbang.Core;
+
 namespace MyApp.API.Messages.Commands;
 
 public record CreateOrder(
+    [property: StreamId] Guid OrderId,
     Guid CustomerId,
     OrderLineItem[] Items
-);
+) : ICommand;
 
 public record OrderLineItem(
     Guid ProductId,
@@ -141,15 +161,17 @@ public record OrderLineItem(
 **Events** (past tense - fact of what happened):
 ```csharp{title="Message Organization - OrderCreated" description="Events (past tense - fact of what happened):" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Message", "Organization", "OrderCreated"]}
 // Messages/Events/OrderCreated.cs
+using Whizbang.Core;
+
 namespace MyApp.API.Messages.Events;
 
 public record OrderCreated(
-    Guid OrderId,
+    [property: StreamId] Guid OrderId,
     Guid CustomerId,
     OrderLineItem[] Items,
     decimal Total,
     DateTimeOffset CreatedAt
-);
+) : IEvent;
 ```
 
 ### Pros and Cons
@@ -224,26 +246,32 @@ MyApp/
 
 ### Project Dependencies
 
+```mermaid
+flowchart TD
+    API["MyApp.API"]
+    Domain["MyApp.Domain"]
+    ReadModels["MyApp.ReadModels"]
+    Messages["MyApp.Messages<br/>(references only Whizbang.Core)"]
+    Core["Whizbang.Core"]
+    EFCore["Whizbang.Data.EFCore.Postgres"]
+
+    API --> Domain
+    API --> ReadModels
+    API --> Core
+    Domain --> Messages
+    Domain --> Core
+    ReadModels --> Messages
+    ReadModels --> Core
+    ReadModels --> EFCore
+    Messages --> Core
+
+    class API,Domain layer-core
+    class ReadModels layer-read
+    class Messages layer-command
+    class Core,EFCore layer-infrastructure
 ```
-MyApp.API
-  ├─> MyApp.Domain
-  ├─> MyApp.ReadModels
-  └─> Whizbang.Core
 
-MyApp.Domain
-  ├─> MyApp.Messages
-  └─> Whizbang.Core
-
-MyApp.ReadModels
-  ├─> MyApp.Messages
-  ├─> Whizbang.Core
-  └─> Whizbang.Data.Dapper.Postgres
-
-MyApp.Messages
-  └─> (no dependencies - pure DTOs)
-```
-
-**Key Point**: Messages project has **no dependencies** - makes it easy to share across services.
+**Key Point**: The Messages project references **only Whizbang.Core** (for `ICommand`, `IEvent`, `[StreamId]`, `[WhizbangId]`) - making it easy to share across services.
 
 ### Central Package Management
 
@@ -257,10 +285,10 @@ Use `Directory.Packages.props` for version consistency:
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageVersion Include="Whizbang.Core" Version="0.1.0" />
-    <PackageVersion Include="Whizbang.Generators" Version="0.1.0" />
-    <PackageVersion Include="Whizbang.Data.Dapper.Postgres" Version="0.1.0" />
-    <PackageVersion Include="Whizbang.Transports.AzureServiceBus" Version="0.1.0" />
+    <PackageVersion Include="Whizbang.Core" Version="x.x.x" />
+    <PackageVersion Include="Whizbang.Generators" Version="x.x.x" />
+    <PackageVersion Include="Whizbang.Data.Dapper.Postgres" Version="x.x.x" />
+    <PackageVersion Include="Whizbang.Transports.AzureServiceBus" Version="x.x.x" />
   </ItemGroup>
 </Project>
 ```
@@ -321,80 +349,55 @@ This is the structure used in the **ECommerce sample** (12 projects).
 
 ```
 ECommerce/
-├── src/
-│   ├── ECommerce.Messages/             # Shared contracts (commands + events)
-│   │   ├── Commands/
-│   │   │   ├── CreateOrder.cs
-│   │   │   ├── ReserveInventory.cs
-│   │   │   └── ProcessPayment.cs
-│   │   ├── Events/
-│   │   │   ├── OrderCreated.cs
-│   │   │   ├── InventoryReserved.cs
-│   │   │   └── PaymentProcessed.cs
-│   │   └── ECommerce.Messages.csproj
-│   │
-│   ├── ECommerce.BFF.API/              # Backend for Frontend (UI layer)
-│   │   ├── Program.cs
-│   │   ├── Perspectives/               # Read models for UI
-│   │   │   ├── OrderSummaryPerspective.cs
-│   │   │   ├── InventoryPerspective.cs
-│   │   │   └── ShippingPerspective.cs
-│   │   ├── Lenses/                     # Query interfaces
-│   │   │   ├── OrderLens.cs
-│   │   │   └── InventoryLens.cs
-│   │   ├── Hubs/                       # SignalR real-time
-│   │   │   └── OrderHub.cs
-│   │   └── Endpoints/
-│   │       └── OrderEndpoints.cs
-│   │
-│   ├── ECommerce.OrderService.API/     # Order management service
-│   │   ├── Program.cs
-│   │   ├── Receptors/
-│   │   │   ├── CreateOrderReceptor.cs
-│   │   │   └── CancelOrderReceptor.cs
-│   │   └── Endpoints/
-│   │       └── OrdersController.cs
-│   │
-│   ├── ECommerce.InventoryWorker/      # Inventory reservation (background worker)
-│   │   ├── Program.cs
-│   │   ├── Receptors/
-│   │   │   └── ReserveInventoryReceptor.cs
-│   │   └── Workers/
-│   │       └── InventoryWorker.cs
-│   │
-│   ├── ECommerce.PaymentWorker/        # Payment processing (background worker)
-│   │   ├── Program.cs
-│   │   ├── Receptors/
-│   │   │   └── ProcessPaymentReceptor.cs
-│   │   └── Workers/
-│   │       └── PaymentWorker.cs
-│   │
-│   ├── ECommerce.ShippingWorker/       # Fulfillment coordination (background worker)
-│   │   ├── Program.cs
-│   │   ├── Receptors/
-│   │   │   └── ShipOrderReceptor.cs
-│   │   └── Workers/
-│   │       └── ShippingWorker.cs
-│   │
-│   ├── ECommerce.NotificationWorker/   # Cross-cutting notifications (background worker)
-│   │   ├── Program.cs
-│   │   ├── Perspectives/               # Listens to ALL events
-│   │   │   └── NotificationPerspective.cs
-│   │   └── Workers/
-│   │       └── NotificationWorker.cs
-│   │
-│   └── ECommerce.UI/                   # Angular 20 frontend
-│       └── (Angular project)
+├── ECommerce.Contracts/                # Shared contracts (commands + events + IDs)
+│   ├── Commands/
+│   │   ├── CreateOrderCommand.cs
+│   │   ├── ReserveInventoryCommand.cs
+│   │   └── ProcessPaymentCommand.cs
+│   ├── Events/
+│   │   ├── OrderCreatedEvent.cs
+│   │   ├── InventoryReservedEvent.cs
+│   │   └── PaymentProcessedEvent.cs
+│   ├── Lenses/                         # Shared read model DTOs
+│   │   ├── ProductDto.cs
+│   │   └── InventoryLevelDto.cs
+│   └── Ids.cs                          # [WhizbangId] strongly-typed IDs
+│
+├── ECommerce.BFF.API/                  # Backend for Frontend (UI layer)
+│   ├── Program.cs
+│   ├── Perspectives/                   # Read models for UI (pure Apply)
+│   ├── Lenses/                         # Custom query services
+│   ├── Hubs/                           # SignalR real-time
+│   ├── GraphQL/                        # HotChocolate queries
+│   └── Endpoints/                      # FastEndpoints REST API
+│
+├── ECommerce.OrderService.API/         # Order management service
+│   ├── Program.cs
+│   ├── OrderDbContext.cs               # [WhizbangDbContext] partial DbContext
+│   ├── Receptors/
+│   │   └── CreateOrderReceptor.cs
+│   ├── Endpoints/                      # FastEndpoints REST API
+│   └── GraphQL/                        # HotChocolate mutations/queries
+│
+├── ECommerce.InventoryWorker/          # Inventory reservation (background worker)
+│   ├── Program.cs
+│   ├── InventoryDbContext.cs
+│   ├── Receptors/
+│   ├── Perspectives/
+│   └── Worker.cs
+│
+├── ECommerce.PaymentWorker/            # Payment processing (background worker)
+├── ECommerce.ShippingWorker/           # Fulfillment coordination (background worker)
+├── ECommerce.NotificationWorker/       # Cross-cutting notifications (background worker)
+│
+├── ECommerce.UI/                       # Angular frontend
 │
 ├── ECommerce.AppHost/                  # .NET Aspire orchestration
 │   └── Program.cs
+├── ECommerce.ServiceDefaults/          # Shared telemetry/health-check defaults
 │
-├── tests/
-│   ├── ECommerce.OrderService.Tests/
-│   ├── ECommerce.InventoryWorker.Tests/
-│   └── ECommerce.Integration.Tests/
-│
-└── ECommerce.sln
+├── ECommerce.Contracts.Tests/          # Contract tests (TUnit)
+└── ECommerce.IntegrationTests/         # End-to-end tests (TUnit)
 ```
 
 ### Service Responsibilities
@@ -410,27 +413,26 @@ ECommerce/
 
 ### Communication Pattern
 
-```
-1. UI → BFF.API
-   └─> Send CreateOrder command (via HTTP POST)
+```mermaid
+sequenceDiagram
+    participant UI
+    participant BFF as BFF.API
+    participant Dispatcher as Dispatcher (local)
+    participant Receptor
+    participant Outbox
+    participant Publisher as WorkCoordinatorPublisher
+    participant ASB as Azure Service Bus
+    participant Inventory as InventoryWorker
+    participant Payment as PaymentWorker
+    participant Perspectives as BFF Perspectives
 
-2. BFF.API → Dispatcher (local)
-   └─> LocalInvokeAsync<CreateOrder, OrderCreated>()
-
-3. Receptor → Outbox
-   └─> Stores OrderCreated event in outbox
-
-4. WorkCoordinatorPublisher → Azure Service Bus
-   └─> Publishes OrderCreated to topic
-
-5. InventoryWorker subscribes to OrderCreated
-   └─> Processes event, publishes InventoryReserved
-
-6. PaymentWorker subscribes to InventoryReserved
-   └─> Processes event, publishes PaymentProcessed
-
-7. BFF Perspectives subscribe to all events
-   └─> Update read models, trigger SignalR updates to UI
+    UI->>BFF: 1. Send CreateOrder command (via HTTP POST)
+    BFF->>Dispatcher: 2. LocalInvokeAsync&lt;CreateOrder, OrderCreated&gt;()
+    Receptor->>Outbox: 3. Stores OrderCreated event in outbox
+    Publisher->>ASB: 4. Publishes OrderCreated to topic
+    ASB->>Inventory: 5. Subscribes to OrderCreated - processes event, publishes InventoryReserved
+    ASB->>Payment: 6. Subscribes to InventoryReserved - processes event, publishes PaymentProcessed
+    ASB->>Perspectives: 7. Subscribe to all events - update read models, trigger SignalR updates to UI
 ```
 
 ### .NET Aspire Orchestration
@@ -439,43 +441,50 @@ ECommerce/
 ```csharp{title=".NET Aspire Orchestration" description="**ECommerce." category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Aspire", "Orchestration"]}
 var builder = DistributedApplication.CreateBuilder(args);
 
-// Infrastructure
+// Infrastructure - one PostgreSQL server, one database per service
 var postgres = builder.AddPostgres("postgres")
-    .WithPgAdmin()
-    .AddDatabase("ecommerce");
+    .WithPgAdmin();
 
+var ordersDb = postgres.AddDatabase("ordersdb");
+var inventoryDb = postgres.AddDatabase("inventorydb");
+var paymentDb = postgres.AddDatabase("paymentdb");
+var shippingDb = postgres.AddDatabase("shippingdb");
+var notificationDb = postgres.AddDatabase("notificationdb");
+var bffDb = postgres.AddDatabase("bffdb");
+
+// Azure Service Bus emulator with topics + per-service subscriptions
 var serviceBus = builder.AddAzureServiceBus("servicebus")
     .RunAsEmulator();
 
-// Services
+// Services (each references its own database + the shared transport)
 var orderService = builder.AddProject<Projects.ECommerce_OrderService_API>("orderservice")
-    .WithReference(postgres)
+    .WithReference(ordersDb)
     .WithReference(serviceBus);
 
 var inventoryWorker = builder.AddProject<Projects.ECommerce_InventoryWorker>("inventoryworker")
-    .WithReference(postgres)
+    .WithReference(inventoryDb)
     .WithReference(serviceBus);
 
 var paymentWorker = builder.AddProject<Projects.ECommerce_PaymentWorker>("paymentworker")
-    .WithReference(postgres)
+    .WithReference(paymentDb)
     .WithReference(serviceBus);
 
 var shippingWorker = builder.AddProject<Projects.ECommerce_ShippingWorker>("shippingworker")
-    .WithReference(postgres)
+    .WithReference(shippingDb)
     .WithReference(serviceBus);
 
 var notificationWorker = builder.AddProject<Projects.ECommerce_NotificationWorker>("notificationworker")
-    .WithReference(postgres)
+    .WithReference(notificationDb)
     .WithReference(serviceBus);
 
-var bff = builder.AddProject<Projects.ECommerce_BFF_API>("bff")
-    .WithReference(postgres)
-    .WithReference(serviceBus)
-    .WithReference(orderService);
+var ui = builder.AddNpmApp("ui", "../ECommerce.UI", "start")
+    .WithHttpEndpoint(port: 4200, env: "PORT")
+    .WithExternalHttpEndpoints();
 
-var ui = builder.AddNpmApp("ui", "../ECommerce.UI")
-    .WithReference(bff)
-    .WithHttpEndpoint(env: "PORT")
+var bff = builder.AddProject<Projects.ECommerce_BFF_API>("bff")
+    .WithReference(bffDb)
+    .WithReference(serviceBus)
+    .WithReference(ui)  // BFF discovers the Angular URL for CORS
     .WithExternalHttpEndpoints();
 
 builder.Build().Run();
@@ -484,7 +493,7 @@ builder.Build().Run();
 **Benefits**:
 - One-command local development: `dotnet run --project ECommerce.AppHost`
 - Automatic service discovery
-- Built-in dashboard (http://localhost:15000)
+- Built-in Aspire dashboard
 - PostgreSQL and Service Bus emulators
 - Health checks and observability
 
@@ -522,17 +531,14 @@ builder.Build().Run();
   "ConnectionStrings": {
     "DefaultConnection": "Host=localhost;Database=myapp;Username=postgres;Password=dev_password"
   },
-  "Whizbang": {
-    "Outbox": {
-      "PollingIntervalMilliseconds": 1000,
-      "LeaseSeconds": 300
-    },
-    "Inbox": {
-      "PollingIntervalMilliseconds": 1000
-    }
+  "WorkCoordinatorPublisher": {
+    "PollingIntervalMilliseconds": 1000,
+    "LeaseSeconds": 300,
+    "DebugMode": true
   },
-  "AzureServiceBus": {
-    "ConnectionString": "Endpoint=sb://localhost;..."
+  "PerspectiveWorker": {
+    "PollingIntervalMilliseconds": 1000,
+    "LeaseSeconds": 300
   }
 }
 ```
@@ -549,14 +555,10 @@ builder.Build().Run();
   "ConnectionStrings": {
     "DefaultConnection": "${DATABASE_URL}"  // Injected from environment
   },
-  "Whizbang": {
-    "Outbox": {
-      "PollingIntervalMilliseconds": 5000,
-      "LeaseSeconds": 600
-    }
-  },
-  "AzureServiceBus": {
-    "ConnectionString": "${SERVICE_BUS_CONNECTION_STRING}"
+  "WorkCoordinatorPublisher": {
+    "PollingIntervalMilliseconds": 5000,
+    "LeaseSeconds": 600,
+    "DebugMode": false
   }
 }
 ```
@@ -580,34 +582,34 @@ kubectl create secret generic myapp-db --from-literal=connection-string="Host=..
 
 ### Service Registration Layers
 
-**Layer 1: Whizbang Core**:
-```csharp{title="Service Registration Layers" description="Layer 1: Whizbang Core:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
-builder.Services.AddWhizbangCore();  // IDispatcher, MessageEnvelope, etc.
+**Layer 1: DbContext + Unified Whizbang API** (EF Core Postgres driver):
+```csharp{title="Service Registration Layers" description="Layer 1: DbContext + Unified Whizbang API:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+builder.Services
+    .AddWhizbang()                 // IDispatcher, workers, envelope infrastructure
+    .WithEFCore<AppDbContext>()    // IInbox, IOutbox, IEventStore via EF Core
+    .WithDriver.Postgres;          // IPerspectiveStore<T> + ILensQuery<T> per model
 ```
 
-**Layer 2: Auto-Discovery** (with Whizbang.Generators):
-```csharp{title="Service Registration Layers (2)" description="Layer 2: Auto-Discovery (with Whizbang." category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
-builder.Services.AddDiscoveredReceptors();      // All IReceptor implementations
-builder.Services.AddDiscoveredPerspectives();   // All IPerspectiveOf implementations
+**Layer 2: Generated Registrations** (produced by Whizbang.Generators):
+```csharp{title="Service Registration Layers (2)" description="Layer 2: Generated Registrations:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
+builder.Services.AddReceptors();           // All discovered IReceptor implementations
+builder.Services.AddWhizbangDispatcher();  // Generated zero-reflection dispatcher
+builder.Services.AddPerspectiveRunners();  // All discovered perspective runners
 ```
 
-**Layer 3: Data Access**:
-```csharp{title="Service Registration Layers (3)" description="Layer 3: Data Access:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
-builder.Services.AddWhizbangDapper(connectionString);        // Dapper + PostgreSQL
+**Layer 3: Transports**:
+```csharp{title="Service Registration Layers (3)" description="Layer 3: Transports:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
+builder.Services.AddAzureServiceBusTransport(serviceBusConnection);
 // OR
-builder.Services.AddWhizbangEFCore(connectionString);        // EF Core + PostgreSQL
+builder.Services.AddRabbitMQTransport(rabbitMqConnection);
 ```
 
-**Layer 4: Transports**:
-```csharp{title="Service Registration Layers (4)" description="Layer 4: Transports:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
-builder.Services.AddWhizbangAzureServiceBus(
-    builder.Configuration.GetSection("AzureServiceBus")
-);
-```
-
-**Layer 5: Application Services**:
-```csharp{title="Service Registration Layers (5)" description="Layer 5: Application Services:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
-builder.Services.AddTransient<IOrderLens, OrderLens>();
+**Layer 4: Application Services**:
+```csharp{title="Service Registration Layers (4)" description="Layer 4: Application Services:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
+builder.Services.AddTransient<OrderQueryService>();  // Wraps ILensQuery<OrderSummary>
 builder.Services.AddSingleton<IEmailService, SendGridEmailService>();
 ```
 
@@ -617,10 +619,9 @@ builder.Services.AddSingleton<IEmailService, SendGridEmailService>();
 |-----------|----------|--------|
 | `IDispatcher` | Singleton | Shared router, no state |
 | `IReceptor<,>` | Transient | May inject scoped services (DbContext) |
-| `IPerspectiveOf<>` | Transient | May inject scoped services |
-| `ILensQuery` | Transient | Lightweight, may inject scoped services |
+| `IPerspectiveFor<,...>` | Stateless | Pure Apply functions - no injected services |
+| `ILensQuery<T>` | Scoped | Wraps the scoped EF Core `DbContext` |
 | `DbContext` | Scoped | Per-request database context |
-| `IDbConnectionFactory` | Singleton | Connection factory (Dapper) |
 
 ---
 
@@ -667,15 +668,14 @@ public class OrderWorkflowTests {
         // Arrange
         var command = new CreateOrder(/* ... */);
 
-        // Act - dispatch command
+        // Act - dispatch command (returned event cascades to perspectives)
         var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
 
-        // Publish event to perspectives
-        await _dispatcher.PublishAsync(result);
-
-        // Assert - query read model
-        var lens = _factory.Services.GetRequiredService<IOrderLens>();
-        var order = await lens.GetOrderAsync(result.OrderId);
+        // Assert - query read model via lens (use a completion signal in real tests
+        // rather than polling; see AppendAndWaitAsync / lifecycle hooks)
+        using var scope = _factory.Services.CreateScope();
+        var lens = scope.ServiceProvider.GetRequiredService<ILensQuery<OrderSummary>>();
+        var order = await lens.DefaultScope.GetByIdAsync(result.OrderId);
 
         await Assert.That(order).IsNotNull();
         await Assert.That(order!.Status).IsEqualTo("Created");
@@ -747,16 +747,16 @@ public class OrderWorkflowTests {
 ```csharp{title="Step 1: Define Message" description="Step 1: Define Message" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Define", "Message"]}
 // MyApp.Messages/Commands/CancelOrder.cs
 public record CancelOrder(
-    Guid OrderId,
+    [property: StreamId] Guid OrderId,
     string Reason
-);
+) : ICommand;
 
 // MyApp.Messages/Events/OrderCancelled.cs
 public record OrderCancelled(
-    Guid OrderId,
+    [property: StreamId] Guid OrderId,
     string Reason,
     DateTimeOffset CancelledAt
-);
+) : IEvent;
 ```
 
 ### Step 2: Create Receptor
@@ -767,23 +767,15 @@ using Whizbang.Core;
 using MyApp.Messages.Commands;
 using MyApp.Messages.Events;
 
-public class CancelOrderReceptor : IReceptor<CancelOrder, OrderCancelled> {
-    private readonly IDbConnectionFactory _db;
-
-    public CancelOrderReceptor(IDbConnectionFactory db) {
-        _db = db;
-    }
+public class CancelOrderReceptor(ILensQuery<OrderSummary> orders)
+    : IReceptor<CancelOrder, OrderCancelled> {
 
     public async ValueTask<OrderCancelled> HandleAsync(
         CancelOrder message,
         CancellationToken ct = default) {
 
-        // Validation
-        await using var conn = _db.CreateConnection();
-        var order = await conn.QuerySingleOrDefaultAsync<Order>(
-            "SELECT * FROM orders WHERE order_id = @OrderId",
-            new { message.OrderId }
-        );
+        // Validation against the read model
+        var order = await orders.DefaultScope.GetByIdAsync(message.OrderId, ct);
 
         if (order is null) {
             throw new InvalidOperationException($"Order {message.OrderId} not found");
@@ -793,7 +785,7 @@ public class CancelOrderReceptor : IReceptor<CancelOrder, OrderCancelled> {
             throw new InvalidOperationException("Cannot cancel shipped order");
         }
 
-        // Return event
+        // Return event (cascades to event store / outbox automatically)
         return new OrderCancelled(
             OrderId: message.OrderId,
             Reason: message.Reason,
@@ -808,20 +800,21 @@ public class CancelOrderReceptor : IReceptor<CancelOrder, OrderCancelled> {
 ```csharp{title="Step 3: Update Perspective" description="Step 3: Update Perspective" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Update", "Perspective"]}
 // MyApp.ReadModels/Perspectives/OrderSummaryPerspective.cs
 public class OrderSummaryPerspective :
-    IPerspectiveOf<OrderCreated>,
-    IPerspectiveOf<OrderCancelled> {  // Add new event
+    IPerspectiveFor<OrderSummary, OrderCreated, OrderCancelled> {  // Add new event type
 
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-        // Existing logic
-    }
+    public OrderSummary Apply(OrderSummary currentData, OrderCreated eventData) =>
+        currentData with {
+            OrderId = eventData.OrderId,
+            Status = "Created",
+            Total = eventData.Total,
+            CreatedAt = eventData.CreatedAt
+        };
 
-    public async Task UpdateAsync(OrderCancelled @event, CancellationToken ct = default) {
-        await using var conn = _db.CreateConnection();
-        await conn.ExecuteAsync(
-            "UPDATE order_summaries SET status = 'Cancelled', cancelled_at = @CancelledAt WHERE order_id = @OrderId",
-            new { @event.OrderId, @event.CancelledAt }
-        );
-    }
+    public OrderSummary Apply(OrderSummary currentData, OrderCancelled eventData) =>
+        currentData with {
+            Status = "Cancelled",
+            CancelledAt = eventData.CancelledAt
+        };
 }
 ```
 
@@ -837,8 +830,7 @@ public async Task<ActionResult> CancelOrder(
 
     var command = new CancelOrder(orderId, request.Reason);
 
-    var result = await _dispatcher.LocalInvokeAsync<CancelOrder, OrderCancelled>(command, ct);
-    await _dispatcher.PublishAsync(result, ct);
+    var result = await _dispatcher.LocalInvokeAsync<CancelOrder, OrderCancelled>(command);
 
     return Ok(result);
 }

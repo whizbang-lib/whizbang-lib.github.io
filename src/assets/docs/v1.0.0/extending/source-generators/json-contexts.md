@@ -1,5 +1,8 @@
 ---
 title: JSON Contexts
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Source Generators
 order: 5
@@ -11,7 +14,14 @@ tags: >-
   zero-reflection
 codeReferences:
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
-  - src/Whizbang.Core/Serialization/WhizbangJsonContext.cs
+  - src/Whizbang.Generators/Templates/WhizbangJsonContextFacadeTemplate.cs
+  - src/Whizbang.Generators/Templates/WhizbangJsonContextTemplate.cs
+  - src/Whizbang.Generators/Templates/MessageJsonContextInitializerTemplate.cs
+  - src/Whizbang.Core/Attributes/WhizbangSerializableAttribute.cs
+  - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/MessageJsonContextGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/MessageJsonContextRenameAliasTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -59,66 +69,59 @@ var deserialized = JsonSerializer.Deserialize<CreateOrder>(json, options);
 
 ### 1. Compile-Time Discovery
 
-```
-┌──────────────────────────────────────────────────┐
-│  MessageJsonContextGenerator (Roslyn)            │
-│                                                  │
-│  Discovers:                                      │
-│  1. Messages (ICommand, IEvent)                 │
-│  2. Nested types (OrderItem in List<OrderItem>) │
-│  3. Collection types (List<T>)                  │
-│  4. WhizbangId types (MessageId, ProductId)     │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  Generated Files                                 │
-│                                                  │
-│  1. MessageJsonContext.g.cs                      │
-│     └─ JsonTypeInfo for all discovered types    │
-│                                                  │
-│  2. WhizbangJsonContext.g.cs (facade)            │
-│     └─ Public API for JsonSerializerOptions     │
-└──────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Generator["MessageJsonContextGenerator (Roslyn)<br/><br/>Discovers:<br/>1. Messages (ICommand, IEvent, [WhizbangSerializable])<br/>2. Nested types (OrderItem in List&lt;OrderItem&gt;)<br/>3. Collection/array/dictionary/enum types<br/>4. WhizbangId converter types (ProductIdJsonConverter)"]
+    Generated["Generated Files<br/><br/>1. MessageJsonContext.g.cs<br/>— JsonTypeInfo for all discovered types<br/><br/>2. WhizbangJsonContext.g.cs (facade)<br/>— Chains contexts + CreateOptions()<br/><br/>3. MessageJsonContextInitializer.g.cs<br/>— [ModuleInitializer] JsonContextRegistry registration"]
+
+    Generator --> Generated
+
+    class Generator layer-infrastructure
+    class Generated layer-core
 ```
 
 ---
 
 ### 2. Generated Code
 
-**WhizbangJsonContext.g.cs** (facade):
-```csharp{title="Generated Code" description="**WhizbangJsonContext." category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"]}
-using System.Text.Json;
-using System.Text.Json.Serialization;
+**WhizbangJsonContext.g.cs** (facade) — note this is a hand-rolled resolver chain, **not** an STJ `[JsonSerializable]` attribute context:
 
+```csharp{title="Generated Code" description="**WhizbangJsonContext." category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"]}
 namespace MyApp.Generated;
 
 /// <summary>
-/// Generated JSON context for WhizBang message serialization (AOT-compatible).
-/// Discovered 5 message types, 3 nested types, 2 collection types.
+/// Generated JSON type resolver for MyApp.
+/// Chains four contexts:
+/// 1. WhizbangIdJsonContext from Whizbang.Core (MessageId, CorrelationId)
+/// 2. WhizbangIdJsonContext from this assembly (local WhizbangId types)
+/// 3. MessageJsonContext (discovered messages in this assembly)
+/// 4. InfrastructureJsonContext (MessageHop, SecurityContext, etc. from Whizbang.Core)
 /// </summary>
-[JsonSerializable(typeof(CreateOrder))]
-[JsonSerializable(typeof(OrderCreated))]
-[JsonSerializable(typeof(ShipOrder))]
-[JsonSerializable(typeof(OrderShipped))]
-[JsonSerializable(typeof(CancelOrder))]
-public partial class WhizbangJsonContext : JsonSerializerContext {
-    /// <summary>
-    /// Creates JsonSerializerOptions with WhizbangJsonContext.
-    /// </summary>
+public class WhizbangJsonContext : JsonSerializerContext, IJsonTypeInfoResolver {
+    public static WhizbangJsonContext Default { get; } = new();
+
     public static JsonSerializerOptions CreateOptions() {
+        var resolvers = new[] {
+            (IJsonTypeInfoResolver)global::Whizbang.Core.Generated.WhizbangIdJsonContext.Default,
+            (IJsonTypeInfoResolver)WhizbangIdJsonContext.Default,   // local WhizbangId types
+            (IJsonTypeInfoResolver)MessageJsonContext.Default,
+            (IJsonTypeInfoResolver)global::Whizbang.Core.Generated.InfrastructureJsonContext.Default
+        };
+
         var options = new JsonSerializerOptions {
-            TypeInfoResolver = new WhizbangJsonContext(),
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            TypeInfoResolver = JsonTypeInfoResolver.Combine(resolvers),
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
 
-        // Register WhizbangId converters (AOT-compatible)
+        // Register WhizbangId converters (inferred by naming convention)
         options.Converters.Add(new ProductIdJsonConverter());
         options.Converters.Add(new OrderIdJsonConverter());
 
         return options;
     }
+
+    // GetTypeInfo delegates to the combined resolver (both the
+    // JsonSerializerContext override and the IJsonTypeInfoResolver implementation)
 }
 ```
 
@@ -131,8 +134,11 @@ using System.Text.Json.Serialization.Metadata;
 
 namespace MyApp.Generated;
 
-internal partial class MessageJsonContext : JsonSerializerContext {
-    // Generated JsonTypeInfo for CreateOrder
+public partial class MessageJsonContext : JsonSerializerContext, IJsonTypeInfoResolver {
+    // Singleton used in resolver chains
+    public static MessageJsonContext Default { get; } = new();
+
+    // Generated JsonTypeInfo factory for CreateOrder (cached behind a lazy property)
     private JsonTypeInfo<CreateOrder> Create_CreateOrder(JsonSerializerOptions options) {
         var properties = new JsonPropertyInfo[3];
 
@@ -274,15 +280,19 @@ public record MoneyValue {
 2. **Registration**: Marked types are added to the generated `JsonSerializerContext`
 3. **AOT Compatible**: Full Native AOT support with zero reflection
 
-**Generated Code**:
+**Generated Code**: marked types get `JsonTypeInfo` factories in `MessageJsonContext.g.cs` alongside commands and events, and are registered by name with `JsonContextRegistry` in the module initializer so cross-assembly, by-name resolution works:
+
 ```csharp{title="How It Works" description="Generated Code:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Works"]}
-// Types marked with [WhizbangSerializable] are included
-[JsonSerializable(typeof(CreateOrder))]         // ICommand
-[JsonSerializable(typeof(OrderCreated))]        // IEvent
-[JsonSerializable(typeof(ProductDto))]          // [WhizbangSerializable]
-[JsonSerializable(typeof(OrderSummary))]        // [WhizbangSerializable]
-[JsonSerializable(typeof(AddressDetails))]      // [WhizbangSerializable]
-public partial class WhizbangJsonContext : JsonSerializerContext { }
+// MessageJsonContextInitializer.g.cs (module initializer, runs at assembly load)
+public static class MessageJsonContextInitializer {
+    [ModuleInitializer]
+    public static void Initialize() {
+        JsonContextRegistry.RegisterContext(MessageJsonContext.Default);
+        // + RegisterTypeName / RegisterDerivedType calls for each discovered type:
+        //   CreateOrder (ICommand), OrderCreated (IEvent),
+        //   ProductDto, OrderSummary, AddressDetails ([WhizbangSerializable])
+    }
+}
 ```
 
 ### Best Practices
@@ -433,7 +443,7 @@ public class OutboxPublisher {
 
         await _db.ExecuteAsync(
             "INSERT INTO wh_outbox (message_id, payload, ...) VALUES (@MessageId, @Payload::jsonb, ...)",
-            new { MessageId = Guid.NewGuid(), Payload = json },
+            new { MessageId = TrackedGuid.NewMedo(), Payload = json },  // UUIDv7, time-ordered
             cancellationToken: ct
         );
     }
@@ -497,31 +507,31 @@ nm MyApp.exe | grep -i "reflection"
 
 ## Diagnostics
 
-### WHIZ099: Generator Running
+### WHIZ011: JSON Serializable Type Discovered
 
 **Severity**: Info
 
-**Message**: `MessageJsonContextGenerator invoked for assembly '{0}' with {1} message type(s)`
+**Message**: `Found {1} type '{0}' - adding to JsonSerializerContext for AOT-compatible serialization`
 
 **Example**:
 ```
-info WHIZ099: MessageJsonContextGenerator invoked for assembly 'MyApp' with 5 message type(s)
+info WHIZ011: Found command type 'CreateOrder' - adding to JsonSerializerContext for AOT-compatible serialization
+info WHIZ011: Found nested type 'OrderItem' - adding to JsonSerializerContext for AOT-compatible serialization
+info WHIZ011: Found collection type 'List<OrderItem>' - adding to JsonSerializerContext for AOT-compatible serialization
+info WHIZ011: Found enum type 'OrderStatus' - adding to JsonSerializerContext for AOT-compatible serialization
 ```
+
+Reported for every discovered message, nested type, collection/array/dictionary type, and enum.
 
 ---
 
-### WHIZ007: JSON Serializable Type Discovered
+### WHIZ071: Polymorphic Base Type Discovered
 
 **Severity**: Info
 
-**Message**: `Found JSON-serializable type '{0}' ({1})`
+**Message**: `Discovered polymorphic base type '{0}' with {1} derived type(s) for automatic JSON serialization`
 
-**Example**:
-```
-info WHIZ007: Found JSON-serializable type 'CreateOrder' (command)
-info WHIZ007: Found JSON-serializable type 'OrderItem' (nested type)
-info WHIZ007: Found JSON-serializable type 'List<OrderItem>' (collection type)
-```
+See [Polymorphic Serialization](polymorphic-serialization.md) for details.
 
 ---
 
@@ -555,7 +565,7 @@ info WHIZ007: Found JSON-serializable type 'List<OrderItem>' (collection type)
 
 **Solution**:
 1. Verify type is public
-2. Verify type implements `ICommand` or `IEvent`
+2. Verify type implements `ICommand`/`IEvent`, or mark it with `[WhizbangSerializable]`
 3. Rebuild project to regenerate context
 
 ```csharp{title="Problem: Type Not Serializable in Native AOT" description="Solution: 1." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Type"]}
@@ -601,7 +611,7 @@ public class ProductIdJsonConverter : JsonConverter<ProductId> {
 - [Receptor Discovery](receptor-discovery.md) - Compile-time receptor discovery
 - [Perspective Discovery](perspective-discovery.md) - Compile-time perspective discovery
 - [Message Registry](message-registry.md) - VSCode extension integration
-- [Aggregate IDs](aggregate-ids.md) - UUIDv7 generation for identity value objects
+- [Aggregate IDs](aggregate-ids.md) - [StreamId] discovery and extraction
 
 **Core Concepts**:
 - [Message Context](../../fundamentals/messages/message-context.md) - MessageId, CorrelationId, CausationId

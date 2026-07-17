@@ -1,5 +1,8 @@
 ---
 title: Scoped Lenses
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 5
@@ -11,10 +14,21 @@ codeReferences:
   - src/Whizbang.Core/Lenses/IScopedLensFactory.cs
   - src/Whizbang.Core/Lenses/ScopedLensFactory.cs
   - src/Whizbang.Core/Lenses/ScopedLensQuery.cs
+  - src/Whizbang.Core/Lenses/ScopeFilter.cs
+  - src/Whizbang.Core/Lenses/ScopeFilterBuilder.cs
   - src/Whizbang.Core/Lenses/ScopeDefinition.cs
   - src/Whizbang.Core/Lenses/LensOptions.cs
   - src/Whizbang.Core/Lenses/FilterMode.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableLensQuery.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryImplTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ScopedLensQueryTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ScopeFilterTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ScopeFilterBuilderTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ScopeDefinitionTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/FilterModeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreFilterableLensQueryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -49,13 +63,13 @@ The `IScopedLensFactory` is the primary entry point for obtaining scoped lenses.
 ```csharp{title="Primary API: Composable Filters" description="Primary API: Composable Filters" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Primary", "API:"]}
 public interface IScopedLensFactory {
   // Get lens with composable scope filters
-  TLens GetLens<TLens>(ScopeFilter filters) where TLens : ILensQuery;
+  TLens GetLens<TLens>(ScopeFilters filters) where TLens : ILensQuery;
 
   // Get lens with filters + permission check
-  TLens GetLens<TLens>(ScopeFilter filters, Permission requiredPermission) where TLens : ILensQuery;
+  TLens GetLens<TLens>(ScopeFilters filters, Permission requiredPermission) where TLens : ILensQuery;
 
   // Get lens with filters + any-of permissions
-  TLens GetLens<TLens>(ScopeFilter filters, params Permission[] anyOfPermissions) where TLens : ILensQuery;
+  TLens GetLens<TLens>(ScopeFilters filters, params Permission[] anyOfPermissions) where TLens : ILensQuery;
 }
 ```
 
@@ -65,25 +79,25 @@ For common patterns, use the convenience methods:
 
 ```csharp{title="Convenience Methods" description="For common patterns, use the convenience methods:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Convenience", "Methods"]}
 // No filtering (admin access)
-factory.GetGlobalLens<TLens>();       // ScopeFilter.None
+factory.GetGlobalLens<TLens>();       // ScopeFilters.None
 
 // Tenant isolation
-factory.GetTenantLens<TLens>();       // ScopeFilter.Tenant
+factory.GetTenantLens<TLens>();       // ScopeFilters.Tenant
 
 // Tenant + User isolation
-factory.GetUserLens<TLens>();         // ScopeFilter.Tenant | ScopeFilter.User
+factory.GetUserLens<TLens>();         // ScopeFilters.Tenant | ScopeFilters.User
 
 // Tenant + Organization
-factory.GetOrganizationLens<TLens>(); // ScopeFilter.Tenant | ScopeFilter.Organization
+factory.GetOrganizationLens<TLens>(); // ScopeFilters.Tenant | ScopeFilters.Organization
 
 // Tenant + Customer
-factory.GetCustomerLens<TLens>();     // ScopeFilter.Tenant | ScopeFilter.Customer
+factory.GetCustomerLens<TLens>();     // ScopeFilters.Tenant | ScopeFilters.Customer
 
 // Tenant + Principal membership
-factory.GetPrincipalLens<TLens>();    // ScopeFilter.Tenant | ScopeFilter.Principal
+factory.GetPrincipalLens<TLens>();    // ScopeFilters.Tenant | ScopeFilters.Principal
 
 // "My records OR shared with me"
-factory.GetMyOrSharedLens<TLens>();   // ScopeFilter.Tenant | ScopeFilter.User | ScopeFilter.Principal
+factory.GetMyOrSharedLens<TLens>();   // ScopeFilters.Tenant | ScopeFilters.User | ScopeFilters.Principal
 ```
 
 ### Usage Examples
@@ -129,12 +143,12 @@ Combine scope filtering with permission verification:
 ```csharp{title="Permission Checks" description="Combine scope filtering with permission verification:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Permission", "Checks"]}
 // Throws AccessDeniedException if caller lacks permission
 var lens = _lensFactory.GetLens<IOrderLens>(
-  ScopeFilter.Tenant,
+  ScopeFilters.Tenant,
   Permission.Read("orders"));
 
 // Caller must have at least one of these permissions
 var lens = _lensFactory.GetLens<IReportLens>(
-  ScopeFilter.Tenant | ScopeFilter.Principal,
+  ScopeFilters.Tenant | ScopeFilters.Principal,
   Permission.Read("reports"),
   Permission.Read("analytics"));
 ```
@@ -161,7 +175,7 @@ public class OrderProcessor : BackgroundService {
   protected override async Task ExecuteAsync(CancellationToken ct) {
     while (!ct.IsCancellationRequested) {
       // This query uses a stale DbContext!
-      var orders = await _lens.Query.ToListAsync();
+      var orders = await _lens.DefaultScope.Query.ToListAsync();
     }
   }
 }
@@ -183,9 +197,11 @@ public class OrderProcessor : BackgroundService {
   protected override async Task ExecuteAsync(CancellationToken ct) {
     while (!ct.IsCancellationRequested) {
       // Each query creates a fresh scope with new DbContext
-      var orders = await _scopedLens.QueryAsync(
-        lens => lens.Query.Where(o => o.Status == "pending"),
-        ct).ToListAsync();
+      var orders = await _scopedLens.ExecuteAsync(
+        async (lens, token) => await lens.DefaultScope.Query
+          .Where(o => o.Data.Status == "pending")
+          .ToListAsync(token),
+        ct);
 
       await ProcessOrdersAsync(orders);
       await Task.Delay(TimeSpan.FromSeconds(30), ct);
@@ -235,7 +251,7 @@ public class ReportGenerator {
 
     // ExecuteAsync for aggregations
     return await _orderLens.ExecuteAsync(
-      async (lens, token) => await lens.Query
+      async (lens, token) => await lens.DefaultScope.Query
         .Where(o => o.Data.OrderDate >= startDate && o.Data.OrderDate <= endDate)
         .SumAsync(o => o.Data.Total, token),
       ct);
@@ -251,7 +267,7 @@ public class ReportGenerator {
 
     // QueryAsync for streaming results
     await foreach (var row in _orderLens.QueryAsync(
-      lens => lens.Query
+      lens => lens.DefaultScope.Query
         .OrderByDescending(o => o.Data.OrderDate)
         .Take(100),
       ct)) {
@@ -265,7 +281,7 @@ public class ReportGenerator {
 
 ## Scope Definition {#scope-definition}
 
-`ScopeDefinition` defines a named scope configuration for the legacy string-based API. While the composable `ScopeFilter` flags are preferred, scope definitions provide a way to define reusable, named scopes.
+`ScopeDefinition` defines a named scope configuration for the legacy string-based API. While the composable `ScopeFilters` flags are preferred, scope definitions provide a way to define reusable, named scopes.
 
 ### Properties
 
@@ -330,7 +346,7 @@ var lens = factory.GetLens<IOrderLens>("Tenant");
 var globalLens = factory.GetLens<IOrderLens>("Global");
 ```
 
-**Note**: Prefer the composable `ScopeFilter` flags over named scopes for new code.
+**Note**: Prefer the composable `ScopeFilters` flags over named scopes for new code.
 
 ---
 
@@ -494,30 +510,31 @@ public class EFCoreFilterableLensQuery<TModel> : ILensQuery<TModel>, IFilterable
 
   public IQueryable<PerspectiveRow<TModel>> Query {
     get {
-      var query = _context.Set<PerspectiveRow<TModel>>().AsNoTracking();
-
       if (_filterInfo.IsEmpty) {
-        return query;
+        // No explicit filter applied - fall back to the configured default scope
+        return DefaultScope.Query;
       }
 
+      var query = _context.Set<PerspectiveRow<TModel>>().AsNoTracking();
+
       // Tenant filter (always AND'd first)
-      if (_filterInfo.Filters.HasFlag(ScopeFilter.Tenant) && _filterInfo.TenantId is not null) {
+      if (_filterInfo.Filters.HasFlag(ScopeFilters.Tenant) && _filterInfo.TenantId is not null) {
         query = query.Where(r => r.Scope.TenantId == _filterInfo.TenantId);
       }
 
       // Organization filter
-      if (_filterInfo.Filters.HasFlag(ScopeFilter.Organization) && _filterInfo.OrganizationId is not null) {
+      if (_filterInfo.Filters.HasFlag(ScopeFilters.Organization) && _filterInfo.OrganizationId is not null) {
         query = query.Where(r => r.Scope.OrganizationId == _filterInfo.OrganizationId);
       }
 
       // Customer filter
-      if (_filterInfo.Filters.HasFlag(ScopeFilter.Customer) && _filterInfo.CustomerId is not null) {
+      if (_filterInfo.Filters.HasFlag(ScopeFilters.Customer) && _filterInfo.CustomerId is not null) {
         query = query.Where(r => r.Scope.CustomerId == _filterInfo.CustomerId);
       }
 
       // User + Principal with special OR logic
-      var hasUserFilter = _filterInfo.Filters.HasFlag(ScopeFilter.User) && _filterInfo.UserId is not null;
-      var hasPrincipalFilter = _filterInfo.Filters.HasFlag(ScopeFilter.Principal)
+      var hasUserFilter = _filterInfo.Filters.HasFlag(ScopeFilters.User) && _filterInfo.UserId is not null;
+      var hasPrincipalFilter = _filterInfo.Filters.HasFlag(ScopeFilters.Principal)
         && _filterInfo.SecurityPrincipals.Count > 0;
 
       if (_filterInfo.UseOrLogicForUserAndPrincipal && hasUserFilter && hasPrincipalFilter) {
@@ -579,7 +596,7 @@ public class CustomLens<TModel> : ILensQuery<TModel>, IFilterableLens {
 
 ### DO
 
-- Use composable `ScopeFilter` flags for new code
+- Use composable `ScopeFilters` flags for new code
 - Prefer convenience methods (`GetTenantLens`, `GetUserLens`) for common patterns
 - Combine scope filtering with permission checks for defense in depth
 - Use `IScopedLensQuery<T>` in singleton services and background workers

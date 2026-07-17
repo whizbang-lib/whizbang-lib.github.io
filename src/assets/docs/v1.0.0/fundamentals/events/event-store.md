@@ -1,5 +1,8 @@
 ---
 title: "Event Store"
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Core Concepts"
 order: 9
@@ -11,6 +14,14 @@ tags: 'event-store, event-sourcing, append-only, streams, IEventStore, persisten
 codeReferences:
   - src/Whizbang.Core/Messaging/IEventStore.cs
   - src/Whizbang.Core/Messaging/AppendAndWaitEventStoreDecorator.cs
+  - src/Whizbang.Core/Messaging/SecurityContextEventStoreDecorator.cs
+  - src/Whizbang.Core/Messaging/SyncTrackingEventStoreDecorator.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/AppendAndWaitEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/SecurityContextEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/SyncTrackingEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EventStoreAppendBatchTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -69,8 +80,8 @@ The `AppendAndWaitAsync` method appends an event and waits for a perspective to 
 
 The `AppendAndWaitAsync` functionality is provided by the `AppendAndWaitEventStoreDecorator`, which wraps the base event store implementation. This decorator:
 
-- **Tracks sync requests** using `ISyncCoordinator`
-- **Waits for perspective processing** via polling or event notification
+- **Waits for a specific perspective** via `IPerspectiveSyncAwaiter`
+- **Waits for ALL perspectives** via `IEventCompletionAwaiter` (single-type-parameter overload)
 - **Times out gracefully** if perspective processing takes too long
 - **Returns sync results** with timing and event count details
 
@@ -123,9 +134,9 @@ var result = await eventStore.AppendAndWaitAsync<OrderCreatedEvent, OrderProject
 
 switch (result.Outcome) {
   case SyncOutcome.Synced:
-    Console.WriteLine($"Synced {result.EventCount} events in {result.Elapsed}");
+    Console.WriteLine($"Synced {result.EventsAwaited} events in {result.ElapsedTime}");
     break;
-  case SyncOutcome.Timeout:
+  case SyncOutcome.TimedOut:
     Console.WriteLine("Event appended but perspective sync timed out");
     break;
   case SyncOutcome.NoPendingEvents:
@@ -229,8 +240,22 @@ public interface IEventStore {
       Guid streamId, Guid? afterEventId, Guid upToEventId,
       IReadOnlyList<Type> eventTypes, CancellationToken ct = default);
 
-  // Get last sequence number
+  // Get last sequence number (-1 if the stream is empty)
   Task<long> GetLastSequenceAsync(Guid streamId, CancellationToken ct = default);
+
+  // Batch append across (potentially different) streams.
+  // Default implementation loops AppendAsync serially; backends override for bulk performance.
+  Task AppendBatchAsync<TMessage>(
+      IReadOnlyList<(Guid streamId, MessageEnvelope<TMessage> envelope)> entries,
+      CancellationToken ct = default);
+
+  // Resolve the commit_sequence stamped on an event (null if not stamped / not tracked)
+  Task<long?> GetCommitSequenceAsync(Guid eventId, CancellationToken ct = default);
+
+  // Deserialize raw stream event data (drain mode) into typed envelopes
+  List<MessageEnvelope<IEvent>> DeserializeStreamEvents(
+      IReadOnlyList<StreamEventData> streamEvents,
+      IReadOnlyList<Type> eventTypes);
 }
 ```
 
@@ -238,13 +263,22 @@ public interface IEventStore {
 
 Whizbang applies decorators to enhance event store functionality:
 
+```mermaid
+graph TB
+    A["IEventStore (your code calls this)"]
+    B["AppendAndWaitEventStoreDecorator (enables AppendAndWaitAsync)"]
+    C["SyncTrackingEventStoreDecorator (tracks events for sync)"]
+    D["SecurityContextEventStoreDecorator (propagates security context)"]
+    E["UpcastingEventStoreDecorator (transforms stored events on read)"]
+    F["Base IEventStore (e.g., EFCoreEventStore, DapperEventStore)"]
+
+    A --> B --> C --> D --> E --> F
+
+    style A fill:#d4edda,stroke:#28a745
+    style F fill:#fff3cd,stroke:#ffc107
 ```
-IEventStore (your code calls this)
-└─ AppendAndWaitEventStoreDecorator (enables AppendAndWaitAsync)
-   └─ SyncTrackingEventStoreDecorator (tracks events for sync)
-      └─ SecurityContextEventStoreDecorator (propagates security context)
-         └─ Base IEventStore (e.g., EFCoreEventStore, DapperEventStore)
-```
+
+The upcasting layer only participates when upcasters are registered — see [Event Upcasting](event-upcasting.md).
 
 These decorators are automatically applied when using `DecorateEventStoreWithSyncTracking()`, which is called by data providers.
 

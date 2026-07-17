@@ -1,5 +1,8 @@
 ---
 title: Deployment Strategies
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Advanced Topics
 order: 7
@@ -11,6 +14,10 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
+  - src/Whizbang.Core/HealthChecks/SubscriptionHealthCheck.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveMigrationWorkerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -37,35 +44,26 @@ Comprehensive guide to **deployment strategies** for Whizbang applications - blu
 
 ### Architecture
 
-```
-┌────────────────────────────────────────────────────┐
-│  Blue-Green Deployment                             │
-│                                                     │
-│  ┌──────────────┐                                  │
-│  │ Load Balancer│                                  │
-│  └──────┬───────┘                                  │
-│         │                                           │
-│         │ Traffic (100%)                            │
-│         ▼                                           │
-│  ┌──────────────┐          ┌──────────────┐        │
-│  │  Blue (v1.0) │          │ Green (v1.1) │        │
-│  │  - Live      │          │ - Staging    │        │
-│  │  - 3 pods    │          │ - 3 pods     │        │
-│  └──────────────┘          └──────────────┘        │
-│                                                     │
-│  After validation:                                 │
-│  ┌──────────────┐                                  │
-│  │ Load Balancer│                                  │
-│  └──────┬───────┘                                  │
-│         │                                           │
-│         │ Traffic (100%)                            │
-│         ▼                                           │
-│  ┌──────────────┐          ┌──────────────┐        │
-│  │  Blue (v1.0) │          │ Green (v1.1) │        │
-│  │  - Idle      │          │ - Live       │        │
-│  │  - 3 pods    │          │ - 3 pods     │        │
-│  └──────────────┘          └──────────────┘        │
-└────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Initial["Blue-Green Deployment"]
+        LB1["Load Balancer"]
+        Blue1["Blue (v1.0)<br/>- Live<br/>- 3 pods"]
+        Green1["Green (v1.1)<br/>- Staging<br/>- 3 pods"]
+        LB1 -->|"Traffic (100%)"| Blue1
+    end
+
+    subgraph Swapped["After validation"]
+        LB2["Load Balancer"]
+        Blue2["Blue (v1.0)<br/>- Idle<br/>- 3 pods"]
+        Green2["Green (v1.1)<br/>- Live<br/>- 3 pods"]
+        LB2 -->|"Traffic (100%)"| Green2
+    end
+
+    style Blue1 fill:#cce5ff,stroke:#004085,stroke-width:2px,color:#000
+    style Blue2 fill:#cce5ff,stroke:#004085,stroke-width:2px,color:#000
+    style Green1 fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style Green2 fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
 ```
 
 ### Kubernetes Manifests
@@ -219,31 +217,23 @@ kubectl scale deployment/order-service-blue --replicas=3
 
 ### Architecture
 
-```
-┌────────────────────────────────────────────────────┐
-│  Canary Deployment                                 │
-│                                                     │
-│  ┌──────────────┐                                  │
-│  │ Load Balancer│                                  │
-│  └──────┬───────┘                                  │
-│         │                                           │
-│    ┌────┴────┐                                     │
-│    │         │                                      │
-│    ▼ 90%     ▼ 10% (canary)                        │
-│  ┌─────┐  ┌─────┐                                  │
-│  │ v1.0│  │v1.1 │                                  │
-│  │ 9pods│  │1pod │                                  │
-│  └─────┘  └─────┘                                  │
-│                                                     │
-│  After validation: 50/50                           │
-│    ┌────┴────┐                                     │
-│    │         │                                      │
-│    ▼ 50%     ▼ 50%                                 │
-│  ┌─────┐  ┌─────┐                                  │
-│  │ v1.0│  │v1.1 │                                  │
-│  │ 5pods│  │5pods│                                  │
-│  └─────┘  └─────┘                                  │
-└────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Initial["Canary Deployment"]
+        LB1["Load Balancer"]
+        V10a["v1.0<br/>9 pods"]
+        V11a["v1.1<br/>1 pod"]
+        LB1 -->|"90%"| V10a
+        LB1 -->|"10% (canary)"| V11a
+    end
+
+    subgraph Later["After validation: 50/50"]
+        LB2["Load Balancer"]
+        V10b["v1.0<br/>5 pods"]
+        V11b["v1.1<br/>5 pods"]
+        LB2 -->|"50%"| V10b
+        LB2 -->|"50%"| V11b
+    end
 ```
 
 ### Kubernetes with Istio
@@ -489,35 +479,39 @@ builder.Services.AddSingleton<ILdClient>(sp => {
 **Usage**:
 
 ```csharp{title="LaunchDarkly Integration - CreateOrderReceptor" description="LaunchDarkly Integration - CreateOrderReceptor" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "LaunchDarkly", "Integration"]}
-public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-  private readonly ILdClient _featureFlags;
+public class CreateOrderReceptor(ILdClient featureFlags) : IReceptor<CreateOrderCommand, OrderCreatedEvent> {
 
-  public async Task<OrderCreated> HandleAsync(
-    CreateOrder command,
-    CancellationToken ct = default
+  public async ValueTask<OrderCreatedEvent> HandleAsync(
+    CreateOrderCommand command,
+    CancellationToken cancellationToken = default
   ) {
-    var user = Context.User(command.CustomerId);
+    var ldContext = Context.New(command.CustomerId.ToString());
 
-    // Check feature flag
-    var useNewPricingEngine = await _featureFlags.BoolVariationAsync(
+    // Check feature flag (LaunchDarkly evaluates from its in-memory store)
+    var useNewPricingEngine = featureFlags.BoolVariation(
       "new-pricing-engine",
-      user,
+      ldContext,
       defaultValue: false
     );
 
-    decimal totalAmount;
-    if (useNewPricingEngine) {
-      totalAmount = CalculateTotalWithNewEngine(command.Items);
-    } else {
-      totalAmount = CalculateTotalWithOldEngine(command.Items);
-    }
+    var totalAmount = useNewPricingEngine
+      ? CalculateTotalWithNewEngine(command.LineItems)
+      : CalculateTotalWithOldEngine(command.LineItems);
 
     // Process order...
 
-    return new OrderCreated { OrderId = orderId, TotalAmount = totalAmount };
+    return new OrderCreatedEvent {
+      OrderId = command.OrderId,
+      CustomerId = command.CustomerId,
+      LineItems = command.LineItems,
+      TotalAmount = totalAmount,
+      CreatedAt = DateTime.UtcNow
+    };
   }
 }
 ```
+
+Whizbang receptors return `ValueTask` / `ValueTask<TResponse>` from `HandleAsync` (see `IReceptor<TMessage, TResponse>`), so flag evaluation composes naturally with async business logic.
 
 ### Gradual Rollout with Feature Flags
 
@@ -596,6 +590,15 @@ livenessProbe:
 
 **ReadinessProbe**: Pod receives traffic only when `/health/ready` returns 200
 **LivenessProbe**: Kubernetes restarts pod if `/health/live` fails
+
+The probe paths are whatever your app maps with ASP.NET Core's `MapHealthChecks(...)`. Whizbang packages contribute named checks to the standard health-check pipeline automatically:
+
+- `subscriptions` (tags `transport`, `subscriptions`) - transport subscription state, reports `Degraded` when some subscriptions are down (Whizbang.Core)
+- `whizbang_postgres` - Postgres storage driver connectivity (Whizbang.Data.Dapper.Postgres)
+- `azure_servicebus` - Azure Service Bus transport connectivity (Whizbang.Transports.AzureServiceBus)
+- `rabbitmq` - RabbitMQ transport connectivity, opt-in via `AddRabbitMQHealthChecks()` (Whizbang.Transports.RabbitMQ)
+
+Gate your **readiness** endpoint on these so pods stop receiving traffic while the transport or database is unavailable; keep **liveness** limited to a self check so transient dependency outages don't cause restart loops.
 
 ---
 

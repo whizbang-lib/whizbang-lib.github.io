@@ -1,5 +1,8 @@
 ---
 title: Payment Processing Service
+pageType: tutorial
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Tutorial
 order: 4
@@ -16,12 +19,15 @@ codeReferences:
   - samples/ECommerce/ECommerce.Contracts/Commands/ProcessPaymentCommand.cs
   - samples/ECommerce/ECommerce.Contracts/Events/PaymentProcessedEvent.cs
   - samples/ECommerce/ECommerce.Contracts/Events/PaymentFailedEvent.cs
+testReferences:
+  - >-
+    samples/ECommerce/tests/ECommerce.PaymentWorker.Tests/ProcessPaymentReceptorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Payment Processing Service
 
-Build the **Payment Worker** - a background service that subscribes to `InventoryReserved` events, processes payments via external gateway, and handles failures with compensation.
+Build the **Payment Worker** - a background service that handles `ProcessPaymentCommand`, simulates a payment gateway, and publishes `PaymentProcessedEvent` on success or `PaymentFailedEvent` for compensation.
 
 :::note
 This is **Part 3** of the ECommerce Tutorial. Complete [Inventory Service](inventory-service.md) first.
@@ -31,136 +37,202 @@ This is **Part 3** of the ECommerce Tutorial. Complete [Inventory Service](inven
 
 ## What You'll Build
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Payment Service Architecture                               │
-│                                                              │
-│  ┌─────────────┐                                            │
-│  │Azure Service│  InventoryReserved event                   │
-│  │     Bus     │──────────────────────┐                     │
-│  └─────────────┘                      │                     │
-│                                        ▼                     │
-│                          ┌────────────────────────┐         │
-│                          │  Inbox Pattern         │         │
-│                          └──────────┬─────────────┘         │
-│                                     │                        │
-│                                     ▼                        │
-│                          ┌────────────────────────┐         │
-│                          │ ProcessPaymentReceptor │         │
-│                          │  - Call gateway API    │         │
-│                          │  - Retry logic         │         │
-│                          │  - Store transaction   │         │
-│                          └──────────┬─────────────┘         │
-│                                     │                        │
-│                      ┌──────────────┼──────────────┐        │
-│                      │              │              │        │
-│                      ▼              ▼              ▼        │
-│                 ┌─────────┐   ┌─────────┐   ┌──────────┐   │
-│                 │Postgres │   │ Outbox  │   │ Payment  │   │
-│                 │Payments │   │ Table   │   │ Gateway  │   │
-│                 │  Table  │   │         │   │   API    │   │
-│                 └─────────┘   └─────────┘   └──────────┘   │
-│                                     │                        │
-│                      ┌──────────────┼──────────────┐        │
-│                      │              │              │        │
-│                      ▼              ▼              ▼        │
-│              ┌──────────────┐  ┌──────────────┐  ┌────────┐│
-│              │PaymentProcessed│ │PaymentFailed │ │Outbox  ││
-│              │     Event      │ │    Event     │ │Worker  ││
-│              └──────────────┘  └──────────────┘  └────────┘│
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph PSA["Payment Service Architecture"]
+        ASB["Azure Service Bus"]
+        Inbox["wh_inbox<br/>(Exactly-Once)"]
+        Receptor["ProcessPaymentReceptor<br/>- Call gateway<br/>- Publish success/failure"]
+        EventStore["wh_event_store (Event Store)"]
+        OutboxTable["wh_outbox (Outbox)"]
+        Gateway["Payment Gateway API"]
+        Processed["PaymentProcessedEvent"]
+        Failed["PaymentFailedEvent"]
+
+        ASB -->|"ProcessPaymentCommand"| Inbox
+        Inbox --> Receptor
+        Receptor --> Gateway
+        Receptor --> EventStore
+        Receptor --> OutboxTable
+        OutboxTable --> Processed
+        OutboxTable --> Failed
+    end
+
+    class ASB,OutboxTable layer-command
+    class Inbox,Receptor layer-core
+    class EventStore,Processed,Failed layer-event
+    class Gateway layer-infrastructure
 ```
 
 **Features**:
-- ✅ Payment gateway integration (Stripe example)
-- ✅ Retry logic with exponential backoff
-- ✅ Idempotency (payment deduplication)
-- ✅ Distributed transaction coordination
-- ✅ Compensation (refunds on failure)
-- ✅ Circuit breaker pattern
+- ✅ Payment success/failure branching
+- ✅ Compensation via `PaymentFailedEvent`
+- ✅ Framework-managed inbox/outbox/event store
+- ✅ Production-hardening patterns (gateway abstraction, retry, circuit breaker)
 
 ---
 
-## Step 1: Define Events
+## Step 1: Define Messages
 
-### PaymentProcessed Event
+### ProcessPaymentCommand
 
-**ECommerce.Contracts/Events/PaymentProcessed.cs**:
+**ECommerce.Contracts/Commands/ProcessPaymentCommand.cs**:
+
+```csharp{title="ProcessPaymentCommand" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "ProcessPayment", "Command"]}
+using Whizbang.Core;
+
+namespace ECommerce.Contracts.Commands;
+
+/// <summary>
+/// Command to process payment for an order after inventory is reserved
+/// </summary>
+public record ProcessPaymentCommand : ICommand {
+  public required string OrderId { get; init; }
+  public required string CustomerId { get; init; }
+  public decimal Amount { get; init; }
+}
+```
+
+### PaymentProcessedEvent
+
+**ECommerce.Contracts/Events/PaymentProcessedEvent.cs**:
 
 ```csharp{title="PaymentProcessed Event" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "PaymentProcessed", "Event"]}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
 
-public record PaymentProcessed(
-  string OrderId,
-  string PaymentId,
-  string TransactionId,
-  decimal Amount,
-  string PaymentMethod,
-  PaymentStatus Status,
-  DateTime ProcessedAt
-) : IEvent;
-
-public enum PaymentStatus {
-  Authorized,
-  Captured,
-  Failed,
-  Refunded
+/// <summary>
+/// Event published when payment is successfully processed
+/// </summary>
+public record PaymentProcessedEvent : IEvent {
+  [StreamId]
+  public required string OrderId { get; init; }
+  public required string CustomerId { get; init; }
+  public decimal Amount { get; init; }
+  public required string TransactionId { get; init; }
 }
 ```
 
-### PaymentFailed Event (Compensation)
+### PaymentFailedEvent (Compensation)
 
-**ECommerce.Contracts/Events/PaymentFailed.cs**:
+**ECommerce.Contracts/Events/PaymentFailedEvent.cs**:
 
 ```csharp{title="PaymentFailed Event (Compensation)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "PaymentFailed", "Event"]}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
 
-public record PaymentFailed(
-  string OrderId,
-  string PaymentId,
-  string Reason,
-  string ErrorCode,
-  DateTime FailedAt
-) : IEvent;
+/// <summary>
+/// Event published when payment processing fails
+/// </summary>
+public record PaymentFailedEvent : IEvent {
+  [StreamId]
+  public required string OrderId { get; init; }
+  public required string CustomerId { get; init; }
+  public required string Reason { get; init; }
+}
 ```
 
 ---
 
-## Step 2: Database Schema
+## Step 2: Persistence (Framework-Managed)
 
-### Payments Table
-
-**ECommerce.PaymentWorker/Database/Migrations/001_CreatePaymentsTable.sql**:
-
-```sql{title="Payments Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Payments", "Table"]}
-CREATE TABLE IF NOT EXISTS payments (
-  payment_id TEXT PRIMARY KEY,
-  order_id TEXT NOT NULL UNIQUE,  -- One payment per order
-  transaction_id TEXT,  -- External gateway transaction ID
-  amount NUMERIC(10, 2) NOT NULL,
-  payment_method TEXT NOT NULL,
-  status TEXT NOT NULL,
-  gateway_response JSONB,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_payments_order_id ON payments(order_id);
-CREATE INDEX idx_payments_transaction_id ON payments(transaction_id);
-CREATE INDEX idx_payments_status ON payments(status);
-```
+:::updated
+Earlier drafts hand-wrote a `payments` table plus outbox SQL. The sample's `PaymentDbContext` uses the `[WhizbangDbContext]` attribute — `wh_inbox`, `wh_outbox`, and `wh_event_store` are created by `EnsureWhizbangDatabaseInitializedAsync()`. Payment history lives in the event stream; add a perspective if you need a queryable `payments` read model.
+:::
 
 ---
 
-## Step 3: Payment Gateway Abstraction
+## Step 3: Implement Receptor
 
-**ECommerce.PaymentWorker/Services/IPaymentGateway.cs**:
+**ECommerce.PaymentWorker/Receptors/ProcessPaymentReceptor.cs**:
 
-```csharp{title="Step 3: Payment Gateway Abstraction" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Payment"]}
+```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
+using ECommerce.Contracts.Commands;
+using ECommerce.Contracts.Events;
+using Microsoft.Extensions.Logging;
+using Whizbang.Core;
+
+namespace ECommerce.PaymentWorker.Receptors;
+
+/// <summary>
+/// Handles ProcessPaymentCommand and publishes PaymentProcessedEvent or PaymentFailedEvent
+/// </summary>
+public class ProcessPaymentReceptor(IDispatcher dispatcher, ILogger<ProcessPaymentReceptor> logger) : IReceptor<ProcessPaymentCommand, PaymentProcessedEvent> {
+
+  public async ValueTask<PaymentProcessedEvent> HandleAsync(
+    ProcessPaymentCommand message,
+    CancellationToken cancellationToken = default) {
+
+    logger.LogInformation(
+      "Processing payment of ${Amount} for customer {CustomerId} and order {OrderId}",
+      message.Amount,
+      message.CustomerId,
+      message.OrderId);
+
+    // Simulate payment processing logic
+    // In a real system, this would call a payment gateway API
+    var random = new Random();
+    var shouldSucceed = random.Next(100) < 90; // 90% success rate for demo
+
+    if (shouldSucceed) {
+      // Payment successful
+      var paymentProcessed = new PaymentProcessedEvent {
+        OrderId = message.OrderId,
+        CustomerId = message.CustomerId,
+        Amount = message.Amount,
+        TransactionId = $"TXN-{Guid.NewGuid():N}"
+      };
+
+      // Publish success event
+      await dispatcher.PublishAsync(paymentProcessed);
+
+      logger.LogInformation(
+        "Payment processed successfully for order {OrderId} with transaction {TransactionId}",
+        message.OrderId,
+        paymentProcessed.TransactionId);
+
+      return paymentProcessed;
+    } else {
+      // Payment failed
+      var paymentFailed = new PaymentFailedEvent {
+        OrderId = message.OrderId,
+        CustomerId = message.CustomerId,
+        Reason = "Insufficient funds"
+      };
+
+      // Publish failure event
+      await dispatcher.PublishAsync(paymentFailed);
+
+      logger.LogWarning(
+        "Payment failed for order {OrderId}: {Reason}",
+        message.OrderId,
+        paymentFailed.Reason);
+
+      // We still need to return a PaymentProcessedEvent to satisfy the interface
+      // In a real system, you might use a Result<T> type or throw an exception
+      throw new InvalidOperationException($"Payment failed: {paymentFailed.Reason}");
+    }
+  }
+}
+```
+
+**Key patterns**:
+- ✅ **Success/failure branching**: publish `PaymentProcessedEvent` OR `PaymentFailedEvent`
+- ✅ **Compensation trigger**: `PaymentFailedEvent` drives inventory release downstream
+- ✅ **`TransactionId` is a gateway reference string** — Whizbang message/stream ids are generated by the framework (UUIDv7); don't hand-roll them
+- ✅ **Exception on failure**: the failure event is still published via the outbox before the throw surfaces the failure to the dispatcher
+
+---
+
+## Step 4: Production Hardening (Optional)
+
+The sample simulates the gateway. In production, put the gateway behind an abstraction and wrap calls with retry + circuit breaker policies. These are standard .NET patterns (Polly) — Whizbang doesn't dictate them.
+
+**Gateway abstraction**:
+
+```csharp{title="Step 4: Payment Gateway Abstraction" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Payment"]}
 namespace ECommerce.PaymentWorker.Services;
 
 public interface IPaymentGateway {
@@ -193,716 +265,30 @@ public record RefundResult(
 );
 ```
 
-### Stripe Implementation
+**Retry + circuit breaker (Polly)**:
 
-**ECommerce.PaymentWorker/Services/StripePaymentGateway.cs**:
-
-```csharp{title="Stripe Implementation" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Stripe", "Implementation"]}
-using Stripe;
-
-namespace ECommerce.PaymentWorker.Services;
-
-public class StripePaymentGateway : IPaymentGateway {
-  private readonly PaymentIntentService _paymentIntentService;
-  private readonly RefundService _refundService;
-  private readonly ILogger<StripePaymentGateway> _logger;
-
-  public StripePaymentGateway(
-    PaymentIntentService paymentIntentService,
-    RefundService refundService,
-    ILogger<StripePaymentGateway> logger
-  ) {
-    _paymentIntentService = paymentIntentService;
-    _refundService = refundService;
-    _logger = logger;
-  }
-
-  public async Task<PaymentResult> ChargeAsync(
-    string idempotencyKey,
-    decimal amount,
-    string currency,
-    string paymentMethod,
-    CancellationToken ct = default
-  ) {
-    try {
-      var options = new PaymentIntentCreateOptions {
-        Amount = (long)(amount * 100), // Stripe uses cents
-        Currency = currency.ToLowerInvariant(),
-        PaymentMethod = paymentMethod,
-        Confirm = true,
-        AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions {
-          Enabled = true,
-          AllowRedirects = "never"
-        }
-      };
-
-      var requestOptions = new RequestOptions {
-        IdempotencyKey = idempotencyKey  // Prevents duplicate charges
-      };
-
-      var intent = await _paymentIntentService.CreateAsync(
-        options,
-        requestOptions,
-        ct
-      );
-
-      if (intent.Status == "succeeded") {
-        return new PaymentResult(
-          Success: true,
-          TransactionId: intent.Id,
-          ErrorCode: null,
-          ErrorMessage: null
-        );
-      } else {
-        return new PaymentResult(
-          Success: false,
-          TransactionId: intent.Id,
-          ErrorCode: intent.Status,
-          ErrorMessage: $"Payment intent status: {intent.Status}"
-        );
-      }
-    } catch (StripeException ex) {
-      _logger.LogError(ex, "Stripe payment failed: {ErrorCode}", ex.StripeError?.Code);
-
-      return new PaymentResult(
-        Success: false,
-        TransactionId: null,
-        ErrorCode: ex.StripeError?.Code ?? "unknown",
-        ErrorMessage: ex.Message
-      );
-    }
-  }
-
-  public async Task<RefundResult> RefundAsync(
-    string transactionId,
-    decimal amount,
-    CancellationToken ct = default
-  ) {
-    try {
-      var options = new RefundCreateOptions {
-        PaymentIntent = transactionId,
-        Amount = (long)(amount * 100)
-      };
-
-      var refund = await _refundService.CreateAsync(options, cancellationToken: ct);
-
-      return new RefundResult(
-        Success: refund.Status == "succeeded",
-        RefundId: refund.Id,
-        ErrorMessage: refund.Status == "failed" ? refund.FailureReason : null
-      );
-    } catch (StripeException ex) {
-      _logger.LogError(ex, "Stripe refund failed: {ErrorCode}", ex.StripeError?.Code);
-
-      return new RefundResult(
-        Success: false,
-        RefundId: null,
-        ErrorMessage: ex.Message
-      );
-    }
-  }
-}
-```
-
----
-
-## Step 4: Implement Receptor
-
-**ECommerce.PaymentWorker/Receptors/ProcessPaymentReceptor.cs**:
-
-```csharp{title="Step 4: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
-using Whizbang.Core;
-using ECommerce.Contracts.Events;
-using ECommerce.PaymentWorker.Services;
-using Npgsql;
-using Dapper;
-using Polly;
-using Polly.CircuitBreaker;
-
-namespace ECommerce.PaymentWorker.Receptors;
-
-public class ProcessPaymentReceptor : IReceptor<InventoryReserved, PaymentProcessed> {
-  private readonly NpgsqlConnection _db;
-  private readonly IPaymentGateway _gateway;
-  private readonly IMessageContext _context;
-  private readonly ILogger<ProcessPaymentReceptor> _logger;
-
-  // Retry policy: 3 attempts with exponential backoff
-  private static readonly AsyncPolicy<PaymentResult> RetryPolicy = Policy
-    .Handle<HttpRequestException>()
-    .Or<TaskCanceledException>()
-    .OrResult<PaymentResult>(r => !r.Success && r.ErrorCode == "network_error")
-    .WaitAndRetryAsync(
-      retryCount: 3,
-      sleepDurationProvider: attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)),
-      onRetry: (outcome, timespan, retryCount, context) => {
-        Console.WriteLine($"Payment retry {retryCount} after {timespan}");
-      }
-    );
-
-  // Circuit breaker: Open after 5 consecutive failures, half-open after 30s
-  private static readonly AsyncCircuitBreakerPolicy CircuitBreakerPolicy = Policy
-    .Handle<HttpRequestException>()
-    .CircuitBreakerAsync(
-      exceptionsAllowedBeforeBreaking: 5,
-      durationOfBreak: TimeSpan.FromSeconds(30),
-      onBreak: (ex, duration) => {
-        Console.WriteLine($"Circuit breaker opened for {duration}");
-      },
-      onReset: () => {
-        Console.WriteLine("Circuit breaker reset");
-      }
-    );
-
-  public ProcessPaymentReceptor(
-    NpgsqlConnection db,
-    IPaymentGateway gateway,
-    IMessageContext context,
-    ILogger<ProcessPaymentReceptor> logger
-  ) {
-    _db = db;
-    _gateway = gateway;
-    _context = context;
-    _logger = logger;
-  }
-
-  public async Task<PaymentProcessed> HandleAsync(
-    InventoryReserved @event,
-    CancellationToken ct = default
-  ) {
-    await using var tx = await _db.BeginTransactionAsync(ct);
-
-    try {
-      // 1. Check if payment already exists (idempotency)
-      var existingPayment = await _db.QuerySingleOrDefaultAsync<PaymentRow>(
-        """
-        SELECT payment_id, order_id, transaction_id, amount, status
-        FROM payments
-        WHERE order_id = @OrderId
-        """,
-        new { OrderId = @event.OrderId },
-        transaction: tx
-      );
-
-      if (existingPayment != null) {
-        _logger.LogInformation(
-          "Payment already exists for order {OrderId}, skipping",
-          @event.OrderId
-        );
-
-        return new PaymentProcessed(
-          OrderId: existingPayment.OrderId,
-          PaymentId: existingPayment.PaymentId,
-          TransactionId: existingPayment.TransactionId!,
-          Amount: existingPayment.Amount,
-          PaymentMethod: "card",
-          Status: PaymentStatus.Captured,
-          ProcessedAt: DateTime.UtcNow
-        );
-      }
-
-      // 2. Get order details (to determine amount)
-      var order = await GetOrderAsync(@event.OrderId, ct);
-      if (order == null) {
-        throw new InvalidOperationException($"Order {event.OrderId} not found");
-      }
-
-      // 3. Call payment gateway with retry + circuit breaker
-      var paymentId = Guid.NewGuid().ToString("N");
-      var idempotencyKey = $"order-{@event.OrderId}-payment-{paymentId}";
-
-      var result = await CircuitBreakerPolicy.ExecuteAsync(() =>
-        RetryPolicy.ExecuteAsync(() =>
-          _gateway.ChargeAsync(
-            idempotencyKey: idempotencyKey,
-            amount: order.TotalAmount,
-            currency: "usd",
-            paymentMethod: "pm_card_visa",  // Demo: Use test payment method
-            ct: ct
-          )
-        )
-      );
-
-      // 4. Store payment record
-      if (result.Success) {
-        await _db.ExecuteAsync(
-          """
-          INSERT INTO payments (
-            payment_id, order_id, transaction_id, amount, payment_method, status, gateway_response, created_at, updated_at
-          )
-          VALUES (@PaymentId, @OrderId, @TransactionId, @Amount, @PaymentMethod, @Status, @GatewayResponse::jsonb, NOW(), NOW())
-          """,
-          new {
-            PaymentId = paymentId,
-            OrderId = @event.OrderId,
-            TransactionId = result.TransactionId,
-            Amount = order.TotalAmount,
-            PaymentMethod = "card",
-            Status = "Captured",
-            GatewayResponse = System.Text.Json.JsonSerializer.Serialize(result)
-          },
-          transaction: tx
-        );
-
-        // 5. Publish PaymentProcessed event
-        var processedEvent = new PaymentProcessed(
-          OrderId: @event.OrderId,
-          PaymentId: paymentId,
-          TransactionId: result.TransactionId!,
-          Amount: order.TotalAmount,
-          PaymentMethod: "card",
-          Status: PaymentStatus.Captured,
-          ProcessedAt: DateTime.UtcNow
-        );
-
-        await PublishEventAsync(processedEvent, tx, ct);
-
-        await tx.CommitAsync(ct);
-
-        _logger.LogInformation(
-          "Payment processed for order {OrderId}, transaction {TransactionId}, amount ${Amount}",
-          @event.OrderId,
-          result.TransactionId,
-          order.TotalAmount
-        );
-
-        return processedEvent;
-      } else {
-        // 6. Payment failed - store failure and publish PaymentFailed event
-        await _db.ExecuteAsync(
-          """
-          INSERT INTO payments (
-            payment_id, order_id, amount, payment_method, status, gateway_response, created_at, updated_at
-          )
-          VALUES (@PaymentId, @OrderId, @Amount, @PaymentMethod, @Status, @GatewayResponse::jsonb, NOW(), NOW())
-          """,
-          new {
-            PaymentId = paymentId,
-            OrderId = @event.OrderId,
-            Amount = order.TotalAmount,
-            PaymentMethod = "card",
-            Status = "Failed",
-            GatewayResponse = System.Text.Json.JsonSerializer.Serialize(result)
-          },
-          transaction: tx
-        );
-
-        var failedEvent = new PaymentFailed(
-          OrderId: @event.OrderId,
-          PaymentId: paymentId,
-          Reason: result.ErrorMessage ?? "Unknown error",
-          ErrorCode: result.ErrorCode ?? "unknown",
-          FailedAt: DateTime.UtcNow
-        );
-
-        await PublishEventAsync(failedEvent, tx, ct);
-
-        await tx.CommitAsync(ct);
-
-        _logger.LogError(
-          "Payment failed for order {OrderId}: {ErrorCode} - {ErrorMessage}",
-          @event.OrderId,
-          result.ErrorCode,
-          result.ErrorMessage
-        );
-
-        throw new PaymentFailedException(
-          @event.OrderId,
-          result.ErrorCode ?? "unknown",
-          result.ErrorMessage ?? "Unknown error"
-        );
-      }
-    } catch {
-      await tx.RollbackAsync(ct);
-      throw;
-    }
-  }
-
-  private async Task<OrderRow?> GetOrderAsync(string orderId, CancellationToken ct) {
-    // Query Order Service database (cross-service query for demo)
-    // In production, use event-carried state transfer or query API
-    return await _db.QuerySingleOrDefaultAsync<OrderRow>(
-      """
-      SELECT order_id, total_amount
-      FROM orders
-      WHERE order_id = @OrderId
-      """,
-      new { OrderId = orderId }
-    );
-  }
-
-  private async Task PublishEventAsync<TEvent>(
-    TEvent @event,
-    NpgsqlTransaction tx,
-    CancellationToken ct
-  ) where TEvent : IEvent {
-    await _db.ExecuteAsync(
-      """
-      INSERT INTO outbox (message_id, message_type, message_body, created_at)
-      VALUES (@MessageId, @MessageType, @MessageBody::jsonb, NOW())
-      """,
-      new {
-        MessageId = Guid.NewGuid(),
-        MessageType = typeof(TEvent).FullName,
-        MessageBody = System.Text.Json.JsonSerializer.Serialize(@event)
-      },
-      transaction: tx
-    );
-  }
-}
-
-public record PaymentRow(
-  string PaymentId,
-  string OrderId,
-  string? TransactionId,
-  decimal Amount,
-  string Status
-);
-
-public record OrderRow(
-  string OrderId,
-  decimal TotalAmount
-);
-
-public class PaymentFailedException : Exception {
-  public PaymentFailedException(string orderId, string errorCode, string message)
-    : base($"Payment failed for order {orderId}: {errorCode} - {message}") { }
-}
-```
-
-**Key patterns**:
-- ✅ **Idempotency**: Check existing payment before charging
-- ✅ **Retry Logic**: Polly retry policy with exponential backoff
-- ✅ **Circuit Breaker**: Polly circuit breaker to prevent cascading failures
-- ✅ **Compensation**: Publish `PaymentFailed` event to trigger inventory release
-
----
-
-## Step 5: Compensation Receptor
-
-**ECommerce.PaymentWorker/Receptors/RefundPaymentReceptor.cs**:
-
-```csharp{title="Step 5: Compensation Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Compensation"]}
-using Whizbang.Core;
-using ECommerce.Contracts.Events;
-using ECommerce.PaymentWorker.Services;
-using Npgsql;
-using Dapper;
-
-namespace ECommerce.PaymentWorker.Receptors;
-
-public class RefundPaymentReceptor : IReceptor<OrderCancelled, PaymentRefunded> {
-  private readonly NpgsqlConnection _db;
-  private readonly IPaymentGateway _gateway;
-  private readonly ILogger<RefundPaymentReceptor> _logger;
-
-  public RefundPaymentReceptor(
-    NpgsqlConnection db,
-    IPaymentGateway gateway,
-    ILogger<RefundPaymentReceptor> logger
-  ) {
-    _db = db;
-    _gateway = gateway;
-    _logger = logger;
-  }
-
-  public async Task<PaymentRefunded> HandleAsync(
-    OrderCancelled @event,
-    CancellationToken ct = default
-  ) {
-    await using var tx = await _db.BeginTransactionAsync(ct);
-
-    try {
-      // 1. Find payment for this order
-      var payment = await _db.QuerySingleOrDefaultAsync<PaymentRow>(
-        """
-        SELECT payment_id, order_id, transaction_id, amount, status
-        FROM payments
-        WHERE order_id = @OrderId AND status = 'Captured'
-        """,
-        new { OrderId = @event.OrderId },
-        transaction: tx
-      );
-
-      if (payment == null) {
-        _logger.LogWarning(
-          "No captured payment found for order {OrderId}, skipping refund",
-          @event.OrderId
-        );
-        throw new InvalidOperationException($"No payment to refund for order {event.OrderId}");
-      }
-
-      // 2. Call payment gateway for refund
-      var result = await _gateway.RefundAsync(
-        transactionId: payment.TransactionId!,
-        amount: payment.Amount,
-        ct: ct
-      );
-
-      if (result.Success) {
-        // 3. Update payment status
-        await _db.ExecuteAsync(
-          """
-          UPDATE payments
-          SET status = 'Refunded', updated_at = NOW()
-          WHERE payment_id = @PaymentId
-          """,
-          new { PaymentId = payment.PaymentId },
-          transaction: tx
-        );
-
-        // 4. Publish PaymentRefunded event
-        var refundedEvent = new PaymentRefunded(
-          OrderId: @event.OrderId,
-          PaymentId: payment.PaymentId,
-          RefundId: result.RefundId!,
-          Amount: payment.Amount,
-          RefundedAt: DateTime.UtcNow
-        );
-
-        await PublishEventAsync(refundedEvent, tx, ct);
-
-        await tx.CommitAsync(ct);
-
-        _logger.LogInformation(
-          "Payment refunded for order {OrderId}, refund {RefundId}, amount ${Amount}",
-          @event.OrderId,
-          result.RefundId,
-          payment.Amount
-        );
-
-        return refundedEvent;
-      } else {
-        throw new RefundFailedException(
-          @event.OrderId,
-          result.ErrorMessage ?? "Refund failed"
-        );
-      }
-    } catch {
-      await tx.RollbackAsync(ct);
-      throw;
-    }
-  }
-
-  private async Task PublishEventAsync<TEvent>(
-    TEvent @event,
-    NpgsqlTransaction tx,
-    CancellationToken ct
-  ) where TEvent : IEvent {
-    await _db.ExecuteAsync(
-      """
-      INSERT INTO outbox (message_id, message_type, message_body, created_at)
-      VALUES (@MessageId, @MessageType, @MessageBody::jsonb, NOW())
-      """,
-      new {
-        MessageId = Guid.NewGuid(),
-        MessageType = typeof(TEvent).FullName,
-        MessageBody = System.Text.Json.JsonSerializer.Serialize(@event)
-      },
-      transaction: tx
-    );
-  }
-}
-
-public record PaymentRefunded(
-  string OrderId,
-  string PaymentId,
-  string RefundId,
-  decimal Amount,
-  DateTime RefundedAt
-) : IEvent;
-
-public class RefundFailedException : Exception {
-  public RefundFailedException(string orderId, string message)
-    : base($"Refund failed for order {orderId}: {message}") { }
-}
-```
-
----
-
-## Step 6: Service Configuration
-
-**ECommerce.PaymentWorker/Program.cs**:
-
-```csharp{title="Step 6: Service Configuration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
-using Whizbang.Core;
-using Whizbang.Data.Postgres;
-using Whizbang.Transports.AzureServiceBus;
-using Npgsql;
-using Stripe;
-using ECommerce.PaymentWorker.Services;
-
-var builder = Host.CreateApplicationBuilder(args);
-
-// 1. Add Whizbang
-builder.Services.AddWhizbang(options => {
-  options.ServiceName = "PaymentWorker";
-  options.EnableInbox = true;
-  options.EnableOutbox = true;
-});
-
-// 2. Add PostgreSQL
-builder.Services.AddScoped<NpgsqlConnection>(sp => {
-  var connectionString = builder.Configuration.GetConnectionString("PaymentDb");
-  return new NpgsqlConnection(connectionString);
-});
-
-// 3. Add Azure Service Bus
-builder.AddAzureServiceBus("messaging");
-
-// 4. Configure Stripe
-StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
-builder.Services.AddSingleton<PaymentIntentService>();
-builder.Services.AddSingleton<RefundService>();
-builder.Services.AddScoped<IPaymentGateway, StripePaymentGateway>();
-
-// 5. Add Worker
-builder.Services.AddHostedService<Worker>();
-
-var host = builder.Build();
-
-await host.MigrateDatabaseAsync();
-await host.RunAsync();
-```
-
-**appsettings.json**:
-
-```json{title="Step 6: Service Configuration (2)" description="**appsettings." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Whizbang": "Debug"
-    }
-  },
-  "ConnectionStrings": {
-    "PaymentDb": "Host=localhost;Database=payment;Username=postgres;Password=postgres"
-  },
-  "Stripe": {
-    "SecretKey": "sk_test_...",
-    "PublishableKey": "pk_test_..."
-  },
-  "Whizbang": {
-    "ServiceName": "PaymentWorker",
-    "Inbox": {
-      "Enabled": true,
-      "BatchSize": 50,
-      "PollingInterval": "00:00:05"
-    },
-    "Outbox": {
-      "Enabled": true,
-      "BatchSize": 50,
-      "PollingInterval": "00:00:05"
-    }
-  }
-}
-```
-
----
-
-## Step 7: Test the Flow
-
-### 1. Update Aspire Configuration
-
-**ECommerce.AppHost/Program.cs**:
-
-```csharp{title="Update Aspire Configuration" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Update", "Aspire"]}
-var paymentDb = postgres.AddDatabase("payment-db");
-
-var paymentWorker = builder.AddProject<Projects.ECommerce_PaymentWorker>("payment-worker")
-  .WithReference(paymentDb)
-  .WithReference(serviceBus);
-```
-
-### 2. Create Order (Full Flow)
-
-```bash{title="Create Order (Full Flow)" description="Create Order (Full Flow)" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
-curl -X POST http://localhost:5000/api/orders \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customerId": "cust-123",
-    "items": [
-      { "productId": "prod-456", "quantity": 2, "unitPrice": 19.99 }
-    ],
-    "shippingAddress": {
-      "street": "123 Main St",
-      "city": "Springfield",
-      "state": "IL",
-      "zipCode": "62701",
-      "country": "USA"
-    }
-  }'
-```
-
-### 3. Observe Distributed Transaction
-
-Aspire Dashboard shows:
-1. **Order Service**: `OrderCreated` event published
-2. **Inventory Worker**: `InventoryReserved` event published
-3. **Payment Worker**: Payment processed via Stripe
-4. **Payment Worker**: `PaymentProcessed` event published
-
-### 4. Verify Payment
-
-```sql{title="Verify Payment" description="Verify Payment" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Payment"]}
-SELECT * FROM payments WHERE order_id = '<order-id>';
-```
-
-**Expected**:
-- `status = 'Captured'`
-- `transaction_id = 'pi_...'` (Stripe payment intent ID)
-- `gateway_response` contains full Stripe response
-
----
-
-## Key Concepts
-
-### Saga Pattern - Distributed Transactions
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  Saga: Order Processing (Happy Path)                    │
-│                                                          │
-│  1. CreateOrder → OrderCreated                          │
-│       ↓                                                  │
-│  2. OrderCreated → ReserveInventory → InventoryReserved │
-│       ↓                                                  │
-│  3. InventoryReserved → ProcessPayment → PaymentProcessed│
-│       ↓                                                  │
-│  4. PaymentProcessed → CreateShipment → ShipmentCreated │
-│       ↓                                                  │
-│  5. ShipmentCreated → SendNotification → NotificationSent│
-└─────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────┐
-│  Saga: Payment Failure (Compensation)                   │
-│                                                          │
-│  1. CreateOrder → OrderCreated                          │
-│       ↓                                                  │
-│  2. OrderCreated → ReserveInventory → InventoryReserved │
-│       ↓                                                  │
-│  3. InventoryReserved → ProcessPayment → PaymentFailed  │
-│       ↓                                                  │
-│  4. PaymentFailed → ReleaseInventory → InventoryReleased│
-│       ↓                                                  │
-│  5. InventoryReleased → CancelOrder → OrderCancelled    │
-└─────────────────────────────────────────────────────────┘
-```
-
-**Compensating transactions**:
-- `PaymentFailed` → `ReleaseInventory` (return stock to available)
-- `OrderCancelled` → `RefundPayment` (refund customer)
-
-### Retry Logic with Polly
-
-```csharp{title="Retry Logic with Polly" description="Retry Logic with Polly" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Retry", "Logic"]}
+```csharp{title="Retry Logic with Polly" description="Retry Logic with Polly" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Retry", "Logic"]}
 // Exponential backoff: 2s, 4s, 8s
-Policy
+var retryPolicy = Policy
   .Handle<HttpRequestException>()
   .WaitAndRetryAsync(
     retryCount: 3,
     sleepDurationProvider: attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt))
   );
+
+// Open circuit after 5 failures, half-open after 30s
+var circuitBreaker = Policy
+  .Handle<HttpRequestException>()
+  .CircuitBreakerAsync(
+    exceptionsAllowedBeforeBreaking: 5,
+    durationOfBreak: TimeSpan.FromSeconds(30)
+  );
+
+var result = await circuitBreaker.ExecuteAsync(() =>
+  retryPolicy.ExecuteAsync(() =>
+    gateway.ChargeAsync(idempotencyKey, amount, "usd", paymentMethod, ct)
+  )
+);
 ```
 
 **When to retry**:
@@ -911,19 +297,150 @@ Policy
 - ❌ Invalid card (permanent)
 - ❌ Insufficient funds (permanent)
 
-### Circuit Breaker
+**Idempotency**: pass a stable idempotency key (e.g., derived from `OrderId`) to the gateway so redelivered commands can't double-charge. Whizbang's `wh_inbox` already dedupes redelivered messages before your receptor runs — the gateway key is defense-in-depth for the external call.
 
-```csharp{title="Circuit Breaker" description="Circuit Breaker" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Circuit", "Breaker"]}
-// Open circuit after 5 failures, half-open after 30s
-Policy
-  .Handle<HttpRequestException>()
-  .CircuitBreakerAsync(
-    exceptionsAllowedBeforeBreaking: 5,
-    durationOfBreak: TimeSpan.FromSeconds(30)
-  );
+---
+
+## Step 5: Service Configuration
+
+**ECommerce.PaymentWorker/Program.cs** (condensed from the sample):
+
+```csharp{title="Step 5: Service Configuration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
+using Whizbang.Core;
+using Whizbang.Core.Generated;
+using Whizbang.Data.EFCore.Postgres;
+using Whizbang.Transports.AzureServiceBus;
+using ECommerce.Contracts.Generated;
+using ECommerce.PaymentWorker;
+using ECommerce.PaymentWorker.Generated;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+builder.AddServiceDefaults();
+
+var serviceBusConnection = builder.Configuration.GetConnectionString("servicebus")
+    ?? throw new InvalidOperationException("Azure Service Bus connection string 'servicebus' not found");
+
+builder.Services.AddAzureServiceBusTransport(serviceBusConnection);
+builder.Services.AddAzureServiceBusHealthChecks();
+
+// Unified Whizbang API: routing + EF Core Postgres driver + transport consumer
+_ = builder.Services
+  .AddWhizbang()
+  .WithRouting(routing => {
+    routing
+      .OwnDomains("ecommerce.payment.commands")
+      .SubscribeTo("ecommerce.orders.events")
+      .Inbox.UseSharedTopic("inbox");
+  })
+  .WithEFCore<PaymentDbContext>()
+  .WithDriver.Postgres
+  .AddTransportConsumer();
+
+builder.Services.AddReceptors();
+builder.Services.AddWhizbangDispatcher();
+
+var host = builder.Build();
+
+using (var scope = host.Services.CreateScope()) {
+  var dbContext = scope.ServiceProvider.GetRequiredService<PaymentDbContext>();
+  var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+  await dbContext.EnsureWhizbangDatabaseInitializedAsync(logger);
+}
+
+host.Run();
 ```
 
-**States**:
+---
+
+## Step 6: Test the Flow
+
+### 1. Update Aspire Configuration
+
+**ECommerce.AppHost/Program.cs** (excerpt matching the sample):
+
+```csharp{title="Update Aspire Configuration" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Update", "Aspire"]}
+var paymentDb = postgres.AddDatabase("paymentdb");
+
+ordersTopic.AddServiceBusSubscription("sub-payment-orders");
+inboxTopic.AddServiceBusSubscription("sub-inbox-payment").WithDestinationFilter("payment-service");
+
+var paymentWorker = builder.AddProject("paymentworker", "../ECommerce.PaymentWorker/ECommerce.PaymentWorker.csproj")
+    .WithReference(paymentDb)
+    .WithReference(messagingInfra)
+    .WaitFor(paymentDb)
+    .WaitFor(messagingInfra);
+```
+
+### 2. Create Order (Full Flow)
+
+```bash{title="Create Order (Full Flow)" description="Create Order (Full Flow)" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
+curl -X POST http://localhost:5000/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": "0195b3f0-1234-7abc-8def-0123456789ab",
+    "lineItems": [
+      { "productId": "0195b3f0-5678-7abc-8def-0123456789ab", "productName": "Widget", "quantity": 2, "unitPrice": 19.99 }
+    ]
+  }'
+```
+
+### 3. Observe Distributed Transaction
+
+Aspire Dashboard shows:
+1. **Order Service**: `OrderCreatedEvent` published
+2. **Inventory Worker**: `InventoryReservedEvent` published
+3. **Payment Worker**: `ProcessPaymentCommand` handled
+4. **Payment Worker**: `PaymentProcessedEvent` (or `PaymentFailedEvent`) published
+
+### 4. Verify Payment Events
+
+```sql{title="Verify Payment" description="Verify Payment" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Payment"]}
+SELECT stream_id, event_type, created_at
+FROM wh_event_store
+WHERE event_type LIKE '%Payment%'
+ORDER BY created_at DESC;
+```
+
+---
+
+## Key Concepts
+
+### Saga Pattern - Distributed Transactions
+
+```mermaid
+flowchart TD
+    subgraph HappyPath["Saga: Order Processing (Happy Path)"]
+        H1["CreateOrderCommand"] --> H2["OrderCreatedEvent"]
+        H2 --> H3["ReserveInventoryCommand"] --> H4["InventoryReservedEvent"]
+        H4 --> H5["ProcessPaymentCommand"] --> H6["PaymentProcessedEvent"]
+        H6 --> H7["CreateShipmentCommand"] --> H8["ShipmentCreatedEvent"]
+        H8 --> H9["SendNotificationCommand"] --> H10["NotificationSentEvent"]
+    end
+
+    class H1,H3,H5,H7,H9 layer-command
+    class H2,H4,H6,H8,H10 layer-event
+```
+
+```mermaid
+flowchart TD
+    subgraph Compensation["Saga: Payment Failure (Compensation)"]
+        C1["CreateOrderCommand"] --> C2["OrderCreatedEvent"]
+        C2 --> C3["ReserveInventoryCommand"] --> C4["InventoryReservedEvent"]
+        C4 --> C5["ProcessPaymentCommand"] --> C6["PaymentFailedEvent"]
+        C6 --> C7["ReleaseInventoryCommand"] --> C8["InventoryReleasedEvent"]
+    end
+
+    class C1,C3,C5,C7 layer-command
+    class C2,C4,C6,C8 layer-event
+```
+
+**Compensating transactions**:
+- `PaymentFailedEvent` → release inventory (return stock to available)
+- Order cancellation → refund payment via the gateway
+
+### Circuit Breaker States
+
 - **Closed**: Normal operation
 - **Open**: Gateway unavailable, fail fast
 - **Half-Open**: Test if gateway recovered
@@ -932,76 +449,58 @@ Policy
 
 ## Testing
 
-### Unit Test - Successful Payment
+The real tests live in **tests/ECommerce.PaymentWorker.Tests/ProcessPaymentReceptorTests.cs**. Because the demo receptor is randomized, the tests branch on the outcome:
 
-```csharp{title="Unit Test - Successful Payment" description="Unit Test - Successful Payment" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Payment Receptor" description="Unit Test - Payment Receptor" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
-public async Task ProcessPayment_ValidCard_ChargesAndPublishesEventAsync() {
+public async Task HandleAsync_ProcessesPayment_PublishesEventAsync() {
   // Arrange
-  var mockGateway = new MockPaymentGateway();
-  mockGateway.SetupSuccessfulCharge("pi_123456");
+  var dispatcher = new TestDispatcher();
+  var receptor = new ProcessPaymentReceptor(dispatcher, NullLogger<ProcessPaymentReceptor>.Instance);
 
-  var receptor = new ProcessPaymentReceptor(mockDb, mockGateway, mockContext, mockLogger);
-  var @event = new InventoryReserved(
-    OrderId: "order-123",
-    ProductId: "prod-456",
-    QuantityReserved: 2,
-    RemainingStock: 98,
-    ReservedAt: DateTime.UtcNow
-  );
+  var command = new ProcessPaymentCommand {
+    OrderId = "order-123",
+    CustomerId = "customer-456",
+    Amount = 99.99m
+  };
 
-  // Act
-  var result = await receptor.HandleAsync(@event);
+  try {
+    // Act
+    var result = await receptor.HandleAsync(command);
 
-  // Assert
-  await Assert.That(result.Status).IsEqualTo(PaymentStatus.Captured);
-  await Assert.That(result.TransactionId).IsEqualTo("pi_123456");
+    // Assert (success path - ~90%)
+    await Assert.That(result.OrderId).IsEqualTo("order-123");
+    await Assert.That(result.TransactionId).StartsWith("TXN-");
+    await Assert.That(dispatcher.PublishedEvents).Count().IsEqualTo(1);
+  } catch (InvalidOperationException) {
+    // Failure path (~10%): PaymentFailedEvent was published before the throw
+    await Assert.That(dispatcher.PublishedEvents[0]).IsAssignableTo<PaymentFailedEvent>();
+  }
 }
 ```
 
-### Unit Test - Payment Failure
-
-```csharp{title="Unit Test - Payment Failure" description="Unit Test - Payment Failure" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
-[Test]
-public async Task ProcessPayment_InvalidCard_PublishesPaymentFailedEventAsync() {
-  // Arrange
-  var mockGateway = new MockPaymentGateway();
-  mockGateway.SetupFailedCharge("card_declined", "Your card was declined");
-
-  var receptor = new ProcessPaymentReceptor(mockDb, mockGateway, mockContext, mockLogger);
-  var @event = new InventoryReserved(...);
-
-  // Act & Assert
-  await Assert.That(async () => await receptor.HandleAsync(@event))
-    .Throws<PaymentFailedException>();
-
-  // Verify PaymentFailed event was published
-  var outboxEvent = mockDb.GetOutboxEvents().Single();
-  await Assert.That(outboxEvent.MessageType).Contains("PaymentFailed");
-}
-```
+In your own service, inject a deterministic `IPaymentGateway` fake instead of relying on randomness — then both branches become directly testable.
 
 ---
 
 ## Next Steps
 
 Continue to **[Notification Service](notification-service.md)** to:
-- Subscribe to `PaymentProcessed` events
-- Send order confirmation emails
+- Handle `SendNotificationCommand`
+- Publish `NotificationSentEvent`
 - Integrate with email/SMS providers
-- Handle notification failures gracefully
 
 ---
 
 ## Key Takeaways
 
-✅ **Idempotency** - Prevent duplicate charges with idempotency keys
-✅ **Retry Logic** - Exponential backoff for transient failures
-✅ **Circuit Breaker** - Fail fast when gateway is down
-✅ **Saga Pattern** - Distributed transactions with compensation
+✅ **Success/Failure Events** - `PaymentProcessedEvent` vs `PaymentFailedEvent`
+✅ **Compensation** - Failure events trigger inventory release
+✅ **Framework Dedup** - `wh_inbox` prevents double-processing; gateway idempotency keys add defense-in-depth
+✅ **Retry Logic** - Exponential backoff for transient failures (Polly)
+✅ **Circuit Breaker** - Fail fast when the gateway is down
 ✅ **Gateway Abstraction** - Swap payment providers easily
-✅ **Compensation** - Refunds and inventory release on failure
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

@@ -1,5 +1,8 @@
 ---
 title: Polymorphic Types
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: GraphQL
 order: 6
@@ -25,7 +28,7 @@ The `PolymorphicTypeExtensions` class enables:
 - **Automatic Type Registration** - Base type becomes GraphQL interface, derived types become implementations
 - **Attribute Discovery** - Derived types discovered from `[JsonDerivedType]` attributes
 - **Consistent Serialization** - Same type hierarchy works for JSON API and GraphQL
-- **AOT Compatible** - No reflection at runtime
+- **Startup-Time Discovery** - The auto-discovery overload reads `[JsonPolymorphic]`/`[JsonDerivedType]` attribute metadata once at registration; nothing is discovered per request
 
 ## Installation
 

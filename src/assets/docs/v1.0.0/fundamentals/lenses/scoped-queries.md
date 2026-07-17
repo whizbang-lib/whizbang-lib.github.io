@@ -1,5 +1,8 @@
 ---
 title: Scoped Lens Queries
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Lenses
 order: 3
@@ -9,7 +12,12 @@ tags: 'lenses, scoped, singleton, background-worker, batch'
 codeReferences:
   - src/Whizbang.Core/Lenses/IScopedLensQuery.cs
   - src/Whizbang.Core/Lenses/ScopedLensQuery.cs
+  - src/Whizbang.Core/Lenses/ILensQueryFactory.cs
   - src/Whizbang.Core/Lenses/LensQueryFactory.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Lenses/ScopedLensQueryTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/LensQueryFactoryTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ScopedLensQueryIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -48,7 +56,7 @@ public class OrderProcessor : BackgroundService {
     while (!ct.IsCancellationRequested) {
       // Each operation creates its own scope and DbContext
       var pendingOrders = await _lens.ExecuteAsync(
-          async (lens, token) => await lens.Query
+          async (lens, token) => await lens.DefaultScope.Query
               .Where(r => r.Data.Status == "Pending")
               .Select(r => r.Data)
               .ToListAsync(token),
@@ -98,7 +106,7 @@ var order = await _scopedLens.GetByIdAsync(orderId, ct);
 **Execute materialized query**:
 ```csharp{title="Usage Patterns (2)" description="Execute materialized query:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Usage", "Patterns"]}
 var orders = await _scopedLens.ExecuteAsync(
-    async (lens, token) => await lens.Query
+    async (lens, token) => await lens.DefaultScope.Query
         .Where(r => r.Data.CustomerId == customerId)
         .Select(r => r.Data)
         .ToListAsync(token),
@@ -108,7 +116,7 @@ var orders = await _scopedLens.ExecuteAsync(
 **Stream results**:
 ```csharp{title="Usage Patterns (3)" description="Stream results:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Usage", "Patterns"]}
 await foreach (var row in _scopedLens.QueryAsync(
-    lens => lens.Query.Where(r => r.Data.Total > 100),
+    lens => lens.DefaultScope.Query.Where(r => r.Data.Total > 100),
     ct)) {
 
   await ProcessOrderAsync(row.Data);
@@ -118,7 +126,7 @@ await foreach (var row in _scopedLens.QueryAsync(
 **Projection queries**:
 ```csharp{title="Usage Patterns (4)" description="Projection queries:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Usage", "Patterns"]}
 await foreach (var summary in _scopedLens.QueryAsync<OrderSummary>(
-    lens => lens.Query.Select(r => new OrderSummary {
+    lens => lens.DefaultScope.Query.Select(r => new OrderSummary {
       Id = r.Id,
       Total = r.Data.Total,
       CustomerName = r.Data.CustomerName
@@ -128,6 +136,53 @@ await foreach (var summary in _scopedLens.QueryAsync<OrderSummary>(
   Console.WriteLine($"Order {summary.Id}: {summary.Total:C}");
 }
 ```
+
+## The Scope-First Query API
+
+The `ILensQuery<T>` passed to your query builders uses a **scope-before-query** API. Select a scope first, then query through the returned access object. The bare `lens.Query` and `lens.GetByIdAsync()` members are marked `[Obsolete]` and delegate to `DefaultScope`.
+
+### Query Scope {#query-scope}
+
+`QueryScope` selects a predefined filter level; each value maps to `ScopeFilters` flags via `QueryScopeMapper.ToScopeFilter`:
+
+```csharp{title="QueryScope Enum" description="Predefined query scope levels for the fluent scope-before-query API" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "QueryScope"]}
+public enum QueryScope {
+  Global,           // No filtering - full access
+  Tenant,           // Tenant only
+  Organization,     // Tenant + Organization
+  Customer,         // Tenant + Customer
+  User,             // Tenant + User
+  Principal,        // Tenant + security principal membership
+  UserOrPrincipal   // Tenant + (User OR Principal) - "my records or shared with me"
+}
+```
+
+### Scoped Lens Access {#scoped-lens-access}
+
+`Scope()`, `ScopeOverride()`, and `DefaultScope` return an `IScopedLensAccess<TModel>` with scope filters pre-applied:
+
+```csharp{title="IScopedLensAccess" description="Scope-filtered query access returned by the fluent scope API" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "IScopedLensAccess"]}
+public interface IScopedLensAccess<TModel> where TModel : class {
+  // Queryable access to perspective rows with scope filters pre-applied
+  IQueryable<PerspectiveRow<TModel>> Query { get; }
+
+  // Fast single-item lookup by ID within the applied scope
+  Task<TModel?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+}
+
+// Usage
+var tenantOrders = lens.Scope(QueryScope.Tenant).Query;
+var adminView = lens.Scope(QueryScope.Global).Query;
+var order = await lens.DefaultScope.GetByIdAsync(orderId, ct);
+```
+
+### Default Scope {#default-scope}
+
+`DefaultScope` uses the scope configured in `WhizbangCoreOptions.DefaultQueryScope` (default: `QueryScope.Tenant`). Any scope other than `Global` requires an ambient scope context (`IScopeContextAccessor.Current`); querying without one throws `InvalidOperationException`.
+
+### Scoped Multi Lens Access {#scoped-multi-lens-access}
+
+Multi-model lenses (`ILensQuery<T1, T2>` and higher) return `IScopedMultiLensAccess<T1, T2, ...>` from their scope methods, exposing `Query<T>()` and `GetByIdAsync<T>()` restricted to the declared model types. See [Multi-Model Queries](multi-model-queries.md).
 
 ## Solution 2: ILensQueryFactory (Batch Operations)
 
@@ -144,7 +199,7 @@ public class OrderReportService {
   public async Task<OrderReport> GenerateReportAsync(Guid customerId, CancellationToken ct) {
     // Create a scope for all queries in this batch
     using var scope = _factory.CreateScoped();
-    var lens = scope.Value;
+    var lens = scope.Value.DefaultScope;
 
     // All queries share the same DbContext
     var totalOrders = await lens.Query

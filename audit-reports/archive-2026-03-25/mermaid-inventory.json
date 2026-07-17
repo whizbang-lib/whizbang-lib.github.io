@@ -1,0 +1,336 @@
+{
+  "totalDiagrams": 39,
+  "byType": {
+    "graph": 7,
+    "sequenceDiagram": 30,
+    "flowchart": 1,
+    "stateDiagram": 1
+  },
+  "byFile": {
+    "src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md": 6,
+    "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md": 3,
+    "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md": 2,
+    "src/assets/docs/v1.0.0/messaging/failure-handling.md": 2,
+    "src/assets/docs/v1.0.0/messaging/idempotency-patterns.md": 3,
+    "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md": 10,
+    "src/assets/docs/v1.0.0/messaging/work-coordination.md": 5,
+    "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md": 1,
+    "src/assets/docs/v1.0.0/operations/testing/lifecycle-synchronization.md": 2,
+    "src/assets/docs/v1.0.0/operations/workers/execution-lifecycle.md": 1,
+    "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md": 4
+  },
+  "diagrams": [
+    {
+      "file": "src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md",
+      "line": 34,
+      "diagramType": "graph",
+      "firstLine": "graph TB",
+      "lineCount": 62,
+      "preview": "graph TB\n    subgraph \"API/Client Layer\"\n        API[API Controller]"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md",
+      "line": 107,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 56,
+      "preview": "sequenceDiagram\n    participant Client\n    participant Controller"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md",
+      "line": 181,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 30,
+      "preview": "sequenceDiagram\n    participant Client\n    participant Controller"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md",
+      "line": 226,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 52,
+      "preview": "sequenceDiagram\n    participant Timer\n    participant PublisherWorker as WorkCoordinator<br/>PublisherWorker"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md",
+      "line": 295,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 74,
+      "preview": "sequenceDiagram\n    participant ServiceBus as Azure Service Bus\n    participant ConsumerWorker as ServiceBus<br/>ConsumerWorker"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md",
+      "line": 386,
+      "diagramType": "graph",
+      "firstLine": "graph TB",
+      "lineCount": 19,
+      "preview": "graph TB\n    START[Message Arrives] --> VALIDATE[1. Validation Phase]\n    VALIDATE --> LOGIC[2. Business Logic Phase]"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 35,
+      "diagramType": "graph",
+      "firstLine": "graph LR",
+      "lineCount": 7,
+      "preview": "graph LR\n    A[Dispatch<br>local: true] --> B[LocalImmediate]\n    B --> C[Done]"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 49,
+      "diagramType": "graph",
+      "firstLine": "graph LR",
+      "lineCount": 13,
+      "preview": "graph LR\n    A[Dispatch] --> B[Distribute]\n    B --> C[Outbox]"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-stages.md",
+      "line": 619,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 44,
+      "preview": "sequenceDiagram\n    participant Caller\n    participant Receptor"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
+      "line": 35,
+      "diagramType": "graph",
+      "firstLine": "graph LR",
+      "lineCount": 13,
+      "preview": "graph LR\n    A[Tagged Message] --> B[Receptor]\n    B --> C[Cascade Events]"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
+      "line": 229,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 19,
+      "preview": "sequenceDiagram\n    participant D as Dispatcher\n    participant R as Receptor"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/failure-handling.md",
+      "line": 85,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 27,
+      "preview": "sequenceDiagram\n    participant I as Instance\n    participant DB as PostgreSQL"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/failure-handling.md",
+      "line": 183,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 26,
+      "preview": "sequenceDiagram\n    participant I as Instance\n    participant DB as PostgreSQL"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/idempotency-patterns.md",
+      "line": 73,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 38,
+      "preview": "sequenceDiagram\n    participant T as Transport<br/>(External)\n    participant App as Application"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/idempotency-patterns.md",
+      "line": 189,
+      "diagramType": "graph",
+      "firstLine": "graph TD",
+      "lineCount": 20,
+      "preview": "graph TD\n    A[HTTP Request:<br/>Create Order] -->|BEGIN TRANSACTION| B[Application Logic]\n    B --> C[INSERT INTO orders<br/>id=123, status='Created']"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/idempotency-patterns.md",
+      "line": 272,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 23,
+      "preview": "sequenceDiagram\n    participant App as Application\n    participant DB as PostgreSQL<br/>(Application DB)"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
+      "line": 32,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 31,
+      "preview": "sequenceDiagram\n    participant I1 as Instance 1\n    participant DB as PostgreSQL"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
+      "line": 82,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 22,
+      "preview": "sequenceDiagram\n    participant I1 as Instance 1\n    participant DB as PostgreSQL"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
+      "line": 140,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 36,
+      "preview": "sequenceDiagram\n    participant I1 as Instance 1<br/>(Active)\n    participant DB as PostgreSQL"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
+      "line": 195,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 32,
+      "preview": "sequenceDiagram\n    participant I1 as Instance 1\n    participant DB as PostgreSQL"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
+      "line": 275,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 18,
+      "preview": "sequenceDiagram\n    participant I1 as Instance 1<br/>(Crashes)\n    participant DB as PostgreSQL"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
+      "line": 314,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 23,
+      "preview": "sequenceDiagram\n    participant T as Transport<br/>(Azure Service Bus)\n    participant I1 as Instance 1"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
+      "line": 358,
+      "diagramType": "graph",
+      "firstLine": "graph TD",
+      "lineCount": 17,
+      "preview": "graph TD\n    A[Application Transaction] -->|BEGIN| B[Business Logic]\n    B --> C[INSERT INTO application_table]"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
+      "line": 392,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 25,
+      "preview": "sequenceDiagram\n    participant I1 as Instance 1<br/>(ID: aaa...111)\n    participant DB as PostgreSQL"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
+      "line": 434,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 49,
+      "preview": "sequenceDiagram\n    participant I1 as Instance 1\n    participant DB as PostgreSQL"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
+      "line": 507,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 37,
+      "preview": "sequenceDiagram\n    participant I1 as Instance 1<br/>(Alone)\n    participant DB as PostgreSQL"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
+      "line": 71,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 21,
+      "preview": "sequenceDiagram\n    participant T as Transport\n    participant TCW as TransportConsumerWorker"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
+      "line": 99,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 19,
+      "preview": "sequenceDiagram\n    participant W as WorkCoordinatorPublisherWorker\n    participant SQL as process_work_batch"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
+      "line": 125,
+      "diagramType": "flowchart",
+      "firstLine": "flowchart TD",
+      "lineCount": 11,
+      "preview": "flowchart TD\n    A[Inbox message stored, status=1] -->|lease expires| B[claim_orphaned_inbox]\n    B --> C[InboxWork returned]"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
+      "line": 191,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 25,
+      "preview": "sequenceDiagram\n    participant App as Application\n    participant WC as WorkCoordinator"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/work-coordination.md",
+      "line": 221,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 17,
+      "preview": "sequenceDiagram\n    participant I1 as Instance 1\n    participant DB as PostgreSQL"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
+      "line": 180,
+      "diagramType": "stateDiagram",
+      "firstLine": "stateDiagram-v2",
+      "lineCount": 6,
+      "preview": "stateDiagram-v2\n    [*] --> Closed: Initial\n    Closed --> Open: Threshold<br/>Exceeded"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/testing/lifecycle-synchronization.md",
+      "line": 45,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 19,
+      "preview": "sequenceDiagram\n    participant Test\n    participant Queue as Work Queue"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/testing/lifecycle-synchronization.md",
+      "line": 102,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 24,
+      "preview": "sequenceDiagram\n    participant Test\n    participant Dispatcher"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/execution-lifecycle.md",
+      "line": 93,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 67,
+      "preview": "sequenceDiagram\n    participant App as Application\n    participant ES as IExecutionStrategy"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
+      "line": 202,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 47,
+      "preview": "sequenceDiagram\n    participant ES as Event Store\n    participant DB as wh_perspective_checkpoints"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
+      "line": 514,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 16,
+      "preview": "sequenceDiagram\n    participant PW as PerspectiveWorker\n    participant SC as SecurityContext"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
+      "line": 709,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 17,
+      "preview": "sequenceDiagram\n    participant PW as PerspectiveWorker\n    participant S as BatchedStrategy"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
+      "line": 749,
+      "diagramType": "sequenceDiagram",
+      "firstLine": "sequenceDiagram",
+      "lineCount": 14,
+      "preview": "sequenceDiagram\n    participant PW as PerspectiveWorker\n    participant S as InstantStrategy"
+    }
+  ]
+}

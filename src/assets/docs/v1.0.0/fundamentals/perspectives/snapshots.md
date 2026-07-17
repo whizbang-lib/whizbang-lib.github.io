@@ -1,5 +1,8 @@
 ---
 title: Perspective Snapshots
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Perspectives
 order: 11
@@ -13,7 +16,16 @@ tags: >-
 codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs
   - src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs
+  - src/Whizbang.Core/Perspectives/SnapshotEnvelope.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperPerspectiveSnapshotStore.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCorePerspectiveSnapshotStore.cs
+  - src/Whizbang.Data.Schema/Schemas/PerspectiveSnapshotsSchema.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/SnapshotEnvelopeTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperPerspectiveSnapshotStoreTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePerspectiveSnapshotStoreTests.cs
+  - tests/Whizbang.Data.Schema.Tests/Schemas/PerspectiveSnapshotsSchemaTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -28,11 +40,24 @@ public interface IPerspectiveSnapshotStore {
   Task CreateSnapshotAsync(Guid streamId, string perspectiveName, Guid snapshotEventId,
     JsonDocument snapshotData, CancellationToken ct = default);
 
+  // Commit-sequence-aware overload (default implementation falls through to the
+  // legacy method; the Dapper + EFCore stores persist snapshot_commit_sequence)
+  Task CreateSnapshotAsync(Guid streamId, string perspectiveName, Guid snapshotEventId,
+    long? snapshotCommitSequence, JsonDocument snapshotData, CancellationToken ct = default);
+
   Task<(Guid SnapshotEventId, JsonDocument SnapshotData)?> GetLatestSnapshotAsync(
     Guid streamId, string perspectiveName, CancellationToken ct = default);
 
+  Task<(Guid SnapshotEventId, long? SnapshotCommitSequence, JsonDocument SnapshotData)?>
+    GetLatestSnapshotWithCommitSequenceAsync(
+      Guid streamId, string perspectiveName, CancellationToken ct = default);
+
   Task<(Guid SnapshotEventId, JsonDocument SnapshotData)?> GetLatestSnapshotBeforeAsync(
     Guid streamId, string perspectiveName, Guid beforeEventId, CancellationToken ct = default);
+
+  Task<(Guid SnapshotEventId, long? SnapshotCommitSequence, JsonDocument SnapshotData)?>
+    GetLatestSnapshotBeforeCommitSequenceAsync(
+      Guid streamId, string perspectiveName, long beforeCommitSequence, CancellationToken ct = default);
 
   Task<bool> HasAnySnapshotAsync(Guid streamId, string perspectiveName,
     CancellationToken ct = default);
@@ -44,6 +69,8 @@ public interface IPerspectiveSnapshotStore {
     CancellationToken ct = default);
 }
 ```
+
+The commit-sequence variants anchor snapshots to the event store's `commit_sequence` so rewind replay reproduces live-apply order even when UUIDv7 generation timing and commit order disagree. They have default interface implementations, so custom stores that only implement the legacy methods keep compiling.
 
 ## How Snapshots Work
 
@@ -146,6 +173,17 @@ public class PerspectiveSnapshotOptions {
   // Whether snapshot creation is enabled (default: true)
   // When disabled, rewinds always replay from event zero
   public bool Enabled { get; set; } = true;
+
+  // During a rewind replay, take an additional snapshot every N events applied,
+  // placing restore points at multiple historical positions along the timeline.
+  // Set to 0 to keep only the end-of-rewind snapshot. (default: 10)
+  public int RewindSnapshotIntervalEvents { get; set; } = 10;
+
+  // What to do when a stored snapshot's serialization version does not match
+  // the current version. Default: RebuildFromEvents (discard the stale snapshot
+  // and replay from events -- always correct since snapshots are a derived cache).
+  // Other values: None (treat as error), LazyUpcast, UpgradeOnStartup.
+  public SnapshotUpgradePolicy UpgradePolicy { get; set; } = SnapshotUpgradePolicy.RebuildFromEvents;
 }
 ```
 
@@ -187,13 +225,16 @@ When the `PerspectiveWorker` encounters an existing stream that has processed ev
 
 ## Implementation
 
-Whizbang ships a Dapper/Npgsql implementation:
+Whizbang ships two PostgreSQL implementations:
 
 | Implementation | Package |
 |----------------|---------|
 | `DapperPerspectiveSnapshotStore` | `Whizbang.Data.Dapper.Postgres` |
+| `EFCorePerspectiveSnapshotStore` | `Whizbang.Data.EFCore.Postgres` |
 
-The implementation stores snapshots in the `wh_perspective_snapshots` table with columns for `stream_id`, `perspective_name`, `snapshot_event_id`, `snapshot_data` (JSONB), and `sequence_number` for ordering.
+Both store snapshots in the `wh_perspective_snapshots` table with columns `stream_id`, `perspective_name`, `snapshot_event_id`, `snapshot_data` (JSONB), `sequence_number` (ordering), `created_at`, and `snapshot_commit_sequence` (nullable commit-sequence anchor).
+
+Snapshot blobs are wrapped in a versioned envelope (`SnapshotEnvelope`) stamped with the current serialization version; on read, a version mismatch is resolved per `PerspectiveSnapshotOptions.UpgradePolicy` (by default the stale snapshot is discarded and the perspective rebuilds from events).
 
 ## Tuning Guidelines
 

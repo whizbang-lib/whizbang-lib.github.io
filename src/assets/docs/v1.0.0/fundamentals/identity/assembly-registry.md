@@ -1,5 +1,8 @@
 ---
 title: Assembly Registry
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 25
@@ -8,6 +11,11 @@ description: >-
 tags: 'assembly-registry, multi-assembly, module-initializer, aot'
 codeReferences:
   - src/Whizbang.Core/Registry/AssemblyRegistry.cs
+  - src/Whizbang.Core/Registry/StreamIdExtractorRegistry.cs
+  - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Registry/AssemblyRegistryTests.cs
+  - tests/Whizbang.Core.Tests/Registry/StreamIdExtractorRegistryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -51,6 +59,7 @@ namespace Whizbang.Core.Registry;
 public static class AssemblyRegistry<T> where T : class {
   /// <summary>
   /// Register a contribution. Called from [ModuleInitializer] - runs before Main().
+  /// Throws ArgumentNullException when contribution is null.
   /// </summary>
   /// <param name="contribution">The contribution to register</param>
   /// <param name="priority">Lower = tried first. Contracts use 100, services use 1000.</param>
@@ -70,22 +79,31 @@ public static class AssemblyRegistry<T> where T : class {
 
 ## Registration Flow
 
-```
-1. Application starts
+```mermaid
+graph TB
+    A["1. Application starts"]
+    B["2. CLR loads assemblies"]
+    C1["MyApp.Contracts.dll loads"]
+    C2["[ModuleInitializer] runs BEFORE Main()"]
+    C3["AssemblyRegistry&lt;IStreamIdExtractor&gt;.Register(extractor, 100)"]
+    D1["MyApp.Services.dll loads"]
+    D2["[ModuleInitializer] runs"]
+    D3["AssemblyRegistry&lt;IStreamIdExtractor&gt;.Register(extractor, 1000)"]
+    M["3. Main() executes"]
+    M1["AddWhizbang() called"]
+    M2["Uses AssemblyRegistry&lt;T&gt;.GetOrderedContributions()"]
+    M3["Gets: [ContractsExtractor (100), ServiceExtractor (1000)]"]
 
-2. CLR loads assemblies
-   └─> MyApp.Contracts.dll loads
-       └─> [ModuleInitializer] runs BEFORE Main()
-       └─> AssemblyRegistry<IStreamIdExtractor>.Register(extractor, 100)
+    A --> B
+    B --> C1 --> C2 --> C3
+    B --> D1 --> D2 --> D3
+    C3 --> M
+    D3 --> M
+    M --> M1 --> M2 --> M3
 
-   └─> MyApp.Services.dll loads
-       └─> [ModuleInitializer] runs
-       └─> AssemblyRegistry<IStreamIdExtractor>.Register(extractor, 1000)
-
-3. Main() executes
-   └─> AddWhizbang() called
-   └─> Uses AssemblyRegistry<T>.GetOrderedContributions()
-   └─> Gets: [ContractsExtractor (100), ServiceExtractor (1000)]
+    style A fill:#d4edda,stroke:#28a745
+    style B fill:#d4edda,stroke:#28a745
+    style M fill:#d4edda,stroke:#28a745
 ```
 
 ## Priority Convention
@@ -195,22 +213,29 @@ var streamId = StreamIdExtractorRegistry.ExtractStreamId(message, type);
 ### JsonContextRegistry
 
 ```csharp{title="JsonContextRegistry" description="JsonContextRegistry" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "JsonContextRegistry"]}
-// Registers JSON serialization contexts for AOT
-JsonContextRegistry.Register(MyJsonContext.Default, priority: 100);
-var typeInfo = JsonContextRegistry.GetTypeInfo<MyMessage>();
+// Registers JSON serialization contexts (IJsonTypeInfoResolver) for AOT
+JsonContextRegistry.RegisterContext(MyJsonContext.Default, priority: 100);
+
+// Combined options resolve types across all registered contexts
+var options = JsonContextRegistry.CreateCombinedOptions();
+
+// Name-based lookup (used for stored event type names)
+var typeInfo = JsonContextRegistry.GetTypeInfoByName(
+    "MyApp.Events.OrderCreated, MyApp", options);
 ```
 
 ## Thread Safety
 
-The registry uses `ConcurrentBag` and caching:
+The registry uses `ConcurrentBag` plus a lock-protected ordered cache (invalidated on each registration and rebuilt from a snapshot to avoid racing concurrent `Register` calls):
 
 ```csharp{title="Thread Safety" description="The registry uses ConcurrentBag and caching:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Thread", "Safety"]}
 public static class AssemblyRegistry<T> where T : class {
   private static readonly ConcurrentBag<(int Priority, T Contribution)> _contributions = [];
   private static List<T>? _orderedContributions;  // Cached
-  private static readonly object _lock = new();
+  private static readonly Lock _lock = new();
 
   public static void Register(T contribution, int priority = 1000) {
+    ArgumentNullException.ThrowIfNull(contribution);
     _contributions.Add((priority, contribution));
     lock (_lock) {
       _orderedContributions = null;  // Invalidate cache
@@ -221,10 +246,12 @@ public static class AssemblyRegistry<T> where T : class {
     if (_orderedContributions is not null) return _orderedContributions;
 
     lock (_lock) {
-      _orderedContributions ??= _contributions
+      if (_orderedContributions is not null) return _orderedContributions;
+      // Snapshot before iterating to avoid racing concurrent Register() calls
+      _orderedContributions = [.. _contributions
+          .ToArray()
           .OrderBy(c => c.Priority)
-          .Select(c => c.Contribution)
-          .ToList();
+          .Select(c => c.Contribution)];
       return _orderedContributions;
     }
   }
@@ -233,17 +260,11 @@ public static class AssemblyRegistry<T> where T : class {
 
 ## Testing
 
-For test isolation, use `ClearForTesting()`:
+Priority ordering is easy to verify in tests:
 
-```csharp{title="Testing" description="For test isolation, use ClearForTesting():" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Testing"]}
-[BeforeEach]
-public void Setup() {
-  // Reset registry between tests
-  AssemblyRegistry<IStreamIdExtractor>.ClearForTesting();
-}
-
+```csharp{title="Testing" description="Verifying priority ordering in tests" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Testing"]}
 [Test]
-public void Registry_WithMultiplePriorities_OrdersByPriorityAsync() {
+public async Task Registry_WithMultiplePriorities_OrdersByPriorityAsync() {
   // Arrange
   AssemblyRegistry<IMyProvider>.Register(new ProviderA(), priority: 500);
   AssemblyRegistry<IMyProvider>.Register(new ProviderB(), priority: 100);
@@ -259,6 +280,10 @@ public void Registry_WithMultiplePriorities_OrdersByPriorityAsync() {
 }
 ```
 
+:::updated
+The registry also has a `ClearForTesting()` reset method, but it is `internal` — it is only reachable from Whizbang's own test assemblies (via `InternalsVisibleTo`), not from consumer test code. In consumer tests, prefer registering distinct contribution types per test (each generic `T` gets its own isolated registry) rather than trying to reset shared state.
+:::
+
 ## Best Practices
 
 ### DO
@@ -267,7 +292,7 @@ public void Registry_WithMultiplePriorities_OrdersByPriorityAsync() {
 - **Use priority 100** for contracts assemblies
 - **Use priority 1000** (default) for service assemblies
 - **Create domain-specific wrappers** for clarity
-- **Clear in tests** to ensure isolation
+- **Use per-test contribution types** for isolation (each generic `T` has its own registry; the reset method is internal-only)
 
 ### DON'T
 

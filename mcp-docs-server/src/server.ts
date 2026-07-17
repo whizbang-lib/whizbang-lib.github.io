@@ -26,6 +26,7 @@ import { getTestsForCode } from './tools/get-tests-for-code-tool.js';
 import { getCodeForTest } from './tools/get-code-for-test-tool.js';
 import { validateTestLinksFunc } from './tools/validate-test-links-tool.js';
 import { getCoverageStatsFunc } from './tools/get-coverage-stats-tool.js';
+import { getTestStatusFunc } from './tools/get-test-status-tool.js';
 import { generateExplainConceptPrompt } from './prompts/explain-concept.js';
 import { generateShowExamplePrompt } from './prompts/show-example.js';
 import { generateCompareApproachesPrompt } from './prompts/compare-approaches.js';
@@ -319,6 +320,20 @@ export class McpDocsServer {
               type: 'object',
               properties: {}
             }
+          },
+          {
+            name: 'get-test-status',
+            description: 'Get LIVE pass/fail status for a test class or method from the latest library CI run (fetched from the docs site, never stale-bundled)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                test: {
+                  type: 'string',
+                  description: 'Short test class name (e.g. "DispatcherTests") or full key "TestClassName.TestMethodName"'
+                }
+              },
+              required: ['test']
+            }
           }
         ]
       };
@@ -455,6 +470,21 @@ export class McpDocsServer {
 
           case 'get-coverage-stats': {
             const result = getCoverageStatsFunc({}, this.codeTestsMap);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2)
+                }
+              ]
+            };
+          }
+
+          case 'get-test-status': {
+            const result = await getTestStatusFunc(
+              request.params.arguments as any,
+              this.config.docsBaseUrl || 'https://whizba.ng'
+            );
             return {
               content: [
                 {

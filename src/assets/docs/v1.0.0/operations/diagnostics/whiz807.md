@@ -1,5 +1,8 @@
 ---
 title: 'WHIZ807: Physical Fields Discovered'
+pageType: troubleshooting
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   Informational diagnostic when physical fields are discovered on a perspective model
 version: 1.0.0
@@ -15,6 +18,8 @@ codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/PerspectiveSchemaGenerator.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/PhysicalFieldDiscoveryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -38,12 +43,13 @@ Model 'ProductDto' has 2 physical field(s) in Split mode
 When you see this diagnostic:
 
 1. **Fields detected** - The generator found `[PhysicalField]` or `[VectorField]` attributes
-2. **Storage mode applied** - The model will use Split storage mode
+2. **Storage mode reported** - The message includes the model's configured `FieldStorageMode` (from `[PerspectiveStorage]`; defaults to `JsonOnly` when the attribute is absent)
 3. **Columns generated** - Database columns will be created for these fields
 
 ## Example: Physical Field Discovery
 
 ```csharp{title="Example: Physical Field Discovery" description="Example: Physical Field Discovery" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Physical"]}
+[PerspectiveStorage(FieldStorageMode.Split)]
 public record ProductDto {
   [StreamKey]
   public Guid ProductId { get; init; }
@@ -65,31 +71,41 @@ public record ProductDto {
 
 ## Storage Modes
 
-The diagnostic reports the storage mode:
+The diagnostic reports the storage mode (`FieldStorageMode`):
 
 | Mode | Description |
 |------|-------------|
-| **JsonOnly** | All data in JSONB column (no physical fields) |
-| **Split** | Physical fields as columns + remaining in JSONB |
-| **Physical** | All fields as columns (no JSONB) |
+| **JsonOnly** | Default. No physical columns semantics — all data in the JSONB column |
+| **Extracted** | JSONB contains the full model; physical columns are indexed copies for query optimization |
+| **Split** | Physical columns hold the marked fields; JSONB holds only the remaining fields |
 
 ## Generated Schema
 
-For the example above, the generator produces:
+Perspective tables use a fixed base shape (JSONB model + metadata + scope columns); physical field columns are appended to it. The table name derives from the **perspective class** name — `wh_per_` + snake_case, with common suffixes (`ReadModel`, `Model`, `Projection`, `Dto`, `View`) stripped by default. For a perspective class `ProductProjection` using the `ProductDto` model above, the generator produces:
 
 ```sql{title="Generated Schema" description="For the example above, the generator produces:" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Generated", "Schema"]}
-CREATE TABLE product_perspectives (
-  id UUID PRIMARY KEY,
-  stream_key UUID NOT NULL,
-  status VARCHAR NOT NULL,           -- [PhysicalField]
-  price DECIMAL NOT NULL,            -- [PhysicalField]
-  embedding vector(1536),            -- [VectorField]
-  model JSONB NOT NULL               -- Remaining fields
+CREATE TABLE IF NOT EXISTS wh_per_product (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  model_data JSONB NOT NULL,
+  metadata JSONB NOT NULL,
+  scope JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  version BIGINT NOT NULL DEFAULT 0,
+  status TEXT,                       -- [PhysicalField]
+  price DECIMAL,                     -- [PhysicalField]
+  embedding vector(1536)             -- [VectorField]
 );
 
-CREATE INDEX idx_product_status ON product_perspectives(status);
-CREATE INDEX idx_product_price ON product_perspectives(price);
+-- B-tree indexes for indexed physical fields
+CREATE INDEX IF NOT EXISTS ix_wh_per_product_status ON wh_per_product(status);
+CREATE INDEX IF NOT EXISTS ix_wh_per_product_price ON wh_per_product(price);
+
+-- pgvector index for the vector field (IVFFlat + cosine by default)
+CREATE INDEX IF NOT EXISTS ix_wh_per_product_embedding_vec ON wh_per_product USING ivfflat (embedding vector_cosine_ops);
 ```
+
+Column names default to snake_case of the property name (override with `ColumnName`). Strings map to `TEXT` unless a `MaxLength` is set (then `VARCHAR(n)`).
 
 ## Why Physical Fields
 

@@ -1,5 +1,8 @@
 ---
 title: Body Offload (Claim-Check Pattern)
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Fundamentals
 order: 1
@@ -18,9 +21,17 @@ codeReferences:
   - src/Whizbang.Core/Offloads/BodyOffloadPostSerializeHook.cs
   - src/Whizbang.Core/Offloads/BodyClaimWireHelper.cs
   - src/Whizbang.Core/Offloads/BodyClaimRehydrator.cs
+  - src/Whizbang.Core/Offloads/BodyClaimDownloadException.cs
   - src/Whizbang.Core/Offloads/OffloadServiceCollectionExtensions.cs
   - src/Whizbang.Offloads.InMemory/InMemoryMessageBodyStore.cs
   - src/Whizbang.Offloads.AzureBlob/AzureBlobMessageBodyStore.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Offloads/BodyOffloadPostSerializeHookTests.cs
+  - tests/Whizbang.Core.Tests/Offloads/PostSerializeHookChainTests.cs
+  - tests/Whizbang.Core.Tests/Offloads/BodyClaimRehydratorTests.cs
+  - tests/Whizbang.Core.Tests/Offloads/BodyClaimWireHelperTests.cs
+  - tests/Whizbang.Core.Tests/Offloads/MessageBodyStoreContractTests.cs
+  - tests/Whizbang.Core.Tests/Offloads/AddWhizbangMessageBodyStoreTests.cs
 ---
 
 # Body Offload (Claim-Check Pattern)
@@ -107,9 +118,10 @@ When the offload hook substitutes the body, it stamps three headers on the desti
 
 1. If `envelope.Payload is not BodyClaimEnvelopePayload`, pass through unchanged (the common case — cost is one type-check).
 2. Otherwise: resolve the matching `IMessageBodyStore` by claim provider name. Unknown provider → dead-letter with `MessageFailureReason.BodyClaimProviderUnknown`.
-3. Download the bytes; compute SHA-256; compare against `claim.ContentHash`. Mismatch → dead-letter with `MessageFailureReason.BodyClaimIntegrityFailure`.
-4. Deserialize the downloaded bytes as the original envelope type from `claim.OriginalTypeName`. No JsonTypeInfo → dead-letter with `MessageFailureReason.SerializationError`.
-5. Return the rehydrated envelope. The worker treats it as if no claim ever existed.
+3. Download the bytes, bounded by `MessageBodyOffloadOptions.DownloadTimeout` (default 100 s). A transient download failure or timeout throws `BodyClaimDownloadException` — a **retryable** failure: the transport redelivers, and only after the max-delivery count is exhausted does the message dead-letter.
+4. Compute SHA-256; compare against `claim.ContentHash`. Mismatch → dead-letter with `MessageFailureReason.BodyClaimIntegrityFailure`.
+5. Deserialize the downloaded bytes as the original envelope type from `claim.OriginalTypeName`. No JsonTypeInfo → dead-letter with `MessageFailureReason.SerializationError`.
+6. Return the rehydrated envelope. The worker treats it as if no claim ever existed.
 
 ## Active cleanup
 
@@ -119,7 +131,7 @@ When `ActiveCleanup = true`, the consumer worker fires `IMessageBodyStore.Delete
 
 ## Built-in providers
 
-- **`Whizbang.Offloads.InMemory`** — dev/test/fixture provider. Bodies live in a process-local `ConcurrentDictionary`. Not suitable for production: bodies don't cross processes, no durability. Mirrors `Whizbang.Transports.InMemory` in role.
+- **`Whizbang.Offloads.InMemory`** — dev/test/fixture provider. Bodies live in a process-local `ConcurrentDictionary`. Not suitable for production: bodies don't cross processes, no durability. Mirrors the in-process transport (`InProcessTransport`) in role: a process-local stand-in for dev/test.
 - **`Whizbang.Offloads.AzureBlob`** — production provider. Wraps `Azure.Storage.Blobs`. Works identically against the Azurite emulator and live Azure Blob; the connection string distinguishes them via standard Azure SDK conventions. Supports optional Hot/Cool/Cold/Archive access tiers and a defensive `MaxDownloadBytes` cap.
 
 Custom providers implement `IMessageBodyStore` and register via `AddWhizbangMessageBodyStore<TStore>(name)`. The interface is three methods (`UploadAsync`, `DownloadAsync`, `DeleteAsync`), each accepting an optional per-call options record so providers can expose features like custom metadata, container overrides, or per-blob TTL without bloating the core contract.
@@ -130,6 +142,7 @@ Custom providers implement `IMessageBodyStore` and register via `AddWhizbangMess
 |---|---|---|
 | Body exceeds transport ceiling AND no offload hook configured | `MessageFailureReason.MessageBodyTooLarge` | `TransportPublishStrategy` returns `Success=false` pre-flight; outbox row stays put. |
 | Receiver doesn't have the sender's `whizbang.body-store` provider registered | `MessageFailureReason.BodyClaimProviderUnknown` | Dead-letter with remediation pointer at `AddWhizbang*Offload(name)`. |
+| Body download fails transiently or exceeds `DownloadTimeout` | — (`BodyClaimDownloadException`) | **Retryable** — transport redelivery, not immediate dead-letter; DLQ only after the transport's max-delivery count is exhausted. |
 | Downloaded body's SHA-256 doesn't match `claim.ContentHash` | `MessageFailureReason.BodyClaimIntegrityFailure` | Dead-letter; refuses to process potentially-tampered payload. |
 | No `JsonTypeInfo` registered for `claim.OriginalTypeName` | `MessageFailureReason.SerializationError` | Dead-letter; consumer needs the type registered in a `JsonSerializerContext`. |
 

@@ -1,5 +1,8 @@
 ---
 title: Inventory Service
+pageType: tutorial
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Tutorial
 order: 3
@@ -13,15 +16,25 @@ codeReferences:
     samples/ECommerce/ECommerce.InventoryWorker/Receptors/ReserveInventoryReceptor.cs
   - >-
     samples/ECommerce/ECommerce.InventoryWorker/Perspectives/InventoryLevelsPerspective.cs
+  - samples/ECommerce/ECommerce.InventoryWorker/Lenses/InventoryLens.cs
   - >-
     samples/ECommerce/ECommerce.Contracts/Commands/ReserveInventoryCommand.cs
   - samples/ECommerce/ECommerce.Contracts/Events/InventoryReservedEvent.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/InventoryReleasedEvent.cs
+  - samples/ECommerce/ECommerce.Contracts/Lenses/InventoryLevelDto.cs
+testReferences:
+  - >-
+    samples/ECommerce/tests/ECommerce.InventoryWorker.Tests/Receptors/RestockInventoryReceptorTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.InventoryWorker.Tests/Receptors/AdjustInventoryReceptorTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Workflows/RestockInventoryWorkflowTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Inventory Service
 
-Build the **Inventory Worker** - a background service that subscribes to `OrderCreated` events, reserves inventory, publishes `InventoryReserved` events, and maintains read models via perspectives.
+Build the **Inventory Worker** - a background service that handles inventory commands, publishes `InventoryReservedEvent`, and maintains read models via perspectives.
 
 :::note
 This is **Part 2** of the ECommerce Tutorial. Complete [Order Management](order-management.md) first.
@@ -31,165 +44,131 @@ This is **Part 2** of the ECommerce Tutorial. Complete [Order Management](order-
 
 ## What You'll Build
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Inventory Service Architecture                             │
-│                                                              │
-│  ┌─────────────┐                                            │
-│  │Azure Service│  OrderCreated event                        │
-│  │     Bus     │──────────────────────┐                     │
-│  └─────────────┘                      │                     │
-│                                        ▼                     │
-│                          ┌────────────────────────┐         │
-│                          │  Inbox Pattern         │         │
-│                          │  (Exactly-Once)        │         │
-│                          └──────────┬─────────────┘         │
-│                                     │                        │
-│                                     ▼                        │
-│                          ┌────────────────────────┐         │
-│                          │ ReserveInventoryReceptor│        │
-│                          │  - Check stock         │         │
-│                          │  - Reserve units       │         │
-│                          │  - Publish event       │         │
-│                          └──────────┬─────────────┘         │
-│                                     │                        │
-│                      ┌──────────────┼──────────────┐        │
-│                      │              │              │        │
-│                      ▼              ▼              ▼        │
-│                 ┌─────────┐   ┌─────────┐   ┌──────────┐   │
-│                 │Postgres │   │ Outbox  │   │Perspective│  │
-│                 │Inventory│   │ Table   │   │  (Read    │  │
-│                 │  Table  │   │         │   │  Model)   │  │
-│                 └─────────┘   └─────────┘   └──────────┘   │
-│                                     │                        │
-│                                     ▼                        │
-│                          ┌────────────────────────┐         │
-│                          │ Azure Service Bus      │         │
-│                          │ InventoryReserved      │         │
-│                          └────────────────────────┘         │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph ISA["Inventory Service Architecture"]
+        ASBIn["Azure Service Bus"]
+        Inbox["wh_inbox<br/>(Exactly-Once)"]
+        Receptor["ReserveInventoryReceptor<br/>- Check stock<br/>- Reserve units<br/>- Publish event"]
+        EventStore["wh_event_store (Event Store)"]
+        OutboxTable["wh_outbox (Outbox)"]
+        Perspective["InventoryLevelsPerspective<br/>(Read Model)"]
+        ASBOut["Azure Service Bus<br/>InventoryReservedEvent"]
+
+        ASBIn -->|"ReserveInventoryCommand"| Inbox
+        Inbox --> Receptor
+        Receptor --> EventStore
+        Receptor --> OutboxTable
+        EventStore --> Perspective
+        OutboxTable --> ASBOut
+    end
+
+    class ASBIn,ASBOut,OutboxTable layer-command
+    class Inbox,Receptor layer-core
+    class EventStore layer-event
+    class Perspective layer-read
 ```
 
 **Features**:
-- ✅ Event subscription (OrderCreated)
-- ✅ Inbox pattern (exactly-once processing)
+- ✅ Command subscription via shared inbox topic
+- ✅ Inbox pattern (exactly-once processing, framework-managed)
 - ✅ Inventory reservation logic
-- ✅ Compensation (stock release on failure)
-- ✅ Perspective read model (InventorySummary)
-- ✅ Work coordination via PostgreSQL
+- ✅ Compensation event (`InventoryReleasedEvent`)
+- ✅ Perspective read model (`InventoryLevelsPerspective`)
+- ✅ Lens queries over materialized data
 
 ---
 
-## Step 1: Define Events
+## Step 1: Define Messages
 
-### InventoryReserved Event
+### ReserveInventoryCommand
 
-**ECommerce.Contracts/Events/InventoryReserved.cs**:
+**ECommerce.Contracts/Commands/ReserveInventoryCommand.cs**:
+
+```csharp{title="ReserveInventoryCommand" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "ReserveInventory", "Command"]}
+using Whizbang.Core;
+
+namespace ECommerce.Contracts.Commands;
+
+/// <summary>
+/// Command to reserve inventory for an order
+/// </summary>
+public record ReserveInventoryCommand : ICommand {
+  public required OrderId OrderId { get; init; }
+  [StreamId]
+  public required ProductId ProductId { get; init; }
+  public int Quantity { get; init; }
+}
+```
+
+### InventoryReservedEvent
+
+**ECommerce.Contracts/Events/InventoryReservedEvent.cs**:
 
 ```csharp{title="InventoryReserved Event" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "InventoryReserved", "Event"]}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
 
-public record InventoryReserved(
-  string OrderId,
-  string ProductId,
-  int QuantityReserved,
-  int RemainingStock,
-  DateTime ReservedAt
-) : IEvent;
+/// <summary>
+/// Event published when inventory is successfully reserved
+/// </summary>
+public record InventoryReservedEvent : IEvent {
+  public required string OrderId { get; init; }
+  [StreamId]
+  public required Guid ProductId { get; init; }
+  public int Quantity { get; init; }
+  public DateTime ReservedAt { get; init; }
+}
 ```
 
-### InventoryInsufficient Event (Compensation)
+### InventoryReleasedEvent (Compensation)
 
-**ECommerce.Contracts/Events/InventoryInsufficient.cs**:
+**ECommerce.Contracts/Events/InventoryReleasedEvent.cs**:
 
-```csharp{title="InventoryInsufficient Event (Compensation)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "InventoryInsufficient", "Event"]}
+```csharp{title="InventoryReleased Event (Compensation)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "InventoryReleased", "Event"]}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
 
-public record InventoryInsufficient(
-  string OrderId,
-  string ProductId,
-  int RequestedQuantity,
-  int AvailableStock,
-  DateTime CheckedAt
-) : IEvent;
+/// <summary>
+/// Event published when previously reserved inventory is released (e.g., order cancelled)
+/// </summary>
+public record InventoryReleasedEvent : IEvent {
+  public required string OrderId { get; init; }
+  [StreamId]
+  public required Guid ProductId { get; init; }
+  public int Quantity { get; init; }
+  public DateTime ReleasedAt { get; init; }
+}
 ```
 
 **Why two events?**
-- Success path: `InventoryReserved` triggers payment processing
-- Failure path: `InventoryInsufficient` triggers order cancellation (compensation)
+- Success path: `InventoryReservedEvent` moves the order flow forward
+- Compensation path: `InventoryReleasedEvent` returns stock when a downstream step (e.g., payment) fails
+
+Note the `[StreamId]` on `ProductId`: inventory events are streamed **per product**, so perspective updates for the same product are processed in order.
 
 ---
 
-## Step 2: Database Schema
+## Step 2: Persistence (Framework-Managed)
 
-### Inventory Table
+:::updated
+Earlier drafts hand-wrote `inventory`, `inventory_reservations`, and `inbox` tables with raw SQL. Whizbang provisions its own tables — `wh_inbox` (exactly-once dedup), `wh_outbox`, `wh_event_store`, and one table per perspective model (e.g., `inventory_levels` for `InventoryLevelDto`) — from the `[WhizbangDbContext]` attribute and perspective discovery. No migration SQL is required for the messaging infrastructure.
+:::
 
-**ECommerce.InventoryWorker/Database/Migrations/001_CreateInventoryTable.sql**:
+**ECommerce.InventoryWorker/InventoryDbContext.cs** follows the same pattern as the Order Service:
 
-```sql{title="Inventory Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Inventory", "Table"]}
-CREATE TABLE IF NOT EXISTS inventory (
-  product_id TEXT PRIMARY KEY,
-  available_stock INTEGER NOT NULL CHECK (available_stock >= 0),
-  reserved_stock INTEGER NOT NULL DEFAULT 0 CHECK (reserved_stock >= 0),
-  total_stock INTEGER GENERATED ALWAYS AS (available_stock + reserved_stock) STORED,
-  last_updated TIMESTAMP NOT NULL DEFAULT NOW(),
-  version INTEGER NOT NULL DEFAULT 1  -- Optimistic concurrency
-);
+```csharp{title="Step 2: Persistence" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Persistence", "DbContext"]}
+using Microsoft.EntityFrameworkCore;
+using Whizbang.Data.EFCore.Custom;
 
-CREATE INDEX idx_inventory_product_id ON inventory(product_id);
+namespace ECommerce.InventoryWorker;
 
--- Seed data for demo
-INSERT INTO inventory (product_id, available_stock, reserved_stock)
-VALUES
-  ('prod-456', 100, 0),
-  ('prod-789', 50, 0)
-ON CONFLICT (product_id) DO NOTHING;
-```
-
-### Reservations Table
-
-**ECommerce.InventoryWorker/Database/Migrations/002_CreateReservationsTable.sql**:
-
-```sql{title="Reservations Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Reservations", "Table"]}
-CREATE TABLE IF NOT EXISTS inventory_reservations (
-  reservation_id TEXT PRIMARY KEY,
-  order_id TEXT NOT NULL,
-  product_id TEXT NOT NULL REFERENCES inventory(product_id),
-  quantity_reserved INTEGER NOT NULL,
-  status TEXT NOT NULL,  -- 'Reserved', 'Released', 'Committed'
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  expires_at TIMESTAMP NOT NULL  -- Auto-release after N minutes
-);
-
-CREATE INDEX idx_reservations_order_id ON inventory_reservations(order_id);
-CREATE INDEX idx_reservations_product_id ON inventory_reservations(product_id);
-CREATE INDEX idx_reservations_expires_at ON inventory_reservations(expires_at)
-  WHERE status = 'Reserved';
-```
-
-### Inbox Table
-
-**ECommerce.InventoryWorker/Database/Migrations/003_CreateInboxTable.sql**:
-
-```sql{title="Inbox Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Inbox", "Table"]}
--- Whizbang inbox pattern for exactly-once processing
-CREATE TABLE IF NOT EXISTS inbox (
-  message_id UUID PRIMARY KEY,
-  message_type TEXT NOT NULL,
-  message_body JSONB NOT NULL,
-  received_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  processed_at TIMESTAMP,
-  retry_count INTEGER NOT NULL DEFAULT 0,
-  next_retry_at TIMESTAMP,
-  error_message TEXT
-);
-
-CREATE INDEX idx_inbox_unprocessed ON inbox(received_at)
-  WHERE processed_at IS NULL;
+[WhizbangDbContext]
+public partial class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : DbContext(options) {
+  // DbSet properties and OnModelCreating are auto-generated in partial class
+}
 ```
 
 ---
@@ -199,496 +178,305 @@ CREATE INDEX idx_inbox_unprocessed ON inbox(received_at)
 **ECommerce.InventoryWorker/Receptors/ReserveInventoryReceptor.cs**:
 
 ```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
-using Whizbang.Core;
+using ECommerce.Contracts.Commands;
 using ECommerce.Contracts.Events;
-using Npgsql;
-using Dapper;
+using Whizbang.Core;
 
 namespace ECommerce.InventoryWorker.Receptors;
 
-public class ReserveInventoryReceptor : IReceptor<OrderCreated, InventoryReserved> {
-  private readonly NpgsqlConnection _db;
-  private readonly IMessageContext _context;
-  private readonly ILogger<ReserveInventoryReceptor> _logger;
+/// <summary>
+/// Handles ReserveInventoryCommand and publishes InventoryReservedEvent
+/// </summary>
+public class ReserveInventoryReceptor(IDispatcher dispatcher, ILogger<ReserveInventoryReceptor> logger) : IReceptor<ReserveInventoryCommand, InventoryReservedEvent> {
+  public async ValueTask<InventoryReservedEvent> HandleAsync(
+    ReserveInventoryCommand message,
+    CancellationToken cancellationToken = default) {
 
-  public ReserveInventoryReceptor(
-    NpgsqlConnection db,
-    IMessageContext context,
-    ILogger<ReserveInventoryReceptor> logger
-  ) {
-    _db = db;
-    _context = context;
-    _logger = logger;
+    logger.LogInformation(
+      "Reserving {Quantity} units of product {ProductId} for order {OrderId}",
+      message.Quantity,
+      message.ProductId,
+      message.OrderId);
+
+    // Check inventory availability (business logic would go here)
+    // In a real system, this would query a lens over the InventoryLevels perspective
+
+    // Reserve the inventory
+    var inventoryReserved = new InventoryReservedEvent {
+      OrderId = message.OrderId.Value.ToString(),
+      ProductId = message.ProductId.Value,
+      Quantity = message.Quantity,
+      ReservedAt = DateTime.UtcNow
+    };
+
+    // Publish the event
+    await dispatcher.PublishAsync(inventoryReserved);
+
+    logger.LogInformation(
+      "Inventory reserved for product {ProductId} in order {OrderId}",
+      message.ProductId,
+      message.OrderId);
+
+    return inventoryReserved;
   }
-
-  public async Task<InventoryReserved> HandleAsync(
-    OrderCreated @event,
-    CancellationToken ct = default
-  ) {
-    await using var tx = await _db.BeginTransactionAsync(ct);
-
-    try {
-      // Process each item in the order
-      foreach (var item in @event.Items) {
-        // 1. Check available stock
-        var inventory = await _db.QuerySingleOrDefaultAsync<InventoryRow>(
-          """
-          SELECT product_id, available_stock, reserved_stock, version
-          FROM inventory
-          WHERE product_id = @ProductId
-          FOR UPDATE  -- Row-level lock for concurrency
-          """,
-          new { ProductId = item.ProductId },
-          transaction: tx
-        );
-
-        if (inventory == null) {
-          throw new InvalidOperationException($"Product {item.ProductId} not found");
-        }
-
-        // 2. Check if sufficient stock
-        if (inventory.AvailableStock < item.Quantity) {
-          // Publish InventoryInsufficient event (compensation)
-          var insufficientEvent = new InventoryInsufficient(
-            OrderId: @event.OrderId,
-            ProductId: item.ProductId,
-            RequestedQuantity: item.Quantity,
-            AvailableStock: inventory.AvailableStock,
-            CheckedAt: DateTime.UtcNow
-          );
-
-          // Insert into outbox for publishing
-          await PublishEventAsync(insufficientEvent, tx, ct);
-
-          _logger.LogWarning(
-            "Insufficient inventory for order {OrderId}, product {ProductId}: requested {Requested}, available {Available}",
-            @event.OrderId,
-            item.ProductId,
-            item.Quantity,
-            inventory.AvailableStock
-          );
-
-          throw new InsufficientInventoryException(
-            item.ProductId,
-            item.Quantity,
-            inventory.AvailableStock
-          );
-        }
-
-        // 3. Reserve stock (optimistic concurrency via version)
-        var rowsAffected = await _db.ExecuteAsync(
-          """
-          UPDATE inventory
-          SET
-            available_stock = available_stock - @Quantity,
-            reserved_stock = reserved_stock + @Quantity,
-            last_updated = NOW(),
-            version = version + 1
-          WHERE product_id = @ProductId AND version = @Version
-          """,
-          new {
-            ProductId = item.ProductId,
-            Quantity = item.Quantity,
-            Version = inventory.Version
-          },
-          transaction: tx
-        );
-
-        if (rowsAffected == 0) {
-          // Optimistic concurrency violation - retry
-          throw new ConcurrencyException($"Inventory updated concurrently for product {item.ProductId}");
-        }
-
-        // 4. Create reservation record
-        await _db.ExecuteAsync(
-          """
-          INSERT INTO inventory_reservations (
-            reservation_id, order_id, product_id, quantity_reserved, status, created_at, expires_at
-          )
-          VALUES (@ReservationId, @OrderId, @ProductId, @Quantity, @Status, NOW(), NOW() + INTERVAL '15 minutes')
-          """,
-          new {
-            ReservationId = Guid.NewGuid().ToString("N"),
-            OrderId = @event.OrderId,
-            ProductId = item.ProductId,
-            Quantity = item.Quantity,
-            Status = "Reserved"
-          },
-          transaction: tx
-        );
-
-        // 5. Publish InventoryReserved event
-        var reservedEvent = new InventoryReserved(
-          OrderId: @event.OrderId,
-          ProductId: item.ProductId,
-          QuantityReserved: item.Quantity,
-          RemainingStock: inventory.AvailableStock - item.Quantity,
-          ReservedAt: DateTime.UtcNow
-        );
-
-        await PublishEventAsync(reservedEvent, tx, ct);
-
-        _logger.LogInformation(
-          "Reserved {Quantity} units of product {ProductId} for order {OrderId}, remaining stock: {RemainingStock}",
-          item.Quantity,
-          item.ProductId,
-          @event.OrderId,
-          inventory.AvailableStock - item.Quantity
-        );
-      }
-
-      await tx.CommitAsync(ct);
-
-      // Return first item's event (simplification for demo)
-      return new InventoryReserved(
-        OrderId: @event.OrderId,
-        ProductId: @event.Items[0].ProductId,
-        QuantityReserved: @event.Items[0].Quantity,
-        RemainingStock: 0,
-        ReservedAt: DateTime.UtcNow
-      );
-    } catch {
-      await tx.RollbackAsync(ct);
-      throw;
-    }
-  }
-
-  private async Task PublishEventAsync<TEvent>(
-    TEvent @event,
-    NpgsqlTransaction tx,
-    CancellationToken ct
-  ) where TEvent : IEvent {
-    await _db.ExecuteAsync(
-      """
-      INSERT INTO outbox (message_id, message_type, message_body, created_at)
-      VALUES (@MessageId, @MessageType, @MessageBody::jsonb, NOW())
-      """,
-      new {
-        MessageId = Guid.NewGuid(),
-        MessageType = typeof(TEvent).FullName,
-        MessageBody = System.Text.Json.JsonSerializer.Serialize(@event)
-      },
-      transaction: tx
-    );
-  }
-}
-
-public record InventoryRow(
-  string ProductId,
-  int AvailableStock,
-  int ReservedStock,
-  int Version
-);
-
-public class InsufficientInventoryException : Exception {
-  public InsufficientInventoryException(
-    string productId,
-    int requested,
-    int available
-  ) : base($"Insufficient inventory for {productId}: requested {requested}, available {available}") { }
-}
-
-public class ConcurrencyException : Exception {
-  public ConcurrencyException(string message) : base(message) { }
 }
 ```
 
 **Key patterns**:
-- ✅ **Row-Level Locking**: `FOR UPDATE` prevents concurrent stock deductions
-- ✅ **Optimistic Concurrency**: `version` column detects concurrent updates
-- ✅ **Compensation**: `InventoryInsufficient` event published on failure
-- ✅ **Transactional**: All operations (stock update + reservation + outbox) in one transaction
+- ✅ **`ValueTask<TResponse> HandleAsync(TMessage, CancellationToken)`** — the receptor contract
+- ✅ **No hand-rolled SQL**: stock state lives in the `InventoryLevels` perspective, updated from events
+- ✅ **Compensation**: a failure path would publish `InventoryReleasedEvent` instead
+- ✅ **Transactional**: event store append + outbox insert are atomic inside the framework
 
 ---
 
 ## Step 4: Perspective (Read Model)
 
-**ECommerce.InventoryWorker/Perspectives/InventorySummaryPerspective.cs**:
+Perspectives are **pure functions** — `Apply(currentData, event)` returns a new model. No I/O, no side effects; Whizbang's perspective runner handles loading, saving, and checkpointing.
+
+**Model** (**ECommerce.Contracts/Lenses/InventoryLevelDto.cs**):
+
+```csharp{title="Step 4: Perspective Model" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Perspective"]}
+using Whizbang;
+using Whizbang.Core;
+
+namespace ECommerce.Contracts.Lenses;
+
+[WhizbangSerializable]
+public record InventoryLevelDto {
+  [StreamId]
+  public Guid ProductId { get; init; }
+  public int Quantity { get; init; }
+  public int Reserved { get; init; }
+  public int Available { get; init; }
+  public DateTime LastUpdated { get; init; }
+}
+```
+
+**Perspective** (**ECommerce.InventoryWorker/Perspectives/InventoryLevelsPerspective.cs**, condensed):
 
 ```csharp{title="Step 4: Perspective (Read Model)" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Perspective"]}
-using Whizbang.Core;
 using ECommerce.Contracts.Events;
-using Npgsql;
-using Dapper;
+using ECommerce.Contracts.Lenses;
+using Whizbang.Core.Perspectives;
 
 namespace ECommerce.InventoryWorker.Perspectives;
 
-public class InventorySummaryPerspective :
-  IPerspectiveOf<InventoryReserved>,
-  IPerspectiveOf<InventoryInsufficient> {
+/// <summary>
+/// Materializes inventory events into InventoryLevelDto perspective.
+/// Pure functions - no I/O, no side effects, deterministic.
+/// </summary>
+public class InventoryLevelsPerspective :
+  IPerspectiveFor<InventoryLevelDto, ProductCreatedEvent, InventoryRestockedEvent, InventoryReservedEvent, InventoryAdjustedEvent> {
 
-  private readonly NpgsqlConnection _db;
-  private readonly ILogger<InventorySummaryPerspective> _logger;
-
-  public InventorySummaryPerspective(
-    NpgsqlConnection db,
-    ILogger<InventorySummaryPerspective> logger
-  ) {
-    _db = db;
-    _logger = logger;
+  /// <summary>New products start at 0 quantity.</summary>
+  public InventoryLevelDto Apply(InventoryLevelDto currentData, ProductCreatedEvent @event) {
+    return new InventoryLevelDto {
+      ProductId = @event.ProductId,
+      Quantity = 0,
+      Reserved = 0,
+      Available = 0,
+      LastUpdated = @event.CreatedAt
+    };
   }
 
-  // Handle InventoryReserved events
-  public async Task HandleAsync(
-    InventoryReserved @event,
-    CancellationToken ct = default
-  ) {
-    await _db.ExecuteAsync(
-      """
-      INSERT INTO inventory_summary (
-        product_id,
-        total_reservations,
-        total_reserved_quantity,
-        last_reservation_at
-      )
-      VALUES (@ProductId, 1, @Quantity, @ReservedAt)
-      ON CONFLICT (product_id) DO UPDATE SET
-        total_reservations = inventory_summary.total_reservations + 1,
-        total_reserved_quantity = inventory_summary.total_reserved_quantity + @Quantity,
-        last_reservation_at = @ReservedAt
-      """,
-      new {
-        ProductId = @event.ProductId,
-        Quantity = @event.QuantityReserved,
-        ReservedAt = @event.ReservedAt
-      }
-    );
-
-    _logger.LogInformation(
-      "Updated inventory summary for product {ProductId}",
-      @event.ProductId
-    );
+  /// <summary>Restock sets a new total; preserves reserved count.</summary>
+  public InventoryLevelDto Apply(InventoryLevelDto currentData, InventoryRestockedEvent @event) {
+    var reserved = currentData?.Reserved ?? 0;
+    return new InventoryLevelDto {
+      ProductId = @event.ProductId,
+      Quantity = @event.NewTotalQuantity,
+      Reserved = reserved,
+      Available = @event.NewTotalQuantity - reserved,
+      LastUpdated = @event.RestockedAt
+    };
   }
 
-  // Handle InventoryInsufficient events
-  public async Task HandleAsync(
-    InventoryInsufficient @event,
-    CancellationToken ct = default
-  ) {
-    await _db.ExecuteAsync(
-      """
-      INSERT INTO inventory_summary (
-        product_id,
-        total_insufficient_count,
-        last_insufficient_at
-      )
-      VALUES (@ProductId, 1, @CheckedAt)
-      ON CONFLICT (product_id) DO UPDATE SET
-        total_insufficient_count = inventory_summary.total_insufficient_count + 1,
-        last_insufficient_at = @CheckedAt
-      """,
-      new {
-        ProductId = @event.ProductId,
-        CheckedAt = @event.CheckedAt
-      }
-    );
+  /// <summary>Reservation increments the reserved count.</summary>
+  public InventoryLevelDto Apply(InventoryLevelDto currentData, InventoryReservedEvent @event) {
+    if (currentData == null) {
+      return null!; // PerspectiveRunner will handle null return (skip)
+    }
 
-    _logger.LogWarning(
-      "Recorded insufficient inventory for product {ProductId}",
-      @event.ProductId
-    );
+    var newReserved = currentData.Reserved + @event.Quantity;
+    return new InventoryLevelDto {
+      ProductId = currentData.ProductId,
+      Quantity = currentData.Quantity,
+      Reserved = newReserved,
+      Available = currentData.Quantity - newReserved,
+      LastUpdated = @event.ReservedAt
+    };
+  }
+
+  /// <summary>Manual adjustment (damaged goods, audits) sets a new total.</summary>
+  public InventoryLevelDto Apply(InventoryLevelDto currentData, InventoryAdjustedEvent @event) {
+    if (currentData == null) {
+      return null!;
+    }
+
+    return new InventoryLevelDto {
+      ProductId = currentData.ProductId,
+      Quantity = @event.NewTotalQuantity,
+      Reserved = currentData.Reserved,
+      Available = @event.NewTotalQuantity - currentData.Reserved,
+      LastUpdated = @event.AdjustedAt
+    };
   }
 }
 ```
 
-**Perspective schema**:
+:::updated
+There is no `IPerspectiveOf<TEvent>` interface with a `HandleAsync` that performs SQL. The real contract is `IPerspectiveFor<TModel, TEvent1, ..., TEventN>` (up to 20 event types) with pure `Apply(TModel currentData, TEvent eventData)` methods. Whizbang persists the returned model to a generated perspective table and tracks checkpoints for you.
+:::
 
-**ECommerce.InventoryWorker/Database/Migrations/004_CreateInventorySummaryTable.sql**:
+**Querying the read model — Lenses** (**ECommerce.InventoryWorker/Lenses/InventoryLens.cs**, condensed):
 
-```sql{title="Step 4: Perspective (Read Model) (2)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Perspective"]}
-CREATE TABLE IF NOT EXISTS inventory_summary (
-  product_id TEXT PRIMARY KEY,
-  total_reservations BIGINT NOT NULL DEFAULT 0,
-  total_reserved_quantity BIGINT NOT NULL DEFAULT 0,
-  total_insufficient_count BIGINT NOT NULL DEFAULT 0,
-  last_reservation_at TIMESTAMP,
-  last_insufficient_at TIMESTAMP
-);
+```csharp{title="Step 4: Lens Query" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Lens"]}
+using ECommerce.Contracts.Lenses;
+using Microsoft.EntityFrameworkCore;
+using Whizbang.Core.Lenses;
 
-CREATE INDEX idx_inventory_summary_last_reservation ON inventory_summary(last_reservation_at DESC);
+namespace ECommerce.InventoryWorker.Lenses;
+
+/// <summary>
+/// EF Core implementation of IInventoryLens for fast readonly queries.
+/// Uses ILensQuery abstraction with LINQ - zero reflection, AOT compatible.
+/// </summary>
+public class InventoryLens(ILensQuery<InventoryLevelDto> query) : IInventoryLens {
+
+  public async Task<InventoryLevelDto?> GetByProductIdAsync(Guid productId, CancellationToken cancellationToken = default) {
+    return await query.DefaultScope.GetByIdAsync(productId, cancellationToken);
+  }
+
+  public async Task<IReadOnlyList<InventoryLevelDto>> GetLowStockAsync(int threshold = 10, CancellationToken cancellationToken = default) {
+    var results = await query.DefaultScope.Query
+      .AsNoTracking()
+      .Where(row => row.Data.Quantity - row.Data.Reserved <= threshold)
+      .Select(row => row.Data)
+      .ToListAsync(cancellationToken);
+
+    return results.AsReadOnly();
+  }
+}
 ```
 
 **Why perspectives?**
 - ✅ **Denormalized Read Models**: Fast queries without joins
 - ✅ **Event-Driven Updates**: Automatically updated from events
-- ✅ **CQRS**: Separate read (perspective) from write (receptor) models
+- ✅ **CQRS**: Separate read (perspective + lens) from write (receptor) models
+- ✅ **Pure functions**: Trivially unit-testable, deterministic replay
 
 ---
 
 ## Step 5: Worker Configuration
 
-**ECommerce.InventoryWorker/Worker.cs**:
+**ECommerce.InventoryWorker/Program.cs** (condensed from the sample):
 
 ```csharp{title="Step 5: Worker Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Worker"]}
-using Whizbang.Core;
-
-namespace ECommerce.InventoryWorker;
-
-public class Worker : BackgroundService {
-  private readonly IWorkCoordinator _coordinator;
-  private readonly IDispatcher _dispatcher;
-  private readonly ILogger<Worker> _logger;
-
-  public Worker(
-    IWorkCoordinator coordinator,
-    IDispatcher dispatcher,
-    ILogger<Worker> logger
-  ) {
-    _coordinator = coordinator;
-    _dispatcher = dispatcher;
-    _logger = logger;
-  }
-
-  protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
-    _logger.LogInformation("Inventory Worker started");
-
-    while (!stoppingToken.IsCancellationRequested) {
-      try {
-        // 1. Claim work batch from inbox
-        var workBatch = await _coordinator.ProcessWorkBatchAsync(
-          instanceId: Guid.NewGuid(),
-          serviceName: "InventoryWorker",
-          hostName: Environment.MachineName,
-          processId: Environment.ProcessId,
-          metadata: null,
-          outboxCompletions: [],
-          outboxFailures: [],
-          inboxCompletions: [],
-          inboxFailures: [],
-          receptorCompletions: [],
-          receptorFailures: [],
-          perspectiveCompletions: [],
-          perspectiveFailures: [],
-          newOutboxMessages: [],
-          newInboxMessages: [],
-          renewOutboxLeaseIds: [],
-          renewInboxLeaseIds: [],
-          cancellationToken: stoppingToken
-        );
-
-        // 2. Process each inbox message
-        foreach (var inboxMessage in workBatch.ClaimedInboxMessages) {
-          var @event = DeserializeEvent(inboxMessage);
-          if (@event is OrderCreated orderCreated) {
-            await _dispatcher.DispatchAsync(orderCreated, stoppingToken);
-          }
-        }
-
-        // 3. Poll every 5 seconds
-        await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
-      } catch (Exception ex) when (ex is not OperationCanceledException) {
-        _logger.LogError(ex, "Error in worker loop");
-        await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
-      }
-    }
-
-    _logger.LogInformation("Inventory Worker stopped");
-  }
-
-  private IEvent DeserializeEvent(InboxMessage message) {
-    // Simplified deserialization (use JsonContextRegistry in production)
-    return System.Text.Json.JsonSerializer.Deserialize<OrderCreated>(
-      message.MessageBody.GetRawText()
-    )!;
-  }
-}
-```
-
-**Program.cs**:
-
-```csharp{title="Step 5: Worker Configuration (2)" description="Step 5: Worker Configuration" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Worker"]}
-using Whizbang.Core;
-using Whizbang.Data.Postgres;
-using Whizbang.Transports.AzureServiceBus;
-using Npgsql;
+using ECommerce.Contracts.Generated;
 using ECommerce.InventoryWorker;
+using ECommerce.InventoryWorker.Generated;
+using ECommerce.InventoryWorker.Lenses;
+using Whizbang.Core;
+using Whizbang.Core.Generated;
+using Whizbang.Core.Messaging;
+using Whizbang.Core.Observability;
+using Whizbang.Core.Routing;
+using Whizbang.Core.Workers;
+using Whizbang.Data.EFCore.Postgres;
+using Whizbang.Transports.AzureServiceBus;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// 1. Add Whizbang
-builder.Services.AddWhizbang(options => {
-  options.ServiceName = "InventoryWorker";
-  options.EnableInbox = true;
-  options.EnableOutbox = true;
-});
+builder.AddServiceDefaults();
 
-// 2. Add PostgreSQL
-builder.Services.AddScoped<NpgsqlConnection>(sp => {
-  var connectionString = builder.Configuration.GetConnectionString("InventoryDb");
-  return new NpgsqlConnection(connectionString);
-});
+var serviceBusConnection = builder.Configuration.GetConnectionString("servicebus")
+    ?? throw new InvalidOperationException("Azure Service Bus connection string 'servicebus' not found");
 
-// 3. Add Azure Service Bus
-builder.AddAzureServiceBus("messaging");
+// Register Azure Service Bus transport
+builder.Services.AddAzureServiceBusTransport(serviceBusConnection);
+builder.Services.AddAzureServiceBusHealthChecks();
 
-// 4. Add Worker
+// Observability + worker infrastructure
+builder.Services.AddSingleton<ITraceStore, InMemoryTraceStore>();
+builder.Services.AddSingleton<IServiceInstanceProvider, ServiceInstanceProvider>();
+builder.Services.AddSingleton<OrderedStreamProcessor>();
+
+// Unified Whizbang API with routing + EF Core Postgres driver
+// WithRouting() configures message routing; AddTransportConsumer() auto-generates subscriptions
+_ = builder.Services
+  .AddWhizbang()
+  .WithRouting(routing => {
+    routing
+      .OwnDomains("ecommerce.inventory.commands")
+      .SubscribeTo("ecommerce.products.events")
+      .Inbox.UseSharedTopic("inbox");
+  })
+  .WithEFCore<InventoryDbContext>()
+  .WithDriver.Postgres
+  .AddTransportConsumer();
+
+// Generated registrations: receptors, perspective runners, dispatcher
+builder.Services.AddReceptors();
+builder.Services.AddPerspectiveRunners();
+builder.Services.AddScoped<ECommerce.InventoryWorker.Perspectives.ProductCatalogPerspective>();
+builder.Services.AddScoped<ECommerce.InventoryWorker.Perspectives.InventoryLevelsPerspective>();
+builder.Services.AddWhizbangDispatcher();
+builder.Services.AddWhizbangLifecycleMessageDeserializer();
+
+// Lenses (readonly repositories over perspective tables)
+builder.Services.AddScoped<IProductLens, ProductLens>();
+builder.Services.AddScoped<IInventoryLens, InventoryLens>();
+
+// Perspective worker - processes perspective checkpoints
+builder.Services.AddOptions<PerspectiveWorkerOptions>()
+  .Bind(builder.Configuration.GetSection("PerspectiveWorker"));
+
+// AOT-compatible polymorphic event deserialization
+builder.Services.AddSingleton<IEventTypeProvider, ECommerce.Contracts.ECommerceEventTypeProvider>();
+
+builder.Services.AddHostedService<PerspectiveWorker>();
 builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();
 
-// Run migrations
-await host.MigrateDatabaseAsync();
+// Initialize Whizbang schema (Inbox/Outbox/EventStore + perspective tables)
+using (var scope = host.Services.CreateScope()) {
+  var dbContext = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
+  var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+  await dbContext.EnsureWhizbangDatabaseInitializedAsync(logger);
+}
 
-await host.RunAsync();
+host.Run();
 ```
+
+:::updated
+There is no hand-written work-claiming loop. `AddTransportConsumer()` registers the transport consumer worker that receives messages, dedupes via `wh_inbox`, and dispatches to receptors; `PerspectiveWorker` drains perspective checkpoints. The service's own `Worker` class in the sample is just a heartbeat logger.
+:::
 
 ---
 
 ## Step 6: Aspire Integration
 
-**Update ECommerce.AppHost/Program.cs**:
+**Update ECommerce.AppHost/Program.cs** (excerpt matching the sample):
 
 ```csharp{title="Step 6: Aspire Integration" description="**Update ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Aspire"]}
-var builder = DistributedApplication.CreateBuilder(args);
+var inventoryDb = postgres.AddDatabase("inventorydb");  // NEW
 
-// 1. PostgreSQL
-var postgres = builder.AddPostgres("postgres").WithPgAdmin();
-var ordersDb = postgres.AddDatabase("orders-db");
-var inventoryDb = postgres.AddDatabase("inventory-db");  // NEW
+// Topics + subscriptions for the inventory worker
+var productsTopic = messagingInfra.AddServiceBusTopic("products");
+productsTopic.AddServiceBusSubscription("sub-inventory-products");
 
-// 2. Azure Service Bus
-var serviceBus = builder.AddAzureServiceBus("messaging").RunAsEmulator();
+// Shared "inbox" topic for point-to-point commands, filtered per service
+var inboxTopic = messagingInfra.AddServiceBusTopic("inbox");
+inboxTopic.AddServiceBusSubscription("sub-inbox-inventory").WithDestinationFilter("inventory-service");
 
-// 3. Order Service
-var orderService = builder.AddProject<Projects.ECommerce_OrderService_API>("order-service")
-  .WithReference(ordersDb)
-  .WithReference(serviceBus);
-
-// 4. Inventory Worker (NEW)
-var inventoryWorker = builder.AddProject<Projects.ECommerce_InventoryWorker>("inventory-worker")
-  .WithReference(inventoryDb)
-  .WithReference(serviceBus);
-
-builder.Build().Run();
-```
-
-**appsettings.json**:
-
-```json{title="Step 6: Aspire Integration (2)" description="**appsettings." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Aspire"]}
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Whizbang": "Debug"
-    }
-  },
-  "ConnectionStrings": {
-    "InventoryDb": "Host=localhost;Database=inventory;Username=postgres;Password=postgres"
-  },
-  "Whizbang": {
-    "ServiceName": "InventoryWorker",
-    "Inbox": {
-      "Enabled": true,
-      "BatchSize": 100,
-      "PollingInterval": "00:00:05"
-    },
-    "Outbox": {
-      "Enabled": true,
-      "BatchSize": 100,
-      "PollingInterval": "00:00:05"
-    }
-  }
-}
+// Inventory Worker (NEW)
+var inventoryWorker = builder.AddProject("inventoryworker", "../ECommerce.InventoryWorker/ECommerce.InventoryWorker.csproj")
+    .WithReference(inventoryDb)
+    .WithReference(messagingInfra)
+    .WaitFor(inventoryDb)
+    .WaitFor(messagingInfra);
 ```
 
 ---
@@ -702,53 +490,45 @@ cd ECommerce.AppHost
 dotnet run
 ```
 
-### 2. Create Order (Triggers Inventory Reservation)
+### 2. Create Order (Triggers Inventory Flow)
 
 ```bash{title="Create Order (Triggers Inventory Reservation)" description="Create Order (Triggers Inventory Reservation)" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{
-    "customerId": "cust-123",
-    "items": [
-      { "productId": "prod-456", "quantity": 2, "unitPrice": 19.99 }
-    ],
-    "shippingAddress": {
-      "street": "123 Main St",
-      "city": "Springfield",
-      "state": "IL",
-      "zipCode": "62701",
-      "country": "USA"
-    }
+    "customerId": "0195b3f0-1234-7abc-8def-0123456789ab",
+    "lineItems": [
+      {
+        "productId": "0195b3f0-5678-7abc-8def-0123456789ab",
+        "productName": "Widget",
+        "quantity": 2,
+        "unitPrice": 19.99
+      }
+    ]
   }'
 ```
 
 ### 3. Observe Event Flow
 
 Check Aspire Dashboard:
-1. **Order Service**: `OrderCreated` event published to Service Bus
-2. **Service Bus**: Event routed to `OrderCreated` topic
-3. **Inventory Worker**: Receives event from inbox
-4. **Inventory Worker**: Processes event via `ReserveInventoryReceptor`
-5. **Service Bus**: `InventoryReserved` event published
+1. **Order Service**: `OrderCreatedEvent` published to Service Bus
+2. **Inventory Worker**: receives command via the shared `inbox` topic (dedup via `wh_inbox`)
+3. **Inventory Worker**: `ReserveInventoryReceptor` publishes `InventoryReservedEvent`
+4. **Perspective Worker**: `InventoryLevelsPerspective` updates the read model
 
 ### 4. Verify Database
 
 ```sql{title="Verify Database" description="Verify Database" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Database"]}
--- Check inventory (stock should be reduced)
-SELECT * FROM inventory WHERE product_id = 'prod-456';
+-- Check the event store
+SELECT stream_id, event_type FROM wh_event_store ORDER BY created_at DESC LIMIT 10;
 
--- Check reservations
-SELECT * FROM inventory_reservations WHERE product_id = 'prod-456';
-
--- Check perspective (read model)
-SELECT * FROM inventory_summary WHERE product_id = 'prod-456';
+-- Check the perspective read model (table generated for InventoryLevelDto)
+SELECT * FROM inventory_levels;
 ```
 
 **Expected**:
-- `inventory.available_stock` decreased by 2
-- `inventory.reserved_stock` increased by 2
-- New row in `inventory_reservations`
-- `inventory_summary.total_reservations` incremented
+- `InventoryReservedEvent` row in `wh_event_store`
+- `inventory_levels.reserved` incremented for the product
 
 ---
 
@@ -756,161 +536,123 @@ SELECT * FROM inventory_summary WHERE product_id = 'prod-456';
 
 ### Inbox Pattern (Exactly-Once Processing)
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Inbox Pattern - Exactly-Once Processing            │
-│                                                      │
-│  ┌──────────────────────────────────┐               │
-│  │  Azure Service Bus               │               │
-│  │  - Message delivered to worker   │               │
-│  └──────────────┬───────────────────┘               │
-│                 │                                    │
-│                 ▼                                    │
-│  ┌──────────────────────────────────┐               │
-│  │  PostgreSQL Transaction          │               │
-│  │                                   │               │
-│  │  1. INSERT INTO inbox (msg_id)   │ ← Dedupe!    │
-│  │  2. Process message (receptor)   │               │
-│  │  3. UPDATE inbox SET processed   │               │
-│  │                                   │               │
-│  │  COMMIT;                          │               │
-│  └──────────────────────────────────┘               │
-│                                                      │
-│  If duplicate message arrives:                      │
-│  - INSERT fails (unique constraint on msg_id)       │
-│  - Message skipped (already processed)              │
-└─────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph IP["Inbox Pattern - Exactly-Once Processing"]
+        ASB["Azure Service Bus<br/>- Message delivered to worker"]
+        TX["PostgreSQL (wh_inbox)<br/>1. INSERT message row ← Dedupe!<br/>2. Dispatch to receptor<br/>3. Mark complete"]
+        Dup["If duplicate message arrives:<br/>- INSERT is a no-op (message_id already seen)<br/>- Message skipped (already processed)"]
+
+        ASB --> TX
+        TX ~~~ Dup
+    end
+
+    class ASB layer-command
+    class TX layer-event
 ```
 
 **Benefits**:
 - ✅ **Exactly-Once**: Duplicate messages automatically skipped
 - ✅ **Idempotent**: Safe to retry failed messages
-- ✅ **Transactional**: Processing + inbox update atomic
+- ✅ **Zero boilerplate**: `wh_inbox` is created and managed by the framework
 
 ### Compensation (Saga Pattern)
 
+```mermaid
+flowchart TD
+    subgraph Success["Success Flow"]
+        direction LR
+        S1["OrderCreatedEvent"] --> S2["InventoryReservedEvent"] --> S3["PaymentProcessedEvent"] --> S4["ShipmentCreatedEvent"]
+    end
+
+    subgraph FailPay["Failure Flow (Payment Failed)"]
+        direction LR
+        P1["OrderCreatedEvent"] --> P2["InventoryReservedEvent"] --> P3["PaymentFailedEvent"] --> P4["InventoryReleasedEvent (compensation)"]
+    end
+
+    class S1,S2,S3,S4,P1,P2,P3 layer-event
+    class P4 layer-command
 ```
-Success Flow:
-OrderCreated → InventoryReserved → PaymentProcessed → ShipmentCreated
 
-Failure Flow (Insufficient Inventory):
-OrderCreated → InventoryInsufficient → CancelOrder (compensation)
+A compensation receptor subscribes to `PaymentFailedEvent` and publishes `InventoryReleasedEvent`:
 
-Failure Flow (Payment Failed):
-OrderCreated → InventoryReserved → PaymentFailed → ReleaseInventory (compensation)
-```
+```csharp{title="Compensation (Saga Pattern)" description="Compensation receptor sketch" category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Compensation", "Saga"]}
+public class ReleaseInventoryReceptor(IDispatcher dispatcher, ILogger<ReleaseInventoryReceptor> logger)
+  : IReceptor<PaymentFailedEvent, InventoryReleasedEvent> {
 
-**Compensation handler**:
+  public async ValueTask<InventoryReleasedEvent> HandleAsync(
+    PaymentFailedEvent message,
+    CancellationToken cancellationToken = default) {
 
-**ECommerce.InventoryWorker/Receptors/ReleaseInventoryReceptor.cs**:
+    logger.LogWarning("Payment failed for order {OrderId}; releasing reserved inventory", message.OrderId);
 
-```csharp{title="Compensation (Saga Pattern)" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Compensation", "Saga"]}
-public class ReleaseInventoryReceptor : IReceptor<PaymentFailed, InventoryReleased> {
-  public async Task<InventoryReleased> HandleAsync(
-    PaymentFailed @event,
-    CancellationToken ct = default
-  ) {
-    await using var tx = await _db.BeginTransactionAsync(ct);
+    // Look up the reservation for this order (via a lens over the reservations perspective),
+    // then publish the release event for each reserved product.
+    var released = new InventoryReleasedEvent {
+      OrderId = message.OrderId,
+      ProductId = /* product from reservation lookup */ default,
+      Quantity = /* reserved quantity */ 0,
+      ReleasedAt = DateTime.UtcNow
+    };
 
-    // 1. Find reservations for this order
-    var reservations = await _db.QueryAsync<ReservationRow>(
-      """
-      SELECT reservation_id, product_id, quantity_reserved
-      FROM inventory_reservations
-      WHERE order_id = @OrderId AND status = 'Reserved'
-      FOR UPDATE
-      """,
-      new { OrderId = @event.OrderId },
-      transaction: tx
-    );
-
-    foreach (var reservation in reservations) {
-      // 2. Return stock to available
-      await _db.ExecuteAsync(
-        """
-        UPDATE inventory
-        SET
-          available_stock = available_stock + @Quantity,
-          reserved_stock = reserved_stock - @Quantity
-        WHERE product_id = @ProductId
-        """,
-        new { reservation.ProductId, reservation.QuantityReserved },
-        transaction: tx
-      );
-
-      // 3. Mark reservation as released
-      await _db.ExecuteAsync(
-        """
-        UPDATE inventory_reservations
-        SET status = 'Released'
-        WHERE reservation_id = @ReservationId
-        """,
-        new { reservation.ReservationId },
-        transaction: tx
-      );
-    }
-
-    await tx.CommitAsync(ct);
-
-    return new InventoryReleased(@event.OrderId, DateTime.UtcNow);
+    await dispatcher.PublishAsync(released);
+    return released;
   }
 }
 ```
+
+The `InventoryLevelsPerspective` can then handle `InventoryReleasedEvent` with another pure `Apply` overload that decrements `Reserved`.
 
 ---
 
 ## Testing
 
-### Unit Test - Sufficient Stock
+Receptor unit tests use a recording `TestDispatcher` and `NullLogger` — no database required (see **tests/ECommerce.InventoryWorker.Tests**):
 
-```csharp{title="Unit Test - Sufficient Stock" description="Unit Test - Sufficient Stock" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Reserve Inventory" description="Unit Test - Reserve Inventory" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
-public async Task ReserveInventory_SufficientStock_ReservesAndPublishesEventAsync() {
+public async Task ReserveInventoryReceptor_ValidCommand_PublishesEventAsync() {
   // Arrange
-  var db = new MockNpgsqlConnection();
-  db.SeedInventory("prod-456", availableStock: 100, reservedStock: 0);
+  var dispatcher = new TestDispatcher();
+  var receptor = new ReserveInventoryReceptor(dispatcher, NullLogger<ReserveInventoryReceptor>.Instance);
 
-  var receptor = new ReserveInventoryReceptor(db, mockContext, mockLogger);
-  var @event = new OrderCreated(
-    OrderId: "order-123",
-    CustomerId: "cust-456",
-    Items: [new OrderItem("prod-456", 2, 19.99m, 39.98m)],
-    // ... other fields
-  );
+  var command = new ReserveInventoryCommand {
+    OrderId = OrderId.New(),
+    ProductId = ProductId.New(),
+    Quantity = 2
+  };
 
   // Act
-  var result = await receptor.HandleAsync(@event);
+  var result = await receptor.HandleAsync(command);
 
   // Assert
-  await Assert.That(result.QuantityReserved).IsEqualTo(2);
-  await Assert.That(result.RemainingStock).IsEqualTo(98);
-
-  var inventory = db.GetInventory("prod-456");
-  await Assert.That(inventory.AvailableStock).IsEqualTo(98);
-  await Assert.That(inventory.ReservedStock).IsEqualTo(2);
+  await Assert.That(result.Quantity).IsEqualTo(2);
+  await Assert.That(result.ProductId).IsEqualTo(command.ProductId.Value);
+  await Assert.That(dispatcher.PublishCount).IsEqualTo(1);
+  await Assert.That(dispatcher.PublishedMessages[0]).IsTypeOf<InventoryReservedEvent>();
 }
 ```
 
-### Unit Test - Insufficient Stock
+Perspective tests are even simpler — pure function in, model out:
 
-```csharp{title="Unit Test - Insufficient Stock" description="Unit Test - Insufficient Stock" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Perspective Apply" description="Unit Test - Perspective Apply" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
-public async Task ReserveInventory_InsufficientStock_ThrowsExceptionAsync() {
+public async Task InventoryLevelsPerspective_Reserve_IncrementsReservedAsync() {
   // Arrange
-  var db = new MockNpgsqlConnection();
-  db.SeedInventory("prod-456", availableStock: 1, reservedStock: 0);
+  var perspective = new InventoryLevelsPerspective();
+  var current = new InventoryLevelDto {
+    ProductId = TrackedGuid.NewMedo().Value, Quantity = 100, Reserved = 0, Available = 100, LastUpdated = DateTime.UtcNow
+  };
+  var @event = new InventoryReservedEvent {
+    OrderId = "order-1", ProductId = current.ProductId, Quantity = 2, ReservedAt = DateTime.UtcNow
+  };
 
-  var receptor = new ReserveInventoryReceptor(db, mockContext, mockLogger);
-  var @event = new OrderCreated(
-    OrderId: "order-123",
-    CustomerId: "cust-456",
-    Items: [new OrderItem("prod-456", 2, 19.99m, 39.98m)],
-    // ... other fields
-  );
+  // Act
+  var updated = perspective.Apply(current, @event);
 
-  // Act & Assert
-  await Assert.That(async () => await receptor.HandleAsync(@event))
-    .Throws<InsufficientInventoryException>();
+  // Assert
+  await Assert.That(updated.Reserved).IsEqualTo(2);
+  await Assert.That(updated.Available).IsEqualTo(98);
 }
 ```
 
@@ -919,22 +661,21 @@ public async Task ReserveInventory_InsufficientStock_ThrowsExceptionAsync() {
 ## Next Steps
 
 Continue to **[Payment Processing](payment-processing.md)** to:
-- Subscribe to `InventoryReserved` events
-- Implement payment gateway integration
-- Publish `PaymentProcessed` events
+- Handle `ProcessPaymentCommand`
+- Publish `PaymentProcessedEvent` / `PaymentFailedEvent`
 - Handle payment failures (compensation)
 
 ---
 
 ## Key Takeaways
 
-✅ **Inbox Pattern** - Exactly-once event processing with database deduplication
-✅ **Row-Level Locking** - `FOR UPDATE` prevents race conditions
-✅ **Optimistic Concurrency** - `version` column detects concurrent updates
-✅ **Compensation** - `InventoryInsufficient` event triggers order cancellation
-✅ **Perspectives** - Denormalized read models for fast queries
+✅ **Inbox Pattern** - Exactly-once processing via framework-managed `wh_inbox`
+✅ **Routing** - `WithRouting(...)` declares owned domains, subscriptions, and the shared inbox topic
+✅ **Pure Perspectives** - `IPerspectiveFor<TModel, TEvents...>` with pure `Apply` methods
+✅ **Lenses** - `ILensQuery<TModel>` for fast, typed, read-only queries
+✅ **Compensation** - `InventoryReleasedEvent` reverses reservations on failure
 ✅ **Saga Pattern** - Distributed transactions with compensating actions
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

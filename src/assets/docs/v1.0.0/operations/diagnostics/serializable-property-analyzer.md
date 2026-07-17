@@ -1,5 +1,8 @@
 ---
 title: 'Serializable Property Analyzer'
+pageType: troubleshooting
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   Roslyn analyzer that detects non-serializable properties on ICommand/IEvent types
   for AOT compatibility
@@ -15,6 +18,8 @@ codeReferences:
   - src/Whizbang.Generators/SerializablePropertyAnalyzer.cs
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Core/Attributes/WhizbangSerializableAttribute.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/SerializablePropertyAnalyzerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -29,6 +34,8 @@ This analyzer runs during compilation and checks:
 1. **Direct properties** on message types (`ICommand`, `IEvent`, or `[WhizbangSerializable]`)
 2. **Nested types** - recursively checks child type properties
 3. **Collection elements** - validates element types in arrays and generic collections
+
+Only **public** types are analyzed — non-public types can't be serialized by the generated JSON contexts anyway. Properties inherited from base classes are included in the check.
 
 ## Supported Diagnostics
 
@@ -63,6 +70,8 @@ public record CreateOrderCommand : ICommand {
 }
 ```
 
+Note that the analyzer flags non-generic interfaces only; a generic interface like `IDictionary<string, object>` is not flagged even though its `object` values would still fail AOT serialization at runtime — prefer concrete value types there too.
+
 ### Invalid (Causes Diagnostics)
 
 ```csharp{title="Invalid (Causes Diagnostics)" description="Invalid (Causes Diagnostics)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "C#", "Invalid", "Causes"]}
@@ -79,7 +88,7 @@ The analyzer recursively validates nested types:
 
 ```csharp{title="Nested Type Checking" description="The analyzer recursively validates nested types:" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Nested", "Type"]}
 public record OrderCreated : IEvent {
-  [StreamKey]
+  [StreamId]
   public Guid OrderId { get; init; }
   public CustomerInfo Customer { get; init; }  // Nested type checked
 }
@@ -116,12 +125,14 @@ public object LegacyData { get; init; }
 
 ### Project-Wide Suppression
 
-In your `.csproj`:
+In an `.editorconfig` (`NoWarn` does not suppress Error-severity diagnostics):
 
-```xml{title="Project-Wide Suppression" description="Project-Wide Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Wide", "Suppression"]}
-<PropertyGroup>
-  <NoWarn>$(NoWarn);WHIZ060;WHIZ061;WHIZ062;WHIZ063</NoWarn>
-</PropertyGroup>
+```ini{title="Project-Wide Suppression" description="Project-Wide Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Wide", "Suppression"]}
+[*.cs]
+dotnet_diagnostic.WHIZ060.severity = none
+dotnet_diagnostic.WHIZ061.severity = none
+dotnet_diagnostic.WHIZ062.severity = none
+dotnet_diagnostic.WHIZ063.severity = none
 ```
 
 ## Related Diagnostics
@@ -135,4 +146,4 @@ In your `.csproj`:
 
 - AOT Compatibility - AOT design principles
 - [Messages](../../fundamentals/messages/messages.md) - ICommand and IEvent documentation
-- [Source Generators](../../../drafts/metrics/overview.md) - How Whizbang uses source generation
+- [JSON Contexts](../../extending/source-generators/json-contexts.md) - How Whizbang generates AOT-compatible serialization

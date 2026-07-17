@@ -1,5 +1,8 @@
 ---
 title: Custom Health Checks
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Extensibility
 order: 6
@@ -8,8 +11,13 @@ description: >-
   custom services
 tags: 'health-checks, monitoring, kubernetes, readiness, liveness'
 codeReferences:
-  - src/Whizbang.Core/Workers/ITransportReadinessCheck.cs
+  - src/Whizbang.Core/Transports/ITransportReadinessCheck.cs
   - src/Whizbang.Core/Workers/DefaultTransportReadinessCheck.cs
+  - src/Whizbang.Core/HealthChecks/SubscriptionHealthCheck.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Transports/TransportReadinessCheckTests.cs
+  - tests/Whizbang.Core.Tests/Workers/DefaultTransportReadinessCheckTests.cs
+  - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -29,8 +37,10 @@ For built-in health checks, see [Health Checks](../../operations/infrastructure/
 
 | Component | Built-In Check | Custom Check |
 |-----------|---------------|--------------|
-| **Azure Service Bus** | ✅ Built-in | No customization needed |
-| **PostgreSQL** | ✅ Built-in | No customization needed |
+| **Azure Service Bus** | ✅ Built-in (`AzureServiceBusHealthCheck`) | No customization needed |
+| **RabbitMQ** | ✅ Built-in (`RabbitMQHealthCheck`) | No customization needed |
+| **PostgreSQL** | ✅ Built-in (`PostgresHealthCheck`) | No customization needed |
+| **Transport subscriptions** | ✅ Built-in (`SubscriptionHealthCheck`) | No customization needed |
 | **Redis** | ❌ Not included | ✅ Custom Redis check |
 | **Kafka** | ❌ Not included | ✅ Custom Kafka check |
 | **External APIs** | ❌ Not included | ✅ Custom HTTP check |
@@ -47,13 +57,15 @@ For built-in health checks, see [Health Checks](../../operations/infrastructure/
 
 ## IHealthCheck Interface
 
+Whizbang uses the standard ASP.NET Core health check abstraction (`Microsoft.Extensions.Diagnostics.HealthChecks`) - custom checks plug into the same pipeline as the built-in ones:
+
 ```csharp{title="IHealthCheck Interface" description="IHealthCheck Interface" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "IHealthCheck", "Interface"]}
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 public interface IHealthCheck {
   Task<HealthCheckResult> CheckHealthAsync(
     HealthCheckContext context,
-    CancellationToken ct = default
+    CancellationToken cancellationToken = default
   );
 }
 ```
@@ -62,6 +74,43 @@ public interface IHealthCheck {
 - **Healthy**: Service operational
 - **Degraded**: Service operational but impaired
 - **Unhealthy**: Service not operational
+
+---
+
+## Whizbang Extension Point: ITransportReadinessCheck
+
+Separate from HTTP health endpoints, Whizbang has its own **transport readiness** hook. The outbox publisher worker consults `ITransportReadinessCheck` to decide whether to publish messages or keep them in the outbox (with renewed leases) until the transport becomes available:
+
+```csharp{title="ITransportReadinessCheck Interface" description="Whizbang transport readiness extension point" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Readiness", "Transports"]}
+namespace Whizbang.Core.Transports;
+
+public interface ITransportReadinessCheck {
+  // Should be fast and lightweight - cache or circuit-break any network I/O
+  Task<bool> IsReadyAsync(CancellationToken cancellationToken = default);
+}
+```
+
+The default implementation, `DefaultTransportReadinessCheck` (namespace `Whizbang.Core.Workers`), always returns `true` - appropriate for in-process transports. Transport packages ship real implementations (e.g. `ServiceBusReadinessCheck`, `RabbitMQReadinessCheck`). Implement this interface when writing a [custom transport](custom-transports.md) that can lose connectivity:
+
+```csharp{title="Custom Readiness Check" description="Readiness check for a custom transport" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Readiness", "Transports"]}
+public class KafkaReadinessCheck : ITransportReadinessCheck {
+  private readonly IAdminClient _adminClient;
+
+  public KafkaReadinessCheck(IAdminClient adminClient) {
+    _adminClient = adminClient;
+  }
+
+  public Task<bool> IsReadyAsync(CancellationToken cancellationToken = default) {
+    cancellationToken.ThrowIfCancellationRequested();
+    try {
+      var metadata = _adminClient.GetMetadata(TimeSpan.FromSeconds(2));
+      return Task.FromResult(metadata.Brokers.Count > 0);
+    } catch (KafkaException) {
+      return Task.FromResult(false);
+    }
+  }
+}
+```
 
 ---
 
@@ -74,14 +123,14 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Confluent.Kafka;
 
 public class KafkaHealthCheck : IHealthCheck {
-  private readonly IProducer<string, string> _producer;
+  private readonly IAdminClient _adminClient;
   private readonly ILogger<KafkaHealthCheck> _logger;
 
   public KafkaHealthCheck(
-    IProducer<string, string> producer,
+    IAdminClient adminClient,
     ILogger<KafkaHealthCheck> logger
   ) {
-    _producer = producer;
+    _adminClient = adminClient;
     _logger = logger;
   }
 
@@ -91,7 +140,7 @@ public class KafkaHealthCheck : IHealthCheck {
   ) {
     try {
       // Get cluster metadata (verifies connectivity)
-      var metadata = _producer.GetMetadata(TimeSpan.FromSeconds(5));
+      var metadata = _adminClient.GetMetadata(TimeSpan.FromSeconds(5));
       var brokerCount = metadata.Brokers.Count;
 
       if (brokerCount == 0) {
@@ -182,25 +231,20 @@ public class PostgresHealthCheck : IHealthCheck {
     CancellationToken ct = default
   ) {
     try {
-      await using var conn = new NpgsqlConnection(_connectionString);
-
       // Set connection timeout
       var csBuilder = new NpgsqlConnectionStringBuilder(_connectionString) {
         Timeout = _timeoutSeconds
       };
-      conn.ConnectionString = csBuilder.ToString();
 
+      await using var conn = new NpgsqlConnection(csBuilder.ToString());
       await conn.OpenAsync(ct);
 
       // Execute simple query to verify connectivity
       await using var cmd = new NpgsqlCommand("SELECT 1", conn);
       await cmd.ExecuteScalarAsync(ct);
 
-      // Check connection pool stats
-      var poolStats = conn.GetConnectionState();
-
       return HealthCheckResult.Healthy(
-        $"PostgreSQL healthy (pool: {poolStats})"
+        $"PostgreSQL healthy (state: {conn.State})"
       );
 
     } catch (TimeoutException ex) {

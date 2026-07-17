@@ -1,22 +1,32 @@
 ---
 title: Custom Perspectives
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Extensibility
 order: 3
 description: >-
-  Advanced perspective patterns - time-travel, snapshots, caching, batching, and
-  custom storage backends
-tags: 'perspectives, read-models, custom-storage, time-travel, snapshots, caching'
+  Advanced perspective patterns - deletion actions, multi-stream aggregation,
+  rebuilds, and custom storage backends
+tags: 'perspectives, read-models, custom-storage, rebuild, multi-stream, apply-result'
 codeReferences:
-  - src/Whizbang.Core/IPerspectiveOf.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs
+  - src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
-  - src/Whizbang.Core/Messaging/PerspectiveCheckpointRecord.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveStoreTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveStoreDefaultsTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresPerspectiveStoreTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Perspectives
 
-**Custom perspectives** extend the basic `IPerspectiveOf<TEvent>` pattern with advanced capabilities like time-travel (event replay), snapshots, caching layers, batch processing, and custom storage backends.
+**Custom perspectives** extend the basic `IPerspectiveFor<TModel, TEvent>` pattern with advanced capabilities: deletion actions, multi-stream aggregation, operational rebuilds, and custom storage backends.
 
 :::note
 For basic perspective usage, see [Perspectives Guide](../../fundamentals/perspectives/perspectives.md). This guide focuses on **advanced customization patterns** for specialized scenarios.
@@ -26,896 +36,281 @@ For basic perspective usage, see [Perspectives Guide](../../fundamentals/perspec
 
 ## Why Custom Perspective Patterns?
 
-**Built-in `IPerspectiveOf<TEvent>` handles most cases**, but some scenarios benefit from custom patterns:
+**Built-in `IPerspectiveFor<TModel, TEvent...>` handles most cases**, but some scenarios benefit from the extended interfaces:
 
-| Scenario | Standard Perspective | Custom Pattern |
-|----------|---------------------|----------------|
+| Scenario | Standard Perspective | Extended Pattern |
+|----------|---------------------|------------------|
 | **Event → Read Model** | ✅ Perfect fit | No customization needed |
-| **Time-Travel Queries** | ❌ No built-in support | ✅ Checkpoint-based replay |
-| **Performance (Large Events)** | ❌ Full replay expensive | ✅ Snapshot + incremental |
-| **Caching Layer** | ❌ Database-only | ✅ In-memory + database |
-| **Batch Updates** | ❌ One-at-a-time | ✅ Batched for throughput |
-| **Custom Storage** | ❌ SQL-only | ✅ Custom backends (Redis, Elasticsearch) |
-| **Hierarchical Models** | ❌ Flat models | ✅ Parent-child relationships |
+| **Soft/Hard Deletes** | ❌ Apply always returns a model | ✅ `IPerspectiveWithActionsFor` + `ApplyResult<TModel>` |
+| **Cross-Stream Aggregation** | ❌ One model per stream | ✅ `IGlobalPerspectiveFor` with partition keys |
+| **Rebuild / Replay** | ❌ Not in Apply's job | ✅ `IPerspectiveRebuilder` (blue-green, in-place, per-stream) |
+| **Custom Storage** | Postgres (EF Core / Dapper) built in | ✅ Implement `IPerspectiveStore<TModel>` |
 
-**When to customize**:
-- ✅ Time-travel / event replay scenarios
-- ✅ High-frequency events (> 10K/sec per stream)
-- ✅ Large event streams (> 1M events)
-- ✅ Specialized storage (search engines, caches)
-- ✅ Complex read model requirements
-
-**When NOT to customize**:
-- ❌ Simple event → table updates
-- ❌ Low-volume scenarios (< 100 events/sec)
-- ❌ Standard SQL read models
+**Remember**: `Apply()` methods MUST stay pure - no I/O, no side effects, deterministic. All the patterns below keep that invariant; the framework (generated runners + `PerspectiveWorker`) owns loading, saving, checkpointing, and idempotency.
 
 ---
 
 ## Checkpoint System Overview
 
 :::note
-For comprehensive coverage of perspective checkpoints including automatic creation, fuzzy type matching, error tracking, and the complete 4-phase checkpoint system, see [Perspective Worker](../../operations/workers/perspective-worker.md).
+For comprehensive coverage of perspective processing - work claiming, cursor advancement, and error tracking - see [Perspective Worker](../../operations/workers/perspective-worker.md).
 :::
 
-**Core checkpoint concepts**:
+**Core concepts**:
 - **Event Store**: Immutable log of all events per stream
-- **Checkpoint**: Last processed event per (stream, perspective) pair
-- **Auto-Creation**: Checkpoints created automatically when events arrive (Phase 1)
-- **Fuzzy Matching**: Perspectives matched to events via regex patterns (Phase 2)
-- **Processing**: PerspectiveWorker polls and processes checkpoints (Phase 3)
-- **Error Tracking**: Failed checkpoints persist error messages (Phase 4)
+- **Cursor/Checkpoint**: Last processed event per (stream, perspective) pair, advanced by the framework
+- **Idempotency**: Generated runners persist `PerspectiveMetadata.EventId` with each row upsert; on re-run after a crash they skip events with IDs ≤ the persisted value
+- **Purity**: A Roslyn analyzer (`PerspectivePurityAnalyzer`) flags impure `Apply()` implementations at compile time
 
-See [Perspective Worker](../../operations/workers/perspective-worker.md) for detailed checkpoint lifecycle, sequence diagrams, and runtime behavior.
+You do **not** write checkpoint-tracking code in perspectives - the runner and worker handle it.
 
 ---
 
-## Custom Base Classes
+## Deletion Actions
 
-### Pattern 1: Checkpoint-Aware Perspective Base
+### Pattern 1: IPerspectiveWithActionsFor
 
-**Use Case**: Automatically track checkpoint after processing each event.
+**Use Case**: Events that should remove the read model row (soft delete or hard purge), not update it.
 
-```csharp{title="Pattern 1: Checkpoint-Aware Perspective Base" description="Use Case: Automatically track checkpoint after processing each event." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Checkpoint-Aware"]}
+```csharp{title="Pattern 1: Perspective With Actions" description="Return ApplyResult to express delete/purge operations" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "ApplyResult"]}
 using Whizbang.Core;
-using Whizbang.Core.Messaging;
-
-public abstract class CheckpointPerspective<TEvent> : IPerspectiveOf<TEvent> where TEvent : IEvent {
-  private readonly IWorkCoordinator _coordinator;
-  protected readonly ILogger Logger;
-
-  protected CheckpointPerspective(
-    IWorkCoordinator coordinator,
-    ILogger logger
-  ) {
-    _coordinator = coordinator;
-    Logger = logger;
-  }
-
-  public async Task UpdateAsync(TEvent @event, CancellationToken ct = default) {
-    // 1. Process event (implemented by subclass)
-    await ProcessEventAsync(@event, ct);
-
-    // 2. Update checkpoint automatically
-    await UpdateCheckpointAsync(@event, ct);
-
-    Logger.LogInformation(
-      "Processed {EventType} for stream {StreamId}, checkpoint updated to {EventId}",
-      typeof(TEvent).Name,
-      @event.StreamId,
-      @event.EventId
-    );
-  }
-
-  /// <summary>
-  /// Implement event processing logic here.
-  /// Checkpoint is updated automatically after success.
-  /// </summary>
-  protected abstract Task ProcessEventAsync(TEvent @event, CancellationToken ct);
-
-  /// <summary>
-  /// Get the perspective name for checkpoint tracking.
-  /// Default: class name. Override for custom names.
-  /// </summary>
-  protected virtual string GetPerspectiveName() => GetType().Name;
-
-  private async Task UpdateCheckpointAsync(TEvent @event, CancellationToken ct) {
-    var completion = new PerspectiveCheckpointCompletion {
-      StreamId = @event.StreamId,
-      PerspectiveName = GetPerspectiveName(),
-      LastEventId = @event.EventId,
-      Status = PerspectiveProcessingStatus.Completed
-    };
-
-    // Update checkpoint via work coordinator
-    await _coordinator.ProcessWorkBatchAsync(
-      instanceId: Guid.NewGuid(),
-      serviceName: "Perspective",
-      hostName: Environment.MachineName,
-      processId: Environment.ProcessId,
-      metadata: null,
-      outboxCompletions: [],
-      outboxFailures: [],
-      inboxCompletions: [],
-      inboxFailures: [],
-      receptorCompletions: [],
-      receptorFailures: [],
-      perspectiveCompletions: [completion],  // ← Update checkpoint
-      perspectiveFailures: [],
-      newOutboxMessages: [],
-      newInboxMessages: [],
-      renewOutboxLeaseIds: [],
-      renewInboxLeaseIds: [],
-      cancellationToken: ct
-    );
-  }
-}
-```
-
-**Usage**:
-```csharp{title="Pattern 1: Checkpoint-Aware Perspective Base - OrderCreated" description="Pattern 1: Checkpoint-Aware Perspective Base - OrderCreated" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Checkpoint-Aware"]}
-public record OrderCreated(
-  Guid StreamId,
-  Guid EventId,
-  Guid OrderId,
-  Guid CustomerId,
-  decimal Total
-) : IEvent;
-
-public class OrderSummaryPerspective : CheckpointPerspective<OrderCreated> {
-  private readonly IDbConnectionFactory _db;
-
-  public OrderSummaryPerspective(
-    IWorkCoordinator coordinator,
-    ILogger<OrderSummaryPerspective> logger,
-    IDbConnectionFactory db
-  ) : base(coordinator, logger) {
-    _db = db;
-  }
-
-  // Checkpoint updated automatically after ProcessEventAsync completes
-  protected override async Task ProcessEventAsync(
-    OrderCreated @event,
-    CancellationToken ct
-  ) {
-    await using var conn = _db.CreateConnection();
-    await conn.ExecuteAsync(
-      "INSERT INTO order_summaries (order_id, customer_id, total, status) VALUES (@OrderId, @CustomerId, @Total, 'Created')",
-      new { @event.OrderId, @event.CustomerId, @event.Total },
-      ct
-    );
-  }
-}
-```
-
-**Benefits**:
-- **Automatic Checkpoint Tracking**: No manual checkpoint management
-- **Time-Travel Ready**: Can replay from any checkpoint
-- **Consistent Pattern**: Same checkpoint logic across perspectives
-
----
-
-### Pattern 2: Snapshot Perspective Base
-
-**Use Case**: Periodic snapshots instead of full event replay for large streams.
-
-```csharp{title="Pattern 2: Snapshot Perspective Base" description="Use Case: Periodic snapshots instead of full event replay for large streams." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Snapshot"]}
-using Whizbang.Core;
-
-public abstract class SnapshotPerspective<TEvent, TSnapshot> : IPerspectiveOf<TEvent>
-  where TEvent : IEvent
-  where TSnapshot : class, new() {
-
-  private readonly IPerspectiveStore<TSnapshot> _store;
-  protected readonly ILogger Logger;
-
-  // Snapshot every N events (configurable)
-  protected virtual int SnapshotInterval => 100;
-
-  protected SnapshotPerspective(
-    IPerspectiveStore<TSnapshot> store,
-    ILogger logger
-  ) {
-    _store = store;
-    Logger = logger;
-  }
-
-  public async Task UpdateAsync(TEvent @event, CancellationToken ct = default) {
-    // 1. Load current snapshot (or create new)
-    var snapshot = await LoadSnapshotAsync(@event.StreamId.ToString(), ct)
-                   ?? new TSnapshot();
-
-    // 2. Apply event to snapshot
-    ApplyEvent(@event, snapshot);
-
-    // 3. Save updated snapshot
-    await _store.UpsertAsync(@event.StreamId.ToString(), snapshot, ct);
-
-    Logger.LogDebug(
-      "Applied {EventType} to snapshot for stream {StreamId}",
-      typeof(TEvent).Name,
-      @event.StreamId
-    );
-  }
-
-  /// <summary>
-  /// Apply event to snapshot (implement delta update).
-  /// </summary>
-  protected abstract void ApplyEvent(TEvent @event, TSnapshot snapshot);
-
-  /// <summary>
-  /// Load snapshot from store.
-  /// </summary>
-  protected virtual async Task<TSnapshot?> LoadSnapshotAsync(
-    string streamId,
-    CancellationToken ct
-  ) {
-    // IPerspectiveStore doesn't expose reads - this is write-only
-    // For reads, use a separate query service/lens
-    return new TSnapshot();  // Simplified for example
-  }
-}
-```
-
-**Usage**:
-```csharp{title="Pattern 2: Snapshot Perspective Base - OrderSnapshot" description="Pattern 2: Snapshot Perspective Base - OrderSnapshot" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Snapshot"]}
-public record OrderSnapshot {
-  public Guid OrderId { get; set; }
-  public Guid CustomerId { get; set; }
-  public decimal Total { get; set; }
-  public string Status { get; set; } = "Created";
-  public int EventCount { get; set; }  // Track events applied
-}
-
-public class OrderSnapshotPerspective : SnapshotPerspective<OrderCreated, OrderSnapshot> {
-  public OrderSnapshotPerspective(
-    IPerspectiveStore<OrderSnapshot> store,
-    ILogger<OrderSnapshotPerspective> logger
-  ) : base(store, logger) { }
-
-  protected override void ApplyEvent(OrderCreated @event, OrderSnapshot snapshot) {
-    // Delta update - only change what's new
-    snapshot.OrderId = @event.OrderId;
-    snapshot.CustomerId = @event.CustomerId;
-    snapshot.Total = @event.Total;
-    snapshot.Status = "Created";
-    snapshot.EventCount++;
-
-    Logger.LogInformation(
-      "Applied OrderCreated to snapshot, now at {EventCount} events",
-      snapshot.EventCount
-    );
-  }
-}
-```
-
-**Benefits**:
-- **Fast Rebuild**: Snapshot + recent events (not full replay)
-- **Performance**: O(recent events) instead of O(all events)
-- **Scalability**: Works with millions of events per stream
-
----
-
-## Time-Travel Perspectives
-
-### Pattern 3: Event Replay Perspective
-
-**Use Case**: Rebuild read model from event history for any point in time.
-
-```csharp{title="Pattern 3: Event Replay Perspective" description="Use Case: Rebuild read model from event history for any point in time." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Event"]}
-using Whizbang.Core;
-
-public class TimeravelOrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
-  private readonly IEventStore _eventStore;
-  private readonly IDbConnectionFactory _db;
-  private readonly ILogger<TimeravelOrderSummaryPerspective> _logger;
-
-  public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-    // Standard event processing
-    await using var conn = _db.CreateConnection();
-    await conn.ExecuteAsync(
-      "INSERT INTO order_summaries (...) VALUES (...)",
-      @event,
-      ct
-    );
-  }
-
-  /// <summary>
-  /// Rebuild read model from event history up to specific event.
-  /// Enables "what did the order look like at 2:00 PM yesterday?"
-  /// </summary>
-  public async Task RebuildToEventAsync(
-    Guid streamId,
-    Guid targetEventId,
-    CancellationToken ct = default
-  ) {
-    _logger.LogInformation(
-      "Rebuilding OrderSummary for stream {StreamId} up to event {EventId}",
-      streamId,
-      targetEventId
-    );
-
-    // 1. Clear existing read model for this stream
-    await ClearReadModelAsync(streamId, ct);
-
-    // 2. Replay events in order until target event
-    await foreach (var @event in _eventStore.GetEventsAsync<OrderCreated>(
-      streamId,
-      untilEventId: targetEventId,  // Stop at target
-      ct
-    )) {
-      await UpdateAsync(@event, ct);
-    }
-
-    _logger.LogInformation(
-      "Rebuilt OrderSummary for stream {StreamId} to event {EventId}",
-      streamId,
-      targetEventId
-    );
-  }
-
-  /// <summary>
-  /// Rebuild entire read model from scratch.
-  /// </summary>
-  public async Task RebuildAllAsync(CancellationToken ct = default) {
-    _logger.LogInformation("Rebuilding all OrderSummary read models");
-
-    // 1. Truncate read model table
-    await using var conn = _db.CreateConnection();
-    await conn.ExecuteAsync("TRUNCATE TABLE order_summaries", ct);
-
-    // 2. Replay all events
-    await foreach (var @event in _eventStore.GetAllEventsAsync<OrderCreated>(ct)) {
-      await UpdateAsync(@event, ct);
-    }
-
-    _logger.LogInformation("Rebuilt all OrderSummary read models");
-  }
-
-  private async Task ClearReadModelAsync(Guid streamId, CancellationToken ct) {
-    await using var conn = _db.CreateConnection();
-    await conn.ExecuteAsync(
-      "DELETE FROM order_summaries WHERE stream_id = @StreamId",
-      new { StreamId = streamId },
-      ct
-    );
-  }
-}
-```
-
-**Usage**:
-```csharp{title="Pattern 3: Event Replay Perspective (2)" description="Pattern 3: Event Replay Perspective" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Event"]}
-// Standard event processing
-await perspective.UpdateAsync(orderCreated, ct);
-
-// Time-travel: rebuild to specific event
-var specificEventId = Guid.Parse("...");  // Event from 2:00 PM yesterday
-await perspective.RebuildToEventAsync(orderId, specificEventId, ct);
-
-// Rebuild entire read model (after schema change)
-await perspective.RebuildAllAsync(ct);
-```
-
-**Use Cases**:
-- **Debugging**: What did the order look like when bug occurred?
-- **Auditing**: Reconstruct state at regulatory compliance checkpoint
-- **Schema Evolution**: Rebuild read model after adding new fields
-- **Testing**: Verify read model correctness by replaying production events
-
----
-
-## Performance Optimization
-
-### Pattern 4: Batching Perspective
-
-**Use Case**: Batch multiple events for single database roundtrip.
-
-```csharp{title="Pattern 4: Batching Perspective" description="Use Case: Batch multiple events for single database roundtrip." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Batching"]}
-using Whizbang.Core;
-using System.Threading.Channels;
-
-public class BatchingOrderSummaryPerspective : IPerspectiveOf<OrderCreated>, IAsyncDisposable {
-  private readonly IDbConnectionFactory _db;
-  private readonly ILogger<BatchingOrderSummaryPerspective> _logger;
-
-  private readonly Channel<OrderCreated> _eventQueue;
-  private readonly Task _batchProcessor;
-  private readonly CancellationTokenSource _cts;
-
-  // Batch settings
-  private const int BatchSize = 100;
-  private static readonly TimeSpan BatchTimeout = TimeSpan.FromMilliseconds(500);
-
-  public BatchingOrderSummaryPerspective(
-    IDbConnectionFactory db,
-    ILogger<BatchingOrderSummaryPerspective> logger
-  ) {
-    _db = db;
-    _logger = logger;
-
-    // Bounded channel for backpressure
-    _eventQueue = Channel.CreateBounded<OrderCreated>(new BoundedChannelOptions(10000) {
-      FullMode = BoundedChannelFullMode.Wait
-    });
-
-    _cts = new CancellationTokenSource();
-    _batchProcessor = Task.Run(() => ProcessBatchesAsync(_cts.Token));
-  }
-
-  public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-    // Queue event for batch processing
-    await _eventQueue.Writer.WriteAsync(@event, ct);
-  }
-
-  private async Task ProcessBatchesAsync(CancellationToken ct) {
-    var batch = new List<OrderCreated>(BatchSize);
-
-    while (!ct.IsCancellationRequested) {
-      try {
-        // Read up to BatchSize events or timeout
-        while (batch.Count < BatchSize) {
-          using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-          timeoutCts.CancelAfter(BatchTimeout);
-
-          try {
-            var @event = await _eventQueue.Reader.ReadAsync(timeoutCts.Token);
-            batch.Add(@event);
-          } catch (OperationCanceledException) {
-            // Timeout or cancellation - process what we have
-            break;
-          }
-        }
-
-        // Process batch if we have any events
-        if (batch.Count > 0) {
-          await ProcessBatchAsync(batch, ct);
-          batch.Clear();
-        }
-
-      } catch (Exception ex) when (ex is not OperationCanceledException) {
-        _logger.LogError(ex, "Error processing event batch");
-        await Task.Delay(TimeSpan.FromSeconds(1), ct);  // Backoff
-      }
-    }
-  }
-
-  private async Task ProcessBatchAsync(List<OrderCreated> events, CancellationToken ct) {
-    await using var conn = _db.CreateConnection();
-
-    // Single INSERT for entire batch
-    await conn.ExecuteAsync(
-      """
-      INSERT INTO order_summaries (order_id, customer_id, total, status, created_at)
-      VALUES (@OrderId, @CustomerId, @Total, 'Created', @CreatedAt)
-      ON CONFLICT (order_id) DO NOTHING
-      """,
-      events,  // ← Dapper executes once per item, but single roundtrip
-      ct
-    );
-
-    _logger.LogInformation(
-      "Processed batch of {Count} events",
-      events.Count
-    );
-  }
-
-  public async ValueTask DisposeAsync() {
-    // Shutdown gracefully
-    _eventQueue.Writer.Complete();
-    _cts.Cancel();
-
-    try {
-      await _batchProcessor.WaitAsync(TimeSpan.FromSeconds(10));
-    } catch (TimeoutException) {
-      _logger.LogWarning("Batch processor did not complete within timeout");
-    }
-
-    _cts.Dispose();
-  }
-}
-```
-
-**Performance**:
-- **Throughput**: 10x improvement (100 events/batch vs 1 event/call)
-- **Latency**: Slightly higher (max 500ms batching delay)
-- **Database Load**: 10x reduction in connections/queries
-
----
-
-### Pattern 5: Cached Perspective
-
-**Use Case**: In-memory cache + database for read-heavy scenarios.
-
-```csharp{title="Pattern 5: Cached Perspective" description="Use Case: In-memory cache + database for read-heavy scenarios." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Cached"]}
-using Whizbang.Core;
-using Microsoft.Extensions.Caching.Memory;
-
-public class CachedOrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
-  private readonly IDbConnectionFactory _db;
-  private readonly IMemoryCache _cache;
-  private readonly ILogger<CachedOrderSummaryPerspective> _logger;
-
-  private static readonly MemoryCacheEntryOptions CacheOptions = new() {
-    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5),
-    SlidingExpiration = TimeSpan.FromMinutes(1)
-  };
-
-  public CachedOrderSummaryPerspective(
-    IDbConnectionFactory db,
-    IMemoryCache cache,
-    ILogger<CachedOrderSummaryPerspective> logger
-  ) {
-    _db = db;
-    _cache = cache;
-    _logger = logger;
-  }
-
-  public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-    // 1. Update database (source of truth)
-    await using var conn = _db.CreateConnection();
-    await conn.ExecuteAsync(
-      "INSERT INTO order_summaries (order_id, customer_id, total, status) VALUES (@OrderId, @CustomerId, @Total, 'Created')",
-      new { @event.OrderId, @event.CustomerId, @event.Total },
-      ct
-    );
-
-    // 2. Update cache
-    var cacheKey = GetCacheKey(@event.OrderId);
-    var summary = new OrderSummary {
-      OrderId = @event.OrderId,
-      CustomerId = @event.CustomerId,
-      Total = @event.Total,
+using Whizbang.Core.Perspectives;
+
+public class OrderPerspective :
+    IPerspectiveFor<OrderView, OrderCreated>,               // Updates only
+    IPerspectiveFor<OrderView, OrderUpdated>,               // Updates only
+    IPerspectiveWithActionsFor<OrderView, OrderCancelled>,  // May delete
+    IPerspectiveWithActionsFor<OrderView, OrderArchived> {  // May purge
+
+  public OrderView Apply(OrderView currentData, OrderCreated eventData) =>
+    new OrderView {
+      OrderId = eventData.OrderId,
+      Total = eventData.Total,
       Status = "Created"
     };
 
-    _cache.Set(cacheKey, summary, CacheOptions);
+  public OrderView Apply(OrderView currentData, OrderUpdated eventData) =>
+    currentData with { Total = eventData.NewTotal };
 
-    _logger.LogDebug(
-      "Updated order summary for {OrderId} in database and cache",
-      @event.OrderId
-    );
-  }
+  public ApplyResult<OrderView> Apply(OrderView currentData, OrderCancelled eventData) =>
+    ApplyResult<OrderView>.Delete();   // Soft delete (DeletedAt set)
 
-  /// <summary>
-  /// Read from cache, fall back to database if cache miss.
-  /// </summary>
-  public async Task<OrderSummary?> GetAsync(Guid orderId, CancellationToken ct = default) {
-    var cacheKey = GetCacheKey(orderId);
-
-    // Try cache first
-    if (_cache.TryGetValue(cacheKey, out OrderSummary? cached)) {
-      _logger.LogDebug("Cache hit for order {OrderId}", orderId);
-      return cached;
-    }
-
-    // Cache miss - load from database
-    _logger.LogDebug("Cache miss for order {OrderId}, loading from database", orderId);
-
-    await using var conn = _db.CreateConnection();
-    var summary = await conn.QuerySingleOrDefaultAsync<OrderSummary>(
-      "SELECT * FROM order_summaries WHERE order_id = @OrderId",
-      new { OrderId = orderId },
-      ct
-    );
-
-    if (summary is not null) {
-      // Populate cache for next time
-      _cache.Set(cacheKey, summary, CacheOptions);
-    }
-
-    return summary;
-  }
-
-  private static string GetCacheKey(Guid orderId) => $"order-summary:{orderId}";
-}
-
-public record OrderSummary {
-  public Guid OrderId { get; set; }
-  public Guid CustomerId { get; set; }
-  public decimal Total { get; set; }
-  public string Status { get; set; } = string.Empty;
+  public ApplyResult<OrderView> Apply(OrderView currentData, OrderArchived eventData) =>
+    ApplyResult<OrderView>.Purge();    // Hard delete (row removed)
 }
 ```
 
-**Performance**:
-- **Cache Hit Rate**: 95%+ for read-heavy workloads
-- **Latency**: ~1µs (cache) vs ~5ms (database)
-- **Database Load**: 95% reduction in reads
+`ApplyResult<TModel>` supports:
+- Returning an updated model (implicit conversion from `TModel`)
+- Soft delete via `ApplyResult<TModel>.Delete()`
+- Hard delete via `ApplyResult<TModel>.Purge()`
+- No change via `ApplyResult<TModel>.None()`
+
+A perspective class can freely mix `IPerspectiveFor<TModel, TEvent>` (update-only events) and `IPerspectiveWithActionsFor<TModel, TEvent>` (events that may delete).
+
+---
+
+## Multi-Stream (Global) Perspectives
+
+### Pattern 2: IGlobalPerspectiveFor
+
+**Use Case**: Aggregate events from many streams into one model per **partition key** (e.g., per-customer order statistics).
+
+```csharp{title="Pattern 2: Multi-Stream Perspective" description="Aggregate events across streams by partition key" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Multi-Stream"]}
+using Whizbang.Core;
+using Whizbang.Core.Perspectives;
+
+public record CustomerOrderStats {
+  [StreamId]
+  public Guid CustomerId { get; init; }
+  public int OrderCount { get; init; }
+  public decimal TotalSpent { get; init; }
+}
+
+public class CustomerStatsPerspective :
+    IGlobalPerspectiveFor<CustomerOrderStats, Guid, OrderCreated> {
+
+  // Extracts the partition - like Marten's Identity() method.
+  // MUST be pure: deterministic, no side effects.
+  public Guid GetPartitionKey(OrderCreated eventData) => eventData.CustomerId;
+
+  // Applies the event to the model for that partition. MUST be pure.
+  public CustomerOrderStats Apply(CustomerOrderStats currentData, OrderCreated eventData) =>
+    currentData with {
+      CustomerId = eventData.CustomerId,
+      OrderCount = currentData.OrderCount + 1,
+      TotalSpent = currentData.TotalSpent + eventData.Total
+    };
+}
+```
+
+Storage-wise, global perspectives use the partition-key members of `IPerspectiveStore<TModel>` (`GetByPartitionKeyAsync` / `UpsertByPartitionKeyAsync`). Partition keys can be `Guid`, `string`, `int`, or any `notnull` type.
+
+---
+
+## Rebuilds and Replay
+
+### Pattern 3: IPerspectiveRebuilder
+
+**Use Case**: Rebuild read models after a schema change, a bug fix in `Apply()`, or data corruption - without writing replay plumbing yourself.
+
+```csharp{title="Pattern 3: Perspective Rebuilds" description="Operational rebuild modes via IPerspectiveRebuilder" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Rebuild"]}
+public class PerspectiveOperations {
+  private readonly IPerspectiveRebuilder _rebuilder;
+
+  public PerspectiveOperations(IPerspectiveRebuilder rebuilder) {
+    _rebuilder = rebuilder;
+  }
+
+  public async Task RebuildAfterSchemaChangeAsync(CancellationToken ct) {
+    // Blue-green: rebuild into a shadow table, swap when complete
+    RebuildResult result = await _rebuilder.RebuildBlueGreenAsync("OrderSummaryPerspective", ct);
+
+    // In-place: truncate and replay into the live table
+    result = await _rebuilder.RebuildInPlaceAsync("OrderSummaryPerspective", ct);
+
+    // Selected streams only: surgical repair
+    result = await _rebuilder.RebuildStreamsAsync(
+      "OrderSummaryPerspective",
+      streamIds: [orderId1, orderId2],
+      ct
+    );
+
+    // Progress of a running rebuild
+    RebuildStatus? status = await _rebuilder.GetRebuildStatusAsync("OrderSummaryPerspective", ct);
+  }
+}
+```
+
+The rebuilder resolves generated runners from `IPerspectiveRunnerRegistry`, queries streams from the event store, and replays events through the same `Apply()` code paths as live processing - so a rebuild always matches live behavior.
+
+**Use Cases**:
+- **Schema Evolution**: Rebuild read models after adding new fields
+- **Bug Fixes**: Reproject after correcting an `Apply()` method
+- **Debugging/Auditing**: Reconstruct state from the immutable event log
+- **Surgical Repair**: Rebuild only the affected streams
 
 ---
 
 ## Custom Storage Backends
 
-### Pattern 6: IPerspectiveStore Implementation
+### Pattern 4: IPerspectiveStore Implementation
 
-**Use Case**: Custom storage backend (Redis, Elasticsearch, etc.).
+**Use Case**: Store read models somewhere other than the built-in Postgres stores (Redis, Elasticsearch, MongoDB, etc.).
 
-```csharp{title="Pattern 6: IPerspectiveStore Implementation" description="Use Case: Custom storage backend (Redis, Elasticsearch, etc." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "IPerspectiveStore"]}
+`IPerspectiveStore<TModel>` is keyed by **`Guid` stream IDs** (and generic partition keys for global perspectives). Several overloads (scope, metadata, physical fields) have default implementations that delegate to the simpler members, so a minimal backend implements:
+
+```csharp{title="Pattern 4: IPerspectiveStore Implementation" description="Redis-backed perspective store" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "IPerspectiveStore"]}
 using Whizbang.Core.Perspectives;
 using StackExchange.Redis;
 using System.Text.Json;
 
-/// <summary>
-/// Redis-based perspective store for high-performance read models.
-/// </summary>
 public class RedisPerspectiveStore<TModel> : IPerspectiveStore<TModel> where TModel : class {
   private readonly IConnectionMultiplexer _redis;
-  private readonly ILogger<RedisPerspectiveStore<TModel>> _logger;
-  private readonly string _keyPrefix;
+  private readonly string _keyPrefix = typeof(TModel).Name.ToLowerInvariant();
 
   private static readonly JsonSerializerOptions JsonOptions = new() {
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
   };
 
-  public RedisPerspectiveStore(
-    IConnectionMultiplexer redis,
-    ILogger<RedisPerspectiveStore<TModel>> logger,
-    string? keyPrefix = null
-  ) {
+  public RedisPerspectiveStore(IConnectionMultiplexer redis) {
     _redis = redis;
-    _logger = logger;
-    _keyPrefix = keyPrefix ?? typeof(TModel).Name.ToLowerInvariant();
   }
 
-  public async Task UpsertAsync(
-    string id,
-    TModel model,
-    CancellationToken ct = default
-  ) {
-    var db = _redis.GetDatabase();
-    var key = GetRedisKey(id);
+  public async Task<TModel?> GetByStreamIdAsync(Guid streamId, CancellationToken cancellationToken = default) {
+    var json = await _redis.GetDatabase().StringGetAsync($"{_keyPrefix}:{streamId}");
+    return json.IsNullOrEmpty ? null : JsonSerializer.Deserialize<TModel>(json!, JsonOptions);
+  }
 
-    // Serialize model to JSON
+  public async Task UpsertAsync(Guid streamId, TModel model, CancellationToken cancellationToken = default) {
     var json = JsonSerializer.Serialize(model, JsonOptions);
-
-    // Store in Redis with expiration
-    await db.StringSetAsync(
-      key,
-      json,
-      expiry: TimeSpan.FromHours(24)  // TTL for read models
-    );
-
-    _logger.LogDebug(
-      "Upserted {ModelType} with id {Id} to Redis",
-      typeof(TModel).Name,
-      id
-    );
+    await _redis.GetDatabase().StringSetAsync($"{_keyPrefix}:{streamId}", json);
   }
 
-  /// <summary>
-  /// Get model from Redis (not part of IPerspectiveStore, but useful for reads).
-  /// </summary>
-  public async Task<TModel?> GetAsync(string id, CancellationToken ct = default) {
-    var db = _redis.GetDatabase();
-    var key = GetRedisKey(id);
+  public Task UpsertWithPhysicalFieldsAsync(
+      Guid streamId, TModel model, IDictionary<string, object?> physicalFieldValues,
+      PerspectiveScope? scope = null, CancellationToken cancellationToken = default) =>
+    UpsertAsync(streamId, model, cancellationToken);  // Redis has no split columns
 
-    var json = await db.StringGetAsync(key);
-    if (json.IsNullOrEmpty) {
-      return null;
-    }
-
-    return JsonSerializer.Deserialize<TModel>(json!, JsonOptions);
+  public async Task<TModel?> GetByPartitionKeyAsync<TPartitionKey>(
+      TPartitionKey partitionKey, CancellationToken cancellationToken = default)
+      where TPartitionKey : notnull {
+    var json = await _redis.GetDatabase().StringGetAsync($"{_keyPrefix}:pk:{partitionKey}");
+    return json.IsNullOrEmpty ? null : JsonSerializer.Deserialize<TModel>(json!, JsonOptions);
   }
 
-  private string GetRedisKey(string id) => $"{_keyPrefix}:{id}";
+  public async Task UpsertByPartitionKeyAsync<TPartitionKey>(
+      TPartitionKey partitionKey, TModel model, CancellationToken cancellationToken = default)
+      where TPartitionKey : notnull {
+    var json = JsonSerializer.Serialize(model, JsonOptions);
+    await _redis.GetDatabase().StringSetAsync($"{_keyPrefix}:pk:{partitionKey}", json);
+  }
+
+  public Task FlushAsync(CancellationToken cancellationToken = default) =>
+    Task.CompletedTask;  // Redis writes are already committed
+
+  public async Task PurgeAsync(Guid streamId, CancellationToken cancellationToken = default) =>
+    await _redis.GetDatabase().KeyDeleteAsync($"{_keyPrefix}:{streamId}");
+
+  public async Task PurgeByPartitionKeyAsync<TPartitionKey>(
+      TPartitionKey partitionKey, CancellationToken cancellationToken = default)
+      where TPartitionKey : notnull =>
+    await _redis.GetDatabase().KeyDeleteAsync($"{_keyPrefix}:pk:{partitionKey}");
 }
 ```
 
-**Usage**:
-```csharp{title="Pattern 6: IPerspectiveStore Implementation -" description="Pattern 6: IPerspectiveStore Implementation -" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "IPerspectiveStore"]}
-// Register Redis perspective store
+**Registration**:
+```csharp{title="Custom Store Registration" description="Register a custom perspective store" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "IPerspectiveStore"]}
 builder.Services.AddSingleton<IConnectionMultiplexer>(
   ConnectionMultiplexer.Connect("localhost:6379")
 );
-builder.Services.AddSingleton<IPerspectiveStore<OrderSummary>, RedisPerspectiveStore<OrderSummary>>();
-
-// Use in perspective
-public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
-  private readonly IPerspectiveStore<OrderSummary> _store;
-
-  public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-    var summary = new OrderSummary {
-      OrderId = @event.OrderId,
-      CustomerId = @event.CustomerId,
-      Total = @event.Total,
-      Status = "Created"
-    };
-
-    // Store in Redis (via IPerspectiveStore abstraction)
-    await _store.UpsertAsync(@event.OrderId.ToString(), summary, ct);
-  }
-}
+builder.Services.AddSingleton(typeof(IPerspectiveStore<>), typeof(RedisPerspectiveStore<>));
 ```
+
+:::warning
+The metadata-persisting `UpsertAsync` overloads are how generated runners make projection runs idempotent across worker crashes (they record the last applied `EventId` per row). A custom store that drops metadata still works - the default interface implementations fall back to "apply all events" - but loses that crash-window optimization. Implement the metadata overloads for production backends.
+:::
 
 **Benefits**:
 - **Storage Flexibility**: Redis, Elasticsearch, MongoDB, etc.
-- **Abstraction**: Perspectives don't know storage details
-- **Testability**: Mock IPerspectiveStore for unit tests
-
----
-
-## Advanced Patterns
-
-### Pattern 7: Hierarchical Perspective
-
-**Use Case**: Parent-child read models (order → order items).
-
-```csharp{title="Pattern 7: Hierarchical Perspective" description="Use Case: Parent-child read models (order → order items)." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Hierarchical"]}
-using Whizbang.Core;
-
-public class OrderDetailsPerspective :
-  IPerspectiveOf<OrderCreated>,
-  IPerspectiveOf<OrderItemAdded> {
-
-  private readonly IDbConnectionFactory _db;
-
-  public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-    await using var conn = _db.CreateConnection();
-
-    // Insert parent record
-    await conn.ExecuteAsync(
-      "INSERT INTO order_details (order_id, customer_id, total, status) VALUES (@OrderId, @CustomerId, @Total, 'Created')",
-      new { @event.OrderId, @event.CustomerId, @event.Total },
-      ct
-    );
-  }
-
-  public async Task UpdateAsync(OrderItemAdded @event, CancellationToken ct = default) {
-    await using var conn = _db.CreateConnection();
-
-    // Insert child record
-    await conn.ExecuteAsync(
-      "INSERT INTO order_detail_items (order_id, product_id, quantity, unit_price) VALUES (@OrderId, @ProductId, @Quantity, @UnitPrice)",
-      new { @event.OrderId, @event.ProductId, @event.Quantity, @event.UnitPrice },
-      ct
-    );
-
-    // Update parent aggregate
-    await conn.ExecuteAsync(
-      "UPDATE order_details SET total = total + (@Quantity * @UnitPrice) WHERE order_id = @OrderId",
-      new { @event.OrderId, @event.Quantity, @event.UnitPrice },
-      ct
-    );
-  }
-}
-```
-
-**Schema**:
-```sql{title="Pattern 7: Hierarchical Perspective (2)" description="Pattern 7: Hierarchical Perspective" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Hierarchical"]}
-CREATE TABLE order_details (
-    order_id UUID PRIMARY KEY,
-    customer_id UUID NOT NULL,
-    total DECIMAL(10,2) NOT NULL,
-    status VARCHAR(50) NOT NULL
-);
-
-CREATE TABLE order_detail_items (
-    order_item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    order_id UUID NOT NULL REFERENCES order_details(order_id),
-    product_id UUID NOT NULL,
-    quantity INT NOT NULL,
-    unit_price DECIMAL(10,2) NOT NULL
-);
-```
-
----
-
-### Pattern 8: Transformation Perspective
-
-**Use Case**: Transform events before storing (enrich, filter, aggregate).
-
-```csharp{title="Pattern 8: Transformation Perspective" description="Use Case: Transform events before storing (enrich, filter, aggregate)." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Transformation"]}
-using Whizbang.Core;
-
-public class EnrichedOrderPerspective : IPerspectiveOf<OrderCreated> {
-  private readonly IDbConnectionFactory _db;
-  private readonly ICustomerService _customerService;
-  private readonly ILogger<EnrichedOrderPerspective> _logger;
-
-  public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-    // 1. Enrich event with customer data
-    var customer = await _customerService.GetCustomerAsync(@event.CustomerId, ct);
-
-    // 2. Transform and store enriched data
-    await using var conn = _db.CreateConnection();
-    await conn.ExecuteAsync(
-      """
-      INSERT INTO enriched_orders (
-          order_id, customer_id, customer_name, customer_email, customer_tier,
-          total, status, created_at
-      ) VALUES (
-          @OrderId, @CustomerId, @CustomerName, @CustomerEmail, @CustomerTier,
-          @Total, 'Created', @CreatedAt
-      )
-      """,
-      new {
-        @event.OrderId,
-        @event.CustomerId,
-        CustomerName = customer.FullName,       // ← Enriched
-        CustomerEmail = customer.Email,         // ← Enriched
-        CustomerTier = customer.LoyaltyTier,    // ← Enriched
-        @event.Total,
-        @event.CreatedAt
-      },
-      ct
-    );
-
-    _logger.LogInformation(
-      "Enriched order {OrderId} with customer data for {CustomerName}",
-      @event.OrderId,
-      customer.FullName
-    );
-  }
-}
-```
+- **Abstraction**: Perspectives don't know storage details - `Apply()` stays pure
+- **Testability**: Fake `IPerspectiveStore` for unit tests
 
 ---
 
 ## Testing Custom Perspectives
 
-### Testing Checkpoint Perspectives
+Because `Apply()` methods are pure functions, perspective tests need no mocks, no database, and no framework setup:
 
-```csharp{title="Testing Checkpoint Perspectives" description="Testing Checkpoint Perspectives" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Checkpoint"]}
-public class CheckpointPerspectiveTests {
+```csharp{title="Testing Pure Apply Methods" description="Perspective tests are pure function tests" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Testing", "Perspectives"]}
+public class OrderPerspectiveTests {
   [Test]
-  public async Task UpdateAsync_UpdatesCheckpointAfterProcessingAsync() {
-    // Arrange
-    var mockCoordinator = CreateMockWorkCoordinator();
-    var mockDb = CreateMockDb();
-    var logger = new NullLogger<OrderSummaryPerspective>();
+  public async Task Apply_OrderCreated_InitializesModelAsync() {
+    var perspective = new OrderPerspective();
+    var @event = new OrderCreated {
+      OrderId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+      Total = 99.99m
+    };
 
-    var perspective = new OrderSummaryPerspective(mockCoordinator, logger, mockDb);
+    var result = perspective.Apply(new OrderView(), @event);
 
-    var @event = new OrderCreated(
-      StreamId: Guid.NewGuid(),
-      EventId: Guid.NewGuid(),
-      OrderId: Guid.NewGuid(),
-      CustomerId: Guid.NewGuid(),
-      Total: 99.99m
-    );
+    await Assert.That(result.Status).IsEqualTo("Created");
+    await Assert.That(result.Total).IsEqualTo(99.99m);
+  }
 
-    // Act
-    await perspective.UpdateAsync(@event);
+  [Test]
+  public async Task Apply_OrderCancelled_ReturnsDeleteActionAsync() {
+    var perspective = new OrderPerspective();
+    var current = new OrderView { Status = "Created" };
 
-    // Assert - checkpoint updated
-    var checkpoints = mockCoordinator.GetPerspectiveCheckpoints();
-    await Assert.That(checkpoints).HasCount().EqualTo(1);
-    await Assert.That(checkpoints[0].StreamId).IsEqualTo(@event.StreamId);
-    await Assert.That(checkpoints[0].LastEventId).IsEqualTo(@event.EventId);
-    await Assert.That(checkpoints[0].PerspectiveName).IsEqualTo("OrderSummaryPerspective");
+    ApplyResult<OrderView> result = perspective.Apply(current, new OrderCancelled());
+
+    await Assert.That(result.Action).IsEqualTo(ModelAction.Delete);
   }
 }
 ```
 
-### Testing Time-Travel Perspectives
-
-```csharp{title="Testing Time-Travel Perspectives" description="Testing Time-Travel Perspectives" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Time-Travel"]}
-public class TimeravelPerspectiveTests {
-  [Test]
-  public async Task RebuildToEventAsync_ReplaysEventsUpToTargetAsync() {
-    // Arrange
-    var mockEventStore = CreateMockEventStore(eventCount: 10);
-    var mockDb = CreateMockDb();
-    var logger = new NullLogger<TimeravelOrderSummaryPerspective>();
-
-    var perspective = new TimeravelOrderSummaryPerspective(mockEventStore, mockDb, logger);
-
-    var streamId = Guid.NewGuid();
-    var targetEventId = mockEventStore.GetEventId(streamId, eventIndex: 5);  // Event #5
-
-    // Act - rebuild to event #5 (should process events 1-5)
-    await perspective.RebuildToEventAsync(streamId, targetEventId);
-
-    // Assert - only 5 events processed
-    var summaries = await mockDb.QueryAsync<OrderSummary>(
-      "SELECT * FROM order_summaries WHERE stream_id = @StreamId",
-      new { StreamId = streamId }
-    );
-
-    await Assert.That(summaries).HasCount().EqualTo(5);  // Not 10!
-  }
-}
-```
+For storage backends, run the same contract tests the built-in stores use (upsert-then-get roundtrips, version increments, purge idempotency) against your implementation.
 
 ---
 
@@ -923,29 +318,26 @@ public class TimeravelPerspectiveTests {
 
 ### DO ✅
 
-- ✅ **Track checkpoints** for time-travel scenarios
-- ✅ **Use snapshots** for large event streams (> 1M events)
-- ✅ **Batch updates** for high-throughput scenarios (> 10K events/sec)
-- ✅ **Cache read models** for read-heavy workloads
-- ✅ **Make perspectives idempotent** (same event = same result)
-- ✅ **Test time-travel scenarios** (rebuild from any point)
-- ✅ **Log checkpoint progress** for debugging
+- ✅ **Keep Apply pure** - no I/O, no `DateTime.UtcNow`, no side effects (the purity analyzer enforces this)
+- ✅ **Use `[StreamId]`** on the model's identity property (required for runner generation)
+- ✅ **Use `ApplyResult` factory methods** for deletes instead of "tombstone" model flags
+- ✅ **Use `IPerspectiveRebuilder`** for replays instead of hand-rolled truncate-and-loop code
+- ✅ **Implement metadata overloads** in custom stores for crash-window idempotency
+- ✅ **Test Apply methods as pure functions** - no mocks needed
 
 ### DON'T ❌
 
 - ❌ Store state in perspective instances (stateless only)
-- ❌ Skip checkpoint updates (breaks time-travel)
-- ❌ Replay all events for every query (use snapshots)
-- ❌ Block perspective processing (async all the way)
-- ❌ Ignore idempotency (duplicate events will happen)
-- ❌ Mix read and write logic in perspectives
+- ❌ Perform database writes inside `Apply()` (that's the store's job)
+- ❌ Track checkpoints manually (the framework owns cursors)
+- ❌ Mix read/query logic into perspectives (use lenses/queries for reads)
 
 ---
 
 ## Further Reading
 
 **Workers**:
-- [Perspective Worker](../../operations/workers/perspective-worker.md) - **Comprehensive checkpoint lifecycle and 4-phase system**
+- [Perspective Worker](../../operations/workers/perspective-worker.md) - Checkpoint lifecycle and processing
 - [Execution Lifecycle](../../operations/workers/execution-lifecycle.md) - Startup/shutdown coordination
 - [Database Readiness](../../operations/workers/database-readiness.md) - Dependency coordination
 
@@ -971,4 +363,4 @@ New to perspectives? Start with the user guide:
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2025-12-21*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

@@ -1,5 +1,8 @@
 ---
 title: Monitoring & Observability
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Advanced Topics
 order: 6
@@ -11,7 +14,13 @@ codeReferences:
   - src/Whizbang.Core/Observability/WhizbangActivitySource.cs
   - src/Whizbang.Core/Observability/WhizbangMetrics.cs
   - src/Whizbang.Core/Observability/DispatcherMetrics.cs
+  - src/Whizbang.Core/Observability/TableStatisticsMetrics.cs
   - src/Whizbang.Core/HealthChecks/SubscriptionHealthCheck.cs
+testReferences:
+  - tests/Whizbang.Observability.Tests/WhizbangActivitySourceTests.cs
+  - tests/Whizbang.Core.Tests/Observability/TableStatisticsMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/DispatcherMetricsTests.cs
+  - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -62,35 +71,45 @@ builder.Services.AddApplicationInsightsTelemetryProcessor<FilterHealthChecksTele
 ### Structured Logging
 
 ```csharp{title="Structured Logging" description="Structured Logging" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Structured", "Logging"]}
-public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-  private readonly ILogger<CreateOrderReceptor> _logger;
+public class CreateOrderReceptor(
+  IDispatcher dispatcher,
+  ILogger<CreateOrderReceptor> logger) : IReceptor<CreateOrderCommand, OrderCreatedEvent> {
 
-  public async Task<OrderCreated> HandleAsync(
-    CreateOrder command,
-    CancellationToken ct = default
+  public async ValueTask<OrderCreatedEvent> HandleAsync(
+    CreateOrderCommand command,
+    CancellationToken cancellationToken = default
   ) {
-    using (_logger.BeginScope(new Dictionary<string, object> {
-      ["OrderId"] = orderId,
+    using (logger.BeginScope(new Dictionary<string, object> {
+      ["OrderId"] = command.OrderId,
       ["CustomerId"] = command.CustomerId
     })) {
-      _logger.LogInformation(
+      logger.LogInformation(
         "Creating order for customer {CustomerId} with {ItemCount} items",
         command.CustomerId,
-        command.Items.Length
+        command.LineItems.Count
       );
 
       try {
         // Process order...
+        var orderCreated = new OrderCreatedEvent {
+          OrderId = command.OrderId,
+          CustomerId = command.CustomerId,
+          LineItems = command.LineItems,
+          TotalAmount = command.TotalAmount,
+          CreatedAt = DateTime.UtcNow
+        };
 
-        _logger.LogInformation(
+        await dispatcher.PublishAsync(orderCreated);
+
+        logger.LogInformation(
           "Order {OrderId} created successfully with total amount {TotalAmount:C}",
-          orderId,
-          totalAmount
+          command.OrderId,
+          command.TotalAmount
         );
 
-        return new OrderCreated { OrderId = orderId, TotalAmount = totalAmount };
+        return orderCreated;
       } catch (Exception ex) {
-        _logger.LogError(
+        logger.LogError(
           ex,
           "Failed to create order for customer {CustomerId}",
           command.CustomerId
@@ -160,7 +179,7 @@ requests
 builder.Services.AddOpenTelemetry()
   .WithMetrics(metrics => {
     metrics
-      .AddMeter("Whizbang.*")
+      .AddMeter("Whizbang.*")  // Wildcard subscribes all Whizbang meters
       .AddAspNetCoreInstrumentation()
       .AddHttpClientInstrumentation()
       .AddPrometheusExporter();
@@ -168,6 +187,8 @@ builder.Services.AddOpenTelemetry()
 
 app.MapPrometheusScrapingEndpoint();  // /metrics endpoint
 ```
+
+The `Whizbang.*` wildcard picks up the library's meters, including `Whizbang.Dispatcher`, `Whizbang.WorkCoordinator`, `Whizbang.Perspectives`, `Whizbang.Transport`, `Whizbang.Lifecycle`, `Whizbang.DeadLetters`, and `Whizbang.TableStatistics` (queue depth / table size gauges). Instrument names follow the `whizbang.<component>.<measurement>` convention, e.g. `whizbang.dispatcher.send.duration`, `whizbang.work_coordinator.process_batch.duration`, `whizbang.queue.estimated_depth`. Add your own app meters explicitly (e.g. `.AddMeter("ECommerce.OrderService")`).
 
 ### Custom Metrics
 
@@ -177,7 +198,8 @@ app.MapPrometheusScrapingEndpoint();  // /metrics endpoint
 using System.Diagnostics.Metrics;
 
 public class OrderMetrics {
-  private static readonly Meter Meter = new("Whizbang.OrderService");
+  // Use your app's namespace, not "Whizbang.*" - that prefix belongs to the library's meters
+  private static readonly Meter Meter = new("ECommerce.OrderService");
 
   private static readonly Counter<long> OrdersCreated = Meter.CreateCounter<long>(
     "orders_created_total",
@@ -211,15 +233,21 @@ public class OrderMetrics {
 **Usage**:
 
 ```csharp{title="Custom Metrics (2)" description="Custom Metrics" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Custom", "Metrics"]}
-public async Task<OrderCreated> HandleAsync(
-  CreateOrder command,
-  CancellationToken ct = default
+public async ValueTask<OrderCreatedEvent> HandleAsync(
+  CreateOrderCommand command,
+  CancellationToken cancellationToken = default
 ) {
   // Process order...
 
-  OrderMetrics.RecordOrderCreated(totalAmount);
+  OrderMetrics.RecordOrderCreated(command.TotalAmount);
 
-  return new OrderCreated { OrderId = orderId, TotalAmount = totalAmount };
+  return new OrderCreatedEvent {
+    OrderId = command.OrderId,
+    CustomerId = command.CustomerId,
+    LineItems = command.LineItems,
+    TotalAmount = command.TotalAmount,
+    CreatedAt = DateTime.UtcNow
+  };
 }
 ```
 
@@ -257,111 +285,70 @@ rate(orders_created_total[1m]) * 60
 
 ## Distributed Tracing
 
-### Activity (W3C Trace Context)
+### Register Whizbang Activity Sources
 
-**CreateOrderReceptor.cs**:
+Whizbang emits OpenTelemetry spans through named `ActivitySource`s (see `WhizbangActivitySource`). Register them with your tracer provider:
 
-```csharp{title="Activity (W3C Trace Context)" description="**CreateOrderReceptor." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Activity", "W3C"]}
-public async Task<OrderCreated> HandleAsync(
-  CreateOrder command,
-  CancellationToken ct = default
-) {
-  using var activity = Activity.Current?.Source.StartActivity("CreateOrder");
-  activity?.SetTag("order.customer_id", command.CustomerId);
-  activity?.SetTag("order.item_count", command.Items.Length);
-
-  try {
-    // Process order...
-
-    activity?.SetTag("order.total_amount", totalAmount);
-    activity?.SetStatus(ActivityStatusCode.Ok);
-
-    return new OrderCreated { OrderId = orderId, TotalAmount = totalAmount };
-  } catch (Exception ex) {
-    activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-    throw;
-  }
-}
+```csharp{title="Register Whizbang Activity Sources" description="OpenTelemetry tracing setup with Whizbang sources" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Tracing", "OpenTelemetry"]}
+builder.Services.AddOpenTelemetry()
+  .WithTracing(tracing => {
+    tracing
+      .AddSource("Whizbang.Execution")   // Dispatch activities (parent spans)
+      .AddSource("Whizbang.Tracing")     // Handler traces (child spans for [WhizbangTrace])
+      .AddSource("Whizbang.Transport")   // Transport operations
+      .AddSource("Whizbang.Hosting")     // Hosting/infrastructure operations
+      .AddAspNetCoreInstrumentation()
+      .AddHttpClientInstrumentation();
+  });
 ```
 
-### Propagate Trace Context
+Span emission is controlled by `TracingOptions` (`options.Tracing.EnableOpenTelemetry`, on by default, plus `Verbosity` / `Components`) - see [Tracing](../observability/tracing) and [Verbosity Levels](../observability/verbosity-levels).
 
-**MessageEnvelope.cs**:
+### Trace Context Propagation Is Automatic
 
-```csharp{title="Propagate Trace Context" description="**MessageEnvelope." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Propagate", "Trace"]}
-public record MessageEnvelope {
-  public required string MessageId { get; init; }
-  public required string MessageType { get; init; }
-  public required Dictionary<string, string> Headers { get; init; }
+You do **not** hand-roll trace propagation with Whizbang. Every message travels inside a `MessageEnvelope` (`Whizbang.Core.Observability`) that carries `MessageId`, per-service `MessageHop`s with `CorrelationId` and `CausationId`, and the dispatch context - across the outbox, the transport, and the inbox. The consuming side restores the context before your receptors run, so spans from different services join the same trace.
 
-  public static MessageEnvelope CreateFromActivity(string messageId, string messageType) {
-    var headers = new Dictionary<string, string>();
+### Custom Spans in Receptors
 
-    // Propagate W3C Trace Context
-    if (Activity.Current != null) {
-      headers["traceparent"] = Activity.Current.Id ?? string.Empty;
-      if (!string.IsNullOrEmpty(Activity.Current.TraceStateString)) {
-        headers["tracestate"] = Activity.Current.TraceStateString;
-      }
+Add your own child spans with a private `ActivitySource` when you need business-level detail:
+
+```csharp{title="Custom Spans in Receptors" description="App-level ActivitySource for business spans" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Activity", "W3C"]}
+public class CreateOrderReceptor(IDispatcher dispatcher) : IReceptor<CreateOrderCommand, OrderCreatedEvent> {
+  private static readonly ActivitySource Source = new("ECommerce.OrderService");
+
+  public async ValueTask<OrderCreatedEvent> HandleAsync(
+    CreateOrderCommand command,
+    CancellationToken cancellationToken = default
+  ) {
+    using var activity = Source.StartActivity("CreateOrder");
+    activity?.SetTag("order.customer_id", command.CustomerId.ToString());
+    activity?.SetTag("order.item_count", command.LineItems.Count);
+
+    try {
+      // Process order...
+      var orderCreated = new OrderCreatedEvent {
+        OrderId = command.OrderId,
+        CustomerId = command.CustomerId,
+        LineItems = command.LineItems,
+        TotalAmount = command.TotalAmount,
+        CreatedAt = DateTime.UtcNow
+      };
+
+      await dispatcher.PublishAsync(orderCreated);
+
+      activity?.SetTag("order.total_amount", command.TotalAmount);
+      activity?.SetStatus(ActivityStatusCode.Ok);
+
+      return orderCreated;
+    } catch (Exception ex) {
+      activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+      throw;
     }
-
-    return new MessageEnvelope {
-      MessageId = messageId,
-      MessageType = messageType,
-      Headers = headers
-    };
   }
 }
 ```
 
-**ServiceBusPublisher.cs**:
-
-```csharp{title="Propagate Trace Context (2)" description="**ServiceBusPublisher." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Propagate", "Trace"]}
-public async Task PublishAsync(object @event, CancellationToken ct = default) {
-  var envelope = MessageEnvelope.CreateFromActivity(
-    messageId: Guid.NewGuid().ToString(),
-    messageType: @event.GetType().Name
-  );
-
-  var message = new ServiceBusMessage(JsonSerializer.SerializeToUtf8Bytes(@event)) {
-    MessageId = envelope.MessageId,
-    Subject = envelope.MessageType
-  };
-
-  // Propagate trace context in message properties
-  foreach (var header in envelope.Headers) {
-    message.ApplicationProperties[header.Key] = header.Value;
-  }
-
-  await _sender.SendMessageAsync(message, ct);
-}
-```
-
-**ServiceBusProcessor.cs**:
-
-```csharp{title="Propagate Trace Context (3)" description="**ServiceBusProcessor." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Propagate", "Trace"]}
-private async Task ProcessMessageAsync(ProcessMessageEventArgs args) {
-  // Extract trace context from message
-  var traceparent = args.Message.ApplicationProperties.GetValueOrDefault("traceparent") as string;
-
-  Activity? activity = null;
-  if (!string.IsNullOrEmpty(traceparent)) {
-    activity = Activity.Current?.Source.StartActivity(
-      "ProcessMessage",
-      ActivityKind.Consumer,
-      traceparent
-    );
-  }
-
-  try {
-    // Process message...
-
-    await args.CompleteMessageAsync(args.Message);
-  } finally {
-    activity?.Dispose();
-  }
-}
-```
+Remember to register the app-level source too: `tracing.AddSource("ECommerce.OrderService")`. Because Whizbang already created the parent activity for the dispatch, your span nests inside the distributed trace automatically.
 
 ---
 
@@ -403,6 +390,19 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions {
 });
 ```
 
+### Built-In Whizbang Health Checks
+
+Whizbang packages register named checks on the standard health-check pipeline automatically:
+
+| Check name | Package | Reports |
+|------------|---------|---------|
+| `subscriptions` | Whizbang.Core | Transport subscription state (`Degraded` when some subscriptions are down, `Unhealthy` when all are) |
+| `whizbang_postgres` | Whizbang.Data.Dapper.Postgres | Postgres storage connectivity |
+| `azure_servicebus` | Whizbang.Transports.AzureServiceBus | Azure Service Bus connectivity |
+| `rabbitmq` | Whizbang.Transports.RabbitMQ (opt-in via `AddRabbitMQHealthChecks()`) | RabbitMQ connectivity |
+
+The `subscriptions` check is tagged `transport`, so you can include it in a readiness predicate with `check => check.Tags.Contains("transport")`.
+
 ### Custom Health Check
 
 **OrderServiceHealthCheck.cs**:
@@ -419,9 +419,9 @@ public class OrderServiceHealthCheck : IHealthCheck {
       // Check database connectivity
       var count = await _db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM orders LIMIT 1");
 
-      // Check outbox backlog
+      // Check outbox backlog (Whizbang's internal outbox table)
       var outboxBacklog = await _db.ExecuteScalarAsync<int>(
-        "SELECT COUNT(*) FROM outbox WHERE processed_at IS NULL"
+        "SELECT COUNT(*) FROM wh_outbox WHERE processed_at IS NULL"
       );
 
       if (outboxBacklog > 10000) {
@@ -579,7 +579,7 @@ groups:
           description: "P95 latency is {{ $value }}s over the last 5 minutes"
 
       - alert: OutboxBacklog
-        expr: outbox_backlog > 10000
+        expr: whizbang_queue_estimated_depth{queue_name="outbox"} > 10000
         for: 10m
         labels:
           severity: warning
@@ -676,21 +676,31 @@ using BenchmarkDotNet.Running;
 [SimpleJob(warmupCount: 3, iterationCount: 10)]
 public class CreateOrderBenchmark {
   private CreateOrderReceptor _receptor = null!;
-  private CreateOrder _command = null!;
+  private CreateOrderCommand _command = null!;
 
   [GlobalSetup]
   public void Setup() {
-    _receptor = new CreateOrderReceptor(Mock.Of<IDbConnection>());
-    _command = new CreateOrder {
-      CustomerId = "cust-123",
-      Items = [
-        new OrderItem { ProductId = "prod-456", Quantity = 2, UnitPrice = 19.99m }
-      ]
+    _receptor = new CreateOrderReceptor(
+      new TestDispatcher(),  // recording IDispatcher fake
+      NullLogger<CreateOrderReceptor>.Instance);
+
+    _command = new CreateOrderCommand {
+      OrderId = OrderId.New(),
+      CustomerId = CustomerId.New(),
+      LineItems = [
+        new OrderLineItem {
+          ProductId = ProductId.New(),
+          ProductName = "Widget",
+          Quantity = 2,
+          UnitPrice = 19.99m
+        }
+      ],
+      TotalAmount = 39.98m
     };
   }
 
   [Benchmark]
-  public async Task<OrderCreated> CreateOrder() {
+  public async Task<OrderCreatedEvent> CreateOrder() {
     return await _receptor.HandleAsync(_command);
   }
 }

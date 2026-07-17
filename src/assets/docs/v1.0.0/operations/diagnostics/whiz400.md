@@ -1,5 +1,8 @@
 ---
 title: 'WHIZ400: Invalid Type Argument for ILensQuery'
+pageType: troubleshooting
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   Error diagnostic when Query<T>() or GetByIdAsync<T>() is called with an invalid type argument on multi-generic ILensQuery
 category: Diagnostics
@@ -14,6 +17,9 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/LensQueryTypeArgumentAnalyzer.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresLensQuery.cs
+  - src/Whizbang.Data.EFCore.Postgres/MultiModelScopedAccess.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/LensQueryTypeArgumentAnalyzerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -119,29 +125,31 @@ var result = query.Query<InvalidType>();
 Without compile-time validation, invalid type arguments would cause runtime `ArgumentException`:
 
 ```
-ArgumentException: Type 'Product' is not valid for this ILensQuery<Order, Customer>.
-Valid types are: Order, Customer
+ArgumentException: Type 'Product' is not valid. Valid types: Order, Customer
 ```
 
 The WHIZ400 analyzer catches these errors during compilation, providing immediate feedback in your IDE and preventing runtime failures.
 
 ## Runtime Behavior
 
-Even without the analyzer, the runtime implementation validates type arguments:
+Even without the analyzer, the runtime implementation validates type arguments. Multi-generic lens queries delegate to `MultiModelScopedAccess<T1, T2, ...>`, which type-checks the argument against each registered type parameter:
 
 ```csharp{title="Runtime Behavior" description="Even without the analyzer, the runtime implementation validates type arguments:" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Runtime", "Behavior"]}
+// MultiModelScopedAccess<T1, T2> (2-model case)
 public IQueryable<PerspectiveRow<T>> Query<T>() where T : class {
   if (typeof(T) == typeof(T1)) {
-    return (IQueryable<PerspectiveRow<T>>)(object)_context.Set<PerspectiveRow<T1>>().AsNoTracking();
+    return (IQueryable<PerspectiveRow<T>>)(object)MultiModelScopeHelper.GetQuery<T1>(context, _filterInfo);
   }
+
   if (typeof(T) == typeof(T2)) {
-    return (IQueryable<PerspectiveRow<T>>)(object)_context.Set<PerspectiveRow<T2>>().AsNoTracking();
+    return (IQueryable<PerspectiveRow<T>>)(object)MultiModelScopeHelper.GetQuery<T2>(context, _filterInfo);
   }
-  throw new ArgumentException(
-      $"Type '{typeof(T).Name}' is not valid for this ILensQuery<{typeof(T1).Name}, {typeof(T2).Name}>. " +
-      $"Valid types are: {typeof(T1).Name}, {typeof(T2).Name}");
+
+  throw new ArgumentException($"Type '{typeof(T).Name}' is not valid. Valid types: {typeof(T1).Name}, {typeof(T2).Name}");
 }
 ```
+
+`GetByIdAsync<T>()` performs the same type check and throws `ArgumentException` with `Type '{T}' is not valid.` for an unregistered type.
 
 ## AOT Compatibility
 

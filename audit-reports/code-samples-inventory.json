@@ -1,20 +1,22 @@
 {
-  "totalSamples": 3254,
-  "withMetadata": 3151,
-  "withoutMetadata": 103,
+  "totalSamples": 3412,
+  "withMetadata": 3291,
+  "withoutMetadata": 121,
   "byLanguage": {
-    "bash": 147,
-    "csharp": 2706,
+    "bash": 148,
+    "csharp": 2813,
     "graphql": 34,
-    "json": 65,
-    "sql": 148,
+    "json": 76,
+    "sql": 163,
     "typescript": 4,
     "http": 2,
     "tsx": 1,
-    "xml": 54,
+    "xml": 55,
     "yaml": 28,
-    "mermaid": 39,
+    "mermaid": 43,
+    "text": 18,
     "ini": 4,
+    "jsonc": 1,
     "html": 1,
     "dockerfile": 2,
     "bicep": 1,
@@ -26,43 +28,43 @@
   },
   "metaFieldCoverage": {
     "title": {
-      "present": 0,
-      "missing": 3151,
-      "pct": 0
+      "present": 68,
+      "missing": 3223,
+      "pct": 2
     },
     "description": {
-      "present": 0,
-      "missing": 3151,
-      "pct": 0
+      "present": 68,
+      "missing": 3223,
+      "pct": 2
     },
     "category": {
-      "present": 0,
-      "missing": 3151,
-      "pct": 0
+      "present": 68,
+      "missing": 3223,
+      "pct": 2
     },
     "difficulty": {
-      "present": 0,
-      "missing": 3151,
-      "pct": 0
+      "present": 68,
+      "missing": 3223,
+      "pct": 2
     },
     "tags": {
-      "present": 0,
-      "missing": 3151,
-      "pct": 0
+      "present": 68,
+      "missing": 3223,
+      "pct": 2
     },
     "framework": {
-      "present": 0,
-      "missing": 3151,
-      "pct": 0
+      "present": 42,
+      "missing": 3249,
+      "pct": 1
     },
     "testFile": {
       "present": 0,
-      "missing": 3151,
+      "missing": 3291,
       "pct": 0
     },
     "testMethod": {
       "present": 0,
-      "missing": 3151,
+      "missing": 3291,
       "pct": 0
     }
   },
@@ -1039,6 +1041,25 @@
       ],
       "lineCount": 8,
       "preview": "[JsonPolymorphic]\npublic abstract class BaseType { } // No [JsonDerivedType] attributes\n\n// This wil"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/graphql/production-hardening.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "builder.Services\n    .AddGraphQLServer()\n    .AddWhizbangLenses()\n    .AddWhizbangGraphQLSecurityDef"
     },
     {
       "file": "src/assets/docs/v1.0.0/apis/graphql/scoping.md",
@@ -4456,8 +4477,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 14,
-      "preview": "// CORRECT: class with parameterless constructor\npublic class PerspectiveMetadata {\n  public Perspec"
+      "lineCount": 7,
+      "preview": "public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options) {\n  protected"
     },
     {
       "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
@@ -4476,11 +4497,68 @@
         "testMethod"
       ],
       "lineCount": 24,
-      "preview": "// CORRECT: List<ScopeExtension> works with ToJson()\npublic class ScopeExtension {\n  public ScopeExt"
+      "preview": "// Table name: wh_per_<snake_case_model_name>. OrderReadModel -> wh_per_order;\n// the ReadModel/Mode"
     },
     {
       "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
       "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 14,
+      "preview": "// Write side - EFCorePostgresPerspectiveStore<TModel> : IPerspectiveStore<TModel>\nawait store.Upser"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 14,
+      "preview": "// CORRECT: class with parameterless constructor\npublic class PerspectiveMetadata {\n  public Perspec"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 7,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 24,
+      "preview": "// CORRECT: List<ScopeExtension> works with ToJson()\npublic class ScopeExtension {\n  public ScopeExt"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 8,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -4499,7 +4577,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
-      "blockIndex": 6,
+      "blockIndex": 9,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -4518,7 +4596,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
-      "blockIndex": 7,
+      "blockIndex": 10,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -4537,7 +4615,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
-      "blockIndex": 8,
+      "blockIndex": 11,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -4556,7 +4634,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
-      "blockIndex": 9,
+      "blockIndex": 12,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -4575,7 +4653,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
-      "blockIndex": 10,
+      "blockIndex": 13,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -4591,6 +4669,25 @@
       ],
       "lineCount": 11,
       "preview": "protected static PerspectiveScope CloneScope(PerspectiveScope scope) {\n  return new PerspectiveScope"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/data/efcore-complex-types.md",
+      "blockIndex": 14,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 21,
+      "preview": "// Test DbContext - InMemory provider has no JSON columns, so OwnsOne + a JSON\n// conversion stand i"
     },
     {
       "file": "src/assets/docs/v1.0.0/data/efcore-integration.md",
@@ -11922,7 +12019,7 @@
         "testMethod"
       ],
       "lineCount": 12,
-      "preview": "// Named arguments\n[NotificationTag(Tag = \"orders\", IncludeEvent = true)]\npublic record OrderCreated"
+      "preview": "// Named arguments\n[AuditEvent(Tag = \"order-created\", Exclude = true)]\npublic record OrderCreated(Gu"
     },
     {
       "file": "src/assets/docs/v1.0.0/extending/source-generators/attribute-utilities.md",
@@ -12040,7 +12137,7 @@
         "testMethod"
       ],
       "lineCount": 12,
-      "preview": "// Named argument\n[NotificationTag(IncludeEvent = true)]\nvar include = AttributeUtilities.GetBoolVal"
+      "preview": "// Named argument\n[AuditEvent(Exclude = true)]\nvar exclude = AttributeUtilities.GetBoolValue(attr, \""
     },
     {
       "file": "src/assets/docs/v1.0.0/extending/source-generators/attribute-utilities.md",
@@ -12134,7 +12231,7 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 41,
+      "lineCount": 39,
       "preview": "private static MessageTagInfo? _extractTagInfo(\n    GeneratorSyntaxContext context,\n    Cancellation"
     },
     {
@@ -13087,7 +13184,7 @@
         "testMethod"
       ],
       "lineCount": 3,
-      "preview": "dotnet build\n# Writes .whizbang/message-registry.json"
+      "preview": "dotnet build\n# Writes .whizbang/cache/message-registry.json"
     },
     {
       "file": "src/assets/docs/v1.0.0/extending/source-generators/message-registry.md",
@@ -13253,7 +13350,7 @@
         "testMethod"
       ],
       "lineCount": 11,
-      "preview": "# Clean and rebuild\ndotnet clean && dotnet build\n\n# Check generated file\ncat .whizbang/message-regis"
+      "preview": "# Clean and rebuild\ndotnet clean && dotnet build\n\n# Check generated file\ncat .whizbang/cache/message"
     },
     {
       "file": "src/assets/docs/v1.0.0/extending/source-generators/message-registry.md",
@@ -16544,6 +16641,125 @@
       "preview": "[HttpPost(\"orders\")]\npublic async Task<ActionResult<OrderResult>> CreateOrder(\n    [FromBody] Create"
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/publish-once.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "namespace Whizbang.Core;\n\npublic interface IDispatcher {\n  // …existing methods…\n\n  Task<bool> Publi"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/publish-once.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "Before"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "public async Task TryEmitCompletionAsync(Guid sagaId, IDispatcher dispatcher, ISagaRepository repo)"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/publish-once.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "After"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "public async Task TryEmitCompletionAsync(Guid sagaId, IDispatcher dispatcher) {\n  await dispatcher.P"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/publish-once.md",
+      "blockIndex": 3,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "INSERT INTO wh_unique_emission_claims (claim_key, claimed_by_event_id)\nVALUES (@key, @eventId)\nON CO"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/publish-once.md",
+      "blockIndex": 4,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "CREATE TABLE wh_unique_emission_claims (\n  claim_key            text         PRIMARY KEY,\n  claimed_"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/publish-once.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 2,
+      "preview": "services.AddScoped<IClaimedEmissionStore, MyCustomClaimedEmissionStore>();"
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
       "blockIndex": 0,
       "language": "csharp",
@@ -17834,12 +18050,69 @@
         "testFile",
         "testMethod"
       ],
+      "lineCount": 8,
+      "preview": "// Dispatcher.SendAsync — reached only when there is no local receptor (invoker == null)\nif (_isOwne"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
+      "blockIndex": 64,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "// Owned-domain commands cascaded from receptors stay local (event store + local handlers).\n// Event"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
+      "blockIndex": 65,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "routing.OwnDomains(\"JDX.Contracts.Chat\");\n\n// \"JDX.Contracts.Chat\"         → owned (exact match)\n//"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
+      "blockIndex": 66,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
       "lineCount": 10,
       "preview": "// ✅ GOOD: Clear, hierarchical namespaces\nnamespace MyApp.Users.Commands;\nnamespace MyApp.Users.Even"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 64,
+      "blockIndex": 67,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17858,7 +18131,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 65,
+      "blockIndex": 68,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17877,7 +18150,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 66,
+      "blockIndex": 69,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -17896,7 +18169,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-      "blockIndex": 67,
+      "blockIndex": 70,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -18190,6 +18463,106 @@
       ],
       "lineCount": 4,
       "preview": "// Receptor: IReceptor<Cmd, OrderConfirmation>\n// Caller: LocalInvokeAsync<OrderConfirmation>(cmd)\n/"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/sync-mode.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "public enum SyncMode {\n  /// Wait until events are durably written + the local stream version\n  ///"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/sync-mode.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "// Read-after-write: dispatch + wait for projections before the next read\nawait dispatcher.LocalInvo"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/sync-mode.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "// LEGACY (Obsolete in W4, removed in next major)\nawait dispatcher.LocalInvokeAndSyncAsync(\n    cmd,"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/sync-mode.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "// LEGACY\nvar result = await dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderResult>(\n    cmd,"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/sync-mode.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(httpContext.RequestAborted);\nl"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/event-store-query.md",
@@ -18704,6 +19077,120 @@
       ],
       "lineCount": 8,
       "preview": "public record TenantOrderCreated : IEvent {\n  public required Guid TenantId { get; init; }\n  public"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/event-upcasting.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 15,
+      "preview": "public interface IEventUpcaster {\n  // Cheap predicate — true only for events you transform. Called"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/event-upcasting.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "// Backfill + type change: OrderV1 -> OrderV2 (adds a default Version).\npublic sealed class V1ToV2Up"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/event-upcasting.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 12,
+      "preview": "// Re-key: set the [StreamId]-marked property to land the event on a different\n// stream. Cast to th"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/event-upcasting.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "services\n  .AddEventUpcaster<OrderV1ToV2Upcaster>()   // applied first\n  .AddEventUpcaster<OrderV2To"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/event-upcasting.md",
+      "blockIndex": 4,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "IEventStore\n└─ AppendAndWaitEventStoreDecorator      (Layer 3, outermost)\n   └─ SyncTrackingEventSto"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/event-upcasting.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "public sealed class ForeignToNewUpcaster : IEventUpcaster {\n  public IReadOnlyList<Type> SourceTypes"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/events/events.md",
@@ -20917,6 +21404,46 @@
       ],
       "lineCount": 16,
       "preview": "// ❌ WRONG: Exact match breaks with version changes\nbool match = TypeMatcher.Matches(\n    \"MyType, M"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/identity/pinned-type-ledger.md",
+      "blockIndex": 0,
+      "language": "json",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 12,
+      "preview": "{\n  \"version\": 1,\n  \"types\": [\n    {\n      \"pinnedId\": \"11111111-2222-3333-4444-555555555555\","
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/identity/pinned-type-ledger.md",
+      "blockIndex": 1,
+      "language": "xml",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "<PropertyGroup>\n  <WhizbangIncludePinnedTypeLedger>false</WhizbangIncludePinnedTypeLedger>\n</Propert"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/identity/time-provider.md",
@@ -26540,12 +27067,31 @@
         "testFile",
         "testMethod"
       ],
+      "lineCount": 9,
+      "preview": "// Every message-context establishment site routes through this — never re-implement the rule inline"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
+      "blockIndex": 14,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
       "lineCount": 8,
       "preview": "// IScopeContextAccessor interface default implementations\nstring? UserId => InitiatingContext?.User"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
-      "blockIndex": 14,
+      "blockIndex": 15,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -26564,7 +27110,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/cascade-context.md",
-      "blockIndex": 15,
+      "blockIndex": 16,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -27505,8 +28051,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 6,
-      "preview": "public record struct CorrelationId(Guid Value) {\n    public static CorrelationId New() => new(Guid.C"
+      "lineCount": 15,
+      "preview": "public readonly partial struct CorrelationId {\n    // Fresh UUIDv7 (time-ordered, database-friendly)"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context.md",
@@ -27524,8 +28070,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 13,
-      "preview": "// Create new correlation for HTTP request\nvar correlationId = CorrelationId.New();\n\n// Store in HTT"
+      "lineCount": 11,
+      "preview": "// Create new correlation for HTTP request\nvar correlationId = CorrelationId.New();\n\n// The dispatch"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-context.md",
@@ -27820,7 +28366,7 @@
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
       "blockIndex": 0,
       "language": "mermaid",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -27852,7 +28398,7 @@
         "testMethod"
       ],
       "lineCount": 25,
-      "preview": "// 1. Decorate messages with tag attributes\n[NotificationTag(Tag = \"order-created\", Properties = [\"O"
+      "preview": "// 1. Decorate messages with tag attributes\n[SignalTag(Tag = \"order-created\", Properties = [\"OrderId"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -27890,7 +28436,7 @@
         "testMethod"
       ],
       "lineCount": 4,
-      "preview": "options.Tags.UseHook<NotificationTagAttribute, ValidationHook>(priority: -100);  // First\noptions.Ta"
+      "preview": "options.Tags.UseHook<SignalTagAttribute, ValidationHook>(priority: -100);  // First (also the defaul"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -27909,7 +28455,7 @@
         "testMethod"
       ],
       "lineCount": 30,
-      "preview": "// Notification tag - for real-time notifications\n[NotificationTag(\n    Tag = \"order-created\",\n    P"
+      "preview": "// Signal tag - for real-time notifications\n[SignalTag(\n    Tag = \"order-created\",\n    Properties ="
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -27928,13 +28474,13 @@
         "testMethod"
       ],
       "lineCount": 55,
-      "preview": "public class SignalRNotificationHook : IMessageTagHook<NotificationTagAttribute> {\n  private readonl"
+      "preview": "public class SignalRNotificationHook : IMessageTagHook<SignalTagAttribute> {\n  private readonly IHub"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
       "blockIndex": 6,
       "language": "mermaid",
-      "hasMetadata": false,
+      "hasMetadata": true,
       "presentMeta": [],
       "missingMeta": [
         "title",
@@ -27984,8 +28530,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 22,
-      "preview": "public class SignalRNotificationHook : IMessageTagHook<NotificationTagAttribute> {\n  private readonl"
+      "lineCount": 5,
+      "preview": "var tenantId = context.Scope?.Scope?.TenantId;\nvar userId   = context.Scope?.Scope?.UserId;\nvar isAd"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28003,8 +28549,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 22,
-      "preview": "[NotificationTag(\n    Tag = \"order-created\",\n    Properties = [\"OrderId\", \"CustomerId\"],\n    Include"
+      "lineCount": 4,
+      "preview": "// Only invoke this hook at PostAllPerspectivesDetached — the framework filters, not the hook.\noptio"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28022,8 +28568,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 24,
-      "preview": "public async ValueTask<JsonElement?> OnTaggedMessageAsync(\n    TagContext<NotificationTagAttribute>"
+      "lineCount": 22,
+      "preview": "public class SignalRNotificationHook : IMessageTagHook<SignalTagAttribute> {\n  private readonly IHub"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28041,8 +28587,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 14,
-      "preview": "[NotificationTag(\n    Tag = \"order-shipped\",              // Unique identifier for this notification"
+      "lineCount": 15,
+      "preview": "[SignalTag(\n    Tag = \"order-created\",\n    Properties = [\"OrderId\", \"CustomerId\"],\n    ExtraJson = \""
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28060,8 +28606,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 15,
-      "preview": "// Target specific customer\n[NotificationTag(Tag = \"order-update\", Group = \"customer-{CustomerId}\")]"
+      "lineCount": 24,
+      "preview": "public async ValueTask<JsonElement?> OnTaggedMessageAsync(\n    TagContext<SignalTagAttribute> contex"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28079,12 +28625,31 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 16,
-      "preview": "// Low priority - can be batched\n[NotificationTag(Tag = \"weekly-summary\", Priority = NotificationPri"
+      "lineCount": 5,
+      "preview": "services.AddWhizbang(options => {\n  options.Tags.PayloadSizeWarningThresholdBytes = 4096;\n  options."
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
       "blockIndex": 14,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 13,
+      "preview": "[SignalTag(\n    Tag = \"order-shipped\",              // Unique identifier for this notification type"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
+      "blockIndex": 15,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -28103,25 +28668,6 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-      "blockIndex": 15,
-      "language": "csharp",
-      "hasMetadata": true,
-      "presentMeta": [],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 20,
-      "preview": "// Internal - default for business logic\n[TelemetryTag(Tag = \"order-validation\", SpanName = \"Validat"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
       "blockIndex": 16,
       "language": "csharp",
       "hasMetadata": true,
@@ -28136,8 +28682,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 31,
-      "preview": "// Counter metric - counts occurrences\n[MetricTag(\n    Tag = \"order-created\",\n    MetricName = \"orde"
+      "lineCount": 28,
+      "preview": "// Counter metric - counts occurrences (increments by 1)\n[MetricTag(\n    Tag = \"order-created\","
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28155,8 +28701,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 36,
-      "preview": "// Counter - count occurrences (increments by 1)\n[MetricTag(\n    Tag = \"order-created\",\n    MetricNa"
+      "lineCount": 7,
+      "preview": "[AuditEvent(Reason = \"PII access\", Level = AuditLevel.Warning)]\npublic record CustomerDataViewed(Gui"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28174,7 +28720,7 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 40,
+      "lineCount": 37,
       "preview": "// Generated by MessageTagDiscoveryGenerator per assembly:\ninternal sealed class GeneratedMessageTag"
     },
     {
@@ -28193,8 +28739,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 15,
-      "preview": "// Query tags for a message type\nvar tags = MessageTagRegistry.GetTagsFor(typeof(OrderCreatedEvent))"
+      "lineCount": 17,
+      "preview": "// Query tags for a message type (queries every registered registry, yields all matches)\nvar tags ="
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28212,8 +28758,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 13,
-      "preview": "// MyApp.Contracts (Priority 100)\n[NotificationTag(Tag = \"order-created\", Properties = [\"OrderId\"])]"
+      "lineCount": 32,
+      "preview": "internal sealed class GeneratedMessageTagHookDispatcher_MyAssembly : IMessageTagHookDispatcher {\n  p"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28231,8 +28777,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 53,
-      "preview": "// Generated by MessageTagDiscoveryGenerator per assembly (only for custom attributes):\ninternal sea"
+      "lineCount": 41,
+      "preview": "// 1. Define the attribute\n[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMu"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28250,8 +28796,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 93,
-      "preview": "// 1. Define the attribute\n[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMu"
+      "lineCount": 18,
+      "preview": "[AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = true)]\npublic class TabTag"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28269,8 +28815,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 96,
-      "preview": "[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = true, Inherited ="
+      "lineCount": 16,
+      "preview": "using Whizbang.Core.Attributes;\n\n[AttributeArgNaming(AttributeArgNamingConvention.Identity)]   // No"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28288,8 +28834,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 37,
-      "preview": "public class EnrichmentHook : IMessageTagHook<NotificationTagAttribute> {\n  private readonly IUserSe"
+      "lineCount": 22,
+      "preview": "public class EnrichmentHook : IMessageTagHook<SignalTagAttribute> {\n  private readonly IUserService"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28307,7 +28853,7 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 32,
+      "lineCount": 15,
       "preview": "public class UniversalTagLoggerHook : IMessageTagHook<MessageTagAttribute> {\n  private readonly ILog"
     },
     {
@@ -28315,7 +28861,9 @@
       "blockIndex": 26,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [],
+      "presentMeta": [
+        "leaks"
+      ],
       "missingMeta": [
         "title",
         "description",
@@ -28326,8 +28874,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 43,
-      "preview": "public class ConditionalNotificationHook : IMessageTagHook<NotificationTagAttribute> {\n  private rea"
+      "lineCount": 18,
+      "preview": "// ❌ WRONG - accumulating state across calls; the DbContext is scoped to a single call.\npublic class"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28345,8 +28893,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 30,
-      "preview": "// 1. Dispatcher is Singleton, holds Singleton IMessageTagProcessor\npublic class Dispatcher : IDispa"
+      "lineCount": 39,
+      "preview": "[SignalTag(\n    Tag = \"payment-completed\",\n    Properties = [\"PaymentId\", \"OrderId\", \"Amount\"],"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28364,8 +28912,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 34,
-      "preview": "public class DatabaseAuditHook : IMessageTagHook<AuditLogAttribute> {\n  private readonly MyDbContext"
+      "lineCount": 6,
+      "preview": "var tags = MessageTagRegistry.GetTagsFor(typeof(OrderCreatedEvent));\nif (!tags.Any()) {\n  Console.Wr"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
@@ -28383,141 +28931,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 26,
-      "preview": "// Hook 1 - creates entities\npublic class Hook1 : IMessageTagHook<NotificationTagAttribute> {\n  priv"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-      "blockIndex": 30,
-      "language": "csharp",
-      "hasMetadata": true,
-      "presentMeta": [],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 30,
-      "preview": "// ❌ WRONG - storing scoped service in field across calls\npublic class BadHook : IMessageTagHook<Not"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-      "blockIndex": 31,
-      "language": "csharp",
-      "hasMetadata": true,
-      "presentMeta": [],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 104,
-      "preview": "// 1. Define events with notification tags\n[NotificationTag(\n    Tag = \"order-created\",\n    Properti"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-      "blockIndex": 32,
-      "language": "csharp",
-      "hasMetadata": true,
-      "presentMeta": [],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 55,
-      "preview": "// Event with multiple cross-cutting concerns\n[NotificationTag(\n    Tag = \"payment-completed\",\n    P"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-      "blockIndex": 33,
-      "language": "csharp",
-      "hasMetadata": true,
-      "presentMeta": [],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 12,
-      "preview": "// Check if tags are registered\nvar tags = MessageTagRegistry.GetTagsFor(typeof(OrderCreatedEvent));"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-      "blockIndex": 34,
-      "language": "csharp",
-      "hasMetadata": true,
-      "presentMeta": [],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 25,
-      "preview": "// Add universal logger hook to see all tag processing\npublic class DebugTagLoggerHook : IMessageTag"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-      "blockIndex": 35,
-      "language": "csharp",
-      "hasMetadata": true,
-      "presentMeta": [],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 14,
-      "preview": "// Add logging to module initializer\nfile static class ModuleInitializer {\n  [ModuleInitializer]\n  i"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-      "blockIndex": 36,
-      "language": "csharp",
-      "hasMetadata": true,
-      "presentMeta": [],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 15,
-      "preview": "public async ValueTask<JsonElement?> OnTaggedMessageAsync(\n    TagContext<NotificationTagAttribute>"
+      "lineCount": 3,
+      "preview": "if (context.Stage != LifecycleStage.PostPerspectiveInline)\n  return null; // Skip — only act when da"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/messages/messages.md",
@@ -28722,11 +29137,13 @@
       "preview": "// ✅ GOOD: Complete state snapshot\npublic record ProductPriceChanged : IEvent {\n  [StreamKey]\n  publ"
     },
     {
-      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/apply-hooks.md",
       "blockIndex": 0,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [],
+      "presentMeta": [
+        "body"
+      ],
       "missingMeta": [
         "title",
         "description",
@@ -28737,11 +29154,11 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 16,
-      "preview": "public class MessageEnvelope {\n    // Identity\n    public required MessageId MessageId { get; init;"
+      "lineCount": 2,
+      "preview": "builder.SetColumn(ApplyHookColumns.UPDATED_AT, ctx.ApplyTimestamp).BumpVersion();"
     },
     {
-      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/apply-hooks.md",
       "blockIndex": 1,
       "language": "csharp",
       "hasMetadata": true,
@@ -28756,17 +29173,627 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 34,
-      "preview": "public class MessageHop {\n    // Hop Type\n    public required MessageHopType Type { get; init; }  //"
+      "lineCount": 5,
+      "preview": "services.AddSingleton(_ =>\n  WhizbangApplyHooks.CreateCollectiveWithDefaults()\n    .Register<IAudita"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/apply-hooks.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "PerEventApplyHooks.Registry = WhizbangApplyHooks.CreatePerEventWithDefaults()\n  .Register<IAuditable"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 12,
+      "preview": "[PinnedId(\"…\")]\npublic sealed record ArchiveJobsCollectiveEvent : CollectiveEventBase {\n  public req"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "public sealed class JobCollectivePerspective {\n  [CollectiveApplyFor]\n  public ICollectiveSpec<JobMo"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "// Refine WITHIN the tenant envelope — only jobs with no overlay, in the\n// event's tenant. Framewor"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "[CollectiveApplyFor]                                  // Framework: tenant envelope AND this cohort"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "var evt = new ArchiveJobsCollectiveEvent {\n  Scope = new TenantCollectiveScope(\"t-1\"),\n  OccurredAt"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "[Flags]\npublic enum EventFlags {\n  None       = 0,\n  Collective = 1 << 0,\n  Composite  = 1 << 1,\n  /"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
+      "blockIndex": 6,
+      "language": "mermaid",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 26,
+      "preview": "sequenceDiagram\n  autonumber\n  participant P as Producer\n  participant OB as wh_outbox (flags)\n  par"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
+      "blockIndex": 7,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "services\n  // entries = your assembly's generated Whizbang.Core.Generated.CollectiveApplyRegistry.En"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/composite-events.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "public interface ICompositeEvent : IMessage {\n  // Inner events this composite expands into, in prod"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/composite-events.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "public sealed class DraftJobBulkImportComposite : CompositeEventBase;\n\n// producer:\nvar composite ="
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/composite-events.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "public sealed class DraftJobBulkImportComposite : CompositeEventBase {\n  public DraftJobBulkImportCo"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/message-body-store.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 15,
+      "preview": "services.AddWhizbangRabbitMQ(opts => { /* … */ });   // or AddWhizbangAzureServiceBus\n\nservices.AddW"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/message-body-store.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "public interface IPostSerializeHook {\n  /// Lower runs first. Conventions:\n  ///   100 = observabili"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "using Whizbang.Offloads.AzureBlob;\n\nservices.AddWhizbangAzureBlobOffloadsFromConfiguration(configura"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
+      "blockIndex": 1,
+      "language": "json",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 20,
+      "preview": "{\n  \"Whizbang\": {\n    \"Offloads\": {\n      \"AzureBlob\": {\n        \"jdx-offload\": {\n          \"Connect"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
+      "blockIndex": 2,
+      "language": "bash",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "Whizbang__Offloads__AzureBlob__jdx-offload__ConnectionString=\"…\"\nWhizbang__Offloads__AzureBlob__jdx-"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 13,
+      "preview": "services.AddWhizbangAzureBlobOffload(\"azure-blob-prod\", opts => {\n  opts.ConnectionString = builder."
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "// Azurite (local dev / CI integration tests)\nopts.ConnectionString = \"UseDevelopmentStorage=true\";"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 14,
+      "preview": "services.AddWhizbangAzureBlobOffload(\"azure-blob-prod\", opts => {\n  opts.ConnectionString = builder."
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/in-memory.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "services.AddWhizbangInMemoryOffload(\"memory-dev\");\n\nservices.AddWhizbangBodyOffload();\nservices.Conf"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/caller-info-capture.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "public record MessageHop {\n    // ... routing, timing, security, policy, metadata ...\n\n    // Caller"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/caller-info-capture.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "Task<IDeliveryReceipt> SendAsync(\n    object message,\n    IMessageContext context,\n    [CallerMember"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/caller-info-capture.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 14,
+      "preview": "var hop = new MessageHop {\n    Type = HopType.Current,\n    ServiceInstance = _instanceProvider.ToInf"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/caller-info-capture.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "public static MessageHop RecordHop(\n    HopContext context,\n    [CallerMemberName] string? callerMem"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/caller-info-capture.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "public readonly record struct HopContext(\n    ServiceInstanceInfo ServiceInstance,\n    string Topic,"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/caller-info-capture.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "var hop = MessageTracing.RecordHop(\n    new HopContext(serviceInstance, \"orders\", \"order-123\", \"Seri"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/caller-info-capture.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 17,
+      "preview": "public static class CustomTracing {\n    public static MessageHop CreateOrderHop(\n        ServiceInst"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/caller-info-capture.md",
+      "blockIndex": 7,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "[Test]\npublic async Task RecordHop_CapturesCallerLineNumber_AutomaticallyAsync() {\n    var hop = _te"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "in"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "public class MessageEnvelope<TMessage> : IMessageEnvelope<TMessage> {\n    public required MessageId"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "hop"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 44,
+      "preview": "public record MessageHop {\n    // Hop type\n    public HopType Type { get; init; } = HopType.Current;"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
       "blockIndex": 2,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "Purpose"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -28777,17 +29804,15 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 16,
-      "preview": "var currentHop = new MessageHop {\n    Type = MessageHopType.Current,\n    Topic = \"orders\",\n    Strea"
+      "lineCount": 8,
+      "preview": "public record ServiceInstanceInfo {\n    public required string ServiceName { get; init; }   // e.g."
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
       "blockIndex": 3,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "Purpose"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -28798,8 +29823,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 10,
-      "preview": "// When OrderCreated event is created from CreateOrder command:\nvar envelope = MessageEnvelope.Creat"
+      "lineCount": 4,
+      "preview": "var scope  = envelope.GetCurrentScope();\nvar tenant = scope?.Scope.TenantId;   // string?\nvar user"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
@@ -28817,17 +29842,15 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 7,
-      "preview": "public record SecurityContext {\n    public Guid? UserId { get; init; }\n    public Guid? TenantId { g"
+      "lineCount": 19,
+      "preview": "public class PolicyDecisionTrail {\n    public List<PolicyDecision> Decisions { get; init; } = [];"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
       "blockIndex": 5,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "Example"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -28838,8 +29861,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 29,
-      "preview": "public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {\n    private readonly IHttp"
+      "lineCount": 6,
+      "preview": "var all      = envelope.GetAllMetadata();          // IReadOnlyDictionary<string, JsonElement>\nvar p"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
@@ -28857,8 +29880,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 11,
-      "preview": "public record PolicyDecisionTrail {\n    public List<PolicyDecision> Decisions { get; init; } = new()"
+      "lineCount": 9,
+      "preview": "var slowest = envelope.GetCurrentHops()\n    .OrderByDescending(h => h.Duration)\n    .Take(5);\n\nforea"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
@@ -28866,7 +29889,7 @@
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
-        "Example"
+        "to"
       ],
       "missingMeta": [
         "title",
@@ -28878,17 +29901,15 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 43,
-      "preview": "public class RateLimitingPolicy : IPolicy {\n    public async Task<PolicyDecision> EvaluateAsync("
+      "lineCount": 9,
+      "preview": "public interface ITraceStore {\n    Task StoreAsync(IMessageEnvelope envelope, CancellationToken ct ="
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
       "blockIndex": 8,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "context"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -28899,8 +29920,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 21,
-      "preview": "// Hop 1 (API Gateway)\nMetadata: {\n    \"ServiceName\": \"API Gateway\",\n    \"RequestPath\": \"/api/orders"
+      "lineCount": 12,
+      "preview": "var envelope = await traceStore.GetByMessageIdAsync(messageId);\n\nforeach (var d in envelope!.GetAllP"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
@@ -28918,8 +29939,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 21,
-      "preview": "public async ValueTask<OrderCreated> HandleAsync(\n    CreateOrder message,\n    [CallerMemberName] st"
+      "lineCount": 9,
+      "preview": "var chain = await traceStore.GetCausalChainAsync(failedMessageId);\n\nforeach (var msg in chain) {   /"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
@@ -28937,54 +29958,12 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 5,
-      "preview": "public class MessageHop {\n    public DateTimeOffset Timestamp { get; init; }  // When hop was create"
+      "lineCount": 4,
+      "preview": "var envelope = await traceStore.GetByMessageIdAsync(messageId);\nvar scope = envelope!.GetCurrentScop"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
       "blockIndex": 11,
-      "language": "csharp",
-      "hasMetadata": true,
-      "presentMeta": [
-        "Example"
-      ],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 15,
-      "preview": "var startTime = DateTimeOffset.UtcNow;\n\n// Business logic...\n\nvar duration = DateTimeOffset.UtcNow -"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
-      "blockIndex": 12,
-      "language": "csharp",
-      "hasMetadata": true,
-      "presentMeta": [
-        "Example"
-      ],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 10,
-      "preview": "// Find slow hops\nvar slowHops = envelope.Hops\n    .Where(h => h.Duration > TimeSpan.FromMillisecond"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
-      "blockIndex": 13,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -28998,17 +29977,15 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 33,
-      "preview": "public class HopVisualizer {\n    public void PrintHops(MessageEnvelope envelope) {\n        Console.W"
+      "lineCount": 7,
+      "preview": "var workflow = await traceStore.GetByCorrelationAsync(correlationId);\nforeach (var e in workflow) {"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
-      "blockIndex": 14,
-      "language": "sql",
+      "blockIndex": 12,
+      "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "auditability"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -29019,29 +29996,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 14,
-      "preview": "CREATE TABLE wh_event_store (\n    event_id UUID PRIMARY KEY,\n    message_id UUID NOT NULL,\n    corre"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
-      "blockIndex": 15,
-      "language": "sql",
-      "hasMetadata": true,
-      "presentMeta": [
-        "hops"
-      ],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 10,
-      "preview": "SELECT\n    event_id,\n    event_type,\n    hops->>0->>'Metadata'->>'ServiceName' AS service_name,"
+      "lineCount": 11,
+      "preview": "var from = new DateTimeOffset(2025, 11, 2, 14, 0, 0, TimeSpan.Zero);\nvar to   = new DateTimeOffset(2"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/persistence.md",
@@ -29276,6 +30232,26 @@
       ],
       "lineCount": 12,
       "preview": "// Base class strategy inherited by derived classes\n[PersistenceStrategy(PersistenceMode.Batched)]\np"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/apply-exactly-once.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "public UberDraftJobModel Apply(UberDraftJobModel current, DraftJobEssentialFunctionRowAddedEvent evt"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/association-info.md",
@@ -31849,6 +32825,120 @@
       "blockIndex": 7,
       "language": "csharp",
       "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "// ❌ Error WHIZ100 — returns Task\npublic Task<ProductDto> Apply(ProductDto current, ProductCreatedEv"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
+      "blockIndex": 8,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "// ❌ Error WHIZ101 — uses await\npublic ProductDto Apply(ProductDto current, ProductUpdatedEvent @eve"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
+      "blockIndex": 9,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "// ❌ Error WHIZ102 — queries the store inside Apply\npublic ProductDto Apply(ProductDto current, Prod"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
+      "blockIndex": 10,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "// ❌ Error WHIZ103 — HTTP call inside Apply\npublic ProductDto Apply(ProductDto current, ProductCreat"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
+      "blockIndex": 11,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "// ⚠️ Warning WHIZ104 — non-deterministic\npublic ProductDto Apply(ProductDto current, ProductUpdated"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
+      "blockIndex": 12,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "// ⚠️ Warning WHIZ105 — ILogger is not [PureService]\npublic class OrderPerspective : IPerspectiveFor"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
+      "blockIndex": 13,
+      "language": "csharp",
+      "hasMetadata": true,
       "presentMeta": [
         "types"
       ],
@@ -31867,7 +32957,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 8,
+      "blockIndex": 14,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31888,7 +32978,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 9,
+      "blockIndex": 15,
       "language": "sql",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31907,7 +32997,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 10,
+      "blockIndex": 16,
       "language": "sql",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31926,7 +33016,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 11,
+      "blockIndex": 17,
       "language": "sql",
       "hasMetadata": true,
       "presentMeta": [
@@ -31947,7 +33037,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 12,
+      "blockIndex": 18,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -31968,7 +33058,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 13,
+      "blockIndex": 19,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -31987,7 +33077,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 14,
+      "blockIndex": 20,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -32006,7 +33096,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 15,
+      "blockIndex": 21,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -32027,7 +33117,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 16,
+      "blockIndex": 22,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -32046,7 +33136,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 17,
+      "blockIndex": 23,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -32065,7 +33155,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 18,
+      "blockIndex": 24,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -32086,7 +33176,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 19,
+      "blockIndex": 25,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -32107,7 +33197,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 20,
+      "blockIndex": 26,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -32126,7 +33216,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-      "blockIndex": 21,
+      "blockIndex": 27,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -33079,6 +34169,120 @@
       ],
       "lineCount": 3,
       "preview": "// Registry is included in standard initialization\nawait dbContext.EnsureWhizbangDatabaseInitialized"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/rewind.md",
+      "blockIndex": 0,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 17,
+      "preview": "-- Out-of-order detection: if event_id is older than the cursor's last_event_id,\n-- the perspective"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/rewind.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 18,
+      "preview": "var lockAcquired = await _streamLocker.TryAcquireLockAsync(\n    streamId, perspectiveName, _instance"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/rewind.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 20,
+      "preview": "const int MAX_REWIND_CATCH_UP_ITERATIONS = 100;\nvar anchorEventId = replayFromEventId;   // snapshot"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/rewind.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 23,
+      "preview": "public class PerspectiveRewindOptions {\n  // Master switch for rewind detection and execution.\n  //"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/rewind.md",
+      "blockIndex": 4,
+      "language": "json",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "\"Whizbang.Core.Workers.PerspectiveWorker\": \"Warning\",\n\"Whizbang.Core.Workers.PerspectiveStartupScan\""
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/rewind.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "await dispatcher.AsSystem().ForAllTenants()\n    .PublishAsync(new PerspectiveRewindStarted("
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md",
@@ -34615,6 +35819,102 @@
       "preview": "CREATE EXTENSION IF NOT EXISTS vector;"
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/versioned-apply.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "using Whizbang.Core.Perspectives;\n\npublic class SagaItemModel : ISagaItem, IVersionedApplyTarget {"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/versioned-apply.md",
+      "blockIndex": 1,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "-- Default (non-opted-in models)\nWHERE wh_per_X.metadata->>'CommitSequence' IS NULL\n   OR EXCLUDED.m"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/exactly-once-firing.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "[ReceptorIdempotent]\n[FireAt(LifecycleStage.PostPerspectiveInline)]\npublic class DependentReadModelU"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/exactly-once-firing.md",
+      "blockIndex": 1,
+      "language": "json",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "{\n  \"Whizbang\": {\n    \"Guardrails\": {\n      \"ReceptorInvocationTracking\": \"TrackAndEnforce\",\n      \""
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/exactly-once-firing.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "services.AddSingleton<IReceptorDedupStore, MyDatabaseReceptorDedupStore>();\nservices.AddWhizbang()"
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md",
       "blockIndex": 0,
       "language": "csharp",
@@ -36026,6 +37326,236 @@
       "preview": "public class CompleteOrderReceptor : IReceptor<CompleteOrder, OrderCompleted> {\n    private readonly"
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/completion-orchestration.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "services.AddWhizbangSagas(opts => {\n  opts.MinWatchdogDelay        = TimeSpan.FromSeconds(30); // fl"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/completion-orchestration.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "public sealed class SagaCompletionAbandonedEvent : SagaEventBase {\n  public string SagaName { get; s"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "using Whizbang.Sagas;\n\nnamespace AcmeCorp.Sagas;\n\n[Saga<AcmeEventBase>(\"BulkOrderImport\")]\npublic pa"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 19,
+      "preview": "public class BulkOrderImportReceptor(BulkOrderImportSaga.Service saga) : IReceptor<StartBulkOrderImp"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "services.AddWhizbangSagas(opts =>\n  opts.PerItemStreamNamespace = Guid.Parse(\"0b36f8d4-3884-4c3c-b92"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "// In a HotChocolate / projection-side resolver:\npublic Task<int> GetProcessedCountAsync(\n    Guid s"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "[Saga<AcmeEventBase>(\"BulkOrderImport\", IncludeHooks = false)]\npublic partial class BulkOrderImportS"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 13,
+      "preview": "[Saga<AcmeEventBase>(\"BulkOrderImport\", GenerateService = false)]\npublic partial class BulkOrderImpo"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "[Saga<AcmeEventBase>(\"BulkOrderImport\")]\npublic partial class BulkOrderImportSaga {\n  // Consumer ex"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md",
+      "blockIndex": 7,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 13,
+      "preview": "public class ChildSagaCompletedReceptor(ParentSaga.Service parent) :\n    IReceptor<ChildSaga.Complet"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md",
+      "blockIndex": 8,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "public class RefundPaymentEvent : AcmeEventBase, ISagaCompensatingEvent {\n  public Guid Compensating"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md",
+      "blockIndex": 9,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "await saga.TryRunHookAsync(\n  ctx, sagaProjection: maybeLoadedProjection,\n  hookName: \"warm-cache\","
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/security/audit-logging.md",
       "blockIndex": 0,
       "language": "csharp",
@@ -36420,6 +37950,63 @@
       ],
       "lineCount": 7,
       "preview": "services.AddWhizbang(options => {\n  options.SystemEvents.EnableAudit();           // EventAudited"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/http-security-headers.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "// Program.cs — nothing to add; AddWhizbangAspNet() wires the headers for you.\nbuilder.Services.AddW"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/http-security-headers.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "builder.Services.Configure<WhizbangSecurityHeadersOptions>(options => {\n  options.ContentSecurityPol"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/http-security-headers.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 2,
+      "preview": "builder.WebHost.UseWhizbangKestrelSecurityDefaults();   // sets AddServerHeader = false"
     },
     {
       "file": "src/assets/docs/v1.0.0/fundamentals/security/implementing-multi-tenancy.md",
@@ -39426,6 +41013,204 @@
       "preview": "public interface ITenantScoped {\n  string TenantId { get; }\n}\n\npublic interface IUserScoped : ITenan"
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/instance-liveness.md",
+      "blockIndex": 0,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "-- migration 055\nSELECT is_instance_alive('11111111-...'::uuid, 30);"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/instance-liveness.md",
+      "blockIndex": 1,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "-- Inspect held alive-locks (one row per active instance)\nSELECT * FROM pg_locks\nWHERE locktype = 'a"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/perspective-worker-notify.md",
+      "blockIndex": 0,
+      "language": "mermaid",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "graph LR\n  Producer[Producer commits<br/>wh_perspective_events row] -->|trigger fires| PG[(PostgreSQ"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md",
+      "blockIndex": 0,
+      "language": "mermaid",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "graph LR\n  Worker[Background worker<br/>tier-1+2 eligible] -->|Borrow| Pool[Pinned pool<br/>Size=1.."
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "services.AddHostedService<MyBulkImportPollingWorker>();\nservices.AddPinnedWorker<MyBulkImportPolling"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md",
+      "blockIndex": 2,
+      "language": "jsonc",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "// appsettings.json\n{\n  \"ConnectionStrings\": {\n    \"bffservice-db\":        \"Host=…;Port=6432;…\", //"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "services.AddWhizbangPinnedWorkerPool(opts => {\n  // Bind everything from the configured section — bo"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md",
+      "blockIndex": 4,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "services.AddWhizbangPinnedWorkerPool(opts => {\n  opts.ConnectionString = builder.Configuration.GetCo"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "services.AddWhizbangPinnedWorkerPool(opts => {\n  opts.ConnectionString = builder.Configuration.GetCo"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "services.AddWhizbangPinnedWorkerPool(opts => {\n  opts.ConnectionString = builder.Configuration.GetCo"
+    },
+    {
       "file": "src/assets/docs/v1.0.0/getting-started/installation.md",
       "blockIndex": 0,
       "language": "bash",
@@ -39859,7 +41644,7 @@
         "testMethod"
       ],
       "lineCount": 2,
-      "preview": "ls .whizbang-generated/"
+      "preview": "ls .whizbang/cache/"
     },
     {
       "file": "src/assets/docs/v1.0.0/getting-started/installation.md",
@@ -45306,6 +47091,66 @@
       "preview": "// ✅ GOOD: UUIDv7 for database-friendly, time-ordered IDs\npublic record OrderCreated : IEvent {\n  pu"
     },
     {
+      "file": "src/assets/docs/v1.0.0/messaging/composite-events.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "public interface ICompositeEvent : IMessage {\n  /// Yields the inner events this composite expands i"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/composite-events.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "public class LargeBulkComposite : ICompositeEvent {\n  public IEnumerable<IMessage> InnerEvents => /*"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/composite-events.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "Task AppendBatchAsync<TMessage>(\n    IReadOnlyList<(Guid streamId, MessageEnvelope<TMessage> envelop"
+    },
+    {
       "file": "src/assets/docs/v1.0.0/messaging/failure-handling.md",
       "blockIndex": 0,
       "language": "csharp",
@@ -47419,6 +49264,27 @@
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
+        "ordering"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "builder.Services.AddAzureServiceBusTransport(\n    connectionString: \"Endpoint=sb://...\",\n    configu"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
         "Configuration"
       ],
       "missingMeta": [
@@ -47436,7 +49302,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 5,
+      "blockIndex": 6,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -47455,7 +49321,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 6,
+      "blockIndex": 7,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47476,7 +49342,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 7,
+      "blockIndex": 8,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -47495,7 +49361,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 8,
+      "blockIndex": 9,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -47514,7 +49380,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 9,
+      "blockIndex": 10,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47535,7 +49401,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 10,
+      "blockIndex": 11,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47556,7 +49422,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 11,
+      "blockIndex": 12,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47577,7 +49443,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 12,
+      "blockIndex": 13,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47598,7 +49464,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 13,
+      "blockIndex": 14,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47619,7 +49485,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 14,
+      "blockIndex": 15,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47640,7 +49506,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 15,
+      "blockIndex": 16,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -47659,7 +49525,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 16,
+      "blockIndex": 17,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -47678,7 +49544,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 17,
+      "blockIndex": 18,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47699,7 +49565,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 18,
+      "blockIndex": 19,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47720,7 +49586,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 19,
+      "blockIndex": 20,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47741,7 +49607,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 20,
+      "blockIndex": 21,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47762,7 +49628,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 21,
+      "blockIndex": 22,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -47781,7 +49647,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 22,
+      "blockIndex": 23,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47802,7 +49668,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 23,
+      "blockIndex": 24,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -47821,7 +49687,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 24,
+      "blockIndex": 25,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -47840,7 +49706,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 25,
+      "blockIndex": 26,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -47859,7 +49725,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 26,
+      "blockIndex": 27,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -47878,7 +49744,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 27,
+      "blockIndex": 28,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47899,7 +49765,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 28,
+      "blockIndex": 29,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -47918,7 +49784,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 29,
+      "blockIndex": 30,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47939,7 +49805,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 30,
+      "blockIndex": 31,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -47958,7 +49824,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 31,
+      "blockIndex": 32,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -47977,7 +49843,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 32,
+      "blockIndex": 33,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -47999,7 +49865,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 33,
+      "blockIndex": 34,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -48020,7 +49886,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 34,
+      "blockIndex": 35,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -48041,7 +49907,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 35,
+      "blockIndex": 36,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -48062,7 +49928,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-      "blockIndex": 36,
+      "blockIndex": 37,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -48510,6 +50376,82 @@
       "preview": "// Single publisher, multiple subscribers (fan-out)\nvar transport = new InProcessTransport();\nvar de"
     },
     {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/infrastructure-mapping.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "// Same stream key → same partition, every time\nvar router = new HashPartitionRouter();\nint p = rout"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/infrastructure-mapping.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "policyEngine.AddPolicy(\n    name: \"order-routing\",\n    predicate: ctx => ctx.MatchesAggregate<Order>"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/infrastructure-mapping.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "config.PublishToKafka(\"orders\");                        // TransportType.Kafka\nconfig.PublishToServi"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/infrastructure-mapping.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "config.SubscribeFromKafka(\"orders\", consumerGroup: \"svc\", partition: null);\nconfig.SubscribeFromServ"
+    },
+    {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
       "blockIndex": 0,
       "language": "xml",
@@ -48920,6 +50862,27 @@
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
+        "ordering"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "builder.Services.AddRabbitMQTransport(\n    connectionString: \"amqp://guest:guest@localhost:5672\","
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
+      "blockIndex": 22,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
         "domains"
       ],
       "missingMeta": [
@@ -48937,7 +50900,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 22,
+      "blockIndex": 23,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -48958,7 +50921,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 23,
+      "blockIndex": 24,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -48977,7 +50940,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 24,
+      "blockIndex": 25,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -48998,7 +50961,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 25,
+      "blockIndex": 26,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -49017,7 +50980,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 26,
+      "blockIndex": 27,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -49036,7 +50999,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 27,
+      "blockIndex": 28,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -49055,7 +51018,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 28,
+      "blockIndex": 29,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -49074,7 +51037,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 29,
+      "blockIndex": 30,
       "language": "bash",
       "hasMetadata": true,
       "presentMeta": [],
@@ -49093,7 +51056,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 30,
+      "blockIndex": 31,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -49112,7 +51075,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 31,
+      "blockIndex": 32,
       "language": "json",
       "hasMetadata": true,
       "presentMeta": [
@@ -49133,7 +51096,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 32,
+      "blockIndex": 33,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -49152,7 +51115,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 33,
+      "blockIndex": 34,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -49171,7 +51134,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 34,
+      "blockIndex": 35,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -49187,27 +51150,6 @@
       ],
       "lineCount": 79,
       "preview": "using Testcontainers.RabbitMQ;\n\n[NotInParallel]  // RabbitMQ container isolation\npublic class Rabbit"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 35,
-      "language": "csharp",
-      "hasMetadata": true,
-      "presentMeta": [
-        "Guideline"
-      ],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 9,
-      "preview": "// Low throughput (< 10 msg/sec)\noptions.MaxChannels = 10;  // Default\n\n// Medium throughput (10-100"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
@@ -49228,7 +51170,7 @@
         "testMethod"
       ],
       "lineCount": 9,
-      "preview": "// Fast processing (< 100ms per message)\noptions.PrefetchCount = 20;\n\n// Medium processing (100ms -"
+      "preview": "// Low throughput (< 10 msg/sec)\noptions.MaxChannels = 10;  // Default\n\n// Medium throughput (10-100"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
@@ -49249,11 +51191,32 @@
         "testMethod"
       ],
       "lineCount": 9,
-      "preview": "// Transient failures (network glitches)\noptions.MaxDeliveryAttempts = 3;\n\n// Intermittent failures"
+      "preview": "// Fast processing (< 100ms per message)\noptions.PrefetchCount = 20;\n\n// Medium processing (100ms -"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
       "blockIndex": 38,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "Guideline"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "// Transient failures (network glitches)\noptions.MaxDeliveryAttempts = 3;\n\n// Intermittent failures"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
+      "blockIndex": 39,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -49274,7 +51237,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 39,
+      "blockIndex": 40,
       "language": "bash",
       "hasMetadata": true,
       "presentMeta": [
@@ -49295,7 +51258,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 40,
+      "blockIndex": 41,
       "language": "bash",
       "hasMetadata": true,
       "presentMeta": [],
@@ -49314,7 +51277,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 41,
+      "blockIndex": 42,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -49333,7 +51296,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-      "blockIndex": 42,
+      "blockIndex": 43,
       "language": "bash",
       "hasMetadata": true,
       "presentMeta": [],
@@ -49682,12 +51645,50 @@
         "testFile",
         "testMethod"
       ],
+      "lineCount": 13,
+      "preview": "// Transports declare their capabilities via the Capabilities property\npublic TransportCapabilities"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
+      "blockIndex": 10,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "services.Configure<WorkCoordinatorPublisherOptions>(options => {\n    options.MaxBulkPublishBatchSize"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
+      "blockIndex": 11,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
       "lineCount": 8,
       "preview": "// v0.2.0 - HTTP transport\nservices.AddWhizbangTransports(options => {\n    options.UseHttp(http => {"
     },
     {
       "file": "src/assets/docs/v1.0.0/messaging/transports/transports.md",
-      "blockIndex": 10,
+      "blockIndex": 12,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -52727,6 +54728,163 @@
       "preview": "builder.Services\n    .AddWhizbang()\n    .AddWhizbangPerspectives()\n    .AddAllWhizbangServices();"
     },
     {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "services.AddWhizbang(options => {\n  // No-op — Reject is already the default.\n  // options.EmptyStre"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "services.AddWhizbang(options => {\n  options.EmptyStreamIdPolicy = EmptyStreamIdPolicy.FallbackToMess"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "services.AddWhizbang(options => {\n  options.EmptyStreamIdPolicy = EmptyStreamIdPolicy.DeadLetter;\n})"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "services.AddWhizbang(options => {\n  options.EmptyStreamIdPolicy = EmptyStreamIdPolicy.Purge;\n});"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
+      "blockIndex": 4,
+      "language": "mermaid",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "flowchart LR\n  P[Producer call site]\n  S{Storage<br/>EmptyStreamIdGuard}\n  W[wh_outbox / wh_inbox]"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
+      "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "1"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "services.AddWhizbang(options => {\n  options.EmptyStreamIdPolicy = EmptyStreamIdPolicy.FallbackToMess"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "2"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "services.AddWhizbang(options => {\n  options.EmptyStreamIdPolicy = EmptyStreamIdPolicy.Reject;\n});"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
+      "blockIndex": 7,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "SELECT message_type, COUNT(*) AS empty_count\nFROM wh_dead_letters\nWHERE failure_reason = 11  -- Mess"
+    },
+    {
       "file": "src/assets/docs/v1.0.0/operations/configuration/lens-services.md",
       "blockIndex": 0,
       "language": "csharp",
@@ -53337,6 +55495,306 @@
       ],
       "lineCount": 6,
       "preview": "// This still works - uses default options\nservices.AddWhizbang();\n\n// Equivalent to:\nservices.AddWh"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/internal-dlq.md",
+      "blockIndex": 0,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 25,
+      "preview": "CREATE TABLE wh_dead_letters (\n  dead_letter_id     UUID NOT NULL PRIMARY KEY,\n  source_table"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/internal-dlq.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 12,
+      "preview": "public interface IDeadLetterStore {\n  Task<Guid?> MoveAsync(\n    Guid deadLetterId,\n    string sourc"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/internal-dlq.md",
+      "blockIndex": 2,
+      "language": "json",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "{\n  \"Whizbang\": {\n    \"InboxDispatchWorker\": { \"MaxInboxAttempts\": null }\n  }\n}"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/operator-api.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "using Whizbang.Hosting.AspNet;\n\nvar app = builder.Build();\n// ...\napp.MapWhizbangDeadLetterEndpoints"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/operator-api.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "app.MapWhizbangDeadLetterEndpoints()\n   .RequireAuthorization(\"WhizbangOperator\")\n   .RequireHost(\"a"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/operator-api.md",
+      "blockIndex": 2,
+      "language": "json",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 16,
+      "preview": "[\n  {\n    \"deadLetterId\": \"019e8b1d-7e90-77cc-a3c7-ff3469de0f33\",\n    \"sourceTable\": \"wh_inbox\","
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/operator-api.md",
+      "blockIndex": 3,
+      "language": "json",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 2,
+      "preview": "{ \"generation\": \"0.502.0-alpha.1\", \"scheduled\": 42 }"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/perspective-events.md",
+      "blockIndex": 0,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "WITH src AS (\n  DELETE FROM wh_perspective_events\n  WHERE event_work_id = $sourceId\n  RETURNING stre"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/perspective-events.md",
+      "blockIndex": 1,
+      "language": "json",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "{\n  \"Whizbang\": {\n    \"PerspectiveWorker\": { \"MaxPerspectiveEventAttempts\": null }\n  }\n}"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/recovery.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 21,
+      "preview": "services.AddSingleton<IDeadLetterRecoveryPolicy, MyCustomPolicy>();\n\npublic sealed class MyCustomPol"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/recovery.md",
+      "blockIndex": 1,
+      "language": "json",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "{\n  \"Whizbang\": {\n    \"DeadLetterRecovery\": { \"EnableGenerationReplay\": false }\n  }\n}"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/transport-recovery.md",
+      "blockIndex": 0,
+      "language": "json",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "{\n  \"Whizbang\": {\n    \"TransportDeadLetterDrainWorker\": {\n      \"Enabled\": true,\n      \"IntervalMinu"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/transport-recovery.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "services.AddSingleton<ITransportDeadLetterDrainer>(sp =>\n  new AzureServiceBusDeadLetterDrainer("
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/transport-recovery.md",
+      "blockIndex": 2,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "services.AddSingleton<ITransportDeadLetterDrainer>(sp =>\n  new RabbitMqDeadLetterDrainer(\n    connec"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/transport-recovery.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "app.MapPost(\"/admin/transport-dlq/drain-now\", async (\n    TransportDeadLetterDrainWorker worker,"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/deployment/deployment-strategies.md",
@@ -57011,6 +59469,369 @@
       "preview": "public class OutboxHealthCheck : IHealthCheck {\n  public async Task<HealthCheckResult> CheckHealthAs"
     },
     {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 0,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 2,
+      "preview": "Message {MessageId} exceeds maximum batch message size"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 1,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "services.AddWhizbangBodyOffload();\nservices.AddWhizbangAzureBlobOffload(\"azure-blob\");\nservices.Conf"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 2,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "Serialized envelope is {N} bytes; transport ceiling is {M} bytes. Register a\nbody-offload provider ("
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 3,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "Broker throttle on publish ({Transport}) — message {MessageId} attempt\n{Attempt}/{MaxAttempts}; slee"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 4,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "Broker throttle budget exhausted ({Transport}) after {Attempts} attempts for\nmessage {MessageId} — r"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 5,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 2,
+      "preview": "No receptor found for message type '{Type.FullName}'."
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 6,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 2,
+      "preview": "No IWorkCoordinatorStrategy registered. Cannot route messages to outbox."
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 7,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "IClaimedEmissionStore is not registered. Call AddWhizbangClaimedEmissionStore()\n(Postgres driver) or"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 8,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 2,
+      "preview": "No runner found for perspective '{name}'. Registered: {list}"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 9,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "Perspectives skipped (not locally owned by this service): [{Skipped}].\nLocally registered: [{Registe"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 10,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "RebuildPerspectiveCommand has nothing to rebuild on this service (fanout={FanOut}).\nLocally register"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 11,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 4,
+      "preview": "RebuildPerspectiveCommand.FromEventId={FromEventId} is set but IPerspectiveRebuilder\nhas no partial-"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 12,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 2,
+      "preview": "Rebuild {Perspective}: failed on stream {StreamId} ({Processed}/{Total})"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 13,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "No IPerspectiveRunner found for perspective '{PerspectiveName}' (stream: {StreamId}).\nSee startup lo"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 14,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "No JsonTypeInfo found for {Type}. Ensure the message type is registered in\nWhizbangJsonContext."
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 15,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "Body not found at '{StorageKey}' in container '{ContainerName}'. TTL may have\nremoved it before the"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 16,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 2,
+      "preview": "Claim '{StorageKey}' size {Size} exceeds MaxBytes cap {Max}; refusing download."
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 17,
+      "language": "text",
+      "hasMetadata": false,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "AzureBlobOffloadOptions.ConnectionString is required for provider '{name}' ...\nAzureBlobOffloadOptio"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "blockIndex": 18,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "framework",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "services.Configure<AzureBlobOffloadOptions>(\"azure-blob\", opts => {\n  opts.ConnectionString = config"
+    },
+    {
       "file": "src/assets/docs/v1.0.0/operations/diagnostics/serializable-property-analyzer.md",
       "blockIndex": 0,
       "language": "csharp",
@@ -58402,6 +61223,26 @@
       ],
       "lineCount": 7,
       "preview": "// What Roslyn sees:\n// - Constructor parameter: \"tagName\"\n// - Constructor arguments: [\"tenants\"]"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz120.md",
+      "blockIndex": 0,
+      "language": "json",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 7,
+      "preview": "{\n  \"pinnedId\": \"11111111-2222-3333-4444-555555555555\",\n  \"clrTypeName\": \"MyApp.Contracts.OrderPlace"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz300.md",
@@ -59819,13 +62660,11 @@
       "preview": "var dropped = await initializer.CleanupBackupsAsync(olderThanDays: 30);\n// Drops tables matching *_b"
     },
     {
-      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
-      "blockIndex": 0,
-      "language": "csharp",
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/migrations.md",
+      "blockIndex": 3,
+      "language": "sql",
       "hasMetadata": true,
-      "presentMeta": [
-        "Registration"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -59836,12 +62675,12 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 2,
-      "preview": "builder.Services.AddSingleton<IPolicyEngine, PolicyEngine>();"
+      "lineCount": 17,
+      "preview": "DO $migrate$\nDECLARE v_version INTEGER;\nBEGIN\n  SELECT setting_value::INTEGER INTO v_version\n  FROM"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
-      "blockIndex": 1,
+      "blockIndex": 0,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -59856,15 +62695,15 @@
         "testMethod"
       ],
       "lineCount": 21,
-      "preview": "var policyEngine = new PolicyEngine();\n\n// Add policies (evaluated in order)\npolicyEngine.AddPolicy("
+      "preview": "var policyEngine = new PolicyEngine();\n\n// Add policies (evaluated in the order they are added)\npoli"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
-      "blockIndex": 2,
+      "blockIndex": 1,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
-        "Properties"
+        "delegates"
       ],
       "missingMeta": [
         "title",
@@ -59877,16 +62716,14 @@
         "testMethod"
       ],
       "lineCount": 10,
-      "preview": "public class PolicyContext {\n  public object Message { get; }              // The message being proc"
+      "preview": "public class PolicyContext {\n  public object Message { get; }               // The message being pro"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
-      "blockIndex": 3,
+      "blockIndex": 2,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "Methods"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -59897,8 +62734,27 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 14,
-      "preview": "// Service resolution\nvar repository = context.GetService<IOrderRepository>();\n\n// Metadata access\nv"
+      "lineCount": 20,
+      "preview": "// Service resolution (throws if Services is null or the service isn't registered)\nvar repository ="
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
+      "blockIndex": 3,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 11,
+      "preview": "// Rent from the pool (creates a new instance only when the pool is empty)\nvar context = PolicyConte"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
@@ -59917,11 +62773,53 @@
         "testMethod"
       ],
       "lineCount": 11,
-      "preview": "// Rent from pool\nvar context = PolicyContextPool.Rent(message, envelope, services, \"production\");"
+      "preview": "// PolicyEngine records a decision for every policy it evaluates.\nvar config = await policyEngine.Ma"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
       "blockIndex": 5,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "produces"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 22,
+      "preview": "public class PolicyConfiguration {\n  // Publishing (outbound) and subscribing (inbound) transport ta"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
+      "blockIndex": 6,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [
+        "setters"
+      ],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 10,
+      "preview": "configure: config => config\n  .UseTopic(\"order-events\")\n  .UseStreamId(\"order-stream\")\n  .UseExecuti"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
+      "blockIndex": 7,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -59935,50 +62833,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 17,
-      "preview": "// Automatic recording by PolicyEngine\ncontext.Trail.RecordDecision(\n  policyName: \"TenantRouting\","
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
-      "blockIndex": 6,
-      "language": "csharp",
-      "hasMetadata": true,
-      "presentMeta": [
-        "Properties"
-      ],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 23,
-      "preview": "public class PolicyConfiguration {\n  // Publishing (outbound)\n  public List<PublishTarget> PublishTa"
-    },
-    {
-      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
-      "blockIndex": 7,
-      "language": "csharp",
-      "hasMetadata": true,
-      "presentMeta": [
-        "API"
-      ],
-      "missingMeta": [
-        "title",
-        "description",
-        "category",
-        "difficulty",
-        "tags",
-        "framework",
-        "testFile",
-        "testMethod"
-      ],
-      "lineCount": 9,
-      "preview": "configure: config => config\n  .PublishToServiceBus(\"order-events\")\n  .UseStreamKey(\"order-{aggregate"
+      "lineCount": 10,
+      "preview": "configure: config => config\n  // Publishing (outbound)\n  .PublishToKafka(\"orders\")\n  .PublishToServi"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
@@ -60091,8 +62947,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 16,
-      "preview": "policyEngine.AddPolicy(\n  name: \"HighValueOrderRouting\",\n  predicate: context => {\n    // Complex pr"
+      "lineCount": 15,
+      "preview": "policyEngine.AddPolicy(\n  name: \"HighValueOrderRouting\",\n  predicate: context => {\n    bool isOrder"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
@@ -60110,8 +62966,8 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 13,
-      "preview": "policyEngine.AddPolicy(\n  name: \"FeatureFlagRouting\",\n  predicate: context => {\n    // Resolve servi"
+      "lineCount": 11,
+      "preview": "policyEngine.AddPolicy(\n  name: \"FeatureFlagRouting\",\n  predicate: context => {\n    // Resolve a ser"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
@@ -60129,7 +62985,7 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 19,
+      "lineCount": 17,
       "preview": "policyEngine.AddPolicy(\n  name: \"PeakHoursRouting\",\n  predicate: context => {\n    var hour = context"
     },
     {
@@ -60167,12 +63023,31 @@
         "testFile",
         "testMethod"
       ],
+      "lineCount": 23,
+      "preview": "[Test]\npublic async Task OrderPolicy_SetsTopicAndStreamIdAsync() {\n  // Arrange\n  var context = new"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
+      "blockIndex": 18,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
       "lineCount": 29,
       "preview": "[Test]\npublic async Task PolicyEngine_FirstMatchWins_SkipsSubsequentPoliciesAsync() {\n  // Arrange"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
-      "blockIndex": 18,
+      "blockIndex": 19,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -60191,12 +63066,10 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
-      "blockIndex": 19,
+      "blockIndex": 20,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "Problem"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -60212,12 +63085,10 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
-      "blockIndex": 20,
+      "blockIndex": 21,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "Problem"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -60233,12 +63104,10 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policies.md",
-      "blockIndex": 21,
+      "blockIndex": 22,
       "language": "csharp",
       "hasMetadata": true,
-      "presentMeta": [
-        "Problem"
-      ],
+      "presentMeta": [],
       "missingMeta": [
         "title",
         "description",
@@ -60250,7 +63119,7 @@
         "testMethod"
       ],
       "lineCount": 25,
-      "preview": "// Predicate exception is caught and logged\npolicyEngine.AddPolicy(\n  name: \"FaultyPolicy\",\n  predic"
+      "preview": "// Predicate that can throw — the engine catches it and records the failure\npolicyEngine.AddPolicy("
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md",
@@ -61435,6 +64304,105 @@
       ],
       "lineCount": 20,
       "preview": "// DO: Use descriptive, consistent tag names\n[TelemetryTag(Tag = \"orders.payment-processed\", SpanNam"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
+      "blockIndex": 0,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "services.Configure<MaintenanceWorkerOptions>(options => {\n  options.StuckRowSentinelEnabled = true;"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
+      "blockIndex": 1,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 8,
+      "preview": "CREATE INDEX idx_outbox_stuck_sentinel\n  ON wh_outbox (attempts)\n  WHERE processed_at IS NULL AND at"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
+      "blockIndex": 2,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "SELECT message_type, stream_id, attempts, status, failure_reason,\n          error, instance_id, l"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
+      "blockIndex": 3,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 6,
+      "preview": "SELECT message_type, COUNT(*) AS stuck_count, MAX(attempts) AS max_attempts\nFROM wh_outbox\nWHERE att"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
+      "blockIndex": 4,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 9,
+      "preview": "SELECT\n  message_type,\n  MIN(created_at) AS oldest_stuck,\n  MAX(created_at) AS newest_stuck,\n  AVG(a"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/observability/tracing.md",
@@ -64271,12 +67239,50 @@
         "testFile",
         "testMethod"
       ],
+      "lineCount": 4,
+      "preview": "builder.Services.Configure<PerspectiveWorkerOptions>(options => {\n  options.LeaseSeconds = 300;  //"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
+      "blockIndex": 27,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 15,
+      "preview": "public class MetricsDedupObserver : IProcessedEventCacheObserver {\n  public void OnEventsDeduped(IRe"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
+      "blockIndex": 28,
+      "language": "csharp",
+      "hasMetadata": true,
+      "presentMeta": [],
+      "missingMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags",
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
       "lineCount": 25,
       "preview": "var workBatch = await workCoordinator.ProcessWorkBatchAsync(\n  _instanceProvider.InstanceId,\n  _inst"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "blockIndex": 27,
+      "blockIndex": 29,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [],
@@ -64295,7 +67301,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "blockIndex": 28,
+      "blockIndex": 30,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -64316,7 +67322,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "blockIndex": 29,
+      "blockIndex": 31,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -64337,7 +67343,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "blockIndex": 30,
+      "blockIndex": 32,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -64358,7 +67364,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "blockIndex": 31,
+      "blockIndex": 33,
       "language": "sql",
       "hasMetadata": true,
       "presentMeta": [
@@ -64379,7 +67385,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "blockIndex": 32,
+      "blockIndex": 34,
       "language": "sql",
       "hasMetadata": true,
       "presentMeta": [
@@ -64400,7 +67406,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "blockIndex": 33,
+      "blockIndex": 35,
       "language": "sql",
       "hasMetadata": true,
       "presentMeta": [
@@ -64421,7 +67427,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "blockIndex": 34,
+      "blockIndex": 36,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -64442,7 +67448,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "blockIndex": 35,
+      "blockIndex": 37,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -64458,12 +67464,12 @@
         "testFile",
         "testMethod"
       ],
-      "lineCount": 10,
-      "preview": "// Increase lease duration\nbuilder.Services.Configure<PerspectiveWorkerOptions>(options => {\n  optio"
+      "lineCount": 12,
+      "preview": "// 1. Register a dedup observer to confirm dedup is working\nbuilder.Services.AddSingleton<IProcessed"
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "blockIndex": 36,
+      "blockIndex": 38,
       "language": "sql",
       "hasMetadata": true,
       "presentMeta": [
@@ -64484,7 +67490,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "blockIndex": 37,
+      "blockIndex": 39,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -64505,7 +67511,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "blockIndex": 38,
+      "blockIndex": 40,
       "language": "csharp",
       "hasMetadata": true,
       "presentMeta": [
@@ -64526,7 +67532,7 @@
     },
     {
       "file": "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-      "blockIndex": 39,
+      "blockIndex": 41,
       "language": "sql",
       "hasMetadata": true,
       "presentMeta": [
@@ -64544,6 +67550,66 @@
       ],
       "lineCount": 11,
       "preview": "-- Check that both services are active\nSELECT\n  instance_id,\n  service_name,\n  last_heartbeat\nFROM w"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/process-work-batch-lease-semantics.md",
+      "blockIndex": 0,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 3,
+      "preview": "v_lease_expiry      := p_now + (p_lease_duration_seconds          || ' seconds')::INTERVAL;\nv_refres"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/process-work-batch-lease-semantics.md",
+      "blockIndex": 1,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "UPDATE wh_active_streams\nSET lease_expiry = v_lease_expiry\nWHERE assigned_instance_id = p_instance_i"
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/process-work-batch-lease-semantics.md",
+      "blockIndex": 2,
+      "language": "sql",
+      "hasMetadata": true,
+      "presentMeta": [
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "tags"
+      ],
+      "missingMeta": [
+        "framework",
+        "testFile",
+        "testMethod"
+      ],
+      "lineCount": 5,
+      "preview": "ON CONFLICT (instance_id) DO UPDATE SET\n  last_heartbeat_at = p_now,\n  metadata          = COALESCE("
     }
   ]
 }

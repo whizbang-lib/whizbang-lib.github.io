@@ -1,8 +1,142 @@
 {
-  "totalInternalLinks": 932,
-  "valid": 932,
-  "broken": 0,
-  "brokenLinks": [],
+  "totalInternalLinks": 1069,
+  "valid": 1050,
+  "broken": 19,
+  "brokenLinks": [
+    {
+      "source": "src/assets/docs/v1.0.0/fundamentals/messaging/composite-events.md",
+      "target": "/docs/fundamentals/messaging/collective-events",
+      "resolvedPath": "../../../../../docs/fundamentals/messaging/collective-events",
+      "linkText": "collective events",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/fundamentals/messaging/composite-events.md",
+      "target": "/docs/fundamentals/offloads/message-body-store",
+      "resolvedPath": "../../../../../docs/fundamentals/offloads/message-body-store",
+      "linkText": "message-body offload",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/fundamentals/offloads/message-body-store.md",
+      "target": "/docs/fundamentals/messaging/composite-events",
+      "resolvedPath": "../../../../../docs/fundamentals/messaging/composite-events",
+      "linkText": "composite events",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
+      "target": "/docs/fundamentals/offloads/message-body-store",
+      "resolvedPath": "../../../../../docs/fundamentals/offloads/message-body-store",
+      "linkText": "body offload",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
+      "target": "/docs/fundamentals/offloads/message-body-store",
+      "resolvedPath": "../../../../../docs/fundamentals/offloads/message-body-store",
+      "linkText": "Body Offload (Claim-Check Pattern)",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
+      "target": "/docs/fundamentals/offloads/message-body-store",
+      "resolvedPath": "../../../../../docs/fundamentals/offloads/message-body-store",
+      "linkText": "Body Offload (Claim-Check Pattern)",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/in-memory.md",
+      "target": "/docs/fundamentals/offloads/providers/azure-blob",
+      "resolvedPath": "../../../../../docs/fundamentals/offloads/providers/azure-blob",
+      "linkText": "Whizbang.Offloads.AzureBlob",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/fundamentals/perspectives/apply-exactly-once.md",
+      "target": "drain-mode",
+      "resolvedPath": "src/assets/docs/v1.0.0/fundamentals/perspectives/drain-mode",
+      "linkText": "Drain mode",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/fundamentals/perspectives/apply-exactly-once.md",
+      "target": "../lifecycle/lifecycle-receptors",
+      "resolvedPath": "src/assets/docs/v1.0.0/fundamentals/lifecycle/lifecycle-receptors",
+      "linkText": "Lifecycle receptors",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/fundamentals/workers/perspective-worker-notify.md",
+      "target": "../work-coordinator/notifications-and-pgbouncer.md",
+      "resolvedPath": "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+      "linkText": "Notifications & pgbouncer",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md",
+      "target": "../work-coordinator/notifications-and-pgbouncer.md",
+      "resolvedPath": "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+      "linkText": "pgbouncer topology overview",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md",
+      "target": "../../proposals/slot-3-perf-baseline.md",
+      "resolvedPath": "src/assets/docs/v1.0.0/proposals/slot-3-perf-baseline.md",
+      "linkText": "Slot-3 perf measurement (2026-06-10)",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/fundamentals/workers/worker-classification.md",
+      "target": "../work-coordinator/notifications-and-pgbouncer.md",
+      "resolvedPath": "src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+      "linkText": "Notifications & pgbouncer",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/messaging/composite-events.md",
+      "target": "/docs/fundamentals/offloads/message-body-store",
+      "resolvedPath": "../../../../../docs/fundamentals/offloads/message-body-store",
+      "linkText": "body offload feature",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
+      "target": "../../fundamentals/work-coordinator/configuration-reference.md",
+      "resolvedPath": "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+      "linkText": "Message Failure Reasons",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
+      "target": "../dead-letter-queue/lifecycle-failure-capture.md",
+      "resolvedPath": "src/assets/docs/v1.0.0/operations/dead-letter-queue/lifecycle-failure-capture.md",
+      "linkText": "Lifecycle Failure Capture",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
+      "target": "../../fundamentals/work-coordinator/configuration-reference.md",
+      "resolvedPath": "src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+      "linkText": "`MaintenanceWorkerOptions`",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
+      "target": "../../fundamentals/work-coordinator/per-stream-drain.md",
+      "resolvedPath": "src/assets/docs/v1.0.0/fundamentals/work-coordinator/per-stream-drain.md",
+      "linkText": "`OutboxDrainWorkerOptions.MaxOutboxAttempts`",
+      "valid": false
+    },
+    {
+      "source": "src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
+      "target": "../../fundamentals/work-coordinator/maintenance.md",
+      "resolvedPath": "src/assets/docs/v1.0.0/fundamentals/work-coordinator/maintenance.md",
+      "linkText": "Maintenance Worker",
+      "valid": false
+    }
+  ],
   "linksBySource": {
     "src/assets/docs/v1.0.0/README.md": {
       "valid": 16,
@@ -13,7 +147,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/apis/graphql/index.md": {
-      "valid": 7,
+      "valid": 8,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/apis/graphql/lens-integration.md": {
@@ -21,6 +155,10 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/apis/graphql/polymorphic-types.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/apis/graphql/production-hardening.md": {
       "valid": 2,
       "broken": 0
     },
@@ -184,6 +322,10 @@
       "valid": 7,
       "broken": 0
     },
+    "src/assets/docs/v1.0.0/extending/internals/event-ordering-invariant.md": {
+      "valid": 1,
+      "broken": 0
+    },
     "src/assets/docs/v1.0.0/extending/internals/message-lifecycle.md": {
       "valid": 7,
       "broken": 0
@@ -232,8 +374,12 @@
       "valid": 10,
       "broken": 0
     },
+    "src/assets/docs/v1.0.0/fundamentals/dispatcher/publish-once.md": {
+      "valid": 2,
+      "broken": 0
+    },
     "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md": {
-      "valid": 5,
+      "valid": 6,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/dispatcher/rpc-extraction.md": {
@@ -276,12 +422,16 @@
       "valid": 4,
       "broken": 0
     },
+    "src/assets/docs/v1.0.0/fundamentals/identity/pinned-type-ledger.md": {
+      "valid": 4,
+      "broken": 0
+    },
     "src/assets/docs/v1.0.0/fundamentals/identity/time-provider.md": {
       "valid": 3,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/identity/type-formatting.md": {
-      "valid": 4,
+      "valid": 6,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/identity/type-matching.md": {
@@ -376,13 +526,41 @@
       "valid": 6,
       "broken": 0
     },
+    "src/assets/docs/v1.0.0/fundamentals/messaging/apply-hooks.md": {
+      "valid": 1,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/messaging/composite-events.md": {
+      "valid": 0,
+      "broken": 2
+    },
+    "src/assets/docs/v1.0.0/fundamentals/offloads/message-body-store.md": {
+      "valid": 0,
+      "broken": 1
+    },
+    "src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md": {
+      "valid": 0,
+      "broken": 3
+    },
+    "src/assets/docs/v1.0.0/fundamentals/offloads/providers/in-memory.md": {
+      "valid": 0,
+      "broken": 1
+    },
+    "src/assets/docs/v1.0.0/fundamentals/persistence/caller-info-capture.md": {
+      "valid": 3,
+      "broken": 0
+    },
     "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md": {
-      "valid": 7,
+      "valid": 11,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/persistence/persistence.md": {
       "valid": 5,
       "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/apply-exactly-once.md": {
+      "valid": 4,
+      "broken": 2
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/association-info.md": {
       "valid": 4,
@@ -409,7 +587,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md": {
-      "valid": 16,
+      "valid": 20,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/physical-fields.md": {
@@ -430,6 +608,10 @@
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/registry.md": {
       "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/rewind.md": {
+      "valid": 10,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md": {
@@ -456,6 +638,14 @@
       "valid": 3,
       "broken": 0
     },
+    "src/assets/docs/v1.0.0/fundamentals/perspectives/versioned-apply.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/receptors/exactly-once-firing.md": {
+      "valid": 3,
+      "broken": 0
+    },
     "src/assets/docs/v1.0.0/fundamentals/receptors/lifecycle-receptors.md": {
       "valid": 7,
       "broken": 0
@@ -464,8 +654,20 @@
       "valid": 10,
       "broken": 0
     },
+    "src/assets/docs/v1.0.0/fundamentals/sagas/completion-orchestration.md": {
+      "valid": 4,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md": {
+      "valid": 5,
+      "broken": 0
+    },
     "src/assets/docs/v1.0.0/fundamentals/security/audit-logging.md": {
       "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/security/http-security-headers.md": {
+      "valid": 1,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/fundamentals/security/implementing-multi-tenancy.md": {
@@ -491,6 +693,22 @@
     "src/assets/docs/v1.0.0/fundamentals/security/security.md": {
       "valid": 5,
       "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/workers/instance-liveness.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/fundamentals/workers/perspective-worker-notify.md": {
+      "valid": 1,
+      "broken": 1
+    },
+    "src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md": {
+      "valid": 0,
+      "broken": 2
+    },
+    "src/assets/docs/v1.0.0/fundamentals/workers/worker-classification.md": {
+      "valid": 4,
+      "broken": 1
     },
     "src/assets/docs/v1.0.0/getting-started/glossary.md": {
       "valid": 36,
@@ -556,6 +774,10 @@
       "valid": 10,
       "broken": 0
     },
+    "src/assets/docs/v1.0.0/messaging/composite-events.md": {
+      "valid": 0,
+      "broken": 1
+    },
     "src/assets/docs/v1.0.0/messaging/failure-handling.md": {
       "valid": 5,
       "broken": 0
@@ -590,6 +812,10 @@
     },
     "src/assets/docs/v1.0.0/messaging/transports/in-memory.md": {
       "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/messaging/transports/infrastructure-mapping.md": {
+      "valid": 12,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md": {
@@ -652,6 +878,10 @@
       "valid": 5,
       "broken": 0
     },
+    "src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md": {
+      "valid": 3,
+      "broken": 1
+    },
     "src/assets/docs/v1.0.0/operations/configuration/lens-services.md": {
       "valid": 5,
       "broken": 0
@@ -670,6 +900,34 @@
     },
     "src/assets/docs/v1.0.0/operations/configuration/whizbang-options.md": {
       "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/dead-letter-queue/_folder.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/dead-letter-queue/internal-dlq.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/dead-letter-queue/operator-api.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/dead-letter-queue/perspective-events.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/dead-letter-queue/recovery.md": {
+      "valid": 3,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/dead-letter-queue/transport-recovery.md": {
+      "valid": 2,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md": {
+      "valid": 7,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/operations/diagnostics/serializable-property-analyzer.md": {
@@ -712,6 +970,14 @@
       "valid": 1,
       "broken": 0
     },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz120.md": {
+      "valid": 5,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/diagnostics/whiz121.md": {
+      "valid": 4,
+      "broken": 0
+    },
     "src/assets/docs/v1.0.0/operations/diagnostics/whiz300.md": {
       "valid": 2,
       "broken": 0
@@ -741,7 +1007,7 @@
       "broken": 0
     },
     "src/assets/docs/v1.0.0/operations/infrastructure/policies.md": {
-      "valid": 6,
+      "valid": 7,
       "broken": 0
     },
     "src/assets/docs/v1.0.0/operations/infrastructure/policy-engine.md": {
@@ -768,6 +1034,10 @@
       "valid": 3,
       "broken": 0
     },
+    "src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md": {
+      "valid": 5,
+      "broken": 4
+    },
     "src/assets/docs/v1.0.0/operations/observability/tracing.md": {
       "valid": 3,
       "broken": 0
@@ -790,6 +1060,10 @@
     },
     "src/assets/docs/v1.0.0/operations/workers/perspective-worker.md": {
       "valid": 11,
+      "broken": 0
+    },
+    "src/assets/docs/v1.0.0/operations/workers/process-work-batch-lease-semantics.md": {
+      "valid": 3,
       "broken": 0
     }
   }

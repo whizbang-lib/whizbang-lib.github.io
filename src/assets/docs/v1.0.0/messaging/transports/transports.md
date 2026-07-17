@@ -1,16 +1,38 @@
 ---
 title: Transports Component
+pageType: overview
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Components
 order: 9
-description: Basic in-process message transport for local development
-tags: 'transports, messaging, in-process, communication, v0.1.0'
+description: >-
+  The ITransport abstraction - capabilities, publishing, batch subscriptions,
+  and bulk publishing across in-process and broker transports
+tags: 'transports, messaging, in-process, communication, bulk-publish, batch-subscribe'
 codeReferences:
   - src/Whizbang.Core/Transports/ITransport.cs
+  - src/Whizbang.Core/Transports/TransportCapabilities.cs
+  - src/Whizbang.Core/Transports/TransportDestination.cs
+  - src/Whizbang.Core/Transports/InProcessTransport.cs
   - src/Whizbang.Core/Transports/ITransportManager.cs
   - src/Whizbang.Core/Transports/ISubscription.cs
   - src/Whizbang.Core/Transports/IMessageSerializer.cs
   - src/Whizbang.Core/Transports/BulkPublish.cs
+  - src/Whizbang.Core/Workers/IMessagePublishStrategy.cs
+  - src/Whizbang.Core/Workers/TransportPublishStrategy.cs
+  - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
+testReferences:
+  - tests/Whizbang.Transports.Tests/ITransportTests.cs
+  - tests/Whizbang.Transports.Tests/TransportCapabilitiesTests.cs
+  - tests/Whizbang.Transports.Tests/TransportDestinationTests.cs
+  - tests/Whizbang.Transports.Tests/InProcessTransportTests.cs
+  - tests/Whizbang.Transports.Tests/ISubscriptionTests.cs
+  - tests/Whizbang.Transports.Tests/BulkPublishTests.cs
+  - tests/Whizbang.Transports.Tests/SubscribeBatchTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportPublishStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MessagePublishStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OutboxPublishWorkerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -19,487 +41,269 @@ lastMaintainedCommit: '01f07906'
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Status](https://img.shields.io/badge/status-stable-green)
 
-## Version History
-
-:::new
-**New in v1.0.0**: Basic in-process transport with synchronous message passing
-:::
-
-
 ## Overview
 
-Transports provide the communication layer in Whizbang, enabling message exchange between components. In v1.0.0, we provide a simple in-process transport that passes messages directly in memory - perfect for monolithic applications and testing.
+Transports provide the communication layer in Whizbang, enabling message exchange between services. Three transport drivers ship today:
+
+- **In-process** (`InProcessTransport`) - direct in-memory delivery for tests and single-process apps
+- **RabbitMQ** (`RabbitMQTransport`) - see [RabbitMQ Transport](rabbitmq.md)
+- **Azure Service Bus** (`AzureServiceBusTransport`) - see [Azure Service Bus Transport](azure-service-bus.md)
+
+All three implement the same `ITransport` interface, so application code and the outbox/inbox workers are transport-agnostic.
 
 ## What is a Transport?
 
 A Transport:
-- **Carries** messages between components
-- **Handles** serialization and deserialization
+- **Carries** message envelopes between services
+- **Handles** wire serialization and deserialization (AOT-safe, via `JsonContextRegistry`)
 - **Manages** connections and channels
-- **Provides** delivery guarantees
+- **Declares** its delivery guarantees through capability flags
 
 Think of transports as the postal service of your application - they ensure messages get from sender to receiver reliably.
 
-## Core Interface (v1.0.0)
+## Core Interface
 
-:::new
-The basic transport interface for message passing:
-:::
+The real `ITransport` surface (`src/Whizbang.Core/Transports/ITransport.cs`):
 
-```csharp{title="Core Interface (v1.0.0)" description="Core Interface (v1.0.0)" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Core", "Interface"]}
+```csharp{title="ITransport interface" description="The transport abstraction: initialization, capabilities, publish, batch subscribe, request/response, and bulk publish" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Core", "Interface"]}
 public interface ITransport {
-    // Send a message
-    Task<TResponse> Send<TRequest, TResponse>(TRequest request, string destination)
-        where TRequest : IMessage
-        where TResponse : IMessage;
-    
-    // Send without response
-    Task Publish<TMessage>(TMessage message, string topic)
-        where TMessage : IMessage;
-    
-    // Subscribe to messages
-    Task Subscribe<TMessage>(string topic, Func<TMessage, Task> handler)
-        where TMessage : IMessage;
-    
-    // Transport metadata
-    string Name { get; }
-    TransportCapabilities Capabilities { get; }
-}
+    // Lifecycle
+    bool IsInitialized { get; }
+    Task InitializeAsync(CancellationToken cancellationToken = default);
 
-public enum TransportCapabilities {
-    None = 0,
-    RequestResponse = 1,
-    PublishSubscribe = 2,
-    Streaming = 4,
-    Reliable = 8,
-    Ordered = 16
+    // What this transport supports (flags)
+    TransportCapabilities Capabilities { get; }
+
+    // Max wire size in bytes; null = no limit relevant to offload decisions.
+    // Size-aware strategies (body offload / claim-check) read this pre-flight.
+    long? MaxMessageSizeBytes => null;
+
+    // Fire-and-forget publish of one envelope
+    Task PublishAsync(
+        IMessageEnvelope envelope,
+        TransportDestination destination,
+        string? envelopeType = null,
+        ReadOnlyMemory<byte>? preSerializedBytes = null,
+        CancellationToken cancellationToken = default);
+
+    // Subscribe with transport-level batch collection: the handler is invoked
+    // once per batch (size reached, sliding window, or hard max timeout)
+    Task<ISubscription> SubscribeBatchAsync(
+        Func<IReadOnlyList<TransportMessage>, CancellationToken, Task> batchHandler,
+        TransportDestination destination,
+        TransportBatchOptions batchOptions,
+        CancellationToken cancellationToken = default);
+
+    // Push subscription on the broker's dead-letter queue.
+    // Default implementation throws NotSupportedException (polling fallback).
+    Task<ISubscription> SubscribeToDeadLetterAsync(
+        Func<TransportMessage, CancellationToken, Task> handler,
+        TransportDestination destination,
+        CancellationToken cancellationToken = default);
+
+    // Request/response pattern
+    Task<IMessageEnvelope> SendAsync<TRequest, TResponse>(
+        IMessageEnvelope requestEnvelope,
+        TransportDestination destination,
+        CancellationToken cancellationToken = default)
+        where TRequest : notnull where TResponse : notnull;
+
+    // Bulk publish (see the Bulk Publishing section below).
+    // Default implementation throws NotSupportedException.
+    Task<IReadOnlyList<BulkPublishItemResult>> PublishBatchAsync(
+        IReadOnlyList<BulkPublishItem> items,
+        TransportDestination destination,
+        CancellationToken cancellationToken = default);
 }
 ```
+
+`TransportMessage` is a lightweight value type pairing a deserialized `IMessageEnvelope` with its assembly-qualified envelope type name:
+
+```csharp{title="TransportMessage" description="A deserialized transport message ready for batch processing" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Batching"]}
+public readonly record struct TransportMessage(
+    IMessageEnvelope Envelope,
+    string? EnvelopeType
+);
+```
+
+### Transport Capabilities
+
+`TransportCapabilities` is a `[Flags]` enum - transports combine the flags they support:
+
+```csharp{title="TransportCapabilities flags" description="Capability flags a transport can declare" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Capabilities"]}
+[Flags]
+public enum TransportCapabilities {
+    None             = 0,
+    RequestResponse  = 1 << 0,  // Send/Receive pattern
+    PublishSubscribe = 1 << 1,  // Pub/sub pattern
+    Streaming        = 1 << 2,  // IAsyncEnumerable streams
+    Reliable         = 1 << 3,  // At-least-once delivery
+    Ordered          = 1 << 4,  // Ordering within a stream/partition
+    ExactlyOnce      = 1 << 5,  // Requires inbox/outbox dedup
+    BulkPublish      = 1 << 6,  // Batch multiple messages per transport call
+    All = RequestResponse | PublishSubscribe | Streaming | Reliable | Ordered | ExactlyOnce | BulkPublish
+}
+```
+
+| Transport | Declared capabilities |
+|-----------|----------------------|
+| `InProcessTransport` | `RequestResponse \| PublishSubscribe \| Ordered \| Reliable` |
+| `RabbitMQTransport` | `PublishSubscribe \| Reliable \| BulkPublish` (+ `Ordered` when Single Active Consumer is enabled) |
+| `AzureServiceBusTransport` | `PublishSubscribe \| Reliable \| BulkPublish` (+ `Ordered` when sessions are enabled) |
+
+## Transport Destinations
+
+Where a message goes is expressed with `TransportDestination` - an address, an optional routing key, and optional transport-specific metadata:
+
+```csharp{title="TransportDestination" description="Address, routing key, and metadata describing where a message is sent" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Destination"]}
+public record TransportDestination(
+    string Address,                                        // queue/topic/exchange name (required, non-empty)
+    string? RoutingKey = null,                             // e.g. "orders.created"
+    IReadOnlyDictionary<string, JsonElement>? Metadata = null  // transport-specific extras
+);
+```
+
+Each transport interprets these differently - see [Infrastructure Mapping](infrastructure-mapping.md) for the full per-transport breakdown.
+
+## Message Envelopes
+
+Messages travel as `IMessageEnvelope` instances. The concrete `MessageEnvelope<T>` requires an id, payload, dispatch context, and at least one hop:
+
+```csharp{title="Constructing an envelope" description="MessageEnvelope<T> with its required properties" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Envelope"]}
+var envelope = new MessageEnvelope<OrderCreatedEvent> {
+    MessageId = MessageId.New(),
+    Payload = new OrderCreatedEvent { OrderId = orderId, CustomerId = customerId },
+    DispatchContext = new MessageDispatchContext {
+        Mode = DispatchModes.Outbox,
+        Source = MessageSource.Outbox
+    },
+    Hops = [
+        new MessageHop {
+            Type = HopType.Current,
+            Timestamp = DateTimeOffset.UtcNow,
+            Topic = "orders",
+            ServiceInstance = ServiceInstanceInfo.Unknown
+        }
+    ]
+};
+```
+
+:::info
+In normal application code you rarely build envelopes by hand - the **Dispatcher** wraps your commands/events in envelopes and routes them through the outbox. Direct `ITransport` use is for infrastructure code and tests.
+:::
 
 ## In-Process Transport
 
-:::new
-The default in-process transport for v1.0.0:
-:::
+`InProcessTransport` delivers envelopes directly in memory - no serialization, no network. `PublishAsync` enqueues into each active subscription's batch collector; paused subscriptions are skipped. `SendAsync` implements request/response by subscribing to a per-request `response-{messageId}` destination before publishing the request.
 
-```csharp{title="In-Process Transport" description="In-Process Transport" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "In-Process", "Transport"]}
-[WhizbangTransport("InProcess")]
-public class InProcessTransport : ITransport {
-    private readonly Dictionary<string, object> _handlers = new();
-    private readonly Dictionary<string, List<Func<object, Task>>> _subscribers = new();
-    private readonly object _lock = new();
-    
-    public string Name => "InProcess";
-    public TransportCapabilities Capabilities => 
-        TransportCapabilities.RequestResponse | 
-        TransportCapabilities.PublishSubscribe |
-        TransportCapabilities.Ordered;
-    
-    // Register a handler for request/response
-    public void RegisterHandler<TRequest, TResponse>(
-        string destination, 
-        Func<TRequest, Task<TResponse>> handler)
-        where TRequest : IMessage
-        where TResponse : IMessage {
-        
-        lock (_lock) {
-            _handlers[destination] = handler;
+```csharp{title="In-process publish and batch subscribe" description="Using InProcessTransport directly - the same ITransport calls work against RabbitMQ and Azure Service Bus" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "In-Process"]}
+var transport = new InProcessTransport();
+await transport.InitializeAsync();
+
+var destination = new TransportDestination("orders");
+
+var subscription = await transport.SubscribeBatchAsync(
+    batchHandler: (batch, ct) => {
+        foreach (var message in batch) {
+            Console.WriteLine($"Received {message.Envelope.MessageId}");
         }
-    }
-    
-    public async Task<TResponse> Send<TRequest, TResponse>(
-        TRequest request, 
-        string destination)
-        where TRequest : IMessage
-        where TResponse : IMessage {
-        
-        object handler;
-        lock (_lock) {
-            if (!_handlers.TryGetValue(destination, out handler!)) {
-                throw new TransportException($"No handler registered for {destination}");
-            }
-        }
-        
-        var typedHandler = (Func<TRequest, Task<TResponse>>)handler;
-        return await typedHandler(request);
-    }
-    
-    public async Task Publish<TMessage>(TMessage message, string topic)
-        where TMessage : IMessage {
-        
-        List<Func<object, Task>> subscribers;
-        lock (_lock) {
-            if (!_subscribers.TryGetValue(topic, out subscribers!)) {
-                return; // No subscribers
-            }
-            subscribers = subscribers.ToList(); // Copy to avoid lock during execution
-        }
-        
-        // Execute all subscribers
-        var tasks = subscribers.Select(sub => sub(message!));
-        await Task.WhenAll(tasks);
-    }
-    
-    public Task Subscribe<TMessage>(string topic, Func<TMessage, Task> handler)
-        where TMessage : IMessage {
-        
-        lock (_lock) {
-            if (!_subscribers.ContainsKey(topic)) {
-                _subscribers[topic] = new List<Func<object, Task>>();
-            }
-            
-            _subscribers[topic].Add(async obj => await handler((TMessage)obj));
-        }
-        
         return Task.CompletedTask;
-    }
-}
+    },
+    destination,
+    new TransportBatchOptions { BatchSize = 1, SlideMs = 20, MaxWaitMs = 1000 });
+
+await transport.PublishAsync(envelope, destination);
+
+// ISubscription supports pause/resume and disposal
+await subscription.PauseAsync();
+await subscription.ResumeAsync();
+subscription.Dispose();
 ```
 
-## Message Contracts
-
-:::new
-Define messages for transport:
-:::
-
-```csharp{title="Message Contracts" description="Message Contracts" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Message", "Contracts"]}
-public interface IMessage {
-    Guid Id { get; }
-    DateTimeOffset Timestamp { get; }
-    Dictionary<string, string> Headers { get; }
-}
-
-public abstract record Message : IMessage {
-    public Guid Id { get; init; } = Guid.NewGuid();
-    public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
-    public Dictionary<string, string> Headers { get; init; } = new();
-}
-
-// Command message
-public record CreateOrderCommand : Message {
-    public Guid CustomerId { get; init; }
-    public List<OrderItem> Items { get; init; }
-    public decimal Total { get; init; }
-}
-
-// Event message
-public record OrderCreatedEvent : Message {
-    public Guid OrderId { get; init; }
-    public Guid CustomerId { get; init; }
-    public OrderStatus Status { get; init; }
-}
-
-// Query message
-public record GetOrderQuery : Message {
-    public Guid OrderId { get; init; }
-}
-
-// Response message
-public record OrderResponse : Message {
-    public Order Order { get; init; }
-    public bool Success { get; init; }
-    public string? Error { get; init; }
-}
-```
+`TransportBatchOptions` defaults: `BatchSize = 200`, `SlideMs = 20`, `MaxWaitMs = 1000`.
 
 ## Transport Registration
 
-Transports are registered and configured at startup:
+Each transport package ships its own DI extension; the in-process transport is registered directly:
 
-```csharp{title="Transport Registration" description="Transports are registered and configured at startup:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Transport", "Registration"]}
-// Manual registration
-services.AddWhizbangTransports(options => {
-    options.UseInProcess();
-});
+```csharp{title="Transport Registration" description="Registering a transport - one ITransport per host" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Registration"]}
+// In-process (tests, single-process apps)
+services.AddSingleton<ITransport>(new InProcessTransport());
 
-// Register handlers
-services.AddTransportHandlers(handlers => {
-    handlers.Handle<CreateOrderCommand, OrderCreatedEvent>("orders", 
-        async cmd => {
-            // Process command
-            return new OrderCreatedEvent { 
-                OrderId = Guid.NewGuid(),
-                CustomerId = cmd.CustomerId 
-            };
-        });
-});
+// RabbitMQ (Whizbang.Transports.RabbitMQ)
+services.AddRabbitMQTransport("amqp://guest:guest@localhost:5672/");
 
-// Source generated registration
-public static partial class WhizbangGenerated {
-    public static void RegisterTransports(IServiceCollection services) {
-        services.AddSingleton<ITransport, InProcessTransport>();
-        
-        // Auto-discover and register handlers
-        services.AddScoped<IHandler<CreateOrderCommand>, CreateOrderHandler>();
-    }
-}
+// Azure Service Bus (Whizbang.Transports.AzureServiceBus)
+services.AddAzureServiceBusTransport(connectionString);
 ```
 
-## Using Transports
+The broker extensions also register an `ITransportReadinessCheck`, an `IInfrastructureProvisioner`, and an `IMessagePublishStrategy` (the seam the outbox workers publish through). To consume messages, chain `WithRouting(...)` and `AddTransportConsumer()` - see [Transport Consumer](transport-consumer.md).
 
-### In Receptors
-
-```csharp{title="In Receptors" description="In Receptors" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Receptors"]}
-public class OrderReceptor : IReceptor<CreateOrder> {
-    private readonly ITransport _transport;
-    
-    public OrderReceptor(ITransport transport) {
-        _transport = transport;
-    }
-    
-    public async Task<OrderCreated> Receive(CreateOrder cmd) {
-        // Validate locally
-        if (!IsValid(cmd)) {
-            throw new ValidationException("Invalid order");
-        }
-        
-        // Send to inventory service (in-process for now)
-        var inventoryCommand = new CheckInventoryCommand {
-            Items = cmd.Items
-        };
-        
-        var inventoryResponse = await _transport.Send<CheckInventoryCommand, InventoryResponse>(
-            inventoryCommand, 
-            "inventory"
-        );
-        
-        if (!inventoryResponse.Available) {
-            throw new InsufficientInventoryException();
-        }
-        
-        // Create order
-        var orderCreated = new OrderCreated {
-            OrderId = Guid.NewGuid(),
-            CustomerId = cmd.CustomerId,
-            Items = cmd.Items
-        };
-        
-        // Publish event
-        await _transport.Publish(orderCreated, "orders.created");
-        
-        return orderCreated;
-    }
-}
-```
-
-### Event Subscriptions
-
-```csharp{title="Event Subscriptions" description="Event Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Event", "Subscriptions"]}
-public class NotificationService {
-    private readonly ITransport _transport;
-    
-    public async Task Start() {
-        // Subscribe to order events
-        await _transport.Subscribe<OrderCreatedEvent>(
-            "orders.created",
-            HandleOrderCreated
-        );
-        
-        await _transport.Subscribe<OrderShippedEvent>(
-            "orders.shipped",
-            HandleOrderShipped
-        );
-    }
-    
-    private async Task HandleOrderCreated(OrderCreatedEvent evt) {
-        // Send confirmation email
-        await SendEmail(evt.CustomerId, "Order Confirmed", 
-            $"Your order {evt.OrderId} has been confirmed.");
-    }
-    
-    private async Task HandleOrderShipped(OrderShippedEvent evt) {
-        // Send shipping notification
-        await SendEmail(evt.CustomerId, "Order Shipped",
-            $"Your order {evt.OrderId} has been shipped!");
-    }
-}
-```
-
-## Message Pipeline
+## Bulk Publishing
 
 :::new
-Simple message pipeline for v1.0.0:
+Transports can declare the `BulkPublish` capability to enable batching multiple messages in a single transport operation.
 :::
 
-```csharp{title="Message Pipeline" description="Message Pipeline" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Message", "Pipeline"]}
-public interface IMessagePipeline {
-    Task<TResponse> Process<TRequest, TResponse>(
-        TRequest request,
-        Func<TRequest, Task<TResponse>> next);
-}
+When a transport supports `BulkPublish`, the outbox publish path drains multiple outbox rows and publishes them in batch calls, reducing network round-trips.
 
-public class MessagePipeline : IMessagePipeline {
-    private readonly List<IMessageMiddleware> _middleware = new();
-    
-    public void Use(IMessageMiddleware middleware) {
-        _middleware.Add(middleware);
-    }
-    
-    public async Task<TResponse> Process<TRequest, TResponse>(
-        TRequest request,
-        Func<TRequest, Task<TResponse>> handler) {
-        
-        // Build pipeline
-        Func<TRequest, Task<TResponse>> pipeline = handler;
-        
-        foreach (var middleware in _middleware.Reverse<IMessageMiddleware>()) {
-            var next = pipeline;
-            pipeline = async req => await middleware.Process(req, () => next(req));
-        }
-        
-        return await pipeline(request);
-    }
-}
+### How It Works
 
-// Example middleware
-public class LoggingMiddleware : IMessageMiddleware {
-    private readonly ILogger _logger;
-    
-    public async Task<object> Process(object message, Func<Task<object>> next) {
-        _logger.LogInformation("Processing {MessageType}", message.GetType().Name);
-        var start = Stopwatch.StartNew();
-        
-        try {
-            var result = await next();
-            _logger.LogInformation("Processed in {ElapsedMs}ms", start.ElapsedMilliseconds);
-            return result;
-        }
-        catch (Exception ex) {
-            _logger.LogError(ex, "Failed after {ElapsedMs}ms", start.ElapsedMilliseconds);
-            throw;
-        }
-    }
-}
+1. The publish strategy exposes `IMessagePublishStrategy.SupportsBulkPublish`, which `TransportPublishStrategy` derives from `ITransport.Capabilities.HasFlag(TransportCapabilities.BulkPublish)`
+2. The outbox worker drains a batch of pending messages (up to `MaxBulkPublishBatchSize` on the `OutboxPublishWorker` path; the per-stream `OutboxDrainWorker` batches a stream's newly-claimed rows)
+3. `TransportPublishStrategy.PublishBatchAsync` groups messages by **(destination address, stream id)** - messages with the same `StreamId` stay in one batch so session-based transports never mix streams
+4. Each group is published via `ITransport.PublishBatchAsync()` in a single transport call, with per-item results for partial-failure handling
+5. Per-message lifecycle hooks (PreOutbox/PostOutbox) still fire individually
+
+### Capability Detection
+
+```csharp{title="Capability Detection" category="Configuration" difficulty="INTERMEDIATE" tags=["Transports", "BulkPublish"]}
+// Transports declare their capabilities via the Capabilities property
+public TransportCapabilities Capabilities =>
+    TransportCapabilities.PublishSubscribe |
+    TransportCapabilities.Reliable |
+    TransportCapabilities.BulkPublish;
+
+// The ITransport interface provides a default implementation that throws
+// NotSupportedException — transports override it when they support batching
+Task<IReadOnlyList<BulkPublishItemResult>> PublishBatchAsync(
+    IReadOnlyList<BulkPublishItem> items,
+    TransportDestination destination,
+    CancellationToken cancellationToken = default);
 ```
 
-## Testing with Transports
+Each `BulkPublishItem` carries the envelope, its type name, a `MessageId`, an optional per-item `RoutingKey` (overriding the destination's), an optional `StreamId` for FIFO ordering, optional `PreSerializedBytes`, and optional `PerItemMetadata` (per-item keys override shared destination metadata).
 
-```csharp{title="Testing with Transports" description="Testing with Transports" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "C#", "Testing"]}
-[Test]
-public class TransportTests {
-    private InProcessTransport _transport;
-    
-    [SetUp]
-    public void Setup() {
-        _transport = new InProcessTransport();
-    }
-    
-    [Test]
-    public async Task Send_ShouldInvokeHandler() {
-        // Arrange
-        var handlerCalled = false;
-        _transport.RegisterHandler<TestCommand, TestResponse>(
-            "test",
-            async cmd => {
-                handlerCalled = true;
-                return new TestResponse { Success = true };
-            }
-        );
-        
-        // Act
-        var response = await _transport.Send<TestCommand, TestResponse>(
-            new TestCommand(),
-            "test"
-        );
-        
-        // Assert
-        Assert.True(handlerCalled);
-        Assert.True(response.Success);
-    }
-    
-    [Test]
-    public async Task Publish_ShouldNotifyAllSubscribers() {
-        // Arrange
-        var received1 = false;
-        var received2 = false;
-        
-        await _transport.Subscribe<TestEvent>("test.topic", evt => {
-            received1 = true;
-            return Task.CompletedTask;
-        });
-        
-        await _transport.Subscribe<TestEvent>("test.topic", evt => {
-            received2 = true;
-            return Task.CompletedTask;
-        });
-        
-        // Act
-        await _transport.Publish(new TestEvent(), "test.topic");
-        
-        // Assert
-        Assert.True(received1);
-        Assert.True(received2);
-    }
-}
+### Configuration
+
+```csharp{title="Bulk Publish Options" category="Configuration" difficulty="BEGINNER" tags=["Transports", "BulkPublish", "Options"]}
+services.Configure<OutboxPublishWorkerOptions>(options => {
+    options.MaxBulkPublishBatchSize = 50; // Default: 100
+});
 ```
 
-## IDE Features
+:::updated
+The options class is `OutboxPublishWorkerOptions` (the legacy `WorkCoordinatorPublisherWorker` and its options class were removed) and the default batch size is **100**. Note that `OutboxPublishWorker` is disabled by default (`Enabled = false`) - the per-stream `OutboxDrainWorker` is the active outbox publish path, and it uses the same bulk-capable `TransportPublishStrategy`.
+:::
 
-```csharp{title="IDE Features" description="IDE Features" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "IDE", "Features"]}
-// IDE shows: "Transport: InProcess | Handlers: 12 | Subscribers: 34"
-public interface ITransport { }
+### Transport Support
 
-// IDE shows: "Called 234 times | Avg: 0.5ms | Success: 99.8%"
-public Task<TResponse> Send<TRequest, TResponse>(...) { }
+| Transport | BulkPublish | Mechanism |
+|-----------|:-----------:|-----------|
+| InProcess | No | No network benefit |
+| Azure Service Bus | Yes | `CreateMessageBatchAsync` with auto-split when a message doesn't fit the current batch |
+| RabbitMQ | Yes | Pipelined `BasicPublishAsync` calls on a single pooled channel (issued sequentially, confirms awaited together) |
 
-// IDE shows: "Topic: orders.created | Subscribers: 3"
-public Task Publish<TMessage>(TMessage message, string topic) { }
-```
-
-## Performance Characteristics
-
-| Operation | Target | Actual |
-|-----------|--------|--------|
-| Send (in-process) | < 100ns | TBD |
-| Publish (10 subscribers) | < 1μs | TBD |
-| Subscribe | < 50ns | TBD |
-| Message serialization | N/A | N/A |
-
-## Limitations in v1.0.0
+## Limitations of the In-Process Transport
 
 :::info
-These limitations are addressed in future versions:
+These apply to `InProcessTransport` only - use RabbitMQ or Azure Service Bus for distributed messaging:
 :::
 
 - **In-process only** - No network communication
-- **No persistence** - Messages lost on crash
-- **No serialization** - Direct object passing
-- **No retry** - Failed messages are lost
+- **No persistence** - Messages lost on crash (durability comes from the outbox/inbox tables, not the transport)
+- **No serialization** - The live CLR envelope reference is handed to subscribers (`preSerializedBytes` is ignored)
 - **Single instance** - No distributed messaging
-
-## Migration Path
-
-### To v0.2.0 (HTTP/WebSocket)
-
-:::planned
-v0.2.0 adds network transports:
-:::
-
-```csharp{title="To v0.2.0 (HTTP/WebSocket)" description="To v0.2.0 (HTTP/WebSocket)" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "V0.2.0", "HTTP"]}
-// v0.2.0 - HTTP transport
-services.AddWhizbangTransports(options => {
-    options.UseHttp(http => {
-        http.BaseUrl = "https://api.example.com";
-        http.Timeout = TimeSpan.FromSeconds(30);
-    });
-});
-```
-
-### To v0.3.0 (Message Queues)
-
-:::planned
-v0.3.0 adds message queue support:
-:::
-
-```csharp{title="To v0.3.0 (Message Queues)" description="To v0.3.0 (Message Queues)" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "V0.3.0", "Message"]}
-// v0.3.0 - RabbitMQ transport
-services.AddWhizbangTransports(options => {
-    options.UseRabbitMQ(rabbit => {
-        rabbit.ConnectionString = "amqp://localhost";
-        rabbit.ExchangeName = "whizbang";
-    });
-});
-```
 
 ## Best Practices
 
@@ -507,18 +311,15 @@ services.AddWhizbangTransports(options => {
 2. **Use message contracts** - Define clear message schemas
 3. **Handle failures** - Plan for transport failures
 4. **Version messages** - Plan for message evolution
-5. **Keep messages small** - Large messages impact performance
+5. **Keep messages small** - Large messages impact performance; size-aware body offload uses `MaxMessageSizeBytes`
 6. **Test with different transports** - Ensure transport agnostic code
 
 ## Related Documentation
 
+- [Infrastructure Mapping](infrastructure-mapping.md) - How topics, streams, and partitions map to each transport
+- [Transport Consumer](transport-consumer.md) - Consuming messages with auto-generated subscriptions
+- [RabbitMQ Transport](rabbitmq.md) - Topic exchanges, channel pooling, dead-letter queues
+- [Azure Service Bus Transport](azure-service-bus.md) - Sessions, SQL filters, scheduled messages
+- [In-Memory Transport](in-memory.md) - Testing and development
 - [Dispatcher](../../fundamentals/dispatcher/dispatcher.md) - How messages are routed
 - [Receptors](../../fundamentals/receptors/receptors.md) - Message handlers
-- Testing - Testing with transports
-- [Feature Evolution](../../../roadmap/FEATURE-EVOLUTION.md) - How transports evolve
-
-## Next Steps
-
-- See [v0.2.0 HTTP Transport](transports.md) for REST APIs
-- See [v0.3.0 Message Queues](transports.md) for async messaging
-- Review Examples for transport patterns

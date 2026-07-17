@@ -1,0 +1,65 @@
+{
+  "session": "2I",
+  "section": "extending/ (attributes, extensibility, features, internals, source-generators)",
+  "auditDate": "2026-03-25",
+  "pagesAudited": ["extending/ (all ~30 pages)"],
+  "libraryFilesRead": ["Baseline data analysis — source verification deferred"],
+  "tasks": [
+    {
+      "id": "2I-001",
+      "type": "new-content",
+      "priority": "P0",
+      "page": "extending/attributes/auto-populate.md",
+      "dimension": "incomplete-docs",
+      "summary": "auto-populate page doesn't exist — 20 types reference it",
+      "details": "20 broken code-docs links point to extending/attributes/auto-populate: AutoPopulateDiscoveryGenerator, PopulateKind, IAutoPopulateRegistry, IAutoPopulateProcessor, IAutoPopulatePopulator, AutoPopulateRegistry, PopulateTimestampAttribute, PopulateFromServiceAttribute, PopulateFromIdentifierAttribute, PopulateFromContextAttribute, TimestampKind, ServiceKind, IdentifierKind, ContextKind, and more. This is a significant undocumented feature for automatic message property population.",
+      "sourceFiles": [],
+      "effort": "L"
+    },
+    {
+      "id": "2I-002",
+      "type": "new-content",
+      "priority": "P1",
+      "page": "extending/source-generators/type-symbol-extensions.md",
+      "dimension": "incomplete-docs",
+      "summary": "type-symbol-extensions page doesn't exist",
+      "details": "TypeSymbolExtensions has <docs> tag pointing here. Page about Roslyn ITypeSymbol extension methods for generator development needs creation.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2I-003",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "extending/ (10 pages)",
+      "dimension": "page-frontmatter",
+      "summary": "10 extending pages missing codeReferences",
+      "details": "Extending pages generally have good frontmatter but 10 are missing codeReferences to their corresponding generator/extension source files.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2I-004",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "extending/",
+      "dimension": "persona-gaps",
+      "summary": "IPerspectiveBase refactor and lifecycle coordinator internals need contributor docs",
+      "details": "From sessions 2A and 2C: IPerspectiveBase marker interface hierarchy and lifecycle coordinator internal design need contributor-facing documentation in extending/internals/.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2I-005",
+      "type": "code-sample-fix",
+      "priority": "P2",
+      "page": "extending/",
+      "dimension": "code-sample-frontmatter",
+      "summary": "Code samples across all pages have auto-generated poor metadata",
+      "details": "Same pattern.",
+      "sourceFiles": [],
+      "effort": "L"
+    }
+  ],
+  "sectionSummary": "Extending section (~30 pages) is contributor-focused. Main issue: auto-populate feature is entirely undocumented but has 20 types referencing the missing page. type-symbol-extensions page also missing. All pages have frontmatter but 10 missing codeReferences. No pages missing frontmatter entirely — good structural health."
+}

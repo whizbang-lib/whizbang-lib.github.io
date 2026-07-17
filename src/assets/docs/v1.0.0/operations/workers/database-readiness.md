@@ -1,490 +1,199 @@
 ---
 title: Database Readiness
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Workers
 order: 3
 description: >-
-  Database dependency coordination - IDatabaseReadinessCheck pattern, startup
-  coordination, retry logic, and caching strategies
+  Database dependency coordination - the ISchemaReadyGate signal, startup
+  ordering via WhizbangDatabaseInitializerService, worker gating, and HTTP
+  availability middleware
 tags: >-
-  database-readiness, dependency-coordination, startup, retry-logic,
-  health-checks
+  database-readiness, schema-ready-gate, dependency-coordination, startup,
+  migrations, health-checks
 codeReferences:
-  - src/Whizbang.Core/Messaging/IDatabaseReadinessCheck.cs
-  - src/Whizbang.Data.Postgres/PostgresDatabaseReadinessCheck.cs
-  - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  - src/Whizbang.Core/Workers/ISchemaReadyGate.cs
+  - src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs
+  - src/Whizbang.Hosting.AspNet/DatabaseAvailabilityMiddleware.cs
+  - src/Whizbang.Core/Workers/ClaimWorker.cs
+testReferences:
+  - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareTests.cs
+  - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Database Readiness
 
-The **IDatabaseReadinessCheck** pattern provides a standard way for workers to coordinate with database availability during startup and runtime. It distinguishes between "database not ready yet" (expected during startup) and "database connection failed" (unexpected runtime error).
+Whizbang coordinates workers with database availability through the **`ISchemaReadyGate`** — a signal-based gate that workers await before issuing any SQL. The schema initializer marks the gate ready exactly once, after migrations succeed; until then, every database-touching worker blocks at the top of its `ExecuteAsync`.
+
+:::updated
+Earlier designs used a polling `IDatabaseReadinessCheck` interface that each worker invoked on every cycle. That interface has been removed. The shipped mechanism is the signal-based `ISchemaReadyGate` described on this page: workers wait once at startup instead of re-checking readiness per poll, and readiness is driven by the migration runner rather than by table-existence probes.
+:::
 
 ## Overview
 
-### Why Database Readiness Checks?
+### Why a Readiness Gate?
 
-**Without readiness checks**:
-```csharp{title="Why Database Readiness Checks?" description="Without readiness checks:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"]}
-// ❌ Worker starts immediately, database might not be ready
-protected override async Task ExecuteAsync(CancellationToken ct) {
-  while (!ct.IsCancellationRequested) {
-    try {
-      await _workCoordinator.ProcessWorkBatchAsync(...);
-    } catch (Npgsql.NpgsqlException ex) {
-      // Exception thrown - but is this:
-      // - Startup (migrations not run yet)?
-      // - Runtime failure (connection pool exhausted)?
-      // - Server down (network issue)?
-      // Can't distinguish - logs are confusing
-      _logger.LogError(ex, "Failed to process work");
-    }
-  }
-}
-```
+**Without a gate**, workers race the migration runner:
 
-**With readiness checks**:
-```csharp{title="Why Database Readiness Checks? (2)" description="With readiness checks:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"]}
-// ✅ Worker coordinates with database availability
-protected override async Task ExecuteAsync(CancellationToken ct) {
-  while (!ct.IsCancellationRequested) {
-    var isDatabaseReady = await _databaseReadinessCheck.IsReadyAsync(ct);
-    if (!isDatabaseReady) {
-      // ✅ Clear signal: database not ready (expected during startup)
-      _logger.LogInformation("Database not ready, skipping processing");
-      await Task.Delay(_pollingInterval, ct);
-      continue;
-    }
+- Workers registered before the driver's initializer can fire SQL against an unmigrated database
+- Startup exceptions are indistinguishable from runtime failures
+- Every worker needs its own retry/backoff for the "schema not there yet" window
 
-    // ✅ Database is ready - safe to process work
-    try {
-      await _workCoordinator.ProcessWorkBatchAsync(...);
-    } catch (Npgsql.NpgsqlException ex) {
-      // ✅ Now we know this is a runtime failure (not startup)
-      _logger.LogError(ex, "Database connection failed during processing");
-    }
-  }
-}
-```
+**With `ISchemaReadyGate`**:
 
-**Benefits**:
-- ✅ **Distinguish startup from runtime failures**
-- ✅ **Avoid exception noise** during startup (clean logs)
-- ✅ **Graceful waiting** (poll until ready, don't crash)
-- ✅ **Coordination** (multiple workers wait for same signal)
-- ✅ **Observability** (track consecutive "not ready" checks)
+- Workers hold off on all SQL until migrations have completed
+- Hosted-service **registration order stops mattering** — a worker whose `StartAsync` runs before the initializer still waits on the gate
+- Migration failure keeps the gate closed, so workers never run against a broken schema
+- One signal, many waiters — no polling, no per-worker readiness logic
 
 ---
 
-## IDatabaseReadinessCheck Interface
+## ISchemaReadyGate Interface
 
-**IDatabaseReadinessCheck.cs**:
-```csharp{title="IDatabaseReadinessCheck Interface" description="**IDatabaseReadinessCheck." category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "IDatabaseReadinessCheck", "Interface"]}
+```csharp{title="ISchemaReadyGate Interface" description="Signal-based gate workers await before issuing SQL" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "ISchemaReadyGate", "Interface"]}
 /// <summary>
-/// Interface for checking whether the database is ready for work coordinator operations.
-/// Implementations can check connectivity, schema availability, or other readiness criteria.
+/// Signal-based gate that workers await before issuing SQL against the database. The schema
+/// initializer (typically WhizbangDatabaseInitializerService in the EFCore Postgres
+/// driver) calls MarkReady after migrations succeed. Workers call
+/// WaitForReadyAsync at the top of their ExecuteAsync so they hold off
+/// on any SQL until the schema is provisioned.
 /// </summary>
-/// <remarks>
-/// This interface is used by workers to determine if database operations
-/// should be attempted. When the database is not ready, work processing
-/// is skipped and messages remain buffered in memory until the database becomes available.
-///
-/// Examples of readiness checks:
-/// - PostgreSQL: Check if connection is available and required tables exist
-/// - SQL Server: Check if database is accessible and schema is initialized
-/// - Cassandra: Check if keyspace exists and is reachable
-/// - MongoDB: Check if connection is established and collections exist
-/// </remarks>
-/// <docs>workers/database-readiness</docs>
-public interface IDatabaseReadinessCheck {
+public interface ISchemaReadyGate {
   /// <summary>
-  /// Checks if the database is ready for work coordinator operations.
+  /// Awaits the schema-ready signal. Returns immediately when ready; otherwise blocks until
+  /// MarkReady is called or the cancellation token fires.
   /// </summary>
-  /// <param name="cancellationToken">Cancellation token to cancel the readiness check.</param>
-  /// <returns>True if the database is ready, false otherwise.</returns>
-  /// <remarks>
-  /// This method should be fast and lightweight. If the check requires network I/O,
-  /// consider implementing caching or circuit breaker patterns to avoid excessive overhead.
-  /// </remarks>
-  Task<bool> IsReadyAsync(CancellationToken cancellationToken = default);
+  Task WaitForReadyAsync(CancellationToken cancellationToken);
+
+  /// <summary>True once MarkReady has been called; pure synchronous query.</summary>
+  bool IsReady { get; }
+
+  /// <summary>
+  /// Signals all waiters that the schema is provisioned. Idempotent — subsequent calls are
+  /// no-ops. Called by the initializer in its StartAsync after migrations complete.
+  /// </summary>
+  void MarkReady();
 }
 ```
 
 **Contract**:
-- Returns `true` if database is ready for operations
-- Returns `false` if database is not ready (startup) or unavailable
-- Should be **fast** (lightweight check)
-- Should **not throw** exceptions (return `false` on error)
-- Can use **caching** to avoid repeated network calls
+
+- `WaitForReadyAsync` returns immediately once ready; otherwise blocks until `MarkReady` or cancellation
+- `MarkReady` is **idempotent** and **sticky** — waiters that arrive after the signal return immediately
+- `IsReady` is a synchronous, allocation-free query (used by the HTTP middleware)
+
+The default implementation, `SchemaReadyGate`, is a single `TaskCompletionSource` created with `RunContinuationsAsynchronously`; any number of waiters can await it.
 
 ---
 
-## PostgreSQL Implementation
+## Who Marks the Gate Ready
 
-**PostgresDatabaseReadinessCheck.cs**:
-```csharp{title="PostgreSQL Implementation" description="**PostgresDatabaseReadinessCheck." category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "PostgreSQL", "Implementation"]}
-public class PostgresDatabaseReadinessCheck : IDatabaseReadinessCheck {
-  private readonly IDbConnectionFactory _connectionFactory;
-  private readonly ILogger<PostgresDatabaseReadinessCheck> _logger;
+The EFCore Postgres driver registers **`WhizbangDatabaseInitializerService`** — a plain `IHostedService` (not a `BackgroundService`), so its `StartAsync` **blocks host startup** until initialization completes:
 
-  private bool? _isReady;  // Cache result once ready
+```csharp{title="WhizbangDatabaseInitializerService.StartAsync" description="Migrations first, then best-effort partition recompute, then MarkReady" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Initializer", "Startup"]}
+public async Task StartAsync(CancellationToken cancellationToken) {
+  await DbContextInitializationRegistry.InitializeAllAsync(
+      _serviceProvider, _logger, cancellationToken);
 
-  public PostgresDatabaseReadinessCheck(
-    IDbConnectionFactory connectionFactory,
-    ILogger<PostgresDatabaseReadinessCheck> logger
-  ) {
-    _connectionFactory = connectionFactory;
-    _logger = logger;
-  }
+  // Best-effort: recompute partition_number columns that may have drifted across a
+  // PartitionCount change. NEVER blocks MarkReady — workers can run on a stale partition
+  // map (next claim cycle picks them up correctly via the live PartitionCount).
+  await _tryRecomputePartitionsAsync(cancellationToken);
 
-  public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
-    // Once ready, stay ready (no need to re-check)
-    if (_isReady == true) {
-      return true;
-    }
-
-    try {
-      await using var connection = _connectionFactory.CreateConnection();
-      await connection.OpenAsync(ct);
-
-      // Check for required tables
-      var requiredTables = new[] {
-        "wh_outbox",
-        "wh_inbox",
-        "wh_events",
-        "wh_perspective_checkpoints"
-      };
-
-      foreach (var tableName in requiredTables) {
-        var tableExists = await connection.ExecuteScalarAsync<bool>(
-          """
-          SELECT EXISTS (
-            SELECT 1 FROM information_schema.tables
-            WHERE table_schema = 'public' AND table_name = @TableName
-          )
-          """,
-          new { TableName = tableName },
-          cancellationToken: ct
-        );
-
-        if (!tableExists) {
-          _logger.LogDebug(
-            "Database not ready: table '{TableName}' not found",
-            tableName
-          );
-          _isReady = false;
-          return false;
-        }
-      }
-
-      // All tables exist - database is ready
-      _logger.LogInformation("Database is ready");
-      _isReady = true;
-      return true;
-
-    } catch (Npgsql.NpgsqlException ex) {
-      _logger.LogDebug(
-        "Database not ready: {Error}",
-        ex.Message
-      );
-      _isReady = false;
-      return false;
-    }
-  }
+  _schemaReadyGate.MarkReady();
 }
 ```
 
-**Key Design Decisions**:
-- **Cache `true` result**: Once ready, always ready (no need to re-check)
-- **Don't cache `false` result**: Database may become ready later (retry on next call)
-- **Check required tables**: Ensures migrations have run
-- **Log at Debug level for `false`**: Avoid log noise during startup
-- **Log at Information level for `true`**: Important milestone
-- **Never throw**: Return `false` on any error
+**Ordering guarantees**:
+
+1. **Migrations run first** (`DbContextInitializationRegistry.InitializeAllAsync`)
+2. **Partition recompute is best-effort** — a failure logs a warning but does not block readiness
+3. **`MarkReady` is called last** — only after the schema is provisioned
+
+**On migration failure**: the gate is **not** marked ready. `StartAsync` throws, host startup aborts, and workers never enter their main loops. The system halts safely instead of running on a broken schema.
 
 ---
 
-## Integration with Workers
+## How Workers Use the Gate
 
-### PerspectiveWorker Integration
+Database-touching workers await the gate once, at the top of `ExecuteAsync`, before their first SQL call. From `ClaimWorker`:
 
-**PerspectiveWorker.cs:98-121**:
-```csharp{title="PerspectiveWorker Integration" description="**PerspectiveWorker." category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "PerspectiveWorker", "Integration"]}
-while (!stoppingToken.IsCancellationRequested) {
-  try {
-    // Check database readiness before attempting work coordinator call
-    var isDatabaseReady = await _databaseReadinessCheck.IsReadyAsync(stoppingToken);
-    if (!isDatabaseReady) {
-      // Database not ready - skip ProcessWorkBatchAsync
-      Interlocked.Increment(ref _consecutiveDatabaseNotReadyChecks);
-
-      _logger.LogInformation(
-        "Database not ready, skipping perspective checkpoint processing (consecutive checks: {ConsecutiveCount})",
-        _consecutiveDatabaseNotReadyChecks
-      );
-
-      // Warn if database has been continuously unavailable
-      if (_consecutiveDatabaseNotReadyChecks > 10) {
-        _logger.LogWarning(
-          "Database not ready for {ConsecutiveCount} consecutive polling cycles. Perspective worker is paused.",
-          _consecutiveDatabaseNotReadyChecks
-        );
-      }
-
-      // Wait before retry
-      await Task.Delay(_options.PollingIntervalMilliseconds, stoppingToken);
-      continue;
-    }
-
-    // Database is ready - reset consecutive counter
-    Interlocked.Exchange(ref _consecutiveDatabaseNotReadyChecks, 0);
-
-    await ProcessWorkBatchAsync(stoppingToken);
-  } catch (Exception ex) when (ex is not OperationCanceledException) {
-    _logger.LogError(ex, "Error processing perspective checkpoints");
-  }
-}
-```
-
-**Workflow**:
-1. **Check readiness** before attempting database operations
-2. **If not ready**:
-   - Increment consecutive "not ready" counter
-   - Log at Information level (expected during startup)
-   - Warn if threshold exceeded (10 consecutive checks)
-   - Wait polling interval, then retry
-3. **If ready**:
-   - Reset consecutive counter
-   - Proceed with work processing
-4. **On exception**:
-   - Now known to be runtime failure (not startup issue)
-   - Log at Error level
-
-### Startup Processing Integration
-
-**PerspectiveWorker.cs:82-94**:
-```csharp{title="Startup Processing Integration" description="**PerspectiveWorker." category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Startup", "Processing"]}
-// Process any pending perspective checkpoints IMMEDIATELY on startup (before first polling delay)
+```csharp{title="ClaimWorker gate usage" description="Workers await the schema gate before their first SQL call" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "ClaimWorker", "Gate"]}
+// Hold off on any SQL until the schema is provisioned. The driver's initializer
+// (WhizbangDatabaseInitializerService) signals the gate after migrations succeed.
+// This decouples worker startup from hosted-service registration order — even if
+// this worker's StartAsync runs before the initializer, we still wait here.
 try {
-  _logger.LogDebug("Checking for pending perspective checkpoints on startup...");
-  var isDatabaseReady = await _databaseReadinessCheck.IsReadyAsync(stoppingToken);
-  if (isDatabaseReady) {
-    await ProcessWorkBatchAsync(stoppingToken);
-    _logger.LogDebug("Initial perspective checkpoint processing complete");
-  } else {
-    _logger.LogWarning("Database not ready on startup - skipping initial perspective checkpoint processing");
-  }
-} catch (Exception ex) when (ex is not OperationCanceledException) {
-  _logger.LogError(ex, "Error processing initial perspective checkpoints on startup");
+  await _schemaReadyGate.WaitForReadyAsync(stoppingToken);
+} catch (OperationCanceledException) {
+  return;
 }
 ```
 
-**Why important**:
-- Worker checks readiness **before** attempting immediate startup processing
-- If not ready, skip processing (don't crash worker)
-- Worker will retry on first polling cycle
+Workers that gate on schema readiness include `ClaimWorker`, `HeartbeatWorker`, `MaintenanceWorker`, `LeaseRenewalWorker`, the inbox/outbox drain and flush workers (`InboxDrainWorker`, `InboxDispatchWorker`, `InboxHandlerWorker`, `OutboxDrainWorker`, `OutboxPublishWorker`, `OutboxCompletionFlushWorker`, `PerspectiveCompletionFlushWorker`, `FailureFlushWorker`), and `DeadLetterRecoveryWorker`.
+
+The `PerspectiveWorker` itself consumes work **channels** fed by `ClaimWorker` (see [Perspective Worker](perspective-worker.md)) — since the upstream claimer is gated, perspective processing implicitly starts only after the schema is ready.
+
+**Key difference from polling designs**: readiness is checked **once**, not per cycle. After the gate opens, transient database failures during runtime surface as ordinary exceptions with retry/backoff in each worker's loop — they are not conflated with "schema not ready yet."
 
 ---
 
-## Caching Strategies
+## HTTP Availability Middleware
 
-### Strategy 1: Cache Once Ready (Recommended)
+The ASP.NET hosting package includes **`DatabaseAvailabilityMiddleware`**, which returns `503 Service Unavailable` until the gate signals ready — then becomes a pass-through:
 
-**PostgreSQL Example**:
-```csharp{title="Strategy 1: Cache Once Ready (Recommended)" description="PostgreSQL Example:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Strategy", "Cache"]}
-private bool? _isReady;
+```csharp{title="DatabaseAvailabilityMiddleware" description="503 until the schema gate is ready, pass-through afterwards" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Middleware", "Availability"]}
+public class DatabaseAvailabilityMiddleware(RequestDelegate next, ISchemaReadyGate schemaReadyGate) {
+  private static readonly byte[] _responseBody = Encoding.UTF8.GetBytes(
+    """{"error":"Service temporarily unavailable","reason":"schema_initializing"}""");
 
-public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
-  if (_isReady == true) {
-    return true;  // ✅ Cache hit - skip check
-  }
-
-  // Check database connectivity and schema
-  var ready = await CheckDatabaseAsync(ct);
-
-  if (ready) {
-    _isReady = true;  // ✅ Cache for future calls
-  }
-
-  return ready;
-}
-```
-
-**Rationale**:
-- Once database is ready, it stays ready (during runtime)
-- Database doesn't "become not ready" during normal operation
-- Avoids repeated network calls after startup
-
-### Strategy 2: Time-Based Caching
-
-**Use Case**: Periodic health checks for monitoring dashboards.
-
-```csharp{title="Strategy 2: Time-Based Caching" description="Use Case: Periodic health checks for monitoring dashboards." category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Strategy", "Time-Based"]}
-private bool? _isReady;
-private DateTimeOffset? _lastCheck;
-private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(1);
-
-public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
-  if (_isReady == true && _lastCheck.HasValue &&
-      DateTimeOffset.UtcNow - _lastCheck.Value < CacheDuration) {
-    return true;  // ✅ Cache hit within TTL
-  }
-
-  _lastCheck = DateTimeOffset.UtcNow;
-  var ready = await CheckDatabaseAsync(ct);
-  _isReady = ready;
-
-  return ready;
-}
-```
-
-**Rationale**:
-- Provides periodic "heartbeat" check
-- Detects database failures during runtime
-- Balances performance vs observability
-
-### Strategy 3: Circuit Breaker
-
-**Use Case**: Avoid overwhelming unhealthy database with connection attempts.
-
-```csharp{title="Strategy 3: Circuit Breaker" description="Use Case: Avoid overwhelming unhealthy database with connection attempts." category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Strategy", "Circuit"]}
-private CircuitBreakerState _state = CircuitBreakerState.Closed;
-private int _consecutiveFailures;
-private DateTimeOffset? _circuitOpenedAt;
-private static readonly TimeSpan CircuitResetTimeout = TimeSpan.FromSeconds(30);
-
-public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
-  // If circuit is open, wait for reset timeout
-  if (_state == CircuitBreakerState.Open) {
-    if (DateTimeOffset.UtcNow - _circuitOpenedAt! < CircuitResetTimeout) {
-      return false;  // ✅ Circuit open - don't attempt check
+  public async Task InvokeAsync(HttpContext context) {
+    if (!schemaReadyGate.IsReady) {
+      context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+      context.Response.Headers.RetryAfter = "30";
+      context.Response.ContentType = "application/json";
+      await context.Response.Body.WriteAsync(_responseBody, context.RequestAborted);
+      return;
     }
 
-    _state = CircuitBreakerState.HalfOpen;
-  }
-
-  try {
-    var ready = await CheckDatabaseAsync(ct);
-
-    if (ready) {
-      // Success - close circuit
-      _state = CircuitBreakerState.Closed;
-      _consecutiveFailures = 0;
-      return true;
-    } else {
-      // Not ready - increment failures
-      _consecutiveFailures++;
-
-      if (_consecutiveFailures >= 5) {
-        // Open circuit after 5 consecutive failures
-        _state = CircuitBreakerState.Open;
-        _circuitOpenedAt = DateTimeOffset.UtcNow;
-        _logger.LogWarning("Circuit breaker opened after {Count} consecutive failures", _consecutiveFailures);
-      }
-
-      return false;
-    }
-  } catch (Exception ex) {
-    _logger.LogDebug("Database check failed: {Error}", ex.Message);
-    _consecutiveFailures++;
-
-    if (_consecutiveFailures >= 5) {
-      _state = CircuitBreakerState.Open;
-      _circuitOpenedAt = DateTimeOffset.UtcNow;
-    }
-
-    return false;
+    await next(context);
   }
 }
-
-enum CircuitBreakerState { Closed, Open, HalfOpen }
 ```
 
-**Benefits**:
-- Prevents excessive connection attempts to unhealthy database
-- Automatic recovery after timeout
-- Reduces load on database during outages
-
----
-
-## Configuration
-
-**Service Registration**:
-```csharp{title="Configuration" description="Service Registration:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Configuration"]}
-// Program.cs
-builder.Services.AddSingleton<IDatabaseReadinessCheck, PostgresDatabaseReadinessCheck>();
-builder.Services.AddHostedService<PerspectiveWorker>();
-```
-
-**Options Pattern** (optional):
-```csharp{title="Configuration - DatabaseReadinessOptions" description="Options Pattern (optional):" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Configuration"]}
-public class DatabaseReadinessOptions {
-  /// <summary>
-  /// Required tables that must exist for database to be considered ready.
-  /// </summary>
-  public string[] RequiredTables { get; set; } = {
-    "wh_outbox",
-    "wh_inbox",
-    "wh_events",
-    "wh_perspective_checkpoints"
-  };
-
-  /// <summary>
-  /// Cache duration for readiness check results.
-  /// Null = cache indefinitely once ready (default)
-  /// </summary>
-  public TimeSpan? CacheDuration { get; set; } = null;
-
-  /// <summary>
-  /// Circuit breaker threshold (number of consecutive failures before opening circuit).
-  /// Null = no circuit breaker (default)
-  /// </summary>
-  public int? CircuitBreakerThreshold { get; set; } = null;
-}
-```
-
-**Configuration Example**:
-```csharp{title="Configuration (3)" description="Configuration Example:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Configuration"]}
-builder.Services.Configure<DatabaseReadinessOptions>(options => {
-  options.RequiredTables = new[] {
-    "wh_outbox",
-    "wh_inbox",
-    "wh_events",
-    "wh_perspective_checkpoints",
-    "wh_service_instances"  // Additional table
-  };
-  options.CacheDuration = TimeSpan.FromMinutes(5);  // Re-check every 5 minutes
-});
-```
+Clients receive a JSON body with `"reason": "schema_initializing"` and a `Retry-After: 30` header while migrations run.
 
 ---
 
 ## Health Checks Integration
 
-**ASP.NET Core Health Checks**:
-```csharp{title="Health Checks Integration" description="Health Checks Integration" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Health", "Checks"]}
-public class DatabaseReadinessHealthCheck : IHealthCheck {
-  private readonly IDatabaseReadinessCheck _readinessCheck;
+`ISchemaReadyGate.IsReady` composes naturally with ASP.NET Core health checks for Kubernetes readiness probes:
 
-  public DatabaseReadinessHealthCheck(IDatabaseReadinessCheck readinessCheck) {
-    _readinessCheck = readinessCheck;
+```csharp{title="Health Checks Integration" description="Expose schema readiness as an ASP.NET Core health check" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Health", "Checks"]}
+public class SchemaReadyHealthCheck : IHealthCheck {
+  private readonly ISchemaReadyGate _gate;
+
+  public SchemaReadyHealthCheck(ISchemaReadyGate gate) {
+    _gate = gate;
   }
 
-  public async Task<HealthCheckResult> CheckHealthAsync(
+  public Task<HealthCheckResult> CheckHealthAsync(
     HealthCheckContext context,
     CancellationToken ct = default
   ) {
-    var isReady = await _readinessCheck.IsReadyAsync(ct);
-
-    return isReady
-      ? HealthCheckResult.Healthy("Database is ready")
-      : HealthCheckResult.Unhealthy("Database is not ready");
+    return Task.FromResult(_gate.IsReady
+      ? HealthCheckResult.Healthy("Schema is provisioned")
+      : HealthCheckResult.Unhealthy("Schema is still initializing"));
   }
 }
 
 // Program.cs
 builder.Services.AddHealthChecks()
-  .AddCheck<DatabaseReadinessHealthCheck>("database", tags: new[] { "ready" });
+  .AddCheck<SchemaReadyHealthCheck>("schema", tags: new[] { "ready" });
 
 app.MapHealthChecks("/health/ready", new HealthCheckOptions {
   Predicate = check => check.Tags.Contains("ready")
@@ -492,7 +201,8 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions {
 ```
 
 **Kubernetes Integration**:
-```yaml{title="Health Checks Integration (2)" description="Kubernetes Integration:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Health", "Checks"]}
+
+```yaml{title="Health Checks Integration (2)" description="Kubernetes readiness probe against the schema gate" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Health", "Checks"]}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -510,120 +220,51 @@ spec:
 ```
 
 **Benefits**:
-- Container orchestrator knows when pod is ready
-- Traffic routing delayed until database is ready
-- Automatic pod restart if database becomes unavailable
 
----
-
-## Observability
-
-### Metrics
-
-**Track readiness state**:
-```csharp{title="Metrics" description="Track readiness state:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Metrics"]}
-public class ObservableDatabaseReadinessCheck : IDatabaseReadinessCheck {
-  private readonly IDatabaseReadinessCheck _inner;
-  private readonly IMetrics _metrics;
-
-  public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
-    var sw = Stopwatch.StartNew();
-    var ready = await _inner.IsReadyAsync(ct);
-    sw.Stop();
-
-    _metrics.RecordGauge("database.readiness", ready ? 1 : 0);
-    _metrics.RecordHistogram("database.readiness.check_duration_ms", sw.ElapsedMilliseconds);
-
-    return ready;
-  }
-}
-```
-
-**Key Metrics**:
-- `database.readiness` (gauge): 1 = ready, 0 = not ready
-- `database.readiness.check_duration_ms` (histogram): Check latency
-- `database.readiness.consecutive_failures` (counter): Track failure streaks
-
-### Logging
-
-**Log level guidance**:
-```csharp{title="Logging" description="Log level guidance:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Logging"]}
-// ✅ GOOD: Log levels match severity
-if (!isReady) {
-  _logger.LogDebug("Database not ready: {Reason}", reason);  // Startup
-} else {
-  _logger.LogInformation("Database is ready");  // Milestone
-}
-
-if (consecutiveFailures > 10) {
-  _logger.LogWarning("Database not ready for {Count} consecutive checks", consecutiveFailures);  // Alert
-}
-```
-
-**❌ BAD: Logging "not ready" at Error level**:
-```csharp{title="Logging (2)" description="❌ BAD: Logging 'not ready' at Error level:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Logging"]}
-if (!isReady) {
-  _logger.LogError("Database not ready");  // ❌ Creates noise during startup
-}
-```
+- Container orchestrator knows when the pod is ready
+- Traffic routing is delayed until migrations complete
+- The `DatabaseAvailabilityMiddleware` covers direct HTTP traffic in the same window
 
 ---
 
 ## Testing
 
-### Testing Readiness Check
+Because the gate is a simple signal, tests wire workers with a pre-marked gate (or hold it closed to assert blocking behavior):
 
-```csharp{title="Testing Readiness Check" description="Testing Readiness Check" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "Readiness"]}
+```csharp{title="Testing with SchemaReadyGate" description="Tests mark the gate ready before starting workers" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "Gate"]}
 [Test]
-public async Task IsReadyAsync_WithRunningDatabase_ReturnsTrueAsync() {
-  // Arrange
-  var dbCheck = new PostgresDatabaseReadinessCheck(_connectionFactory, _logger);
+public async Task Worker_WithReadyGate_ProcessesWorkAsync() {
+  // Arrange — gate ready, worker may issue SQL immediately
+  var gate = new SchemaReadyGate();
+  gate.MarkReady();
 
-  // Act
-  var isReady = await dbCheck.IsReadyAsync();
-
-  // Assert
-  await Assert.That(isReady).IsTrue();
-}
-
-[Test]
-public async Task IsReadyAsync_WithMissingTables_ReturnsFalseAsync() {
-  // Arrange
-  var dbCheck = new PostgresDatabaseReadinessCheck(_emptyDbConnectionFactory, _logger);
-
-  // Act
-  var isReady = await dbCheck.IsReadyAsync();
-
-  // Assert
-  await Assert.That(isReady).IsFalse();
-}
-```
-
-### Testing Worker Integration
-
-```csharp{title="Testing Worker Integration" description="Testing Worker Integration" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "Worker"]}
-[Test]
-public async Task Worker_DatabaseNotReady_SkipsProcessingAsync() {
-  // Arrange
-  var mockDbCheck = new Mock<IDatabaseReadinessCheck>();
-  mockDbCheck.Setup(x => x.IsReadyAsync(It.IsAny<CancellationToken>()))
-    .ReturnsAsync(false);
-
-  var worker = new PerspectiveWorker(
-    _instanceProvider,
+  var worker = new HeartbeatWorker(
     _scopeFactory,
-    _options,
-    mockDbCheck.Object,
-    _logger
-  );
+    _instanceProvider,
+    gate,
+    Options.Create(new HeartbeatWorkerOptions { IntervalSeconds = 1 }),
+    NullLogger<HeartbeatWorker>.Instance);
+
+  // Act / Assert — worker enters its main loop without blocking
+  await worker.StartAsync(CancellationToken.None);
+}
+
+[Test]
+public async Task Worker_WithClosedGate_DoesNotTouchDatabaseAsync() {
+  // Arrange — gate NEVER marked ready
+  var gate = new SchemaReadyGate();
+  var worker = new HeartbeatWorker(
+    _scopeFactory,
+    _instanceProvider,
+    gate,
+    Options.Create(new HeartbeatWorkerOptions()),
+    NullLogger<HeartbeatWorker>.Instance);
 
   // Act
-  await worker.StartAsync();
-  await Task.Delay(TimeSpan.FromSeconds(2));  // Let worker poll
-  await worker.StopAsync();
+  await worker.StartAsync(CancellationToken.None);
 
-  // Assert - ProcessWorkBatchAsync should NOT have been called
-  await Assert.That(worker.ConsecutiveDatabaseNotReadyChecks).IsGreaterThan(0);
+  // Assert — no SQL was issued; the worker is parked on WaitForReadyAsync
+  await Assert.That(gate.IsReady).IsFalse();
 }
 ```
 
@@ -633,102 +274,57 @@ public async Task Worker_DatabaseNotReady_SkipsProcessingAsync() {
 
 ### DO ✅
 
-- ✅ **Cache `true` result** - Once ready, always ready (during runtime)
-- ✅ **Don't cache `false` result** - Database may become ready later
-- ✅ **Check required tables** - Ensures migrations have run
-- ✅ **Log at appropriate levels** - Debug for `false`, Information for `true`
-- ✅ **Never throw exceptions** - Return `false` on error
-- ✅ **Use circuit breaker** for high-frequency checks
-- ✅ **Track consecutive failures** for alerting
-- ✅ **Integrate with health checks** for Kubernetes readiness probes
+- ✅ **Await the gate before any SQL** in custom database-touching hosted services
+- ✅ **Register the driver initializer** (done automatically by `AddWhizbang().WithDriver.Postgres`)
+- ✅ **Use `DatabaseAvailabilityMiddleware`** (or an equivalent health check) so HTTP traffic waits for the schema
+- ✅ **Let migration failures abort startup** — a closed gate is the safety mechanism, not a bug
+- ✅ **Mark the gate ready in test fixtures** that bypass the real initializer
 
 ### DON'T ❌
 
-- ❌ Throw exceptions from `IsReadyAsync()` (return `false` instead)
-- ❌ Log "not ready" at Error level (creates noise during startup)
-- ❌ Cache `false` result indefinitely (prevents recovery)
-- ❌ Make expensive checks (lightweight only)
-- ❌ Skip readiness checks (workers will crash on startup)
-- ❌ Ignore consecutive failures (could indicate larger problem)
+- ❌ Poll `IsReady` in a loop from workers — `WaitForReadyAsync` is the intended wait primitive
+- ❌ Call `MarkReady` from application code — that is the initializer's job (tests excepted)
+- ❌ Treat post-ready database outages as a readiness concern — after the gate opens, failures are handled by each worker's retry/backoff
+- ❌ Rely on hosted-service registration order for startup sequencing — the gate exists precisely so order doesn't matter
 
 ---
 
 ## Troubleshooting
 
-### Problem: Worker Keeps Reporting "Database Not Ready"
+### Problem: Workers Never Start Processing
 
-**Symptoms**: Logs show repeated "Database not ready" messages.
+**Symptoms**: No worker log output beyond startup lines; no SQL activity; HTTP returns 503 with `"reason": "schema_initializing"`.
 
 **Causes**:
-1. Migrations haven't run yet
-2. Required tables missing
-3. Connection string incorrect
-4. Database server not started
+1. Migrations failed — the initializer threw and the gate was never marked ready
+2. The driver initializer is not registered (custom DI setup that bypasses `AddWhizbang().WithDriver.Postgres`)
+3. Test fixture constructed workers with a `SchemaReadyGate` that was never marked ready
 
 **Solution**:
-```bash{title="Problem: Worker Keeps Reporting 'Database Not Ready'" description="Problem: Worker Keeps Reporting 'Database Not Ready'" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Worker"]}
-# Check if database is accessible
+```bash{title="Problem: Workers Never Start Processing" description="Check migration output and gate state" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Workers"]}
+# Check startup logs for migration errors (host aborts on initializer failure)
+grep -i "migrat\|initializ" logs.txt
+
+# Verify the database is reachable
 psql -h localhost -U postgres -d whizbang -c "SELECT 1;"
 
-# Check if required tables exist
+# Verify Whizbang tables exist after a successful start
 psql -h localhost -U postgres -d whizbang -c "\dt wh_*"
-
-# Run migrations
-dotnet ef database update
-
-# Check logs for specific table missing
-grep "table '.*' not found" logs.txt
 ```
 
-### Problem: False Positive (Reports Ready When Not)
+### Problem: SQL Fired Against Unmigrated Database
 
-**Symptoms**: Worker starts, then crashes with database errors.
-
-**Causes**:
-1. Check only verifies connectivity, not schema
-2. Caching bug (cache `false` as `true`)
-
-**Solution**: Enhance check to verify table existence:
-```csharp{title="Problem: False Positive (Reports Ready When Not)" description="Solution: Enhance check to verify table existence:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "False"]}
-public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
-  // Don't just check connection - verify tables too
-  var tableExists = await connection.ExecuteScalarAsync<bool>(
-    "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'wh_outbox')",
-    cancellationToken: ct
-  );
-
-  return tableExists;
-}
-```
-
-### Problem: Performance Impact
-
-**Symptoms**: High database load from readiness checks.
+**Symptoms**: "relation does not exist" errors on startup.
 
 **Causes**:
-1. No caching (checking every poll)
-2. Expensive query (complex schema check)
+1. A custom hosted service issues SQL without awaiting `ISchemaReadyGate`
+2. Application code runs queries during `ConfigureServices`/startup before the host starts
 
-**Solution**: Implement caching and lightweight checks:
-```csharp{title="Problem: Performance Impact" description="Solution: Implement caching and lightweight checks:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Problem:", "Performance"]}
-private bool? _isReady;
-
-public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
-  if (_isReady == true) {
-    return true;  // ✅ Skip check if already ready
-  }
-
-  // Lightweight check - just verify connection and one table
-  var ready = await connection.ExecuteScalarAsync<bool>(
-    "SELECT EXISTS (SELECT 1 FROM wh_outbox LIMIT 1)",
-    cancellationToken: ct
-  );
-
-  if (ready) {
-    _isReady = true;
-  }
-
-  return ready;
+**Solution**: inject `ISchemaReadyGate` and await it first:
+```csharp{title="Problem: SQL Fired Against Unmigrated Database" description="Gate custom services on schema readiness" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "SQL"]}
+protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+  await _schemaReadyGate.WaitForReadyAsync(stoppingToken);
+  // ... safe to issue SQL from here
 }
 ```
 
@@ -737,19 +333,15 @@ public async Task<bool> IsReadyAsync(CancellationToken ct = default) {
 ## Further Reading
 
 **Related Workers**:
-- [Perspective Worker](perspective-worker.md) - Background checkpoint processing
+- [Perspective Worker](perspective-worker.md) - Background perspective processing
 - [Execution Lifecycle](execution-lifecycle.md) - Startup/shutdown coordination
 
 **Infrastructure**:
-- PostgreSQL Setup - Database initialization
 - [Migrations](../infrastructure/migrations.md) - Schema management
-
-**Testing**:
-- Integration Testing - Testing database integration
 
 **Monitoring**:
 - [Health Checks](../infrastructure/health-checks.md) - Application health monitoring
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2025-12-21*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

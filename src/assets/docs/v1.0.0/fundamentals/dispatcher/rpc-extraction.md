@@ -1,5 +1,8 @@
 ---
 title: RPC Response Extraction
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 18
@@ -9,7 +12,13 @@ tags: 'rpc, extraction, discriminated-unions, routed-none'
 codeReferences:
   - src/Whizbang.Core/Dispatch/Route.cs
   - src/Whizbang.Core/Dispatch/Routed.cs
+  - src/Whizbang.Core/Dispatch/DispatchMode.cs
   - src/Whizbang.Core/Internal/ResponseExtractor.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Internal/ResponseExtractorTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherRpcExtractionTests.cs
+  - tests/Whizbang.Core.Tests/Dispatch/RouteTests.cs
+  - tests/Whizbang.Core.Tests/Dispatch/RoutedTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -39,8 +48,8 @@ public record OrderConfirmation {
   public required string ConfirmationCode { get; init; }
 }
 
-[DefaultRouting(DispatchMode.Outbox)]
-public record InventoryReserved([property: StreamKey] Guid OrderId) : IEvent;
+[DefaultRouting(DispatchModes.Outbox)]
+public record InventoryReserved([property: StreamId] Guid OrderId) : IEvent;
 
 // Receptor returns tuple: (response to caller, event to cascade)
 public class CreateOrderReceptor
@@ -184,7 +193,7 @@ return (success: Route.None(), failure: new PaymentFailed(...));
 `Route.None()` values are:
 - **Never extracted** as RPC responses
 - **Never cascaded** as events
-- **AOT-compatible** (simple struct with `DispatchMode.None`)
+- **AOT-compatible** (simple struct with `DispatchModes.None`)
 
 ### RoutedNone Type {#routed-none}
 
@@ -196,7 +205,7 @@ return (success: Route.None(), failure: new PaymentFailed(...));
 /// </summary>
 public readonly struct RoutedNone : IRouted {
   public object? Value => null;
-  public DispatchMode Mode => DispatchMode.None;
+  public DispatchModes Mode => DispatchModes.None;
 }
 ```
 

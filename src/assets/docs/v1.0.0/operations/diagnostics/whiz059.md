@@ -1,5 +1,8 @@
 ---
 title: 'WHIZ059: GUID Interception Suppressed'
+pageType: troubleshooting
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   Informational diagnostic indicating a GUID creation call was not intercepted
   due to suppression
@@ -14,6 +17,9 @@ tags:
 codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/GuidInterceptorGenerator.cs
+  - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/GuidInterceptorGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -26,13 +32,17 @@ lastMaintainedCommit: '01f07906'
 
 This informational diagnostic is reported when a GUID creation call could be intercepted but was suppressed via the `[SuppressGuidInterception]` attribute. This indicates intentional opt-out from TrackedGuid wrapping.
 
-This diagnostic is only reported when GUID interception is enabled via the MSBuild property `WhizbangGuidInterceptionEnabled=true`.
+The diagnostic is reported whenever the generator runs — even if the MSBuild property `WhizbangGuidInterceptionEnabled` is not set (the property only gates whether interceptor code is generated for the non-suppressed calls).
+
+Suppression via `#pragma warning disable WHIZ055`/`WHIZ056` around a call disables interception silently — those calls produce **no** WHIZ059 (only attribute-based suppression is reported).
 
 ## Diagnostic Message
 
 ```
-GUID call 'System.Guid.NewGuid()' at file.cs:15 suppressed by SuppressGuidInterceptionAttribute on method
+Interception suppressed for System.Guid.NewGuid at /src/MyApp/TestData.cs:15 via SuppressGuidInterceptionAttribute on method
 ```
+
+The last part identifies the suppression scope: `on method`, `on local function`, `on type`, or `on assembly`.
 
 ## Why Suppress Interception
 
@@ -114,6 +124,17 @@ public class MyService {
 public class TestFixtures {
   public Guid Id1 => Guid.NewGuid();  // Suppressed
   public Guid Id2 => Guid.NewGuid();  // Suppressed
+}
+```
+
+### Local Function Scope
+
+```csharp{title="Local Function Scope" description="Local Function Scope" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Local", "Function"]}
+public Guid CreateId() {
+  [SuppressGuidInterception]
+  static Guid CreateRaw() => Guid.NewGuid();  // Suppressed
+
+  return CreateRaw();
 }
 ```
 

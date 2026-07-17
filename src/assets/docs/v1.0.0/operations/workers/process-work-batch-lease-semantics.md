@@ -1,158 +1,208 @@
 ---
-title: Process Work Batch — Lease & Heartbeat Semantics
+title: Work Pump — Lease & Heartbeat Semantics
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Workers
 order: 4
 description: >-
-  How WorkCoordinatorPublisherWorker paces its ticks and when it refreshes
-  stream leases and instance heartbeats. Covers the conditional-refresh guards,
-  the adaptive poll-interval backoff, tuning knobs, and failover SLAs.
+  How the decomposed work pump (ClaimWorker, HeartbeatWorker,
+  LeaseRenewalWorker) paces polling, renews work-row leases, and refreshes
+  instance heartbeats. Covers the renew_leases and record_heartbeat SQL
+  functions, the adaptive poll-interval backoff, tuning knobs, and failover
+  SLAs.
 tags: >-
-  work-coordinator, process-work-batch, lease-renewal, heartbeat, polling,
-  backoff, wal, instance-stickiness, orphan-claim
+  work-coordinator, claim-work, renew-leases, record-heartbeat, lease-renewal,
+  heartbeat, polling, backoff, wal, orphan-claim
 codeReferences:
-  - src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs
+  - src/Whizbang.Core/Workers/ClaimWorker.cs
+  - src/Whizbang.Core/Workers/HeartbeatWorker.cs
+  - src/Whizbang.Core/Workers/LeaseRenewalWorker.cs
+  - src/Whizbang.Core/Workers/LeaseHandleOptions.cs
   - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
-  - src/Whizbang.Data.Postgres/Migrations/010_RegisterInstanceHeartbeat.sql
   - src/Whizbang.Data.Postgres/Migrations/011_CleanupStaleInstances.sql
 testReferences:
-  - >-
-    tests/Whizbang.Data.Dapper.Postgres.Tests/ProcessWorkBatchLeaseRenewalTests.cs
-  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreLeaseRenewalTests.cs
-  - >-
-    tests/Whizbang.Core.Tests/Workers/WorkCoordinatorPublisherWorkerDrainTests.cs
+  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerGateCadenceTests.cs
+  - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
+  - tests/Whizbang.Core.Tests/Workers/LeaseRenewalWorkerCapTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RenewLeasesSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RecordHeartbeatSqlTests.cs
 ---
 
-# Process Work Batch — Lease & Heartbeat Semantics
+# Work Pump — Lease & Heartbeat Semantics
 
-`WorkCoordinatorPublisherWorker` polls `process_work_batch` periodically to discover new work, renew leases, refresh heartbeats, and evict stale instances. This page documents three contracts that shape its write volume and failover behaviour:
+:::updated
+The monolithic `process_work_batch` orchestrator has been **dropped** (migration `029_ProcessWorkBatch.sql` removes it at the top of the file) and decomposed into focused SQL functions, each paired with a dedicated C# worker:
 
-1. **Stream lease refresh** is conditional — near-expiry only.
-2. **Instance heartbeat** is conditional — fresh heartbeats are skipped.
-3. **Poll interval** is adaptive — doubles on consecutive empty polls up to a configurable cap.
+| Concern | SQL function | C# worker |
+|---------|--------------|-----------|
+| Claiming + orphan reclaim | `claim_work` | `ClaimWorker` (the only caller of `IWorkCoordinator.ClaimWorkAsync`) |
+| Instance heartbeat | `record_heartbeat` | `HeartbeatWorker` (own timer, decoupled from polling) |
+| Lease renewal | `renew_leases` | `LeaseRenewalWorker` (coalesced batch flusher) |
+| Stale-instance eviction | `cleanup_stale_instances` | Opportunistic via `record_heartbeat` + `MaintenanceWorker` backstop |
 
-Together these reduce per-tick UPDATE volume by 100× or more on idle services while preserving the failover SLA.
+`WorkCoordinatorPublisherWorker` no longer exists; this page describes the shipped decomposition.
+:::
 
-## Stream lease refresh
+This page documents three contracts that shape the work pump's write volume and failover behaviour:
 
-When an instance owns a stream (present in `wh_active_streams.assigned_instance_id`), the worker refreshes `lease_expiry` to `now() + p_lease_duration_seconds` so another instance doesn't re-claim it while the current owner is still live. Historically this was unconditional — every tick rewrote every owned stream's row.
+1. **Work-row lease renewal** is explicit and capped — the `LeaseRenewalWorker` extends leases for in-flight work, and a per-work renewal cap surfaces hung handlers.
+2. **Instance heartbeat** runs on its own timer with an adaptive cadence — slow while the session alive-lock proves liveness, fast otherwise.
+3. **Poll interval** is adaptive — doubles on consecutive empty polls up to a configurable cap, with LISTEN/NOTIFY wake signals bypassing the wait entirely.
 
-### The guard
+## Work-row leases
 
-Migration 029 (`process_work_batch`) tracks a refresh threshold alongside the computed expiry:
+`claim_work` leases work rows to the calling instance by setting `instance_id` and `lease_expiry = NOW() + p_lease_seconds` (default **300 s**, from `ClaimWorkerOptions.LeaseSeconds`). Leases apply per row:
+
+- `wh_outbox` / `wh_inbox` rows, keyed by `message_id`
+- `wh_perspective_events` rows, keyed by `event_work_id`
+
+A row is claimable by another instance only when it is unprocessed AND either unowned or expired — the orphan predicate used by the per-category guards inside `claim_work`:
 
 ```sql{
-title: "Compute lease expiry and refresh threshold"
-description: "Derive the new lease_expiry and the one-third refresh threshold inside process_work_batch so leases are only rewritten near expiry."
+title: "Orphan-claim eligibility predicate"
+description: "claim_work only invokes a claim_orphaned_* sub-function when at least one row in that category is unprocessed and either unowned or lease-expired."
 category: "Workers"
 difficulty: "ADVANCED"
-tags: ["work-coordinator", "lease-renewal", "process-work-batch", "refresh-threshold", "sql"]
+tags: ["work-coordinator", "claim-work", "orphan-claim", "lease-expiry", "sql"]
 }
-v_lease_expiry      := p_now + (p_lease_duration_seconds          || ' seconds')::INTERVAL;
-v_refresh_threshold := p_now + ((p_lease_duration_seconds / 3)    || ' seconds')::INTERVAL;
+IF EXISTS (
+  SELECT 1 FROM wh_outbox
+  WHERE processed_at IS NULL
+    AND (instance_id IS NULL OR lease_expiry < v_now)
+  LIMIT 1
+) THEN
+  PERFORM claim_orphaned_outbox(...);
+END IF;
 ```
 
-and guards the end-of-tick UPDATE:
+### Renewal — `renew_leases`
 
-```sql{
-title: "Guard the end-of-tick lease refresh UPDATE"
-description: "Refresh lease_expiry only for owned streams within the refresh threshold, cutting per-tick UPDATE volume without changing the orphan-detection SLA."
-category: "Workers"
-difficulty: "ADVANCED"
-tags: ["work-coordinator", "lease-renewal", "conditional-refresh", "wh_active_streams", "orphan-claim", "sql"]
-}
-UPDATE wh_active_streams
-SET lease_expiry = v_lease_expiry
-WHERE assigned_instance_id = p_instance_id
-  AND lease_expiry < v_refresh_threshold;
-```
+Long-running dispatches renew their leases through `renew_leases(p_category, p_ids, p_lease_seconds DEFAULT 300)`. It sets `lease_expiry = NOW() + p_lease_seconds` for the supplied ids in the chosen category table (`outbox`, `inbox`, or `perspective_event`), skips rows already processed, returns the rows-affected count, and raises on an unknown category.
 
-**Meaning.** A stream whose lease expires in more than `p_lease_duration_seconds / 3` seconds from now is left alone. With the default 300 s lease duration, that means a freshly-renewed stream is not touched again for another ~200 seconds.
+On the C# side, dispatch workers enqueue `(category, work_id)` pairs onto `ILeaseRenewalChannel`; `LeaseRenewalWorker` coalesces them through a `BatchFlusher` (defaults: max batch 200, coalesce window 200 ms, immediate-flush threshold 100, channel capacity 5 000) and calls `IWorkCoordinator.RenewLeasesAsync` per category.
 
-### Tuning `p_lease_duration_seconds`
+### The renewal cap
 
-The refresh window is always one-third of the lease duration. Lowering the lease shortens both the refresh cadence (higher write volume) and the orphan-detection window (faster failover):
+Every dispatch holds a `LeaseHandle` whose token cancels at `lease_expiry − LeaseGraceSeconds` (default **30 s** of grace). `LeaseRenewalWorker` consults the handle before each DB renewal:
 
-| `p_lease_duration_seconds` | Refresh cadence per stream | Max time to orphan detection |
-|----------------------------|----------------------------|------------------------------|
-| 60 (aggressive) | ~20 s | 60 s |
-| 300 (default) | ~200 s | 300 s |
-| 900 | ~600 s | 900 s |
+- `TryExtendDeadline` succeeds → the id is included in the `renew_leases` call.
+- The handle has hit `MaxRenewalsPerWork` (default **6**) or is disposed → the id is *skipped*. The DB lease expires naturally, `claim_orphaned_*` re-issues the row with a bumped `attempts` count, and the hung handler surfaces through the standard failure path instead of being silently renewed forever.
 
-### Why the orphan SLA is unchanged
+At the default 300 s lease and 6 renewals, a single dispatch gets up to ~30 minutes of extension budget.
 
-The guard only affects *refresh* — it does not affect *expiry*. When an instance dies, its stream's `lease_expiry` still elapses at the same wall-clock time as before (the last refresh + `p_lease_duration_seconds`). Cross-instance orphan claims still gate on `now() > lease_expiry`, so the maximum time to re-claim an orphaned stream is unchanged at `p_lease_duration_seconds`.
+### Failover SLA
+
+Cross-instance orphan claims gate on `lease_expiry < NOW()`. When an instance dies, its rows become claimable at their last-renewed expiry — worst case `LeaseSeconds` (default 300 s) after the final renewal. Instance death is additionally detected by heartbeat staleness (below), which releases all of a dead instance's leases at once.
 
 ## Instance heartbeat
 
-`register_instance_heartbeat` is called on every `process_work_batch` tick. It upserts the instance row in `wh_service_instances`, updating `last_heartbeat_at` to `p_now`. `cleanup_stale_instances` removes any instance whose heartbeat is older than `p_stale_threshold_seconds` (default **30 s**).
-
-### The guard
-
-Migration 010 now skips the UPDATE side of the UPSERT when the existing heartbeat is already fresh:
+`HeartbeatWorker` calls `record_heartbeat` on its own timer, independent of the polling cadence. `record_heartbeat` is a plain UPSERT into `wh_service_instances` — it unconditionally updates `last_heartbeat_at = NOW()` — plus an opportunistic stale-peer sweep:
 
 ```sql{
-title: "Skip the heartbeat UPDATE when it is already fresh"
-description: "Guard the register_instance_heartbeat UPSERT so last_heartbeat_at is only rewritten when older than 10s, cutting per-pod heartbeat writes ~40x while staying inside the stale cutoff."
+title: "Opportunistic stale-peer cleanup inside record_heartbeat"
+description: "record_heartbeat UPSERTs the caller's row, then runs cleanup_stale_instances only when a cheap indexed EXISTS probe finds a peer whose heartbeat is older than the 30 s stale cutoff."
 category: "Workers"
 difficulty: "ADVANCED"
-tags: ["work-coordinator", "heartbeat", "conditional-refresh", "wh_service_instances", "instance-stickiness", "sql"]
+tags: ["work-coordinator", "heartbeat", "record-heartbeat", "cleanup-stale-instances", "sql"]
 }
-ON CONFLICT (instance_id) DO UPDATE SET
-  last_heartbeat_at = p_now,
-  metadata          = COALESCE(EXCLUDED.metadata, wh_service_instances.metadata)
-WHERE wh_service_instances.last_heartbeat_at < p_now - interval '10 seconds';
+v_stale_cutoff           := NOW() - INTERVAL '30 seconds';
+v_definitive_dead_cutoff := NOW() - INTERVAL '5 minutes';
+
+-- UPSERT own row, then:
+IF EXISTS (
+  SELECT 1 FROM wh_service_instances
+  WHERE last_heartbeat_at < v_stale_cutoff
+    AND instance_id != p_instance_id
+  LIMIT 1
+) THEN
+  PERFORM cleanup_stale_instances(v_stale_cutoff, v_definitive_dead_cutoff);
+END IF;
 ```
 
-**Meaning.** If the instance heartbeated less than 10 s ago, the UPDATE is skipped entirely. With the default poll interval (250 ms) that takes a heartbeat write rate of `~4 / sec / pod` down to `~0.1 / sec / pod`.
+`cleanup_stale_instances(p_stale_cutoff, p_definitive_dead_cutoff DEFAULT NULL)` deletes stale rows and releases all their leased work (`instance_id = NULL, lease_expiry = NULL` across `wh_outbox`, `wh_inbox`, `wh_perspective_events`). Two guards refine the staleness decision:
 
-### Why 10 s
+- **Alive-lock guard**: a row whose session-level advisory alive-lock (migration 055) is still held in `pg_locks` is *not* deleted, even past the stale cutoff — the lock is the primary liveness signal under the adaptive heartbeat cadence.
+- **Definitive-dead bypass**: a heartbeat older than `p_definitive_dead_cutoff` (5 minutes on the `record_heartbeat` path) bypasses the alive-lock guard. This covers OOM-killed pods on half-open TCP, where the server-side session can hold the advisory lock until OS keepalive fires (~2 h default on Linux).
 
-It has to be strictly less than `p_stale_threshold_seconds` (default 30 s) or an instance would go stale between forced refreshes. 10 s leaves a **20 s safety margin**: at worst the heartbeat is 10 s old when the next tick fires, still 20 s inside the stale cutoff.
+### Adaptive cadence
 
-If you shorten `p_stale_threshold_seconds` for faster failure detection, the 10 s window is still safe down to thresholds of around 15 s. Below that, the heartbeat-freshness constant should be reduced in lock-step.
+`HeartbeatWorkerOptions` controls the timer:
+
+| Option | Default | Meaning |
+|--------|---------|---------|
+| `IntervalSeconds` | 30 | Fast cadence — used when the alive-lock is not held (or `LivenessSourceMode = HeartbeatTableOnly`) |
+| `SlowIntervalSeconds` | 60 | Slow cadence — used while the session alive-lock is held (lock proves liveness; the table write is a fallback) |
+| `LivenessSourceMode` | `AdvisoryLockWhenAvailable` | Set `HeartbeatTableOnly` to force the fast cadence regardless of lock state |
+| `Enabled` | `true` | Killswitch — disabling lets peers flag this instance stale, useful for graceful drain |
+
+A legacy `register_instance_heartbeat` function (migration 010) still exists with a 10-second freshness guard on its UPDATE path, but the shipped coordinator path (`IWorkCoordinator.RecordHeartbeatAsync`) calls `record_heartbeat`.
 
 ## Adaptive poll interval
 
-Locally-produced work bypasses the poll timer altogether: `IWorkChannelWriter.OnNewWorkAvailable` and `IInboxChannelWriter.OnNewInboxWorkAvailable` raise `RequestImmediatePoll()`, releasing the internal `_pollWakeSignal` semaphore and making the next tick fire immediately.
+`ClaimWorker` is the only place that calls `IWorkCoordinator.ClaimWorkAsync`. Locally-produced work bypasses the poll timer altogether: `IWorkChannelWriter.OnNewWorkAvailable`, `IInboxChannelWriter.OnNewInboxWorkAvailable`, LISTEN/NOTIFY signals (`Outbox`, `Inbox`, `OrphanRedistribute`), and NOTIFY-gate availability transitions all raise `RequestImmediatePoll()`, releasing the internal wake semaphore so the next tick fires immediately.
 
 The periodic tick exists to cover:
 
-- Transport-received inbox writes (no in-process signal — the transport consumer writes straight to `wh_inbox`).
+- Work whose owning instance is unknown to `notify_instance_owners` (no routed NOTIFY is emitted for unclaimed streams).
 - Orphan claim and lease-expiry enforcement.
-- Scheduled / deferred `wh_inbox.scheduled_for` promotion.
-- Heartbeat + lease renewal.
+- Scheduled / deferred promotion.
+- Anything missed while LISTEN/NOTIFY is unhealthy.
 
 ### The backoff
 
-When `process_work_batch` returns no work, `_consecutiveEmptyPolls` is incremented. The worker's wait doubles per empty poll up to a configurable cap:
+When a poll returns no work (or errors), `_consecutiveEmptyPolls` is incremented. The wait doubles starting at the *second* consecutive empty poll, up to a cap:
 
-| `_consecutiveEmptyPolls` | Wait (ms, default base = 250, max = 2000) |
-|--------------------------|-------------------------------------------|
+```
+wait = min(base << min(emptyPolls - 1, 10), PollingMaxIntervalMilliseconds)
+```
+
+| Consecutive empty polls | Wait (ms, base = 250, max = 10 000) |
+|-------------------------|--------------------------------------|
 | 0 (work found this tick) | 250 |
-| 1 | 500 |
-| 2 | 1000 |
-| 3 and above | **2000** (capped) |
+| 1 | 250 |
+| 2 | 500 |
+| 3 | 1000 |
+| 4 | 2000 |
+| 7 and above | **10 000** (capped) |
 
-Any non-empty batch resets `_consecutiveEmptyPolls` to zero (via `_trackWorkStateTransitions(hasWork)`), so the first empty poll after activity waits the base interval again.
+Any non-empty batch resets `_consecutiveEmptyPolls` to zero, so the first wait after activity is the base interval again.
+
+### NOTIFY-gate interaction
+
+The `INotifySignalingGate` modulates the baseline:
+
+- **Gate unavailable** (LISTEN/NOTIFY broken): the loop pins to the tight `PollingIntervalMilliseconds` base — backoff is suspended so a listener outage never silently stretches claim latency.
+- **Gate healthy + `NotifyHealthyPollingIntervalMilliseconds` set** (default **5 000 ms**): the relaxed value replaces the tight base as the backoff's starting point (only when greater than the base). Set it to `null` to restore tight polling always.
+- **Gate healthy + `EnableSafetyNetPoll = false`**: pure NOTIFY-only mode — the loop sleeps indefinitely until an actual signal arrives. The safety net re-engages automatically the moment the gate flips unavailable.
 
 ### Wake-signal interruption
 
 `RequestImmediatePoll()` works regardless of the current backoff depth — it releases the semaphore and the wait returns immediately. The adaptive path only affects the *timeout* on the wait, not its *interruptibility*.
 
-### Tuning the cap
+### Tuning knobs (`ClaimWorkerOptions`)
 
-`WorkCoordinatorPublisherOptions.PollingMaxIntervalMilliseconds` (default 2000):
-
-- **Larger** caps reduce idle write load further but increase worst-case latency for transport-received work discovery (up to the cap).
-- **Set equal to `PollingIntervalMilliseconds`** to disable backoff entirely (kill-switch — restores the pre-fix fixed-interval behaviour with zero other code changes).
-- **Lower** caps (e.g. 1000 ms) for services that receive bursts of transport-sourced work and need faster pickup at the cost of some idle overhead.
+| Option | Default | Notes |
+|--------|---------|-------|
+| `PollingIntervalMilliseconds` | 250 | Tight base cadence (used when NOTIFY is unhealthy) |
+| `PollingMaxIntervalMilliseconds` | 10 000 | Backoff cap. Set ≤ the base interval to disable backoff entirely (kill-switch) |
+| `NotifyHealthyPollingIntervalMilliseconds` | 5 000 | Relaxed baseline while NOTIFY is healthy; `null` restores tight polling |
+| `EnableSafetyNetPoll` | `true` | `false` = pure NOTIFY-only when the gate is healthy |
+| `MaxStreamsPerBatch` | 1000 | Cap on rows per `claim_work` call; filling it triggers the drain-mode `whizbang.has_more` re-poll hint |
+| `LeaseSeconds` | 300 | Lease duration applied to claimed work |
+| `PartitionCount` | 10 000 | Modulo partition count |
+| `Enabled` | `true` | Killswitch for the claim loop |
 
 ## Tests
 
-- **Dapper**: `ProcessWorkBatchLeaseRenewalTests.cs` — 5 scenarios covering the lease-fresh no-op, near-expiry refresh, orphan SLA, heartbeat-fresh no-op, and heartbeat-stale refresh.
-- **EFCore**: `EFCoreLeaseRenewalTests.cs` — single mirror test proving the guard applies through the EFCore work coordinator too (the guard lives in the Postgres function body).
-- **Backoff**: `WorkCoordinatorPublisherWorkerDrainTests.cs` — 4 scenarios covering the doubling schedule, reset on non-empty batch, wake-signal interruption, and kill-switch.
+- **ClaimWorker**: `ClaimWorkerTests.cs` — initial heartbeat before first claim, wake-signal bypass, killswitch, schema gate, drain-channel distribution.
+- **Gate cadence + backoff**: `ClaimWorkerGateCadenceTests.cs` — backoff stretches to max when healthy, pins to base when unavailable, relaxed-baseline override, NOTIFY-only mode, reconnect/startup catch-up.
+- **Heartbeat cadence**: `HeartbeatWorkerAdaptiveCadenceTests.cs` — fast/slow cadence selection across lock states and `LivenessSourceMode`.
+- **Renewal cap**: `LeaseRenewalWorkerCapTests.cs` — renewal bumps handle count, cap stops DB renewals, disposed handles skipped, null-registry fallback.
+- **SQL**: `ClaimWorkSqlTests.cs`, `RenewLeasesSqlTests.cs`, `RecordHeartbeatSqlTests.cs` — function existence and lease/heartbeat effects against a live Postgres.
 
 ## See also
 

@@ -1,0 +1,138 @@
+{
+  "session": "2K",
+  "section": "fundamentals/identity + persistence + security + lenses",
+  "auditDate": "2026-03-25",
+  "pagesAudited": [
+    "fundamentals/identity/ (7 pages)",
+    "fundamentals/persistence/ (2 pages)",
+    "fundamentals/security/ (8 pages)",
+    "fundamentals/lenses/ (7 pages)"
+  ],
+  "libraryFilesRead": [
+    "Baseline data analysis only — source code verification deferred to execution phase"
+  ],
+  "tasks": [
+    {
+      "id": "2K-001",
+      "type": "frontmatter",
+      "priority": "P0",
+      "page": "fundamentals/identity/ (5 pages)",
+      "dimension": "page-frontmatter",
+      "summary": "5 identity pages missing ALL frontmatter",
+      "details": "fuzzy-matching.md, type-formatting.md, type-matching.md, type-qualification.md, whizbang-ids.md all have no YAML frontmatter. These cover the type identity system which is critical for AOT compatibility. Need full frontmatter with descriptive tags.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2K-002",
+      "type": "frontmatter",
+      "priority": "P0",
+      "page": "fundamentals/lenses/raw-sql.md + vector-search.md",
+      "dimension": "page-frontmatter",
+      "summary": "2 lens pages missing ALL frontmatter",
+      "details": "raw-sql.md and vector-search.md have no frontmatter. raw-sql tags should include: raw SQL, Dapper, direct query, performance, bypass EFCore. vector-search tags: pgvector, similarity search, embeddings, cosine distance, nearest neighbor.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2K-003",
+      "type": "frontmatter",
+      "priority": "P0",
+      "page": "fundamentals/security/implementing-multi-tenancy.md + message-security.md",
+      "dimension": "page-frontmatter",
+      "summary": "2 security pages missing ALL frontmatter",
+      "details": "implementing-multi-tenancy.md and message-security.md have no frontmatter. Multi-tenancy tags: tenant isolation, row-level security, scope filtering, TenantId. Message security tags: authorization, impersonation, scope context, security propagation.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2K-004",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "fundamentals/security/ (5 pages)",
+      "dimension": "page-frontmatter",
+      "summary": "5 security pages missing codeReferences",
+      "details": "multi-tenancy.md, scope-propagation.md, scoping.md, security-context-propagation.md, security.md all have frontmatter but missing codeReferences. Should reference IScopeContext, IScopeFilter, ITenantProvider, etc.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2K-005",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "fundamentals/ (4 _folder.md files)",
+      "dimension": "page-frontmatter",
+      "summary": "All 4 _folder.md files missing description, tags, codeReferences",
+      "details": "identity, persistence, security, lenses folder metadata files all only have title and order. Need version, category, description, tags for search discoverability.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2K-006",
+      "type": "redundancy",
+      "priority": "P1",
+      "page": "fundamentals/security/",
+      "dimension": "redundancy",
+      "summary": "Security section has potential overlap: scoping.md, scope-propagation.md, security-context-propagation.md",
+      "details": "Three pages cover overlapping scope/security propagation topics. scoping.md covers the scoping model. scope-propagation.md covers how scope flows through messages. security-context-propagation.md covers security context specifically. May be intentional (different aspects) but need to verify they're cross-linked and non-redundant.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2K-007",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "fundamentals/lenses/",
+      "dimension": "incomplete-docs",
+      "summary": "Verify lenses API matches current implementation",
+      "details": "Lenses are the read-side query interface. Need to verify ILens<TModel>, IScopedLens<TModel>, ILensQueryFactory interfaces match current code. Also verify scoped queries, temporal queries, and multi-model queries reflect current EF Core 10 patterns.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2K-008",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "fundamentals/identity/assembly-registry.md",
+      "dimension": "incomplete-docs",
+      "summary": "Assembly registry — verify coverage of type discovery patterns",
+      "details": "The identity section covers type matching, formatting, qualification, and assembly registry. These support AOT-compatible type resolution. Need to verify docs match current implementation, especially around IAssemblyRegistry and fuzzy matching algorithms.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2K-009",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "fundamentals/persistence/persistence.md",
+      "dimension": "incomplete-docs",
+      "summary": "Persistence page — verify covers current UoW and DbContext patterns",
+      "details": "Persistence section has only 2 pages. Need to verify persistence.md covers the current unit-of-work patterns, DbContext lifecycle, and how persistence integrates with the dispatcher's SaveChangesAsync flow. observability.md covers message envelope persistence/tracing.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2K-010",
+      "type": "code-sample-fix",
+      "priority": "P2",
+      "page": "fundamentals/ (all 4 subsections)",
+      "dimension": "code-sample-frontmatter",
+      "summary": "Code samples across all 28 pages have auto-generated poor metadata",
+      "details": "Same pattern. ~50+ code samples need metadata review.",
+      "sourceFiles": [],
+      "effort": "L"
+    },
+    {
+      "id": "2K-011",
+      "type": "frontmatter",
+      "priority": "P2",
+      "page": "fundamentals/ (all pages with existing frontmatter)",
+      "dimension": "page-frontmatter",
+      "summary": "Tags need synonym expansion across all 4 subsections",
+      "details": "Pages that DO have tags need synonym expansion for better search: identity (type resolution, AOT type matching, assembly scanning), persistence (unit of work, DbContext, SaveChanges), security (authorization, RBAC, tenant isolation, row-level security), lenses (read model, query, projection reader, CQRS read side).",
+      "sourceFiles": [],
+      "effort": "M"
+    }
+  ],
+  "sectionSummary": "The remaining fundamentals cover 4 subsections with 28 content pages. The biggest issues: (1) 9 pages have NO frontmatter at all (5 in identity, 2 in lenses, 2 in security), (2) 9 more pages missing codeReferences (mostly security), (3) potential redundancy in security section (3 scope/propagation pages), (4) detailed API verification deferred to execution phase for lenses, identity, and persistence. No broken code-docs links — these sections have good link coverage. The identity section's AOT type system and the lenses query model need thorough source comparison during execution."
+}

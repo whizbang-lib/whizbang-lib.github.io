@@ -1,5 +1,8 @@
 ---
 title: Event Completion Awaiter
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 5
@@ -15,6 +18,11 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/Sync/ISyncEventTracker.cs
   - src/Whizbang.Core/Perspectives/Sync/SyncEventTracker.cs
   - src/Whizbang.Core/Dispatch/DispatchOptions.cs
+  - src/Whizbang.Core/Dispatcher.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncEventTrackerTests.cs
+  - tests/Whizbang.Core.Tests/Dispatch/DispatchOptionsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -26,30 +34,20 @@ lastMaintainedCommit: '01f07906'
 
 When using `LocalInvokeAsync` for RPC-style dispatching, the response returns immediately after cascade completes. However, perspectives may still be processing the cascaded events:
 
-```
-LocalInvokeAsync(CreateOrderCommand)
-         │
-         ▼
-┌──────────────────────┐
-│   Handler executes   │  ◄── Emits OrderCreatedEvent
-│   Returns OrderId    │
-└──────────────────────┘
-         │
-         ▼
-┌──────────────────────┐
-│   Cascade completes  │  ◄── Event sent to perspective worker
-└──────────────────────┘
-         │
-         ▼
-   Response returned!   ◄── But perspective hasn't processed yet!
-         │
-         │ (gap - perspectives still processing)
-         ▼
-┌──────────────────────┐
-│ Perspective Worker   │  ◄── Processes OrderCreatedEvent async
-│ OrderPerspective     │
-│ ReportingPerspective │
-└──────────────────────┘
+```mermaid
+flowchart TD
+    Invoke["LocalInvokeAsync(CreateOrderCommand)"]
+    Handler["Handler executes<br/>Returns OrderId<br/>(Emits OrderCreatedEvent)"]
+    Cascade["Cascade completes<br/>(Event sent to perspective worker)"]
+    Response["Response returned!<br/>(But perspective hasn't processed yet!)"]
+    Worker["Perspective Worker<br/>OrderPerspective<br/>ReportingPerspective<br/>(Processes OrderCreatedEvent async)"]
+
+    Invoke --> Handler
+    Handler --> Cascade
+    Cascade --> Response
+    Response -->|"gap - perspectives still processing"| Worker
+
+    style Response fill:#f8d7da,stroke:#dc3545,stroke-width:2px
 ```
 
 **The solution**: Use `IEventCompletionAwaiter` or `DispatchOptions.WithPerspectiveWait()` to wait for all perspectives to finish.
@@ -97,12 +95,13 @@ public class OrderService {
 
         // Wait for ALL perspectives to process cascaded events
         var options = new DispatchOptions()
+            .WithCancellationToken(ct)
             .WithPerspectiveWait(timeout: TimeSpan.FromSeconds(30));
 
-        var result = await _dispatcher.LocalInvokeAsync(command, options, ct);
+        var orderId = await _dispatcher.LocalInvokeAsync<Guid>(command, options);
 
         // At this point, ALL perspectives have processed the OrderCreatedEvent
-        return result.GetResult<Guid>();
+        return orderId;
     }
 }
 ```
@@ -112,13 +111,17 @@ public class OrderService {
 ```csharp{title="Configuration Options" description="Configuration Options" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Configuration", "Options"]}
 public sealed class DispatchOptions {
     // When true, LocalInvokeAsync waits for all perspectives to finish
-    public bool WaitForPerspectives { get; set; } = false;
+    public bool WaitForPerspectives { get; set; }
 
     // Timeout for waiting (default: 30 seconds)
     public TimeSpan PerspectiveWaitTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
+    // Cancellation for the dispatch operation (default: CancellationToken.None)
+    public CancellationToken CancellationToken { get; set; } = CancellationToken.None;
+
     // Fluent API
     public DispatchOptions WithPerspectiveWait(TimeSpan? timeout = null);
+    public DispatchOptions WithCancellationToken(CancellationToken token);
 }
 ```
 
@@ -130,27 +133,20 @@ The `Dispatcher` integrates with event completion through the `_waitForPerspecti
 
 ### Integration Architecture
 
-```
-LocalInvokeAsync with DispatchOptions
-         │
-         ▼
-1. Check for [AwaitPerspectiveSync] (if present)
-   _awaitPerspectiveSyncIfNeededAsync()
-         │
-         ▼
-2. Invoke receptor
-   var result = await invoker(message);
-         │
-         ▼
-3. Auto-cascade events from result
-   _cascadeEventsFromResultAsync()
-         │
-         ▼
-4. Wait for ALL perspectives (if requested)
-   _waitForPerspectivesIfNeededAsync(options)
-         │
-         ▼
-5. Return result
+```mermaid
+flowchart TD
+    Invoke["LocalInvokeAsync with DispatchOptions"]
+    Step1["1. Check for [AwaitPerspectiveSync] (if present)<br/>_awaitPerspectiveSyncIfNeededAsync()"]
+    Step2["2. Invoke receptor<br/>var result = await invoker(message);"]
+    Step3["3. Auto-cascade events from result<br/>_cascadeEventsFromResultAsync()"]
+    Step4["4. Wait for ALL perspectives (if requested)<br/>_waitForPerspectivesIfNeededAsync(options)"]
+    Step5["5. Return result"]
+
+    Invoke --> Step1
+    Step1 --> Step2
+    Step2 --> Step3
+    Step3 --> Step4
+    Step4 --> Step5
 ```
 
 ### Implementation
@@ -158,10 +154,9 @@ LocalInvokeAsync with DispatchOptions
 The dispatcher checks `DispatchOptions.WaitForPerspectives` after receptor execution:
 
 ```csharp{title="Implementation" description="The dispatcher checks `DispatchOptions." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Implementation"]}
-public async ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(
-    TMessage message,
-    DispatchOptions options,
-    ...) {
+public async ValueTask<TResult> LocalInvokeAsync<TResult>(
+    object message,
+    DispatchOptions options) {
 
   // 1. Await perspective sync if receptor has [AwaitPerspectiveSync]
   await _awaitPerspectiveSyncIfNeededAsync(message, messageType, options.CancellationToken);
@@ -170,7 +165,7 @@ public async ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(
   var result = await invoker(message);
 
   // 3. Cascade events from result
-  await _cascadeEventsFromResultAsync(result, messageType);
+  await _cascadeEventsFromResultAsync(result, messageType, sourceEnvelope: envelope);
 
   // 4. Wait for ALL perspectives if requested
   await _waitForPerspectivesIfNeededAsync(options);
@@ -201,22 +196,22 @@ private async ValueTask _waitForPerspectivesIfNeededAsync(DispatchOptions option
 
   // Get all events emitted during this invocation
   var emittedEvents = scopedTracker.GetEmittedEvents();
-  var eventIds = emittedEvents.Select(e => e.EventId).Distinct().ToList();
-
-  if (eventIds.Count == 0) {
+  if (emittedEvents.Count == 0) {
     return;  // No events to wait for
   }
 
+  var eventIds = emittedEvents.Select(e => e.EventId).Distinct().ToList();
+
   // Wait for ALL perspectives to process these events
-  var timeout = options.PerspectiveWaitTimeout;
   var success = await _eventCompletionAwaiter.WaitForEventsAsync(
       eventIds,
-      timeout,
+      options.PerspectiveWaitTimeout,
       options.CancellationToken);
 
   if (!success) {
     throw new PerspectiveSyncTimeoutException(
-        $"Timed out after {timeout.TotalSeconds}s waiting for {eventIds.Count} events to be processed by all perspectives");
+        $"Timed out waiting for {eventIds.Count} events to be processed by all perspectives. " +
+        $"Timeout: {options.PerspectiveWaitTimeout.TotalMilliseconds}ms");
   }
 }
 ```
@@ -256,7 +251,7 @@ When timeout occurs, throws `PerspectiveSyncTimeoutException`:
 ```csharp{title="Key Features (2)" description="When timeout occurs, throws PerspectiveSyncTimeoutException:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Key", "Features"]}
 try {
   var options = new DispatchOptions().WithPerspectiveWait();
-  await _dispatcher.LocalInvokeAsync(command, options, ct);
+  await _dispatcher.LocalInvokeAsync(command, options);
 } catch (PerspectiveSyncTimeoutException ex) {
   _logger.LogWarning("Perspective processing timed out: {Message}", ex.Message);
   // Handle timeout
@@ -279,24 +274,19 @@ if (eventIds.Count == 0) return;                 // No events
 The integration works across all `LocalInvokeAsync` overloads that accept `DispatchOptions`:
 
 ```csharp{title="All LocalInvokeAsync Overloads" description="The integration works across all LocalInvokeAsync overloads that accept DispatchOptions:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "All", "LocalInvokeAsync"]}
-// Async receptor with result
-Task<TResult> LocalInvokeAsync<TMessage, TResult>(
-    TMessage message,
+// Receptor with typed business result
+ValueTask<TResult> LocalInvokeAsync<TResult>(
+    object message,
     DispatchOptions options);
 
-// Async receptor void
-Task LocalInvokeAsync<TMessage>(
-    TMessage message,
+// Void receptor
+ValueTask LocalInvokeAsync(
+    object message,
     DispatchOptions options);
 
-// Sync receptor with result
-Task<TResult> LocalInvokeAsync<TMessage, TResult>(
-    TMessage message,
-    DispatchOptions options);
-
-// Sync receptor void
-Task LocalInvokeAsync<TMessage>(
-    TMessage message,
+// Receptor with typed business result AND delivery receipt
+ValueTask<InvokeResult<TResult>> LocalInvokeWithReceiptAsync<TResult>(
+    object message,
     DispatchOptions options);
 ```
 
@@ -318,7 +308,7 @@ public class OrderOrchestrator {
 
     public async Task<OrderResult> ProcessOrderAsync(CreateOrderCommand cmd, CancellationToken ct) {
         // Execute command
-        var orderId = await _dispatcher.SendAsync(cmd, ct);
+        var receipt = await _dispatcher.SendAsync(cmd, new DispatchOptions().WithCancellationToken(ct));
 
         // Get all event IDs emitted in this scope
         var emittedEvents = _scopedTracker.GetEmittedEvents();
@@ -337,7 +327,7 @@ public class OrderOrchestrator {
             }
         }
 
-        return new OrderResult { OrderId = orderId, FullyProcessed = true };
+        return new OrderResult { OrderId = receipt.StreamId ?? Guid.Empty, FullyProcessed = true };
     }
 }
 ```
@@ -378,40 +368,20 @@ public interface IEventCompletionAwaiter : IAwaiterIdentity {
 
 The event completion system uses per-perspective tracking:
 
-```
-Event emitted (EventId = abc123)
-         │
-         ▼
-┌──────────────────────────────────────┐
-│        SyncEventTracker              │
-│ ┌──────────────────────────────────┐ │
-│ │ Tracked Events (per-perspective) │ │
-│ │  (abc123, OrderPerspective)      │ │
-│ │  (abc123, ReportingPerspective)  │ │
-│ └──────────────────────────────────┘ │
-└──────────────────────────────────────┘
-         │
-         │  Perspective workers process event
-         ▼
-┌──────────────────────────────────────┐
-│ OrderPerspective calls               │
-│ MarkProcessedByPerspective(abc123,   │
-│   "OrderPerspective")                │
-│                                      │
-│ Removes only: (abc123, OrderPersp.)  │
-│ Still tracked: (abc123, Reporting)   │
-└──────────────────────────────────────┘
-         │
-         │  When ALL perspectives done:
-         ▼
-┌──────────────────────────────────────┐
-│ ReportingPerspective calls           │
-│ MarkProcessedByPerspective(abc123,   │
-│   "ReportingPerspective")            │
-│                                      │
-│ No more entries for abc123           │
-│ → Signals WaitForAllPerspectivesAsync│
-└──────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Emit["Event emitted (EventId = abc123)"]
+
+    subgraph Tracker["SyncEventTracker"]
+        Tracked["Tracked Events (per-perspective)<br/>(abc123, OrderPerspective)<br/>(abc123, ReportingPerspective)"]
+    end
+
+    Mark1["OrderPerspective calls<br/>MarkProcessedByPerspective(abc123, #quot;OrderPerspective#quot;)<br/><br/>Removes only: (abc123, OrderPersp.)<br/>Still tracked: (abc123, Reporting)"]
+    Mark2["ReportingPerspective calls<br/>MarkProcessedByPerspective(abc123, #quot;ReportingPerspective#quot;)<br/><br/>No more entries for abc123<br/>→ Signals WaitForAllPerspectivesAsync"]
+
+    Emit --> Tracker
+    Tracker -->|"Perspective workers process event"| Mark1
+    Mark1 -->|"When ALL perspectives done"| Mark2
 ```
 
 ### Key Methods
@@ -433,7 +403,7 @@ var options = new DispatchOptions()
     .WithPerspectiveWait(timeout: TimeSpan.FromSeconds(5));
 
 try {
-    await _dispatcher.LocalInvokeAsync(command, options, ct);
+    await _dispatcher.LocalInvokeAsync(command, options);
 } catch (PerspectiveSyncTimeoutException ex) {
     // Handle timeout - perspectives are still processing
     _logger.LogWarning("Perspective processing timed out: {Message}", ex.Message);
@@ -454,12 +424,14 @@ try {
 ```csharp{title="Do: Use for External API Responses" description="Do: Use for External API Responses" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "External"]}
 [HttpPost]
 public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
-    var options = new DispatchOptions().WithPerspectiveWait();
-    var result = await _dispatcher.LocalInvokeAsync(
-        new CreateOrderCommand(request), options, HttpContext.RequestAborted);
+    var options = new DispatchOptions()
+        .WithCancellationToken(HttpContext.RequestAborted)
+        .WithPerspectiveWait();
+    var orderId = await _dispatcher.LocalInvokeAsync<Guid>(
+        new CreateOrderCommand(request), options);
 
     // Safe to query any perspective - all are up to date
-    return Ok(result.GetResult<Guid>());
+    return Ok(orderId);
 }
 ```
 
@@ -477,11 +449,11 @@ public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
 
 ```csharp{title="Don't: Use When Not Needed" description="Don't: Use When Not Needed" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "When"]}
 // Fire-and-forget scenarios don't need to wait
-await _dispatcher.SendAsync(command, ct); // No waiting
+await _dispatcher.SendAsync(command); // No waiting
 
 // Only wait when caller needs complete processing
 var options = new DispatchOptions().WithPerspectiveWait();
-await _dispatcher.LocalInvokeAsync(command, options, ct); // Waits
+await _dispatcher.LocalInvokeAsync(command, options); // Waits
 ```
 
 ### Don't: Confuse with Perspective-Specific Sync
@@ -489,7 +461,7 @@ await _dispatcher.LocalInvokeAsync(command, options, ct); // Waits
 ```csharp{title="Don't: Confuse with Perspective-Specific Sync" description="Don't: Confuse with Perspective-Specific Sync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "Confuse"]}
 // WRONG: Using event completion when you only need one perspective
 var options = new DispatchOptions().WithPerspectiveWait();
-await _dispatcher.LocalInvokeAsync(command, options, ct);
+await _dispatcher.LocalInvokeAsync(command, options);
 var order = await _orderLens.GetByIdAsync(orderId, ct);
 
 // RIGHT: Use IPerspectiveSyncAwaiter for single-perspective consistency

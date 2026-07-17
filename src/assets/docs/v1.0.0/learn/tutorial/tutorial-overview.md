@@ -1,5 +1,8 @@
 ---
 title: ECommerce Tutorial Overview
+pageType: tutorial
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Tutorial
 order: 1
@@ -12,6 +15,10 @@ codeReferences:
   - samples/ECommerce/ECommerce.Contracts/Ids.cs
   - samples/ECommerce/ECommerce.Contracts/Events/OrderCreatedEvent.cs
   - samples/ECommerce/ECommerce.ServiceDefaults/Extensions.cs
+testReferences:
+  - samples/ECommerce/ECommerce.IntegrationTests/OrderServiceIntegrationTests.cs
+  - >-
+    samples/ECommerce/tests/ECommerce.InMemory.Integration.Tests/Workflows/CreateProductWorkflowTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -23,32 +30,29 @@ Build a **complete e-commerce system** using Whizbang to learn all framework fea
 
 A distributed e-commerce platform with 7 microservices:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  ECommerce Platform Architecture                            │
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │   Order      │  │  Inventory   │  │   Payment    │     │
-│  │   Service    │  │   Service    │  │   Service    │     │
-│  │  (Commands)  │  │  (Commands)  │  │  (Commands)  │     │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
-│         │                  │                  │             │
-│         └──────────────────┼──────────────────┘             │
-│                            │                                │
-│                  ┌─────────▼─────────┐                      │
-│                  │  Azure Service    │                      │
-│                  │      Bus          │                      │
-│                  │   (Event Hub)     │                      │
-│                  └─────────┬─────────┘                      │
-│                            │                                │
-│         ┌──────────────────┼──────────────────┐             │
-│         │                  │                  │             │
-│  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐     │
-│  │Notification  │  │   Shipping   │  │  Analytics   │     │
-│  │   Service    │  │   Service    │  │   Service    │     │
-│  │  (Events)    │  │  (Events)    │  │(Perspectives)│     │
-│  └──────────────┘  └──────────────┘  └──────────────┘     │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph EPA["ECommerce Platform Architecture"]
+        OrderSvc["Order Service<br/>(Commands)"]
+        InventorySvc["Inventory Service<br/>(Commands)"]
+        PaymentSvc["Payment Service<br/>(Commands)"]
+        Bus["Azure Service Bus<br/>(Topics)"]
+        NotificationSvc["Notification Service<br/>(Events)"]
+        ShippingSvc["Shipping Service<br/>(Events)"]
+        AnalyticsSvc["Analytics Service<br/>(Perspectives)"]
+
+        OrderSvc --> Bus
+        InventorySvc --> Bus
+        PaymentSvc --> Bus
+        Bus --> NotificationSvc
+        Bus --> ShippingSvc
+        Bus --> AnalyticsSvc
+    end
+
+    class OrderSvc,InventorySvc,PaymentSvc layer-command
+    class Bus layer-event
+    class NotificationSvc,ShippingSvc layer-core
+    class AnalyticsSvc layer-read
 ```
 
 ### Services
@@ -197,15 +201,15 @@ dotnet add ECommerce.NotificationWorker package Whizbang.Transports.AzureService
 dotnet add ECommerce.ShippingWorker package Whizbang.Transports.AzureServiceBus
 dotnet add ECommerce.AnalyticsWorker package Whizbang.Transports.AzureServiceBus
 
-# Projects with PostgreSQL
-dotnet add ECommerce.OrderService.API package Whizbang.Data.Postgres
-dotnet add ECommerce.InventoryWorker package Whizbang.Data.Postgres
-dotnet add ECommerce.CustomerService.API package Whizbang.Data.Postgres
-dotnet add ECommerce.AnalyticsWorker package Whizbang.Data.Postgres
+# Projects with PostgreSQL (EF Core driver)
+dotnet add ECommerce.OrderService.API package Whizbang.Data.EFCore.Postgres
+dotnet add ECommerce.InventoryWorker package Whizbang.Data.EFCore.Postgres
+dotnet add ECommerce.CustomerService.API package Whizbang.Data.EFCore.Postgres
+dotnet add ECommerce.AnalyticsWorker package Whizbang.Data.EFCore.Postgres
 
-# Aspire integration
-dotnet add ECommerce.OrderService.API package Whizbang.Hosting.Azure.ServiceBus
+# Aspire integration (AppHost only)
 dotnet add ECommerce.AppHost package Aspire.Hosting.Azure.ServiceBus
+dotnet add ECommerce.AppHost package Whizbang.Hosting.Azure.ServiceBus
 ```
 
 ### 4. Project Structure
@@ -215,20 +219,20 @@ ECommerce/
 ├── ECommerce.sln
 ├── ECommerce.AppHost/             # .NET Aspire orchestration
 ├── ECommerce.Contracts/           # Shared messages
+│   ├── Ids.cs                     # [WhizbangId] strongly-typed IDs
 │   ├── Commands/
-│   │   ├── CreateOrder.cs
-│   │   ├── ReserveInventory.cs
-│   │   └── ProcessPayment.cs
+│   │   ├── CreateOrderCommand.cs
+│   │   ├── ReserveInventoryCommand.cs
+│   │   └── ProcessPaymentCommand.cs
 │   └── Events/
-│       ├── OrderCreated.cs
-│       ├── InventoryReserved.cs
-│       └── PaymentProcessed.cs
+│       ├── OrderCreatedEvent.cs
+│       ├── InventoryReservedEvent.cs
+│       └── PaymentProcessedEvent.cs
 ├── ECommerce.OrderService.API/    # Order management
 │   ├── Receptors/
-│   │   ├── CreateOrderReceptor.cs
-│   │   └── CancelOrderReceptor.cs
-│   └── Controllers/
-│       └── OrdersController.cs
+│   │   └── CreateOrderReceptor.cs
+│   └── Endpoints/
+│       └── Orders/CreateOrderEndpoint.cs
 ├── ECommerce.InventoryWorker/     # Inventory management
 │   ├── Receptors/
 │   │   └── ReserveInventoryReceptor.cs
@@ -254,44 +258,56 @@ ECommerce/
         └── DailySalesAnalyticsPerspective.cs
 ```
 
+:::note
+The shipped sample at `samples/ECommerce/` in the library repository uses **ECommerce.BFF.API** (Backend-for-Frontend with GraphQL, SignalR, and lens-backed endpoints) as its read-side service — the tutorial's `CustomerService.API`/`AnalyticsWorker` correspond to that role.
+:::
+
 ## Key Concepts Demonstrated
 
 ### Event-Driven Architecture
 
 ```csharp{title="Event-Driven Architecture" description="Event-Driven Architecture" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Event-Driven", "Architecture"]}
 // Command: Create Order (synchronous)
-CreateOrder command → CreateOrderReceptor → OrderCreated event
+CreateOrderCommand → CreateOrderReceptor → OrderCreatedEvent
 
 // Event: Order Created (asynchronous pub/sub)
-OrderCreated event → Published to Azure Service Bus
-  ├─ InventoryWorker → ReserveInventory
-  ├─ NotificationWorker → SendOrderConfirmation
+OrderCreatedEvent → Published to Azure Service Bus
+  ├─ InventoryWorker → ReserveInventoryCommand
+  ├─ NotificationWorker → SendNotificationCommand
   └─ AnalyticsWorker → UpdateDailySales (perspective)
 ```
 
 ### CQRS (Command Query Responsibility Segregation)
 
 **Write Side**:
-- Order Service receives `CreateOrder` command
+- Order Service receives `CreateOrderCommand`
 - CreateOrderReceptor handles command
-- Publishes `OrderCreated` event to event bus
+- Publishes `OrderCreatedEvent` to event bus
 
 **Read Side**:
-- Customer Service subscribes to `OrderCreated` events
-- OrderSummaryPerspective updates read model
-- CustomersController queries read model (fast!)
+- Customer Service subscribes to `OrderCreatedEvent`
+- Order summary perspective updates the read model (pure `Apply` functions)
+- Lens queries serve the read model (fast!)
 
 ### Saga Pattern (Distributed Transactions)
 
-```
-1. CreateOrder → OrderCreated
-2. OrderCreated → ReserveInventory → InventoryReserved
-3. InventoryReserved → ProcessPayment → PaymentProcessed
-4. PaymentProcessed → CreateShipment → ShipmentCreated
-5. ShipmentCreated → SendShippingNotification → NotificationSent
+```mermaid
+flowchart TD
+    subgraph Saga["Saga: Order Processing"]
+        S1["CreateOrder"] --> S2["OrderCreated"]
+        S2 --> S3["ReserveInventory"] --> S4["InventoryReserved"]
+        S4 --> S5["ProcessPayment"] --> S6["PaymentProcessed"]
+        S6 --> S7["CreateShipment"] --> S8["ShipmentCreated"]
+        S8 --> S9["SendShippingNotification"] --> S10["NotificationSent"]
+    end
 
-Compensation (if payment fails):
-- PaymentFailed → ReleaseInventory → InventoryReleased
+    subgraph Comp["Compensation (if payment fails)"]
+        direction LR
+        C1["PaymentFailed"] --> C2["ReleaseInventory"] --> C3["InventoryReleased"]
+    end
+
+    class S1,S3,S5,S7,S9,C2 layer-command
+    class S2,S4,S6,S8,S10,C1,C3 layer-event
 ```
 
 ## Development Workflow
@@ -303,17 +319,17 @@ cd ECommerce.AppHost
 dotnet run
 ```
 
-Open Aspire Dashboard: `http://localhost:15000`
+Open the Aspire Dashboard from the URL printed in the console.
 
 ### 2. Create Order via API
 
 ```bash{title="Create Order via API" description="Create Order via API" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
-curl -X POST http://localhost:5000/orders \
+curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{
-    "customerId": "cust-123",
-    "items": [
-      { "productId": "prod-456", "quantity": 2, "unitPrice": 19.99 }
+    "customerId": "0195b3f0-1234-7abc-8def-0123456789ab",
+    "lineItems": [
+      { "productId": "0195b3f0-5678-7abc-8def-0123456789ab", "productName": "Widget", "quantity": 2, "unitPrice": 19.99 }
     ]
   }'
 ```

@@ -1,5 +1,8 @@
 ---
 title: Delivery Receipts
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 20
@@ -11,6 +14,13 @@ codeReferences:
   - src/Whizbang.Core/IStreamIdExtractor.cs
   - src/Whizbang.Core/StreamIdExtractor.cs
   - src/Whizbang.Core/Registry/StreamIdExtractorRegistry.cs
+  - src/Whizbang.Core/StreamIdAttribute.cs
+  - src/Whizbang.Core/GenerateStreamIdAttribute.cs
+  - src/Whizbang.Core/IHasStreamId.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/DeliveryReceiptTests.cs
+  - tests/Whizbang.Core.Tests/StreamIdExtractorTests.cs
+  - tests/Whizbang.Core.Tests/Registry/StreamIdExtractorRegistryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -20,9 +30,9 @@ Delivery receipts provide tracking information when messages are dispatched. Str
 
 ## Overview
 
-When you dispatch a message via `SendAsync`, you receive a `DeliveryReceipt`:
+When you dispatch a message via `SendAsync`, you receive an `IDeliveryReceipt`:
 
-```csharp{title="Overview" description="When you dispatch a message via SendAsync, you receive a DeliveryReceipt:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Overview"]}
+```csharp{title="Overview" description="When you dispatch a message via SendAsync, you receive an IDeliveryReceipt:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Overview"]}
 var receipt = await dispatcher.SendAsync(new CreateOrder {
   CustomerId = customerId,
   Items = items
@@ -30,21 +40,29 @@ var receipt = await dispatcher.SendAsync(new CreateOrder {
 
 // receipt contains:
 // - MessageId: Unique ID for this message
-// - CorrelationId: For tracing related messages
+// - CorrelationId / CausationId: For tracing related messages
 // - StreamId: Extracted from the message (if available)
-// - Timestamp: When the message was dispatched
+// - Destination: Where the message was routed
+// - Status: Accepted / Queued / Delivered / Failed
+// - Timestamp: When the message was accepted by the dispatcher
 ```
 
-## DeliveryReceipt Structure
+## IDeliveryReceipt Structure
 
-```csharp{title="DeliveryReceipt Structure" description="DeliveryReceipt Structure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "DeliveryReceipt", "Structure"]}
-public record DeliveryReceipt(
-    Guid MessageId,        // Unique message identifier
-    Guid CorrelationId,    // For distributed tracing
-    Guid? StreamId,        // Stream key (if extracted)
-    DateTimeOffset Timestamp
-);
+```csharp{title="IDeliveryReceipt Structure" description="IDeliveryReceipt Structure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "DeliveryReceipt", "Structure"]}
+public interface IDeliveryReceipt {
+  MessageId MessageId { get; }                              // Unique message identifier
+  DateTimeOffset Timestamp { get; }                         // When the dispatcher accepted the message
+  string Destination { get; }                               // Receptor name, topic, etc.
+  DeliveryStatus Status { get; }                            // Accepted, Queued, Delivered, Failed
+  IReadOnlyDictionary<string, JsonElement> Metadata { get; } // Transport-specific metadata
+  CorrelationId? CorrelationId { get; }                     // For distributed tracing
+  MessageId? CausationId { get; }                           // ID of the causing message
+  Guid? StreamId { get; }                                   // Stream ID (if extracted)
+}
 ```
+
+The concrete `DeliveryReceipt` class provides static factory methods for each status: `DeliveryReceipt.Accepted(...)`, `Queued(...)`, `Delivered(...)`, and `Failed(...)` (which captures exception details into `Metadata`).
 
 ## Stream ID Extraction
 
@@ -67,6 +85,17 @@ public interface IStreamIdExtractor {
   /// <param name="messageType">The runtime type of the message</param>
   /// <returns>The stream ID if found, otherwise null</returns>
   Guid? ExtractStreamId(object message, Type messageType);
+
+  /// <summary>
+  /// Returns the generation policy based on the [GenerateStreamId] attribute.
+  /// Used by the Dispatcher to determine if a StreamId should be auto-generated.
+  /// </summary>
+  (bool ShouldGenerate, bool OnlyIfEmpty) GetGenerationPolicy(object message) => (false, false);
+
+  /// <summary>
+  /// Sets the stream ID on a message using the [StreamId]-marked property.
+  /// </summary>
+  bool SetStreamId(object message, Guid streamId) => false;
 }
 ```
 
@@ -96,6 +125,14 @@ public sealed class StreamIdExtractor : IStreamIdExtractor {
 
     // For other message types (e.g., perspective DTOs)
     return StreamIdExtractors.TryResolveAsGuid(message);
+  }
+
+  public (bool ShouldGenerate, bool OnlyIfEmpty) GetGenerationPolicy(object message) {
+    return StreamIdExtractors.GetGenerationPolicy(message);
+  }
+
+  public bool SetStreamId(object message, Guid streamId) {
+    return StreamIdExtractors.SetStreamId(message, streamId);
   }
 }
 ```
@@ -134,26 +171,28 @@ public static class StreamIdExtractorRegistry {
 
 ## Marking Stream ID Properties
 
-### Using [StreamKey] Attribute
+### Using [StreamId] Attribute
 
 Mark properties that identify the event stream:
 
-```csharp{title="Using [StreamKey] Attribute" description="Mark properties that identify the event stream:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Using", "StreamKey"]}
+```csharp{title="Using [StreamId] Attribute" description="Mark properties that identify the event stream:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Using", "StreamId"]}
 public record OrderCreated : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid OrderId { get; init; }  // This is the stream ID
   public required Guid CustomerId { get; init; }
   public required decimal Total { get; init; }
 }
 
-// When dispatching:
-var receipt = await dispatcher.SendAsync(new OrderCreated {
+// When publishing:
+var receipt = await dispatcher.PublishAsync(new OrderCreated {
   OrderId = orderId,
   CustomerId = customerId,
   Total = 99.99m
 });
 // receipt.StreamId == orderId
 ```
+
+To auto-generate a stream ID for a `[StreamId]`-marked property, add `[GenerateStreamId]` (use `OnlyIfEmpty = true` when a parent cascade may already supply one).
 
 ### Using IHasStreamId Interface
 
@@ -201,7 +240,7 @@ When messages are defined in a "contracts" assembly:
 namespace MyApp.Contracts;
 
 public record OrderCreated : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid OrderId { get; init; }
 }
 ```
@@ -240,7 +279,7 @@ public async Task<ActionResult> CreateOrder(
     Items = request.Items
   };
 
-  var receipt = await _dispatcher.SendAsync(command, ct);
+  var receipt = await _dispatcher.SendAsync(command);
 
   // Store receipt for tracking
   await _trackingService.StoreAsync(receipt);
@@ -288,7 +327,7 @@ public async Task ProcessWithIdempotencyAsync(DeliveryReceipt receipt) {
 
 ### DO
 
-- **Use [StreamKey]** to mark stream ID properties
+- **Use [StreamId]** to mark stream ID properties
 - **Store receipts** for important operations
 - **Use CorrelationId** for distributed tracing
 - **Use MessageId** for idempotency checks
@@ -297,7 +336,7 @@ public async Task ProcessWithIdempotencyAsync(DeliveryReceipt receipt) {
 
 - **Don't ignore receipts** for critical operations
 - **Don't hardcode stream ID extraction** - use attributes
-- **Don't mix approaches** - pick [StreamKey] or IHasStreamId
+- **Don't mix approaches** - pick [StreamId] or IHasStreamId
 
 ## Related Documentation
 

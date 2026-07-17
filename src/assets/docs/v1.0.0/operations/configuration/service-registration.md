@@ -1,5 +1,8 @@
 ---
 title: ServiceRegistrationExtensions
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: DI
 order: 2
@@ -9,6 +12,10 @@ description: >-
 tags: 'di, dependency-injection, service-registration, extension-methods, source-generator'
 codeReferences:
   - src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs
+  - src/Whizbang.Generators/ServiceRegistrationGenerator.cs
+  - src/Whizbang.Core/ServiceRegistrationCallbacks.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/ServiceRegistrationGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -19,10 +26,12 @@ lastMaintainedCommit: '01f07906'
 ## Overview
 
 Whizbang's source generator scans your codebase for:
-- Classes implementing `IPerspective<TEvent>` interfaces
-- Classes implementing `ILensQuery` interfaces
+- Classes implementing user interfaces that extend `IPerspectiveFor<...>` / `IPerspectiveWithActionsFor<...>` (or implementing those Whizbang interfaces directly with closed generic arguments)
+- Classes implementing user interfaces that extend `ILensQuery` (or implementing `ILensQuery<T>` directly)
 
-It then generates `ServiceRegistrationExtensions` with methods to register all discovered implementations as **Scoped** services (to match DbContext lifetime).
+It then generates `ServiceRegistrationExtensions` with methods to register all discovered implementations as **Transient** services.
+
+The generator also emits a `[ModuleInitializer]` that wires these methods into `ServiceRegistrationCallbacks`, so `AddWhizbang()` invokes them **automatically** when your assembly loads — the explicit methods below are only needed when you want to register services without calling `AddWhizbang()`, or with different options.
 
 ## Generated Methods
 
@@ -37,10 +46,12 @@ It then generates `ServiceRegistrationExtensions` with methods to register all d
 ```csharp{title="Basic Service Registration" description="Register all Whizbang services" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration"]}
 var builder = WebApplication.CreateBuilder(args);
 
-// Register core Whizbang services
+// Registers core Whizbang services AND auto-invokes the generated
+// service registrations for discovered Perspectives and Lenses
 builder.Services.AddWhizbang();
 
-// Register generated service registrations
+// Explicit call — only needed when bypassing AddWhizbang()
+// or re-registering with different options
 builder.Services.AddAllWhizbangServices();
 ```
 
@@ -55,14 +66,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// 2. Core Whizbang services
+// 2. Core Whizbang services (auto-registers discovered services)
 builder.Services.AddWhizbang();
 
-// 3. Perspective registrations (for message handling)
+// 3. Perspective runner registrations (for perspective materialization)
 builder.Services.AddWhizbangPerspectives();
-
-// 4. Generated service registrations
-builder.Services.AddAllWhizbangServices();
 ```
 
 ## With Options
@@ -80,17 +88,17 @@ See [ServiceRegistrationOptions](service-registration-options) for available opt
 
 ## Service Lifetime
 
-All services are registered as **Scoped** to match typical DbContext lifetime:
+All services are registered as **Transient**:
 
-```csharp{title="Service Lifetime" description="All services are registered as Scoped to match typical DbContext lifetime:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "Service", "Lifetime"]}
+```csharp{title="Service Lifetime" description="All discovered services are registered as Transient" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "Service", "Lifetime"]}
 // Generated registration
-services.AddScoped<IOrderLens, OrderLens>();
+services.AddTransient<IOrderLens, OrderLens>();
 ```
 
 This ensures:
-- Fresh instances per request
-- Proper DbContext sharing within a request
-- Automatic disposal after request completion
+- A fresh instance per resolution
+- Scoped dependencies (like `DbContext`) are supplied by the resolving scope
+- No accidental state sharing between resolutions
 
 ## Source Generation
 
@@ -103,11 +111,19 @@ namespace Whizbang.Core.Generated;
 /// <summary>
 /// Extension methods for registering 3 discovered perspective service(s)
 /// and 5 discovered lens service(s) with the DI container.
+/// All services are registered as Transient.
 /// </summary>
 public static class ServiceRegistrationExtensions {
   public static IServiceCollection AddPerspectiveServices(...) { ... }
   public static IServiceCollection AddLensServices(...) { ... }
   public static IServiceCollection AddAllWhizbangServices(...) { ... }
+}
+
+// Plus a module initializer that wires the methods into
+// ServiceRegistrationCallbacks so AddWhizbang() invokes them automatically
+internal static class ServiceRegistrationInitializer {
+  [ModuleInitializer]
+  internal static void Initialize() { ... }
 }
 ```
 

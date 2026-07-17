@@ -1,5 +1,8 @@
 ---
 title: Completion Orchestration & Adaptive Watchdog
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Application Blocks
 order: 2
@@ -13,7 +16,13 @@ codeReferences:
   - src/Whizbang.Sagas/SagaOptions.cs
   - src/Whizbang.Sagas/SagaCompletionWatchdogTickEvent.cs
   - src/Whizbang.Sagas/SagaCompletionAbandonedEvent.cs
+  - src/Whizbang.Sagas/Services/WatchdogTickOutcome.cs
   - src/Whizbang.Core/Dispatcher.cs
+testReferences:
+  - tests/Whizbang.Sagas.Tests/Services/TryRecoverViaWatchdogTickAsyncTests.cs
+  - tests/Whizbang.Sagas.Tests/Services/TryRecoverViaWatchdogAsyncTests.cs
+  - tests/Whizbang.Sagas.Tests/CompletionOrchestrationGapTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherScheduledForLocalReceptorTests.cs
 ---
 
 # Completion Orchestration & Adaptive Watchdog
@@ -28,31 +37,30 @@ The **completion watchdog** is the safety net. It fires on a budgeted schedule, 
 
 ## The two completion paths
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ PRIMARY: event-driven completion                                │
-│                                                                 │
-│   per-item terminal event → SagaItemCompletedHandler →          │
-│   TryRecoverViaWatchdogAsync → CompleteSagaAsync (one-shot)     │
-│                                                                 │
-│ Last item to terminate sees agg.Total == TotalItems, the        │
-│ reconciler agrees with the event store, exactly-one             │
-│ SagaCompletedEvent emits via PublishOnceAsync.                  │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓ if dropped
-┌─────────────────────────────────────────────────────────────────┐
-│ SAFETY NET: time-driven completion                              │
-│                                                                 │
-│   watchdog tick (scheduled_for in outbox) →                     │
-│   TryRecoverViaWatchdogTickAsync →                              │
-│       recovered          → exit                                 │
-│       progress observed  → next tick at ETA + safety            │
-│       no progress        → stall counter increments             │
-│       max stalls reached → SagaCompletionAbandonedEvent         │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Primary["PRIMARY: event-driven completion"]
+        P1["per-item terminal event"] --> P2["SagaItemCompletedRecoveryHandler"]
+        P2 --> P3["TryRecoverViaWatchdogAsync"]
+        P3 --> P4["CompleteSagaAsync (one-shot)"]
+        PNote["Last item to terminate sees agg.Total == TotalItems,<br/>the reconciler agrees with the event store,<br/>exactly-one SagaCompletedEvent emits via PublishOnceAsync."]
+    end
+
+    subgraph Safety["SAFETY NET: time-driven completion"]
+        S1["watchdog tick (scheduled_for in outbox)"] --> S2["TryRecoverViaWatchdogTickAsync"]
+        S2 -->|"recovered"| S3["exit"]
+        S2 -->|"progress observed"| S4["next tick at ETA + safety"]
+        S2 -->|"no progress"| S5["stall counter increments"]
+        S2 -->|"max stalls reached"| S6["SagaCompletionAbandonedEvent"]
+    end
+
+    Primary -->|"if dropped"| Safety
+
+    style Primary fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Safety fill:#fff3cd,stroke:#ffc107,stroke-width:2px
 ```
 
-## The cascade bug (motivating slot-3 incident, 2026-06-25)
+## The cascade bug the dispatcher fix closed
 
 `Dispatcher.PublishAsync(event, DispatchOptions)` used to honor `ScheduledFor` on the outbox row's `scheduled_for` column but invoke the in-process local receptor inline regardless. That made watchdog re-arm look like this:
 
@@ -157,9 +165,10 @@ Progress between ticks resets `ConsecutiveStallCount` to zero. A genuinely slow 
 A stuck saga (transport-lost terminal event, projection-store wedged, an item caught in an infinite retry loop without emitting terminal) increments the counter on every tick that observes zero progress. After `MaxConsecutiveStalls`:
 
 ```csharp{title="SagaCompletionAbandonedEvent"}
-public sealed class SagaCompletionAbandonedEvent : SagaEventBase {
+public class SagaCompletionAbandonedEvent : SagaEventBase, ISagaCompletionAbandonedEvent {
   public string SagaName { get; set; }
   public Guid EntityId { get; set; }
+  public Guid StreamId { get; set; }        // the saga's stream
   public int RescheduleCount { get; set; }  // count of the last tick
 }
 ```

@@ -1,5 +1,8 @@
 ---
 title: Tracing
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Observability
 order: 1
@@ -13,7 +16,14 @@ codeReferences:
   - src/Whizbang.Core/Tracing/TraceComponents.cs
   - src/Whizbang.Core/Tracing/TraceVerbosity.cs
   - src/Whizbang.Core/Tracing/ITracer.cs
+  - src/Whizbang.Core/Tracing/HandlerStatus.cs
   - src/Whizbang.Core/Tracing/WhizbangTraceAttribute.cs
+  - src/Whizbang.Core/Observability/WhizbangActivitySource.cs
+testReferences:
+  - tests/Whizbang.Observability.Tests/TracerTests.cs
+  - tests/Whizbang.Observability.Tests/TracerPatternMatchingTests.cs
+  - tests/Whizbang.Core.Tests/Tracing/TracingOptionsTests.cs
+  - tests/Whizbang.Observability.Tests/WhizbangActivitySourceTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -268,7 +278,7 @@ public class PaymentReceptor : IReceptor<ProcessPayment, PaymentProcessed> {
 
 // Trace all handlers that receive this event
 [WhizbangTrace]
-public sealed record ReseedSystemEvent : EventBase<ReseedSystemEvent>;
+public sealed record ReseedSystemEvent : IEvent;
 ```
 
 ### When Explicit Traces Are Elevated
@@ -333,7 +343,7 @@ All Whizbang spans include these tags:
 | `whizbang.message.type` | Message type name |
 | `whizbang.handler.count` | Number of handlers for message |
 | `whizbang.trace.explicit` | Whether trace was elevated |
-| `whizbang.handler.status` | `Completed`, `Failed`, `Skipped` |
+| `whizbang.handler.status` | `Success`, `Failed`, `EarlyReturn` (`HandlerStatus` enum) |
 | `whizbang.handler.duration_ms` | Execution duration in milliseconds |
 
 ### Exception Recording

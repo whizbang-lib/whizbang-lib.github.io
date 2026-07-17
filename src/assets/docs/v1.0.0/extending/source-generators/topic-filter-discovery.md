@@ -1,5 +1,8 @@
 ---
 title: Topic Filter Discovery
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Source Generators
 order: 6
@@ -13,6 +16,8 @@ codeReferences:
   - src/Whizbang.Generators/TopicFilterGenerator.cs
   - src/Whizbang.Core/TopicFilterAttribute.cs
   - 'src/Whizbang.Core/TopicFilterAttribute{TEnum}.cs'
+testReferences:
+  - tests/Whizbang.Generators.Tests/TopicFilterGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -61,35 +66,18 @@ var topics = TopicFilterRegistry.GetTopicFilters<CreateOrderCommand>();
 
 ### 1. Compile-Time Discovery
 
-```
-┌──────────────────────────────────────────────────┐
-│  Your Code                                       │
-│                                                  │
-│  [TopicFilter("orders.created")]                │
-│  public record CreateOrderCommand : ICommand {  │
-│    // ...                                        │
-│  }                                               │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  TopicFilterGenerator (Roslyn)                  │
-│                                                  │
-│  1. Scan syntax tree for classes/records        │
-│  2. Filter types with attributes                │
-│  3. Check for ICommand implementation           │
-│  4. Extract TopicFilter attribute values        │
-│  5. Extract enum Description attributes         │
-└─────────────────┬────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────┐
-│  Generated Code                                  │
-│                                                  │
-│  TopicFilterRegistry.g.cs                       │
-│  └─ GetTopicFilters<TCommand>()                 │
-│  └─ GetAllFilters()                             │
-└──────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Code["Your Code<br/><br/>[TopicFilter(#quot;orders.created#quot;)]<br/>public record CreateOrderCommand : ICommand {<br/>// ...<br/>}"]
+    Generator["TopicFilterGenerator (Roslyn)<br/><br/>1. Scan syntax tree for classes/records<br/>2. Filter types with attributes<br/>3. Check for ICommand implementation<br/>4. Extract TopicFilter attribute values<br/>5. Extract enum Description attributes"]
+    Generated["Generated Code<br/><br/>TopicFilterRegistry.g.cs<br/>— GetTopicFilters&lt;TCommand&gt;()<br/>— GetAllFilters()"]
+
+    Code --> Generator
+    Generator --> Generated
+
+    class Code layer-command
+    class Generator layer-infrastructure
+    class Generated layer-core
 ```
 
 ### 2. String-Based Filter Extraction
@@ -340,25 +328,20 @@ return enumField.Name;  // "OrdersCreated"
 
 Roslyn incremental generators use **value-based caching** to skip work when inputs haven't changed:
 
-```
-First compilation:
-├─ Scan syntax tree: 30ms
-├─ Extract topic filters: 15ms
-├─ Generate registry: 5ms
-└─ Total: 50ms
-
-Subsequent compilation (no changes):
-├─ Check cache: 1ms (inputs unchanged)
-├─ Skip generation: 0ms
-└─ Total: 1ms (49ms saved!)
-
-Compilation after topic filter change:
-├─ Check cache: 1ms (CreateOrder filter changed)
-├─ Scan syntax tree: 30ms
-├─ Extract topic filters: 15ms
-├─ Generate registry: 5ms
-└─ Total: 51ms (only re-runs affected pipeline)
-```
+| Scenario | Step | Time |
+|----------|------|------|
+| First compilation | Scan syntax tree | 30ms |
+| | Extract topic filters | 15ms |
+| | Generate registry | 5ms |
+| | **Total** | **50ms** |
+| Subsequent compilation (no changes) | Check cache | 1ms (inputs unchanged) |
+| | Skip generation | 0ms |
+| | **Total** | **1ms (49ms saved!)** |
+| Compilation after topic filter change | Check cache | 1ms (CreateOrder filter changed) |
+| | Scan syntax tree | 30ms |
+| | Extract topic filters | 15ms |
+| | Generate registry | 5ms |
+| | **Total** | **51ms (only re-runs affected pipeline)** |
 
 ### Lookup Performance
 
@@ -434,10 +417,9 @@ info WHIZ022: Found topic filter 'orders.created' on command 'CreateOrderCommand
 
 **Message**: `Enum value '{0}.{1}' has no [Description] attribute. Using enum symbol name '{1}' as filter.`
 
-**Example**:
-```
-info WHIZ023: Enum value 'Topics.OrdersCreated' has no [Description] attribute. Using enum symbol name 'OrdersCreated' as filter.
-```
+:::updated
+**Shipped behavior (verified at commit `1b31f58d`)**: the WHIZ023 descriptor is defined in `DiagnosticDescriptors.cs`, but `TopicFilterGenerator` does not currently emit it — the fallback to the enum symbol name happens **silently**. The fallback behavior itself is implemented and locked by `Generator_WithEnumFilterNoDescription_UsesSymbolNameAsync`.
+:::
 
 **When**: An enum-based topic filter lacks a `[Description]` attribute. The enum symbol name is used as fallback.
 
@@ -461,6 +443,10 @@ public enum Topics {
 ```
 warning WHIZ025: [TopicFilter] on type 'MyClass' which does not implement ICommand. Filter will be ignored.
 ```
+
+:::updated
+**Shipped behavior (verified at commit `1b31f58d`)**: the WHIZ025 descriptor is defined in `DiagnosticDescriptors.cs`, but `TopicFilterGenerator` does not currently emit it — types with `[TopicFilter]` that do not implement `ICommand` are **silently skipped** (the extraction returns early before attribute processing). The filter is still ignored, exactly as the message describes; you just won't see a build warning.
+:::
 
 **When**: `[TopicFilter]` is placed on a type that doesn't implement `ICommand`.
 
@@ -591,7 +577,7 @@ public record CreateOrderCommand : ICommand { }
 
 **Source Generators**:
 - [Receptor Discovery](receptor-discovery.md) - Discovering IReceptor implementations
-- [Perspective Discovery](perspective-discovery.md) - Discovering IPerspectiveOf implementations
+- [Perspective Discovery](perspective-discovery.md) - Discovering IPerspectiveFor implementations
 - [Message Registry](message-registry.md) - VSCode extension integration
 - [JSON Contexts](json-contexts.md) - AOT-compatible JSON serialization
 

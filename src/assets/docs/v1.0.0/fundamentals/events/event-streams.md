@@ -1,5 +1,8 @@
 ---
 title: Event Streams
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 13
@@ -9,6 +12,11 @@ tags: 'event-streams, stream-id, event-sourcing, aggregates'
 codeReferences:
   - src/Whizbang.Core/ValueObjects/StreamId.cs
   - src/Whizbang.Core/Messaging/IEventStore.cs
+  - src/Whizbang.Core/IHasStreamId.cs
+  - src/Whizbang.Core/StreamIdAttribute.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/IdentityValueObjectTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -60,17 +68,29 @@ Guid underlying = streamId.Value;
 
 ## Stream Structure
 
-```
-Stream: order-123
-├── Seq 1: OrderCreated { OrderId, CustomerId, Items }
-├── Seq 2: OrderItemAdded { OrderId, ProductId, Quantity }
-├── Seq 3: OrderShipped { OrderId, TrackingNumber }
-└── Seq 4: OrderDelivered { OrderId, DeliveredAt }
+```mermaid
+graph TB
+    subgraph S1["Stream: order-123"]
+        A1["Seq 1: OrderCreated { OrderId, CustomerId, Items }"]
+        A2["Seq 2: OrderItemAdded { OrderId, ProductId, Quantity }"]
+        A3["Seq 3: OrderShipped { OrderId, TrackingNumber }"]
+        A4["Seq 4: OrderDelivered { OrderId, DeliveredAt }"]
+        A1 --> A2 --> A3 --> A4
+    end
 
-Stream: order-456
-├── Seq 1: OrderCreated { OrderId, CustomerId, Items }
-├── Seq 2: OrderCancelled { OrderId, Reason }
-└── (no more events - cancelled)
+    subgraph S2["Stream: order-456"]
+        B1["Seq 1: OrderCreated { OrderId, CustomerId, Items }"]
+        B2["Seq 2: OrderCancelled { OrderId, Reason }"]
+        B3["(no more events - cancelled)"]
+        B1 --> B2 --> B3
+    end
+
+    style A1 fill:#fff3cd,stroke:#ffc107
+    style A2 fill:#fff3cd,stroke:#ffc107
+    style A3 fill:#fff3cd,stroke:#ffc107
+    style A4 fill:#fff3cd,stroke:#ffc107
+    style B1 fill:#fff3cd,stroke:#ffc107
+    style B2 fill:#fff3cd,stroke:#ffc107
 ```
 
 Each event has:
@@ -94,9 +114,9 @@ await eventStore.AppendAsync(order.StreamId, new OrderShipped {
 ### Reading Events
 
 ```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Reading"]}
-// Read all events from a stream
+// Read all events from a stream (ordered by sequence within the stream)
 await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromSequence: 0)) {
-  Console.WriteLine($"Event {envelope.Sequence}: {envelope.Payload.GetType().Name}");
+  Console.WriteLine($"Event {envelope.MessageId}: {envelope.Payload.GetType().Name}");
 }
 ```
 
@@ -202,7 +222,7 @@ Streams enable partitioning for scalability:
 // Events are partitioned by StreamId
 // Each partition can be processed independently
 public record OrderCreated : IEvent {
-  [StreamKey]  // Used for partitioning
+  [StreamId]  // Used for partitioning
   public required Guid OrderId { get; init; }
   public required Guid CustomerId { get; init; }
 }
@@ -222,7 +242,7 @@ Use the entity's business ID as the stream ID:
 
 ```csharp{title="Business Entity ID" description="Use the entity's business ID as the stream ID:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Business", "Entity"]}
 public record OrderCreated : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid OrderId { get; init; }  // OrderId IS the StreamId
   // ...
 }

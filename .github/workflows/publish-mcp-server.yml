@@ -1,0 +1,58 @@
+name: Publish MCP Server to npm
+
+# Tag-driven release: push a tag like mcp-v1.1.0 (must match
+# mcp-docs-server/package.json version). Builds, bundles a docs snapshot,
+# and publishes with provenance. Requires the NPM_TOKEN secret (automation
+# token for the @whizbang scope; fallback scope @whizbang-lib if unavailable).
+
+on:
+  push:
+    tags:
+      - 'mcp-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp-docs-server
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Verify tag matches package version
+        if: startsWith(github.ref, 'refs/tags/mcp-v')
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#mcp-v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag $TAG_VERSION != package.json $PKG_VERSION"; exit 1
+          fi
+
+      - name: Install
+        run: npm ci || npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Bundle docs snapshot
+        run: npm run bundle-assets
+
+      - name: Smoke test
+        run: npm test
+
+      - name: Publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,5 +1,8 @@
 ---
 title: Composite Events
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 order: 6
 description: >-
   Bundle many inner events into one transport hop — one outbox row, one
@@ -54,17 +57,22 @@ perspectives) and **never rebroadcast**.
 
 ## When to reach for it
 
-```
-Producer wants to emit many events in one operation
-  │
-  ├─ Is the mutation uniform across a whole scope (no explicit id list)?
-  │   ├─ YES → ICollectiveEvent (scope is the descriptor; one SQL UPDATE)
-  │   └─ NO  → the producer hand-crafts a specific batch of inner events
-  │             (all inheriting the composite's single stream)
-  │             │
-  │             └─ Is per-message overhead (network hop, broker dispatch, outbox/inbox
-  │                row, serialization framing) the cost you want to amortize?
-  │                └─ YES → ICompositeEvent ← THIS — one wire hop, N inner events
+```mermaid
+flowchart TD
+    Start["Producer wants to emit many events in one operation"]
+    Q1{"Is the mutation uniform across a whole scope<br/>(no explicit id list)?"}
+    Collective["ICollectiveEvent<br/>(scope is the descriptor; one SQL UPDATE)"]
+    Batch["The producer hand-crafts a specific batch of inner events<br/>(all inheriting the composite's single stream)"]
+    Q2{"Is per-message overhead (network hop, broker dispatch,<br/>outbox/inbox row, serialization framing)<br/>the cost you want to amortize?"}
+    Composite["ICompositeEvent ← THIS<br/>one wire hop, N inner events"]
+
+    Start --> Q1
+    Q1 -->|YES| Collective
+    Q1 -->|NO| Batch
+    Batch --> Q2
+    Q2 -->|YES| Composite
+
+    style Composite fill:#d4edda,stroke:#28a745,stroke-width:2px
 ```
 
 Composites pay off when the per-message overhead dominates the actual
@@ -357,14 +365,20 @@ publishing service is itself a destination. Rather than make the publishing
 service wait to receive its own transported copy back, it fans the composite out
 **locally, at publish** (`Dispatcher._fanOutCompositeLocallyAtPublishAsync`):
 
-```
-JobService: PublishAsync(DraftJobBulkImportComposite)   // owned domain
-  ├─ 1.1  expand → local-publish each inner event
-  │         (DispatchModes.Local = local receptors + event store, NO transport)
-  │         → children land in the event store + fire receptors/perspectives
-  └─ 1.2  PublishToOutboxAsync(composite) → transport (ONE wire row; composite is NOT event-stored)
-            → other subscribing services receive it and fan out on the dispatch seam
-            → JobService's own transported copy loops back → echo-discarded (already fanned out at 1.1)
+```mermaid
+flowchart TD
+    Publish["JobService: PublishAsync(DraftJobBulkImportComposite)<br/>(owned domain)"]
+    Step11["1.1 expand → local-publish each inner event<br/>(DispatchModes.Local = local receptors + event store, NO transport)"]
+    Children["Children land in the event store<br/>+ fire receptors/perspectives"]
+    Step12["1.2 PublishToOutboxAsync(composite) → transport<br/>(ONE wire row; composite is NOT event-stored)"]
+    Others["Other subscribing services receive it<br/>and fan out on the dispatch seam"]
+    Loopback["JobService's own transported copy loops back<br/>→ echo-discarded (already fanned out at 1.1)"]
+
+    Publish --> Step11
+    Step11 --> Children
+    Publish --> Step12
+    Step12 --> Others
+    Others --> Loopback
 ```
 
 - **1.1** is gated on the composite being in an **owned** namespace

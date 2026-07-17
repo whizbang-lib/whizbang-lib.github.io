@@ -1,5 +1,8 @@
 ---
 title: Perspective Rewind
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   How Whizbang detects and repairs out-of-order (late-arriving) events in
   perspective processing — the RewindRequired flag, snapshot-or-full replay, the
@@ -178,7 +181,9 @@ public enum RewindStartupMode { Blocking = 0, Background = 1 }
 | `DebounceWindow` | TimeSpan | `5s` | Intended window before a rewind executes (see [Debounce](#debounce)) |
 | `MaxDebounceWindow` | TimeSpan | `30s` | Intended hard cap on the debounce window |
 
-> [unverified] `MaxConcurrentRewinds`, `DebounceWindow`, and `MaxDebounceWindow` are defined and unit-tested for their defaults, but no consuming code path was found in `PerspectiveWorker` that reads them — only `Enabled` (implicitly via detection), `StartupScanEnabled`, and `StartupRewindMode` were observed to be honoured. Treat the debounce/concurrency knobs as present-but-not-yet-wired until confirmed against a running system.
+:::updated
+At commit `1b31f58d`, `MaxConcurrentRewinds`, `DebounceWindow`, and `MaxDebounceWindow` are defined and unit-tested for their defaults, but no consuming code path reads them — only `StartupScanEnabled` and `StartupRewindMode` are honoured by `PerspectiveWorker`. Treat the debounce/concurrency knobs as present-but-not-yet-wired.
+:::
 
 The neighbouring `PerspectiveSnapshotOptions` (`Enabled=true`, `SnapshotEveryNEvents=100`, `MaxSnapshotsPerStream=5`, `RewindSnapshotIntervalEvents=10`) and `PerspectiveStreamLockOptions` (`LockTimeout=30s`, `KeepAliveInterval=10s`) govern the snapshot store a rewind restores from and the lock it holds during replay. See [Perspective Snapshots](snapshots.md) and [Perspective Stream Locking](stream-locking.md).
 
@@ -269,7 +274,9 @@ The generated runner publishes a pair of system events around each perspective r
 
 Both are marked `[AuditEvent(Exclude = true)]` — they run in a background context with no ambient user security, so they are excluded from the audit pipeline. Publish failures are swallowed at `Debug` level and never abort the rewind.
 
-> [unverified] Two stream-level bracketing events — `StreamRewindStarted` and `StreamRewindCompleted` (carrying `PerspectiveNames[]` and `TotalEventsReplayed`) — are defined in `SystemEvents.cs` and have serialization + type tests, but no publishing call site was found in the current source. They appear to be reserved/not-yet-emitted rather than live observability signals.
+:::updated
+Two stream-level bracketing events — `StreamRewindStarted` and `StreamRewindCompleted` (carrying `PerspectiveNames[]` and `TotalEventsReplayed`) — are defined in `SystemEvents.cs` and have serialization + type tests, but at commit `1b31f58d` no publishing call site exists. They are reserved/not-yet-emitted rather than live observability signals.
+:::
 
 ## Error Handling
 
@@ -297,12 +304,12 @@ await dispatcher.AsSystem().ForAllTenants()
 
 `PerspectiveRewindOptions` exposes a `DebounceWindow` (default 5s) and a `MaxDebounceWindow` hard cap (default 30s), and the cursor table carries a sliding `rewind_flagged_at` timestamp alongside a fixed `rewind_first_flagged_at` (preserved via `COALESCE` from the first detection). The intent is to coalesce a burst of late events on a hot stream into a **single** rewind rather than one per batch.
 
-> [unverified] The debounce *columns and options exist* — `rewind_flagged_at` / `rewind_first_flagged_at` are **written** on detection and **cleared** on successful completion — but no code path was found that **reads** them as a hold-back gate, nor that consumes `DebounceWindow` / `MaxDebounceWindow`. There is no `wh_settings.rewind_debounce_seconds` SQL key. The coalescing behaviour described above is not verifiably wired in the current source — the scaffolding is present but the gate appears inactive. Do not rely on a specific debounce window until confirmed against a running system.
+:::updated
+At commit `1b31f58d` the debounce *columns and options exist* — `rewind_flagged_at` / `rewind_first_flagged_at` are **written** by the straggler-detection path in `complete_perspective_cursor_work` (not by the primary `store_perspective_events` detection) and **cleared** on successful completion — but no code path **reads** them as a hold-back gate, and nothing consumes `DebounceWindow` / `MaxDebounceWindow`. The coalescing behaviour described above is not wired in the current source — the scaffolding is present but the gate is inactive. Do not rely on a specific debounce window.
+:::
 
 ## Related
 
 - [Perspective Snapshots](snapshots.md) — the snapshot store a rewind restores from, and how snapshots are created and pruned.
 - [Perspective Stream Locking](stream-locking.md) — the per-stream lock (`reason = "rewind"`) held during replay.
 - [Perspective Rebuild](rebuild.md) — full read-model reconstruction (blue-green / in-place / selected streams), a distinct operation from late-event rewind.
-</content>
-</invoke>

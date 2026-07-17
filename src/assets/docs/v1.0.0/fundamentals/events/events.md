@@ -1,5 +1,8 @@
 ---
 title: Events
+pageType: overview
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 11
@@ -9,6 +12,10 @@ tags: 'events, event-sourcing, eventid, immutability'
 codeReferences:
   - src/Whizbang.Core/IEvent.cs
   - src/Whizbang.Core/ValueObjects/EventId.cs
+  - src/Whizbang.Core/StreamIdAttribute.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/ValueObjects/IdentityValueObjectTests.cs
+  - tests/Whizbang.Generators.Tests/StreamIdGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -78,7 +85,7 @@ Guid underlying = eventId.Value;
 
 ```csharp{title="Basic Event" description="Basic Event" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Basic", "Event"]}
 public record OrderCreated : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid OrderId { get; init; }
   public required Guid CustomerId { get; init; }
   public required OrderItem[] Items { get; init; }
@@ -93,7 +100,7 @@ Capture all relevant information:
 
 ```csharp{title="Event with Complete State" description="Capture all relevant information:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Complete"]}
 public record ProductPriceChanged : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid ProductId { get; init; }
   public required decimal OldPrice { get; init; }   // Before
   public required decimal NewPrice { get; init; }   // After
@@ -108,7 +115,7 @@ public record ProductPriceChanged : IEvent {
 
 ```csharp{title="Event with Nested Data" description="Event with Nested Data" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Nested"]}
 public record OrderShipped : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid OrderId { get; init; }
   public required ShippingInfo Shipping { get; init; }
   public required DateTimeOffset ShippedAt { get; init; }
@@ -165,7 +172,7 @@ public record OrderChanged : IEvent { }  // What changed?
 ```csharp{title="Capture Complete State" description="Capture Complete State" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Capture", "Complete"]}
 // ✅ GOOD: Complete state for reconstruction
 public record AccountBalanceChanged : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid AccountId { get; init; }
   public required decimal PreviousBalance { get; init; }
   public required decimal NewBalance { get; init; }
@@ -186,13 +193,13 @@ public record AccountBalanceChanged : IEvent {
 
 ```csharp{title="Include Temporal Information" description="Include Temporal Information" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Include", "Temporal"]}
 public record OrderCreated : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid OrderId { get; init; }
   public required DateTimeOffset CreatedAt { get; init; }  // When it happened
 }
 
 public record OrderCancelled : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid OrderId { get; init; }
   public required DateTimeOffset CancelledAt { get; init; }
   public required string Reason { get; init; }
@@ -204,7 +211,7 @@ public record OrderCancelled : IEvent {
 ```csharp{title="Use Value Objects for Type Safety" description="Use Value Objects for Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Value", "Objects"]}
 // ✅ GOOD: Type-safe identifiers
 public record OrderCreated : IEvent {
-  [StreamKey]
+  [StreamId]
   public required OrderId OrderId { get; init; }    // Strongly-typed
   public required CustomerId CustomerId { get; init; }
   public required Money Total { get; init; }
@@ -249,7 +256,7 @@ public record CreateOrder : ICommand {
 
 // Event (fact): "An order was created"
 public record OrderCreated : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid OrderId { get; init; }
   public required Guid CustomerId { get; init; }
   public required OrderItem[] Items { get; init; }
@@ -288,31 +295,30 @@ public class InventoryReceptor : IReceptor<OrderCreated, InventoryReserved> {
 ### In Perspectives
 
 ```csharp{title="In Perspectives" description="In Perspectives" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspectives"]}
-public class OrderSummaryPerspective : IPerspective<OrderSummary> {
-  public async Task<OrderSummary> ProjectAsync(
-      IEvent @event,
-      OrderSummary? current,
-      CancellationToken ct = default) {
+public class OrderSummaryPerspective
+    : IPerspectiveFor<OrderSummary, OrderCreated, OrderShipped, OrderDelivered> {
 
-    return @event switch {
-      OrderCreated e => new OrderSummary {
-        OrderId = e.OrderId,
-        CustomerId = e.CustomerId,
-        Total = e.Total,
-        Status = "Created",
-        CreatedAt = e.CreatedAt
-      },
-      OrderShipped e => current! with {
-        Status = "Shipped",
-        ShippedAt = e.ShippedAt
-      },
-      OrderDelivered e => current! with {
-        Status = "Delivered",
-        DeliveredAt = e.DeliveredAt
-      },
-      _ => current!
+  // Apply methods are pure functions: no I/O, no side effects, deterministic
+  public OrderSummary Apply(OrderSummary currentData, OrderCreated eventData) =>
+    currentData with {
+      OrderId = eventData.OrderId,
+      CustomerId = eventData.CustomerId,
+      Total = eventData.Total,
+      Status = "Created",
+      CreatedAt = eventData.CreatedAt
     };
-  }
+
+  public OrderSummary Apply(OrderSummary currentData, OrderShipped eventData) =>
+    currentData with {
+      Status = "Shipped",
+      ShippedAt = eventData.ShippedAt
+    };
+
+  public OrderSummary Apply(OrderSummary currentData, OrderDelivered eventData) =>
+    currentData with {
+      Status = "Delivered",
+      DeliveredAt = eventData.DeliveredAt
+    };
 }
 ```
 

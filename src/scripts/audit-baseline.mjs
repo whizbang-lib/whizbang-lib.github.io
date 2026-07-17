@@ -17,7 +17,7 @@ const DOCS_ROOT = 'src/assets/docs/v1.0.0';
 const ALL_DOCS_ROOT = 'src/assets/docs';
 const CODE_DOCS_MAP_PATH = 'src/assets/code-docs-map.json';
 const SEARCH_INDEX_PATH = 'src/assets/enhanced-search-index.json';
-const LIBRARY_PATH = path.resolve('..', 'whizbang');
+const LIBRARY_PATH = process.env.WHIZBANG_LIB_PATH || path.resolve('..', 'whizbang');
 const OUTPUT_DIR = 'audit-reports';
 
 // Ensure output directory exists

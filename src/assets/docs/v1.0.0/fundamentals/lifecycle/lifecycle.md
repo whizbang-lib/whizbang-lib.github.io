@@ -1,5 +1,8 @@
 ---
 title: Lifecycle Management
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 25
@@ -9,6 +12,10 @@ description: >-
 tags: 'lifecycle, system-commands, maintenance, pause, resume'
 codeReferences:
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
+  - src/Whizbang.Core/Routing/SharedTopicInboxStrategy.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Commands/System/SystemCommandsTests.cs
+  - tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -18,9 +25,9 @@ Whizbang provides system-level lifecycle commands for coordinating maintenance o
 
 ## System Commands Overview
 
-System commands are framework-level commands that all services automatically subscribe to. They are routed via the `whizbang.system.commands` namespace and use the shared topic inbox strategy.
+System commands are framework-level commands that all services automatically subscribe to. They are routed via the `whizbang.core.commands.system` namespace and use the shared topic inbox strategy.
 
-All services using `SharedTopicInboxStrategy` automatically include system commands in their subscription filter (`whizbang.system.commands.#`).
+All services using `SharedTopicInboxStrategy` automatically include system commands in their subscription filter (`whizbang.core.commands.system.#`).
 
 ## Pause and Resume Processing {#pause-resume}
 

@@ -1,45 +1,45 @@
 {
-  "totalPages": 255,
-  "pagesWithGaps": 255,
+  "totalPages": 297,
+  "pagesWithGaps": 297,
   "fieldCoverage": {
     "title": {
-      "present": 255,
+      "present": 297,
       "missing": 0,
       "pct": 100
     },
     "version": {
-      "present": 216,
-      "missing": 39,
-      "pct": 85
+      "present": 248,
+      "missing": 49,
+      "pct": 84
     },
     "category": {
-      "present": 226,
-      "missing": 29,
-      "pct": 89
+      "present": 258,
+      "missing": 39,
+      "pct": 87
     },
     "order": {
-      "present": 231,
-      "missing": 24,
+      "present": 271,
+      "missing": 26,
       "pct": 91
     },
     "description": {
-      "present": 222,
-      "missing": 33,
+      "present": 257,
+      "missing": 40,
       "pct": 87
     },
     "tags": {
-      "present": 219,
-      "missing": 36,
+      "present": 254,
+      "missing": 43,
       "pct": 86
     },
     "codeReferences": {
-      "present": 214,
-      "missing": 41,
-      "pct": 84
+      "present": 251,
+      "missing": 46,
+      "pct": 85
     },
     "slug": {
       "present": 0,
-      "missing": 255,
+      "missing": 297,
       "pct": 0
     }
   },
@@ -232,6 +232,31 @@
         "codeReferences": "src/Whizbang.Transports.HotChocolate/Extensions/PolymorphicTypeExtensions.cs",
         "testReferences": "tests/Whizbang.Transports.HotChocolate.Tests/Unit/PolymorphicTypeExtensionsTests.cs",
         "lastMaintainedCommit": "01f07906"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/apis/graphql/production-hardening.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Production Hardening",
+        "version": "1.0.0",
+        "category": "API",
+        "order": "8",
+        "description": "One-call production defaults for HotChocolate GraphQL services — disable introspection and strip exception details outside development, while keeping the full developer experience locally.",
+        "tags": "graphql, security, introspection, hardening, production, errors",
+        "codeReferences": "src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateSecurityExtensions.cs"
       }
     },
     {
@@ -681,9 +706,10 @@
         "version": "1.0.0",
         "category": "Data Access",
         "order": "3",
-        "description": "EF Core 10 ComplexProperty().ToJson() patterns for perspective metadata and scope - in-place updates, collection handling, and index corruption prevention",
-        "tags": "ef-core, complex-types, json, jsonb, perspectives, metadata, scope, in-place-updates, complexproperty",
-        "codeReferences": "src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs, src/Whizbang.Core/Lenses/PerspectiveMetadata.cs, src/Whizbang.Core/Lenses/PerspectiveScope.cs, src/Whizbang.Core/Lenses/PerspectiveRow.cs",
+        "description": "EF Core 10 ComplexProperty().ToJson() for perspective data, metadata, and scope - the generated ConfigureWhizbang() configuration, the concrete store and scope-aware lens query, in-place updates, and index corruption prevention",
+        "tags": "ef-core, complex-types, json, jsonb, perspectives, metadata, scope, in-place-updates, complexproperty, source-generator, perspective-store, lens-query, tenant-scope",
+        "codeReferences": "src/Whizbang.Data.EFCore.Postgres/EFCorePostgresPerspectiveStore.cs, src/Whizbang.Data.EFCore.Postgres/EFCorePostgresLensQuery.cs, src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs, src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveConfigurationGenerator.cs, src/Whizbang.Data.EFCore.Postgres.Generators/Templates/EFCoreConfigurationTemplate.cs, src/Whizbang.Data.EFCore.Postgres.Generators/Templates/Snippets/EFCoreSnippets.cs, src/Whizbang.Core/Perspectives/IPerspectiveStore.cs, src/Whizbang.Core/Lenses/ILensQuery.cs, src/Whizbang.Core/Lenses/PerspectiveRow.cs, src/Whizbang.Core/Lenses/PerspectiveMetadata.cs, src/Whizbang.Core/Lenses/PerspectiveScope.cs",
+        "testReferences": "tests/Whizbang.Data.EFCore.Postgres.Tests/OrderPerspectiveTests.cs, tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresPerspectiveStoreTests.cs, tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresLensQueryTests.cs, tests/Whizbang.Data.EFCore.Postgres.Tests/BaseUpsertStrategyInPlaceUpdateTests.cs",
         "lastMaintainedCommit": "01f07906"
       }
     },
@@ -1513,6 +1539,32 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/extending/internals/event-ordering-invariant.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Event Ordering Invariant",
+        "version": "1.0.0",
+        "category": "Architecture",
+        "order": "2",
+        "description": "Every batch boundary in Whizbang's pump-then-process pipeline delivers event_id-sorted output. This is the invariant that lets cursor-by-event_id comparisons remain correct under parallel emission and cross-process saga fan-out.",
+        "tags": "architecture, ordering, sliding-window, cursor-inversion, perspective-apply, event-sourcing, uuidv7",
+        "codeReferences": "src/Whizbang.Core/Workers/SlidingWindowOutboxBatchStrategy.cs, src/Whizbang.Core/Workers/SlidingWindowInboxBatchStrategy.cs, src/Whizbang.Core/Workers/InboxDispatchWorker.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Data.Postgres/Migrations/_emit_event_store_chain.sql",
+        "testReferences": "tests/Whizbang.Core.Tests/Workers/SlidingWindowOutboxBatchStrategyTests.cs, tests/Whizbang.Core.Tests/Workers/SlidingWindowInboxBatchStrategyTests.cs"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/extending/internals/json-serialization-customizations.md",
       "presentFields": [
         "title",
@@ -1911,6 +1963,31 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/publish-once.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "PublishOnceAsync — Exactly-Once Event Emission",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "4",
+        "description": "Publish an event at most once per claim key under concurrent emitters. Replaces fragile read-then-check guards with an atomic claim primitive backed by a single Postgres INSERT.",
+        "tags": "dispatcher, events, idempotency, exactly-once, sagas, race-conditions",
+        "codeReferences": "src/Whizbang.Core/IDispatcher.cs, src/Whizbang.Core/Dispatch/IClaimedEmissionStore.cs, src/Whizbang.Data.EFCore.Postgres/Dispatch/EFCoreClaimedEmissionStore.cs, src/Whizbang.Data.Postgres/Migrations/060_CreateUniqueEmissionClaims.sql"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
       "presentFields": [
         "title",
@@ -1930,9 +2007,10 @@
         "version": "1.0.0",
         "category": "Core Concepts",
         "order": "2",
-        "description": "Namespace-based routing in Whizbang determines how commands and events flow between services. Commands use a shared inbox topic with namespace filtering, while events publish to namespace-specific topics for pub/sub distribution with automatic subscription discovery.",
-        "tags": "routing, namespace-routing, message-routing, inbox, topics, pub-sub",
-        "codeReferences": "src/Whizbang.Core/Routing/RoutingOptions.cs, src/Whizbang.Core/Routing/NamespaceRoutingStrategy.cs, src/Whizbang.Core/Routing/SharedTopicInboxStrategy.cs, src/Whizbang.Core/Routing/EventSubscriptionDiscovery.cs, src/Whizbang.Core/Routing/MessageKindAttribute.cs",
+        "description": "Namespace-based routing in Whizbang determines how commands and events flow between services. Commands use a shared inbox topic with namespace filtering, while events publish to namespace-specific topics for pub/sub distribution with automatic subscription discovery. Owned-domain routing keeps a service's own commands local while its events still broadcast, with transport-layer echo suppression discarding self-delivered copies.",
+        "tags": "routing, namespace-routing, message-routing, inbox, topics, pub-sub, owned-domains, echo-suppression",
+        "codeReferences": "src/Whizbang.Core/Routing/RoutingOptions.cs, src/Whizbang.Core/Routing/NamespaceRoutingStrategy.cs, src/Whizbang.Core/Routing/SharedTopicInboxStrategy.cs, src/Whizbang.Core/Routing/EventSubscriptionDiscovery.cs, src/Whizbang.Core/Routing/MessageKindAttribute.cs, src/Whizbang.Core/Dispatcher.cs, src/Whizbang.Core/Workers/TransportConsumerWorker.cs, src/Whizbang.Core/Dispatch/Route.cs",
+        "testReferences": "tests/Whizbang.Core.Tests/Dispatcher/DispatcherOwnedDomainTests.cs, tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerOwnedEventDiscardTests.cs",
         "lastMaintainedCommit": "01f07906"
       }
     },
@@ -1960,6 +2038,31 @@
         "tags": "rpc, extraction, discriminated-unions, routed-none",
         "codeReferences": "src/Whizbang.Core/Dispatch/Route.cs, src/Whizbang.Core/Dispatch/Routed.cs, src/Whizbang.Core/Internal/ResponseExtractor.cs",
         "lastMaintainedCommit": "01f07906"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/dispatcher/sync-mode.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "SyncMode — Read-After-Write Dispatch",
+        "version": "1.0.0",
+        "category": "Fundamentals",
+        "order": "5",
+        "description": "The CT-only LocalInvokeAndSyncAsync(message, SyncMode, ct) overload — explicit read-after-write expectation at every callsite; no implicit timeouts.",
+        "tags": "dispatcher, sync, cqrs, read-after-write, sync-mode",
+        "codeReferences": "src/Whizbang.Core/IDispatcher.cs, src/Whizbang.Core/Dispatcher.cs, src/Whizbang.Core/Perspectives/Sync/SyncMode.cs"
       }
     },
     {
@@ -2062,6 +2165,32 @@
         "tags": "event-streams, stream-id, event-sourcing, aggregates",
         "codeReferences": "src/Whizbang.Core/ValueObjects/StreamId.cs, src/Whizbang.Core/Messaging/IEventStore.cs",
         "lastMaintainedCommit": "01f07906"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/events/event-upcasting.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Event Upcasting",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "14",
+        "description": "Transform stored events into their current shape on read — backfill, type change, or re-key — without ever rewriting the immutable event log.",
+        "tags": "events, event-sourcing, upcasting, versioning, schema-evolution, re-key, aot",
+        "codeReferences": "src/Whizbang.Core/Messaging/IEventUpcaster.cs, src/Whizbang.Core/Messaging/EventUpcasterPipeline.cs, src/Whizbang.Core/Messaging/EventUpcasterServiceCollectionExtensions.cs, src/Whizbang.Core/Messaging/UpcastingEventStoreDecorator.cs, src/Whizbang.Core/ServiceCollectionExtensions.cs, src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs, src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs, src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs",
+        "testReferences": "tests/Whizbang.Core.Tests/Messaging/EventUpcasterPipelineTests.cs, tests/Whizbang.Core.Tests/Messaging/EventUpcasterRegistrationTests.cs, tests/Whizbang.Core.Tests/Messaging/UpcastingEventStoreDecoratorTests.cs, tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RekeyThroughRebuildTests.cs"
       }
     },
     {
@@ -2242,6 +2371,33 @@
         "tags": "fuzzy-matching, match-strictness, type-matching, flags, type-comparison, identity",
         "codeReferences": "src/Whizbang.Core/MatchStrictness.cs",
         "lastMaintainedCommit": "01f07906"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/identity/pinned-type-ledger.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Pinned-Type Ledger: Safe, Governed Type Renames",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "31",
+        "description": "The pinned-type ledger is a committed lockfile of every [PinnedId] type's identity and rename history. It lets you rename event, command, and perspective types safely: a build-time gate (WHIZ120/WHIZ121) forces every rename to be acknowledged, the generators emit former-name aliases so events written under the old name still deserialize, and a ledger-aware startup reconcile heals the type registry in every environment.",
+        "tags": "pinned-id, type-rename, ledger, identity, aliases, registry-reconcile, source-generators, whiz120, whiz121, aot",
+        "codeReferences": "src/Whizbang.Generators/Ledger/PinnedTypeLedger.cs, src/Whizbang.Generators/PinnedTypeLedgerGenerator.cs, src/Whizbang.Generators/Analyzers/PinnedTypeRenameAnalyzer.cs, src/Whizbang.Generators/MessageJsonContextGenerator.cs, src/Whizbang.Generators/MessageTypeCatalogGenerator.cs, src/Whizbang.Core/IMessageTypeCatalog.cs, src/Whizbang.Data.Postgres/Migrations/064_ReconcileMessageTypeRegistry_LedgerAware.sql, src/Whizbang.Data.Dapper.Postgres/DapperMessageTypeRegistryPopulator.cs, src/Whizbang.Data.EFCore.Postgres/EFCoreMessageTypeRegistryPopulator.cs, src/Whizbang.Core/Observability/TypeRegistryMetrics.cs, src/Whizbang.Core/IEventTypeRenameTool.cs, src/Whizbang.Generators/build/SoftwareExtravaganza.Whizbang.Generators.props, src/Whizbang.Generators/build/SoftwareExtravaganza.Whizbang.Generators.targets",
+        "testReferences": "tests/Whizbang.Generators.Tests/Analyzers/PinnedTypeRenameAnalyzerTests.cs, tests/Whizbang.Generators.Tests/MessageJsonContextRenameAliasTests.cs, tests/Whizbang.Generators.Tests/PinnedTypeLedgerGeneratorTests.cs, tests/Whizbang.Generators.Tests/MessageTypeCatalogGeneratorTests.cs, tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMessageTypeRegistryPopulatorTests.cs, tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreMessageTypeRegistryPopulatorTests.cs, tests/Whizbang.Core.Tests/Observability/TypeRegistryMetricsTests.cs",
+        "lastMaintainedCommit": "358f3b20"
       }
     },
     {
@@ -2754,8 +2910,9 @@
         "order": "6",
         "description": "Propagate correlation, causation, and security context across message flows with CascadeContext, enrichers, and scope context integration",
         "tags": "cascade-context, security-propagation, scope-context, enrichers, multi-tenant, correlation",
-        "codeReferences": "src/Whizbang.Core/Observability/CascadeContext.cs, src/Whizbang.Core/Observability/CascadeContextFactory.cs, src/Whizbang.Core/Observability/ICascadeContextEnricher.cs, src/Whizbang.Core/Observability/SecurityContext.cs, src/Whizbang.Core/Security/IScopeContextAccessor.cs, src/Whizbang.Core/Security/ScopeContextAccessor.cs, src/Whizbang.Core/Security/ScopedMessageContext.cs, src/Whizbang.Core/IMessageContext.cs, src/Whizbang.Core/MessageContext.cs",
-        "lastMaintainedCommit": "01f07906"
+        "codeReferences": "src/Whizbang.Core/Observability/CascadeContext.cs, src/Whizbang.Core/Observability/CascadeContextFactory.cs, src/Whizbang.Core/Observability/ICascadeContextEnricher.cs, src/Whizbang.Core/Observability/SecurityContext.cs, src/Whizbang.Core/Security/IScopeContextAccessor.cs, src/Whizbang.Core/Security/ScopeContextAccessor.cs, src/Whizbang.Core/Security/ScopedMessageContext.cs, src/Whizbang.Core/Security/SecurityContextHelper.cs, src/Whizbang.Core/Messaging/ReceptorInvoker.cs, src/Whizbang.Core/Messaging/CompositeInboxFanout.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Core/IMessageContext.cs, src/Whizbang.Core/MessageContext.cs",
+        "testReferences": "tests/Whizbang.Core.Tests/Security/SecurityContextHelperTests.cs, tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxCascadeIdentityPersistenceIntegrationTests.cs",
+        "lastMaintainedCommit": "1fe307a4"
       }
     },
     {
@@ -2936,8 +3093,8 @@
         "order": "10",
         "description": "Declarative cross-cutting concerns via message tag attributes and hooks - notifications, telemetry, metrics, and audit logging without polluting business logic",
         "tags": "tags, attributes, hooks, notifications, telemetry, metrics, cross-cutting",
-        "codeReferences": "src/Whizbang.Core/Tags/MessageTagProcessor.cs, src/Whizbang.Core/Tags/IMessageTagProcessor.cs, src/Whizbang.Core/Tags/MessageTagRegistry.cs, src/Whizbang.Core/Tags/IMessageTagRegistry.cs, src/Whizbang.Core/Tags/MessageTagRegistration.cs, src/Whizbang.Core/Tags/TagOptions.cs, src/Whizbang.Core/Tags/TagContext.cs, src/Whizbang.Core/Tags/IMessageTagHook.cs, src/Whizbang.Core/Tags/IMessageTagHookDispatcher.cs, src/Whizbang.Core/Tags/MessageTagHookDispatcherRegistry.cs, src/Whizbang.Core/Attributes/MessageTagAttribute.cs, src/Whizbang.Core/Attributes/NotificationTagAttribute.cs, src/Whizbang.Core/Attributes/TelemetryTagAttribute.cs, src/Whizbang.Core/Attributes/MetricTagAttribute.cs, src/Whizbang.Generators/MessageTagDiscoveryGenerator.cs",
-        "lastMaintainedCommit": "01f07906"
+        "codeReferences": "src/Whizbang.Core/Tags/MessageTagProcessor.cs, src/Whizbang.Core/Tags/IMessageTagProcessor.cs, src/Whizbang.Core/Tags/MessageTagRegistry.cs, src/Whizbang.Core/Tags/IMessageTagRegistry.cs, src/Whizbang.Core/Tags/MessageTagRegistration.cs, src/Whizbang.Core/Tags/TagOptions.cs, src/Whizbang.Core/Tags/TagHookRegistration.cs, src/Whizbang.Core/Tags/TagContext.cs, src/Whizbang.Core/Tags/IMessageTagHook.cs, src/Whizbang.Core/Tags/IMessageTagHookDispatcher.cs, src/Whizbang.Core/Tags/MessageTagHookDispatcherRegistry.cs, src/Whizbang.Core/Tags/SignalPriority.cs, src/Whizbang.Core/Tags/SpanKind.cs, src/Whizbang.Core/Tags/MetricType.cs, src/Whizbang.Core/Attributes/MessageTagAttribute.cs, src/Whizbang.Core/Attributes/SignalTagAttribute.cs, src/Whizbang.Core/Attributes/TelemetryTagAttribute.cs, src/Whizbang.Core/Attributes/MetricTagAttribute.cs, src/Whizbang.Core/Attributes/AuditEventAttribute.cs, src/Whizbang.Core/Attributes/AttributeArgNamingAttribute.cs, src/Whizbang.Core/Attributes/AttributeArgNamingConvention.cs, src/Whizbang.Core/Audit/AuditLevel.cs, src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs, src/Whizbang.Core/Messaging/LifecycleStage.cs, src/Whizbang.Core/Security/IScopeContext.cs, src/Whizbang.Core/Security/ScopeContextAccessor.cs, src/Whizbang.Generators/MessageTagDiscoveryGenerator.cs, src/Whizbang.Generators/Utilities/AttributeArgNamingHelper.cs",
+        "testReferences": "tests/Whizbang.Core.Tests/Tags/TagOptionsTests.cs, tests/Whizbang.Core.Tests/Tags/TagContextTests.cs, tests/Whizbang.Core.Tests/Tags/MessageTagProcessorTests.cs, tests/Whizbang.Core.Tests/Tags/MessageTagHookTests.cs, tests/Whizbang.Core.Tests/Tags/TagHookRegistrationTests.cs, tests/Whizbang.Core.Tests/Tags/TagHookStageFilteringAndScopeTests.cs, tests/Whizbang.Core.Tests/Tags/DispatcherTagProcessingTests.cs, tests/Whizbang.Core.Tests/Tags/MessageTagDiscoveryGeneratorTests.cs, tests/Whizbang.Core.Tests/Tags/SignalTagAttributeTests.cs, tests/Whizbang.Core.Tests/Tags/SignalPriorityTests.cs, tests/Whizbang.Core.Tests/Tags/TelemetryTagAttributeTests.cs, tests/Whizbang.Core.Tests/Tags/MetricTagAttributeTests.cs, tests/Whizbang.Core.Tests/Tags/MetricTypeTests.cs, tests/Whizbang.Core.Tests/Tags/SpanKindTests.cs, tests/Whizbang.Core.Tests/Attributes/AttributeArgNamingAttributeTests.cs, tests/Whizbang.Core.Tests/Audit/AuditEventAttributeTests.cs, tests/Whizbang.Core.Tests/SystemEvents/AuditEventAttributeExcludeTests.cs, tests/Whizbang.Generators.Tests/AttributeArgNamingHelperTests.cs, tests/Whizbang.Generators.Tests/MessageTagDiscoveryGeneratorTests.cs"
       }
     },
     {
@@ -2967,6 +3124,210 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Messaging",
+        "order": "4"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/apply-hooks.md",
+      "presentFields": [
+        "title",
+        "order",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Apply Hooks",
+        "order": "8",
+        "codeReferences": "src/Whizbang.Core/Perspectives/Hooks/IApplyHook.cs, src/Whizbang.Core/Perspectives/Hooks/IApplyHookBuilder.cs, src/Whizbang.Core/Perspectives/Hooks/ApplyHookContext.cs, src/Whizbang.Core/Perspectives/Hooks/ApplyHookOp.cs, src/Whizbang.Core/Perspectives/Hooks/WhizbangApplyHookKeys.cs, src/Whizbang.Core/Perspectives/Hooks/ApplyHookRegistry.cs, src/Whizbang.Core/Perspectives/Hooks/TimestampsApplyHook.cs, src/Whizbang.Core/Perspectives/Hooks/WhizbangApplyHooks.cs, src/Whizbang.Data.Postgres/Collective/CollectiveApplyHookPlanner.cs, src/Whizbang.Data.Postgres/PerEventApplyHooks.cs",
+        "testReferences": "tests/Whizbang.Core.Tests/Perspectives/Hooks/ApplyHookRegistryTests.cs, tests/Whizbang.Data.EFCore.Postgres.Tests/PerEventApplyHooksTests.cs, tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs, tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveApplierIntegrationTests.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
+      "presentFields": [
+        "title",
+        "order",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Collective Events",
+        "order": "7",
+        "codeReferences": "src/Whizbang.Core/Messaging/ICollectiveEvent.cs, src/Whizbang.Core/Messaging/CollectiveEventBase.cs, src/Whizbang.Core/Messaging/CollectiveScope.cs, src/Whizbang.Core/Messaging/TenantCollectiveScope.cs, src/Whizbang.Core/Messaging/EventFlags.cs, src/Whizbang.Core/Perspectives/ICollectiveApplyFor.cs, src/Whizbang.Core/Perspectives/ICollectiveSpec.cs, src/Whizbang.Core/Perspectives/ICollectiveQuery.cs, src/Whizbang.Core/Perspectives/ICollectiveReplayApplier.cs, src/Whizbang.Core/Perspectives/CollectiveApplyForAttribute.cs, src/Whizbang.Core/Perspectives/CollectiveWhereComposer.cs, src/Whizbang.Core/Perspectives/CollectiveApplyOptions.cs, src/Whizbang.Core/Perspectives/CollectiveDispatcher.cs, src/Whizbang.Core/Perspectives/CollectiveRouting.cs, src/Whizbang.Core/Perspectives/TenantCollectiveScopeResolver.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Data.Postgres/Collective/CollectivePredicateSqlCompiler.cs, src/Whizbang.Data.Postgres/Collective/CollectiveReplayApplier.cs, src/Whizbang.Data.Postgres/Collective/CollectiveInMemoryExecutor.cs, src/Whizbang.Data.EFCore.Postgres/Collective/EFCoreCollectiveAdapter.cs, src/Whizbang.Data.EFCore.Postgres/Collective/CollectiveSettersRewriter.cs, src/Whizbang.Data.EFCore.Postgres/CollectiveEventsEFCoreExtensions.cs, src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveSpecCompiler.cs, src/Whizbang.Data.Dapper.Postgres/CollectiveEventsDapperExtensions.cs, src/Whizbang.Data.Postgres/Migrations/061_CollectiveEventRouting.sql, src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
+        "testReferences": "tests/Whizbang.Core.Tests/Messaging/CollectiveEventContractTests.cs, tests/Whizbang.Core.Tests/Perspectives/CollectiveWhereComposerTests.cs, tests/Whizbang.Core.Tests/Perspectives/CollectiveSpecContractTests.cs, tests/Whizbang.Core.Tests/Perspectives/TenantCollectiveScopeResolverTests.cs, tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs, tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs, tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs, tests/Whizbang.Data.EFCore.Postgres.Tests/EmitEventStoreChainCollectiveSqlTests.cs, tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveApplierIntegrationTests.cs, tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/messaging/composite-events.md",
+      "presentFields": [
+        "title",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Composite Events",
+        "order": "6",
+        "description": "Bundle many inner events into one transport hop — one outbox row, one publish, one receive — that fans out into N per-inner-event inbox rows at the dispatch seam, inside the durable inbox/retry/DLQ envelope. Composites are never event-stored; only the expanded inner events persist.",
+        "tags": "composite-events, fan-out, bulk, inner-events, no-rebroadcast, dispatch-seam",
+        "codeReferences": "src/Whizbang.Core/Messaging/ICompositeEvent.cs, src/Whizbang.Core/Messaging/CompositeEventBase.cs, src/Whizbang.Core/Messaging/CompositeInboxFanout.cs, src/Whizbang.Core/Messaging/FanoutControl.cs, src/Whizbang.Core/Messaging/DispatchOutboxCollector.cs, src/Whizbang.Core/Messaging/NoRebroadcastGuard.cs, src/Whizbang.Core/Messaging/EventFlags.cs, src/Whizbang.Core/Messaging/MessageFailureReason.cs, src/Whizbang.Core/Messaging/WorkCoordinatorEnums.cs, src/Whizbang.Core/Workers/InboxDispatchWorker.cs, src/Whizbang.Core/Workers/TransportConsumerWorker.cs, src/Whizbang.Core/Dispatcher.cs, src/Whizbang.Generators/ReceptorRegistryQueryGenerator.cs",
+        "testReferences": "tests/Whizbang.Core.Tests/Messaging/CompositeEventBaseTests.cs, tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs, tests/Whizbang.Core.Tests/Messaging/DispatchOutboxCollectorTests.cs, tests/Whizbang.Core.Tests/Messaging/DispatchFanoutControlTests.cs, tests/Whizbang.Core.Tests/Messaging/NoRebroadcastGuardTests.cs, tests/Whizbang.Core.Tests/Messaging/EventFlagsTests.cs, tests/Whizbang.Core.Tests/Messaging/EventFlagsTransportTests.cs, tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerTests.cs, tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerCompositeNoExpandTests.cs, tests/Whizbang.Core.Tests/Dispatcher/DispatcherCompositePublishFanoutTests.cs, tests/Whizbang.Core.Tests/Dispatcher/DispatcherNoRebroadcastGuardTests.cs, tests/Whizbang.Generators.Tests/ReceptorRegistryQueryGeneratorTests.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Body Offloads",
+        "order": "9"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/message-body-store.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Body Offload (Claim-Check Pattern)",
+        "version": "1.0.0",
+        "category": "Fundamentals",
+        "order": "1",
+        "description": "Transparent claim-check pattern for messages that exceed transport wire-size ceilings — upload the body to a registered IMessageBodyStore, send a small claim envelope on the wire, rehydrate on receive.",
+        "tags": "offload, claim-check, messaging, transports, body-size",
+        "codeReferences": "src/Whizbang.Core/Offloads/IMessageBodyStore.cs, src/Whizbang.Core/Offloads/MessageBodyClaim.cs, src/Whizbang.Core/Offloads/BodyClaimEnvelopePayload.cs, src/Whizbang.Core/Offloads/MessageBodyOffloadOptions.cs, src/Whizbang.Core/Offloads/IPostSerializeHook.cs, src/Whizbang.Core/Offloads/PostSerializeHookChain.cs, src/Whizbang.Core/Offloads/BodyOffloadPostSerializeHook.cs, src/Whizbang.Core/Offloads/BodyClaimWireHelper.cs, src/Whizbang.Core/Offloads/BodyClaimRehydrator.cs, src/Whizbang.Core/Offloads/OffloadServiceCollectionExtensions.cs, src/Whizbang.Offloads.InMemory/InMemoryMessageBodyStore.cs, src/Whizbang.Offloads.AzureBlob/AzureBlobMessageBodyStore.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Providers",
+        "order": "1"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/azure-blob.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Azure Blob Body Store",
+        "version": "1.0.0",
+        "category": "Fundamentals",
+        "order": "2",
+        "description": "Production body-store provider backed by Azure Blob Storage. Works identically against the Azurite emulator and live Azure Blob via standard connection-string conventions. Wire it in one config-driven call or register providers by hand.",
+        "tags": "offload, providers, azure-blob, azurite, production, configuration",
+        "codeReferences": "src/Whizbang.Offloads.AzureBlob/AzureBlobMessageBodyStore.cs, src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadOptions.cs, src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadServiceCollectionExtensions.cs, src/Whizbang.Core/Offloads/MessageBodyOffloadOptions.cs, src/Whizbang.Core/Offloads/OffloadServiceCollectionExtensions.cs, src/Whizbang.Core/Offloads/BodyClaimRehydrator.cs",
+        "testReferences": "tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobOffloadFromConfigurationTests.cs, tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobOffloadDIRegistrationTests.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/offloads/providers/in-memory.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "InMemory Body Store",
+        "version": "1.0.0",
+        "category": "Fundamentals",
+        "order": "1",
+        "description": "Dev/test/fixture provider — bodies live in a process-local ConcurrentDictionary; disappears on restart.",
+        "tags": "offload, providers, in-memory, testing",
+        "codeReferences": "src/Whizbang.Offloads.InMemory/InMemoryMessageBodyStore.cs, src/Whizbang.Offloads.InMemory/InMemoryOffloadServiceCollectionExtensions.cs"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/_folder.md",
       "presentFields": [
         "title",
@@ -2991,6 +3352,32 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/persistence/caller-info-capture.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Caller Information Capture",
+        "version": "1.0.0",
+        "category": "Observability",
+        "order": "7",
+        "description": "How Whizbang records the exact source location (method, file, line) that created each MessageHop, using C# caller-info compiler attributes with no reflection or stack walking.",
+        "tags": "caller-info, observability, message-hops, debugging, compiler-attributes",
+        "codeReferences": "src/Whizbang.Core/Observability/MessageHop.cs, src/Whizbang.Core/Observability/MessageTracing.cs, src/Whizbang.Core/IDispatcher.cs, src/Whizbang.Core/Dispatcher.cs",
+        "testReferences": "tests/Whizbang.Observability.Tests/MessageTracingTests.cs, tests/Whizbang.Observability.Tests/MessageHopTests.cs"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/persistence/observability.md",
       "presentFields": [
         "title",
@@ -3010,10 +3397,10 @@
         "version": "1.0.0",
         "category": "Core Concepts",
         "order": "6",
-        "description": "Understand Whizbang's hop-based observability architecture - MessageEnvelope and MessageHop for distributed tracing and debugging",
-        "tags": "observability, message-hops, distributed-tracing, debugging, telemetry",
-        "codeReferences": "src/Whizbang.Core/Observability/MessageEnvelope.cs, src/Whizbang.Core/Observability/MessageHop.cs, src/Whizbang.Core/Policies/PolicyDecisionTrail.cs",
-        "lastMaintainedCommit": "01f07906"
+        "description": "Whizbang's hop-based observability - MessageEnvelope and MessageHop carry a complete journey (routing, scope, policy decisions, caller info) through every service. Query it with ITraceStore for time-travel debugging of distributed flows.",
+        "tags": "observability, message-hops, distributed-tracing, time-travel, debugging, trace-store, causation, correlation",
+        "codeReferences": "src/Whizbang.Core/Observability/MessageEnvelope.cs, src/Whizbang.Core/Observability/MessageHop.cs, src/Whizbang.Core/Observability/ServiceInstanceInfo.cs, src/Whizbang.Core/Observability/ITraceStore.cs, src/Whizbang.Core/Observability/InMemoryTraceStore.cs, src/Whizbang.Core/Policies/PolicyDecisionTrail.cs, src/Whizbang.Core/Policies/PolicyConfiguration.cs",
+        "testReferences": "tests/Whizbang.Observability.Tests/MessageTracingTests.cs, tests/Whizbang.Observability.Tests/MessageHopTests.cs, tests/Whizbang.Observability.Tests/TraceStore/TraceStoreContractTests.cs, tests/Whizbang.Observability.Tests/TraceStore/InMemoryTraceStoreTests.cs, tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs"
       }
     },
     {
@@ -3060,6 +3447,32 @@
       "frontmatter": {
         "title": "Perspectives",
         "order": "5"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/apply-exactly-once.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Apply Exactly-Once Contract",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "21",
+        "description": "The Apply dispatch contract for perspective runners — Apply(TModel, TEvent) is invoked exactly once per event per perspective per stream. Projection Apply methods never need to be self-idempotent.",
+        "tags": "perspectives, apply, dispatch, exactly-once, idempotency, drain-mode, perspective-runner, doubling",
+        "codeReferences": "src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Core/Perspectives/IPerspectiveRunner.cs, src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs",
+        "testReferences": "tests/Whizbang.Core.Integration.Tests/Perspectives/PerspectiveApplyExactlyOnceTests.cs"
       }
     },
     {
@@ -3237,7 +3650,8 @@
         "order": "3",
         "description": "Master Whizbang Perspectives - pure function event handlers that maintain eventually consistent read models optimized for queries",
         "tags": "perspectives, read-models, cqrs, eventual-consistency, event-driven, pure-functions, streamkey",
-        "codeReferences": "src/Whizbang.Core/Perspectives/IPerspectiveFor.cs, src/Whizbang.Core/StreamKeyAttribute.cs, >-",
+        "codeReferences": "src/Whizbang.Core/Perspectives/IPerspectiveFor.cs, src/Whizbang.Core/Perspectives/IPerspectiveBase.cs, src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs, src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs, src/Whizbang.Core/Perspectives/ITemporalPerspectiveFor.cs, src/Whizbang.Generators/PerspectivePurityAnalyzer.cs, src/Whizbang.Generators/Utilities/PerspectiveDiscoveryHelper.cs, >-",
+        "testReferences": "tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs, tests/Whizbang.Generators.Tests/PerspectivePurityAnalyzerTests.cs",
         "lastMaintainedCommit": "01f07906"
       }
     },
@@ -3360,6 +3774,30 @@
         "tags": "perspective-registry, schema-management, drift-detection, table-mapping, perspectives",
         "codeReferences": "src/Whizbang.Data.Schema/Schemas/PerspectiveRegistrySchema.cs",
         "lastMaintainedCommit": "01f07906"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/rewind.md",
+      "presentFields": [
+        "title",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspective Rewind",
+        "description": "How Whizbang detects and repairs out-of-order (late-arriving) events in perspective processing — the RewindRequired flag, snapshot-or-full replay, the bounded catch-up loop, startup scan, and rewind observability.",
+        "order": "13",
+        "tags": "perspectives, rewind, late-arriving-events, out-of-order, replay, snapshots, startup-scan, observability, operational",
+        "codeReferences": "src/Whizbang.Core/Perspectives/PerspectiveRewindOptions.cs, src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs, src/Whizbang.Core/Events/System/SystemEvents.cs, src/Whizbang.Core/Observability/PerspectiveMetrics.cs, src/Whizbang.Data.Postgres/Migrations/022_StorePerspectiveEvents.sql, src/Whizbang.Data.Postgres/Migrations/005_CreateCompletePerspectiveCheckpointFunction.sql",
+        "testReferences": "tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindOptionsTests.cs, tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs, tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindCompletionGapTests.cs, tests/Whizbang.Core.Tests/Observability/PerspectiveRewindMetricsTests.cs, tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerRewindTests.cs, tests/Whizbang.Core.Tests/Events/System/StreamRewindEventTests.cs"
       }
     },
     {
@@ -3539,6 +3977,31 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/perspectives/versioned-apply.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Versioned Apply — Strict Cross-Pod Ordering",
+        "version": "1.0.0",
+        "category": "Fundamentals",
+        "order": "5",
+        "description": "Opt-in marker that gates a perspective model's UPSERT on UUIDv7 EventId ordering. Stops stale-read cross-pod writes from overwriting a row that a newer event already advanced — the strand-prevention guard SagaItemModel needed beyond v0.740's stream-affinity gate.",
+        "tags": "perspectives, sagas, cross-pod, strand, ordering, idempotency",
+        "codeReferences": "src/Whizbang.Core/Perspectives/IVersionedApplyTarget.cs, src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs, src/Whizbang.Sagas/Models/SagaItemModel.cs"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/receptors/_folder.md",
       "presentFields": [
         "title",
@@ -3556,6 +4019,32 @@
       "frontmatter": {
         "title": "Receptors",
         "order": "4"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/receptors/exactly-once-firing.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Exactly-Once Receptor Firing",
+        "version": "1.0.0",
+        "category": "Core Concepts",
+        "order": "11",
+        "description": "The firing contract for Whizbang receptors — exactly once per receptor per message, unless explicitly declared idempotent — plus the guardrail that enforces it and the opt-out for legitimate multi-fire scenarios",
+        "tags": "receptors, firing contract, idempotency, guardrail, dedup, ReceptorIdempotent, double fire, at-most-once",
+        "codeReferences": "src/Whizbang.Core/Messaging/ReceptorInvoker.cs, src/Whizbang.Core/Messaging/IReceptorDedupStore.cs, src/Whizbang.Core/Messaging/EnvelopeReceptorDedupStore.cs, src/Whizbang.Core/Messaging/ReceptorIdempotentAttribute.cs, src/Whizbang.Core/Messaging/LifecycleStageTracker.cs, src/Whizbang.Core/Observability/ReceptorInvocationRecord.cs, src/Whizbang.Core/Observability/MessageEnvelope.cs, src/Whizbang.Core/Configuration/WhizbangOptions.cs",
+        "testReferences": "tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerExactlyOnceTests.cs, tests/Whizbang.Core.Tests/Messaging/LifecycleStageTrackerTests.cs, samples/ECommerce/tests/ECommerce.Lifecycle.Integration.Tests/PostAllPerspectivesTests.cs, samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Lifecycle/PerspectiveLifecycleTests.cs"
       }
     },
     {
@@ -3611,6 +4100,76 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Sagas",
+        "order": "5"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/completion-orchestration.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Completion Orchestration & Adaptive Watchdog",
+        "version": "1.0.0",
+        "category": "Application Blocks",
+        "order": "2",
+        "description": "How Whizbang.Sagas closes a saga. The per-item event-driven completion path is primary; the watchdog is a safety net that uses progress-rate-based adaptive scheduling, not a fixed exponential schedule.",
+        "tags": "sagas, completion, watchdog, scheduling, abandon, stall-detection",
+        "codeReferences": "src/Whizbang.Sagas/Services/BaseSagaService.cs, src/Whizbang.Sagas/SagaOptions.cs, src/Whizbang.Sagas/SagaCompletionWatchdogTickEvent.cs, src/Whizbang.Sagas/SagaCompletionAbandonedEvent.cs, src/Whizbang.Core/Dispatcher.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Whizbang.Sagas — Multi-Stream Saga Coordination",
+        "version": "1.0.0",
+        "category": "Application Blocks",
+        "order": "1",
+        "description": "Long-running multi-item workflows on top of Whizbang.Core. One attribute generates the events + service; per-item streams give race-free fan-out; PublishOnceAsync collapses the terminal-emission race; SagaItemCompletionReconciler rescues stranded sagas from cross-pod lost-updates.",
+        "tags": "sagas, workflows, event-sourcing, per-item-streams, exactly-once",
+        "codeReferences": "src/Whizbang.Sagas/Services/BaseSagaService.cs, src/Whizbang.Sagas/Helpers/SagaCompletionGuard.cs, src/Whizbang.Sagas/Helpers/SagaItemCompletionReconciler.cs, src/Whizbang.Sagas/SagaItemStreams.cs, src/Whizbang.Sagas.Generators/SagaGenerator.cs"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/fundamentals/security/_folder.md",
       "presentFields": [
         "title",
@@ -3658,6 +4217,31 @@
         "tags": "audit, compliance, logging, system-events, perspectives, security, gdpr, sox",
         "codeReferences": "src/Whizbang.Core/SystemEvents/ISystemEvent.cs, src/Whizbang.Core/SystemEvents/EventAudited.cs, src/Whizbang.Core/SystemEvents/CommandAudited.cs, src/Whizbang.Core/SystemEvents/SystemEventStreams.cs, src/Whizbang.Core/Audit/AuditLogEntry.cs, src/Whizbang.Core/Audit/CommandAuditEntry.cs, src/Whizbang.Core/Audit/AuditLevel.cs, src/Whizbang.Core/Attributes/AuditEventAttribute.cs, tests/Whizbang.Core.Tests/SystemEvents/EventAuditedTests.cs, tests/Whizbang.Core.Tests/SystemEvents/CommandAuditedTests.cs",
         "lastMaintainedCommit": "01f07906"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/security/http-security-headers.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "HTTP Security Headers & Method Filtering",
+        "version": "1.0.0",
+        "category": "Security",
+        "order": "10",
+        "description": "Turnkey ASP.NET Core middleware that applies hardened HTTP response headers (HSTS, X-Frame-Options, CSP frame-ancestors, nosniff, Referrer-Policy, Permissions-Policy) and can reject unexpected HTTP methods with 405.",
+        "tags": "security, headers, hsts, clickjacking, middleware, http, hardening",
+        "codeReferences": "src/Whizbang.Hosting.AspNet/WhizbangSecurityHeadersOptions.cs, src/Whizbang.Hosting.AspNet/WhizbangSecurityHeadersMiddleware.cs, src/Whizbang.Hosting.AspNet/WhizbangSecurityHeadersMiddlewareExtensions.cs, src/Whizbang.Hosting.AspNet/WhizbangSecurityHeadersStartupFilter.cs, src/Whizbang.Hosting.AspNet/WhizbangKestrelExtensions.cs"
       }
     },
     {
@@ -3838,6 +4422,107 @@
         "tags": "security, permissions, roles, rbac, abac, scope-context, principals, row-level-security, column-level-security, masking",
         "codeReferences": "src/Whizbang.Core/Security/IScopeContext.cs, src/Whizbang.Core/Security/Role.cs, src/Whizbang.Core/Security/Permission.cs, src/Whizbang.Core/Security/SecurityOptions.cs, src/Whizbang.Core/Security/Attributes/ScopedAttribute.cs",
         "lastMaintainedCommit": "01f07906"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/instance-liveness.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Instance Liveness — Advisory Lock + Heartbeat Fallback",
+        "version": "1.0.0",
+        "category": "Fundamentals",
+        "order": "8",
+        "description": "Dual-signal liveness scheme — session-level advisory lock on the direct LISTEN conn (primary) plus the heartbeat-table fallback (legacy). Adaptive HeartbeatWorker cadence preserves the 30 s recovery guarantee.",
+        "tags": "liveness, heartbeat, advisory-lock, recovery, workers",
+        "codeReferences": "src/Whizbang.Data.Postgres/Migrations/055_InstanceAliveAdvisoryLock.sql, src/Whizbang.Core/Workers/IInstanceAliveLockSource.cs, src/Whizbang.Core/Workers/HeartbeatWorker.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/perspective-worker-notify.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "PerspectiveWorker NOTIFY Wake",
+        "version": "1.0.0",
+        "category": "Fundamentals",
+        "order": "7",
+        "description": "PerspectiveWorker subscribes to WorkSignalCategory.Perspective NOTIFY signals to eliminate idle polling. Polling stays as a safety-net cadence.",
+        "tags": "workers, notify, perspective, polling, signals",
+        "codeReferences": "src/Whizbang.Core/Workers/PerspectiveWorker.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Pinned Worker Connection Pool",
+        "version": "1.0.0",
+        "category": "Fundamentals",
+        "order": "6",
+        "description": "Optional dedicated pool of long-lived PostgreSQL connections held by the hot-path background workers, bypassing pgbouncer to eliminate per-transaction DISCARD ALL overhead.",
+        "tags": "workers, connections, pgbouncer, performance, throughput",
+        "codeReferences": "src/Whizbang.Core/Workers/WhizbangPinnedPoolOptions.cs, src/Whizbang.Core/Workers/PinnedPoolServiceCollectionExtensions.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/fundamentals/workers/worker-classification.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Worker Classification — A through F",
+        "version": "1.0.0",
+        "category": "Fundamentals",
+        "order": "9",
+        "description": "Reference table for which Whizbang background workers are NOTIFY-driven, channel-driven, transport-driven, timer-driven, or one-shot lifecycle.",
+        "tags": "workers, notify, polling, classification, reference",
+        "codeReferences": "src/Whizbang.Core/Workers/ClaimWorker.cs, src/Whizbang.Core/Workers/InboxDispatchWorker.cs, src/Whizbang.Core/Workers/InboxDrainWorker.cs, src/Whizbang.Core/Workers/OutboxPublishWorker.cs, src/Whizbang.Core/Workers/OutboxDrainWorker.cs, src/Whizbang.Core/Workers/DeadLetterRecoveryWorker.cs, src/Whizbang.Core/Workers/HeartbeatWorker.cs, src/Whizbang.Core/Workers/LeaseRenewalWorker.cs, src/Whizbang.Core/Workers/MaintenanceWorker.cs, src/Whizbang.Core/Workers/FailureFlushWorker.cs",
+        "testReferences": "tests/Whizbang.Core.Tests/Workers/ClaimWorkerTests.cs"
       }
     },
     {
@@ -4464,6 +5149,31 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/messaging/composite-events.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Composite Events",
+        "version": "1.0.0",
+        "category": "Messaging",
+        "order": "12",
+        "description": "Wire-only fan-out optimization — emit one envelope carrying N inner events; the receiver expands it before invoking receptors and writing the event store. Composite types are never persisted; only the expanded inner events are recorded.",
+        "tags": "composite, events, bulk, fan-out, batched-append",
+        "codeReferences": "src/Whizbang.Core/Messaging/ICompositeEvent.cs, src/Whizbang.Core/Messaging/CompositeEventExpander.cs, src/Whizbang.Core/Messaging/IEventStore.cs, src/Whizbang.Core/Workers/TransportConsumerWorker.cs"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/messaging/failure-handling.md",
       "presentFields": [
         "title",
@@ -4720,6 +5430,32 @@
         "tags": "transports, in-memory, testing, in-process, synchronous, pub-sub, request-response",
         "codeReferences": "src/Whizbang.Core/Transports/InProcessTransport.cs, tests/Whizbang.Transports.Tests/InProcessTransportTests.cs",
         "lastMaintainedCommit": "01f07906"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/messaging/transports/infrastructure-mapping.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Infrastructure Mapping",
+        "version": "1.0.0",
+        "category": "Transports",
+        "order": "3",
+        "description": "How Whizbang's provider-agnostic abstractions - topic, stream, partition, and sequence - map onto concrete message transports (in-memory, RabbitMQ, Azure Service Bus)",
+        "tags": "transports, topic, stream, partition, partition-router, sequence, policies, routing, rabbitmq, azure-service-bus, provider-agnostic",
+        "codeReferences": "src/Whizbang.Core/Policies/PolicyConfiguration.cs, src/Whizbang.Core/Policies/PolicyContext.cs, src/Whizbang.Core/Policies/IPolicyEngine.cs, src/Whizbang.Core/Partitioning/HashPartitionRouter.cs, src/Whizbang.Core/Transports/TransportType.cs, src/Whizbang.Core/Transports/PublishTarget.cs, src/Whizbang.Core/Transports/SubscriptionTarget.cs, src/Whizbang.Core/Sequencing/ISequenceProvider.cs, src/Whizbang.Core/Workers/TransportPublishStrategy.cs, src/Whizbang.Transports.RabbitMQ/RabbitMQTransport.cs, src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs, src/Whizbang.Core/Observability/MessageEnvelope.cs, src/Whizbang.Core/Observability/MessageHop.cs, src/Whizbang.Core/Observability/CallerInfo.cs",
+        "testReferences": "tests/Whizbang.Policies.Tests/PolicyConfigurationExtensionsTests.cs, tests/Whizbang.Policies.Tests/PolicyConfigurationTransportTests.cs, tests/Whizbang.Partitioning.Tests/HashPartitionRouterTests.cs, tests/Whizbang.Policies.Tests/PolicyContextTests.cs, tests/Whizbang.Transports.Tests/TransportManagerSubscriptionTests.cs, tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs, tests/Whizbang.Observability.Tests/MessageTracingTests.cs"
       }
     },
     {
@@ -5199,6 +5935,31 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/operations/configuration/empty-stream-id-policy.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Empty Stream ID Policy",
+        "version": "1.0.0",
+        "category": "Configuration",
+        "order": "8",
+        "description": "Configure how Whizbang handles outbox / inbox / perspective rows with stream_id = Guid.Empty — the producer-side bug that causes silent stuck rows.",
+        "tags": "configuration, options, stream-id, empty-stream-id, producer, dead-letter, sentinel",
+        "codeReferences": "src/Whizbang.Core/Configuration/EmptyStreamIdPolicy.cs, src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs, src/Whizbang.Core/Messaging/EmptyStreamIdException.cs, src/Whizbang.Core/Messaging/EmptyStreamIdGuard.cs, src/Whizbang.Core/Messaging/MessageFailureReason.cs, src/Whizbang.Data.EFCore.Postgres/StreamIdCoalescer.cs, src/Whizbang.Data.Postgres/Migrations/051_DeadLetterRecovery.sql"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/operations/configuration/lens-services.md",
       "presentFields": [
         "title",
@@ -5326,6 +6087,151 @@
         "tags": "configuration, options, tags, hooks, addwhizbang",
         "codeReferences": "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs, src/Whizbang.Core/Tags/TagOptions.cs, src/Whizbang.Core/ServiceCollectionExtensions.cs",
         "lastMaintainedCommit": "01f07906"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/_folder.md",
+      "presentFields": [
+        "title",
+        "order"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Dead-Letter Queue",
+        "order": "4"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/internal-dlq.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Internal DLQ (wh_dead_letters)",
+        "version": "1.0.0",
+        "category": "Dead-Letter Queue",
+        "order": "1",
+        "description": "How Whizbang's internal wh_dead_letters table works — the schema, the IDeadLetterStore.MoveAsync atomic move boundary, and which workers populate it.",
+        "tags": "dead-letter-queue, wh_dead_letters, IDeadLetterStore, MaxInboxAttempts, MaxOutboxAttempts, MaxPerspectiveEventAttempts",
+        "codeReferences": "src/Whizbang.Core/Messaging/IDeadLetterStore.cs, src/Whizbang.Core/Messaging/DeadLetterRecoveryTypes.cs, src/Whizbang.Data.Postgres/Migrations/050_WhDeadLetters.sql, src/Whizbang.Core/Workers/InboxDispatchWorker.cs, src/Whizbang.Core/Workers/OutboxDrainWorker.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/operator-api.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Operator HTTP API",
+        "version": "1.0.0",
+        "category": "Dead-Letter Queue",
+        "order": "3",
+        "description": "HTTP endpoints in Whizbang.Hosting.AspNet for inspecting and acting on wh_dead_letters from operator tooling — list, retry, hold, give-up, manual generation sweep.",
+        "tags": "dead-letter-queue, operator-api, MapWhizbangDeadLetterEndpoints, http",
+        "codeReferences": "src/Whizbang.Hosting.AspNet/DeadLetterOperatorEndpoints.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/perspective-events.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Perspective-event Dead-lettering",
+        "version": "1.0.0",
+        "category": "Dead-Letter Queue",
+        "order": "5",
+        "description": "How wh_perspective_events rows that exceed MaxPerspectiveEventAttempts get moved to wh_dead_letters before deserialization + apply runs.",
+        "tags": "dead-letter-queue, PerspectiveWorker, MaxPerspectiveEventAttempts, FilterDeadLetteredAsync, perspective-events",
+        "codeReferences": "src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Data.Postgres/Migrations/038_GetStreamEvents.sql, src/Whizbang.Core/Messaging/IDeadLetterStore.cs"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/recovery.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Recovery Worker & Policy Matrix",
+        "version": "1.0.0",
+        "category": "Dead-Letter Queue",
+        "order": "2",
+        "description": "How DeadLetterRecoveryWorker drives wh_dead_letters back through the work tables — per-MessageFailureReason policy defaults, generation-tagged auto-replay, and how to register a custom IDeadLetterRecoveryPolicy.",
+        "tags": "dead-letter-queue, recovery, IDeadLetterRecoveryPolicy, RecoveryPolicy, MessageFailureReason, generation-replay",
+        "codeReferences": "src/Whizbang.Core/Messaging/IDeadLetterRecoveryService.cs, src/Whizbang.Core/Messaging/DeadLetterRecoveryTypes.cs, src/Whizbang.Core/Workers/DeadLetterRecoveryWorker.cs, src/Whizbang.Data.Postgres/Migrations/051_DeadLetterRecovery.sql"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/dead-letter-queue/transport-recovery.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Transport DLQ Recovery",
+        "version": "1.0.0",
+        "category": "Dead-Letter Queue",
+        "order": "4",
+        "description": "How TransportDeadLetterDrainWorker drains the broker's own dead-letter queue (ASB $DeadLetterQueue, RMQ DLX queue) back onto the normal receive path. Distinct from Whizbang's internal wh_dead_letters flow.",
+        "tags": "dead-letter-queue, transport-recovery, ITransportDeadLetterDrainer, TransportDeadLetterDrainWorker, ASB, RabbitMQ, broker-DLQ",
+        "codeReferences": "src/Whizbang.Core/Transports/ITransportDeadLetterDrainer.cs, src/Whizbang.Core/Workers/TransportDeadLetterDrainWorker.cs, src/Whizbang.Transports.AzureServiceBus/AzureServiceBusDeadLetterDrainer.cs, src/Whizbang.Transports.RabbitMQ/RabbitMqDeadLetterDrainer.cs"
       }
     },
     {
@@ -5548,6 +6454,30 @@
       "frontmatter": {
         "title": "Diagnostics",
         "order": "6"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
+      "presentFields": [
+        "title",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "version",
+        "category",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Runtime Error Reference",
+        "description": "Alphabetical catalog of Whizbang runtime error messages — what triggers each one, what the framework does next, and how to fix it. Every entry has a stable heading anchor for deep-linking from incident notes and runbooks.",
+        "order": "1",
+        "tags": "errors, error-reference, troubleshooting, runtime, logs, dead-letter-queue, transport, perspectives, rebuild, serialization",
+        "codeReferences": "src/Whizbang.Core/ReceptorNotFoundException.cs, src/Whizbang.Core/Dispatcher.cs, src/Whizbang.Core/Workers/TransportPublishStrategy.cs, src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs, src/Whizbang.Core/Transports/JsonMessageSerializer.cs, src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs, src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs, src/Whizbang.Offloads.AzureBlob/AzureBlobMessageBodyStore.cs",
+        "testReferences": "tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs, tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobMessageBodyStoreValidationTests.cs"
       }
     },
     {
@@ -5804,6 +6734,60 @@
       }
     },
     {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz120.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "order",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ120: Pinned Type Renamed Without Ledger Acknowledgment",
+        "description": "Error diagnostic when a [PinnedId] type's CLR name changed but the change was not acknowledged in the committed pinned-type ledger — an un-acknowledged rename that would break deserialization of stored events.",
+        "version": "1.0.0",
+        "category": "Diagnostics",
+        "severity": "Error",
+        "tags": "diagnostics, pinned-id, type-rename, ledger, identity, analyzer",
+        "codeReferences": "src/Whizbang.Generators/Analyzers/PinnedTypeRenameAnalyzer.cs, src/Whizbang.Generators/Ledger/PinnedTypeLedger.cs",
+        "testReferences": "tests/Whizbang.Generators.Tests/Analyzers/PinnedTypeRenameAnalyzerTests.cs",
+        "lastMaintainedCommit": "35b3f2a5"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz121.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "order",
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "WHIZ121: Pinned-Type Ledger Entry Has No Living Type",
+        "description": "Warning diagnostic when the committed pinned-type ledger records a pinned id that no [PinnedId] type in the compilation carries — a removed type or a changed pinned id, whose aliases would register against nothing.",
+        "version": "1.0.0",
+        "category": "Diagnostics",
+        "severity": "Warning",
+        "tags": "diagnostics, pinned-id, type-rename, ledger, identity, analyzer",
+        "codeReferences": "src/Whizbang.Generators/Analyzers/PinnedTypeRenameAnalyzer.cs, src/Whizbang.Generators/Ledger/PinnedTypeLedger.cs",
+        "testReferences": "tests/Whizbang.Generators.Tests/Analyzers/PinnedTypeRenameAnalyzerTests.cs",
+        "lastMaintainedCommit": "35b3f2a5"
+      }
+    },
+    {
       "file": "src/assets/docs/v1.0.0/operations/diagnostics/whiz300.md",
       "presentFields": [
         "title",
@@ -6024,9 +7008,10 @@
         "version": "1.0.0",
         "category": "Infrastructure",
         "order": "5",
-        "description": "Hash-based migration tracking with per-perspective change detection, blue-green table swaps, preview/rollback, and version auditing",
-        "tags": "migrations, schema, hash-tracking, blue-green, rollback, preview, database, ddl, perspective-tracking",
-        "codeReferences": "src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs, src/Whizbang.Core/Data/IMigrationProvider.cs, src/Whizbang.Data.Postgres/Migrations/000_MigrationTracking.sql, src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs",
+        "description": "Hash-based migration tracking with per-perspective change detection, blue-green table swaps, preview/rollback, version auditing, and settings-gated data migrations",
+        "tags": "migrations, schema, hash-tracking, blue-green, rollback, preview, database, ddl, perspective-tracking, data-migration, wh-settings",
+        "codeReferences": "src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs, src/Whizbang.Core/Data/IMigrationProvider.cs, src/Whizbang.Data.Postgres/Migrations/000_MigrationTracking.sql, src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs, src/Whizbang.Data.Postgres/Migrations/063_NormalizeClrTypeNamesV2.sql, src/Whizbang.Data.Postgres/Migrations/032_PerformMaintenance.sql",
+        "testReferences": "tests/Whizbang.Data.Dapper.Postgres.Tests/NormalizeClrTypeNamesMigrationTests.cs",
         "lastMaintainedCommit": "01f07906"
       }
     },
@@ -6052,7 +7037,8 @@
         "order": "4",
         "description": "Dynamic message routing and configuration via predicate-based policies - multi-tenancy, environment-based routing, and execution strategies",
         "tags": "policies, routing, multi-tenancy, execution-strategy, policy-engine, decision-trail",
-        "codeReferences": "src/Whizbang.Core/Policies/PolicyEngine.cs, src/Whizbang.Core/Policies/PolicyContext.cs, src/Whizbang.Core/Policies/PolicyDecisionTrail.cs, src/Whizbang.Core/Policies/PolicyConfiguration.cs",
+        "codeReferences": "src/Whizbang.Core/Policies/PolicyEngine.cs, src/Whizbang.Core/Policies/PolicyContext.cs, src/Whizbang.Core/Policies/PolicyDecisionTrail.cs, src/Whizbang.Core/Policies/PolicyConfiguration.cs, src/Whizbang.Core/Pooling/PolicyContextPool.cs",
+        "testReferences": "tests/Whizbang.Policies.Tests/PolicyEngineTests.cs, tests/Whizbang.Policies.Tests/PolicyContextTests.cs, tests/Whizbang.Policies.Tests/PolicyConfigurationExtensionsTests.cs, tests/Whizbang.Policies.Tests/PolicyConfigurationTransportTests.cs, tests/Whizbang.Policies.Tests/PolicyContextPoolTests.cs, tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
         "lastMaintainedCommit": "01f07906"
       }
     },
@@ -6230,6 +7216,31 @@
         "tags": "opentelemetry, tracing, metrics, observability, telemetry, tags",
         "codeReferences": "src/Whizbang.Observability/Hooks/OpenTelemetrySpanHook.cs, src/Whizbang.Observability/Hooks/OpenTelemetryMetricHook.cs, src/Whizbang.Observability/DependencyInjection/ObservabilityTagExtensions.cs",
         "lastMaintainedCommit": "01f07906"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Stuck Row Sentinel",
+        "version": "1.0.0",
+        "category": "Observability",
+        "order": "8",
+        "description": "Structural canary that surfaces wh_outbox / wh_inbox rows claimed past MaxOutboxAttempts but never drained — catches any silent-stuck bug regardless of root cause.",
+        "tags": "observability, maintenance, dead-letter, stuck-rows, sentinel, monitoring",
+        "codeReferences": "src/Whizbang.Core/Messaging/StuckRow.cs, src/Whizbang.Core/Messaging/IWorkCoordinator.cs, src/Whizbang.Core/Workers/MaintenanceWorker.cs, src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs, src/Whizbang.Data.Postgres/Migrations/054_StuckRowSentinel.sql"
       }
     },
     {
@@ -6452,6 +7463,32 @@
         "tags": "perspective-worker, checkpoints, background-worker, lease-based-coordination, error-tracking",
         "codeReferences": "src/Whizbang.Core/Workers/PerspectiveWorker.cs, src/Whizbang.Core/Messaging/IWorkCoordinator.cs, >-",
         "lastMaintainedCommit": "01f07906"
+      }
+    },
+    {
+      "file": "src/assets/docs/v1.0.0/operations/workers/process-work-batch-lease-semantics.md",
+      "presentFields": [
+        "title",
+        "version",
+        "category",
+        "order",
+        "description",
+        "tags",
+        "codeReferences"
+      ],
+      "missingFields": [
+        "slug"
+      ],
+      "shortDescription": null,
+      "frontmatter": {
+        "title": "Process Work Batch — Lease & Heartbeat Semantics",
+        "version": "1.0.0",
+        "category": "Workers",
+        "order": "4",
+        "description": "How WorkCoordinatorPublisherWorker paces its ticks and when it refreshes stream leases and instance heartbeats. Covers the conditional-refresh guards, the adaptive poll-interval backoff, tuning knobs, and failover SLAs.",
+        "tags": "work-coordinator, process-work-batch, lease-renewal, heartbeat, polling, backoff, wal, instance-stickiness, orphan-claim",
+        "codeReferences": "src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs, src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql, src/Whizbang.Data.Postgres/Migrations/010_RegisterInstanceHeartbeat.sql, src/Whizbang.Data.Postgres/Migrations/011_CleanupStaleInstances.sql",
+        "testReferences": ">-"
       }
     }
   ]

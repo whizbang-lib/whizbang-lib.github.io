@@ -1,0 +1,80 @@
+{
+  "session": "2J",
+  "section": "getting-started/ + learn/ + migration-guide/",
+  "auditDate": "2026-03-25",
+  "pagesAudited": [
+    "getting-started/ (4 pages)",
+    "learn/examples/ + learn/tutorial/ (~14 pages)",
+    "migration-guide/ (~10 pages)"
+  ],
+  "libraryFilesRead": ["Baseline data analysis — source verification deferred"],
+  "tasks": [
+    {
+      "id": "2J-001",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "learn/ (17 pages)",
+      "dimension": "page-frontmatter",
+      "summary": "17 learn pages missing codeReferences",
+      "details": "All learn/tutorial and learn/examples pages have frontmatter but no codeReferences. Tutorial pages should reference the sample projects they walk through. Examples should reference specific sample files.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2J-002",
+      "type": "frontmatter",
+      "priority": "P1",
+      "page": "migration-guide/ (2 pages)",
+      "dimension": "page-frontmatter",
+      "summary": "2 migration guide pages missing codeReferences",
+      "details": "Partial frontmatter gaps. Should reference relevant source files for the migration patterns described.",
+      "sourceFiles": [],
+      "effort": "S"
+    },
+    {
+      "id": "2J-003",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "getting-started/",
+      "dimension": "incomplete-docs",
+      "summary": "Getting started samples may reference outdated API patterns",
+      "details": "Based on findings from 2B: IDispatcher interface docs showed simplified signatures. Getting started code samples may use the simplified patterns (Task vs ValueTask, DeliveryReceipt vs IDeliveryReceipt). Need to verify all getting-started samples use correct current API.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2J-004",
+      "type": "docs-update",
+      "priority": "P1",
+      "page": "learn/tutorial/",
+      "dimension": "incomplete-docs",
+      "summary": "Tutorial code samples need verification against current API",
+      "details": "Same concern as getting-started — tutorials are the primary onboarding path. Code samples must compile against current library version. Need full walkthrough verification.",
+      "sourceFiles": [],
+      "effort": "L"
+    },
+    {
+      "id": "2J-005",
+      "type": "docs-update",
+      "priority": "P2",
+      "page": "migration-guide/",
+      "dimension": "incomplete-docs",
+      "summary": "Migration guide may not cover recent API changes",
+      "details": "RebuildPerspectiveCommand signature change (2→5 params), IPerspectiveWithActionsFor addition, LocalInvokeAndSyncAsync callback additions, and other API changes found in earlier sessions may need migration guide entries or notes.",
+      "sourceFiles": [],
+      "effort": "M"
+    },
+    {
+      "id": "2J-006",
+      "type": "code-sample-fix",
+      "priority": "P2",
+      "page": "learn/ + getting-started/ + migration-guide/",
+      "dimension": "code-sample-frontmatter",
+      "summary": "Code samples across all onboarding pages have auto-generated poor metadata",
+      "details": "These pages are particularly important for code sample quality since they're the first thing new users see.",
+      "sourceFiles": [],
+      "effort": "L"
+    }
+  ],
+  "sectionSummary": "Onboarding sections (28 pages total). Main issues: (1) 17 learn pages missing codeReferences, (2) getting-started and tutorial code samples need verification against current API (given the significant API drift found in sessions 2A-2C), (3) migration guide may not cover recent changes. No pages missing frontmatter entirely — good structural health. These pages are user-facing priority for accuracy."
+}

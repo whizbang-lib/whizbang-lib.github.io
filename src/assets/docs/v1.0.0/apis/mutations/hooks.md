@@ -1,5 +1,8 @@
 ---
 title: Mutation Hooks
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Mutations
 order: 1
@@ -10,6 +13,11 @@ tags: 'mutations, hooks, lifecycle, validation, error-handling'
 codeReferences:
   - src/Whizbang.Transports.Mutations/Base/MutationEndpointBase.cs
   - src/Whizbang.Transports.Mutations/Base/IMutationContext.cs
+testReferences:
+  - tests/Whizbang.Transports.Mutations.Tests/Unit/MutationEndpointBaseTests.cs
+  - tests/Whizbang.Transports.Mutations.Tests/Unit/MutationContextTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/GraphQLMutationBaseTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Integration.Tests/GraphQLMutationLifecycleTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -24,6 +32,8 @@ Mutation hooks provide extension points for adding cross-cutting concerns to you
 | `OnBeforeExecuteAsync` | Before command dispatch | Validation, authorization, logging |
 | `OnAfterExecuteAsync` | After successful dispatch | Notifications, audit logging |
 | `OnErrorAsync` | When dispatch throws | Error handling, fallback results |
+
+**Where hooks live**: the source generators emit endpoint classes as `partial` — `{CommandClassName}Endpoint` for REST and `{CommandClassName}Mutation` for GraphQL, in the `<command namespace>.Generated` namespace. You override hooks in your own partial half of those generated classes (the examples below use the REST naming). Do not restate generic constraints on overrides — they are inherited from the base declaration.
 
 ## The Execution Lifecycle {#lifecycle}
 
@@ -71,7 +81,7 @@ protected virtual ValueTask OnBeforeExecuteAsync(
 ### Example: Validation
 
 ```csharp{title="Example: Validation" description="Example: Validation" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Validation"]}
-public partial class CreateOrderEndpoint {
+public partial class CreateOrderCommandEndpoint {
     private readonly IValidator<CreateOrderCommand> _validator;
 
     protected override async ValueTask OnBeforeExecuteAsync(
@@ -88,7 +98,7 @@ public partial class CreateOrderEndpoint {
 ### Example: Authorization
 
 ```csharp{title="Example: Authorization" description="Example: Authorization" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Authorization"]}
-public partial class UpdateProductEndpoint {
+public partial class UpdateProductCommandEndpoint {
     private readonly IAuthorizationService _authz;
     private readonly ICurrentUser _user;
 
@@ -112,7 +122,7 @@ public partial class UpdateProductEndpoint {
 ### Example: Timing
 
 ```csharp{title="Example: Timing" description="Example: Timing" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Timing"]}
-public partial class ProcessPaymentEndpoint {
+public partial class ProcessPaymentCommandEndpoint {
     protected override ValueTask OnBeforeExecuteAsync(
         ProcessPaymentCommand command,
         IMutationContext context,
@@ -148,7 +158,7 @@ protected virtual ValueTask OnAfterExecuteAsync(
 ### Example: Notifications
 
 ```csharp{title="Example: Notifications" description="Example: Notifications" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Notifications"]}
-public partial class CreateOrderEndpoint {
+public partial class CreateOrderCommandEndpoint {
     private readonly INotificationService _notifications;
 
     protected override async ValueTask OnAfterExecuteAsync(
@@ -168,7 +178,7 @@ public partial class CreateOrderEndpoint {
 ### Example: Audit Logging
 
 ```csharp{title="Example: Audit Logging" description="Example: Audit Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Audit"]}
-public partial class DeleteUserEndpoint {
+public partial class DeleteUserCommandEndpoint {
     private readonly IAuditLogger _audit;
     private readonly ICurrentUser _user;
 
@@ -191,8 +201,8 @@ public partial class DeleteUserEndpoint {
 ### Example: Performance Logging
 
 ```csharp{title="Example: Performance Logging" description="Example: Performance Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Performance"]}
-public partial class ProcessPaymentEndpoint {
-    private readonly ILogger<ProcessPaymentEndpoint> _logger;
+public partial class ProcessPaymentCommandEndpoint {
+    private readonly ILogger<ProcessPaymentCommandEndpoint> _logger;
 
     protected override ValueTask OnAfterExecuteAsync(
         ProcessPaymentCommand command,
@@ -215,7 +225,7 @@ public partial class ProcessPaymentEndpoint {
 }
 ```
 
-## OnErrorAsync
+## OnErrorAsync {#error}
 
 Called when command dispatch throws an exception. Override to provide custom error handling, logging, or fallback results.
 
@@ -240,8 +250,8 @@ protected virtual ValueTask<TResult?> OnErrorAsync(
 ### Example: Error Logging
 
 ```csharp{title="Example: Error Logging" description="Example: Error Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Error"]}
-public partial class CreateOrderEndpoint {
-    private readonly ILogger<CreateOrderEndpoint> _logger;
+public partial class CreateOrderCommandEndpoint {
+    private readonly ILogger<CreateOrderCommandEndpoint> _logger;
 
     protected override ValueTask<OrderResult?> OnErrorAsync(
         CreateOrderCommand command,
@@ -262,7 +272,7 @@ public partial class CreateOrderEndpoint {
 ### Example: Fallback Result
 
 ```csharp{title="Example: Fallback Result" description="Example: Fallback Result" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Fallback"]}
-public partial class GetCachedDataEndpoint {
+public partial class GetDataCommandEndpoint {
     private readonly ICache _cache;
 
     protected override async ValueTask<DataResult?> OnErrorAsync(
@@ -287,7 +297,7 @@ public partial class GetCachedDataEndpoint {
 ### Example: Error Transformation
 
 ```csharp{title="Example: Error Transformation" description="Example: Error Transformation" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Error"]}
-public partial class ExternalApiEndpoint {
+public partial class ApiCommandEndpoint {
     protected override ValueTask<ApiResult?> OnErrorAsync(
         ApiCommand command,
         Exception ex,
@@ -334,7 +344,7 @@ public interface IMutationContext {
 The `Items` dictionary enables passing data between hooks:
 
 ```csharp{title="Using Items for State Sharing" description="The Items dictionary enables passing data between hooks:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Using", "Items"]}
-public partial class OrderEndpoint {
+public partial class CreateOrderCommandEndpoint {
     protected override ValueTask OnBeforeExecuteAsync(
         CreateOrderCommand command,
         IMutationContext context,
@@ -373,12 +383,10 @@ public partial class OrderEndpoint {
 The default `MutationContext` class implements `IMutationContext`:
 
 ```csharp{title="MutationContext Implementation" description="The default MutationContext class implements IMutationContext:" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "MutationContext", "Implementation"]}
-public sealed class MutationContext : IMutationContext {
-    public MutationContext(CancellationToken cancellationToken) {
-        CancellationToken = cancellationToken;
-    }
+public sealed class MutationContext(CancellationToken cancellationToken) : IMutationContext {
 
-    public CancellationToken CancellationToken { get; }
+    public CancellationToken CancellationToken { get; } = cancellationToken;
+
     public IDictionary<string, object?> Items { get; } = new Dictionary<string, object?>();
 }
 ```
@@ -388,13 +396,20 @@ public sealed class MutationContext : IMutationContext {
 Here is a complete example showing all hooks working together:
 
 ```csharp{title="Complete Example" description="Here is a complete example showing all hooks working together:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Complete", "Example"]}
+// The attribute goes on the command class; the generator emits the
+// partial CreateOrderCommandEndpoint (REST) and CreateOrderCommandMutation (GraphQL)
 [CommandEndpoint<CreateOrderCommand, OrderResult>(
     RestRoute = "/api/orders",
     GraphQLMutation = "createOrder")]
-public partial class CreateOrderEndpoint {
+public class CreateOrderCommand : ICommand {
+    public required string CustomerId { get; init; }
+}
+
+// Your partial half of the generated endpoint holds the hooks
+public partial class CreateOrderCommandEndpoint {
     private readonly IValidator<CreateOrderCommand> _validator;
     private readonly INotificationService _notifications;
-    private readonly ILogger<CreateOrderEndpoint> _logger;
+    private readonly ILogger<CreateOrderCommandEndpoint> _logger;
 
     protected override async ValueTask OnBeforeExecuteAsync(
         CreateOrderCommand command,

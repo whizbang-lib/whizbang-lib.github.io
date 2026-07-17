@@ -1,5 +1,8 @@
 ---
 title: OpenTelemetry Integration
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Observability
 order: 2
@@ -11,6 +14,13 @@ codeReferences:
   - src/Whizbang.Observability/Hooks/OpenTelemetrySpanHook.cs
   - src/Whizbang.Observability/Hooks/OpenTelemetryMetricHook.cs
   - src/Whizbang.Observability/DependencyInjection/ObservabilityTagExtensions.cs
+  - src/Whizbang.Core/Attributes/TelemetryTagAttribute.cs
+  - src/Whizbang.Core/Attributes/MetricTagAttribute.cs
+testReferences:
+  - tests/Whizbang.Observability.Tests/Hooks/OpenTelemetrySpanHookTests.cs
+  - tests/Whizbang.Observability.Tests/Hooks/OpenTelemetrySpanHookEnrichmentTests.cs
+  - tests/Whizbang.Observability.Tests/Hooks/OpenTelemetryMetricHookTests.cs
+  - tests/Whizbang.Observability.Tests/ObservabilityTagExtensionsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -110,7 +120,7 @@ public record OrderCreatedEvent(
 | `SpanName` | `string?` | OpenTelemetry span name (defaults to `Tag` if not specified) |
 | `Kind` | `SpanKind` | Span kind for tracing (default: `Internal`) |
 | `Properties` | `string[]?` | Properties to extract into span attributes |
-| `RecordAsEvent` | `bool` | Also record as an Activity event (default: `false`) |
+| `RecordAsEvent` | `bool` | Also record as an Activity event (default: `true`) |
 
 ### SpanKind Values
 
@@ -132,8 +142,8 @@ The hook automatically adds these span attributes:
 | `messaging.operation` | Always `"process"` |
 | `whizbang.tag` | The tag identifier |
 | `whizbang.message_type` | Full type name of the message |
-| `whizbang.scope.*` | Scope values (tenant, user, etc.) |
-| `whizbang.payload.*` | Extracted property values |
+| `whizbang.scope.*` | Scope values when present: `whizbang.scope.tenantid`, `.userid`, `.customerid`, `.organizationid` |
+| `whizbang.payload.*` | Extracted property values (property names lowercased) |
 
 ### Example Span Output
 
@@ -212,7 +222,7 @@ public record PaymentProcessedEvent(
 |-------|-------------|
 | `Counter` | Monotonically increasing value (e.g., request count) |
 | `Histogram` | Distribution of values (e.g., response times, amounts) |
-| `Gauge` | Point-in-time value (e.g., queue depth) |
+| `Gauge` | Point-in-time value (e.g., queue depth). At this release the hook records `Gauge` through a histogram instrument (the current value is recorded per event) rather than an observable gauge. |
 
 ### Metric Dimensions
 
@@ -236,7 +246,7 @@ public record ApiRequestCompletedEvent(
 
 ### Scope Dimensions
 
-Scope values (tenant, user, correlation ID) are automatically added as dimensions:
+Scope values (`TenantId`, `UserId`, `CustomerId`, `OrganizationId`) are automatically added as dimensions when present:
 
 ```csharp{title="Scope Dimensions" description="Automatic scope-based metric dimensions" category="Usage" difficulty="INTERMEDIATE" tags=["OpenTelemetry", "Metrics", "Scope"]}
 // Event with metric tag

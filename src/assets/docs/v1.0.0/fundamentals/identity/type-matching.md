@@ -1,5 +1,8 @@
 ---
 title: "TypeMatcher: Type Name Matching Utilities"
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Core Concepts"
 order: 28
@@ -10,6 +13,10 @@ description: >-
 tags: 'type-matcher, type-matching, fuzzy-matching, regex, identity, type-comparison'
 codeReferences:
   - src/Whizbang.Core/TypeMatcher.cs
+  - src/Whizbang.Core/MatchStrictness.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/TypeMatcherTests.cs
+  - tests/Whizbang.Core.Tests/MatchStrictnessTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -186,7 +193,7 @@ public IEnumerable<Type> FindHandlers(string eventPattern) {
         .SelectMany(a => a.GetTypes());
 
     return allTypes.Where(t => {
-        var typeName = TypeFormatter.FormatType(t, TypeQualification.FullyQualified);
+        var typeName = TypeFormatter.FormatType(t, TypeQualifications.FullyQualified);
         return TypeMatcher.Matches(typeName, pattern);
     });
 }
@@ -205,7 +212,7 @@ public Type? ResolveType(string typeString, IEnumerable<Assembly> assemblies) {
         foreach (var type in assembly.GetTypes()) {
             var candidateType = TypeFormatter.FormatType(
                 type,
-                TypeQualification.FullyQualified
+                TypeQualifications.FullyQualified
             );
 
             // Match without version - works across all versions
@@ -331,9 +338,10 @@ var types = new[] {
 var events = FindMatchingTypes(types, ".*Event$", useRegex: true, MatchStrictness.Exact);
 // Result: ["ECommerce.Events.ProductCreatedEvent", "ECommerce.Events.OrderCreatedEvent"]
 
-// Fuzzy: Types containing "Product"
-var products = FindMatchingTypes(types, "Product", useRegex: false, MatchStrictness.SimpleName);
-// Result: ["ECommerce.Events.ProductCreatedEvent", "MyApp.Commands.CreateProductCommand"]
+// Fuzzy: match by simple name (equality after transformation, NOT "contains")
+var products = FindMatchingTypes(types, "ProductCreatedEvent", useRegex: false, MatchStrictness.SimpleName);
+// Result: ["ECommerce.Events.ProductCreatedEvent"]
+// For "contains"-style matching, use the regex overload instead (e.g. ".*Product.*").
 ```
 
 ## Null and Empty String Handling
@@ -463,8 +471,8 @@ public static class TypeMatcher {
     /// <param name="strictness">Flags controlling matching behavior</param>
     /// <returns>True if types match according to strictness rules</returns>
     public static bool Matches(
-        string? typeString1,
-        string? typeString2,
+        string typeString1,
+        string typeString2,
         MatchStrictness strictness
     );
 
@@ -475,7 +483,7 @@ public static class TypeMatcher {
     /// <param name="pattern">Regex pattern to match against</param>
     /// <returns>True if type string matches the pattern</returns>
     /// <exception cref="ArgumentNullException">Thrown if pattern is null</exception>
-    public static bool Matches(string? typeString, Regex pattern);
+    public static bool Matches(string typeString, Regex pattern);
 }
 ```
 
@@ -516,17 +524,20 @@ bool match = TypeMatcher.Matches("Straße", "Strasse", MatchStrictness.CaseInsen
 // TypeMatcher is designed for type names, not natural language
 ```
 
-### ❌ Forgetting Transformation Order
+### ❌ Assuming IgnoreVersion Also Strips the Assembly
 
-```csharp{title="❌ Forgetting Transformation Order" description="❌ Forgetting Transformation Order" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Forgetting", "Transformation"]}
-// ❌ WRONG: Assuming IgnoreNamespace strips everything
+```csharp{title="❌ Assuming IgnoreVersion Also Strips the Assembly" description="IgnoreVersion only removes version/culture/token; the assembly name remains" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "IgnoreVersion", "Transformation"]}
+// ❌ WRONG: IgnoreVersion only strips ", Version=..., Culture=..., PublicKeyToken=..."
 var type = "MyApp.Events.OrderCreated, MyApp, Version=1.0.0";
-bool match = TypeMatcher.Matches(type, "OrderCreated", MatchStrictness.IgnoreNamespace);
-// Result: false (assembly and version not stripped!)
+bool match = TypeMatcher.Matches(type, "MyApp.Events.OrderCreated", MatchStrictness.IgnoreVersion);
+// Result: false ("MyApp.Events.OrderCreated, MyApp" still carries the assembly name)
 
-// ✅ CORRECT: Use SimpleName preset (all flags)
-bool match = TypeMatcher.Matches(type, "OrderCreated", MatchStrictness.SimpleName);
+// ✅ CORRECT: Use WithoutAssembly (IgnoreAssembly | IgnoreVersion)
+bool match = TypeMatcher.Matches(type, "MyApp.Events.OrderCreated", MatchStrictness.WithoutAssembly);
 // Result: true
+
+// Note: IgnoreNamespace strips any assembly suffix before extracting the
+// simple name, so it effectively implies IgnoreAssembly on its own.
 ```
 
 ### ❌ Not Checking for Null Pattern
@@ -599,7 +610,7 @@ for (int i = 0; i < 10000; i++) {
 
 ## See Also
 
-- [TypeQualification](type-qualification.md) - Type name formatting flags
+- [TypeQualifications](type-qualification.md) - Type name formatting flags
 - [TypeFormatter](type-formatting.md) - Format types for matching
 - [MatchStrictness](fuzzy-matching.md) - Fuzzy matching control
 - [Perspectives](../perspectives/perspectives.md) - Message associations using TypeMatcher

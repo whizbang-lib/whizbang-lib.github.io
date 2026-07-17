@@ -205,9 +205,19 @@
               "order": 1
             },
             {
+              "slug": "v1.0.0/fundamentals/dispatcher/dispatch-patterns",
+              "title": "Dispatch Patterns",
+              "order": 2
+            },
+            {
               "slug": "v1.0.0/fundamentals/dispatcher/routing",
               "title": "Namespace-Based Routing",
               "order": 2
+            },
+            {
+              "slug": "v1.0.0/fundamentals/dispatcher/message-cascade",
+              "title": "Automatic Message Cascade",
+              "order": 3
             },
             {
               "slug": "v1.0.0/fundamentals/dispatcher/publish-once",
@@ -565,7 +575,7 @@
             },
             {
               "slug": "v1.0.0/fundamentals/identity/type-qualification",
-              "title": "TypeQualification: Type Name Formatting Control",
+              "title": "TypeQualifications: Type Name Formatting Control",
               "order": 29
             },
             {
@@ -667,32 +677,9 @@
           "children": []
         },
         {
-          "name": "persistence",
-          "title": "Persistence",
-          "order": 10,
-          "pages": [
-            {
-              "slug": "v1.0.0/fundamentals/persistence/observability",
-              "title": "Observability & Message Hops",
-              "order": 6
-            },
-            {
-              "slug": "v1.0.0/fundamentals/persistence/caller-info-capture",
-              "title": "Caller Information Capture",
-              "order": 7
-            },
-            {
-              "slug": "v1.0.0/fundamentals/persistence",
-              "title": "Persistence",
-              "order": 12
-            }
-          ],
-          "children": []
-        },
-        {
           "name": "workers",
           "title": "Workers",
-          "order": 999,
+          "order": 9,
           "pages": [
             {
               "slug": "v1.0.0/fundamentals/workers/pinned-connection-pool",
@@ -713,6 +700,29 @@
               "slug": "v1.0.0/fundamentals/workers/worker-classification",
               "title": "Worker Classification — A through F",
               "order": 9
+            }
+          ],
+          "children": []
+        },
+        {
+          "name": "persistence",
+          "title": "Persistence",
+          "order": 10,
+          "pages": [
+            {
+              "slug": "v1.0.0/fundamentals/persistence/observability",
+              "title": "Observability & Message Hops",
+              "order": 6
+            },
+            {
+              "slug": "v1.0.0/fundamentals/persistence/caller-info-capture",
+              "title": "Caller Information Capture",
+              "order": 7
+            },
+            {
+              "slug": "v1.0.0/fundamentals/persistence",
+              "title": "Persistence",
+              "order": 12
             }
           ],
           "children": []
@@ -1199,7 +1209,7 @@
             },
             {
               "slug": "v1.0.0/operations/workers/process-work-batch-lease-semantics",
-              "title": "Process Work Batch — Lease & Heartbeat Semantics",
+              "title": "Work Pump — Lease & Heartbeat Semantics",
               "order": 4
             }
           ],
@@ -1240,12 +1250,12 @@
             },
             {
               "slug": "v1.0.0/operations/diagnostics/whiz030",
-              "title": "WHIZ030: Perspective Event Missing StreamKey",
+              "title": "WHIZ030: Perspective Event Missing StreamId",
               "order": 999
             },
             {
               "slug": "v1.0.0/operations/diagnostics/whiz031",
-              "title": "WHIZ031: Multiple StreamKey Attributes",
+              "title": "WHIZ031: Multiple StreamId Attributes",
               "order": 999
             },
             {
@@ -1626,6 +1636,20 @@
         }
       ],
       "children": []
+    },
+    {
+      "name": "tools",
+      "title": "Tools",
+      "order": 95,
+      "pages": [
+        {
+          "slug": "v1.0.0/tools/mcp-server",
+          "title": "MCP Documentation Server",
+          "order": 1
+        }
+      ],
+      "children": [],
+      "icon": "wrench"
     }
   ],
   "drafts": [
@@ -1664,62 +1688,6 @@
         }
       ],
       "children": []
-    },
-    {
-      "name": "contributing",
-      "title": "Contributing",
-      "order": 999,
-      "pages": [],
-      "children": [
-        {
-          "name": "data-engines",
-          "title": "Data engines",
-          "order": 10,
-          "pages": [
-            {
-              "slug": "drafts/contributing/data-engines/overview",
-              "title": "Overview",
-              "order": 1
-            },
-            {
-              "slug": "drafts/contributing/data-engines/implementing-iworkcoordinator",
-              "title": "Implementing IWorkCoordinator",
-              "order": 2
-            },
-            {
-              "slug": "drafts/contributing/data-engines/implementing-icapabilities",
-              "title": "Implementing IWorkCoordinatorCapabilities",
-              "order": 3
-            },
-            {
-              "slug": "drafts/contributing/data-engines/sql-function-contracts",
-              "title": "SQL function contracts",
-              "order": 4
-            },
-            {
-              "slug": "drafts/contributing/data-engines/implementing-notifications",
-              "title": "Implementing notifications",
-              "order": 5
-            },
-            {
-              "slug": "drafts/contributing/data-engines/testing-a-new-engine",
-              "title": "Testing a new engine",
-              "order": 6
-            },
-            {
-              "slug": "drafts/contributing/data-engines/worked-example-sqlserver",
-              "title": "Worked example - SQL Server (high-capability)",
-              "order": 7
-            },
-            {
-              "slug": "drafts/contributing/data-engines/worked-example-sqlite",
-              "title": "Worked example - SQLite (polling-only, minimum-capability)",
-              "order": 8
-            }
-          ],
-          "children": []
-        }
-      ]
     },
     {
       "name": "core-concepts",
@@ -1888,6 +1856,19 @@
       "children": []
     },
     {
+      "name": "migration-guide",
+      "title": "Migration Guide",
+      "order": 999,
+      "pages": [
+        {
+          "slug": "drafts/migration-guide/cli-wizard",
+          "title": "CLI Migration Wizard",
+          "order": 999
+        }
+      ],
+      "children": []
+    },
+    {
       "name": "operations",
       "title": "Operations & Configuration",
       "order": 999,
@@ -2026,6 +2007,11 @@
           "order": 22
         },
         {
+          "slug": "proposals/destruction-hooks-ttl",
+          "title": "Destruction Hooks & TTL",
+          "order": 23
+        },
+        {
           "slug": "proposals/type-definition-fingerprint",
           "title": "Type-Definition Fingerprint & Lineage",
           "order": 23
@@ -2035,5 +2021,88 @@
     }
   ],
   "backlog": [],
-  "declined": []
+  "declined": [],
+  "contributors": [
+    {
+      "name": "_root",
+      "title": "Overview",
+      "order": 0,
+      "pages": [
+        {
+          "slug": "contributors/overview",
+          "title": "Contributing to Whizbang",
+          "order": 1
+        },
+        {
+          "slug": "contributors/test-status-pipeline",
+          "title": "Live Test-Status Pipeline",
+          "order": 3
+        }
+      ],
+      "children": []
+    },
+    {
+      "name": "data-engines",
+      "title": "Data engines",
+      "order": 10,
+      "pages": [
+        {
+          "slug": "contributors/data-engines/overview",
+          "title": "Overview",
+          "order": 1
+        },
+        {
+          "slug": "contributors/data-engines/implementing-iworkcoordinator",
+          "title": "Implementing IWorkCoordinator",
+          "order": 2
+        },
+        {
+          "slug": "contributors/data-engines/implementing-icapabilities",
+          "title": "Implementing IWorkCoordinatorCapabilities",
+          "order": 3
+        },
+        {
+          "slug": "contributors/data-engines/sql-function-contracts",
+          "title": "SQL function contracts",
+          "order": 4
+        },
+        {
+          "slug": "contributors/data-engines/implementing-notifications",
+          "title": "Implementing notifications",
+          "order": 5
+        },
+        {
+          "slug": "contributors/data-engines/testing-a-new-engine",
+          "title": "Testing a new engine",
+          "order": 6
+        },
+        {
+          "slug": "contributors/data-engines/worked-example-sqlserver",
+          "title": "Worked example - SQL Server (high-capability)",
+          "order": 7
+        },
+        {
+          "slug": "contributors/data-engines/worked-example-sqlite",
+          "title": "Worked example - SQLite (polling-only, minimum-capability)",
+          "order": 8
+        }
+      ],
+      "children": []
+    }
+  ],
+  "spec": [
+    {
+      "name": "_root",
+      "title": "Overview",
+      "order": 0,
+      "pages": [
+        {
+          "slug": "spec/overview",
+          "title": "Functional Specification",
+          "order": 1
+        }
+      ],
+      "children": []
+    }
+  ]
 }

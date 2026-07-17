@@ -1,5 +1,8 @@
 ---
 title: Perspective Rebuild
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Perspectives
 order: 10
@@ -12,9 +15,12 @@ tags: >-
 codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
+  - src/Whizbang.Core/Perspectives/System/PerspectiveStatusModel.cs
   - src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
   - src/Whizbang.Core/Events/System/SystemEvents.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -127,14 +133,23 @@ See [Migration Tracking](../../operations/infrastructure/migrations.md) for deta
 A built-in read model tracks all perspective health:
 
 ```csharp{title="PerspectiveStatusModel" description="A built-in read model tracks all perspective health:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "PerspectiveStatusModel"]}
-public record PerspectiveStatusModel {
+public sealed record PerspectiveStatusModel {
+  [StreamId]
   public Guid Id { get; init; }
-  public string PerspectiveName { get; init; }
-  public PerspectiveState State { get; init; }   // Active, Rebuilding, Failed, Stale
+
+  [PhysicalField(Indexed = true)]
+  public string PerspectiveName { get; init; } = "";
+
+  [PhysicalField]
+  public PerspectiveState State { get; init; }   // Active, Rebuilding, MigratingBlueGreen, Failed, Stale
+
   public string? SchemaHash { get; init; }
+  public DateTimeOffset? LastRebuildStartedAt { get; init; }
   public DateTimeOffset? LastRebuildCompletedAt { get; init; }
   public TimeSpan? LastRebuildDuration { get; init; }
+  public RebuildMode? LastRebuildMode { get; init; }
   public string? LastError { get; init; }
+  public DateTimeOffset LastUpdatedAt { get; init; }
 }
 ```
 

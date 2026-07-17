@@ -6,6 +6,7 @@ markdown syntax to MkDocs-compatible format, and generates the nav
 section in mkdocs.yml.
 """
 
+import json
 import re
 import shutil
 from pathlib import Path
@@ -164,9 +165,52 @@ def strip_lastmaintained(text: str) -> str:
     return re.sub(r"^lastMaintainedCommit:.*\n", "", text, flags=re.MULTILINE)
 
 
-def transform_file(filepath: Path):
+def load_test_status() -> dict:
+    """Load the committed live test-status index (produced by library CI via
+    src/scripts/build-test-status.mjs). Returns {} when the pipeline hasn't
+    published yet."""
+    status_path = REPO_ROOT / "src" / "assets" / "data" / "test-status" / "index.json"
+    if not status_path.exists():
+        return {}
+    try:
+        return json.loads(status_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def inject_test_verification(text: str, filepath: Path, test_status: dict) -> str:
+    """RTD is static, so inject a build-time 'verified by tests' admonition
+    under the first H1 for pages carrying testReferences frontmatter."""
+    if not text.startswith("---"):
+        return text
+    try:
+        end = text.index("\n---", 3)
+        fm = yaml.safe_load(text[3:end]) or {}
+    except (ValueError, yaml.YAMLError):
+        return text
+    refs = fm.get("testReferences") or []
+    if not refs:
+        return text
+    classes = [Path(r).stem for r in refs if str(r).endswith(".cs")]
+    if not classes:
+        return text
+    run = (test_status or {}).get("run") or {}
+    when = (run.get("completedAt") or "")[:10]
+    run_note = f" — library CI run #{run['runId']} ({when})" if run.get("runId") else ""
+    lines = ", ".join(f"`{c}`" for c in classes)
+    admonition = f'\n!!! success "Verified by tests"\n    {lines}{run_note}\n'
+    # Insert after the first H1 (or append after frontmatter when no H1).
+    m = re.search(r"^# .+$", text, flags=re.MULTILINE)
+    if m:
+        pos = m.end()
+        return text[:pos] + "\n" + admonition + text[pos:]
+    return text + admonition
+
+
+def transform_file(filepath: Path, test_status: dict = None):
     """Apply all transformations to a markdown file."""
     text = filepath.read_text(encoding="utf-8")
+    text = inject_test_verification(text, filepath, test_status or {})
     text = strip_lastmaintained(text)
     text = convert_callouts(text)
     text = convert_custom_components(text)
@@ -272,8 +316,9 @@ def main():
     clean_and_copy()
 
     print("RTD build: transforming markdown...")
+    test_status = load_test_status()
     for md_file in BUILD_DIR.rglob("*.md"):
-        transform_file(md_file)
+        transform_file(md_file, test_status)
 
     print("RTD build: generating nav...")
     nav = build_nav(DOCS_SRC)
