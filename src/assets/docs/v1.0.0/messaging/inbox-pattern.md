@@ -1,6 +1,8 @@
 ---
 title: Inbox Pattern
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Messaging
 order: 2
@@ -9,9 +11,16 @@ description: >-
   deduplication and idempotent message handling
 tags: 'inbox, exactly-once, deduplication, idempotency, message-processing'
 codeReferences:
-  - src/Whizbang.Core/WorkCoordination/IWorkCoordinator.cs
-  - src/Whizbang.Data.Postgres/WorkCoordination/PostgresWorkCoordinator.cs
-  - samples/ECommerce/ECommerce.InventoryWorker/Workers/InventoryWorker.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
+  - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
+  - src/Whizbang.Data.Postgres/Migrations/021_StoreInboxMessages.sql
+  - samples/ECommerce/ECommerce.InventoryWorker/Receptors/ReserveInventoryReceptor.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StoreInboxMessagesSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreStoreInboxMessagesTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerDeadLetterTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -52,14 +61,14 @@ public async Task ProcessMessageAsync(OrderCreated @event, CancellationToken ct)
 
 ## Solution: Inbox Pattern
 
-**The Fix**: Check inbox before processing, store message ID after processing.
+**The Fix**: Record the message ID **before** processing — duplicates are rejected at store time, so a message can never enter the pipeline twice.
 
 ```mermaid
 flowchart TD
-    S1["1. Message arrives from Azure Service Bus"]
-    S2["2. Check inbox for duplicate<br/>SELECT * FROM wh_inbox WHERE message_id = ?<br/><br/>If found: SKIP (already processed!) — Exactly-once!<br/>If not found: Continue..."]
-    S3["3. Process message (business logic)"]
-    S4["4. Store message ID in inbox (atomic!)<br/>INSERT INTO wh_inbox (message_id, ...)"]
+    S1["1. Message arrives from transport<br/>(unsubscribed messages are discarded at the<br/>receive boundary — no inbox row at all)"]
+    S2["2. store_inbox_messages:<br/>INSERT INTO wh_message_deduplication ... ON CONFLICT DO NOTHING<br/><br/>If conflict: SKIP (already seen!) — Exactly-once!<br/>If new: INSERT INTO wh_inbox (same transaction)"]
+    S3["3. ClaimWorker leases the row;<br/>handlers invoked in stream order"]
+    S4["4. Handler commit (commit_handler_batch):<br/>completion + emitted messages, atomic"]
 
     S1 --> S2
     S2 --> S3
@@ -74,7 +83,7 @@ flowchart TD
 - ✅ **Exactly-once processing**: Duplicates detected and skipped
 - ✅ **Idempotent**: Safe to replay messages
 - ✅ **Automatic**: Framework handles deduplication
-- ✅ **Auditability**: Complete record of processed messages
+- ✅ **Auditability**: Deduplication record of processed message IDs (retention window applies)
 
 ---
 
@@ -83,285 +92,124 @@ flowchart TD
 ### Database Schema
 
 ```sql{title="Database Schema" description="Database Schema" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Sql", "Database", "Schema"]}
-CREATE TABLE wh_inbox (
-    message_id UUID PRIMARY KEY,
-    correlation_id UUID NOT NULL,
-    causation_id UUID NULL,
-    message_type VARCHAR(500) NOT NULL,
-    payload JSONB NOT NULL,
-    source_topic VARCHAR(255) NOT NULL,
-
-    -- Metadata
-    metadata JSONB NULL,
-
-    -- Lease-based coordination
-    instance_id UUID NULL,
-    lease_expiry TIMESTAMPTZ NULL,
-
-    -- Status tracking
-    status VARCHAR(50) NOT NULL DEFAULT 'Received',
-    attempts INT NOT NULL DEFAULT 0,
-    last_error TEXT NULL,
-
-    -- Timestamps
-    received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    processed_at TIMESTAMPTZ NULL,
-    completed_at TIMESTAMPTZ NULL,
-
-    -- Indexes
-    CONSTRAINT chk_inbox_status CHECK (status IN ('Received', 'Processing', 'Completed', 'Failed'))
+CREATE TABLE IF NOT EXISTS wh_inbox (
+  message_id UUID NOT NULL PRIMARY KEY,
+  handler_name VARCHAR(500) NOT NULL,
+  message_type VARCHAR(500) NOT NULL,
+  event_data JSONB NOT NULL,
+  metadata JSONB NOT NULL,
+  scope JSONB NULL,
+  stream_id UUID NULL,
+  partition_number INTEGER NULL,
+  is_event BOOLEAN NOT NULL DEFAULT FALSE,
+  status INTEGER NOT NULL DEFAULT 1,          -- MessageProcessingStatus flags (Stored = 1)
+  attempts INTEGER NOT NULL DEFAULT 0,
+  error TEXT NULL,
+  instance_id UUID NULL,
+  lease_expiry TIMESTAMPTZ NULL,
+  failure_reason INTEGER NOT NULL DEFAULT 99,
+  scheduled_for TIMESTAMPTZ NULL,             -- Scheduled retry gate
+  processed_at TIMESTAMPTZ NULL,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_inbox_status ON wh_inbox(status, partition_number);
-CREATE INDEX idx_inbox_correlation ON wh_inbox(correlation_id);
-CREATE UNIQUE INDEX idx_inbox_message_id ON wh_inbox(message_id);  -- Enforces exactly-once!
+CREATE INDEX IF NOT EXISTS idx_inbox_processed_at ON wh_inbox (processed_at);
+CREATE INDEX IF NOT EXISTS idx_inbox_received_at ON wh_inbox (received_at);
+CREATE INDEX IF NOT EXISTS idx_inbox_lease_expiry ON wh_inbox (lease_expiry) WHERE lease_expiry IS NOT NULL;
+
+-- Deduplication happens against a separate table:
+CREATE TABLE IF NOT EXISTS wh_message_deduplication (
+  message_id UUID NOT NULL PRIMARY KEY,       -- Enforces exactly-once!
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
 **Key Fields**:
-- **message_id**: Unique message identifier (primary key, enforces uniqueness)
-- **status**: Received → Processing → Completed | Failed
-- **instance_id**: Which worker is processing this message
-- **lease_expiry**: When the lease expires
+- **message_id**: Unique message identifier (primary key on both tables)
+- **status**: `MessageProcessingStatus` flags bitmask (Stored = 1, EventStored = 2, Failed = 32768)
+- **instance_id** / **lease_expiry**: Which worker holds the lease, and until when
+- **scheduled_for**: When set, the row (and later rows in its stream) waits for the retry time
+- **received_at**: Order-of-arrival timestamp — inbox ordering uses `received_at` (outbox uses `created_at`)
 
-**Critical**: `UNIQUE INDEX` on `message_id` prevents duplicate processing!
+**Critical**: The `wh_message_deduplication` primary key prevents duplicate processing — the inbox insert only happens when the dedup insert succeeds.
 
 ---
 
 ## Detecting Duplicates
 
-### Check Before Processing
+Deduplication is **automatic** — you never write this code yourself. Two boundaries filter incoming messages:
 
-```csharp{title="Check Before Processing" description="Check Before Processing" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Check", "Before", "Processing"]}
-public async Task<bool> IsMessageProcessedAsync(
-    Guid messageId,
-    CancellationToken ct = default) {
+### Boundary 1: The Receive Boundary
 
-    await using var conn = _db.CreateConnection();
+`TransportConsumerWorker` discards messages that no receptor, perspective, or tag attribute subscribes to **before** any database work — no inbox row, no deserialization, no lifecycle. Only messages your service actually handles reach the inbox.
 
-    var existing = await conn.QuerySingleOrDefaultAsync<InboxRow>(
-        "SELECT * FROM wh_inbox WHERE message_id = @MessageId",
-        new { MessageId = messageId },
-        cancellationToken: ct
-    );
+### Boundary 2: The Deduplication Table
 
-    return existing is not null && existing.Status == "Completed";
-}
+The `store_inbox_messages` PostgreSQL function (called via `IWorkCoordinator.StoreInboxMessagesAsync`) tries the dedup insert first and gates the inbox insert on its success:
+
+```sql{title="Atomic Insert with Duplicate Check" description="store_inbox_messages dedup gate (021_StoreInboxMessages.sql)" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Sql", "Atomic", "Insert", "Duplicate"]}
+-- Deduplication: Try to insert into deduplication table first
+-- If message_id already exists, this returns 0 rows and we skip the inbox insert
+INSERT INTO wh_message_deduplication (message_id, first_seen_at)
+VALUES (v_msg.msg_id, p_now)
+ON CONFLICT ON CONSTRAINT wh_message_deduplication_pkey DO NOTHING;
+
+GET DIAGNOSTICS v_was_new = ROW_COUNT;
+
+-- Only proceed if deduplication insert succeeded (message is new)
+IF v_was_new = 1 THEN
+  INSERT INTO wh_inbox (message_id, handler_name, message_type, ...)
+  VALUES (...);
+END IF;
 ```
 
-**Usage**:
-```csharp{title="Check Before Processing (2)" description="Check Before Processing" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Check", "Before", "Processing"]}
-if (await IsMessageProcessedAsync(message.MessageId, ct)) {
-    _logger.LogWarning("Duplicate message {MessageId} detected, skipping", message.MessageId);
-    return;  // Skip processing!
-}
-```
-
-### Atomic Insert with Duplicate Check
-
-```csharp{title="Atomic Insert with Duplicate Check" description="Atomic Insert with Duplicate Check" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Atomic", "Insert", "Duplicate"]}
-try {
-    await conn.ExecuteAsync(
-        """
-        INSERT INTO wh_inbox (message_id, correlation_id, message_type, payload, source_topic, status, received_at)
-        VALUES (@MessageId, @CorrelationId, @MessageType, @Payload, @SourceTopic, 'Received', NOW())
-        """,
-        new {
-            MessageId = message.MessageId,
-            CorrelationId = message.CorrelationId,
-            MessageType = message.GetType().FullName,
-            Payload = JsonSerializer.Serialize(message),
-            SourceTopic = "orders"
-        },
-        cancellationToken: ct
-    );
-
-} catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505") {  // Unique violation
-    _logger.LogWarning("Duplicate message {MessageId} detected (unique constraint)", message.MessageId);
-    return;  // Skip processing!
-}
-```
-
-**Pattern**: Let database enforce uniqueness via unique constraint.
+**Pattern**: Let the database enforce uniqueness via the primary key — no read-then-write race, no exception handling.
 
 ---
 
 ## Complete Processing Example
 
-### InventoryWorker
+You don't write inbox plumbing — the framework workers handle storage, deduplication, claiming, and completion. You write a **receptor** with your business logic:
 
-```csharp{title="InventoryWorker" description="InventoryWorker" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "InventoryWorker"]}
-public class InventoryWorker : BackgroundService {
-    private readonly IWorkCoordinator _coordinator;
-    private readonly IMessageTransport _transport;
-    private readonly IDispatcher _dispatcher;
+### ReserveInventoryReceptor
 
-    protected override async Task ExecuteAsync(CancellationToken ct) {
-        var instanceId = Guid.NewGuid();
+```csharp{title="ReserveInventoryReceptor" description="Receptor with business logic — the framework handles the inbox around it" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "InventoryWorker"]}
+public class ReserveInventoryReceptor(
+    IDispatcher dispatcher,
+    ILogger<ReserveInventoryReceptor> logger)
+    : IReceptor<ReserveInventoryCommand, InventoryReservedEvent> {
 
-        // Subscribe to topic
-        await _transport.SubscribeAsync("orders", async (msg, ct) => {
-            try {
-                // 1. Check for duplicate (via inbox)
-                var isDuplicate = await _coordinator.IsMessageInInboxAsync(msg.MessageId, ct);
+    public async ValueTask<InventoryReservedEvent> HandleAsync(
+        ReserveInventoryCommand message,
+        CancellationToken cancellationToken = default) {
 
-                if (isDuplicate) {
-                    _logger.LogWarning(
-                        "Duplicate message {MessageId} detected, skipping",
-                        msg.MessageId
-                    );
-                    return;  // Skip!
-                }
+        logger.LogInformation(
+            "Reserving {Quantity} units of product {ProductId} for order {OrderId}",
+            message.Quantity, message.ProductId, message.OrderId);
 
-                // 2. Store in inbox (atomic - prevents concurrent processing)
-                await _coordinator.ProcessWorkBatchAsync(
-                    instanceId: instanceId,
-                    serviceName: "InventoryWorker",
-                    hostName: Environment.MachineName,
-                    processId: Environment.ProcessId,
-                    metadata: null,
-                    outboxCompletions: [],
-                    outboxFailures: [],
-                    inboxCompletions: [],
-                    inboxFailures: [],
-                    receptorCompletions: [],
-                    receptorFailures: [],
-                    perspectiveCompletions: [],
-                    perspectiveFailures: [],
-                    newOutboxMessages: [],
-                    newInboxMessages: [
-                        new InboxMessage(
-                            MessageId: msg.MessageId,
-                            CorrelationId: msg.CorrelationId,
-                            CausationId: msg.CausationId,
-                            MessageType: msg.MessageType,
-                            Payload: msg.Payload,
-                            SourceTopic: "orders"
-                        )
-                    ],
-                    renewOutboxLeaseIds: [],
-                    renewInboxLeaseIds: [],
-                    ct: ct
-                );
+        // Business logic: check availability, reserve inventory ...
 
-                // 3. Process message (business logic)
-                var orderCreated = JsonSerializer.Deserialize<OrderCreated>(msg.Payload);
+        var inventoryReserved = new InventoryReservedEvent {
+            OrderId = message.OrderId.Value.ToString(),
+            ProductId = message.ProductId.Value,
+            Quantity = message.Quantity,
+            ReservedAt = DateTime.UtcNow
+        };
 
-                if (orderCreated is null) {
-                    throw new InvalidOperationException("Failed to deserialize OrderCreated");
-                }
+        // Emitted events go to the outbox in the SAME transaction
+        // as this message's inbox completion (commit_handler_batch)
+        await dispatcher.PublishAsync(inventoryReserved);
 
-                await ProcessOrderCreatedAsync(orderCreated, ct);
-
-                // 4. Mark as completed
-                await _coordinator.ProcessWorkBatchAsync(
-                    instanceId: instanceId,
-                    serviceName: "InventoryWorker",
-                    hostName: Environment.MachineName,
-                    processId: Environment.ProcessId,
-                    metadata: null,
-                    outboxCompletions: [],
-                    outboxFailures: [],
-                    inboxCompletions: [
-                        new MessageCompletion(
-                            MessageId: msg.MessageId,
-                            Status: MessageProcessingStatus.Completed
-                        )
-                    ],
-                    inboxFailures: [],
-                    receptorCompletions: [],
-                    receptorFailures: [],
-                    perspectiveCompletions: [],
-                    perspectiveFailures: [],
-                    newOutboxMessages: [],
-                    newInboxMessages: [],
-                    renewOutboxLeaseIds: [],
-                    renewInboxLeaseIds: [],
-                    ct: ct
-                );
-
-                _logger.LogInformation(
-                    "Successfully processed message {MessageId}",
-                    msg.MessageId
-                );
-
-            } catch (Exception ex) {
-                _logger.LogError(
-                    ex,
-                    "Failed to process message {MessageId}",
-                    msg.MessageId
-                );
-
-                // Mark as failed
-                await _coordinator.ProcessWorkBatchAsync(
-                    instanceId: instanceId,
-                    serviceName: "InventoryWorker",
-                    hostName: Environment.MachineName,
-                    processId: Environment.ProcessId,
-                    metadata: null,
-                    outboxCompletions: [],
-                    outboxFailures: [],
-                    inboxCompletions: [],
-                    inboxFailures: [
-                        new MessageFailure(
-                            MessageId: msg.MessageId,
-                            Status: MessageProcessingStatus.Failed,
-                            Error: ex.Message,
-                            StackTrace: ex.StackTrace
-                        )
-                    ],
-                    receptorCompletions: [],
-                    receptorFailures: [],
-                    perspectiveCompletions: [],
-                    perspectiveFailures: [],
-                    newOutboxMessages: [],
-                    newInboxMessages: [],
-                    renewOutboxLeaseIds: [],
-                    renewInboxLeaseIds: [],
-                    ct: ct
-                );
-            }
-        }, ct);
-
-        // Keep running
-        await Task.Delay(Timeout.Infinite, ct);
-    }
-
-    private async Task ProcessOrderCreatedAsync(OrderCreated @event, CancellationToken ct) {
-        // Business logic: Reserve inventory
-
-        foreach (var item in @event.Items) {
-            var available = await _db.QuerySingleAsync<int>(
-                "SELECT available FROM inventory WHERE product_id = @ProductId",
-                new { ProductId = item.ProductId },
-                ct
-            );
-
-            if (available < item.Quantity) {
-                throw new InsufficientInventoryException(
-                    $"Product {item.ProductId} has only {available} units available, requested {item.Quantity}"
-                );
-            }
-
-            await _db.ExecuteAsync(
-                "UPDATE inventory SET reserved = reserved + @Quantity WHERE product_id = @ProductId",
-                new { ProductId = item.ProductId, Quantity = item.Quantity },
-                ct
-            );
-        }
-
-        _logger.LogInformation(
-            "Reserved inventory for order {OrderId}",
-            @event.OrderId
-        );
+        return inventoryReserved;
     }
 }
 ```
 
-**Flow**:
-1. Check inbox for duplicate → Skip if found
-2. Insert into inbox (atomic) → Prevents concurrent processing
-3. Process message (business logic)
-4. Mark as completed → Won't process again
+**Flow (all automatic)**:
+1. `TransportConsumerWorker` receives the message; unsubscribed messages are discarded at the boundary
+2. `StoreInboxMessagesAsync` → `store_inbox_messages`: dedup insert gates the inbox insert (duplicates skipped here)
+3. `ClaimWorker` leases the row; `InboxDrainWorker` fetches it in stream-FIFO order; `InboxDispatchWorker` fires lifecycle stages and invokes your receptor
+4. `InboxHandlerWorker` commits the result via `commit_handler_batch` — inbox completion + any events your receptor emitted, atomically
 
 ---
 
@@ -371,30 +219,27 @@ Like the Outbox Pattern, Inbox uses **leases** for coordinating work across mult
 
 ### Claiming Messages
 
-```sql{title="Claiming Messages" description="Claiming Messages" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Sql", "Claiming", "Messages"]}
--- Claim inbox messages for processing
+Claiming happens inside `claim_work` via the `claim_orphaned_inbox` sub-function. Conceptually:
+
+```sql{title="Claiming Messages" description="Claiming Messages (conceptual — see claim_orphaned_inbox in migration 025)" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Sql", "Claiming", "Messages"]}
+-- Claim unowned / lease-expired inbox rows this instance may own
 UPDATE wh_inbox
 SET
     instance_id = @InstanceId,
-    lease_expiry = NOW() + INTERVAL '5 minutes',
-    status = 'Processing'
-WHERE message_id IN (
-    SELECT message_id
-    FROM wh_inbox
-    WHERE
-        status = 'Received'
-        AND (instance_id IS NULL OR lease_expiry < NOW())
-        AND partition_number IN (SELECT * FROM assigned_partitions)
-    ORDER BY received_at
-    LIMIT 100
-)
-RETURNING *;
+    lease_expiry = NOW() + INTERVAL '5 minutes'
+WHERE processed_at IS NULL
+  AND (instance_id IS NULL OR lease_expiry < NOW())
+  AND (scheduled_for IS NULL OR scheduled_for <= NOW())
+  -- Ownership: stream pinned to this instance in wh_active_streams,
+  -- OR unowned and partition_number % active_instance_count = instance_rank
+ORDER BY received_at;
 ```
 
 **Benefits**:
-- ✅ Multiple workers can process different messages
-- ✅ Crashed workers release leases automatically (via expiry)
-- ✅ Work distributed evenly (partition-based)
+- ✅ Multiple workers can process different streams
+- ✅ Crashed workers release leases automatically (via expiry + stale-instance cleanup)
+- ✅ Work distributed evenly (partition modulo + stream pinning)
+- ✅ Claimed rows return as stream ids; `InboxDrainWorker` fetches bodies per stream in FIFO order
 
 ---
 
@@ -405,9 +250,9 @@ RETURNING *;
 ```mermaid
 flowchart TD
     M1["Message arrives with MessageId: msg-123"]
-    A1["Attempt 1 (Worker A)<br/><br/>1. Check inbox for msg-123: NOT FOUND<br/>2. Insert into inbox: SUCCESS — First to insert!<br/>3. Process message: SUCCESS<br/>4. Mark completed: SUCCESS"]
+    A1["Attempt 1 (Worker A)<br/><br/>1. Dedup insert for msg-123: ROW_COUNT = 1 — First to insert!<br/>2. Inbox row created<br/>3. Handler invoked: SUCCESS<br/>4. Handler commit: SUCCESS"]
     M2["Duplicate arrives with MessageId: msg-123 (network retry)"]
-    A2["Attempt 2 (Worker B)<br/><br/>1. Check inbox for msg-123: FOUND! — Duplicate detected!<br/>2. SKIP processing"]
+    A2["Attempt 2 (Worker B)<br/><br/>1. Dedup insert for msg-123: ON CONFLICT, ROW_COUNT = 0 — Duplicate!<br/>2. SKIP inbox insert — message never enters the pipeline"]
 
     M1 --> A1
     M2 --> A2
@@ -417,7 +262,7 @@ flowchart TD
     class A2 layer-event
 ```
 
-**Key**: `UNIQUE INDEX` on `message_id` prevents duplicate inserts.
+**Key**: The `wh_message_deduplication` primary key prevents duplicate inserts.
 
 ### Race Condition Handling
 
@@ -426,11 +271,11 @@ flowchart TD
     Start["Two workers receive same message simultaneously"]
     WA["Worker A"]
     WB["Worker B"]
-    IA["INSERT msg-123 → SUCCESS"]
-    IB["INSERT msg-123 → DUPLICATE KEY ERROR!"]
-    PA["Process message"]
-    SB["Skip (unique constraint violation)"]
-    MC["Mark completed"]
+    IA["Dedup INSERT msg-123 → ROW_COUNT = 1"]
+    IB["Dedup INSERT msg-123 → ON CONFLICT DO NOTHING (ROW_COUNT = 0)"]
+    PA["Inbox row created; handler invoked"]
+    SB["Skip (no inbox row, no error)"]
+    MC["Handler commit"]
 
     Start --> WA
     Start --> WB
@@ -445,7 +290,7 @@ flowchart TD
     class PA,MC layer-core
 ```
 
-**Database guarantees exactly-once** via unique constraint!
+**Database guarantees exactly-once** via the primary key — and `ON CONFLICT DO NOTHING` means the losing worker sees no error, just zero rows.
 
 ---
 
@@ -503,53 +348,44 @@ if (!alreadyReserved) {
 
 ### Retry Logic
 
-```csharp{title="Retry Logic" description="Retry Logic" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Retry", "Logic"]}
-// Failed messages: increment attempts, update status
-foreach (var failure in inboxFailures) {
-    await conn.ExecuteAsync(
-        """
-        UPDATE wh_inbox
-        SET
-            attempts = attempts + 1,
-            status = CASE
-                WHEN attempts + 1 >= 5 THEN 'Failed'  -- Max 5 attempts
-                ELSE 'Received'  -- Retry
-            END,
-            last_error = @Error,
-            instance_id = NULL,
-            lease_expiry = NULL
-        WHERE message_id = @MessageId
-        """,
-        new { failure.MessageId, failure.Error }
-    );
-}
+Failures flow through `ReportFailuresAsync` (batched by `FailureFlushWorker`), which increments `attempts`, stamps `error`/`failure_reason`, and releases the lease so the row can be re-claimed. Retries can be delayed via `scheduled_for` — later messages in the same stream wait behind a scheduled retry to preserve ordering.
+
+```csharp{title="Retry Logic" description="Failures are reported through the coordinator, not raw SQL" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Retry", "Logic"]}
+// FailureFlushWorker drains the failure channel and flushes per category
+await coordinator.ReportFailuresAsync(
+    WorkCategory.Inbox,
+    [
+        new MessageFailure {
+            MessageId = work.MessageId,
+            CompletedStatus = MessageProcessingStatus.Stored,
+            Error = ex.Message,
+            Reason = MessageFailureReason.TransportException
+        }
+    ],
+    ct);
 ```
 
 **Retry Strategy**:
-- Attempt 1-4: Retry (status = Received, available for next poll)
-- Attempt 5+: Give up (status = Failed, needs manual intervention)
+- Attempts 1 through `MaxInboxAttempts` (default 10): row re-claimed and retried (with `scheduled_for` backoff for scheduled retries)
+- Beyond `MaxInboxAttempts`: `InboxDispatchWorker` dead-letters the message
 
 ### Dead Letter Queue
 
-```csharp{title="Dead Letter Queue" description="Dead Letter Queue" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Dead", "Letter", "Queue"]}
-public async Task ReprocessFailedMessagesAsync(CancellationToken ct = default) {
-    var failedMessages = await _db.QueryAsync<InboxRow>(
-        """
-        SELECT * FROM wh_inbox
-        WHERE status = 'Failed'
-        ORDER BY received_at
-        LIMIT 100
-        """,
-        cancellationToken: ct
-    );
+When `attempts` exceeds `MessageProcessingOptions.MaxInboxAttempts` (default 10), the row moves to the internal `wh_dead_letters` table with a forensic snapshot, and the SQL function deletes it from `wh_inbox` in the same transaction:
 
-    foreach (var msg in failedMessages) {
-        // Manual retry or move to dead letter queue
-        _logger.LogWarning(
-            "Failed message {MessageId} after {Attempts} attempts: {Error}",
-            msg.MessageId, msg.Attempts, msg.LastError
-        );
-    }
+```csharp{title="Dead Letter Queue" description="Dead-letter promotion on max attempts (InboxDispatchWorker)" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Dead", "Letter", "Queue"]}
+// InboxDispatchWorker (automatic):
+if (work.Attempts > _options.MaxInboxAttempts) {
+    await _deadLetterStore.MoveAsync(
+        deadLetterId: (Guid)TrackedGuid.NewMedo(),
+        sourceTable: DeadLetterSourceTable.INBOX,
+        sourceId: work.MessageId,
+        failureReason: MessageFailureReason.MaxAttemptsExceeded,
+        errorText: promotionErrorText,
+        instanceId: instanceId,
+        generation: generation,
+        ct: ct);
+    return;  // Row removed from wh_inbox; recover later via dead-letter recovery
 }
 ```
 
@@ -559,23 +395,22 @@ public async Task ReprocessFailedMessagesAsync(CancellationToken ct = default) {
 
 ### DO ✅
 
-- ✅ **Check inbox before processing** (detect duplicates)
-- ✅ **Insert into inbox atomically** (prevents concurrent processing)
-- ✅ **Use unique constraint** on message_id (enforces exactly-once)
+- ✅ **Let the framework store first, process second** (dedup insert gates the pipeline)
+- ✅ **Rely on the dedup primary key** on message_id (enforces exactly-once)
 - ✅ **Make business logic idempotent** (defense-in-depth)
 - ✅ **Log all processing** (correlation ID, message type)
-- ✅ **Monitor failed messages** (alerts when attempts >= 5)
-- ✅ **Clean up old messages** (archive Completed after 30 days)
-- ✅ **Use leases** (enables parallel processing)
+- ✅ **Monitor dead letters** (rows land in `wh_dead_letters` after `MaxInboxAttempts`, default 10)
+- ✅ **Let `perform_maintenance` clean up** (dedup entries purged after retention, default 30 days)
+- ✅ **Use leases** (enables parallel processing across streams)
 
 ### DON'T ❌
 
 - ❌ Skip duplicate detection (leads to duplicate processing)
-- ❌ Process before inserting into inbox (race condition)
-- ❌ Ignore failed messages (silent data loss)
-- ❌ Assume messages arrive in order (they don't!)
-- ❌ Store large payloads in inbox (use size limits)
-- ❌ Process same message concurrently (use leases)
+- ❌ Process before the inbox row exists (race condition)
+- ❌ Ignore dead-lettered messages (silent data loss)
+- ❌ Assume messages arrive in order across streams (only within a stream!)
+- ❌ Store large payloads in inbox (use offload storage for big bodies)
+- ❌ Process the same message concurrently (leases prevent this)
 - ❌ Skip monitoring (blind to failures)
 
 ---
@@ -584,13 +419,14 @@ public async Task ReprocessFailedMessagesAsync(CancellationToken ct = default) {
 
 ### Key Metrics
 
+In production, completed rows are **deleted at commit** — pending depth is what you monitor (completed counts live in your logs/metrics, or in debug mode where rows are retained).
+
 ```csharp{title="Key Metrics" description="Key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Key", "Metrics"]}
 public class InboxMetrics {
-    public int ReceivedCount { get; set; }     // Messages waiting to be processed
-    public int ProcessingCount { get; set; }   // Messages currently being processed
-    public int CompletedCount { get; set; }    // Messages successfully processed
-    public int FailedCount { get; set; }       // Messages that failed max retries
-    public double OldestMessageAge { get; set; }  // Age of oldest Received message (seconds)
+    public int PendingCount { get; set; }      // Unprocessed, not currently leased
+    public int InFlightCount { get; set; }     // Unprocessed, leased by an instance
+    public int DeadLetterCount { get; set; }   // Rows promoted to wh_dead_letters
+    public double OldestMessageAge { get; set; }  // Age of oldest unprocessed message (seconds)
 }
 
 public async Task<InboxMetrics> GetMetricsAsync(CancellationToken ct = default) {
@@ -599,11 +435,10 @@ public async Task<InboxMetrics> GetMetricsAsync(CancellationToken ct = default) 
     return await conn.QuerySingleAsync<InboxMetrics>(
         """
         SELECT
-            COUNT(*) FILTER (WHERE status = 'Received') AS ReceivedCount,
-            COUNT(*) FILTER (WHERE status = 'Processing') AS ProcessingCount,
-            COUNT(*) FILTER (WHERE status = 'Completed') AS CompletedCount,
-            COUNT(*) FILTER (WHERE status = 'Failed') AS FailedCount,
-            EXTRACT(EPOCH FROM (NOW() - MIN(received_at) FILTER (WHERE status = 'Received'))) AS OldestMessageAge
+            COUNT(*) FILTER (WHERE processed_at IS NULL AND instance_id IS NULL) AS PendingCount,
+            COUNT(*) FILTER (WHERE processed_at IS NULL AND instance_id IS NOT NULL) AS InFlightCount,
+            (SELECT COUNT(*) FROM wh_dead_letters WHERE source_table = 'wh_inbox') AS DeadLetterCount,
+            EXTRACT(EPOCH FROM (NOW() - MIN(received_at) FILTER (WHERE processed_at IS NULL))) AS OldestMessageAge
         FROM wh_inbox
         """,
         cancellationToken: ct
@@ -615,79 +450,42 @@ public async Task<InboxMetrics> GetMetricsAsync(CancellationToken ct = default) 
 
 **Critical Alerts**:
 - 🚨 `OldestMessageAge > 600` (message stuck for 10+ minutes)
-- 🚨 `FailedCount > 0` (messages gave up after max retries)
-- 🚨 `ReceivedCount > 10000` (inbox backlog growing)
+- 🚨 `DeadLetterCount > 0` (messages gave up after max retries)
+- 🚨 `PendingCount > 10000` (inbox backlog growing)
 
 **Warning Alerts**:
 - ⚠️ `OldestMessageAge > 60` (message not processed within 1 minute)
-- ⚠️ `ProcessingCount > 1000` (many messages being processed)
+- ⚠️ `InFlightCount > 1000` (many messages being processed)
 
 ---
 
 ## Testing
 
-### Unit Tests
-
-```csharp{title="Unit Tests" description="Unit Tests" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Unit", "Tests"]}
-[Test]
-public async Task ProcessMessage_Duplicate_SkipsProcessingAsync() {
-    // Arrange
-    var messageId = Guid.CreateVersion7();
-
-    // First processing
-    await _coordinator.ProcessWorkBatchAsync(
-        /* ... */,
-        newInboxMessages: [new InboxMessage(MessageId: messageId, /* ... */)],
-        /* ... */
-    );
-
-    await _coordinator.ProcessWorkBatchAsync(
-        /* ... */,
-        inboxCompletions: [new MessageCompletion(MessageId: messageId, Status: MessageProcessingStatus.Completed)],
-        /* ... */
-    );
-
-    // Act - attempt duplicate
-    var isDuplicate = await _coordinator.IsMessageInInboxAsync(messageId);
-
-    // Assert
-    await Assert.That(isDuplicate).IsTrue();
-}
-```
-
 ### Integration Tests
 
-```csharp{title="Integration Tests" description="Integration Tests" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Integration", "Tests"]}
+The framework's own regression suite locks the dedup invariant (see `StoreInboxMessagesSqlTests.cs`):
+
+```csharp{title="Integration Tests" description="Duplicate store no-ops via the dedup table" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Integration", "Tests"]}
 [Test]
-public async Task InventoryWorker_DuplicateMessage_ProcessesOnceAsync() {
+public async Task DuplicateMessageId_SecondCallNoOpsViaDedupTableAsync() {
     // Arrange
-    var message = new OrderCreated(/* ... */);
-    var messageId = message.MessageId;
+    var messageId = (Guid)TrackedGuid.NewMedo();
+    var message = BuildInboxMessage(messageId);
 
-    // Act - publish same message twice
-    await _transport.PublishAsync("orders", message);
-    await Task.Delay(1000);  // Let worker process
+    // Act - store the same message twice
+    await _coordinator.StoreInboxMessagesAsync([message], partitionCount: 10_000);
+    await _coordinator.StoreInboxMessagesAsync([message], partitionCount: 10_000);  // Duplicate!
 
-    await _transport.PublishAsync("orders", message);  // Duplicate!
-    await Task.Delay(1000);  // Let worker process
-
-    // Assert - inventory reserved only once
-    var reserved = await _db.QuerySingleAsync<int>(
-        "SELECT reserved FROM inventory WHERE product_id = @ProductId",
-        new { ProductId = message.Items[0].ProductId }
-    );
-
-    await Assert.That(reserved).IsEqualTo(message.Items[0].Quantity);  // Not doubled!
-
-    // Assert - inbox has one completed entry
+    // Assert - exactly one inbox row and one dedup row
     var inboxCount = await _db.ExecuteScalarAsync<int>(
         "SELECT COUNT(*) FROM wh_inbox WHERE message_id = @MessageId",
         new { MessageId = messageId }
     );
-
     await Assert.That(inboxCount).IsEqualTo(1);
 }
 ```
+
+For end-to-end tests, publish the same message twice through the transport and assert the handler fired once — use completion signals (e.g., `TaskCompletionSource` wired to a lifecycle hook), not `Task.Delay` polling.
 
 ---
 

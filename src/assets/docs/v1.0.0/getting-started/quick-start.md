@@ -1,6 +1,8 @@
 ---
 title: Quick Start Tutorial
 pageType: tutorial
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Getting Started
 order: 3
@@ -9,16 +11,19 @@ description: >-
   receptors, and dispatch commands with complete working examples
 tags: 'quick-start, tutorial, beginner, hello-world'
 codeReferences:
-  - samples/ECommerce/ECommerce.Messages/Commands/CreateOrder.cs
-  - >-
-    samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
-  - samples/ECommerce/ECommerce.BFF.API/Program.cs
+  - samples/ECommerce/ECommerce.Contracts/Commands/CreateOrderCommand.cs
+  - samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
+  - samples/ECommerce/ECommerce.OrderService.API/Program.cs
+  - samples/ECommerce/ECommerce.OrderService.API/OrderDbContext.cs
+testReferences:
+  - samples/ECommerce/ECommerce.Contracts.Tests/Commands/CreateProductCommandTests.cs
+  - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Quick Start Tutorial
 
-Build your first Whizbang application in **10 minutes**. This tutorial walks you through creating a simple order management system using Whizbang's core patterns.
+Build your first Whizbang application in **10 minutes**. This tutorial walks you through creating a simple order management system using Whizbang's core patterns. It mirrors the structure of the [ECommerce sample](https://github.com/whizbang-lib/whizbang/tree/main/samples/ECommerce) that ships with the library.
 
 ## What You'll Build
 
@@ -27,8 +32,9 @@ A minimal ASP.NET Core API that:
 - Processes orders using a **Receptor** (message handler)
 - Returns **OrderCreated** events with validation
 - Uses **Dispatcher** for type-safe message routing
+- Persists framework state (event store, outbox, inbox) via the **EF Core Postgres driver**
 
-**Prerequisites**: Complete the [Installation Guide](installation.md) first.
+**Prerequisites**: Complete the [Installation Guide](installation.md) first. Docker is required for PostgreSQL and RabbitMQ.
 
 ## Step 1: Create Project Structure
 
@@ -43,62 +49,93 @@ cd QuickStartApp.API
 # Add Whizbang packages
 dotnet add package Whizbang.Core
 dotnet add package Whizbang.Generators
+dotnet add package Whizbang.Data.EFCore.Postgres
+dotnet add package Whizbang.Transports.RabbitMQ
 ```
 
-## Step 2: Define Your Messages
+## Step 2: Start Infrastructure (Docker)
 
-Create a `Messages` folder and define your command and event:
+Whizbang's Postgres driver stores the event store, outbox, and inbox in PostgreSQL; RabbitMQ is the local-development transport:
+
+```bash{title="Step 2: Start Infrastructure" description="Start PostgreSQL and RabbitMQ containers" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Step", "Docker", "Infrastructure"]}
+docker run -d --name quickstart-postgres \
+  -e POSTGRES_PASSWORD=dev_password \
+  -e POSTGRES_DB=quickstart \
+  -p 5432:5432 \
+  postgres:16
+
+docker run -d --name quickstart-rabbitmq \
+  -p 5672:5672 -p 15672:15672 \
+  rabbitmq:3-management
+```
+
+Add connection strings to **appsettings.Development.json**:
+
+```json{title="Step 2: Connection Strings" description="Configure connection strings" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Json", "Step", "Connection", "Strings"]}
+{
+  "ConnectionStrings": {
+    "postgres": "Host=localhost;Database=quickstart;Username=postgres;Password=dev_password",
+    "rabbitmq": "amqp://guest:guest@localhost:5672"
+  }
+}
+```
+
+## Step 3: Define Your Messages
+
+Create a `Messages` folder and define your command and event. Commands implement `ICommand`, events implement `IEvent`, and the `[StreamId]` attribute marks the property that identifies the event stream:
 
 **Messages/CreateOrder.cs**:
-```csharp{title="Step 2: Define Your Messages" description="**Messages/CreateOrder." category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Step", "Define", "Your"]}
+```csharp{title="Step 3: Define Your Messages" description="**Messages/CreateOrder." category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Step", "Define", "Your"]}
+using Whizbang.Core;
+
 namespace QuickStartApp.API.Messages;
 
 public record CreateOrder(
+    [property: StreamId] Guid OrderId,
     Guid CustomerId,
     string ProductName,
     int Quantity,
     decimal UnitPrice
-);
+) : ICommand;
 ```
 
 **Messages/OrderCreated.cs**:
-```csharp{title="Step 2: Define Your Messages - OrderCreated" description="**Messages/OrderCreated." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Define", "Your"]}
+```csharp{title="Step 3: Define Your Messages - OrderCreated" description="**Messages/OrderCreated." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Define", "Your"]}
+using Whizbang.Core;
+
 namespace QuickStartApp.API.Messages;
 
 public record OrderCreated(
-    Guid OrderId,
+    [property: StreamId] Guid OrderId,
     Guid CustomerId,
     string ProductName,
     int Quantity,
     decimal UnitPrice,
     decimal Total,
     DateTimeOffset CreatedAt
-);
+) : IEvent;
 ```
 
 **Key Points**:
 - Use **records** for immutability and value semantics
-- Commands are **requests** (CreateOrder)
-- Events are **facts** (OrderCreated - past tense)
+- Commands are **requests** (CreateOrder) and implement `ICommand`
+- Events are **facts** (OrderCreated - past tense) and implement `IEvent`
+- `[StreamId]` identifies which event stream the message belongs to
 - Include all necessary data for downstream consumers
 
-## Step 3: Create Your First Receptor
+## Step 4: Create Your First Receptor
 
 Receptors are **stateless message handlers** that implement business logic.
 
 **Receptors/CreateOrderReceptor.cs**:
-```csharp{title="Step 3: Create Your First Receptor" description="**Receptors/CreateOrderReceptor." category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Step", "Create", "Your"]}
+```csharp{title="Step 4: Create Your First Receptor" description="**Receptors/CreateOrderReceptor." category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Step", "Create", "Your"]}
 using Whizbang.Core;
 using QuickStartApp.API.Messages;
 
 namespace QuickStartApp.API.Receptors;
 
-public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-    private readonly ILogger<CreateOrderReceptor> _logger;
-
-    public CreateOrderReceptor(ILogger<CreateOrderReceptor> logger) {
-        _logger = logger;
-    }
+public class CreateOrderReceptor(ILogger<CreateOrderReceptor> logger)
+    : IReceptor<CreateOrder, OrderCreated> {
 
     public async ValueTask<OrderCreated> HandleAsync(
         CreateOrder message,
@@ -118,17 +155,17 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         }
 
         // Business logic
-        var orderId = Guid.CreateVersion7(); // Time-ordered GUID
         var total = message.Quantity * message.UnitPrice;
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Creating order {OrderId} for customer {CustomerId}: {Quantity}x {ProductName} = {Total:C}",
-            orderId, message.CustomerId, message.Quantity, message.ProductName, total
+            message.OrderId, message.CustomerId, message.Quantity, message.ProductName, total
         );
 
-        // Return event (fact of what happened)
+        // Return event (fact of what happened) - it cascades to the
+        // event store / outbox automatically
         return new OrderCreated(
-            OrderId: orderId,
+            OrderId: message.OrderId,
             CustomerId: message.CustomerId,
             ProductName: message.ProductName,
             Quantity: message.Quantity,
@@ -142,63 +179,104 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Key Patterns**:
 - Implement `IReceptor<TMessage, TResponse>`
-- Use constructor injection for dependencies
+- Use constructor injection for dependencies (primary constructors work well)
 - Validate inputs and throw exceptions for invalid requests
 - Return domain events (OrderCreated) describing what happened
 - Use `ValueTask<T>` for performance (may be synchronous or async)
 
-## Step 4: Register Whizbang Services
+## Step 5: Add the DbContext and Register Whizbang
+
+Create a partial `DbContext` marked with `[WhizbangDbContext]`. Source generators add the Inbox/Outbox/EventStore `DbSet`s and the schema-initialization extension:
+
+**AppDbContext.cs**:
+```csharp{title="Step 5: DbContext" description="**AppDbContext." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "DbContext", "Whizbang"]}
+using Microsoft.EntityFrameworkCore;
+using Whizbang.Data.EFCore.Custom;
+
+namespace QuickStartApp.API;
+
+[WhizbangDbContext]
+public partial class AppDbContext(DbContextOptions<AppDbContext> options)
+    : DbContext(options) {
+    // DbSet properties and OnModelCreating are auto-generated in a partial class
+}
+```
 
 Configure dependency injection in **Program.cs**:
 
-```csharp{title="Step 4: Register Whizbang Services" description="Configure dependency injection in **Program." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Register", "Whizbang"]}
+```csharp{title="Step 5: Register Whizbang Services" description="Configure dependency injection in **Program." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Register", "Whizbang"]}
+using Microsoft.EntityFrameworkCore;
+using QuickStartApp.API;
+using QuickStartApp.API.Generated;
 using Whizbang.Core;
-using QuickStartApp.API.Messages;
-using QuickStartApp.API.Receptors;
+using Whizbang.Core.Generated;
+using Whizbang.Core.Messaging;
+using Whizbang.Core.Observability;
+using Whizbang.Data.EFCore.Postgres;
+using Whizbang.Transports.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add Whizbang Core
-builder.Services.AddWhizbangCore();
+var postgresConnection = builder.Configuration.GetConnectionString("postgres")!;
+var rabbitMqConnection = builder.Configuration.GetConnectionString("rabbitmq")!;
 
-// Register receptors manually (or use Whizbang.Generators for auto-discovery)
-builder.Services.AddTransient<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
+// Transport (RabbitMQ for local development)
+builder.Services.AddRabbitMQTransport(rabbitMqConnection);
+builder.Services.AddRabbitMQHealthChecks();
 
-// Add controllers (if using MVC/API)
+// Observability + worker prerequisites (mirrors samples/ECommerce)
+builder.Services.AddSingleton<ITraceStore, InMemoryTraceStore>();
+builder.Services.AddSingleton<IServiceInstanceProvider, ServiceInstanceProvider>();
+builder.Services.AddSingleton<OrderedStreamProcessor>();
+
+// EF Core DbContext for Inbox/Outbox/EventStore
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(postgresConnection));
+
+// Unified Whizbang API with the EF Core Postgres driver
+builder.Services
+    .AddWhizbang()
+    .WithEFCore<AppDbContext>()
+    .WithDriver.Postgres;
+
+// Generated registrations (produced by Whizbang.Generators)
+builder.Services.AddReceptors();
+builder.Services.AddWhizbangDispatcher();
+
+// Controllers
 builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment()) {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+// Initialize Whizbang database schema on startup (generated, idempotent)
+using (var scope = app.Services.CreateScope()) {
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await dbContext.EnsureWhizbangDatabaseInitializedAsync(logger);
 }
 
-app.UseHttpsRedirection();
-app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
 ```
 
 **Important**:
-- `AddWhizbangCore()` registers the dispatcher and core services
-- Receptors can be registered manually or auto-discovered (with Whizbang.Generators)
-- Receptors are typically **transient** (new instance per request)
+- `AddWhizbang().WithEFCore<AppDbContext>().WithDriver.Postgres` registers the dispatcher infrastructure, `IInbox`, `IOutbox`, `IEventStore`, background workers, and per-model lenses
+- `AddReceptors()` and `AddWhizbangDispatcher()` are **generated** extension methods - they appear after your first build (in the `QuickStartApp.API.Generated` / `Whizbang.Core.Generated` namespaces)
+- `EnsureWhizbangDatabaseInitializedAsync()` creates all `wh_*` tables and PostgreSQL functions; it is idempotent and safe on every startup
 
-## Step 5: Create API Endpoint
+## Step 6: Create API Endpoint
 
-Create a minimal API endpoint to dispatch your command:
+Create a controller to dispatch your command:
 
-**Endpoints/OrderEndpoints.cs**:
-```csharp{title="Step 5: Create API Endpoint" description="**Endpoints/OrderEndpoints." category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Step", "Create", "API"]}
+**Controllers/OrdersController.cs**:
+```csharp{title="Step 6: Create API Endpoint" description="**Controllers/OrdersController." category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Step", "Create", "API"]}
 using Microsoft.AspNetCore.Mvc;
 using Whizbang.Core;
+using Whizbang.Core.ValueObjects;
 using QuickStartApp.API.Messages;
 
-namespace QuickStartApp.API.Endpoints;
+namespace QuickStartApp.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -213,22 +291,19 @@ public class OrdersController : ControllerBase {
 
     [HttpPost]
     public async Task<ActionResult<OrderCreated>> CreateOrder(
-        [FromBody] CreateOrderRequest request,
-        CancellationToken cancellationToken) {
+        [FromBody] CreateOrderRequest request) {
 
         try {
             var command = new CreateOrder(
+                OrderId: TrackedGuid.NewMedo(),  // time-ordered UUIDv7
                 CustomerId: request.CustomerId,
                 ProductName: request.ProductName,
                 Quantity: request.Quantity,
                 UnitPrice: request.UnitPrice
             );
 
-            // Dispatch command and get typed result (< 20ns, zero allocation)
-            var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(
-                command,
-                cancellationToken
-            );
+            // Dispatch command and get typed result (< 20ns dispatch overhead)
+            var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
 
             _logger.LogInformation("Order {OrderId} created successfully", result.OrderId);
 
@@ -240,15 +315,12 @@ public class OrdersController : ControllerBase {
         } catch (InvalidOperationException ex) {
             _logger.LogWarning(ex, "Invalid order request");
             return BadRequest(new { error = ex.Message });
-        } catch (Exception ex) {
-            _logger.LogError(ex, "Failed to create order");
-            return StatusCode(500, new { error = "An unexpected error occurred" });
         }
     }
 
     [HttpGet("{orderId:guid}")]
     public ActionResult<OrderCreated> GetOrder(Guid orderId) {
-        // Placeholder - in real app, query from read model via Lens
+        // Placeholder - in a real app, query the read model via ILensQuery<T>
         return NotFound(new { error = "Order retrieval not implemented in quick start" });
     }
 }
@@ -265,10 +337,11 @@ public record CreateOrderRequest(
 **Key Patterns**:
 - Inject `IDispatcher` into your controller/endpoint
 - Use `LocalInvokeAsync<TMessage, TResponse>` for **in-process** dispatch with typed result
+- Generate stream IDs with `TrackedGuid.NewMedo()` (time-ordered UUIDv7)
 - Handle exceptions from receptors (validation errors, business rule violations)
-- Return appropriate HTTP status codes (201 Created, 400 Bad Request, 500 Internal Server Error)
+- Return appropriate HTTP status codes (201 Created, 400 Bad Request)
 
-## Step 6: Run and Test
+## Step 7: Run and Test
 
 ### Start the Application
 
@@ -276,19 +349,13 @@ public record CreateOrderRequest(
 dotnet run
 ```
 
-**Expected output**:
-```
-info: Microsoft.Hosting.Lifetime[14]
-      Now listening on: https://localhost:7001
-info: Microsoft.Hosting.Lifetime[14]
-      Now listening on: http://localhost:5001
-```
+Watch the logs - on first startup Whizbang initializes its schema (you'll see the `wh_*` tables created in the `quickstart` database).
 
 ### Test with curl
 
-**Valid request**:
+**Valid request** (use the HTTP port from your launch profile):
 ```bash{title="Test with curl" description="Valid request:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Test"]}
-curl -X POST https://localhost:7001/api/orders \
+curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{
     "customerId": "550e8400-e29b-41d4-a716-446655440000",
@@ -307,13 +374,13 @@ curl -X POST https://localhost:7001/api/orders \
   "quantity": 2,
   "unitPrice": 999.99,
   "total": 1999.98,
-  "createdAt": "2024-12-12T10:30:00Z"
+  "createdAt": "2026-07-16T10:30:00Z"
 }
 ```
 
 **Invalid request** (negative quantity):
 ```bash{title="Test with curl (3)" description="Invalid request (negative quantity):" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Test"]}
-curl -X POST https://localhost:7001/api/orders \
+curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{
     "customerId": "550e8400-e29b-41d4-a716-446655440000",
@@ -330,22 +397,12 @@ curl -X POST https://localhost:7001/api/orders \
 }
 ```
 
-### Test with Swagger
+### Verify the Event Store
 
-1. Navigate to `https://localhost:7001/swagger`
-2. Expand **POST /api/orders**
-3. Click **Try it out**
-4. Enter request body:
-   ```json
-   {
-     "customerId": "550e8400-e29b-41d4-a716-446655440000",
-     "productName": "Mechanical Keyboard",
-     "quantity": 1,
-     "unitPrice": 149.99
-   }
-   ```
-5. Click **Execute**
-6. Verify **201 Created** response
+```bash{title="Verify the Event Store" description="Query the event store table:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Verify", "Event", "Store"]}
+docker exec quickstart-postgres psql -U postgres -d quickstart \
+  -c "SELECT event_type, stream_id, version FROM wh_event_store ORDER BY created_at;"
+```
 
 ## What You Just Built
 
@@ -353,9 +410,9 @@ Congratulations! You've created a working Whizbang application with:
 
 ✅ **Type-safe messaging** - Compiler enforces CreateOrder → OrderCreated
 ✅ **Zero reflection** - All routing happens at compile time
+✅ **Durable events** - OrderCreated lands in `wh_event_store` automatically
 ✅ **Clean architecture** - Commands, events, and handlers are separated
 ✅ **Business logic isolation** - Validation and rules in receptor, not controller
-✅ **Performance** - < 20ns dispatch with zero allocations
 
 ## Understanding the Flow
 
@@ -370,158 +427,99 @@ CreateOrderReceptor.HandleAsync(command)
     ↓
 Validation → Business Logic → Return OrderCreated event
     ↓
+Event cascades to event store / outbox (background workers publish it)
+    ↓
 Return 201 Created with OrderCreated response
 ```
 
 ## Next Steps
 
-### Add Source Generators (Auto-Discovery)
-
-Currently, you're registering receptors manually:
-```csharp{title="Add Source Generators (Auto-Discovery)" description="Currently, you're registering receptors manually:" category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Add", "Source", "Generators"]}
-builder.Services.AddTransient<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
-```
-
-With **Whizbang.Generators**, receptors are discovered automatically:
-
-1. Ensure `Whizbang.Generators` package is referenced
-2. Remove manual receptor registrations
-3. Add auto-discovery:
-   ```csharp
-   builder.Services.AddWhizbangCore();
-   builder.Services.AddDiscoveredReceptors(); // Auto-registers all IReceptor implementations
-   ```
-4. Rebuild: `dotnet build`
-5. Check `.whizbang/cache/ReceptorRegistrations.g.cs` for generated code
-
-**Benefits**:
-- No manual registration needed
-- Compile-time verification
-- AOT-compatible
-- Zero reflection
-
 ### Add Perspectives (Read Models)
 
-Perspectives listen to events and update read models:
+Perspectives are **pure functions** that fold events into read models. The framework persists the model (in a `wh_per_*` table) and tracks progress per stream - your code never touches the database:
 
 **Perspectives/OrderSummaryPerspective.cs**:
 ```csharp{title="Add Perspectives (Read Models)" description="**Perspectives/OrderSummaryPerspective." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Add", "Perspectives", "Read"]}
 using Whizbang.Core;
+using Whizbang.Core.Perspectives;
 using QuickStartApp.API.Messages;
 
-public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
-    private readonly ILogger<OrderSummaryPerspective> _logger;
-    // In real app: inject IDbConnectionFactory or DbContext
+namespace QuickStartApp.API.Perspectives;
 
-    public OrderSummaryPerspective(ILogger<OrderSummaryPerspective> logger) {
-        _logger = logger;
-    }
+public sealed record OrderSummary {
+    [StreamId]
+    public Guid OrderId { get; init; }
+    public Guid CustomerId { get; init; }
+    public string ProductName { get; init; } = "";
+    public decimal Total { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+}
 
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-        _logger.LogInformation(
-            "Updating order summary for {OrderId} - Total: {Total:C}",
-            @event.OrderId, @event.Total
-        );
-
-        // In real app: update denormalized read model in database
-        // await _db.ExecuteAsync("INSERT INTO order_summaries (...) VALUES (...)", @event);
-    }
+public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreated> {
+    public OrderSummary Apply(OrderSummary currentData, OrderCreated eventData) =>
+        currentData with {
+            OrderId = eventData.OrderId,
+            CustomerId = eventData.CustomerId,
+            ProductName = eventData.ProductName,
+            Total = eventData.Total,
+            CreatedAt = eventData.CreatedAt
+        };
 }
 ```
 
-Register perspective:
-```csharp{title="Add Perspectives (Read Models) (2)" description="Register perspective:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Add", "Perspectives", "Read"]}
-builder.Services.AddTransient<IPerspectiveOf<OrderCreated>, OrderSummaryPerspective>();
-// Or use AddDiscoveredPerspectives() with Whizbang.Generators
-```
+Perspectives are discovered by source generators - no manual registration. Query the read model through the automatically registered lens:
 
-Publish events after receptor completes:
-```csharp{title="Add Perspectives (Read Models) (3)" description="Publish events after receptor completes:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Add", "Perspectives", "Read"]}
-var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command, ct);
+```csharp{title="Add Perspectives (Read Models) (2)" description="Query via lens:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Add", "Perspectives", "Read"]}
+[HttpGet("{orderId:guid}")]
+public async Task<ActionResult<OrderSummary>> GetOrder(
+    Guid orderId,
+    [FromServices] ILensQuery<OrderSummary> lens) {
 
-// Publish event to all perspectives
-await _dispatcher.PublishAsync(result, ct);
-```
-
-### Add Data Persistence
-
-Install Dapper + PostgreSQL:
-```bash{title="Add Data Persistence" description="Install Dapper + PostgreSQL:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Add", "Data", "Persistence"]}
-dotnet add package Whizbang.Data.Dapper.Postgres
-```
-
-Configure connection string in **appsettings.Development.json**:
-```json{title="Add Data Persistence (2)" description="Configure connection string in **appsettings." category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Json", "Add", "Data", "Persistence"]}
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=quickstart;Username=postgres;Password=your_password"
-  }
+    var order = await lens.DefaultScope.GetByIdAsync(orderId);
+    return order is null ? NotFound() : Ok(order);
 }
 ```
 
-Register database:
-```csharp{title="Add Data Persistence (3)" description="Register database:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Add", "Data", "Persistence"]}
-builder.Services.AddWhizbangDapper(
-    builder.Configuration.GetConnectionString("DefaultConnection")!
-);
-```
-
-Use in receptor:
-```csharp{title="Add Data Persistence - CreateOrderReceptor" description="Use in receptor:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Add", "Data", "Persistence"]}
-public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-    private readonly IDbConnectionFactory _db;
-
-    public CreateOrderReceptor(IDbConnectionFactory db) {
-        _db = db;
-    }
-
-    public async ValueTask<OrderCreated> HandleAsync(CreateOrder message, CancellationToken ct = default) {
-        // Save to database
-        await using var conn = _db.CreateConnection();
-        await conn.ExecuteAsync(
-            "INSERT INTO orders (order_id, customer_id, product_name, quantity, unit_price, total, created_at) VALUES (@OrderId, @CustomerId, @ProductName, @Quantity, @UnitPrice, @Total, @CreatedAt)",
-            new {
-                OrderId = orderId,
-                message.CustomerId,
-                message.ProductName,
-                message.Quantity,
-                message.UnitPrice,
-                Total = total,
-                CreatedAt = DateTimeOffset.UtcNow
-            }
-        );
-
-        return new OrderCreated(/* ... */);
-    }
-}
-```
+See the [Perspectives Guide](../fundamentals/perspectives/perspectives.md) for multi-event perspectives, actions, and rebuild.
 
 ### Add Tests
 
-Install testing packages:
+Whizbang uses **TUnit** for testing. Create a test project and reference your API:
+
 ```bash{title="Add Tests" description="Install testing packages:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Add", "Tests"]}
-dotnet new tunit -n QuickStartApp.API.Tests
+dotnet new classlib -n QuickStartApp.API.Tests
 cd QuickStartApp.API.Tests
-dotnet add package Whizbang.Testing
-dotnet add package TUnit.Assertions
+dotnet add package TUnit
 dotnet add reference ../QuickStartApp.API
 ```
 
-Test your receptor:
+TUnit runs on Microsoft.Testing.Platform, so the test project must be executable (this mirrors the library's own test projects):
+
+```xml{title="Add Tests (2)" description="Test project setup:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Xml", "Add", "Tests"]}
+<!-- QuickStartApp.API.Tests.csproj -->
+<PropertyGroup>
+  <OutputType>Exe</OutputType>
+  <IsPackable>false</IsPackable>
+</PropertyGroup>
+```
+
+Test your receptor directly - receptors are plain classes:
+
 ```csharp{title="Add Tests - CreateOrderReceptorTests" description="Test your receptor:" category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Add", "Tests", "CreateOrderReceptorTests"]}
-using TUnit.Assertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using Whizbang.Core.ValueObjects;
 using QuickStartApp.API.Messages;
 using QuickStartApp.API.Receptors;
 
 public class CreateOrderReceptorTests {
     [Test]
-    public async Task HandleAsync_ValidOrder_ReturnsOrderCreated() {
+    public async Task HandleAsync_ValidOrder_ReturnsOrderCreatedAsync() {
         // Arrange
-        var logger = new NullLogger<CreateOrderReceptor>();
-        var receptor = new CreateOrderReceptor(logger);
+        var receptor = new CreateOrderReceptor(NullLogger<CreateOrderReceptor>.Instance);
 
         var command = new CreateOrder(
-            CustomerId: Guid.NewGuid(),
+            OrderId: TrackedGuid.NewMedo(),
+            CustomerId: TrackedGuid.NewMedo(),
             ProductName: "Test Product",
             Quantity: 5,
             UnitPrice: 19.99m
@@ -531,7 +529,7 @@ public class CreateOrderReceptorTests {
         var result = await receptor.HandleAsync(command);
 
         // Assert
-        await Assert.That(result.OrderId).IsNotEqualTo(Guid.Empty);
+        await Assert.That(result.OrderId).IsEqualTo(command.OrderId);
         await Assert.That(result.CustomerId).IsEqualTo(command.CustomerId);
         await Assert.That(result.ProductName).IsEqualTo("Test Product");
         await Assert.That(result.Quantity).IsEqualTo(5);
@@ -540,13 +538,13 @@ public class CreateOrderReceptorTests {
     }
 
     [Test]
-    public async Task HandleAsync_InvalidQuantity_ThrowsException() {
+    public async Task HandleAsync_InvalidQuantity_ThrowsExceptionAsync() {
         // Arrange
-        var logger = new NullLogger<CreateOrderReceptor>();
-        var receptor = new CreateOrderReceptor(logger);
+        var receptor = new CreateOrderReceptor(NullLogger<CreateOrderReceptor>.Instance);
 
         var command = new CreateOrder(
-            CustomerId: Guid.NewGuid(),
+            OrderId: TrackedGuid.NewMedo(),
+            CustomerId: TrackedGuid.NewMedo(),
             ProductName: "Test Product",
             Quantity: -1, // Invalid
             UnitPrice: 19.99m
@@ -554,8 +552,7 @@ public class CreateOrderReceptorTests {
 
         // Act & Assert
         await Assert.That(async () => await receptor.HandleAsync(command))
-            .ThrowsException<InvalidOperationException>()
-            .WithMessage("Quantity must be greater than zero");
+            .Throws<InvalidOperationException>();
     }
 }
 ```
@@ -565,6 +562,8 @@ Run tests:
 dotnet test
 ```
 
+**Testing tips**: never use `Task.Delay`/polling in tests — use completion signals. For integration tests, `.WithDriver.InMemory` swaps the Postgres driver for an in-memory one.
+
 ### Explore the ECommerce Sample
 
 The complete ECommerce sample demonstrates:
@@ -572,7 +571,7 @@ The complete ECommerce sample demonstrates:
 - **Microservices** architecture (Order, Inventory, Payment, Shipping, Notification)
 - **Event-driven workflows** with Outbox/Inbox patterns
 - **.NET Aspire orchestration** for local development
-- **Angular 20 UI** with NgRx state management
+- **Angular UI** with NgRx state management
 - **Integration testing** with TUnit
 
 See [ECommerce Tutorial](../../drafts/metrics/overview.md) for complete walkthrough.
@@ -589,21 +588,21 @@ CreateOrder (command) → CreateOrderReceptor → OrderCreated (event)
 
 ### Pattern 2: Event → Perspectives
 ```csharp{title="Pattern 2: Event → Perspectives" description="Pattern 2: Event → Perspectives" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Pattern", "Event", "Perspectives"]}
-OrderCreated (event) → OrderSummaryPerspective → Update read model
-                     → InventoryPerspective → Update stock levels
-                     → AnalyticsPerspective → Update dashboards
+OrderCreated (event) → OrderSummaryPerspective.Apply → wh_per_order_summary
+                     → InventoryPerspective.Apply    → wh_per_inventory
+                     → AnalyticsPerspective.Apply    → wh_per_analytics
 ```
-- One event can trigger multiple perspectives
+- One event can feed multiple perspectives
+- Perspectives are **pure functions** - the framework persists the results
 - Perspectives are **eventually consistent**
-- Each perspective maintains its own optimized read model
 
 ### Pattern 3: Query via Lenses
 ```csharp{title="Pattern 3: Query via Lenses" description="Pattern 3: Query via Lenses" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Pattern", "Query"]}
-GET /api/orders/{id} → OrderLens → Query read model → Return DTO
+GET /api/orders/{id} → ILensQuery<OrderSummary> → wh_per_* table → Return model
 ```
-- Lenses are **query-optimized** repositories
-- Read from perspectives' denormalized tables
-- Fast, simple SQL queries (no joins)
+- `ILensQuery<TModel>` is registered automatically per perspective model
+- Use `.DefaultScope.GetByIdAsync(id)` or `.DefaultScope.Query` (LINQ)
+- Fast, indexed reads over denormalized JSONB rows
 
 ## Troubleshooting
 
@@ -612,15 +611,12 @@ GET /api/orders/{id} → OrderLens → Query read model → Return DTO
 **Symptom**: Runtime exception when calling `LocalInvokeAsync`
 
 **Solution**:
-1. Verify receptor is registered in `Program.cs`:
+1. Verify the generated registrations are called in `Program.cs`:
    ```csharp
-   builder.Services.AddTransient<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
+   builder.Services.AddReceptors();
+   builder.Services.AddWhizbangDispatcher();
    ```
-2. Or use auto-discovery:
-   ```csharp
-   builder.Services.AddDiscoveredReceptors();
-   ```
-3. Rebuild: `dotnet clean && dotnet build`
+2. Rebuild so the generators re-run: `dotnet clean && dotnet build`
 
 ### Issue: "Type 'IDispatcher' not found"
 
@@ -642,11 +638,11 @@ GET /api/orders/{id} → OrderLens → Query read model → Return DTO
 
 ### Issue: Generated files not appearing
 
-**Symptom**: Source generators not creating files in `.whizbang/cache/`
+**Symptom**: `AddReceptors()` / `EnsureWhizbangDatabaseInitializedAsync()` don't exist, or no files in `.whizbang/cache/`
 
 **Solution**:
-1. Ensure `Whizbang.Generators` package is referenced
-2. Check MSBuild properties in `.csproj`:
+1. Ensure the `Whizbang.Generators` package is referenced (and `Whizbang.Data.EFCore.Postgres` for the DbContext extension)
+2. To inspect generated sources on disk, add MSBuild properties in `.csproj`:
    ```xml
    <PropertyGroup>
      <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
@@ -663,8 +659,8 @@ GET /api/orders/{id} → OrderLens → Query read model → Return DTO
 🎯 **Receptors** handle commands and return events
 🎯 **Dispatcher** routes messages with compile-time type safety
 🎯 **Zero Reflection** - all wiring happens via source generators
-🎯 **Type Safety** - compiler enforces message → response relationships
-🎯 **Performance** - < 20ns in-process dispatch with zero allocations
+🎯 **Durable by default** - events cascade to `wh_event_store` and the outbox
+🎯 **Pure perspectives** - read models are folds over events, persisted by the framework
 
 ## Further Reading
 
@@ -690,4 +686,4 @@ GET /api/orders/{id} → OrderLens → Query read model → Return DTO
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

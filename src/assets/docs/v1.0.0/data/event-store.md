@@ -1,6 +1,8 @@
 ---
 title: Event Store
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Data Access
 order: 4
@@ -11,9 +13,14 @@ tags: >-
   event-sourcing, event-store, streams, replay, checkpoints, snapshots,
   postgresql
 codeReferences:
-  - src/Whizbang.Core/EventStore/IEventStore.cs
-  - src/Whizbang.Core/Coordination/IWorkCoordinator.cs
-  - src/Whizbang.Data.Postgres/Schema/event_store.sql
+  - src/Whizbang.Core/Messaging/IEventStore.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Data.Schema/Schemas/EventStoreSchema.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreEventStoreTests.cs
+  - tests/Whizbang.Data.Schema.Tests/Schemas/EventStoreSchemaTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -52,86 +59,91 @@ flowchart RL
 ### Core Tables
 
 ```sql{title="Core Tables" description="Core Tables" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Sql", "Core", "Tables"]}
--- Event stream (append-only)
-CREATE TABLE wh_events (
-    event_id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),  -- Time-ordered
-    stream_id UUID NOT NULL,                               -- Aggregate/entity ID
-    stream_type VARCHAR(200) NOT NULL,                     -- 'Order', 'Customer', etc.
+-- Event stream (append-only). DDL is generated from the C# schema definition
+-- (EventStoreSchema) by EnsureWhizbangDatabaseInitializedAsync().
+CREATE TABLE IF NOT EXISTS wh_event_store (
+    event_id UUID PRIMARY KEY,                -- UUIDv7 (time-ordered), assigned client-side
+    stream_id UUID NOT NULL,                  -- Stream identifier
+    aggregate_id UUID NOT NULL,               -- Aggregate/entity ID
+    aggregate_type VARCHAR(500) NOT NULL,     -- 'Order', 'Customer', etc.
 
-    event_type VARCHAR(200) NOT NULL,                      -- 'OrderCreated', 'OrderShipped', etc.
-    event_data JSONB NOT NULL,                             -- Event payload
-    event_metadata JSONB DEFAULT '{}',                     -- Context (user, tenant, correlation)
+    event_type VARCHAR(500) NOT NULL,         -- 'OrderCreatedEvent', etc.
+    event_data JSONB NOT NULL,                -- Event payload
+    metadata JSONB NOT NULL,                  -- Envelope context (hops, correlation)
+    scope JSONB,                              -- Security/tenant scope
 
-    sequence_number BIGINT NOT NULL,                       -- Position in stream (1, 2, 3, ...)
-    global_sequence BIGSERIAL NOT NULL UNIQUE,             -- Global ordering across all streams
-
-    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    version INTEGER NOT NULL,                 -- Position in stream (1, 2, 3, ...)
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    -- Composite unique constraint (one sequence per stream)
-    CONSTRAINT uq_stream_sequence UNIQUE (stream_id, sequence_number)
+    flags INTEGER NOT NULL DEFAULT 0          -- EventFlags bitmask (collective/composite)
 );
 
--- Indexes
-CREATE INDEX idx_events_stream_id ON wh_events (stream_id, sequence_number);
-CREATE INDEX idx_events_stream_type ON wh_events (stream_type);
-CREATE INDEX idx_events_event_type ON wh_events (event_type);
-CREATE INDEX idx_events_timestamp ON wh_events (timestamp DESC);
-CREATE INDEX idx_events_global_sequence ON wh_events (global_sequence);
+-- Indexes (unique per-stream and per-aggregate versions)
+CREATE UNIQUE INDEX idx_event_store_stream ON wh_event_store (stream_id, version);
+CREATE UNIQUE INDEX idx_event_store_aggregate ON wh_event_store (aggregate_id, version);
+CREATE INDEX idx_event_store_aggregate_type ON wh_event_store (aggregate_type, created_at);
 ```
 
 **Key Design Decisions**:
-- **UUIDv7** for `event_id`: Time-ordered, insert-friendly
-- **sequence_number**: Position within a single stream (1, 2, 3, ...)
-- **global_sequence**: Total ordering across all streams (for projections)
-- **JSONB** for `event_data`: Flexible schema, queryable
-- **stream_type**: Partition by aggregate type (Order, Customer, Product, etc.)
+- **UUIDv7** for `event_id`: Time-ordered, insert-friendly - reads order by `event_id` directly
+- **version**: Position within a single stream (1, 2, 3, ...), enforced by a unique index
+- **commit_sequence** (added by migration `046_CommitSequenceSchema`): global commit ordering, stamped asynchronously after commit for deterministic cross-stream/cross-service ordering
+- **JSONB** for `event_data`/`metadata`/`scope`: Flexible schema, queryable
+- **aggregate_type**: Query/filter by aggregate type (Order, Customer, Product, etc.)
 
 ---
 
 ### Event Processing Tracking
 
 ```sql{title="Event Processing Tracking" description="Event Processing Tracking" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Sql", "Event", "Processing", "Tracking"]}
--- Receptor processing (log-style tracking)
-CREATE TABLE wh_receptor_processing (
+-- Receptor processing (log-style tracking with lease-based claiming)
+CREATE TABLE IF NOT EXISTS wh_receptor_processing (
+    id UUID PRIMARY KEY,
     event_id UUID NOT NULL,
-    receptor_name VARCHAR(200) NOT NULL,
-    status VARCHAR(50) NOT NULL,  -- 'Processed', 'Failed', 'Skipped'
-    processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    receptor_name VARCHAR(500) NOT NULL,
+    stream_id UUID,
+    partition_number INTEGER,
+    status VARCHAR(50) NOT NULL,        -- 'Pending', 'Processing', 'Completed', 'Failed'
+    attempts INTEGER NOT NULL DEFAULT 0,
     error TEXT,
-
-    PRIMARY KEY (event_id, receptor_name),
-    FOREIGN KEY (event_id) REFERENCES wh_events (event_id) ON DELETE CASCADE
+    instance_id UUID,                   -- Claiming service instance
+    lease_expiry TIMESTAMPTZ,           -- Lease-based work claiming
+    started_at TIMESTAMPTZ,
+    claimed_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    processed_at TIMESTAMPTZ
 );
 
-CREATE INDEX idx_receptor_processing_status ON wh_receptor_processing (status);
-
--- Perspective checkpoints (stream-based projections)
-CREATE TABLE wh_perspective_checkpoints (
+-- Perspective cursors (stream-based projection tracking)
+CREATE TABLE IF NOT EXISTS wh_perspective_cursors (
     stream_id UUID NOT NULL,
-    perspective_name VARCHAR(200) NOT NULL,
-    last_event_id UUID NOT NULL,
-    last_sequence_number BIGINT NOT NULL,
-    status VARCHAR(50) NOT NULL,  -- 'UpToDate', 'Rebuilding', 'Failed'
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    perspective_name VARCHAR(500) NOT NULL,
+    last_event_id UUID NOT NULL,        -- Cursor: last processed event (UUIDv7-ordered)
+    status VARCHAR(50) NOT NULL,
+    processed_at TIMESTAMPTZ,
     error TEXT,
 
-    PRIMARY KEY (stream_id, perspective_name),
-    FOREIGN KEY (last_event_id) REFERENCES wh_events (event_id) ON DELETE CASCADE
-);
+    -- Rewind support (late-arriving events)
+    rewind_trigger_event_id UUID,
+    rewind_flagged_at TIMESTAMPTZ,
+    rewind_first_flagged_at TIMESTAMPTZ,
 
-CREATE INDEX idx_perspective_checkpoints_perspective ON wh_perspective_checkpoints (perspective_name);
-CREATE INDEX idx_perspective_checkpoints_status ON wh_perspective_checkpoints (status);
+    -- Per-stream lock (used during rebuild/rewind)
+    stream_lock_instance_id UUID,
+    stream_lock_expiry TIMESTAMPTZ,
+    stream_lock_reason VARCHAR(100),
+
+    PRIMARY KEY (stream_id, perspective_name)
+);
 ```
 
 **Design Differences**:
 
-| Aspect | Receptors (wh_receptor_processing) | Perspectives (wh_perspective_checkpoints) |
+| Aspect | Receptors (wh_receptor_processing) | Perspectives (wh_perspective_cursors) |
 |--------|-------------------------------------|------------------------------------------|
-| **Tracking** | Per event + receptor | Per stream + perspective |
-| **Ordering** | No ordering (parallel) | Ordered within stream |
+| **Tracking** | Per event + receptor (log-style) | Per stream + perspective (cursor-style) |
+| **Ordering** | No ordering (parallel) | Ordered within stream (by UUIDv7 event_id) |
 | **Use Case** | Side effects, notifications | Read model projections |
-| **Replay** | Re-process individual events | Rebuild from checkpoint |
+| **Replay** | Re-process individual events | Advance/rewind the stream cursor |
 
 ---
 
@@ -143,8 +155,11 @@ The simplest way to append events is to pass just the stream ID and event. Whizb
 
 ```csharp{title="Simple Event Storage (Recommended)" description="The simplest way to append events is to pass just the stream ID and event." category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Event", "Storage", "Recommended"]}
 public class OrderReceptor(IEventStore eventStore) : IReceptor<CreateOrder, OrderCreated> {
-    public async ValueTask<OrderCreated> ReceiveAsync(CreateOrder command, CancellationToken ct) {
-        var orderId = Guid.CreateVersion7();
+    public async ValueTask<OrderCreated> HandleAsync(
+        CreateOrder command,
+        CancellationToken ct = default) {
+
+        Guid orderId = TrackedGuid.NewMedo();  // time-ordered UUIDv7
 
         var @event = new OrderCreated(orderId, command.CustomerId, command.Total);
 
@@ -181,127 +196,59 @@ var envelope = new MessageEnvelope<OrderCreated> {
 await eventStore.AppendAsync(orderId, envelope, ct);
 ```
 
-### Low-Level Event Storage (Implementation Detail)
+### Batch Appends
 
-For reference, here's the underlying storage implementation:
+When one wire message fans out into many inner events (composite events), use `AppendBatchAsync` so backends can bulk-insert in one round trip:
 
-```csharp{title="Low-Level Event Storage (Implementation Detail)" description="For reference, here's the underlying storage implementation:" category="Implementation" difficulty="ADVANCED" tags=["Data", "Low-Level", "Event", "Storage"]}
-public class EventStore : IEventStore {
-    private readonly IDbConnectionFactory _db;
+```csharp{title="Batch Appends" description="Append a batch of envelopes in a single operation:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Batch", "Appends"]}
+await eventStore.AppendBatchAsync(
+    [
+        (orderId, envelope1),
+        (orderId, envelope2),
+        (otherStreamId, envelope3)
+    ],
+    ct
+);
+```
 
-    public async Task<Guid> AppendAsync(
-        Guid streamId,
-        string streamType,
-        string eventType,
-        object eventData,
-        Dictionary<string, object>? metadata = null,
-        CancellationToken ct = default) {
+Entries land in the supplied order. The default implementation loops over `AppendAsync`; the EF Core Postgres backend can bulk-insert.
 
-        await using var conn = _db.CreateConnection();
+### The IEventStore Surface
 
-        // Get next sequence number for stream
-        var nextSequence = await conn.QuerySingleAsync<long>(
-            "SELECT COALESCE(MAX(sequence_number), 0) + 1 FROM wh_events WHERE stream_id = @StreamId",
-            new { StreamId = streamId }
-        );
+```csharp{title="The IEventStore Surface" description="Key members of the IEventStore interface:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "IEventStore", "Interface"]}
+public interface IEventStore {
+    // Appending
+    Task AppendAsync<TMessage>(Guid streamId, MessageEnvelope<TMessage> envelope, CancellationToken ct = default);
+    Task AppendAsync<TMessage>(Guid streamId, TMessage message, CancellationToken ct = default) where TMessage : notnull;
+    Task AppendBatchAsync<TMessage>(IReadOnlyList<(Guid streamId, MessageEnvelope<TMessage> envelope)> entries, CancellationToken ct = default);
 
-        var eventId = Guid.CreateVersion7();
+    // Reading (async streams, ordered by sequence / UUIDv7 event id)
+    IAsyncEnumerable<MessageEnvelope<TMessage>> ReadAsync<TMessage>(Guid streamId, long fromSequence, CancellationToken ct = default);
+    IAsyncEnumerable<MessageEnvelope<TMessage>> ReadAsync<TMessage>(Guid streamId, Guid? fromEventId, CancellationToken ct = default);
+    IAsyncEnumerable<MessageEnvelope<IEvent>> ReadPolymorphicAsync(Guid streamId, Guid? fromEventId, IReadOnlyList<Type> eventTypes, CancellationToken ct = default);
 
-        await conn.ExecuteAsync(
-            """
-            INSERT INTO wh_events (
-                event_id, stream_id, stream_type, event_type, event_data, event_metadata, sequence_number, timestamp
-            ) VALUES (
-                @EventId, @StreamId, @StreamType, @EventType, @EventData::jsonb, @EventMetadata::jsonb, @SequenceNumber, @Timestamp
-            )
-            """,
-            new {
-                EventId = eventId,
-                StreamId = streamId,
-                StreamType = streamType,
-                EventType = eventType,
-                EventData = JsonSerializer.Serialize(eventData),
-                EventMetadata = JsonSerializer.Serialize(metadata ?? new Dictionary<string, object>()),
-                SequenceNumber = nextSequence,
-                Timestamp = DateTimeOffset.UtcNow
-            },
-            cancellationToken: ct
-        );
+    // Checkpoint-range reads (used by lifecycle receptors)
+    Task<List<MessageEnvelope<TMessage>>> GetEventsBetweenAsync<TMessage>(Guid streamId, Guid? afterEventId, Guid upToEventId, CancellationToken ct = default);
+    Task<List<MessageEnvelope<IEvent>>> GetEventsBetweenPolymorphicAsync(Guid streamId, Guid? afterEventId, Guid upToEventId, IReadOnlyList<Type> eventTypes, CancellationToken ct = default);
 
-        return eventId;
-    }
+    // Positions
+    Task<long> GetLastSequenceAsync(Guid streamId, CancellationToken ct = default);      // -1 if empty
+    Task<long?> GetCommitSequenceAsync(Guid eventId, CancellationToken ct = default);    // null until stamped
+
+    // Synchronous verification (request-response over event sourcing)
+    Task<SyncResult> AppendAndWaitAsync<TMessage, TPerspective>(Guid streamId, TMessage message, TimeSpan? timeout = null, /* callbacks */ CancellationToken ct = default) where TMessage : notnull where TPerspective : class;
+    Task<SyncResult> AppendAndWaitAsync<TMessage>(Guid streamId, TMessage message, TimeSpan? timeout = null, /* callbacks */ CancellationToken ct = default) where TMessage : notnull;
 }
 ```
 
-### Optimistic Concurrency (Expected Version)
+### Concurrency and Sequencing
 
-```csharp{title="Optimistic Concurrency (Expected Version)" description="Optimistic Concurrency (Expected Version)" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Optimistic", "Concurrency", "Expected"]}
-public async Task<Guid> AppendAsync(
-    Guid streamId,
-    string streamType,
-    string eventType,
-    object eventData,
-    long? expectedVersion = null,  // ← Optimistic concurrency
-    Dictionary<string, object>? metadata = null,
-    CancellationToken ct = default) {
+You never pass an expected version. Sequencing and conflict handling are built in:
 
-    await using var conn = _db.CreateConnection();
-    await conn.OpenAsync(ct);
-
-    await using var transaction = await conn.BeginTransactionAsync(ct);
-
-    try {
-        // Get current version
-        var currentVersion = await conn.QuerySingleOrDefaultAsync<long?>(
-            "SELECT MAX(sequence_number) FROM wh_events WHERE stream_id = @StreamId",
-            new { StreamId = streamId },
-            transaction: transaction
-        );
-
-        var actualVersion = currentVersion ?? 0;
-
-        // Check expected version
-        if (expectedVersion.HasValue && actualVersion != expectedVersion.Value) {
-            throw new ConcurrencyException(
-                $"Stream {streamId} expected version {expectedVersion}, but was {actualVersion}"
-            );
-        }
-
-        var nextSequence = actualVersion + 1;
-        var eventId = Guid.CreateVersion7();
-
-        await conn.ExecuteAsync(
-            """
-            INSERT INTO wh_events (
-                event_id, stream_id, stream_type, event_type, event_data, event_metadata, sequence_number, timestamp
-            ) VALUES (
-                @EventId, @StreamId, @StreamType, @EventType, @EventData::jsonb, @EventMetadata::jsonb, @SequenceNumber, @Timestamp
-            )
-            """,
-            new {
-                EventId = eventId,
-                StreamId = streamId,
-                StreamType = streamType,
-                EventType = eventType,
-                EventData = JsonSerializer.Serialize(eventData),
-                EventMetadata = JsonSerializer.Serialize(metadata ?? new Dictionary<string, object>()),
-                SequenceNumber = nextSequence,
-                Timestamp = DateTimeOffset.UtcNow
-            },
-            transaction: transaction,
-            cancellationToken: ct
-        );
-
-        await transaction.CommitAsync(ct);
-
-        return eventId;
-
-    } catch {
-        await transaction.RollbackAsync(ct);
-        throw;
-    }
-}
-```
+- Each append assigns the next `version` for the stream (via the store's sequence provider)
+- The **unique index on `(stream_id, version)`** rejects concurrent writers that race to the same slot
+- The Postgres backends **retry with backoff** on unique-violation conflicts until the append lands (or max retries is exceeded under extreme contention)
+- Use `GetLastSequenceAsync(streamId)` if you need the current stream position (for example, to detect concurrent modification at the application level)
 
 ---
 
@@ -310,332 +257,114 @@ public async Task<Guid> AppendAsync(
 ### Read Full Stream
 
 ```csharp{title="Read Full Stream" description="Read Full Stream" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Full", "Stream"]}
-public async Task<StoredEvent[]> ReadStreamAsync(
-    Guid streamId,
-    CancellationToken ct = default) {
-
-    await using var conn = _db.CreateConnection();
-
-    var events = await conn.QueryAsync<StoredEvent>(
-        """
-        SELECT
-            event_id, stream_id, stream_type, event_type,
-            event_data, event_metadata, sequence_number, global_sequence, timestamp
-        FROM wh_events
-        WHERE stream_id = @StreamId
-        ORDER BY sequence_number
-        """,
-        new { StreamId = streamId },
-        cancellationToken: ct
-    );
-
-    return events.ToArray();
+// Strongly-typed read from the beginning (sequence 0), in order
+await foreach (var envelope in eventStore.ReadAsync<OrderCreated>(orderId, fromSequence: 0, ct)) {
+    Console.WriteLine($"{envelope.MessageId}: {envelope.Payload}");
 }
 ```
 
-### Read Stream from Version
+### Read Stream from a Checkpoint
 
-```csharp{title="Read Stream from Version" description="Read Stream from Version" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Stream", "Version"]}
-public async Task<StoredEvent[]> ReadStreamAsync(
-    Guid streamId,
-    long fromVersion,
-    CancellationToken ct = default) {
+```csharp{title="Read Stream from a Checkpoint" description="Read Stream from a Checkpoint" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Stream", "Checkpoint"]}
+// Events are UUIDv7-ordered - read everything after the last processed event id
+Guid? lastProcessedEventId = /* from your cursor */;
 
-    await using var conn = _db.CreateConnection();
-
-    var events = await conn.QueryAsync<StoredEvent>(
-        """
-        SELECT * FROM wh_events
-        WHERE stream_id = @StreamId
-          AND sequence_number >= @FromVersion
-        ORDER BY sequence_number
-        """,
-        new { StreamId = streamId, FromVersion = fromVersion },
-        cancellationToken: ct
-    );
-
-    return events.ToArray();
+await foreach (var envelope in eventStore.ReadAsync<OrderCreated>(orderId, lastProcessedEventId, ct)) {
+    // process...
 }
 ```
 
-### Read All Events (Global Stream)
+### Read Mixed Event Types (Polymorphic)
 
-```csharp{title="Read All Events (Global Stream)" description="Read All Events (Global Stream)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "All", "Events"]}
-public async Task<StoredEvent[]> ReadAllEventsAsync(
-    long fromGlobalSequence,
-    int limit = 1000,
-    CancellationToken ct = default) {
+```csharp{title="Read Mixed Event Types (Polymorphic)" description="Read Mixed Event Types (Polymorphic)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Polymorphic", "Events"]}
+// Deserializes each row to its concrete type via the event_type column.
+// All event types must be listed for AOT compatibility.
+IReadOnlyList<Type> eventTypes = [typeof(OrderCreated), typeof(OrderShipped), typeof(OrderCancelled)];
 
-    await using var conn = _db.CreateConnection();
-
-    var events = await conn.QueryAsync<StoredEvent>(
-        """
-        SELECT * FROM wh_events
-        WHERE global_sequence >= @FromGlobalSequence
-        ORDER BY global_sequence
-        LIMIT @Limit
-        """,
-        new { FromGlobalSequence = fromGlobalSequence, Limit = limit },
-        cancellationToken: ct
-    );
-
-    return events.ToArray();
+await foreach (var envelope in eventStore.ReadPolymorphicAsync(orderId, fromEventId: null, eventTypes, ct)) {
+    switch (envelope.Payload) {
+        case OrderCreated created: /* ... */ break;
+        case OrderShipped shipped: /* ... */ break;
+    }
 }
+```
+
+### Read a Checkpoint Range
+
+```csharp{title="Read a Checkpoint Range" description="Read events between two checkpoints (exclusive start, inclusive end):" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Range", "Events"]}
+// Used by lifecycle receptors at PostPerspective stages to load exactly
+// the events a perspective just processed.
+var events = await eventStore.GetEventsBetweenPolymorphicAsync(
+    orderId,
+    afterEventId: previousCheckpoint,   // exclusive; null = from beginning
+    upToEventId: newCheckpoint,         // inclusive
+    eventTypes,
+    ct
+);
 ```
 
 ---
 
 ## Rebuilding Perspectives from Events
 
-### Checkpoint-Based Replay
+Perspective replay is **built into the framework** — you do not write replay loops yourself. The `PerspectiveWorker` drives perspectives forward, and `wh_perspective_cursors` tracks progress per `(stream_id, perspective_name)`.
 
-```csharp{title="Checkpoint-Based Replay" description="Checkpoint-Based Replay" category="Implementation" difficulty="ADVANCED" tags=["Data", "Checkpoint-Based", "Replay"]}
-public class PerspectiveRebuilder {
-    private readonly IDbConnectionFactory _db;
-    private readonly IServiceProvider _services;
+### How Cursor-Based Processing Works
 
-    public async Task RebuildPerspectiveAsync(
-        Guid streamId,
-        string perspectiveName,
-        CancellationToken ct = default) {
+1. Events land in `wh_event_store` (and matching rows in `wh_perspective_events` route work to perspectives)
+2. The `PerspectiveWorker` claims a stream, reads events after the cursor's `last_event_id` (UUIDv7-ordered), and applies your pure `Apply` methods
+3. The resulting model is upserted into the perspective's `wh_per_*` table and the cursor advances — atomically
+4. **Late-arriving events** flag the cursor for rewind (`rewind_trigger_event_id`); the worker rewinds from the nearest snapshot and replays forward
 
-        await using var conn = _db.CreateConnection();
+### Rebuild Modes
 
-        // Get last checkpoint (if any)
-        var checkpoint = await conn.QuerySingleOrDefaultAsync<PerspectiveCheckpoint>(
-            """
-            SELECT * FROM wh_perspective_checkpoints
-            WHERE stream_id = @StreamId AND perspective_name = @PerspectiveName
-            """,
-            new { StreamId = streamId, PerspectiveName = perspectiveName }
-        );
+Full and selective rebuilds (Blue-Green, In-Place, Selected Streams) are covered in [Perspective Rebuild](../fundamentals/perspectives/rebuild.md). Conceptually a rebuild:
 
-        var fromSequence = checkpoint?.LastSequenceNumber + 1 ?? 1;
+1. Locks the affected streams (`stream_lock_*` columns on `wh_perspective_cursors`)
+2. Resets the cursor(s) and clears or shadows the `wh_per_*` rows
+3. Replays events through the same pure `Apply` functions the live path uses
+4. Swaps/unlocks when the rebuilt model catches up
 
-        // Read events from checkpoint
-        var events = await conn.QueryAsync<StoredEvent>(
-            """
-            SELECT * FROM wh_events
-            WHERE stream_id = @StreamId
-              AND sequence_number >= @FromSequence
-            ORDER BY sequence_number
-            """,
-            new { StreamId = streamId, FromSequence = fromSequence },
-            cancellationToken: ct
-        );
-
-        // Resolve perspective handler
-        var perspective = ResolvePerspective(perspectiveName);
-
-        // Replay events
-        foreach (var storedEvent in events) {
-            var @event = DeserializeEvent(storedEvent);
-
-            await perspective.UpdateAsync(@event, ct);
-
-            // Update checkpoint
-            await conn.ExecuteAsync(
-                """
-                INSERT INTO wh_perspective_checkpoints (
-                    stream_id, perspective_name, last_event_id, last_sequence_number, status, updated_at
-                ) VALUES (
-                    @StreamId, @PerspectiveName, @EventId, @SequenceNumber, 'UpToDate', NOW()
-                )
-                ON CONFLICT (stream_id, perspective_name) DO UPDATE SET
-                    last_event_id = EXCLUDED.last_event_id,
-                    last_sequence_number = EXCLUDED.last_sequence_number,
-                    status = EXCLUDED.status,
-                    updated_at = EXCLUDED.updated_at
-                """,
-                new {
-                    StreamId = streamId,
-                    PerspectiveName = perspectiveName,
-                    EventId = storedEvent.EventId,
-                    SequenceNumber = storedEvent.SequenceNumber
-                },
-                cancellationToken: ct
-            );
-        }
-    }
-}
-```
-
-### Full Rebuild (Delete + Replay)
-
-```csharp{title="Full Rebuild (Delete + Replay)" description="Full Rebuild (Delete + Replay)" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Full", "Rebuild", "Delete"]}
-public async Task FullRebuildPerspectiveAsync(
-    string perspectiveName,
-    CancellationToken ct = default) {
-
-    await using var conn = _db.CreateConnection();
-
-    // 1. Delete existing perspective data
-    await conn.ExecuteAsync($"TRUNCATE TABLE {GetPerspectiveTableName(perspectiveName)}");
-
-    // 2. Reset checkpoints
-    await conn.ExecuteAsync(
-        "DELETE FROM wh_perspective_checkpoints WHERE perspective_name = @PerspectiveName",
-        new { PerspectiveName = perspectiveName }
-    );
-
-    // 3. Read all events (global sequence)
-    var events = await conn.QueryAsync<StoredEvent>(
-        "SELECT * FROM wh_events ORDER BY global_sequence",
-        cancellationToken: ct
-    );
-
-    // 4. Resolve perspective handler
-    var perspective = ResolvePerspective(perspectiveName);
-
-    // 5. Replay ALL events
-    foreach (var storedEvent in events) {
-        var @event = DeserializeEvent(storedEvent);
-
-        // Check if perspective handles this event type
-        if (CanHandle(perspective, @event)) {
-            await perspective.UpdateAsync(@event, ct);
-
-            // Update checkpoint
-            await conn.ExecuteAsync(
-                """
-                INSERT INTO wh_perspective_checkpoints (
-                    stream_id, perspective_name, last_event_id, last_sequence_number, status, updated_at
-                ) VALUES (
-                    @StreamId, @PerspectiveName, @EventId, @SequenceNumber, 'UpToDate', NOW()
-                )
-                ON CONFLICT (stream_id, perspective_name) DO UPDATE SET
-                    last_event_id = EXCLUDED.last_event_id,
-                    last_sequence_number = EXCLUDED.last_sequence_number,
-                    status = EXCLUDED.status,
-                    updated_at = EXCLUDED.updated_at
-                """,
-                new {
-                    StreamId = storedEvent.StreamId,
-                    PerspectiveName = perspectiveName,
-                    EventId = storedEvent.EventId,
-                    SequenceNumber = storedEvent.SequenceNumber
-                },
-                cancellationToken: ct
-            );
-        }
-    }
-}
-```
+Because perspectives are **pure functions**, replaying the same events always produces the same model — there is no separate "rebuild codepath" to keep in sync.
 
 ---
 
 ## Snapshots (Performance Optimization)
 
-**Problem**: Replaying 10,000 events to rebuild an aggregate is slow.
+**Problem**: Rewinding a perspective after a late-arriving event would mean replaying the stream from event zero.
 
-**Solution**: Store periodic snapshots of aggregate state.
+**Solution**: Whizbang stores **perspective snapshots** — periodic captures of a perspective's model state — so rewinds replay only from the nearest snapshot.
 
 ### Snapshot Schema
 
-```sql{title="Snapshot Schema" description="Snapshot Schema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Sql", "Snapshot", "Schema"]}
-CREATE TABLE wh_snapshots (
+```sql{title="Snapshot Schema" description="Snapshot Schema (generated from PerspectiveSnapshotsSchema)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Sql", "Snapshot", "Schema"]}
+CREATE TABLE IF NOT EXISTS wh_perspective_snapshots (
     stream_id UUID NOT NULL,
-    snapshot_type VARCHAR(200) NOT NULL,  -- Aggregate type
-    snapshot_data JSONB NOT NULL,
-    sequence_number BIGINT NOT NULL,      -- Last event included in snapshot
+    perspective_name VARCHAR(500) NOT NULL,
+    snapshot_event_id UUID NOT NULL,       -- Event this snapshot was taken at
+    snapshot_data JSONB NOT NULL,          -- Full model state
+    sequence_number BIGINT NOT NULL,       -- Stream position at snapshot time
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    snapshot_commit_sequence BIGINT,       -- commit_sequence anchor (nullable)
 
-    PRIMARY KEY (stream_id, sequence_number)
+    PRIMARY KEY (stream_id, perspective_name, snapshot_event_id)
 );
 
-CREATE INDEX idx_snapshots_stream_id ON wh_snapshots (stream_id, sequence_number DESC);
+CREATE INDEX idx_perspective_snapshots_lookup
+    ON wh_perspective_snapshots (stream_id, perspective_name, sequence_number);
 ```
 
-### Snapshot Creation
+### How Snapshot-Based Rewind Works
 
-```csharp{title="Snapshot Creation" description="Snapshot Creation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Snapshot", "Creation"]}
-public async Task CreateSnapshotAsync(
-    Guid streamId,
-    string snapshotType,
-    object snapshot,
-    long sequenceNumber,
-    CancellationToken ct = default) {
-
-    await using var conn = _db.CreateConnection();
-
-    await conn.ExecuteAsync(
-        """
-        INSERT INTO wh_snapshots (
-            stream_id, snapshot_type, snapshot_data, sequence_number, created_at
-        ) VALUES (
-            @StreamId, @SnapshotType, @SnapshotData::jsonb, @SequenceNumber, NOW()
-        )
-        """,
-        new {
-            StreamId = streamId,
-            SnapshotType = snapshotType,
-            SnapshotData = JsonSerializer.Serialize(snapshot),
-            SequenceNumber = sequenceNumber
-        },
-        cancellationToken: ct
-    );
-}
-```
-
-### Snapshot-Based Replay
-
-```csharp{title="Snapshot-Based Replay" description="Snapshot-Based Replay" category="Implementation" difficulty="ADVANCED" tags=["Data", "Snapshot-Based", "Replay"]}
-public async Task<Order> RehydrateOrderAsync(
-    Guid orderId,
-    CancellationToken ct = default) {
-
-    await using var conn = _db.CreateConnection();
-
-    // 1. Get latest snapshot
-    var snapshot = await conn.QuerySingleOrDefaultAsync<StoredSnapshot>(
-        """
-        SELECT * FROM wh_snapshots
-        WHERE stream_id = @StreamId
-        ORDER BY sequence_number DESC
-        LIMIT 1
-        """,
-        new { StreamId = orderId }
-    );
-
-    Order order;
-    long fromSequence;
-
-    if (snapshot is not null) {
-        // Deserialize snapshot
-        order = JsonSerializer.Deserialize<Order>(snapshot.SnapshotData)!;
-        fromSequence = snapshot.SequenceNumber + 1;
-    } else {
-        // No snapshot, start from beginning
-        order = new Order();
-        fromSequence = 1;
-    }
-
-    // 2. Read events after snapshot
-    var events = await conn.QueryAsync<StoredEvent>(
-        """
-        SELECT * FROM wh_events
-        WHERE stream_id = @StreamId
-          AND sequence_number >= @FromSequence
-        ORDER BY sequence_number
-        """,
-        new { StreamId = orderId, FromSequence = fromSequence },
-        cancellationToken: ct
-    );
-
-    // 3. Apply remaining events
-    foreach (var storedEvent in events) {
-        var @event = DeserializeEvent(storedEvent);
-        order.Apply(@event);  // Aggregate applies event to mutate state
-    }
-
-    return order;
-}
-```
+1. Perspective runners periodically write a snapshot of the current model (with the event id and `commit_sequence` it corresponds to, resolved via `IEventStore.GetCommitSequenceAsync`)
+2. When a late-arriving event flags a cursor for rewind, the worker locates the nearest snapshot **before** the late event
+3. The model is restored from `snapshot_data` and events after the snapshot are replayed through the pure `Apply` functions
+4. The cursor advances normally from there
 
 **Snapshot Strategy**:
-- Create snapshot every N events (e.g., every 100 events)
-- Keep last 3 snapshots (delete older ones)
-- Balance: More snapshots = faster replay, more storage
+- Snapshots are per `(stream_id, perspective_name)` — each perspective rewinds independently
+- More frequent snapshots = shorter rewinds, more storage
+- Because `Apply` is pure, restoring a snapshot + replaying the tail is always equivalent to a full replay
 
 ---
 
@@ -643,74 +372,38 @@ public async Task<Order> RehydrateOrderAsync(
 
 ### Query State at Specific Time
 
+Because `event_id` is a UUIDv7, time-based cutoffs map naturally onto event ids. Read the stream and stop at the cutoff:
+
 ```csharp{title="Query State at Specific Time" description="Query State at Specific Time" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Query", "State", "Specific"]}
-public async Task<Order> GetOrderAsOfAsync(
+public async Task<OrderSummary> GetOrderAsOfAsync(
+    IEventStore eventStore,
     Guid orderId,
     DateTimeOffset asOfTime,
     CancellationToken ct = default) {
 
-    await using var conn = _db.CreateConnection();
+    var perspective = new OrderSummaryPerspective();
+    var model = new OrderSummary();
 
-    // Read events up to specific time
-    var events = await conn.QueryAsync<StoredEvent>(
-        """
-        SELECT * FROM wh_events
-        WHERE stream_id = @StreamId
-          AND timestamp <= @AsOfTime
-        ORDER BY sequence_number
-        """,
-        new { StreamId = orderId, AsOfTime = asOfTime },
-        cancellationToken: ct
-    );
+    IReadOnlyList<Type> eventTypes = [typeof(OrderCreated), typeof(OrderShipped)];
 
-    // Rebuild aggregate state from events
-    var order = new Order();
-
-    foreach (var storedEvent in events) {
-        var @event = DeserializeEvent(storedEvent);
-        order.Apply(@event);
-    }
-
-    return order;
-}
-```
-
-### Perspective Projection at Specific Time
-
-```csharp{title="Perspective Projection at Specific Time" description="Perspective Projection at Specific Time" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Perspective", "Projection", "Specific"]}
-public async Task RebuildPerspectiveAsOfAsync(
-    string perspectiveName,
-    DateTimeOffset asOfTime,
-    CancellationToken ct = default) {
-
-    await using var conn = _db.CreateConnection();
-
-    // 1. Truncate perspective table
-    await conn.ExecuteAsync($"TRUNCATE TABLE {GetPerspectiveTableName(perspectiveName)}");
-
-    // 2. Read events up to specific time
-    var events = await conn.QueryAsync<StoredEvent>(
-        """
-        SELECT * FROM wh_events
-        WHERE timestamp <= @AsOfTime
-        ORDER BY global_sequence
-        """,
-        new { AsOfTime = asOfTime },
-        cancellationToken: ct
-    );
-
-    // 3. Replay events
-    var perspective = ResolvePerspective(perspectiveName);
-
-    foreach (var storedEvent in events) {
-        var @event = DeserializeEvent(storedEvent);
-
-        if (CanHandle(perspective, @event)) {
-            await perspective.UpdateAsync(@event, ct);
+    await foreach (var envelope in eventStore.ReadPolymorphicAsync(orderId, null, eventTypes, ct)) {
+        // Stop once we pass the cutoff (hop timestamps carry wall-clock time)
+        if (envelope.Hops[0].Timestamp > asOfTime) {
+            break;
         }
+
+        model = envelope.Payload switch {
+            OrderCreated e => perspective.Apply(model, e),
+            OrderShipped e => perspective.Apply(model, e),
+            _ => model
+        };
     }
+
+    return model;
 }
 ```
+
+For ad-hoc analysis you can also query `wh_event_store` directly - `created_at` records when each event was stored, and `version` orders events within a stream.
 
 **Use Cases**:
 - **Debugging**: "What did the order look like when the bug occurred?"
@@ -720,6 +413,10 @@ public async Task RebuildPerspectiveAsOfAsync(
 ---
 
 ## Event Versioning
+
+:::planned
+First-class event versioning (version attributes, an upcasting registry, and multi-version `Apply` support) is a planned framework feature. The patterns below work today as application code.
+:::
 
 ### Problem: Event Schema Changes
 
@@ -767,70 +464,56 @@ public class EventUpcast {
 
 ### Strategy 2: Copy-and-Transform (Migration)
 
-```sql{title="Strategy 2: Copy-and-Transform (Migration)" description="Strategy 2: Copy-and-Transform (Migration)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Strategy", "Copy-and-Transform", "Migration"]}
--- Add new event type with transformed data
-INSERT INTO wh_events (
-    event_id, stream_id, stream_type, event_type, event_data, event_metadata, sequence_number, timestamp
-)
-SELECT
-    uuid_generate_v7(),
-    stream_id,
-    stream_type,
-    'OrderCreatedV2',  -- New event type
-    jsonb_set(event_data, '{Currency}', '"USD"'),  -- Add default Currency
-    event_metadata,
-    sequence_number,
-    timestamp
-FROM wh_events
+```sql{title="Strategy 2: Transform-in-Place (Migration)" description="Strategy 2: Transform-in-Place (Migration)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Strategy", "Transform-in-Place", "Migration"]}
+-- Rewrite stored payloads to the new shape (verify with a SELECT first!)
+-- In-place UPDATE preserves event_id and the unique (stream_id, version) index.
+UPDATE wh_event_store
+SET event_type = 'OrderCreatedV2',
+    event_data = jsonb_set(event_data, '{Currency}', '"USD"')  -- Add default Currency
 WHERE event_type = 'OrderCreatedV1';
-
--- Delete old events (after verification!)
--- DELETE FROM wh_events WHERE event_type = 'OrderCreatedV1';
 ```
 
 ---
 
 ## Event Store Performance
 
-### Partitioning by Stream Type
+The stock `wh_event_store` table is unpartitioned. For very large stores, standard PostgreSQL techniques apply (these are database-administration patterns, not framework features — validate them against your workload in isolation first):
 
-```sql{title="Partitioning by Stream Type" description="Partitioning by Stream Type" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Sql", "Partitioning", "Stream", "Type"]}
-CREATE TABLE wh_events (
-    event_id UUID PRIMARY KEY,
+### Partitioning by Aggregate Type
+
+```sql{title="Partitioning by Aggregate Type" description="Partitioning by Aggregate Type" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Sql", "Partitioning", "Aggregate", "Type"]}
+CREATE TABLE event_store_partitioned (
+    event_id UUID NOT NULL,
     stream_id UUID NOT NULL,
-    stream_type VARCHAR(200) NOT NULL,
-    -- ... other columns
-) PARTITION BY LIST (stream_type);
+    aggregate_type VARCHAR(500) NOT NULL,
+    -- ... remaining wh_event_store columns
+) PARTITION BY LIST (aggregate_type);
 
--- Create partitions per stream type
-CREATE TABLE wh_events_orders PARTITION OF wh_events
+CREATE TABLE event_store_orders PARTITION OF event_store_partitioned
 FOR VALUES IN ('Order');
 
-CREATE TABLE wh_events_customers PARTITION OF wh_events
+CREATE TABLE event_store_customers PARTITION OF event_store_partitioned
 FOR VALUES IN ('Customer');
-
-CREATE TABLE wh_events_products PARTITION OF wh_events
-FOR VALUES IN ('Product');
 ```
 
-**Benefit**: Queries filtered by `stream_type` only scan relevant partition.
+**Benefit**: Queries filtered by `aggregate_type` only scan the relevant partition.
 
 ### Partitioning by Time Range
 
 ```sql{title="Partitioning by Time Range" description="Partitioning by Time Range" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Sql", "Partitioning", "Time", "Range"]}
-CREATE TABLE wh_events (
-    event_id UUID PRIMARY KEY,
+CREATE TABLE event_store_partitioned (
+    event_id UUID NOT NULL,
     stream_id UUID NOT NULL,
-    timestamp TIMESTAMPTZ NOT NULL,
-    -- ... other columns
-) PARTITION BY RANGE (timestamp);
+    created_at TIMESTAMPTZ NOT NULL,
+    -- ... remaining wh_event_store columns
+) PARTITION BY RANGE (created_at);
 
 -- Monthly partitions
-CREATE TABLE wh_events_2024_12 PARTITION OF wh_events
-FOR VALUES FROM ('2024-12-01') TO ('2025-01-01');
+CREATE TABLE event_store_2026_06 PARTITION OF event_store_partitioned
+FOR VALUES FROM ('2026-06-01') TO ('2026-07-01');
 
-CREATE TABLE wh_events_2025_01 PARTITION OF wh_events
-FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+CREATE TABLE event_store_2026_07 PARTITION OF event_store_partitioned
+FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
 ```
 
 **Benefit**: Time-based queries automatically prune old partitions.
@@ -838,14 +521,14 @@ FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
 ### Archiving Old Events
 
 ```sql{title="Archiving Old Events" description="Archiving Old Events" category="Implementation" difficulty="BEGINNER" tags=["Data", "Sql", "Archiving", "Old", "Events"]}
--- Archive events older than 1 year
-INSERT INTO wh_events_archive
-SELECT * FROM wh_events
-WHERE timestamp < NOW() - INTERVAL '1 year';
+-- Archive events older than 1 year (verify replay/rewind windows first -
+-- archived events are no longer available for perspective rewind)
+INSERT INTO event_store_archive
+SELECT * FROM wh_event_store
+WHERE created_at < NOW() - INTERVAL '1 year';
 
--- Delete from main table
-DELETE FROM wh_events
-WHERE timestamp < NOW() - INTERVAL '1 year';
+DELETE FROM wh_event_store
+WHERE created_at < NOW() - INTERVAL '1 year';
 ```
 
 ---
@@ -855,24 +538,23 @@ WHERE timestamp < NOW() - INTERVAL '1 year';
 ### DO ✅
 
 - ✅ **Append-only** - Never update or delete events
-- ✅ **Use UUIDv7** for event_id (time-ordered)
-- ✅ **Sequence numbers** within streams (1, 2, 3, ...)
-- ✅ **Global sequence** for cross-stream ordering
+- ✅ **Use UUIDv7** (`TrackedGuid.NewMedo()`) for stream IDs - event ids are UUIDv7 automatically
+- ✅ **Trust the built-in versioning** - `version` per stream is assigned and uniqueness-enforced by the store
+- ✅ **Use commit_sequence** for deterministic cross-stream ordering (stamped asynchronously)
 - ✅ **JSONB** for event_data (flexible, queryable)
-- ✅ **Snapshots** for long streams (> 100 events)
+- ✅ **Snapshots** happen automatically per perspective - tune cadence for long streams
 - ✅ **Upcasting** for event versioning
-- ✅ **Partition** by stream_type or timestamp for large stores
-- ✅ **Archive** old events (> 1 year)
-- ✅ **Checkpoint-based replay** for perspectives
+- ✅ **Partition** by aggregate_type or created_at for very large stores
+- ✅ **Archive** old events (> 1 year) once rewind windows allow
+- ✅ **Cursor-based processing** for perspectives (built in via `wh_perspective_cursors`)
 
 ### DON'T ❌
 
 - ❌ Update events (immutable!)
 - ❌ Delete events (append-only!)
-- ❌ Use random UUIDs (index fragmentation)
-- ❌ Skip sequence numbers (breaks ordering)
+- ❌ Use random UUIDs (index fragmentation) - prefer `TrackedGuid.NewMedo()`
+- ❌ Write your own replay loops (the `PerspectiveWorker` owns replay/rewind)
 - ❌ Store large BLOBs in events (use object storage, store URL)
-- ❌ Replay without snapshots (slow!)
 - ❌ Break event schemas (upcast instead)
 - ❌ Query events for current state (use perspectives/lenses)
 
@@ -930,13 +612,14 @@ public class Order {
 
 ```csharp{title="Pattern 2: Repository with Event Store" description="Pattern 2: Repository with Event Store" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Repository", "Event"]}
 public class OrderRepository(IEventStore eventStore) {
-    public async Task<Order> GetByIdAsync(Guid orderId, CancellationToken ct = default) {
-        var events = await eventStore.ReadStreamAsync(orderId, ct);
+    private static readonly IReadOnlyList<Type> EventTypes =
+        [typeof(OrderCreated), typeof(OrderShipped)];
 
+    public async Task<Order> GetByIdAsync(Guid orderId, CancellationToken ct = default) {
         var order = new Order();
 
-        foreach (var @event in events) {
-            order.Apply(@event);
+        await foreach (var envelope in eventStore.ReadPolymorphicAsync(orderId, null, EventTypes, ct)) {
+            order.Apply(envelope.Payload);
         }
 
         return order;

@@ -1,6 +1,8 @@
 ---
 title: Message Envelopes Deep Dive
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Messaging
 order: 4
@@ -12,8 +14,15 @@ tags: >-
   azure-service-bus
 codeReferences:
   - src/Whizbang.Core/Observability/MessageEnvelope.cs
+  - src/Whizbang.Core/Observability/IMessageEnvelope.cs
   - src/Whizbang.Core/Observability/MessageHop.cs
+  - src/Whizbang.Core/Observability/EnvelopeMetadata.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeTests.cs
+  - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeVersionTests.cs
+  - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/CascadeEnvelopeWrapperCausationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -45,64 +54,50 @@ flowchart TD
 
 ---
 
-## Outbox Integration
+## The Envelope Model
 
-### Storing Envelope in Outbox
+The framework creates envelopes for you — when a receptor calls `dispatcher.PublishAsync(event)`, the dispatcher wraps the payload in a `MessageEnvelope<TMessage>`, inherits the parent's hops, and appends a new hop with caller info.
 
-```csharp{title="Storing Envelope in Outbox" description="Storing Envelope in Outbox" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Storing", "Envelope", "Outbox"]}
-public async ValueTask<OrderCreated> HandleAsync(
-    CreateOrder message,
-    CancellationToken ct = default) {
+### Wire Shape (Compact JSON Names)
 
-    // Create event
-    var @event = new OrderCreated(/* ... */);
+Envelope and hop properties serialize with **short JSON names** to keep payloads small:
 
-    // Create envelope with hops
-    var envelope = MessageEnvelope.Create(
-        messageId: MessageId.New(),
-        correlationId: message.CorrelationId,
-        causationId: CausationId.From(message.MessageId),
-        payload: @event,
-        currentHop: new MessageHop {
-            Type = MessageHopType.Current,
-            Topic = "orders",
-            StreamKey: message.CustomerId.ToString(),
-            SecurityContext = GetSecurityContext(),
-            Metadata = new Dictionary<string, string> {
-                ["ServiceName"] = "OrderService",
-                ["ReceptorName"] = nameof(CreateOrderReceptor)
-            },
-            Timestamp = DateTimeOffset.UtcNow
-        },
-        causationHops: message.Envelope.Hops  // Inherit parent hops!
-    );
+```csharp{title="Envelope and Hop Shape" description="IMessageEnvelope and MessageHop with their compact JSON property names" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Storing", "Envelope", "Outbox"]}
+public interface IMessageEnvelope {
+    [JsonPropertyName("v")]  int Version { get; }                        // Envelope schema version
+    [JsonPropertyName("dc")] MessageDispatchContext DispatchContext { get; }
+    [JsonPropertyName("id")] MessageId MessageId { get; }
+    [JsonPropertyName("p")]  object Payload { get; }
+    [JsonPropertyName("h")]  List<MessageHop> Hops { get; }
+    [JsonPropertyName("sid")]  Guid SourceServiceId { get; }             // Source-service identity
+    [JsonPropertyName("sseq")] long SourceCommitSequence { get; }
+    // ...
+}
 
-    // Store in outbox (serialize envelope)
-    await _coordinator.ProcessWorkBatchAsync(
-        /* ... */,
-        newOutboxMessages: [
-            new OutboxMessage(
-                MessageId: envelope.MessageId.Value,
-                CorrelationId: envelope.CorrelationId.Value,
-                CausationId: envelope.CausationId?.Value,
-                MessageType: typeof(OrderCreated).FullName!,
-                Payload: JsonSerializer.Serialize(envelope),  // ← Full envelope!
-                Topic: "orders",
-                StreamKey: message.CustomerId.ToString(),
-                PartitionKey: message.CustomerId.ToString()
-            )
-        ],
-        /* ... */
-    );
-
-    return @event;
+public record MessageHop {
+    [JsonPropertyName("ty")] public HopType Type { get; init; }          // Current | Causation
+    [JsonPropertyName("ca")] public MessageId? CausationId { get; init; }
+    [JsonPropertyName("co")] public CorrelationId? CorrelationId { get; init; }
+    [JsonPropertyName("ct")] public string? CausationType { get; init; }
+    [JsonPropertyName("si")] public required ServiceInstanceInfo ServiceInstance { get; init; }
+    [JsonPropertyName("ts")] public DateTimeOffset Timestamp { get; init; }
+    [JsonPropertyName("to")] public string Topic { get; init; }
+    [JsonPropertyName("st")] public string StreamId { get; init; }
+    [JsonPropertyName("sc")] public ScopeDelta? Scope { get; init; }     // Scope propagation
+    [JsonPropertyName("md")] public IReadOnlyDictionary<string, JsonElement>? Metadata { get; init; }
+    [JsonPropertyName("cm")] public string? CallerMemberName { get; init; }  // Debug: who dispatched
+    [JsonPropertyName("cf")] public string? CallerFilePath { get; init; }
+    [JsonPropertyName("cl")] public int? CallerLineNumber { get; init; }
+    [JsonPropertyName("du")] public TimeSpan Duration { get; init; }
+    [JsonPropertyName("tp")] public string? TraceParent { get; init; }   // W3C trace context
+    // ...
 }
 ```
 
 **Key Points**:
-- Envelope includes **all hops** (current + causation)
-- Serialized as JSON in `Payload` field
-- Hops **persist** in database for auditability
+- Envelope includes **all hops** (current + causation), each stamped with service instance, timestamp, and caller info (`cm`/`cf`/`cl`)
+- Hops carry **scope deltas** (`sc`) for scope/security propagation
+- The outbox/inbox `metadata` column persists `EnvelopeMetadata` (MessageId + Hops) for auditability
 
 ---
 
@@ -110,42 +105,36 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 ### Azure Service Bus Integration
 
-```csharp{title="Azure Service Bus Integration" description="Azure Service Bus Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Azure", "Service", "Bus"]}
-public class AzureServiceBusTransport : IMessageTransport {
-    public async Task PublishAsync(
-        string topic,
-        MessageEnvelope envelope,
-        CancellationToken ct = default) {
+`AzureServiceBusTransport` serializes the full envelope (all hops included) as the message body and maps envelope identity onto broker properties:
 
-        // Serialize envelope (includes all hops)
-        var json = JsonSerializer.Serialize(envelope, _jsonOptions);
+```csharp{title="Azure Service Bus Integration" description="How AzureServiceBusTransport maps envelope fields onto ServiceBusMessage" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Azure", "Service", "Bus"]}
+// Inside AzureServiceBusTransport.PublishAsync (simplified):
+var message = new ServiceBusMessage(json) {   // json = serialized envelope w/ all hops
+    MessageId = envelope.MessageId.Value.ToString(),
+    Subject = destination.RoutingKey ?? "message",
+    ContentType = "application/json"
+};
 
-        var message = new ServiceBusMessage(json) {
-            MessageId = envelope.MessageId.Value.ToString(),
-            CorrelationId = envelope.CorrelationId.Value.ToString(),
-            Subject = envelope.Payload.GetType().Name,
+// SessionId = StreamId for FIFO ordering (session-enabled subscriptions)
+if (destination.Metadata?.TryGetValue("StreamId", out var streamIdElement) == true) {
+    message.SessionId = streamIdElement.ToString();
+}
 
-            // Add custom properties for routing
-            ApplicationProperties = {
-                ["MessageType"] = envelope.Payload.GetType().FullName,
-                ["CausationId"] = envelope.CausationId?.Value.ToString() ?? "",
-                ["HopCount"] = envelope.Hops.Count,  // For monitoring
-                ["OriginatingService"] = envelope.Hops.FirstOrDefault()?.Metadata?["ServiceName"] ?? "Unknown"
-            }
-        };
+// Envelope type for AOT-safe deserialization on the receive side
+message.ApplicationProperties["EnvelopeType"] = envelopeTypeName;
 
-        var sender = _client.CreateSender(topic);
-        await sender.SendMessageAsync(message, ct);
-
-        _logger.LogInformation(
-            "Published message {MessageId} to topic {Topic} with {HopCount} hops",
-            envelope.MessageId, topic, envelope.Hops.Count
-        );
-    }
+// Correlation / causation from the hop chain
+var correlationId = envelope.GetCorrelationId();
+if (correlationId != null) {
+    message.CorrelationId = correlationId.Value.Value.ToString();
+}
+var causationId = envelope.GetCausationId();
+if (causationId != null) {
+    message.ApplicationProperties["CausationId"] = causationId.Value.Value.ToString();
 }
 ```
 
-**Result**: Envelope with **all hops** transmitted to Azure Service Bus!
+**Result**: Envelope with **all hops** transmitted to Azure Service Bus — and stream-FIFO ordering preserved via sessions.
 
 ---
 
@@ -153,158 +142,70 @@ public class AzureServiceBusTransport : IMessageTransport {
 
 ### Inbox Deduplication + Hop Restoration
 
-```csharp{title="Inbox Deduplication + Hop Restoration" description="Inbox Deduplication + Hop Restoration" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Inbox", "Deduplication", "Hop"]}
-public async Task SubscribeAsync(
-    string topic,
-    Func<MessageEnvelope, CancellationToken, Task> handler,
-    CancellationToken ct = default) {
+The receive side is handled by `TransportConsumerWorker`:
 
-    var processor = _client.CreateProcessor(topic, new ServiceBusProcessorOptions());
+1. **Header check first**: the `EnvelopeType` application property is read *before* deserialization; messages no receptor, perspective, or tag attribute subscribes to are **discarded at the receive boundary** — no inbox row, no deserialization
+2. **AOT-safe deserialization**: the envelope is deserialized via the registered `JsonTypeInfo` for its envelope type — hops restored intact
+3. **Store**: `StoreInboxMessagesAsync` → `store_inbox_messages` persists the row with its `EnvelopeMetadata` (MessageId + Hops); the dedup table rejects duplicates atomically
+4. **Process**: handlers receive the full envelope — hop history, scope, and correlation identity intact
 
-    processor.ProcessMessageAsync += async args => {
-        try {
-            // 1. Deserialize envelope (hops restored!)
-            var envelope = JsonSerializer.Deserialize<MessageEnvelope>(
-                args.Message.Body.ToString(),
-                _jsonOptions
-            );
+```csharp{title="Reading Envelope Identity" description="Read-only accessors on IMessageEnvelope" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Inbox", "Deduplication", "Hop"]}
+// Identity and history are read via accessors — derived from the hop chain:
+CorrelationId? correlationId = envelope.GetCorrelationId();
+MessageId? causationId = envelope.GetCausationId();
+DateTimeOffset timestamp = envelope.GetMessageTimestamp();
+ScopeContext? scope = envelope.GetCurrentScope();
 
-            if (envelope is null) {
-                _logger.LogError("Failed to deserialize envelope");
-                await args.CompleteMessageAsync(args.Message, ct);
-                return;
-            }
+// Metadata is READ-ONLY via GetMetadata — it searches Current hops newest-first:
+JsonElement? tenantId = envelope.GetMetadata("TenantId");
 
-            _logger.LogInformation(
-                "Received message {MessageId} with {HopCount} hops, CorrelationId {CorrelationId}",
-                envelope.MessageId, envelope.Hops.Count, envelope.CorrelationId
-            );
-
-            // 2. Check inbox for duplicate
-            var isDuplicate = await _coordinator.IsMessageInInboxAsync(
-                envelope.MessageId.Value,
-                ct
-            );
-
-            if (isDuplicate) {
-                _logger.LogWarning(
-                    "Duplicate message {MessageId} detected, skipping",
-                    envelope.MessageId
-                );
-                await args.CompleteMessageAsync(args.Message, ct);
-                return;
-            }
-
-            // 3. Store in inbox
-            await _coordinator.ProcessWorkBatchAsync(
-                /* ... */,
-                newInboxMessages: [
-                    new InboxMessage(
-                        MessageId: envelope.MessageId.Value,
-                        CorrelationId: envelope.CorrelationId.Value,
-                        CausationId: envelope.CausationId?.Value,
-                        MessageType: envelope.Payload.GetType().FullName!,
-                        Payload: JsonSerializer.Serialize(envelope),  // Store full envelope
-                        SourceTopic: topic
-                    )
-                ],
-                /* ... */
-            );
-
-            // 4. Process message (handler receives envelope with hops!)
-            await handler(envelope, ct);
-
-            // 5. Complete message
-            await args.CompleteMessageAsync(args.Message, ct);
-
-        } catch (Exception ex) {
-            _logger.LogError(ex, "Error processing message");
-            await args.AbandonMessageAsync(args.Message);
-        }
-    };
-
-    await processor.StartProcessingAsync(ct);
-}
+// Hop history:
+IReadOnlyList<MessageHop> causationHops = envelope.GetCausationHops();
+IReadOnlyList<MessageHop> currentHops = envelope.GetCurrentHops();
 ```
 
 **Key Points**:
 - Envelope **deserialized** with all hops intact
-- Hops stored in inbox for auditability
-- Handler receives **full envelope** (not just payload)
+- Hops stored in the inbox `metadata` column for auditability
+- Handlers receive the **full envelope** context (not just the payload)
+- Envelope metadata is **read-only** at consumption time — write metadata by adding hops, never by mutating inherited ones
 
 ---
 
 ## Adding Hops in Workers
 
-### InventoryWorker Example
+### Automatic Hop Accumulation
 
-```csharp{title="InventoryWorker Example" description="InventoryWorker Example" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "InventoryWorker"]}
-public async Task ProcessOrderCreatedAsync(
-    MessageEnvelope envelope,
-    CancellationToken ct = default) {
+Hop accumulation is **automatic**. When your receptor publishes a new event, the dispatcher's cascade context:
 
-    var orderCreated = (OrderCreated)envelope.Payload;
+1. Inherits the incoming envelope's hops (re-typed as `Causation` hops)
+2. Appends a fresh `Current` hop stamped with the service instance (`si`), timestamp (`ts`), topic (`to`), stream id (`st`), and the dispatching call site (`cm`/`cf`/`cl` via `[CallerMemberName]` etc.)
+3. Carries the correlation identity and scope delta forward
 
-    // Business logic: Reserve inventory
-    await ReserveInventoryAsync(orderCreated, ct);
+```csharp{title="Receptor Example" description="Hop inheritance happens inside dispatcher.PublishAsync — no manual envelope code" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "InventoryWorker"]}
+public class ReserveInventoryReceptor(IDispatcher dispatcher)
+    : IReceptor<ReserveInventoryCommand, InventoryReservedEvent> {
 
-    // Create InventoryReserved event
-    var inventoryReserved = new InventoryReserved(
-        OrderId: orderCreated.OrderId,
-        Reservations: /* ... */,
-        ReservedAt: DateTimeOffset.UtcNow
-    );
+    public async ValueTask<InventoryReservedEvent> HandleAsync(
+        ReserveInventoryCommand message,
+        CancellationToken cancellationToken = default) {
 
-    // Create envelope with NEW hop
-    var newEnvelope = MessageEnvelope.Create(
-        messageId: MessageId.New(),
-        correlationId: envelope.CorrelationId,  // Inherit
-        causationId: CausationId.From(envelope.MessageId),  // Parent
-        payload: inventoryReserved,
-        currentHop: new MessageHop {
-            Type = MessageHopType.Current,
-            Topic = "inventory",
-            StreamKey: orderCreated.OrderId.ToString(),
-            SecurityContext = envelope.Hops.FirstOrDefault()?.SecurityContext,  // Inherit security
-            Metadata = new Dictionary<string, string> {
-                ["ServiceName"] = "InventoryWorker",
-                ["ReceptorName"] = "ReserveInventoryReceptor",
-                ["OriginalOrderId"] = orderCreated.OrderId.ToString()
-            },
-            Timestamp = DateTimeOffset.UtcNow
-        },
-        causationHops: envelope.Hops  // ← INHERIT ALL PARENT HOPS!
-    );
+        // ... business logic ...
 
-    // Store in outbox for publishing
-    await _coordinator.ProcessWorkBatchAsync(
-        /* ... */,
-        newOutboxMessages: [
-            new OutboxMessage(
-                MessageId: newEnvelope.MessageId.Value,
-                CorrelationId: newEnvelope.CorrelationId.Value,
-                CausationId: newEnvelope.CausationId?.Value,
-                MessageType: typeof(InventoryReserved).FullName!,
-                Payload: JsonSerializer.Serialize(newEnvelope),
-                Topic: "inventory",
-                StreamKey: orderCreated.OrderId.ToString(),
-                PartitionKey: orderCreated.OrderId.ToString()
-            )
-        ],
-        /* ... */
-    );
+        var inventoryReserved = new InventoryReservedEvent { /* ... */ };
 
-    _logger.LogInformation(
-        "Published InventoryReserved event with {HopCount} hops (inherited {InheritedHops})",
-        newEnvelope.Hops.Count,
-        newEnvelope.Hops.Count(h => h.Type == MessageHopType.Causation)
-    );
+        // The dispatcher inherits the incoming envelope's hops,
+        // appends a new Current hop, and preserves correlation + scope.
+        await dispatcher.PublishAsync(inventoryReserved);
+
+        return inventoryReserved;
+    }
 }
 ```
 
-**Result**: `InventoryReserved` envelope contains:
-1. Current hop (InventoryWorker)
-2. All causation hops from `OrderCreated` (OrderService, API Gateway, etc.)
+**Result**: the `InventoryReservedEvent` envelope contains:
+1. A new Current hop (this service, this call site)
+2. All causation hops from the triggering message (OrderService, API gateway, etc.)
 
 ---
 
@@ -313,25 +214,27 @@ public async Task ProcessOrderCreatedAsync(
 ### Find Complete Workflow
 
 ```sql{title="Find Complete Workflow" description="Find Complete Workflow" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Sql", "Find", "Complete", "Workflow"]}
--- Find all messages in a workflow (all services)
+-- Find all messages in a workflow (hops live in the metadata JSONB column)
+-- Note: in production, published rows delete on completion — run against
+-- debug-mode retained rows or your archive.
 SELECT
     o.message_id,
     o.message_type,
-    o.topic,
+    o.destination,
     o.created_at,
-    (o.payload::JSONB)->'Hops' AS hops
+    o.metadata->'Hops' AS hops
 FROM wh_outbox o
-WHERE (o.payload::JSONB)->>'CorrelationId' = 'corr-abc'
+WHERE o.metadata->'Hops'->0->>'co' = 'corr-abc'  -- correlation id ('co') on the first hop
 ORDER BY o.created_at;
 ```
 
 **Example output**:
 ```
-message_id | message_type       | topic     | created_at          | hops
------------|--------------------|-----------|---------------------|------
-msg-001    | OrderCreated       | orders    | 2024-12-12 10:00:00 | [API Gateway]
-msg-002    | InventoryReserved  | inventory | 2024-12-12 10:00:01 | [API Gateway, OrderService]
-msg-003    | PaymentProcessed   | payment   | 2024-12-12 10:00:02 | [API Gateway, OrderService, InventoryWorker]
+message_id | message_type       | destination | created_at          | hops
+-----------|--------------------|-------------|---------------------|------
+msg-001    | OrderCreated       | orders      | 2024-12-12 10:00:00 | [API Gateway]
+msg-002    | InventoryReserved  | inventory   | 2024-12-12 10:00:01 | [API Gateway, OrderService]
+msg-003    | PaymentProcessed   | payment     | 2024-12-12 10:00:02 | [API Gateway, OrderService, InventoryWorker]
 ```
 
 ### Visualize Hop Accumulation
@@ -346,9 +249,9 @@ public void PrintHopAccumulation(Guid correlationId) {
         for (int i = 0; i < msg.Envelope.Hops.Count; i++) {
             var hop = msg.Envelope.Hops[i];
             var prefix = new string(' ', i * 2);
-            var type = hop.Type == MessageHopType.Current ? "CURRENT" : "CAUSATION";
+            var type = hop.Type == HopType.Current ? "CURRENT" : "CAUSATION";
 
-            Console.WriteLine($"{prefix}├─ {type}: {hop.Metadata?["ServiceName"]}");
+            Console.WriteLine($"{prefix}├─ {type}: {hop.ServiceInstance.ServiceName}");
         }
 
         Console.WriteLine();
@@ -373,35 +276,35 @@ PaymentProcessed (2024-12-12 10:00:02):
 
 ---
 
-## Security Context Propagation
+## Scope Propagation
 
-### Extracting Security from Hops
+### Extracting Scope from Hops
 
-```csharp{title="Extracting Security from Hops" description="Extracting Security from Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Extracting", "Security", "Hops"]}
-public async Task<InventoryReserved> HandleAsync(
-    MessageEnvelope envelope,
+Hops carry **scope deltas** (`sc` / `ScopeDelta`) — each hop records what changed in the security/tenancy scope, and `GetCurrentScope()` folds the deltas into the effective `ScopeContext`:
+
+```csharp{title="Extracting Scope from Hops" description="Extracting Scope from Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Extracting", "Security", "Hops"]}
+public async ValueTask<InventoryReservedEvent> HandleAsync(
+    ReserveInventoryCommand message,
     CancellationToken ct = default) {
 
-    // Extract security context from first hop (originating service)
-    var securityContext = envelope.Hops
-        .FirstOrDefault(h => h.SecurityContext is not null)?
-        .SecurityContext;
+    // Effective scope, folded from the hop chain's scope deltas
+    var scope = envelope.GetCurrentScope();
 
-    if (securityContext?.UserId is null) {
-        throw new UnauthorizedAccessException("No user context in hops");
+    if (scope?.EffectivePrincipal is null) {
+        throw new UnauthorizedAccessException("No principal in scope");
     }
 
-    // Validate tenant isolation
-    if (securityContext.TenantId != expectedTenantId) {
-        throw new ForbiddenException("Tenant mismatch");
+    // Validate permissions carried by the scope
+    if (!scope.HasPermission(InventoryPermissions.Reserve)) {
+        throw new UnauthorizedAccessException("Missing inventory permission");
     }
 
-    // Business logic with security context
-    await ReserveInventoryAsync(orderCreated, securityContext, ct);
+    // Business logic with scope context
+    await ReserveInventoryAsync(message, scope, ct);
 }
 ```
 
-**Benefit**: Security context flows **automatically** via hops!
+**Benefit**: Scope context flows **automatically** via hops! (`GetCurrentSecurityContext()` is obsolete — use `GetCurrentScope()`.)
 
 ---
 
@@ -409,20 +312,19 @@ public async Task<InventoryReserved> HandleAsync(
 
 ### DO ✅
 
-- ✅ **Inherit causation hops** when creating new messages
-- ✅ **Add current hop** with service name, timestamp, metadata
-- ✅ **Propagate security context** via hops
-- ✅ **Store envelopes** in outbox/inbox (full auditability)
-- ✅ **Query by CorrelationId** for end-to-end traces
+- ✅ **Publish via the dispatcher** — hop inheritance, current-hop stamping, and scope propagation are automatic
+- ✅ **Read identity via accessors** (`GetCorrelationId`, `GetCausationId`, `GetMetadata`, `GetCurrentScope`)
+- ✅ **Rely on stored envelopes** in outbox/inbox metadata for auditability
+- ✅ **Query by correlation id** for end-to-end traces
 - ✅ **Monitor hop count** (alert if > 10 hops indicates circular dependency)
-- ✅ **Include debug info** (CallerMemberName, FilePath, LineNumber)
+- ✅ **Use the caller info** (`cm`/`cf`/`cl`) captured automatically on each hop when debugging dispatch origins
 
 ### DON'T ❌
 
 - ❌ Discard causation hops (breaks tracing)
-- ❌ Modify inherited hops (immutable!)
-- ❌ Skip adding current hop (incomplete trace)
-- ❌ Store sensitive data in metadata (use SecurityContext)
+- ❌ Modify inherited hops (immutable — metadata is read-only via `GetMetadata`; add a new hop instead)
+- ❌ Build envelopes by hand (bypasses hop inheritance and scope propagation)
+- ❌ Store sensitive data in hop metadata (use the scope for security-relevant context)
 - ❌ Ignore hop count limits (circular dependencies)
 - ❌ Forget to log hop information
 
@@ -435,21 +337,18 @@ public async Task<InventoryReserved> HandleAsync(
 **Symptom**: Messages arrive with fewer hops than expected.
 
 **Causes**:
-1. Worker not inheriting causation hops
-2. Envelope not serialized/deserialized correctly
-3. Hops not stored in outbox
+1. Publishing outside the dispatcher's cascade context (hop inheritance bypassed)
+2. Envelope not serialized/deserialized with its registered `JsonTypeInfo`
+3. Hops not stored in the outbox metadata column
 
 **Solution**:
 ```csharp{title="Problem: Missing Hops" description="Problem: Missing Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Problem:", "Missing", "Hops"]}
-// Verify hops are inherited
-var newEnvelope = MessageEnvelope.Create(
-    /* ... */,
-    causationHops: parentEnvelope.Hops  // ← REQUIRED!
-);
+// Publish from within the handler so the cascade context inherits hops
+await dispatcher.PublishAsync(newEvent);   // ✅ hops inherited automatically
 
-// Verify serialization
-var json = JsonSerializer.Serialize(envelope);
-var deserialized = JsonSerializer.Deserialize<MessageEnvelope>(json);
+// Verify serialization round-trips the hop chain (uses the compact 'h' property)
+var json = JsonSerializer.Serialize(envelope, typeInfo);
+var deserialized = JsonSerializer.Deserialize(json, typeInfo)!;
 Debug.Assert(deserialized.Hops.Count == envelope.Hops.Count);
 ```
 
@@ -491,15 +390,16 @@ if (envelope.Hops.Count > 10) {
 ### Serialization Performance
 
 ```csharp{title="Serialization Performance" description="Serialization Performance" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Serialization", "Performance"]}
-// ✅ Efficient: Use JsonTypeInfo for AOT
-var json = JsonSerializer.Serialize(
-    envelope,
-    _jsonOptions.GetTypeInfo(typeof(MessageEnvelope))
-);
+// ✅ Efficient: source-generated JsonTypeInfo from the cross-assembly registry
+var options = JsonContextRegistry.CreateCombinedOptions();
+var typeInfo = options.GetTypeInfo(typeof(MessageEnvelope<OrderCreatedEvent>));
+var json = JsonSerializer.Serialize(envelope, typeInfo);
 
 // ❌ Slow: Reflection-based serialization
 var json = JsonSerializer.Serialize(envelope);  // Not AOT-compatible
 ```
+
+The compact JSON property names (`v`, `id`, `p`, `h`, per-hop `ty`/`si`/`ts`/...) keep hop overhead small on the wire.
 
 ---
 
