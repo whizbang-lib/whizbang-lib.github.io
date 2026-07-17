@@ -1,6 +1,8 @@
 ---
 title: 'WHIZ120: Pinned Type Renamed Without Ledger Acknowledgment'
 pageType: troubleshooting
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   Error diagnostic when a [PinnedId] type's CLR name changed but the change was not acknowledged in the
   committed pinned-type ledger — an un-acknowledged rename that would break deserialization of stored events.
@@ -17,6 +19,7 @@ tags:
 codeReferences:
   - src/Whizbang.Generators/Analyzers/PinnedTypeRenameAnalyzer.cs
   - src/Whizbang.Generators/Ledger/PinnedTypeLedger.cs
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/Analyzers/PinnedTypeRenameAnalyzerTests.cs
 lastMaintainedCommit: '35b3f2a5'

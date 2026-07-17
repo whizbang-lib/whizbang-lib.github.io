@@ -1,6 +1,8 @@
 ---
 title: Message Lifecycle & Architecture
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Architecture
 order: 1
@@ -16,11 +18,18 @@ codeReferences:
   - src/Whizbang.Core/IDispatcher.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs
+  - src/Whizbang.Core/Messaging/LifecycleStage.cs
   - src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs
-  - src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs
-  - src/Whizbang.Core/Streams/OrderedStreamProcessor.cs
-  - src/Whizbang.Data.Postgres/Messaging/DapperWorkCoordinator.cs
-  - src/Whizbang.Data.EFCore.Postgres/Messaging/EFCoreWorkCoordinator.cs
+  - src/Whizbang.Core/Workers/ClaimWorker.cs
+  - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
+  - src/Whizbang.Core/Messaging/OrderedStreamProcessor.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/OrderedStreamProcessorTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ScopedWorkCoordinatorStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IntervalWorkCoordinatorStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ImmediateWorkCoordinatorStrategyTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -142,7 +151,7 @@ sequenceDiagram
     WorkCoord->>Outbox: INSERT INTO wh_outbox
     Note over Outbox: Stream-based partitioning<br/>partition_number = hash(stream_id) % 10000
 
-    WorkCoord->>EventStore: INSERT INTO wh_event_store<br/>(if isEvent=true AND ends with "Event")
+    WorkCoord->>EventStore: INSERT INTO wh_event_store<br/>(if is_event=true AND stream_id IS NOT NULL)
     Note over EventStore: Auto-increment version per stream<br/>Global sequence for ordering
 
     WorkCoord-->>WorkStrategy: WorkBatch(claimedOutboxMessages, ...)
@@ -153,9 +162,9 @@ sequenceDiagram
     Note over Perspectives: Parallel invocation of all perspectives:
 
     par Update Read Models
-        Perspectives->>Perspectives: OrderSummaryPerspective.UpdateAsync()
-        Perspectives->>Perspectives: InventoryPerspective.UpdateAsync()
-        Perspectives->>Perspectives: AnalyticsPerspective.UpdateAsync()
+        Perspectives->>Perspectives: OrderSummaryPerspective.Apply()
+        Perspectives->>Perspectives: InventoryPerspective.Apply()
+        Perspectives->>Perspectives: AnalyticsPerspective.Apply()
     end
 
     Dispatcher-->>Controller: OrderCreated result
@@ -222,12 +231,16 @@ sequenceDiagram
 
 ## Event Flow (Publishing from Outbox)
 
-### Background Worker: WorkCoordinatorPublisherWorker
+### Background Workers: ClaimWorker + OutboxPublishWorker
+
+:::updated
+The legacy `WorkCoordinatorPublisherWorker` has been decomposed into a work-pump pipeline (Phase C): `ClaimWorker` is the **only** place that calls `IWorkCoordinator.ClaimWorkAsync` (adaptive backoff on empty polls, with a wake semaphore driven by Postgres NOTIFY / local channel writes); claimed work flows through in-process channels to `OutboxPublishWorker`, which publishes to transport via `IMessagePublishStrategy`; completions and failures are flushed back to the database by dedicated flush workers (`OutboxCompletionFlushWorker`, `FailureFlushWorker`). The sequence below shows the logical flow — claim, ordered publish, completion reporting — which is unchanged.
+:::
 
 ```mermaid
 sequenceDiagram
     participant Timer
-    participant PublisherWorker as WorkCoordinator<br/>PublisherWorker
+    participant PublisherWorker as ClaimWorker +<br/>OutboxPublishWorker
     participant WorkStrategy as Work Coordinator<br/>Strategy (Interval)
     participant WorkCoord as Work Coordinator<br/>process_work_batch
     participant Outbox
@@ -239,11 +252,11 @@ sequenceDiagram
 
         PublisherWorker->>WorkStrategy: FlushAsync()
 
-        WorkStrategy->>WorkCoord: ProcessWorkBatchAsync(<br/>  instanceId: worker-guid,<br/>  serviceName: "OrderService",<br/>  partitionCount: 10000,<br/>  maxPartitionsPerInstance: 100,<br/>  leaseSeconds: 300<br/>)
+        WorkStrategy->>WorkCoord: ProcessWorkBatchAsync(<br/>  InstanceId: worker-guid,<br/>  ServiceName: "OrderService",<br/>  PartitionCount: 10000,<br/>  LeaseSeconds: 300,<br/>  MaxStreamsPerBatch: 300<br/>)
 
         Note over WorkCoord: Atomic lease-based claiming:
 
-        WorkCoord->>Outbox: SELECT * FROM wh_outbox<br/>WHERE partition_number IN (assigned_partitions)<br/>  AND (instance_id IS NULL OR lease_expiry < NOW())<br/>  AND status = 'Stored'<br/>FOR UPDATE SKIP LOCKED<br/>LIMIT 100
+        WorkCoord->>Outbox: SELECT * FROM wh_outbox<br/>WHERE partition_number IN (assigned_partitions)<br/>  AND (instance_id IS NULL OR lease_expiry < NOW())<br/>  AND (status & 4) != 4 AND (status & 32768) = 0<br/>FOR UPDATE SKIP LOCKED
 
         WorkCoord->>Outbox: UPDATE wh_outbox SET<br/>  instance_id = @InstanceId,<br/>  lease_expiry = NOW() + @LeaseSeconds<br/>WHERE message_id IN (...)
 
@@ -274,14 +287,14 @@ sequenceDiagram
 
             WorkCoord->>Outbox: DELETE FROM wh_outbox<br/>WHERE message_id IN (completions)
 
-            WorkCoord->>Outbox: UPDATE wh_outbox SET<br/>  status = 'Failed',<br/>  error = ...,<br/>  retry_count = retry_count + 1<br/>WHERE message_id IN (failures)
+            WorkCoord->>Outbox: UPDATE wh_outbox SET<br/>  status = status | 32768 (Failed),<br/>  error = ...,<br/>  failure_reason = ...,<br/>  scheduled_for = backoff<br/>WHERE message_id IN (failures)
         end
     end
 ```
 
 **Key Points**:
-1. **Interval strategy**: Polls every 100ms (configurable)
-2. **Partition-based distribution**: Each worker claims subset of partitions (max 100)
+1. **Adaptive polling**: ClaimWorker backs off on consecutive empty polls; NOTIFY signals wake it immediately
+2. **Partition-based distribution**: Each worker claims a subset of partitions
 3. **Lease-based coordination**: Prevents duplicate processing across workers
 4. **Stream ordering via OrderedStreamProcessor**: Events from same stream processed sequentially
 5. **Parallel streams**: Different streams can process concurrently
@@ -343,9 +356,9 @@ sequenceDiagram
                 Note over Perspectives: Find all perspectives<br/>registered for this event type
 
                 par Update Read Models
-                    Perspectives->>Perspectives: OrderSummaryPerspective.UpdateAsync()
-                    Perspectives->>Perspectives: InventoryPerspective.UpdateAsync()
-                    Perspectives->>Perspectives: AnalyticsPerspective.UpdateAsync()
+                    Perspectives->>Perspectives: OrderSummaryPerspective.Apply()
+                    Perspectives->>Perspectives: InventoryPerspective.Apply()
+                    Perspectives->>Perspectives: AnalyticsPerspective.Apply()
                 end
 
                 alt All perspectives succeeded
@@ -362,7 +375,7 @@ sequenceDiagram
 
         WorkCoord->>Inbox: DELETE FROM wh_inbox<br/>WHERE message_id IN (completions)
 
-        WorkCoord->>Inbox: UPDATE wh_inbox SET<br/>  status = 'Failed',<br/>  error = ...,<br/>  retry_count = retry_count + 1<br/>WHERE message_id IN (failures)
+        WorkCoord->>Inbox: UPDATE wh_inbox SET<br/>  status = status | 32768 (Failed),<br/>  error = ...,<br/>  scheduled_for = backoff<br/>WHERE message_id IN (failures)
 
         ConsumerWorker->>ServiceBus: Complete message
     end
@@ -479,7 +492,7 @@ public async ValueTask<OrderCreated> HandleAsync(
     // ...
 
     // HOOK 3: Event Generation
-    var orderId = Guid.CreateVersion7();  // Time-ordered GUID
+    Guid orderId = TrackedGuid.NewMedo();  // Time-ordered UUIDv7
     var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
 
     var @event = new OrderCreated(
@@ -504,8 +517,8 @@ This phase is **automatic** - no receptor code needed:
 
 ```csharp{title="Phase 4: Event Store (Automatic)" description="This phase is automatic - no receptor code needed:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Event"]}
 // Inside Dispatcher.SendAsync():
-await _workCoordinatorStrategy.QueueOutboxMessage(
-    new NewOutboxMessage {
+_workCoordinatorStrategy.QueueOutboxMessage(
+    new OutboxMessage {
         MessageId = envelope.MessageId.Value,
         StreamId = ExtractStreamId(envelope),  // From aggregate ID
         IsEvent = payload is IEvent,  // ← Automatic detection
@@ -514,8 +527,8 @@ await _workCoordinatorStrategy.QueueOutboxMessage(
 );
 ```
 
-**Hook**: Dispatcher checks if `payload is IEvent`
-**Result**: If true, `process_work_batch` automatically inserts to `wb_event_store`
+**Hook**: Dispatcher checks if `payload is IEvent` and sets the `IsEvent` flag on the outbox row
+**Result**: `store_outbox_messages` copies newly-inserted rows with `is_event = true` (and a non-null `stream_id`) into `wh_event_store` via `_emit_event_store_chain`
 **Guarantees**: Event Store + Outbox insert in **same atomic transaction**
 
 ### Phase 5: Perspective Update
@@ -529,9 +542,9 @@ if (result is not null) {
 }
 ```
 
-**Hook**: Dispatcher finds all `IPerspectiveOf<TEvent>` registrations
-**Result**: All perspectives invoked in parallel
-**Guarantees**: Read models updated before HTTP response
+**Hook**: The perspective pipeline finds all `IPerspectiveFor<TModel, TEvent, ...>` registrations for the event type
+**Result**: Each perspective's pure `Apply(currentData, eventData)` runs and the result is upserted to its read-model table
+**Guarantees**: Read models updated eventually; use `AppendAndWaitAsync` / perspective sync for read-your-writes
 
 ### Phase 6: Completion
 
@@ -631,11 +644,12 @@ BEGIN
     DELETE FROM wh_outbox
     WHERE message_id IN (SELECT message_id FROM jsonb_array_elements(p_outbox_completions));
 
-    -- 2. Update failed outbox messages
+    -- 2. Update failed outbox messages (process_outbox_failures)
     UPDATE wh_outbox SET
-        status = 'Failed',
+        status = status | 32768,  -- Failed bit
         error = ...,
-        retry_count = retry_count + 1
+        failure_reason = ...,
+        scheduled_for = ...  -- exponential backoff
     WHERE message_id IN (...);
 
     -- 3. Insert new outbox messages (with partition assignment)
@@ -647,20 +661,22 @@ BEGIN
         ...
     FROM jsonb_array_elements(p_new_outbox_messages) AS elem;
 
-    -- 4. Insert to event store (if IsEvent = true)
-    INSERT INTO wb_event_store (event_id, stream_id, aggregate_type, version, ...)
+    -- 4. Copy newly-inserted events to the event store
+    -- (store_outbox_messages calls _emit_event_store_chain for rows with
+    --  is_event = true AND stream_id IS NOT NULL)
+    INSERT INTO wh_event_store (event_id, stream_id, event_type, version, ...)
     SELECT
         (elem->>'message_id')::UUID,
         (elem->>'stream_id')::UUID,
-        ExtractAggregateType((elem->>'message_type')::TEXT),  -- "Order" from "OrderCreated"
+        (elem->>'message_type')::TEXT,
         COALESCE(
-            (SELECT MAX(version) + 1 FROM wb_event_store WHERE stream_id = (elem->>'stream_id')::UUID),
+            (SELECT MAX(version) + 1 FROM wh_event_store WHERE stream_id = (elem->>'stream_id')::UUID),
             1
         ),
         ...
     FROM jsonb_array_elements(p_new_outbox_messages) AS elem
     WHERE (elem->>'is_event')::BOOLEAN = TRUE
-      AND (elem->>'message_type')::TEXT LIKE '%Event';  -- Convention-based
+      AND (elem->>'stream_id') IS NOT NULL;
 
     -- 5-8. Similar atomic operations for inbox
     -- ...

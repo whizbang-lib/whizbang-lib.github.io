@@ -1,6 +1,8 @@
 ---
 title: Object Pooling
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Infrastructure
 order: 3
@@ -11,6 +13,10 @@ tags: 'pooling, performance, allocations, gc, policy-context, object-reuse'
 codeReferences:
   - src/Whizbang.Core/Pooling/PolicyContextPool.cs
   - src/Whizbang.Core/Pooling/ExecutionState.cs
+  - src/Whizbang.Core/Pooling/ExecutionStatePool.cs
+testReferences:
+  - tests/Whizbang.Policies.Tests/PolicyContextPoolTests.cs
+  - tests/Whizbang.Execution.Tests/ExecutionStatePoolTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -36,8 +42,9 @@ lastMaintainedCommit: '01f07906'
 - ✅ **Fixed-Size Objects** - Predictable memory usage
 
 **Whizbang Pooled Objects**:
-- `PolicyContext` - Message processing context (100-200 bytes)
-- `ExecutionState` - Execution pipeline state (50-100 bytes)
+- `PolicyContext` - Message processing context, via static `PolicyContextPool`
+- `ExecutionState<TResult>` - `SerialExecutor` execution state, via static `ExecutionStatePool<T>` (eliminates lambda closure allocations)
+- `PooledValueTaskSource<TResult>` - Reusable `IValueTaskSource` backing, via `PooledSourcePool`
 
 ---
 
@@ -57,10 +64,10 @@ Message Processing Lifecycle:
 ```mermaid
 flowchart TD
     Rent["1. Rent from Pool<br/>context = PolicyContextPool.Rent(message, envelope, services, environment);"]
-    Initialize["2. Initialize with Message<br/>context.Initialize(message, envelope, services, environment);"]
+    Initialize["2. Initialize with Message<br/>(automatic — Rent calls internal Initialize)"]
     Use["3. Use Context in Processing<br/>var config = await policyEngine.MatchAsync(context);<br/>await HandleMessageAsync(message, context);"]
     Return["4. Return to Pool<br/>PolicyContextPool.Return(context);"]
-    Reset["context.Reset() → clears references"]
+    Reset["internal Reset() → clears references"]
     Outcome["Added to pool (if not full) or GC'd (if full)"]
 
     Rent --> Initialize --> Use --> Return --> Reset --> Outcome
@@ -77,8 +84,8 @@ using Whizbang.Core.Pooling;
 
 public static class PolicyContextPool {
   private static readonly ConcurrentBag<PolicyContext> _pool = [];
-  private static int _poolSize = 0;
-  private const int MaxPoolSize = 1024;
+  private static int _poolSize;
+  private const int MAX_POOL_SIZE = 1024;
 
   /// <summary>
   /// Rents a PolicyContext from the pool and initializes it.
@@ -113,7 +120,7 @@ public static class PolicyContextPool {
     context.Reset();
 
     // Only add back if pool not full
-    if (_poolSize < MaxPoolSize) {
+    if (_poolSize < MAX_POOL_SIZE) {
       _pool.Add(context);
       Interlocked.Increment(ref _poolSize);
     }
@@ -241,11 +248,9 @@ var context = PolicyContextPool.Rent(message, envelope, services, "production");
 - If empty → new context created (rare)
 - Context initialized with message data
 
-### 2. Initialize
+### 2. Initialize (automatic — internal)
 
-```csharp{title="Initialize" description="Initialize" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Initialize"]}
-context.Initialize(message, envelope, services, environment);
-```
+`Initialize(...)` is `internal`; `Rent` calls it for you on every rented context (new or reused).
 
 **What's Set**:
 - `Message` = message object
@@ -271,11 +276,9 @@ var service = context.GetService<IOrderRepository>();
 - Metadata access
 - Tag/flag checking
 
-### 4. Reset
+### 4. Reset (automatic — internal)
 
-```csharp{title="Reset" description="Reset" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Reset"]}
-context.Reset();
-```
+`Reset()` is `internal`; it runs automatically inside `PolicyContextPool.Return(context)` — you never call it directly.
 
 **What's Cleared**:
 - `Message` = null (release reference)
@@ -357,90 +360,39 @@ Heap Savings: 1M × 160 bytes - 160KB = 159.84MB saved
 
 ## Advanced Patterns
 
-### Custom Pool Size
+### Pool Size
 
-```csharp{title="Custom Pool Size" description="Custom Pool Size" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Custom", "Pool"]}
-// For very high throughput (100K+ msg/sec), increase max size
-private const int MaxPoolSize = 4096;  // 4x default
+The pool cap is a **fixed internal constant** — `MAX_POOL_SIZE = 1024` — and is not configurable at runtime. There are no public knobs or metrics endpoints on `PolicyContextPool`; its entire public surface is `Rent(...)` and `Return(...)`. Exceeding 1,024 outstanding contexts is harmless: extra contexts are simply allocated on demand and garbage-collected on return.
 
-// For memory-constrained environments, decrease
-private const int MaxPoolSize = 256;  // 1/4 default
-```
+### Pool Monitoring (wrapper pattern)
 
-**Guideline**: Set `MaxPoolSize` to 2x concurrent message processing capacity.
+`PolicyContextPool` does not expose hit-rate or size metrics. If you need them, wrap the rent/return calls at your call sites:
 
-### Pool Monitoring
+```csharp{title="Pool monitoring via a call-site wrapper" description="Application-level counters around PolicyContextPool.Rent/Return — the shipped pool exposes no metrics of its own" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Pool", "Monitoring"]}
+public static class TrackedContextPool {
+  private static long _totalRented;
+  private static long _totalReturned;
 
-```csharp{title="Pool Monitoring" description="Pool Monitoring" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Pool", "Monitoring"]}
-public static class PolicyContextPool {
-  // Metrics for monitoring
-  private static long _totalRented = 0;
-  private static long _totalReturned = 0;
-  private static long _totalAllocated = 0;  // Rent when pool empty
-
-  public static PolicyContext Rent(...) {
+  public static PolicyContext Rent(
+    object message, IMessageEnvelope? envelope,
+    IServiceProvider? services, string environment) {
     Interlocked.Increment(ref _totalRented);
-
-    if (_pool.TryTake(out var context)) {
-      // Reused from pool
-    } else {
-      // Pool empty - allocate new
-      Interlocked.Increment(ref _totalAllocated);
-      context = new PolicyContext();
-    }
-
-    // ...
+    return PolicyContextPool.Rent(message, envelope, services, environment);
   }
 
   public static void Return(PolicyContext? context) {
-    if (context is null) return;
-    Interlocked.Increment(ref _totalReturned);
-    // ...
-  }
-
-  // Metrics endpoints
-  public static int GetPoolSize() => _poolSize;
-  public static long GetTotalRented() => _totalRented;
-  public static long GetTotalReturned() => _totalReturned;
-  public static long GetTotalAllocated() => _totalAllocated;
-  public static double GetHitRate() =>
-    _totalRented > 0 ? (double)(_totalRented - _totalAllocated) / _totalRented : 0;
-}
-```
-
-**Monitoring**:
-- **Pool Size**: Should stabilize near max concurrent processing
-- **Hit Rate**: Should be > 99% (reusing from pool)
-- **Allocations**: Should plateau after warmup
-
-### Pre-Warming Pool
-
-```csharp{title="Pre-Warming Pool" description="Pre-Warming Pool" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Pre-Warming", "Pool"]}
-// Warm pool on application startup
-public static class PolicyContextPool {
-  public static void WarmPool(int targetSize = MaxPoolSize) {
-    for (int i = 0; i < targetSize; i++) {
-      var context = new PolicyContext();
-      context.Reset();
-      _pool.Add(context);
-      Interlocked.Increment(ref _poolSize);
+    if (context is not null) {
+      Interlocked.Increment(ref _totalReturned);
     }
+    PolicyContextPool.Return(context);
   }
-}
 
-// Usage in Startup
-public class Program {
-  public static void Main(string[] args) {
-    // Warm pool before accepting traffic
-    PolicyContextPool.WarmPool(targetSize: 1024);
-
-    var app = WebApplication.Create(args);
-    app.Run();
-  }
+  public static long TotalRented => Interlocked.Read(ref _totalRented);
+  public static long TotalReturned => Interlocked.Read(ref _totalReturned);
 }
 ```
 
-**Benefit**: Eliminates allocations during first 1,024 messages (faster startup).
+**Monitoring**: `TotalReturned` should track `TotalRented` closely — a widening gap means a code path is leaking contexts (missing `finally`).
 
 ---
 
@@ -448,93 +400,38 @@ public class Program {
 
 ### Problem: Pool Never Reuses Contexts
 
-**Symptoms**: `GetHitRate()` returns 0%, all messages allocate new contexts.
+**Symptoms**: Allocation profiling shows a new `PolicyContext` per message.
 
 **Causes**:
 1. Contexts not returned to pool
-2. Returned contexts not added (pool full on every return)
-3. Pool cleared between rent/return
+2. A return path skipped on exceptions
 
 **Solution**:
 ```csharp{title="Problem: Pool Never Reuses Contexts" description="Problem: Pool Never Reuses Contexts" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Pool"]}
-// 1. Verify return in finally
+// Verify return in finally — this is the only way contexts get back to the pool
+var context = PolicyContextPool.Rent(message, envelope, services, "production");
 try {
-  var context = PolicyContextPool.Rent(...);
   // Use context
 } finally {
-  PolicyContextPool.Return(context);  // ⭐ Must execute
+  PolicyContextPool.Return(context);  // ⭐ Must execute on every path
 }
-
-// 2. Check pool size metrics
-var poolSize = PolicyContextPool.GetPoolSize();
-var returned = PolicyContextPool.GetTotalReturned();
-var rented = PolicyContextPool.GetTotalRented();
-
-Console.WriteLine($"Pool Size: {poolSize}, Returned: {returned}, Rented: {rented}");
-
-// Expected: returned ≈ rented, poolSize > 0
 ```
 
 ### Problem: Memory Leak Despite Pooling
 
 **Symptoms**: Heap grows over time even with pooling.
 
-**Cause**: Context references not cleared in `Reset()`.
+**Cause**: A pooled context is being held (e.g. stored in a field) after `Return` — its references are cleared by `Reset()`, but *your* reference keeps the context graph alive, or worse, a later `Rent` re-initializes an object you still consider yours.
 
-**Solution**:
-```csharp{title="Problem: Memory Leak Despite Pooling" description="Problem: Memory Leak Despite Pooling" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Memory"]}
-// Verify Reset() clears ALL references
-internal void Reset() {
-  Message = null!;          // ⭐ Clear
-  MessageType = null!;      // ⭐ Clear
-  Envelope = null;          // ⭐ Clear (prevent leak)
-  Services = null;          // ⭐ Clear (prevent leak)
-  Environment = "development";
-  Trail = new PolicyDecisionTrail();  // New instance
-}
-
-// Verify no lingering references
-context.Reset();
-Assert.That(context.Envelope).IsNull();
-Assert.That(context.Services).IsNull();
-```
+**Solution**: never keep a reference to a context after returning it. `Return` calls the internal `Reset()` for you — it clears `Message`, `MessageType`, `Envelope`, and `Services`, resets `Environment` to `"development"`, and replaces `Trail` with a fresh `PolicyDecisionTrail`. You cannot (and need not) call `Reset()` yourself; it is internal.
 
 ### Problem: Pool Depletion Under Load
 
-**Symptoms**: `GetPoolSize()` drops to 0 under high load, allocations spike.
+**Symptoms**: Allocation rate spikes when concurrent in-flight messages exceed ~1,024.
 
-**Causes**:
-1. Contexts not returned (leaked)
-2. Max pool size too small
-3. Concurrent processing exceeds pool capacity
+**Cause**: More than `MAX_POOL_SIZE` (1,024) contexts in flight simultaneously — the pool cap is fixed, so the overflow is allocated fresh and discarded on return.
 
-**Solution**:
-```csharp{title="Problem: Pool Depletion Under Load" description="Problem: Pool Depletion Under Load" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Pool"]}
-// 1. Audit return paths
-public async Task HandleAsync(message) {
-  var context = PolicyContextPool.Rent(...);
-  try {
-    await ProcessAsync(message, context);
-  } catch {
-    // Exception path - still return
-    throw;
-  } finally {
-    PolicyContextPool.Return(context);  // ⭐ All paths return
-  }
-}
-
-// 2. Increase max pool size
-private const int MaxPoolSize = 4096;  // 4x concurrent capacity
-
-// 3. Monitor concurrent usage
-var concurrentMessages = GetConcurrentMessageCount();
-var poolSize = PolicyContextPool.GetPoolSize();
-
-if (concurrentMessages > poolSize) {
-  // Pool too small - increase MaxPoolSize
-  Console.WriteLine($"WARNING: Pool depleted - {concurrentMessages} concurrent > {poolSize} pool size");
-}
-```
+**Solution**: this is safe (just GC pressure, not an error). Audit that all paths return contexts; if genuinely more than 1,024 messages are concurrently mid-policy-evaluation, reduce concurrency upstream (e.g. `WithConcurrency` on the matched policy) — the pool cap itself is not configurable.
 
 ---
 

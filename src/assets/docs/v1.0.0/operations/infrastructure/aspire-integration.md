@@ -1,6 +1,8 @@
 ---
 title: .NET Aspire Integration
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Infrastructure
 order: 1
@@ -14,6 +16,13 @@ codeReferences:
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs
   - src/Whizbang.Core/Transports/AzureServiceBus/AspireConfigurationGenerator.cs
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusReadinessCheck.cs
+  - src/Whizbang.Core/Transports/AzureServiceBus/TopicRequirement.cs
+testReferences:
+  - >-
+    tests/Whizbang.Hosting.Azure.ServiceBus.Tests/ServiceBusSubscriptionExtensionsTests.cs
+  - tests/Whizbang.Hosting.Azure.ServiceBus.Tests/ServiceBusReadinessCheckTests.cs
+  - >-
+    tests/Whizbang.Core.Tests/Transports/AzureServiceBus/AspireConfigurationGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -120,20 +129,20 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 // Add Service Bus resource (emulator for local dev)
 var serviceBus = builder.AddAzureServiceBus("messaging")
-  .RunAsEmulator();  // Local development
-  // .PublishAsAzureServiceBusNamespace();  // Production deployment
+  .RunAsEmulator();  // Local development; in publish mode Aspire
+                     // provisions an Azure namespace via generated Bicep
 
 // Create topic for all events
-var topic = serviceBus.AddTopic("whizbang-events");
+var topic = serviceBus.AddServiceBusTopic("whizbang-events");
 
 // Add subscriptions with Whizbang correlation filters
-var inventorySub = topic.AddSubscription("inventory-service")
+var inventorySub = topic.AddServiceBusSubscription("inventory-service")
   .WithDestinationFilter("inventory");  // ⭐ Whizbang extension method
 
-var notificationSub = topic.AddSubscription("notification-service")
+var notificationSub = topic.AddServiceBusSubscription("notification-service")
   .WithDestinationFilter("notifications");
 
-var analyticsSub = topic.AddSubscription("analytics-service")
+var analyticsSub = topic.AddServiceBusSubscription("analytics-service")
   .WithDestinationFilter("analytics");
 
 // Add service projects with Service Bus references
@@ -235,7 +244,7 @@ public static IResourceBuilder<AzureServiceBusSubscriptionResource> WithDestinat
 **Usage Pattern**:
 ```csharp{title="WithDestinationFilter Extension (2)" description="Usage Pattern:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "WithDestinationFilter", "Extension"]}
 // AppHost - provision filters
-var inventorySub = topic.AddSubscription("inventory-service")
+var inventorySub = topic.AddServiceBusSubscription("inventory-service")
   .WithDestinationFilter("inventory");  // Only messages with Destination = "inventory"
 
 // Publisher - set Destination property
@@ -278,8 +287,9 @@ Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAcce
 ### Production (Azure)
 
 ```csharp{title="Production (Azure)" description="Production (Azure)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Production", "Azure"]}
-var serviceBus = builder.AddAzureServiceBus("messaging")
-  .PublishAsAzureServiceBusNamespace();  // Generates Bicep for Azure deployment
+// Without RunAsEmulator(), publish mode (azd / aspire publish) provisions
+// an Azure Service Bus namespace from generated Bicep automatically
+var serviceBus = builder.AddAzureServiceBus("messaging");
 ```
 
 **Characteristics**:
@@ -350,6 +360,7 @@ whizbangEventsTopic.AddServiceBusSubscription("notification-service");
 
 **Pattern**:
 ```csharp{title="ServiceBusReadinessCheck" description="ServiceBusReadinessCheck" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "ServiceBusReadinessCheck"]}
+using Whizbang.Core.Transports;
 using Whizbang.Hosting.Azure.ServiceBus;
 
 builder.Services.AddSingleton<ITransportReadinessCheck, ServiceBusReadinessCheck>();
@@ -393,18 +404,18 @@ public async Task<bool> IsReadyAsync(CancellationToken ct) {
 
 ```csharp{title="Fan-Out Events" description="Fan-Out Events" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Fan-Out", "Events"]}
 // AppHost - multiple services subscribe to same topic
-var topic = serviceBus.AddTopic("order-events");
+var topic = serviceBus.AddServiceBusTopic("order-events");
 
-topic.AddSubscription("inventory-service")
+topic.AddServiceBusSubscription("inventory-service")
   .WithDestinationFilter("inventory");
 
-topic.AddSubscription("notification-service")
+topic.AddServiceBusSubscription("notification-service")
   .WithDestinationFilter("notifications");
 
-topic.AddSubscription("analytics-service")
+topic.AddServiceBusSubscription("analytics-service")
   .WithDestinationFilter("analytics");
 
-topic.AddSubscription("audit-service")
+topic.AddServiceBusSubscription("audit-service")
   .WithDestinationFilter("audit");
 
 // Publisher - send to multiple destinations
@@ -481,7 +492,7 @@ OrderService.DispatcherInvokeReceptor (50ms)
 - ✅ **Run emulator for local development** (zero Azure costs)
 - ✅ **Add `.AddServiceDefaults()`** to all service projects
 - ✅ **Reference subscriptions** via `.WithReference()` (grants access)
-- ✅ **Use `PublishAsAzureServiceBusNamespace()`** for production Bicep generation
+- ✅ **Let publish mode generate Bicep** for the production namespace (drop `RunAsEmulator()`)
 - ✅ **Monitor Aspire dashboard** during development
 - ✅ **Test locally with emulator** before deploying to Azure
 
@@ -527,7 +538,7 @@ var connectionString = builder.Configuration.GetConnectionString("messaging");
 **Solution**:
 ```csharp{title="Problem: Messages Not Filtered Correctly" description="Problem: Messages Not Filtered Correctly" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Messages"]}
 // AppHost - verify filter provisioning
-var inventorySub = topic.AddSubscription("inventory-service")
+var inventorySub = topic.AddServiceBusSubscription("inventory-service")
   .WithDestinationFilter("inventory");  // Filter value: "inventory"
 
 // Publisher - set matching Destination property
