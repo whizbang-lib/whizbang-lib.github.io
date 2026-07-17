@@ -1,6 +1,8 @@
 ---
 title: InMemory Body Store
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Fundamentals
 order: 1
@@ -11,11 +13,14 @@ tags: 'offload, providers, in-memory, testing'
 codeReferences:
   - src/Whizbang.Offloads.InMemory/InMemoryMessageBodyStore.cs
   - src/Whizbang.Offloads.InMemory/InMemoryOffloadServiceCollectionExtensions.cs
+testReferences:
+  - tests/Whizbang.Offloads.InMemory.Tests/InMemoryMessageBodyStoreTests.cs
+  - tests/Whizbang.Core.Tests/Offloads/MessageBodyStoreContractTests.cs
 ---
 
 # InMemory Body Store
 
-`Whizbang.Offloads.InMemory` is the dev/test/fixture provider for body offload. Bodies live in a process-local `ConcurrentDictionary` and disappear on restart. Mirrors the role of `Whizbang.Transports.InMemory` in the transport pattern: fast, deterministic, isolated, lets the rest of the offload pipeline exercise end-to-end without an external blob service.
+`Whizbang.Offloads.InMemory` is the dev/test/fixture provider for body offload. Bodies live in a process-local `ConcurrentDictionary` and disappear on restart. Mirrors the role of the in-process transport (`InProcessTransport`) in the transport pattern: fast, deterministic, isolated, lets the rest of the offload pipeline exercise end-to-end without an external blob service.
 
 **Not suitable for production.** Bodies don't cross processes (producer and consumer MUST run in the same OS process); no durability; restart loses everything.
 

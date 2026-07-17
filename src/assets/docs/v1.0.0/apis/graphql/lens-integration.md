@@ -1,17 +1,23 @@
 ---
 title: Lens Integration
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: GraphQL
 order: 3
 description: >-
   The GraphQLLens attribute for marking lens interfaces for GraphQL exposure
-  with automatic query generation. Covers attribute properties, GraphQLLensScope
+  with automatic query generation. Covers attribute properties, GraphQLLensScopes
   options, and configurable filtering, sorting, and paging.
 tags: 'graphql, lens, graphql-lens-attribute, scope, query-generation, hotchocolate'
 codeReferences:
   - src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensAttribute.cs
-  - src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensScope.cs
+  - src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensScopes.cs
+  - src/Whizbang.Transports.HotChocolate.Generators/GraphQLLensTypeGenerator.cs
+testReferences:
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/GraphQLLensAttributeTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/GraphQLLensScopeTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -32,8 +38,8 @@ This generates a GraphQL query field named `orders` with full data operations su
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `QueryName` | `string` | Interface name | GraphQL field name |
-| `Scope` | `GraphQLLensScope` | `Default` | Which fields to expose |
+| `QueryName` | `string?` | Pluralized model name (`OrderReadModel` → `orders`) | GraphQL field name |
+| `Scope` | `GraphQLLensScopes` | `None` (uses system default) | Which fields to expose |
 | `EnableFiltering` | `bool` | `true` | Enable `where` argument |
 | `EnableSorting` | `bool` | `true` | Enable `order` argument |
 | `EnablePaging` | `bool` | `true` | Enable Relay-style paging |
@@ -41,7 +47,7 @@ This generates a GraphQL query field named `orders` with full data operations su
 | `DefaultPageSize` | `int` | `10` | Default items per page |
 | `MaxPageSize` | `int` | `100` | Maximum items per page |
 
-## GraphQLLensScope {#scope}
+## GraphQLLensScopes {#scope}
 
 Control which parts of `PerspectiveRow<T>` are exposed through the GraphQL schema. The scope determines which nested fields are available for querying.
 
@@ -50,9 +56,9 @@ Control which parts of `PerspectiveRow<T>` are exposed through the GraphQL schem
 When you query a lens-backed GraphQL field, the results are wrapped in `PerspectiveRow<TModel>`, which contains:
 
 - **`data`** - The business model (your perspective's projection)
-- **`metadata`** - Event sourcing metadata (eventType, correlationId, timestamp)
-- **`scope`** - Security/tenancy context (tenantId, userId, organizationId)
-- **`systemFields`** - Infrastructure fields (id, version, createdAt, updatedAt)
+- **`metadata`** - Event sourcing metadata (eventType, eventId, timestamp, correlationId, causationId)
+- **`scope`** - Security/tenancy context (tenantId, userId, organizationId, customerId, allowedPrincipals)
+- **System fields** - Infrastructure fields exposed at the top level of each row (id, version, createdAt, updatedAt) when the scope includes `SystemFields`
 
 The `data` field contains your actual business model that the perspective projects. For example, if your perspective projects to `ProductReadModel`, the `data` field will expose `ProductReadModel`'s properties.
 
@@ -62,12 +68,12 @@ Control which parts of `PerspectiveRow<T>` are exposed:
 
 ```csharp{title="Scope Control" description="Control which parts of PerspectiveRow<T> are exposed:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Scope", "Control"]}
 [Flags]
-public enum GraphQLLensScope {
-    Default = 0,           // Use system default
+public enum GraphQLLensScopes {
+    None = 0,              // Use system default (WhizbangGraphQLOptions.DefaultScope)
     Data = 1 << 0,         // TModel properties
-    Metadata = 1 << 1,     // EventType, CorrelationId, Timestamp
-    Scope = 1 << 2,        // TenantId, UserId, OrganizationId
-    SystemFields = 1 << 3, // Id, Version, CreatedAt, UpdatedAt
+    Metadata = 1 << 1,     // EventType, EventId, Timestamp, CorrelationId, CausationId
+    Scope = 1 << 2,        // TenantId, UserId, OrganizationId, CustomerId, AllowedPrincipals
+    SystemFields = 1 << 3, // Id, CreatedAt, UpdatedAt, Version
 
     // Presets
     DataOnly = Data,
@@ -83,7 +89,7 @@ public enum GraphQLLensScope {
 Expose only the business data:
 
 ```csharp{title="Data Only (Default)" description="Expose only the business data:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Data", "Only"]}
-[GraphQLLens(QueryName = "products", Scope = GraphQLLensScope.DataOnly)]
+[GraphQLLens(QueryName = "products", Scope = GraphQLLensScopes.DataOnly)]
 public interface IProductLens : ILensQuery<ProductReadModel> { }
 ```
 
@@ -108,7 +114,7 @@ Include event sourcing metadata:
 ```csharp{title="With Metadata" description="Include event sourcing metadata:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Metadata"]}
 [GraphQLLens(
     QueryName = "auditLog",
-    Scope = GraphQLLensScope.Data | GraphQLLensScope.Metadata | GraphQLLensScope.SystemFields)]
+    Scope = GraphQLLensScopes.Data | GraphQLLensScopes.Metadata | GraphQLLensScopes.SystemFields)]
 public interface IAuditLens : ILensQuery<AuditReadModel> { }
 ```
 
@@ -137,7 +143,7 @@ public interface IAuditLens : ILensQuery<AuditReadModel> { }
 Expose everything including scope data:
 
 ```csharp{title="Full Row (Admin View)" description="Expose everything including scope data:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Full", "Row"]}
-[GraphQLLens(QueryName = "adminOrders", Scope = GraphQLLensScope.All)]
+[GraphQLLens(QueryName = "adminOrders", Scope = GraphQLLensScopes.All)]
 public interface IAdminOrderLens : ILensQuery<OrderReadModel> { }
 ```
 
@@ -235,7 +241,8 @@ type OrdersConnection {
   nodes: [Order!]
   edges: [OrderEdge!]
   pageInfo: PageInfo!
-  totalCount: Int!
+  # totalCount is only added when the resolver uses
+  # [UsePaging(IncludeTotalCount = true)] - not enabled by the generated resolvers
 }
 
 type Order {
@@ -269,17 +276,17 @@ You can create multiple lenses for the same model with different configurations:
 
 ```csharp{title="Multiple Lenses for Same Model" description="You can create multiple lenses for the same model with different configurations:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Multiple", "Lenses"]}
 // Public API - data only
-[GraphQLLens(QueryName = "orders", Scope = GraphQLLensScope.DataOnly)]
+[GraphQLLens(QueryName = "orders", Scope = GraphQLLensScopes.DataOnly)]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 
 // Admin API - full access
-[GraphQLLens(QueryName = "adminOrders", Scope = GraphQLLensScope.All)]
+[GraphQLLens(QueryName = "adminOrders", Scope = GraphQLLensScopes.All)]
 public interface IAdminOrderLens : ILensQuery<OrderReadModel> { }
 
 // Audit API - metadata focus
 [GraphQLLens(
     QueryName = "orderAudit",
-    Scope = GraphQLLensScope.Metadata | GraphQLLensScope.SystemFields,
+    Scope = GraphQLLensScopes.Metadata | GraphQLLensScopes.SystemFields,
     EnableFiltering = false)]
 public interface IOrderAuditLens : ILensQuery<OrderReadModel> { }
 ```

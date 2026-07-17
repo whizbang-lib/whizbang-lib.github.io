@@ -1,6 +1,8 @@
 ---
 title: GraphQL Scoping
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: GraphQL
 order: 7
@@ -12,6 +14,12 @@ tags: 'graphql, scoping, multi-tenancy, security, middleware, jwt, scope-context
 codeReferences:
   - src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
   - src/Whizbang.Transports.HotChocolate/Middleware/ScopeMiddlewareExtensions.cs
+  - src/Whizbang.Core/Security/ScopeContextAccessor.cs
+testReferences:
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangScopeMiddlewareTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ScopeMiddlewareExtensionsTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangScopeOptionsSymmetryTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Integration.Tests/ScopedQueryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -53,14 +61,16 @@ app.MapGraphQL();
 
 ### Default Claim/Header Mappings
 
-| Scope Value | Claim Type | Header Name |
-|-------------|-----------|-------------|
+| Scope Value | Claim Type(s), tried in order | Header Name |
+|-------------|-------------------------------|-------------|
 | TenantId | `tenant_id` | `X-Tenant-Id` |
-| UserId | `ClaimTypes.NameIdentifier` | `X-User-Id` |
+| UserId | Azure AD `objectidentifier` claim, `objectid`, `oid`, `sub`, `ClaimTypes.NameIdentifier` | `X-User-Id` |
 | OrganizationId | `org_id` | `X-Organization-Id` |
 | CustomerId | `customer_id` | `X-Customer-Id` |
 | Roles | `ClaimTypes.Role` | - |
 | Groups | `groups` | - |
+| Permissions | `permissions` | - |
+| CorrelationId | - | `X-Correlation-ID` |
 
 ### Custom Configuration
 
@@ -87,8 +97,11 @@ builder.Services.AddWhizbangScope(options => {
 The middleware extracts scope from the request:
 
 ```csharp{title="Scope Extraction" description="The middleware extracts scope from the request:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Scope", "Extraction"]}
-// JWT claims take priority over headers
-var tenantId = context.User?.FindFirst("tenant_id")?.Value
+// Conceptually (simplified): each configured claim type is tried in order,
+// and JWT claims take priority over headers
+var tenantId = options.TenantIdClaimTypes
+        .Select(claimType => context.User?.FindFirst(claimType)?.Value)
+        .FirstOrDefault(value => !string.IsNullOrEmpty(value))
     ?? context.Request.Headers["X-Tenant-Id"];
 ```
 
@@ -97,19 +110,28 @@ var tenantId = context.User?.FindFirst("tenant_id")?.Value
 The scope context is populated with:
 
 ```csharp{title="Context Population" description="The scope context is populated with:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Context", "Population"]}
-scopeContextAccessor.Current = new RequestScopeContext {
+// The middleware wraps everything it extracted in a SecurityExtraction,
+// then publishes it as an immutable, propagating scope context
+var extraction = new SecurityExtraction {
     Scope = new PerspectiveScope {
         TenantId = "tenant-123",
         UserId = "user-456",
         OrganizationId = "org-789"
     },
-    Roles = ["Admin", "User"],
-    SecurityPrincipals = [
+    Roles = new HashSet<string> { "Admin", "User" },
+    Permissions = new HashSet<Permission> { new("orders:read") },
+    SecurityPrincipals = new HashSet<SecurityPrincipalId> {
         SecurityPrincipalId.User("user-456"),
         SecurityPrincipalId.Group("sales-team")
-    ],
-    Claims = { ... }
+    },
+    Claims = claims,                    // all raw claims from the request
+    Source = "HttpContext",
+    ActualPrincipal = "user-456",
+    EffectivePrincipal = "user-456",
+    ContextType = SecurityContextType.User
 };
+
+scopeContextAccessor.Current = new ImmutableScopeContext(extraction, shouldPropagate: true);
 ```
 
 ### 3. Lens Filtering
@@ -131,17 +153,23 @@ public class ScopedOrderLens : IOrderLens {
                 query = query.Where(o => o.Scope.TenantId == context.Scope.TenantId);
             }
 
-            // Filter by allowed principals (array overlap)
+            // Filter by allowed principals (array overlap).
+            // AllowedPrincipals is a List<string> ("user:alice", "group:sales-team");
+            // an empty list means the row is not principal-restricted.
             if (context?.SecurityPrincipals.Count > 0) {
+                var principals = context.SecurityPrincipals
+                    .Select(p => p.Value)
+                    .ToList();
                 query = query.Where(o =>
-                    o.Scope.AllowedPrincipals == null ||
-                    o.Scope.AllowedPrincipals.Any(p =>
-                        context.SecurityPrincipals.Contains(p)));
+                    o.Scope.AllowedPrincipals.Count == 0 ||
+                    o.Scope.AllowedPrincipals.Any(p => principals.Contains(p)));
             }
 
             return query;
         }
     }
+
+    // ... other ILensQuery<OrderReadModel> members omitted for brevity
 }
 ```
 
@@ -238,7 +266,7 @@ builder.Services.AddScoped<IOrderLens>(sp => {
 
 ```csharp{title="In Resolvers" description="In Resolvers" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Resolvers"]}
 public class Query {
-    public async Task<Order?> GetOrder(
+    public async Task<OrderReadModel?> GetOrder(
         Guid id,
         [Service] IOrderLens lens,
         [Service] IScopeContextAccessor accessor) {
@@ -257,8 +285,11 @@ public class Query {
 
 ### With Attributes
 
+`[RequirePermission]` declares the required permission; `[UseRequirePermission]` installs the HotChocolate middleware that enforces it (returning an `AUTH_NOT_AUTHORIZED` error when the permission is missing). Both attributes are needed on a resolver:
+
 ```csharp{title="With Attributes" description="With Attributes" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Attributes"]}
-[RequirePermission("orders:read")]
+[UseRequirePermission]
+[RequirePermission("orders:read", Operation = ScopeOperation.Read)]
 public IQueryable<PerspectiveRow<OrderReadModel>> GetOrders(
     [Service] IOrderLens lens) {
     return lens.Query;
@@ -270,11 +301,18 @@ public IQueryable<PerspectiveRow<OrderReadModel>> GetOrders(
 ```csharp{title="Testing Scoped Queries" description="Testing Scoped Queries" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Testing", "Scoped"]}
 [Test]
 public async Task Query_FiltersByTenantAsync() {
-    // Arrange
-    var scopeAccessor = new TestScopeContextAccessor();
-    scopeAccessor.Current = new TestScopeContext {
-        Scope = new PerspectiveScope { TenantId = "tenant-a" }
-    };
+    // Arrange - seed the ambient scope the same way the middleware does
+    var scopeAccessor = new ScopeContextAccessor();
+    scopeAccessor.Current = new ImmutableScopeContext(
+        new SecurityExtraction {
+            Scope = new PerspectiveScope { TenantId = "tenant-a" },
+            Roles = new HashSet<string>(),
+            Permissions = new HashSet<Permission>(),
+            SecurityPrincipals = new HashSet<SecurityPrincipalId>(),
+            Claims = new Dictionary<string, string>(),
+            Source = "Test"
+        },
+        shouldPropagate: true);
 
     var lens = new ScopedOrderLens(scopeAccessor, db);
 

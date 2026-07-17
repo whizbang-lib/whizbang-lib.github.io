@@ -1,6 +1,8 @@
 ---
 title: Event Streams
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 13
@@ -10,6 +12,11 @@ tags: 'event-streams, stream-id, event-sourcing, aggregates'
 codeReferences:
   - src/Whizbang.Core/ValueObjects/StreamId.cs
   - src/Whizbang.Core/Messaging/IEventStore.cs
+  - src/Whizbang.Core/IHasStreamId.cs
+  - src/Whizbang.Core/StreamIdAttribute.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/IdentityValueObjectTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -107,9 +114,9 @@ await eventStore.AppendAsync(order.StreamId, new OrderShipped {
 ### Reading Events
 
 ```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Reading"]}
-// Read all events from a stream
+// Read all events from a stream (ordered by sequence within the stream)
 await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromSequence: 0)) {
-  Console.WriteLine($"Event {envelope.Sequence}: {envelope.Payload.GetType().Name}");
+  Console.WriteLine($"Event {envelope.MessageId}: {envelope.Payload.GetType().Name}");
 }
 ```
 
@@ -215,7 +222,7 @@ Streams enable partitioning for scalability:
 // Events are partitioned by StreamId
 // Each partition can be processed independently
 public record OrderCreated : IEvent {
-  [StreamKey]  // Used for partitioning
+  [StreamId]  // Used for partitioning
   public required Guid OrderId { get; init; }
   public required Guid CustomerId { get; init; }
 }
@@ -235,7 +242,7 @@ Use the entity's business ID as the stream ID:
 
 ```csharp{title="Business Entity ID" description="Use the entity's business ID as the stream ID:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Business", "Entity"]}
 public record OrderCreated : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid OrderId { get; init; }  // OrderId IS the StreamId
   // ...
 }

@@ -1,6 +1,8 @@
 ---
 title: Dispatcher Deep Dive
 pageType: overview
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 1
@@ -11,7 +13,20 @@ tags: 'dispatcher, messaging, commands, events, patterns'
 codeReferences:
   - src/Whizbang.Core/IDispatcher.cs
   - src/Whizbang.Core/Dispatcher.cs
-  - samples/ECommerce/ECommerce.BFF.API/Endpoints/CreateOrderEndpoint.cs
+  - src/Whizbang.Core/IDeliveryReceipt.cs
+  - src/Whizbang.Core/Dispatch/DispatchOptions.cs
+  - src/Whizbang.Core/Dispatch/DispatchMode.cs
+  - src/Whizbang.Core/Dispatch/Route.cs
+  - src/Whizbang.Core/Dispatch/InvokeResult.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherInvokeWithReceiptTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCascadeTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherRoutedCascadeTests.cs
+  - tests/Whizbang.Core.Tests/Dispatch/DispatchOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Dispatch/DispatchModeTests.cs
+  - tests/Whizbang.Core.Tests/DeliveryReceiptTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -26,7 +41,8 @@ The **Dispatcher** is Whizbang's central message router. It provides three disti
 | `SendAsync` | Commands with delivery tracking | `IDeliveryReceipt` | ~100μs | Local or Remote |
 | `LocalInvokeAsync` | In-process queries/commands | `TResult` | < 20ns | Local only |
 | `LocalInvokeWithReceiptAsync` | In-process RPC with receipt | `InvokeResult<TResult>` | ~100μs | Local only |
-| `LocalInvokeAndSyncAsync` | Commands with perspective sync | `TResult` / `SyncResult` | Varies | Local only |
+| `LocalInvokeAndSyncAsync` (W4) | Invoke + wait per `SyncMode` (CT-only) | `ValueTask` | Varies | Local only |
+| `LocalInvokeAndSyncAsync` (legacy, `[Obsolete]`) | Commands with perspective sync | `TResult` / `SyncResult` | Varies | Local only |
 | `PublishAsync` | Event broadcasting | `IDeliveryReceipt` | ~50μs | Local or Remote |
 | `SendManyAsync` | Batch commands (local + outbox) | `IEnumerable<IDeliveryReceipt>` | Optimized | Local + Remote |
 | `PublishManyAsync` | Batch event publishing | `IEnumerable<IDeliveryReceipt>` | Optimized | Local + Remote |
@@ -53,7 +69,15 @@ public interface IDispatcher {
         TMessage message
     ) where TMessage : notnull;
 
-    // In-process RPC with perspective sync (wait for all perspectives)
+    // W4: invoke + wait per SyncMode (CancellationToken-only; no TimeSpan timeout)
+    ValueTask LocalInvokeAndSyncAsync<TMessage>(
+        TMessage message,
+        SyncMode mode,
+        CancellationToken cancellationToken = default
+    ) where TMessage : notnull;
+
+    // LEGACY ([Obsolete]): in-process RPC with perspective sync + TimeSpan timeout
+    [Obsolete]
     Task<TResult> LocalInvokeAndSyncAsync<TMessage, TResult>(
         TMessage message,
         TimeSpan? timeout = null,
@@ -67,14 +91,22 @@ public interface IDispatcher {
         TEvent eventData
     );
 
+    // Exactly-once event emission per claim key (see PublishOnceAsync page)
+    Task<bool> PublishOnceAsync<TEvent>(
+        string claimKey,
+        TEvent eventData,
+        CancellationToken cancellationToken = default);
+
     // Advanced/Internal: Cascade a message using a source envelope's security context
     Task CascadeMessageAsync(
         IMessage message,
         IMessageEnvelope? sourceEnvelope,
-        DispatchMode mode,
+        DispatchModes mode,
         CancellationToken cancellationToken = default);
 }
 ```
+
+Most methods also have overloads accepting an explicit `IMessageContext` (with caller-info parameters) and/or `DispatchOptions` — the block above shows the primary shapes only. See [SyncMode](sync-mode) for the W4 `LocalInvokeAndSyncAsync` contract and [PublishOnceAsync](publish-once) for exactly-once emission.
 
 ---
 
@@ -112,7 +144,7 @@ public class OrdersController : ControllerBase {
         );
 
         // Send command, get delivery receipt
-        var receipt = await _dispatcher.SendAsync(command, ct);
+        var receipt = await _dispatcher.SendAsync(command);
 
         return Accepted(new {
             messageId = receipt.MessageId,
@@ -229,7 +261,7 @@ public async Task<ActionResult> CreateOrder(
     );
 
     // Send command - returns immediately with receipt
-    var receipt = await _dispatcher.SendAsync(command, ct);
+    var receipt = await _dispatcher.SendAsync(command);
 
     // Store receipt for later tracking
     await _trackingService.StoreReceiptAsync(
@@ -284,12 +316,11 @@ public async Task<ActionResult<OrderCreated>> CreateOrder(
 
     // Invoke receptor, get typed response
     var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(
-        command,
-        ct
+        command
     );
 
     // Publish event to perspectives
-    await _dispatcher.PublishAsync(result, ct);
+    await _dispatcher.PublishAsync(result);
 
     return CreatedAtAction(
         nameof(GetOrder),
@@ -372,8 +403,7 @@ public async Task<ActionResult<OrderDetails>> GetOrder(
 
     try {
         var details = await _dispatcher.LocalInvokeAsync<GetOrderQuery, OrderDetails>(
-            query,
-            ct
+            query
         );
 
         return Ok(details);
@@ -491,6 +521,10 @@ protected override SyncReceptorInvoker<TResult>? GetSyncReceptorInvoker<TResult>
 ## LocalInvokeAndSyncAsync - Invoke with Perspective Sync
 
 **Use Case**: Invoke a handler and wait for ALL perspectives to process any events emitted during the invocation. This enables synchronous-feeling APIs over event-sourced systems.
+
+:::updated
+The timeout-shaped overloads below (`TimeSpan? timeout`, `onWaiting`/`onDecisionMade` callbacks) are marked `[Obsolete]` as of the W4 dispatcher cleanup and will be removed in the next major. The replacement is the CancellationToken-only overload `LocalInvokeAndSyncAsync<TMessage>(message, SyncMode, CancellationToken)` — see [SyncMode — Read-After-Write Dispatch](sync-mode). `LocalInvokeAndSyncForPerspectiveAsync` is not obsolete. The legacy overloads still function; migrate when convenient.
+:::
 
 **Signatures**:
 ```csharp{title="LocalInvokeAndSyncAsync - Invoke with Perspective Sync" description="Signatures:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "LocalInvokeAndSyncAsync", "Invoke"]}
@@ -678,12 +712,11 @@ public async Task<ActionResult<OrderCreated>> CreateOrder(
 
     // 1. Execute command
     var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(
-        command,
-        ct
+        command
     );
 
     // 2. Publish event to all perspectives
-    await _dispatcher.PublishAsync(result, ct);
+    await _dispatcher.PublishAsync(result);
 
     return CreatedAtAction(nameof(GetOrder), new { orderId = result.OrderId }, result);
 }
@@ -786,53 +819,27 @@ When you call `PublishAsync(orderCreated)`, **all three perspectives** are invok
 ### Remote Publishing with Outbox
 
 ```csharp{title="Remote Publishing with Outbox" description="Remote Publishing with Outbox" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Remote", "Publishing"]}
-// In receptor - store event in outbox for remote publishing
-public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-    private readonly IWorkCoordinator _coordinator;
-
-    public async ValueTask<OrderCreated> HandleAsync(
+// In a receptor, you never write to the outbox by hand.
+// Return the event (auto-cascade) — the framework serializes it to wh_outbox
+// and a background worker publishes it to the transport.
+public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)> {
+    public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
         CreateOrder message,
         CancellationToken ct = default) {
 
         // Business logic...
+        var result = new OrderResult(message.OrderId);
         var @event = new OrderCreated(/* ... */);
 
-        // Store in outbox for reliable publishing
-        await _coordinator.ProcessWorkBatchAsync(
-            instanceId: Guid.NewGuid(),
-            serviceName: "OrderService",
-            hostName: Environment.MachineName,
-            processId: Environment.ProcessId,
-            metadata: null,
-            outboxCompletions: [],
-            outboxFailures: [],
-            inboxCompletions: [],
-            inboxFailures: [],
-            receptorCompletions: [],
-            receptorFailures: [],
-            perspectiveCompletions: [],
-            perspectiveFailures: [],
-            newOutboxMessages: [
-                new OutboxMessage(
-                    MessageId: Guid.CreateVersion7(),
-                    MessageType: typeof(OrderCreated).FullName!,
-                    Payload: JsonSerializer.Serialize(@event),
-                    CorrelationId: GetCorrelationId(),
-                    Topic: "orders",
-                    PartitionKey: @event.CustomerId.ToString()
-                )
-            ],
-            newInboxMessages: [],
-            renewOutboxLeaseIds: [],
-            renewInboxLeaseIds: [],
-            flags: WorkBatchFlags.None,
-            ct: ct
-        );
-
-        return @event;
+        // Default cascade mode routes through the outbox for cross-service delivery.
+        // Use Route.Both(@event) to also invoke local receptors, or
+        // Route.Local(@event) for local receptors + event store persistence only.
+        return ValueTask.FromResult((result, @event));
     }
 }
 ```
+
+The outbox write itself happens inside the framework: the dispatcher serializes the cascaded event to `wh_outbox` (via `IWorkCoordinator`), and the outbox workers publish it to the transport. See [Auto-Cascade to Outbox](#auto-cascade-to-outbox) and [Outbox Pattern](../../messaging/outbox-pattern.md).
 
 ---
 
@@ -846,7 +853,7 @@ Understanding when to use `IEventStore.AppendAsync` versus `IDispatcher.PublishA
 
 | Method | Responsibility | Triggers Perspectives | Uses Outbox | Return |
 |--------|---------------|----------------------|-------------|--------|
-| `IEventStore.AppendAsync` | Persist event to event store | No | No | `void` |
+| `IEventStore.AppendAsync` | Persist event to event store | No | No | `Task` |
 | `IDispatcher.PublishAsync` | Broadcast event | Yes (local) | Yes (remote) | `IDeliveryReceipt` |
 | `IDispatcher.SendAsync` | Route command | No | Yes | `IDeliveryReceipt` |
 
@@ -863,7 +870,7 @@ public async ValueTask<OrderCreated> HandleAsync(
     var @event = new OrderCreated(command.OrderId, command.Items);
 
     // PublishAsync triggers local perspectives AND queues for remote delivery
-    await _dispatcher.PublishAsync(@event, ct);
+    await _dispatcher.PublishAsync(@event);
 
     return @event;
 }
@@ -873,16 +880,15 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 ```csharp{title="Correct Patterns (2)" description="For Commands:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}
 // ✅ CORRECT: Send command with delivery tracking
-await _dispatcher.SendAsync(new ProcessPayment(orderId, amount), ct);
+await _dispatcher.SendAsync(new ProcessPayment(orderId, amount));
 ```
 
 **For Direct Event Store Access (rare - infrastructure/workers only):**
 
 ```csharp{title="Correct Patterns (3)" description="For Direct Event Store Access (rare - infrastructure/workers only):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}
-// ✅ CORRECT: When you need explicit transactional control
-await using var work = await _workCoordinator.BeginAsync(ct);
+// ✅ CORRECT: Direct append for infrastructure code, replay, or migration scripts.
+// No perspectives fire and nothing is queued to the outbox.
 await _eventStore.AppendAsync(streamId, @event, ct);
-await work.CommitAsync(ct);
 ```
 
 ### Anti-Patterns to Avoid
@@ -890,7 +896,7 @@ await work.CommitAsync(ct);
 ```csharp{title="Anti-Patterns to Avoid" description="Anti-Patterns to Avoid" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Anti-Patterns", "Avoid"]}
 // ❌ WRONG: Redundant - calling both AppendAsync and PublishAsync
 await _eventStore.AppendAsync(orderId, @event, ct);
-await _dispatcher.PublishAsync(@event, ct);
+await _dispatcher.PublishAsync(@event);
 // PublishAsync already handles persistence + perspectives + outbox!
 ```
 
@@ -901,7 +907,7 @@ await _dispatcher.PublishAsync(@event, ct);
 | Publishing an event from a receptor | `PublishAsync` |
 | Sending a command to another service | `SendAsync` |
 | In-process query with typed response | `LocalInvokeAsync` |
-| Background worker with explicit transaction control | `AppendAsync` + `IWorkCoordinator` |
+| Infrastructure/worker code appending directly (no perspectives, no transport) | `AppendAsync` |
 | Event replay/migration scripts | `AppendAsync` |
 
 ---
@@ -1164,11 +1170,10 @@ public async Task<ActionResult> CreateOrder(
         var command = new CreateOrder(request.CustomerId, request.Items);
 
         var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(
-            command,
-            ct
+            command
         );
 
-        await _dispatcher.PublishAsync(result, ct);
+        await _dispatcher.PublishAsync(result);
 
         return CreatedAtAction(nameof(GetOrder), new { orderId = result.OrderId }, result);
 
@@ -1200,7 +1205,7 @@ public async Task<ActionResult> CreateOrder(
 
 ```csharp{title="SendAsync Error Handling" description="SendAsync Error Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "SendAsync", "Error"]}
 try {
-    var receipt = await _dispatcher.SendAsync(command, ct);
+    var receipt = await _dispatcher.SendAsync(command);
 
     // Store receipt for tracking
     await _trackingService.StoreAsync(receipt);
@@ -1218,7 +1223,7 @@ try {
 
 ```csharp{title="PublishAsync Error Handling" description="PublishAsync Error Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "PublishAsync", "Error"]}
 try {
-    await _dispatcher.PublishAsync(orderCreated, ct);
+    await _dispatcher.PublishAsync(orderCreated);
 
 } catch (AggregateException ex) {
     // One or more perspectives failed
@@ -1251,15 +1256,14 @@ public async Task<ActionResult<OrderCreated>> CreateOrder(
 
     // Execute command
     var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(
-        command,
-        ct
+        command
     );
 
     // Publish event to local perspectives
-    await _dispatcher.PublishAsync(result, ct);
+    await _dispatcher.PublishAsync(result);
 
     // Also send via SendAsync for outbox (remote publishing)
-    await _dispatcher.SendAsync(result, ct);
+    await _dispatcher.SendAsync(result);
 
     return CreatedAtAction(nameof(GetOrder), new { orderId = result.OrderId }, result);
 }
@@ -1280,21 +1284,16 @@ public async Task<ActionResult> ProcessPayment(
     var command = new ProcessPayment(request.OrderId, request.Amount);
 
     var result = await _dispatcher.LocalInvokeAsync<ProcessPayment, PaymentResult>(
-        command,
-        ct
+        command
     );
 
     // Publish different events based on result
     if (result.IsSuccess) {
         await _dispatcher.PublishAsync(
-            new PaymentProcessed(result.OrderId, result.Amount, result.TransactionId),
-            ct
-        );
+            new PaymentProcessed(result.OrderId, result.Amount, result.TransactionId));
     } else {
         await _dispatcher.PublishAsync(
-            new PaymentFailed(result.OrderId, result.Amount, result.ErrorCode),
-            ct
-        );
+            new PaymentFailed(result.OrderId, result.Amount, result.ErrorCode));
     }
 
     return Ok(result);
@@ -1314,8 +1313,7 @@ public async Task<ActionResult> ProcessOrders(
         var command = new CreateOrder(item.CustomerId, item.Items);
 
         var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(
-            command,
-            ct
+            command
         );
 
         results.Add(result);
@@ -1323,7 +1321,7 @@ public async Task<ActionResult> ProcessOrders(
 
     // Publish all events in batch
     foreach (var result in results) {
-        await _dispatcher.PublishAsync(result, ct);
+        await _dispatcher.PublishAsync(result);
     }
 
     return Ok(new { ordersCreated = results.Count, orders = results });
@@ -1351,7 +1349,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         var @event = new OrderCreated(command.OrderId, command.CustomerId);
 
         // Manual publishing required
-        await _dispatcher.PublishAsync(@event, ct);
+        await _dispatcher.PublishAsync(@event);
 
         return @event;
     }
@@ -1560,7 +1558,7 @@ public async ValueTask<(OrderResult, OrderCreated)> HandleAsync(
     var @event = new OrderCreated(command.OrderId, command.CustomerId);
 
     // DON'T DO THIS - framework already auto-publishes from return value
-    await _dispatcher.PublishAsync(@event, ct);
+    await _dispatcher.PublishAsync(@event);
 
     return (new OrderResult(command.OrderId), @event);
 }
@@ -1665,14 +1663,14 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, Routed<O
 **How It Works**:
 1. Receptor returns a `Routed<TEvent>` wrapped event
 2. Dispatcher extracts the event and its routing mode
-3. For `DispatchMode.Local` or `DispatchMode.Both`: Publishes to local receptors
-4. For `DispatchMode.Outbox` or `DispatchMode.Both`: Calls `CascadeToOutboxAsync`
-5. For `DispatchMode.EventStoreOnly`: Persists to event store only (no local dispatch, no transport)
+3. For `DispatchModes.Local` or `DispatchModes.Both`: Publishes to local receptors
+4. For `DispatchModes.Outbox` or `DispatchModes.Both`: Calls `CascadeToOutboxAsync`
+5. For `DispatchModes.EventStoreOnly`: Persists to event store only (no local dispatch, no transport)
 6. Generated dispatcher uses type-switch dispatch (zero reflection, AOT compatible)
 
-### DispatchMode Flags Enum
+### DispatchModes Flags Enum
 
-`DispatchMode` is a `[Flags]` enum composed from three base flags: `LocalDispatch` (1), `Outbox` (2), and `EventStore` (4). The named convenience values combine these flags:
+`DispatchModes` (note the plural — `Whizbang.Core.Dispatch.DispatchModes`) is a `[Flags]` enum composed from three base flags: `LocalDispatch` (1), `Outbox` (2), and `EventStore` (4). The named convenience values combine these flags:
 
 | Mode | Value | Flags Composition | Local Receptors | Event Store | Outbox |
 |------|-------|-------------------|-----------------|-------------|--------|
@@ -1685,7 +1683,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, Routed<O
 
 Each `Route.*()` factory method maps to one of these modes:
 
-| Route Method | DispatchMode | Description |
+| Route Method | DispatchModes | Description |
 |---|---|---|
 | `Route.Local(value)` | `Local` | Local receptors + event store persistence |
 | `Route.LocalNoPersist(value)` | `LocalNoPersist` | Local receptors only, no persistence (ephemeral) |
@@ -1875,7 +1873,7 @@ Wait for all perspectives to finish processing cascaded events before returning:
 ```csharp{title="Perspective Synchronization" description="Wait for all perspectives to finish processing cascaded events before returning:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"]}
 // Wait with default timeout (30 seconds)
 var options = new DispatchOptions().WithPerspectiveWait();
-var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(
+var result = await dispatcher.LocalInvokeAsync<OrderCreated>(
     command,
     options
 );
@@ -1924,7 +1922,7 @@ try {
         .WithTimeout(TimeSpan.FromSeconds(5))
         .WithPerspectiveWait();
 
-    var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(
+    var result = await dispatcher.LocalInvokeAsync<OrderCreated>(
         command,
         options
     );
@@ -1956,19 +1954,11 @@ try {
 - Use `SendAsync` for asynchronous commands (acceptable ~100μs)
 - Use `PublishAsync` for events (fire-and-forget)
 
-### Object Pooling
+### Envelope Allocation
 
-Whizbang uses object pooling for message envelopes:
+Envelope creation is internal to the dispatcher — application code never constructs envelopes for dispatch. The fast path (`LocalInvokeAsync` without tracing or a receipt) skips envelope creation entirely; receipt-returning paths (`SendAsync`, `PublishAsync`, `LocalInvokeWithReceiptAsync`) create an envelope because the receipt needs its metadata.
 
-```csharp{title="Object Pooling" description="Whizbang uses object pooling for message envelopes:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Object", "Pooling"]}
-// Automatically pooled
-var envelope = MessageEnvelope.Create(message, correlationId, causationId);
-
-// After dispatch, envelope is returned to pool
-// Next dispatch reuses pooled instance (zero allocation)
-```
-
-**Result**: Zero allocations in steady state (after warmup).
+**Result**: Minimal allocations in steady state; zero-allocation fast path for plain `LocalInvokeAsync`.
 
 ---
 
@@ -1976,55 +1966,22 @@ var envelope = MessageEnvelope.Create(message, correlationId, causationId);
 
 ### Outbox Pattern
 
-`SendAsync` integrates with the Outbox pattern:
+`SendAsync` and `PublishAsync` integrate with the Outbox pattern automatically: messages destined for the transport are serialized into `wh_outbox` in the same batch as the rest of the dispatch's work, then published by background workers.
 
-```csharp{title="Outbox Pattern" description="SendAsync integrates with the Outbox pattern:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Outbox", "Pattern"]}
-// Receptor stores event in outbox
-var @event = new OrderCreated(/* ... */);
+```csharp{title="Outbox Pattern" description="Dispatch writes to the outbox; background workers publish from it:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Outbox", "Pattern"]}
+// Application code: just dispatch — the outbox write is part of the dispatch
+var receipt = await _dispatcher.PublishAsync(new OrderCreated(/* ... */));
 
-await _coordinator.ProcessWorkBatchAsync(
-    /* ... */,
-    newOutboxMessages: [
-        new OutboxMessage(/* event data */)
-    ],
-    /* ... */
-);
-
-// Background worker publishes from outbox
-var batch = await _coordinator.ProcessWorkBatchAsync(/* ... */);
-
-foreach (var msg in batch.ClaimedOutboxMessages) {
-    await _transport.PublishAsync(msg);
-}
+// Framework internals (workers): work is claimed and flushed through
+// IWorkCoordinator.ProcessWorkBatchAsync(ProcessWorkBatchRequest, ct),
+// which returns OutboxWork / InboxWork / PerspectiveWork batches.
 ```
 
 See [Outbox Pattern](../../messaging/outbox-pattern.md) for details.
 
 ### Inbox Pattern
 
-`SendAsync` integrates with the Inbox pattern for exactly-once processing:
-
-```csharp{title="Inbox Pattern" description="SendAsync integrates with the Inbox pattern for exactly-once processing:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Inbox", "Pattern"]}
-// Check inbox for duplicate
-var existing = await _coordinator.FindInboxMessageAsync(messageId);
-
-if (existing is not null) {
-    // Duplicate detected - return cached result
-    return existing.Result;
-}
-
-// Process message
-var result = await _dispatcher.LocalInvokeAsync<TMessage, TResult>(message);
-
-// Store in inbox
-await _coordinator.ProcessWorkBatchAsync(
-    /* ... */,
-    newInboxMessages: [
-        new InboxMessage(messageId, result)
-    ],
-    /* ... */
-);
-```
+Incoming transport messages integrate with the Inbox pattern for exactly-once processing: the `TransportConsumerWorker` persists received messages to `wh_inbox`, deduplicates by message ID, and dispatches them to local receptors. Duplicate deliveries are detected at the inbox and never re-invoke your handlers.
 
 See [Inbox Pattern](../../messaging/inbox-pattern.md) for details.
 

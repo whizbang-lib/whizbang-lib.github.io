@@ -1,6 +1,8 @@
 ---
 title: Work Coordinator Strategies
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Data Access
 order: 8
@@ -15,12 +17,23 @@ codeReferences:
   - src/Whizbang.Core/Messaging/WorkCoordinatorStrategyFactory.cs
   - src/Whizbang.Core/Messaging/IWorkFlusher.cs
   - src/Whizbang.Hosting.AspNet/WhizbangFlushMiddleware.cs
+  - src/Whizbang.Core/Messaging/WorkCoordinatorFlushHelper.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/FlushApiTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/BatchWorkCoordinatorStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorStrategyRegistrationTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkFlusherTests.cs
+  - tests/Whizbang.Hosting.AspNet.Tests/WhizbangFlushMiddlewareTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Work Coordinator Strategies
 
-The work coordinator uses a **strategy pattern** to control when and how messages are flushed from in-memory queues to the database via `process_work_batch`. Each strategy makes different trade-offs between latency, throughput, and database load.
+The work coordinator uses a **strategy pattern** to control when and how messages are flushed from in-memory queues to the database via the `store_outbox_messages` / `store_inbox_messages` SQL functions. Each strategy makes different trade-offs between latency, throughput, and database load.
+
+:::updated{version="1.0.0"}
+Earlier pre-v1.0 builds flushed through a single `process_work_batch` orchestrator function. That function has been dropped: flushes now insert rows via `store_outbox_messages` / `store_inbox_messages`, completions and failures flow through dedicated channel flushers, and work claiming is owned exclusively by the `ClaimWorker` via the `claim_work` SQL function.
+:::
 
 ## Strategy Overview
 
@@ -44,7 +57,7 @@ services.Configure<WorkCoordinatorOptions>(options => {
   options.DebugMode = false;
   options.PartitionCount = 10_000;
   options.LeaseSeconds = 300;
-  options.StaleThresholdSeconds = 600;
+  options.AbandonStaleInstanceThresholdSeconds = 30;
 });
 ```
 
@@ -57,9 +70,10 @@ services.Configure<WorkCoordinatorOptions>(options => {
 | `BatchSize` | `int` | `100` | Batch | Message count threshold for immediate flush |
 | `CoalesceWindowMilliseconds` | `int` | `0` | Interval, Batch | Delay before Required flush to coalesce nearby items |
 | `PartitionCount` | `int` | `10,000` | All | Total partition count for stream distribution |
+| `ParallelizeStreams` | `bool` | `false` | All | Process different streams in parallel within an instance |
 | `DebugMode` | `bool` | `false` | All | Keep completed messages for debugging |
 | `LeaseSeconds` | `int` | `300` | All | Message lease duration |
-| `StaleThresholdSeconds` | `int` | `600` | All | Threshold for stale instance detection |
+| `AbandonStaleInstanceThresholdSeconds` | `int` | `30` | All | Grace period before a non-heartbeating instance is abandoned and its leases released |
 
 ## Strategies in Detail
 
@@ -143,7 +157,7 @@ services.Configure<WorkCoordinatorOptions>(o => {
 
 The source generator automatically registers strategies based on `WorkCoordinatorOptions.Strategy`. Timer-based strategies (Interval, Batch) are registered as **singletons** to preserve their background timers across scopes. Per-scope strategies (Scoped, Immediate) are created fresh per scope.
 
-Singleton strategies (Interval, Batch) require `IWorkChannelWriter` for outbox publishing. When `process_work_batch` returns outbox work, the strategy writes it to the channel so the `WorkCoordinatorPublisherWorker` can pick it up and publish to the transport. The generated registration template automatically resolves all dependencies — including `IWorkChannelWriter`, `WorkCoordinatorMetrics`, and `LifecycleMetrics` — from the DI container.
+Singleton strategies (Interval, Batch) require `IWorkChannelWriter` so a flush can signal the `ClaimWorker`. After a flush stores rows via `store_outbox_messages` / `store_inbox_messages`, the strategy calls `SignalNewWorkAvailable()` (and `SignalNewInboxWorkAvailable()` for inbox rows) so the `ClaimWorker` polls `claim_work` immediately instead of waiting for its next timer tick. The generated registration template automatically resolves all dependencies — including `IWorkChannelWriter`, `WorkCoordinatorMetrics`, and `LifecycleMetrics` — from the DI container.
 
 The `WorkCoordinatorStrategyFactory` provides AOT-safe strategy creation using direct `new` calls (no reflection).
 

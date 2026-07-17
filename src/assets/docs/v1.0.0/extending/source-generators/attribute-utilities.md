@@ -1,6 +1,8 @@
 ---
 title: Attribute Utilities
-pageType: concept
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Source Generators
 order: 10
@@ -12,6 +14,9 @@ tags: >-
 codeReferences:
   - src/Whizbang.Generators.Shared/Utilities/AttributeUtilities.cs
   - src/Whizbang.Generators/MessageTagDiscoveryGenerator.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/Utilities/AttributeUtilitiesTests.cs
+  - tests/Whizbang.Generators.Tests/MessageTagDiscoveryGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -46,7 +51,7 @@ Without shared utilities, each generator must implement its own extraction logic
 | **Maintenance burden** | Fixing bugs requires changes in multiple places |
 | **Testing overhead** | Each implementation needs its own tests |
 
-**Solution**: Centralized utilities shared across ALL generators via ILMerge.
+**Solution**: Centralized utilities shared across ALL generators via ILRepack.
 
 ---
 
@@ -229,43 +234,44 @@ var props = AttributeUtilities.GetStringArrayValue(attr, "Properties");
 ### MessageTagDiscoveryGenerator Example
 
 ```csharp{title="MessageTagDiscoveryGenerator Example" description="MessageTagDiscoveryGenerator Example" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "MessageTagDiscoveryGenerator", "Example"]}
-private static MessageTagInfo? _extractTagInfo(
+// Simplified from _extractTagInfos in MessageTagDiscoveryGenerator.
+// The real method yields one MessageTagInfo per tag attribute -
+// a type can carry MULTIPLE MessageTagAttribute subclasses.
+private static IEnumerable<MessageTagInfo> _extractTagInfos(
     GeneratorSyntaxContext context,
     CancellationToken ct) {
 
   var typeDecl = (TypeDeclarationSyntax)context.Node;
   var typeSymbol = context.SemanticModel.GetDeclaredSymbol(typeDecl, ct);
 
-  if (typeSymbol is null) {
-    return null;
+  if (typeSymbol is null || typeSymbol.DeclaredAccessibility != Accessibility.Public) {
+    yield break;
   }
 
-  // Find the tag attribute
-  var tagAttribute = typeSymbol.GetAttributes()
-      .FirstOrDefault(a => _inheritsFromMessageTagAttribute(a.AttributeClass));
+  // Find ALL MessageTagAttribute (or derived) attributes on the type
+  var tagAttributes = typeSymbol.GetAttributes()
+      .Where(a => _inheritsFromMessageTagAttribute(a.AttributeClass));
 
-  if (tagAttribute is null) {
-    return null;
+  foreach (var tagAttribute in tagAttributes) {
+    // Extract values using shared utilities
+    // Works with both constructor and named arguments!
+    var tag = AttributeUtilities.GetStringValue(tagAttribute, "Tag") ?? "";
+    var properties = AttributeUtilities.GetStringArrayValue(tagAttribute, "Properties");
+    var extraJson = AttributeUtilities.GetStringValue(tagAttribute, "ExtraJson");
+
+    // Skip attributes with Exclude = true
+    var exclude = AttributeUtilities.GetBoolValue(tagAttribute, "Exclude", false);
+    if (exclude) {
+      continue;
+    }
+
+    yield return new MessageTagInfo(
+        Tag: tag,
+        Properties: properties,
+        ExtraJson: extraJson
+        // ... other properties (type names, attribute name, initializers)
+    );
   }
-
-  // Extract values using shared utilities
-  // Works with both constructor and named arguments!
-  var tag = AttributeUtilities.GetStringValue(tagAttribute, "Tag") ?? "";
-  var properties = AttributeUtilities.GetStringArrayValue(tagAttribute, "Properties");
-  var extraJson = AttributeUtilities.GetStringValue(tagAttribute, "ExtraJson");
-
-  // Skip excluded types
-  var exclude = AttributeUtilities.GetBoolValue(tagAttribute, "Exclude", false);
-  if (exclude) {
-    return null;
-  }
-
-  return new MessageTagInfo(
-      Tag: tag,
-      Properties: properties,
-      ExtraJson: extraJson,
-      // ... other properties
-  );
 }
 ```
 
@@ -341,9 +347,9 @@ This ensures generators work with:
 
 ---
 
-## ILMerge Integration
+## ILRepack Integration
 
-`AttributeUtilities` lives in `Whizbang.Generators.Shared`, which is ILMerged into all generator assemblies:
+`AttributeUtilities` lives in `Whizbang.Generators.Shared`, which is merged into each generator assembly via ILRepack (`ILRepack.Lib.MSBuild.Task`, enabled with `ILRepackEnabled` in each generator's `.csproj`):
 
 ```mermaid
 flowchart TD

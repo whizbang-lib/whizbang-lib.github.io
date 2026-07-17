@@ -1,6 +1,8 @@
 ---
 title: SignalR Integration
 pageType: overview
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Integrations
 order: 1
@@ -62,6 +64,15 @@ builder.Services.AddWhizbangSignalR()
         options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
         options.KeepAliveInterval = TimeSpan.FromSeconds(10);
     });
+```
+
+An overload also accepts global hub options directly:
+
+```csharp{title="With Global Hub Options" description="Overload accepting HubOptions" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Hub", "Options"]}
+builder.Services.AddWhizbangSignalR(options => {
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+    options.KeepAliveInterval = TimeSpan.FromSeconds(10);
+});
 ```
 
 ## AddWhizbangSignalR

@@ -1,6 +1,8 @@
 ---
 title: Stream ID
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 12
@@ -10,6 +12,15 @@ tags: 'stream-id, events, event-sourcing, auto-generation'
 codeReferences:
   - src/Whizbang.Core/IHasStreamId.cs
   - src/Whizbang.Core/ValueObjects/StreamId.cs
+  - src/Whizbang.Core/StreamIdAttribute.cs
+  - src/Whizbang.Core/GenerateStreamIdAttribute.cs
+  - src/Whizbang.Core/Validation/StreamIdGuard.cs
+  - src/Whizbang.Core/Validation/InvalidStreamIdException.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Validation/StreamIdGuardTests.cs
+  - tests/Whizbang.Core.Tests/Registry/StreamIdExtractorRegistryTests.cs
+  - tests/Whizbang.Generators.Tests/StreamIdGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/GenerateStreamIdGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -48,6 +59,10 @@ public interface IHasStreamId {
 ## Automatic Stream ID Generation {#auto-generation}
 
 Stream ID auto-generation is controlled per-event-type using the `[GenerateStreamId]` attribute. This replaces the previous global `AutoGenerateStreamIds` option with fine-grained control.
+
+:::updated
+`WhizbangOptions.AutoGenerateStreamIds` still exists as a property (default `true`) for backward compatibility, but the shipped generation path is driven by the per-type `[GenerateStreamId]` policy via the generated stream-id extractor — the global option is no longer consulted by the dispatcher.
+:::
 
 ### `[GenerateStreamId]` Attribute
 
@@ -103,15 +118,22 @@ For full details, see the [`[GenerateStreamId]` attribute reference](../../exten
 
 ### How Auto-Generation Works
 
-1. Dispatcher checks if message implements `IHasStreamId`
-2. If `StreamId == Guid.Empty`, generates new ID via `TrackedGuid.NewMedo()`
-3. Sets the `StreamId` property on the message
-4. Message is then processed with the generated ID
+1. The source generator discovers `[GenerateStreamId]` on the message type and records its policy (always generate vs. `OnlyIfEmpty`)
+2. At dispatch, the Dispatcher asks the generated stream-id extractor for the message's generation policy
+3. If the policy says generate (and, for `OnlyIfEmpty`, the current StreamId is `Guid.Empty`), a new ID is created via `TrackedGuid.NewMedo()`
+4. The ID is written back through `IHasStreamId.StreamId` when the message implements it, or through the generated `[StreamId]` property setter otherwise
+5. The message is then processed with the generated ID
 
 ```csharp{title="How Auto-Generation Works" description="How Auto-Generation Works" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Auto-Generation", "Works"]}
 // Internal dispatcher logic (simplified)
-if (message is IHasStreamId hasStreamId && hasStreamId.StreamId == Guid.Empty) {
-  hasStreamId.StreamId = TrackedGuid.NewMedo();
+var (shouldGenerate, onlyIfEmpty) = _streamIdExtractor.GetGenerationPolicy(message);
+if (shouldGenerate && (!onlyIfEmpty || streamId == Guid.Empty)) {
+  streamId = TrackedGuid.NewMedo();
+  if (message is IHasStreamId hasStreamId) {
+    hasStreamId.StreamId = streamId;
+  } else {
+    _streamIdExtractor.SetStreamId(message, streamId);
+  }
 }
 ```
 
@@ -133,14 +155,17 @@ public readonly partial struct StreamId;
 ### Usage
 
 ```csharp{title="Usage" description="Usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage"]}
-// Create new StreamId
+// Create new StreamId (UUIDv7 via TrackedGuid.NewMedo())
 var streamId = StreamId.New();
 
-// From existing Guid
+// From existing Guid — throws ArgumentException if the Guid is not UUIDv7
 var streamId = StreamId.From(existingGuid);
 
-// Parse from string
-var streamId = StreamId.Parse("550e8400-e29b-41d4-a716-446655440000");
+// From a TrackedGuid, preserving tracking metadata (must be time-ordered)
+var streamId = StreamId.From(TrackedGuid.NewMedo());
+
+// Parse from string — validates UUIDv7 (a v4 string here would throw)
+var streamId = StreamId.Parse("01890a5d-ac96-774b-bcce-b302099a8057");
 
 // Implicit conversion to Guid
 Guid guid = streamId;
@@ -149,42 +174,44 @@ Guid guid = streamId;
 Guid underlying = streamId.Value;
 ```
 
-## StreamId vs [StreamKey] Attribute
+## IHasStreamId vs [StreamId] Attribute
 
-Whizbang supports two ways to identify stream keys:
+Whizbang supports two ways to identify a message's stream:
 
 ### 1. IHasStreamId Interface
 
-Use when you want **automatic generation** of stream IDs:
+Use when you want a settable `StreamId` property the framework can write to directly:
 
-```csharp{title="IHasStreamId Interface" description="Use when you want automatic generation of stream IDs:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IHasStreamId", "Interface"]}
+```csharp{title="IHasStreamId Interface" description="Use when you want a settable StreamId property:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IHasStreamId", "Interface"]}
 public record OrderCreated : IEvent, IHasStreamId {
-  public Guid StreamId { get; set; }  // Auto-generated if empty
+  public Guid StreamId { get; set; }  // Auto-generated if empty (with [GenerateStreamId])
   // ...
 }
 ```
 
-### 2. [StreamKey] Attribute
+### 2. [StreamId] Attribute
 
-Use when stream ID is derived from **business data**:
+Use when the stream ID lives on a **business-named property** — the source generator emits a zero-reflection extractor (and setter) for it:
 
-```csharp{title="[StreamKey] Attribute" description="Use when stream ID is derived from business data:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamKey", "Attribute"]}
+```csharp{title="[StreamId] Attribute" description="Use when the stream ID lives on a business-named property:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Attribute"]}
 public record OrderCreated : IEvent {
-  [StreamKey]
-  public required Guid OrderId { get; init; }  // Business ID is stream key
+  [StreamId]
+  public required Guid OrderId { get; init; }  // Business ID is the stream ID
   // ...
 }
 ```
+
+The property must be `Guid`, `Guid?`, or a WhizbangId type, and only **one** property per message type may carry `[StreamId]` (the attribute is inherited by derived message types).
 
 ### Comparison
 
-| Feature | IHasStreamId | [StreamKey] |
-|---------|--------------|-------------|
-| Auto-generation | Yes | No |
+| Feature | IHasStreamId | [StreamId] |
+|---------|--------------|------------|
 | Property name | Must be `StreamId` | Any property |
-| Multiple keys | No | Yes (composite) |
-| Read-only | No (must be settable) | Yes |
-| Use case | System-generated IDs | Business-driven IDs |
+| Settable required | Yes (`get; set;`) | No (`init` works; generated setter used for auto-generation) |
+| Properties per type | One (`StreamId`) | One `[StreamId]` property per type |
+| Auto-generation | With `[GenerateStreamId]` | With `[GenerateStreamId]` |
+| Use case | System-generated stream identity | Business-named stream identity |
 
 ## Working with Event Streams
 
@@ -237,8 +264,9 @@ await foreach (var envelope in eventStore.ReadPolymorphicAsync(
 
 ### DO
 
-- **Use IHasStreamId** when stream ID should be system-generated
-- **Use [StreamKey]** when stream ID comes from business data
+- **Use IHasStreamId** when you want a framework-writable `StreamId` property
+- **Use [StreamId]** when the stream ID comes from a business-named property
+- **Use [GenerateStreamId]** to opt in to auto-generation (stream-initiating events)
 - **Use StreamId value object** for type safety in domain code
 - **Store StreamId with events** for replay and querying
 

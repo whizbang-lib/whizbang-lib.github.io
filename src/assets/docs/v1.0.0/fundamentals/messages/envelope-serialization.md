@@ -1,6 +1,8 @@
 ---
 title: Envelope Serialization
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 23
@@ -9,6 +11,9 @@ description: >-
 tags: 'envelope, serialization, aot, json'
 codeReferences:
   - src/Whizbang.Core/Messaging/EnvelopeSerializer.cs
+  - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/EnvelopeSerializerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -173,16 +178,21 @@ public async Task WriteToOutboxAsync<TMessage>(
 
   var serialized = _serializer.SerializeEnvelope(envelope);
 
-  await _coordinator.ProcessWorkBatchAsync(
-      newOutboxMessages: [
-        new OutboxMessage(
-            MessageId: envelope.MessageId.Value,
-            CorrelationId: envelope.CorrelationId.Value,
-            MessageType: serialized.MessageType,
-            Payload: JsonSerializer.Serialize(serialized.JsonEnvelope),
-            EnvelopeType: serialized.EnvelopeType
-        )
-      ]);
+  await _coordinator.StoreOutboxMessagesAsync(
+      [
+        new OutboxMessage {
+          MessageId = envelope.MessageId.Value,
+          Envelope = serialized.JsonEnvelope,
+          EnvelopeType = serialized.EnvelopeType,
+          Metadata = new EnvelopeMetadata {
+            MessageId = envelope.MessageId,
+            Hops = envelope.Hops
+          },
+          IsEvent = true
+        }
+      ],
+      partitionCount: 1,
+      ct);
 }
 ```
 
@@ -221,7 +231,7 @@ public object DeserializeMessage(
         $"Ensure the assembly is loaded and registered.");
   }
 
-  return JsonSerializer.Deserialize(jsonElement, jsonTypeInfo)!;
+  return jsonElement.Deserialize(jsonTypeInfo)!;
 }
 ```
 

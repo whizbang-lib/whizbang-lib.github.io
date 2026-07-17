@@ -1,6 +1,8 @@
 ---
 title: EF Core Complex Types
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Data Access
 order: 3
@@ -183,6 +185,7 @@ public class PerspectiveMetadata {
   public DateTime Timestamp { get; set; }
   public string? CorrelationId { get; set; }
   public string? CausationId { get; set; }
+  public long? CommitSequence { get; set; }
 }
 
 // WRONG: record with copy-constructor causes NullReferenceException
@@ -281,6 +284,7 @@ protected static void UpdateMetadataInPlace(PerspectiveMetadata target, Perspect
   target.Timestamp = source.Timestamp;
   target.CorrelationId = source.CorrelationId;
   target.CausationId = source.CausationId;
+  target.CommitSequence = source.CommitSequence;
 }
 ```
 
@@ -319,7 +323,8 @@ protected static PerspectiveMetadata CloneMetadata(PerspectiveMetadata metadata)
     EventId = metadata.EventId,
     Timestamp = metadata.Timestamp,
     CorrelationId = metadata.CorrelationId,
-    CausationId = metadata.CausationId
+    CausationId = metadata.CausationId,
+    CommitSequence = metadata.CommitSequence
   };
 }
 ```
