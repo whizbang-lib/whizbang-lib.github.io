@@ -1,6 +1,8 @@
 ---
 title: Deployment Strategies
 pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Advanced Topics
 order: 7
@@ -12,6 +14,10 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
+  - src/Whizbang.Core/HealthChecks/SubscriptionHealthCheck.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveMigrationWorkerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -473,35 +479,39 @@ builder.Services.AddSingleton<ILdClient>(sp => {
 **Usage**:
 
 ```csharp{title="LaunchDarkly Integration - CreateOrderReceptor" description="LaunchDarkly Integration - CreateOrderReceptor" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "LaunchDarkly", "Integration"]}
-public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-  private readonly ILdClient _featureFlags;
+public class CreateOrderReceptor(ILdClient featureFlags) : IReceptor<CreateOrderCommand, OrderCreatedEvent> {
 
-  public async Task<OrderCreated> HandleAsync(
-    CreateOrder command,
-    CancellationToken ct = default
+  public async ValueTask<OrderCreatedEvent> HandleAsync(
+    CreateOrderCommand command,
+    CancellationToken cancellationToken = default
   ) {
-    var user = Context.User(command.CustomerId);
+    var ldContext = Context.New(command.CustomerId.ToString());
 
-    // Check feature flag
-    var useNewPricingEngine = await _featureFlags.BoolVariationAsync(
+    // Check feature flag (LaunchDarkly evaluates from its in-memory store)
+    var useNewPricingEngine = featureFlags.BoolVariation(
       "new-pricing-engine",
-      user,
+      ldContext,
       defaultValue: false
     );
 
-    decimal totalAmount;
-    if (useNewPricingEngine) {
-      totalAmount = CalculateTotalWithNewEngine(command.Items);
-    } else {
-      totalAmount = CalculateTotalWithOldEngine(command.Items);
-    }
+    var totalAmount = useNewPricingEngine
+      ? CalculateTotalWithNewEngine(command.LineItems)
+      : CalculateTotalWithOldEngine(command.LineItems);
 
     // Process order...
 
-    return new OrderCreated { OrderId = orderId, TotalAmount = totalAmount };
+    return new OrderCreatedEvent {
+      OrderId = command.OrderId,
+      CustomerId = command.CustomerId,
+      LineItems = command.LineItems,
+      TotalAmount = totalAmount,
+      CreatedAt = DateTime.UtcNow
+    };
   }
 }
 ```
+
+Whizbang receptors return `ValueTask` / `ValueTask<TResponse>` from `HandleAsync` (see `IReceptor<TMessage, TResponse>`), so flag evaluation composes naturally with async business logic.
 
 ### Gradual Rollout with Feature Flags
 
@@ -580,6 +590,15 @@ livenessProbe:
 
 **ReadinessProbe**: Pod receives traffic only when `/health/ready` returns 200
 **LivenessProbe**: Kubernetes restarts pod if `/health/live` fails
+
+The probe paths are whatever your app maps with ASP.NET Core's `MapHealthChecks(...)`. Whizbang packages contribute named checks to the standard health-check pipeline automatically:
+
+- `subscriptions` (tags `transport`, `subscriptions`) - transport subscription state, reports `Degraded` when some subscriptions are down (Whizbang.Core)
+- `whizbang_postgres` - Postgres storage driver connectivity (Whizbang.Data.Dapper.Postgres)
+- `azure_servicebus` - Azure Service Bus transport connectivity (Whizbang.Transports.AzureServiceBus)
+- `rabbitmq` - RabbitMQ transport connectivity, opt-in via `AddRabbitMQHealthChecks()` (Whizbang.Transports.RabbitMQ)
+
+Gate your **readiness** endpoint on these so pods stop receiving traffic while the transport or database is unavailable; keep **liveness** limited to a self check so transient dependency outages don't cause restart loops.
 
 ---
 
