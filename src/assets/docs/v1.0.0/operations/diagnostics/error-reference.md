@@ -1,6 +1,8 @@
 ---
 title: "Runtime Error Reference"
-pageType: troubleshooting
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   Alphabetical catalog of Whizbang runtime error messages — what triggers each
   one, what the framework does next, and how to fix it. Every entry has a
@@ -323,16 +325,27 @@ services.Configure<AzureBlobOffloadOptions>("azure-blob", opts => {
 
 ## Build-time diagnostics (WHIZ###)
 
-Compile-time errors and warnings from Whizbang's source generators use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. Each documented ID has its own page in this section, for example:
+Compile-time errors and warnings from Whizbang's source generators and analyzers use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. The IDs with dedicated pages in this section:
 
-- [WHIZ030: Perspective Event Missing StreamKey](whiz030.md)
-- [WHIZ062: Property Uses Non-Serializable Interface Type](whiz062.md)
-- [WHIZ070: Missing Pgvector.EntityFrameworkCore Package](whiz070.md)
-- [WHIZ080: Multiple Handlers for RPC Message](whiz080.md)
-- [WHIZ120: Pinned Type Renamed Without Ledger Acknowledgment](whiz120.md)
-- [WHIZ400: Invalid Type Argument for ILensQuery](whiz400.md)
+| ID | Severity | Page |
+|---|---|---|
+| WHIZ030 | Error | [Perspective Event Missing StreamId](whiz030.md) |
+| WHIZ031 | Error | [Multiple StreamId Attributes](whiz031.md) |
+| WHIZ058 | Info | [GUID Call Intercepted](whiz058.md) |
+| WHIZ059 | Info | [GUID Interception Suppressed](whiz059.md) |
+| WHIZ060–WHIZ063 | Error | [Serializable Property Analyzer](serializable-property-analyzer.md) (WHIZ062 also has [its own page](whiz062.md)) |
+| WHIZ070 | Error | [Missing Pgvector.EntityFrameworkCore Package](whiz070.md) |
+| WHIZ071 | Error | [Missing Pgvector Package](whiz071.md) — the same ID is also an Info diagnostic ("Polymorphic Base Type Discovered") in `Whizbang.Generators` |
+| WHIZ080 | Warning (disabled by default) | [Multiple Handlers for RPC Message](whiz080.md) |
+| WHIZ090 | Error | [MessageTag Parameter Naming](whiz090.md) |
+| WHIZ120 | Error | [Pinned Type Renamed Without Ledger Acknowledgment](whiz120.md) |
+| WHIZ121 | Warning | [Pinned-Type Ledger Entry Has No Living Type](whiz121.md) |
+| WHIZ300 | Error | [Inconsistent Perspective Model Types](whiz300.md) |
+| WHIZ400 | Error | [Invalid Type Argument for ILensQuery](whiz400.md) — the same ID is also a Warning ("[InheritScope] on a non-perspective type") in `Whizbang.Generators` |
+| WHIZ802 | Error | [VectorField Invalid Dimensions](whiz802.md) |
+| WHIZ807 | Info | [Physical Fields Discovered](whiz807.md) |
 
-Browse the Diagnostics section index for the full list.
+Many more diagnostics ship without dedicated pages — discovery/registration notices (WHIZ001–WHIZ028), StreamId and WhizbangId validation (WHIZ005/WHIZ006/WHIZ009/WHIZ013/WHIZ021/WHIZ024), service registration (WHIZ040–WHIZ042), test linking (WHIZ050–WHIZ054), Guid usage warnings (WHIZ055–WHIZ057), perspective purity and model checks (WHIZ100–WHIZ106, WHIZ200), pinned identity (WHIZ110–WHIZ112), InheritScope usage (WHIZ400/WHIZ401 in `Whizbang.Generators`), EF Core generation (WHIZ401/WHIZ402, WHIZ701–WHIZ703, WHIZ810–WHIZ822), physical/vector fields (WHIZ801–WHIZ807), and receptor safety (WHIZ900). Their build-output messages are self-describing; browse the Diagnostics section index for pages as they are added.
 
 ---
 

@@ -460,7 +460,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         _context = context;
     }
 
-    public ValueTask<OrderCreated> HandleAsync(CreateOrder cmd) {
+    public ValueTask<OrderCreated> HandleAsync(CreateOrder cmd, CancellationToken ct = default) {
         // ✅ Context available: _context.UserId, _context.TenantId
         var userId = _context.UserId;
         var tenantId = _context.TenantId;
@@ -481,7 +481,7 @@ public class OrderCreatedReceptor : IReceptor<OrderCreated> {
         _userContext = userContext;
     }
 
-    public ValueTask HandleAsync(OrderCreated evt) {
+    public ValueTask HandleAsync(OrderCreated evt, CancellationToken ct = default) {
         // ✅ Security context AUTOMATICALLY propagated!
         //    _context.UserId = same as command handler
         //    _context.TenantId = same as command handler
@@ -511,7 +511,7 @@ public class OrderCreatedReceptor : IReceptor<OrderCreated> {
         _context = context;
     }
 
-    public async ValueTask HandleAsync(OrderCreated evt) {
+    public async ValueTask HandleAsync(OrderCreated evt, CancellationToken ct = default) {
         // ✅ This receptor has security context from cascade
         var userId = _context.UserId;
         var tenantId = _context.TenantId;
@@ -539,7 +539,8 @@ Some cascade paths don't have a source envelope:
 
 ```csharp{title="Null Envelope Scenarios" description="For system-initiated operations, use explicit security context API:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Null", "Envelope"]}
 // Timer/scheduler scenario - establish system context explicitly
-await _dispatcher.AsSystem().SendAsync(new ScheduledCleanupCommand());
+// (a tenant strategy is required before dispatching)
+await _dispatcher.AsSystem().KeepTenant().SendAsync(new ScheduledCleanupCommand());
 ```
 
 ### Key Points
@@ -712,10 +713,9 @@ await provider.EstablishContextAsync(envelope, scopedProvider, ct);
 By default, security context is tenant-scoped. For cross-tenant operations (admin, reporting), use explicit security context:
 
 ```csharp{title="Cross-Tenant Operations" description="By default, security context is tenant-scoped." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Cross-Tenant", "Operations"]}
-// Admin cross-tenant query
-await dispatcher.AsSystem().SendAsync(new GenerateTenantReport {
-  TargetTenantId = "other-tenant"
-});
+// Admin cross-tenant query — target the tenant explicitly
+await dispatcher.AsSystem().ForTenant("other-tenant").SendAsync(new GenerateTenantReport());
+// Or system-wide: dispatcher.AsSystem().ForAllTenants()...
 // Audit: ContextType=System, EffectivePrincipal="SYSTEM"
 
 // Or with specific tenant context
@@ -752,6 +752,7 @@ When `EnableAuditLogging` is `true`, a `ScopeContextEstablished` system event is
 
 ```csharp{title="Audit Events" description="When EnableAuditLogging is true, a ScopeContextEstablished system event is emitted:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Audit", "Events"]}
 public sealed record ScopeContextEstablished : ISystemEvent {
+  public Guid Id { get; init; } = TrackedGuid.NewMedo();
   public required PerspectiveScope Scope { get; init; }
   public required IReadOnlySet<string> Roles { get; init; }
   public required IReadOnlySet<Permission> Permissions { get; init; }
@@ -868,7 +869,7 @@ flowchart LR
 
 ## Explicit Security Context API {#explicit-context}
 
-For system-triggered operations (timers, schedulers) or impersonation scenarios, use the explicit security context API:
+For system-triggered operations (timers, schedulers) or impersonation scenarios, use the explicit security context API. Both `AsSystem()` and `RunAs()` require an **explicit tenant strategy** — `ForTenant(id)`, `ForAllTenants()`, or `KeepTenant()` — before any dispatch method is available (see [Scope Propagation](scope-propagation.md)):
 
 ### AsSystem() - System Operations {#as-system}
 
@@ -876,11 +877,11 @@ Use `AsSystem()` when dispatching messages from system contexts where no user id
 
 ```csharp{title="AsSystem() - System Operations" description="Use AsSystem() when dispatching messages from system contexts where no user identity exists, or when a user-initiated" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "AsSystem", "System"]}
 // Timer/scheduler with no user context
-await dispatcher.AsSystem().SendAsync(new ReseedSystemEvent());
+await dispatcher.AsSystem().KeepTenant().SendAsync(new ReseedSystemEvent());
 // Audit: ContextType=System, ActualPrincipal=null, EffectivePrincipal="SYSTEM"
 
 // Admin triggering system operation (preserves who triggered it)
-await dispatcher.AsSystem().SendAsync(new ReseedSystemEvent());
+await dispatcher.AsSystem().KeepTenant().SendAsync(new ReseedSystemEvent());
 // Audit: ContextType=System, ActualPrincipal="admin@example.com", EffectivePrincipal="SYSTEM"
 ```
 
@@ -896,7 +897,7 @@ Use `RunAs()` when a user needs to perform actions as another identity, with ful
 
 ```csharp{title="RunAs() - Impersonation" description="Use RunAs() when a user needs to perform actions as another identity, with full audit trail:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "RunAs", "Impersonation"]}
 // Support staff impersonating a user (full audit trail)
-await dispatcher.RunAs("target-user@example.com").SendAsync(command);
+await dispatcher.RunAs("target-user@example.com").KeepTenant().SendAsync(command);
 // Audit: ContextType=Impersonated, ActualPrincipal="support@example.com", EffectivePrincipal="target-user@example.com"
 ```
 
@@ -910,18 +911,18 @@ Key behaviors:
 
 The security builder supports all dispatch methods:
 
-```csharp{title="Supported Methods" description="The security builder supports all dispatch methods:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Supported", "Methods"]}
+```csharp{title="Supported Methods" description="The security builder supports all dispatch methods (after a tenant strategy is chosen):" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Supported", "Methods"]}
 // Send commands
-await dispatcher.AsSystem().SendAsync(command);
-await dispatcher.AsSystem().SendAsync(command, options);
-await dispatcher.AsSystem().SendAsync(command, messageContext);
+await dispatcher.AsSystem().KeepTenant().SendAsync(command);
+await dispatcher.AsSystem().KeepTenant().SendAsync(command, options);
+await dispatcher.AsSystem().KeepTenant().SendAsync(command, messageContext);
 
 // Local invoke (in-process)
-await dispatcher.AsSystem().LocalInvokeAsync<TMessage, TResult>(message);
-await dispatcher.AsSystem().LocalInvokeAsync(message);
+await dispatcher.AsSystem().KeepTenant().LocalInvokeAsync<TMessage, TResult>(message);
+await dispatcher.AsSystem().KeepTenant().LocalInvokeAsync(message);
 
 // Publish events
-await dispatcher.AsSystem().PublishAsync(eventData);
+await dispatcher.AsSystem().KeepTenant().PublishAsync(eventData);
 ```
 
 ### Audit Trail
@@ -952,7 +953,7 @@ The explicit security context is propagated to outgoing message hops when `Immut
 
 ```csharp{title="Context Propagation" description="The explicit security context is propagated to outgoing message hops when `ImmutableScopeContext." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Context", "Propagation"]}
 // This message will carry SYSTEM context to downstream services
-await dispatcher.AsSystem().SendAsync(new MaintenanceCommand());
+await dispatcher.AsSystem().KeepTenant().SendAsync(new MaintenanceCommand());
 ```
 
 ### Design Principles
