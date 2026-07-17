@@ -1,6 +1,8 @@
 ---
 title: JSON Serialization Customizations
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Internals
 order: 1
@@ -10,9 +12,13 @@ description: >-
 tags: 'json, serialization, aot, converters, postgresql, datetime'
 codeReferences:
   - src/Whizbang.Core/Serialization/LenientDateTimeOffsetConverter.cs
+  - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
   - src/Whizbang.Generators/ArrayTypeInfo.cs
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
   - src/Whizbang.Generators/Templates/Snippets/JsonContextSnippets.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Serialization/LenientDateTimeOffsetConverterTests.cs
+  - tests/Whizbang.Core.Tests/JsonContextRegistryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -34,6 +40,8 @@ When data flows through `MessageJsonContext` (especially for polymorphic models 
 - Polymorphic models using `Property().HasColumnType("jsonb")` instead of `ComplexProperty().ToJson()`
 - Message/event serialization through `JsonContextRegistry`
 - Any type resolved via the generated `MessageJsonContext`
+
+`JsonContextRegistry` is the **cross-assembly registry**: each generated `MessageJsonContext` (and framework contexts) registers its `IJsonTypeInfoResolver` and converters at module-initialization time, and `JsonContextRegistry.CreateCombinedOptions()` builds the combined `JsonSerializerOptions` that all Whizbang serialization flows through. Polymorphic types are serialized with a generator-hardcoded `$type` discriminator property whose values are the type's **SimpleName** (see `JsonContextSnippets.cs`, `TypeDiscriminatorPropertyName = "$type"`).
 
 ## Custom Converters
 
@@ -102,7 +110,7 @@ The `ArrayTypeInfo` record contains information about discovered array types use
 The `ElementUniqueIdentifier` sanitizes special characters to create valid C# identifiers:
 
 - Strips `global::` prefix
-- Replaces `.`, `<`, `>`, `,` with `_`
+- Replaces `.`, `<`, `>`, `,` with `_` and removes spaces
 - Replaces `?` with `__Nullable`
 
 ### Array Type Discovery
@@ -139,7 +147,7 @@ When an enum type is discovered, the generator automatically creates `JsonTypeIn
 - `EnumType` (non-nullable)
 - `EnumType?` (nullable)
 
-This ensures `System.Nullable`1[EnumType]` is always available without tracking which enums are used as nullable.
+This ensures ``System.Nullable`1[EnumType]`` is always available without tracking which enums are used as nullable.
 
 ## Troubleshooting
 

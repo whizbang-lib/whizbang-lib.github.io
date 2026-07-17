@@ -1,6 +1,8 @@
 ---
 title: 'WHIZ121: Pinned-Type Ledger Entry Has No Living Type'
 pageType: troubleshooting
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   Warning diagnostic when the committed pinned-type ledger records a pinned id that no [PinnedId] type in the
   compilation carries — a removed type or a changed pinned id, whose aliases would register against nothing.
@@ -17,6 +19,7 @@ tags:
 codeReferences:
   - src/Whizbang.Generators/Analyzers/PinnedTypeRenameAnalyzer.cs
   - src/Whizbang.Generators/Ledger/PinnedTypeLedger.cs
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/Analyzers/PinnedTypeRenameAnalyzerTests.cs
 lastMaintainedCommit: '35b3f2a5'

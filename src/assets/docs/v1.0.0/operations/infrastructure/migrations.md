@@ -1,6 +1,8 @@
 ---
 title: Migration Tracking
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Infrastructure
 order: 5
@@ -20,6 +22,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/032_PerformMaintenance.sql
 testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/NormalizeClrTypeNamesMigrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerBranchTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
