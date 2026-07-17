@@ -276,10 +276,11 @@ This axis chooses only the **perspective store** strategy — it is **orthogonal
 
 | Storage | How | Survives an instance change? | Use |
 |---|---|---|---|
-| **In-memory** | hold the model in `InMemoryUpsertStrategy` (per-instance RAM) *after* the DB routes the event to the owner + realtime push | **No** — silently lost on rebalance / restart, and an ephemeral stream can't rebuild | presence / typing / cursor **only** — self-heals from the next ping |
-| **TTL'd `wh_per_*` row** | a normal perspective row with an `expires_at` marker | Yes — restart-safe, lens-queryable | chat thread state, session layout |
+| **`PersistedRow`** *(default)* | a normal, persisted `wh_per_*` row — **no expiry**; the row *is* the authoritative source of truth for a `WhenConsumed` stream | Yes — restart- and rebalance-safe, lens-queryable | the safe general choice |
+| **`InMemory`** | hold the model in `InMemoryUpsertStrategy` (per-instance RAM) *after* the DB routes the event to the owner + realtime push | **No** — silently lost on rebalance / restart, and an ephemeral stream can't rebuild | presence / typing / cursor **only** — self-heals from the next ping |
+| **`TtlRow`** | a `wh_per_*` row with an `expires_at` marker — like `PersistedRow` but the row itself ages out | Yes — restart-safe, lens-queryable | chat thread state, session layout |
 
-Both are read through the existing `ILensQuery` path — **the read side is unaffected**; it already reads only `wh_per_*` rows. **In-memory is a narrow presence-only optimization**, not a way to avoid persistence: it trades the `wh_per_*` write for RAM, accepting that a rebalance wipes the model (fine for presence, a data-loss footgun otherwise). The TTL'd row's *expiry duration* comes from the TTL machinery (`Destruction.AfterTtl`, phase E2), so the row-expiry half lands with E2. Neither is enforced at runtime yet.
+All three are read through the existing `ILensQuery` path — **the read side is unaffected**; it already reads only `wh_per_*` rows. The **default is `PersistedRow`** (a bare `[Ephemeral]` / `IEphemeralEvent`): the perspective row persists like any other, which is exactly what a `WhenConsumed` stream wants — its *events* self-destruct, its *row* is the durable result. `InMemory` is a deliberate opt-in and a narrow presence-only optimization — not a way to avoid persistence: it trades the `wh_per_*` write for RAM, accepting that a rebalance wipes the model (fine for presence, a data-loss footgun otherwise). `TtlRow`'s *expiry duration* comes from the TTL machinery (`Destruction.AfterTtl`, phase E2), so its row-expiry half lands with E2. None of the three is enforced at runtime yet — perspectives already persist a `wh_per_*` row today, which is the `PersistedRow` behavior; the explicit modes light up when the store strategy is wired in E2.
 
 ## Keeping it alive: renew, defer, hold
 
