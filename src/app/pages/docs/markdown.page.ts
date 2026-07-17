@@ -397,8 +397,16 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         } else {
           // For version routes, use the existing logic
           const pathPart = slugParts.slice(1).join('/'); // Remove version prefix
-          
-          if (!pathPart.includes('/') || pathPart === urlPath) {
+
+          // Compare against the URL with its version prefix stripped — menu links
+          // include the version (/docs/v1.0.0/...), and comparing against the
+          // raw urlPath made every folder-index page (dispatcher/dispatcher.md
+          // collapsed to .../dispatcher) 404 when opened via a versioned link.
+          const urlPathNoVersion = urlPath.startsWith(`${currentVersion}/`)
+            ? urlPath.substring(`${currentVersion}/`.length)
+            : urlPath;
+
+          if (!pathPart.includes('/') || pathPart === urlPathNoVersion) {
             const fileName = slugParts[slugParts.length - 1];
             
             // Try folder/filename pattern first
@@ -418,13 +426,30 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         }
       }
       
-      // Fallback: try with current version prefix
-      return `assets/docs/${currentVersion}/${urlPath}.md`;
+      // Fallback: menu links carry the version (/docs/v1.0.0/...), so strip it
+      // before re-prefixing or the path doubles (v1.0.0/v1.0.0/...). Folder-index
+      // pages collapse to their folder slug, so retry <path>/<basename>.md when
+      // the direct file is absent.
+      return await this.resolveFallbackPath(currentVersion, urlPath);
     } catch (error) {
       console.error('Error resolving markdown path:', error);
-      // Fallback: try with production version prefix
       const productionVersion = this.versionService.getProductionVersion();
-      return `assets/docs/${productionVersion}/${urlPath}.md`;
+      return await this.resolveFallbackPath(productionVersion, urlPath);
+    }
+  }
+
+  private async resolveFallbackPath(version: string, urlPath: string): Promise<string> {
+    const cleanPath = urlPath.startsWith(`${version}/`)
+      ? urlPath.substring(`${version}/`.length)
+      : urlPath;
+    const base = `assets/docs/${version}/${cleanPath}`;
+    try {
+      await this.http.get(`${base}.md`, { responseType: 'text' }).toPromise();
+      return `${base}.md`;
+    } catch {
+      // Folder-index collapse: fundamentals/dispatcher -> dispatcher/dispatcher.md
+      const baseName = cleanPath.split('/').pop();
+      return `${base}/${baseName}.md`;
     }
   }
   
