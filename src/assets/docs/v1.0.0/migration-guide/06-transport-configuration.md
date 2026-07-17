@@ -277,19 +277,20 @@ Per-message-type topic overrides and SQL-style subscription filters are not part
 
 ## Testing Configuration
 
-### In-Memory Transport for Tests
+### No Transport Needed for Local Tests
 
-```csharp{title="In-Memory Transport for Tests" description="In-Memory Transport for Tests" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "In-Memory", "Transport", "Tests"]}
-public class TestFixture {
-    public ServiceProvider BuildTestServices() {
+For unit and in-memory integration tests, skip transport registration entirely — local dispatch and the EF Core InMemory driver cover the full pipeline:
+
+```csharp{title="In-Memory Testing Without a Transport" description="In-Memory Testing Without a Transport" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "In-Memory", "Transport", "Tests"]}
+public static class TestServices {
+    public static ServiceProvider Build() {
         var services = new ServiceCollection();
 
-        services.AddWhizbang(options => {
-            options.UseInMemoryEventStore();
-        });
-
-        // Use in-memory transport for testing
-        services.AddInMemoryTransport();
+        // In-memory storage; no AddRabbitMQTransport/AddAzureServiceBusTransport call
+        services
+            .AddWhizbang()
+            .WithEFCore<TestDbContext>()
+            .WithDriver.InMemory;
 
         return services.BuildServiceProvider();
     }
@@ -298,11 +299,14 @@ public class TestFixture {
 
 ### Integration Test with TestContainers
 
+Whizbang uses TUnit (not xUnit), so container lifecycle hooks use `[Before(Test)]`/`[After(Test)]` instead of `IAsyncLifetime`:
+
 ```csharp{title="Integration Test with TestContainers" description="Integration Test with TestContainers" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Integration", "Test", "TestContainers"]}
-public class IntegrationTestFixture : IAsyncLifetime {
+public class RabbitMqTransportTests {
     private RabbitMqContainer _rabbitMq = null!;
 
-    public async Task InitializeAsync() {
+    [Before(Test)]
+    public async Task SetupAsync() {
         _rabbitMq = new RabbitMqBuilder()
             .WithImage("rabbitmq:3-management")
             .Build();
@@ -310,30 +314,29 @@ public class IntegrationTestFixture : IAsyncLifetime {
         await _rabbitMq.StartAsync();
     }
 
-    public ServiceProvider BuildServices() {
-        var services = new ServiceCollection();
-
-        services.AddRabbitMQTransport(_rabbitMq.GetConnectionString());
-
-        return services.BuildServiceProvider();
+    [After(Test)]
+    public async Task TeardownAsync() {
+        await _rabbitMq.DisposeAsync();
     }
 
-    public async Task DisposeAsync() {
-        await _rabbitMq.DisposeAsync();
+    private ServiceProvider BuildServices() {
+        var services = new ServiceCollection();
+        services.AddRabbitMQTransport(_rabbitMq.GetConnectionString());
+        return services.BuildServiceProvider();
     }
 }
 ```
 
 ## Migration Checklist
 
-- [ ] Add `Whizbang.Transports.RabbitMQ` and/or `Whizbang.Transports.AzureServiceBus` packages
+- [ ] Add `SoftwareExtravaganza.Whizbang.Transports.RabbitMQ` and/or `SoftwareExtravaganza.Whizbang.Transports.AzureServiceBus` packages
 - [ ] Configure environment-based transport switching
 - [ ] Set up `appsettings.Development.json` for RabbitMQ
 - [ ] Set up `appsettings.Production.json` for Azure Service Bus
-- [ ] Configure health checks for transport
+- [ ] Add `AddRabbitMQHealthChecks()` / `AddAzureServiceBusHealthChecks()`
 - [ ] Update Aspire integration (if using)
-- [ ] Configure message routing
-- [ ] Update integration tests to use in-memory transport
+- [ ] Configure namespace-based routing with `WithRouting(...)` and `AddTransportConsumer()`
+- [ ] Update in-memory integration tests to use `.WithDriver.InMemory` (no transport registration)
 
 ---
 
