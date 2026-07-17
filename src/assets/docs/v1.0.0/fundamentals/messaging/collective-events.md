@@ -1,6 +1,8 @@
 ---
 title: Collective Events
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 order: 7
 codeReferences:
   - src/Whizbang.Core/Messaging/ICollectiveEvent.cs
@@ -424,7 +426,7 @@ the resolvers use). The built-in scope is
 > pattern as `AbstractFieldSettings`).
 
 :::updated
-**Discriminator contract correction (verified against library commit `f2657adc`)**: the generator does **not** honor custom `TypeDiscriminatorPropertyName` (e.g. `$scopeKind`) or custom `[JsonDerivedType]` strings (e.g. `"tenant"`). Generated serialization always uses **`$type`** with **simple type names** (`"TenantCollectiveScope"`); the attributes act as discovery markers only. Wire payloads and any consumers must expect the `$type`/type-name form, or typed readback returns zero events.
+**Discriminator contract correction (verified against library commits `f2657adc` and `1b31f58d`)**: the generator does **not** honor custom `TypeDiscriminatorPropertyName` (e.g. `$scopeKind`) or custom `[JsonDerivedType]` strings (e.g. `"tenant"`). Generated serialization always uses **`$type`** with **simple type names** (`"TenantCollectiveScope"`); the attributes act as discovery markers only. Wire payloads and any consumers must expect the `$type`/type-name form, or typed readback returns zero events.
 :::
 
 ### `TenantCollectiveScope`

@@ -1,117 +1,146 @@
 ---
 title: Custom Dispatchers
-pageType: concept
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Extensibility
 order: 9
 description: >-
-  Implement custom dispatcher patterns - mediator, event sourcing, multi-tenant
-  routing
-tags: 'dispatcher, mediator, routing, event-sourcing'
+  Extend dispatch behavior by decorating IDispatcher - cross-cutting concerns,
+  auditing, custom routing
+tags: 'dispatcher, decorator, routing, event-sourcing'
 codeReferences:
-  - src/Whizbang.Core/Dispatcher/IDispatcher.cs
+  - src/Whizbang.Core/IDispatcher.cs
+  - src/Whizbang.Core/Dispatcher.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherDeliveryReceiptTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Custom Dispatchers
 
-**Custom dispatchers** enable alternative message routing strategies beyond the default dispatcher. Implement mediator patterns, event sourcing dispatchers, or multi-tenant routing.
+**Custom dispatchers** layer additional behavior over Whizbang's dispatcher - auditing, metrics, tenant tagging, or custom side effects. The practical extension pattern is **decoration**: wrap the registered `IDispatcher` and forward calls to it.
 
 :::note
-Whizbang's default dispatcher provides AOT-compatible, zero-reflection routing. Custom dispatchers are for specialized architectural patterns.
+Whizbang's default dispatcher is source-generated (a subclass of the abstract `Dispatcher` class), registered as a singleton `IDispatcher` by `AddWhizbang()`. It already provides AOT-compatible, zero-reflection routing, outbox integration, and mediator-style in-process RPC. Reimplementing `IDispatcher` from scratch is rarely the right choice - the interface has three dispatch patterns plus batch, receipt, cascade, and sync-mode members.
 :::
 
 ---
 
-## Why Custom Dispatchers?
+## The IDispatcher Surface
 
-| Pattern | Default Dispatcher | Custom Dispatcher |
-|---------|-------------------|-------------------|
-| **Direct Routing** | ✅ Perfect | No customization needed |
-| **Mediator Pattern** | ❌ Not built-in | ✅ Custom mediator |
-| **Event Sourcing** | ❌ Append-only needed | ✅ Event store dispatcher |
-| **Multi-Tenant** | ❌ Requires policies | ✅ Tenant-aware routing |
+`IDispatcher` (namespace `Whizbang.Core`) exposes three distinct dispatch patterns:
 
-**When to use custom dispatchers**:
-- ✅ Mediator pattern requirements
-- ✅ Event sourcing architecture
-- ✅ Complex multi-tenant routing
-- ✅ Custom middleware pipelines
+```csharp{title="IDispatcher Core Patterns" description="The three dispatch patterns on IDispatcher" category="Reference" difficulty="INTERMEDIATE" tags=["Dispatcher", "API", "Reference"]}
+public interface IDispatcher {
+  // SEND - command dispatch with delivery receipt (can work over the wire)
+  Task<IDeliveryReceipt> SendAsync<TMessage>(TMessage message) where TMessage : notnull;
+
+  // LOCAL INVOKE - in-process RPC with typed business result (zero allocation)
+  ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(TMessage message) where TMessage : notnull;
+  ValueTask LocalInvokeAsync<TMessage>(TMessage message) where TMessage : notnull;  // void receptors
+
+  // PUBLISH - event broadcasting; receipt carries StreamId from [StreamId]
+  Task<IDeliveryReceipt> PublishAsync<TEvent>(TEvent eventData);
+
+  // ... plus overloads taking IMessageContext and DispatchOptions, and:
+  // SendManyAsync / LocalSendManyAsync / PublishManyAsync / LocalInvokeManyAsync  (batch)
+  // LocalInvokeWithReceiptAsync   (typed result + delivery receipt)
+  // PublishOnceAsync              (at-most-once per claim key, needs IClaimedEmissionStore)
+  // LocalInvokeAndSyncAsync       (wait for perspectives via SyncMode)
+  // CascadeMessageAsync           (cascade with explicit DispatchModes)
+}
+```
+
+Key semantics to preserve in any custom dispatcher:
+
+| Pattern | Returns | Notes |
+|---------|---------|-------|
+| `SendAsync` | `IDeliveryReceipt` | Delivery acknowledgment, **not** the business result |
+| `LocalInvokeAsync` | Typed `TResult` (or void) | In-process only; throws for remote transports |
+| `PublishAsync` | `IDeliveryReceipt` | Fan-out to all interested handlers + outbox |
 
 ---
 
-## Mediator Dispatcher
+## You May Not Need One: Mediator Pattern Is Built In
 
-### Pattern 1: MediatR-Style Dispatcher
+`LocalInvokeAsync` already provides MediatR-style request/response over receptors - no custom dispatcher required:
 
-```csharp{title="Pattern 1: MediatR-Style Dispatcher" description="Pattern 1: MediatR-Style Dispatcher" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "MediatR-Style"]}
-public class MediatorDispatcher : IDispatcher {
-  private readonly IServiceProvider _services;
-
-  public MediatorDispatcher(IServiceProvider services) {
-    _services = services;
-  }
-
-  public async Task<TResponse> SendAsync<TResponse>(
-    object request,
-    CancellationToken ct = default
-  ) {
-    var requestType = request.GetType();
-    var handlerType = typeof(IRequestHandler<,>).MakeGenericType(requestType, typeof(TResponse));
-
-    var handler = _services.GetRequiredService(handlerType);
-    var method = handlerType.GetMethod("Handle");
-
-    var result = await (Task<TResponse>)method!.Invoke(handler, new[] { request, ct })!;
-    return result;
-  }
-}
-
-public interface IRequestHandler<in TRequest, TResponse> {
-  Task<TResponse> Handle(TRequest request, CancellationToken ct);
-}
+```csharp{title="Built-In Mediator Semantics" description="LocalInvokeAsync provides typed request/response" category="Extensibility" difficulty="BEGINNER" tags=["Dispatcher", "Mediator", "LocalInvoke"]}
+// Command in, typed business result out - handled by a receptor
+var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderResult>(
+  new CreateOrder { CustomerId = customerId }
+);
 ```
 
 ---
 
-## Event Sourcing Dispatcher
+## Decorator Pattern: Auditing Dispatcher
 
-### Pattern 2: Append-Only Event Store
+Wrap the inner dispatcher to add cross-cutting behavior. Implement `IDispatcher`, forward every member to the inner instance, and add your logic around the members you care about:
 
-```csharp{title="Pattern 2: Append-Only Event Store" description="Pattern 2: Append-Only Event Store" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Append-Only"]}
-public class EventSourcingDispatcher : IDispatcher {
-  private readonly IEventStore _eventStore;
-  private readonly IDispatcher _innerDispatcher;
+```csharp{title="Auditing Dispatcher Decorator" description="Decorate IDispatcher to audit publishes" category="Extensibility" difficulty="INTERMEDIATE" tags=["Dispatcher", "Decorator", "Auditing"]}
+public class AuditingDispatcher : IDispatcher {
+  private readonly IDispatcher _inner;
+  private readonly ILogger<AuditingDispatcher> _logger;
 
-  public EventSourcingDispatcher(
-    IEventStore eventStore,
-    IDispatcher innerDispatcher
-  ) {
-    _eventStore = eventStore;
-    _innerDispatcher = innerDispatcher;
+  public AuditingDispatcher(IDispatcher inner, ILogger<AuditingDispatcher> logger) {
+    _inner = inner;
+    _logger = logger;
   }
 
-  public async Task<TResponse> SendAsync<TResponse>(
-    object command,
-    CancellationToken ct = default
-  ) {
-    // Dispatch command → get event response
-    var @event = await _innerDispatcher.SendAsync<TResponse>(command, ct);
-
-    // Append event to event store
-    var streamId = GetStreamId(command);
-    await _eventStore.AppendAsync(streamId, @event, ct);
-
-    return @event;
+  public async Task<IDeliveryReceipt> PublishAsync<TEvent>(TEvent eventData) {
+    var receipt = await _inner.PublishAsync(eventData);
+    _logger.LogInformation(
+      "Published {EventType} to stream {StreamId}",
+      typeof(TEvent).Name, receipt.StreamId
+    );
+    return receipt;
   }
 
-  private Guid GetStreamId(object command) {
-    // Extract aggregate ID from command
-    var aggregateIdProperty = command.GetType().GetProperty("AggregateId");
-    return (Guid)aggregateIdProperty!.GetValue(command)!;
-  }
+  public Task<IDeliveryReceipt> SendAsync<TMessage>(TMessage message) where TMessage : notnull =>
+    _inner.SendAsync(message);
+
+  public ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(TMessage message) where TMessage : notnull =>
+    _inner.LocalInvokeAsync<TMessage, TResult>(message);
+
+  // ... every remaining IDispatcher member forwards to _inner the same way.
+  // The interface is large (Send/LocalInvoke/Publish overloads, batch, receipt,
+  // cascade, and sync-mode members) - forward all of them.
 }
 ```
+
+### Registering the Decorator
+
+`AddWhizbang()` registers the generated dispatcher as a singleton `IDispatcher`. Decorate it by replacing the descriptor **after** the Whizbang registration:
+
+```csharp{title="Decorator Registration" description="Wrap the registered IDispatcher" category="Extensibility" difficulty="INTERMEDIATE" tags=["Dispatcher", "Decorator", "DI"]}
+// After AddWhizbang() has registered IDispatcher
+var innerDescriptor = services.Single(d => d.ServiceType == typeof(IDispatcher));
+services.Replace(ServiceDescriptor.Singleton<IDispatcher>(sp =>
+  new AuditingDispatcher(
+    (IDispatcher)innerDescriptor.ImplementationFactory!(sp),
+    sp.GetRequiredService<ILogger<AuditingDispatcher>>()
+  )
+));
+```
+
+:::warning
+Framework components that resolve the concrete generated dispatcher type continue to bypass your decorator - decoration applies to consumers resolving `IDispatcher`. Keep decorators free of business logic that correctness depends on; use [receptors](../../fundamentals/receptors/receptors.md) and [policies](./custom-policies.md) for that.
+:::
+
+---
+
+## Event Auditing Without a Custom Dispatcher
+
+If your goal is an append-only record of dispatched events, prefer the built-in facilities before decorating:
+
+- Events published via `PublishAsync` already flow through the outbox and (when configured) the event store
+- `PublishOnceAsync(claimKey, eventData)` gives at-most-once emission per idempotency key
+- Delivery receipts expose `StreamId` (extracted from the `[StreamId]` attribute) for correlation
 
 ---
 
@@ -127,4 +156,4 @@ New to dispatchers? Start with the user guide:
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

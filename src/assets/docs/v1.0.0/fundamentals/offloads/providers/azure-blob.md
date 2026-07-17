@@ -1,6 +1,8 @@
 ---
 title: Azure Blob Body Store
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Fundamentals
 order: 2
@@ -20,6 +22,11 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobOffloadFromConfigurationTests.cs
   - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobOffloadDIRegistrationTests.cs
+  - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobMessageBodyStoreValidationTests.cs
+  - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobMessageBodyStoreUploadGuardTests.cs
+  - tests/Whizbang.Offloads.AzureBlob.Integration.Tests/AzureBlobStoreRoundTripTests.cs
+  - tests/Whizbang.Offloads.AzureBlob.Integration.Tests/AzureBlobStoreUploadTests.cs
+  - tests/Whizbang.Offloads.AzureBlob.Integration.Tests/AzureBlobStoreDownloadDeleteTests.cs
 ---
 
 # Azure Blob Body Store
@@ -171,7 +178,7 @@ Behavior is identical against either backend — same upload/download/delete sem
 |---|---|---|
 | `ProviderName` | `null` | The active send-side provider. `null` ⇒ offload disabled (publish inline). |
 | `SizeThresholdBytes` | `65536` (64 KB) | Bodies at/above this offload. Set below the transport ceiling to leave envelope headroom. |
-| `ActiveCleanup` | `false` | `false` ⇒ rely on a blob lifecycle rule to delete old bodies (recommended). `true` ⇒ the PostInbox lifecycle hook deletes the body after the inbox row is acked. |
+| `ActiveCleanup` | `false` | `false` ⇒ rely on a blob lifecycle rule to delete old bodies (recommended). `true` ⇒ the consumer worker deletes the body (fire-and-forget) after the inbox row commits. |
 | `DownloadTimeout` | `100s` (`TimeSpan.FromSeconds(100)`) | Bounds a single receive-side body-store download during rehydration; exceeding it aborts and surfaces a **retryable** failure (the transport redelivers) rather than stalling the consumer on a hung blob call. **Code-only** — set it in code via `services.Configure<MessageBodyOffloadOptions>`; the config-driven convention does **not** bind it from `Whizbang:BodyOffload`. |
 
 ## Behavior

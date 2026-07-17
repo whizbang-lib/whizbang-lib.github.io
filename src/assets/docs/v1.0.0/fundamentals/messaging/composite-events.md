@@ -1,6 +1,8 @@
 ---
 title: Composite Events
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 order: 6
 description: >-
   Bundle many inner events into one transport hop — one outbox row, one

@@ -1,6 +1,8 @@
 ---
 title: Custom Receptors
-pageType: concept
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Extensibility
 order: 2
@@ -10,8 +12,13 @@ description: >-
 tags: 'receptors, custom-handlers, streaming, lifecycle, base-classes'
 codeReferences:
   - src/Whizbang.Core/IReceptor.cs
+  - src/Whizbang.Core/Pipeline/IPipelineBehavior.cs
   - >-
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
+  - tests/Whizbang.Core.Tests/Receptors/VoidReceptorTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -59,7 +66,7 @@ For basic receptor usage, see [Receptors Guide](../../fundamentals/receptors/rec
 
 ```mermaid
 flowchart TD
-    Dispatcher["Dispatcher.InvokeAsync&lt;TMessage, TResponse&gt;()"]
+    Dispatcher["Dispatcher.LocalInvokeAsync&lt;TMessage, TResponse&gt;()"]
     Resolve["Resolve Receptor<br/>IReceptor&lt;T, R&gt;"]
     Behaviors["Pipeline Behaviors<br/>(Logging, Validation)"]
     Handle["receptor.HandleAsync(message)<br/><br/>Lifecycle:<br/>1. Constructor (DI)<br/>2. HandleAsync (business logic)<br/>3. Dispose (if IAsyncDisposable)"]
@@ -217,7 +224,7 @@ public class CreateOrderReceptor : ReceptorBase<CreateOrder, OrderCreated> {
     CreateOrder message,
     CancellationToken ct
   ) {
-    var orderId = Guid.CreateVersion7();
+    Guid orderId = TrackedGuid.NewMedo();  // UUIDv7 - Guid.CreateVersion7() trips WHIZ056
     var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
 
     await using var conn = _db.CreateConnection();
@@ -342,7 +349,7 @@ public class TransferFundsReceptor : TransactionalReceptor<TransferFunds, FundsT
       cancellationToken: ct
     );
 
-    var transactionId = Guid.CreateVersion7();
+    Guid transactionId = TrackedGuid.NewMedo();
     return new FundsTransferred(transactionId, DateTimeOffset.UtcNow);
   }
 }
@@ -439,7 +446,7 @@ public class CreateProductReceptor : TenantReceptor<CreateProduct, ProductCreate
     CreateProduct message,
     CancellationToken ct
   ) {
-    var productId = Guid.CreateVersion7();
+    Guid productId = TrackedGuid.NewMedo();
 
     await using var conn = _db.CreateConnection();
     await conn.ExecuteAsync(
@@ -612,7 +619,7 @@ public class ImportCsvReceptor : IReceptor<ImportCsv, CsvImported>, IAsyncDispos
     return new CsvImported(rowsImported);
   }
 
-  // Automatic cleanup by dispatcher
+  // Disposed with the DI scope the Dispatcher creates for the invocation
   public async ValueTask DisposeAsync() {
     if (_reader is not null) {
       await _reader.DisposeAsync();
@@ -634,7 +641,7 @@ builder.Services.AddTransient<IReceptor<ImportCsv, CsvImported>, ImportCsvRecept
 ```
 
 **Benefits**:
-- **Automatic Cleanup**: Dispatcher calls DisposeAsync after HandleAsync
+- **Automatic Cleanup**: The Dispatcher resolves receptors inside a DI scope; disposing the scope disposes the receptor
 - **Exception Safe**: Resources disposed even if HandleAsync throws
 - **Clear Pattern**: Standard .NET async disposal
 

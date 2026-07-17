@@ -1,6 +1,8 @@
 ---
 title: Custom Policies
-pageType: concept
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Extensibility
 order: 5
@@ -14,6 +16,14 @@ codeReferences:
   - src/Whizbang.Core/Policies/IPolicyEngine.cs
   - src/Whizbang.Core/Policies/PolicyEngine.cs
   - src/Whizbang.Core/Policies/PolicyConfiguration.cs
+  - src/Whizbang.Core/Policies/PolicyContext.cs
+  - src/Whizbang.Core/Policies/PolicyDecisionTrail.cs
+  - src/Whizbang.Core/Pooling/PolicyContextPool.cs
+testReferences:
+  - tests/Whizbang.Policies.Tests/PolicyEngineTests.cs
+  - tests/Whizbang.Policies.Tests/PolicyContextTests.cs
+  - tests/Whizbang.Policies.Tests/PolicyContextPoolTests.cs
+  - tests/Whizbang.Policies.Tests/PolicyConfigurationTransportTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -625,19 +635,21 @@ abEngine.ConfigureABTest(
   controlConfig: config => config.PublishToServiceBus("old-events")   // 90%
 );
 
-// Messages with abTestName metadata participate in A/B test
+// Messages whose envelope carries "abTestName" metadata (stamped on a hop
+// at dispatch time) participate in the A/B test. Envelope metadata is
+// read-only at policy-evaluation time via context.GetMetadata(key).
 var context = PolicyContextPool.Rent(
   message: message,
-  envelope: envelope,
+  envelope: envelope,   // envelope hop metadata contains "abTestName"
   services: services,
   environment: "production"
 );
 
-// Add A/B test metadata
-context.Envelope.Metadata["abTestName"] = "new-routing-experiment";
-
 // Evaluation: 10% → new-events, 90% → old-events (consistent per message ID)
 var config = await abEngine.MatchAsync(context);
+
+// Return pooled context when done
+PolicyContextPool.Return(context);
 ```
 
 ---

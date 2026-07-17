@@ -1,6 +1,8 @@
 ---
 title: Type Symbol Extensions
-pageType: concept
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Source Generators
 order: 11
@@ -12,6 +14,8 @@ tags: >-
   aot, utilities
 codeReferences:
   - src/Whizbang.Generators.Shared/Utilities/TypeSymbolExtensions.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/Utilities/TypeSymbolExtensionsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -30,7 +34,7 @@ When a source generator analyzes a type, it often needs access to members declar
 | **Inconsistent hierarchy walking** | Each generator implements its own traversal with subtle differences |
 | **Attribute discovery misses** | Attributes on base class members not found |
 
-**Solution**: Centralized, tested extension methods shared across all generators via ILMerge.
+**Solution**: Centralized, tested extension methods shared across all generators via ILRepack.
 
 ---
 
@@ -136,7 +140,7 @@ var streamIdProperty = typeSymbol.FindPropertyWithAttribute(
 // streamIdProperty.Type.Name => "Guid"
 ```
 
-**Use case**: The aggregate ID generator uses this to discover which property carries the `[StreamId]` attribute, even when it is declared on a base class.
+**Use case**: The `StreamIdGenerator` uses this to discover which property carries the `[StreamId]` attribute, even when it is declared on a base class.
 
 ---
 
@@ -188,8 +192,9 @@ public static IMethodSymbol? FindMethodWithAttribute(
 **Example**:
 
 ```csharp{title="FindMethodWithAttribute Example" description="Find a method marked with a specific attribute" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "FindMethodWithAttribute", "Example"]}
+// Example with a custom attribute defined in your own generator's target project
 var initMethod = typeSymbol.FindMethodWithAttribute(
-    "global::Whizbang.Core.InitializeAttribute");
+    "global::MyApp.InitializeAttribute");
 
 if (initMethod is not null) {
   // Generate initialization call
@@ -281,9 +286,9 @@ private static List<EventHandlerInfo> _discoverApplyMethods(
 
 ---
 
-## ILMerge Integration
+## ILRepack Integration
 
-`TypeSymbolExtensions` lives in `Whizbang.Generators.Shared`, which is ILMerged into all generator assemblies:
+`TypeSymbolExtensions` lives in `Whizbang.Generators.Shared`, which is merged into each generator assembly via ILRepack (`ILRepack.Lib.MSBuild.Task`, enabled with `ILRepackEnabled` in each generator's `.csproj`):
 
 ```
 Whizbang.Generators.dll

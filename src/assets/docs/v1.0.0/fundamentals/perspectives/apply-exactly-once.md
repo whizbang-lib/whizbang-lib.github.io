@@ -1,6 +1,8 @@
 ---
 title: Apply Exactly-Once Contract
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 21
@@ -13,10 +15,15 @@ tags: >-
   perspective-runner, doubling
 codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  - src/Whizbang.Core/Workers/ProcessedEventCache.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveRunner.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveReplayReader.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
 testReferences:
   - tests/Whizbang.Core.Integration.Tests/Perspectives/PerspectiveApplyExactlyOnceTests.cs
+  - tests/Whizbang.Core.Tests/Workers/ProcessedEventCacheTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDedupTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDrainModeTests.cs
 ---
 
 # Apply Exactly-Once Contract
@@ -69,12 +76,22 @@ If a stream appears in both `WorkBatch.PerspectiveStreamIds` (drain) and `WorkBa
 
 ### Rewind mode
 
-During a rewind, `IPerspectiveReplayReader.ReadWithIsNewAsync` annotates each replayed event with `IsNewEvent`. The runner applies every event in UUIDv7 order to reconstruct model state, but the lifecycle receptors only fire for `IsNewEvent == true` — see [Exactly-Once Receptor Firing](../receptors/exactly-once-firing) for the receptor-side of this contract.
+During a rewind, `IPerspectiveReplayReader.ReadReplayEventsAsync` annotates each replayed event with an `IsNew` flag (`ReplayEventEnvelope.IsNew` — `true` when the event still has a pending row in the perspective work queue). The runner applies every event in UUIDv7 order to reconstruct model state, but the lifecycle receptors only fire for `IsNew == true` — see [Exactly-Once Receptor Firing](../receptors/exactly-once-firing) for the receptor-side of this contract.
+
+### Re-delivery guard: ProcessedEventCache
+
+Perspective completions are written back to the database in batches. Between Apply and the database acknowledging that completion, SQL polling can re-deliver the same `wh_perspective_events` rows. `PerspectiveWorker` guards this window with an in-memory two-phase TTL cache (`ProcessedEventCache`):
+
+- **InFlight** — event work IDs are added to the cache after Apply, with no expiry, guarding until the database confirms the completion batch.
+- **Retained** — once the batch is acknowledged (`ActivateRetention`), the TTL countdown starts, aligned to the lease duration.
+- **Evicted** — expired entries are removed at the start of each poll cycle (`EvictExpired`); SQL re-delivery is then allowed again, which is correct for rewind/rebuild scenarios.
+
+Before grouping standard-mode work, the worker filters out any work item whose `WorkId` is already in the cache. During a rewind, the affected event IDs are force-removed so replay is permitted.
 
 ## Related
 
 - [Perspectives overview](perspectives)
-- [Drain mode](drain-mode)
+- [Perspective Worker (drain mode)](../../operations/workers/perspective-worker)
 - [Rebuild](rebuild)
-- [Lifecycle receptors](../lifecycle/lifecycle-receptors)
+- [Lifecycle receptors](../receptors/lifecycle-receptors)
 - [Exactly-Once Receptor Firing](../receptors/exactly-once-firing)

@@ -1,15 +1,21 @@
 ---
 title: Ledger Component
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Components
 order: 7
-description: In-memory event store with basic append and read operations
-tags: 'ledger, event-store, events, in-memory, v0.1.0'
+description: 'The ledger concept: Whizbang''s append-only event store, implemented by IEventStore'
+tags: 'ledger, event-store, events, in-memory, append-only'
 codeReferences:
   - src/Whizbang.Core/Messaging/IEventStore.cs
   - src/Whizbang.Core/Messaging/InMemoryEventStore.cs
   - src/Whizbang.Core/Messaging/EventStoreRecord.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EventStoreOrderingInvariantTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EventStoreAppendBatchTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -18,385 +24,170 @@ lastMaintainedCommit: '01f07906'
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Status](https://img.shields.io/badge/status-stable-green)
 
-## Version History
-
-:::new
-**New in v1.0.0**: Basic in-memory event store with append-only semantics
-:::
-
-
 ## Overview
 
-The Ledger is Whizbang's append-only event store, providing an immutable audit trail of all events in your system. In v1.0.0, it's a simple in-memory store that captures events and allows basic retrieval. This foundation will evolve into a full event sourcing system.
+The **ledger** is Whizbang's append-only event store: an immutable, replayable record of every event in your system. It is implemented by the [`IEventStore`](event-store.md) interface — events are appended to **streams** (one stream per aggregate/entity, keyed by a UUIDv7 `streamId`) and can never be altered or deleted.
+
+:::updated
+Early drafts of this page described a standalone `ILedger` interface with global positions. The shipped design is stream-based: the ledger is the `IEventStore` abstraction, with per-stream sequence numbers and UUIDv7 event-id ordering. This page describes the shipped behavior; see [Event Store](event-store.md) for the full API surface.
+:::
 
 ## What is a Ledger?
 
 A Ledger:
-- **Stores** events in append-only fashion
+- **Stores** events in append-only fashion, organized into streams
 - **Preserves** the complete history of state changes
 - **Provides** an immutable audit trail
-- **Enables** event replay and debugging
+- **Enables** event replay (perspectives, rebuilds) and debugging
 
 Think of the ledger as your system's permanent memory - every significant action is recorded and can never be altered or deleted.
 
-## Core Interface (v1.0.0)
+## Core Interface
 
-:::new
-The basic ledger interface for event storage:
-:::
+The ledger contract is `IEventStore` (`Whizbang.Core.Messaging`). The essential members:
 
-```csharp{title="Core Interface (v1.0.0)" description="Core Interface (v1.0.0)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Core", "Interface"]}
-public interface ILedger {
-    // Append an event to the ledger
-    Task<long> Append(IEvent @event);
-    
-    // Read events from the ledger
-    IEnumerable<IEvent> Read(long fromPosition = 0);
-    
-    // Read events of a specific type
-    IEnumerable<T> Read<T>(long fromPosition = 0) where T : IEvent;
-    
-    // Get the current position (last event number)
-    long GetPosition();
+```csharp{title="Core Interface" description="Essential IEventStore members (see Event Store for the full interface)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Core", "Interface"]}
+public interface IEventStore {
+  // Append an envelope to a stream
+  Task AppendAsync<TMessage>(Guid streamId, MessageEnvelope<TMessage> envelope,
+      CancellationToken cancellationToken = default);
+
+  // Append a raw message (envelope resolved from IEnvelopeRegistry, or a minimal one is created)
+  Task AppendAsync<TMessage>(Guid streamId, TMessage message,
+      CancellationToken cancellationToken = default) where TMessage : notnull;
+
+  // Read a stream from a sequence number (inclusive)
+  IAsyncEnumerable<MessageEnvelope<TMessage>> ReadAsync<TMessage>(Guid streamId,
+      long fromSequence, CancellationToken cancellationToken = default);
+
+  // Read a stream starting after an event ID (UUIDv7 time-ordering); null = from beginning
+  IAsyncEnumerable<MessageEnvelope<TMessage>> ReadAsync<TMessage>(Guid streamId,
+      Guid? fromEventId, CancellationToken cancellationToken = default);
+
+  // Read mixed event types, deserializing each to its concrete type
+  IAsyncEnumerable<MessageEnvelope<IEvent>> ReadPolymorphicAsync(Guid streamId,
+      Guid? fromEventId, IReadOnlyList<Type> eventTypes,
+      CancellationToken cancellationToken = default);
+
+  // Last (highest) sequence number for a stream; -1 if the stream is empty
+  Task<long> GetLastSequenceAsync(Guid streamId, CancellationToken cancellationToken = default);
+
+  // ... batch append, checkpoint-range reads, and AppendAndWaitAsync -
+  // see the Event Store page for the full surface
 }
 ```
 
-## Basic Implementation
+There is no global "position" counter — ordering is **per stream** (monotonic sequence numbers) and **by event ID** (UUIDv7 is time-ordered), which is what enables partitioned, scalable storage backends.
 
-:::new
-In v1.0.0, the ledger uses in-memory storage:
-:::
+## Implementations
 
-```csharp{title="Basic Implementation" description="Basic Implementation" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Basic", "Implementation"]}
-[WhizbangLedger]
-public class InMemoryLedger : ILedger {
-    private readonly List<StoredEvent> _events = new();
-    private readonly object _lock = new();
-    private long _position = 0;
-    
-    public Task<long> Append(IEvent @event) {
-        lock (_lock) {
-            var position = ++_position;
-            
-            _events.Add(new StoredEvent {
-                Position = position,
-                EventType = @event.GetType().Name,
-                Event = @event,
-                Timestamp = DateTimeOffset.UtcNow
-            });
-            
-            return Task.FromResult(position);
-        }
-    }
-    
-    public IEnumerable<IEvent> Read(long fromPosition = 0) {
-        lock (_lock) {
-            return _events
-                .Where(e => e.Position > fromPosition)
-                .Select(e => e.Event);
-        }
-    }
-    
-    public IEnumerable<T> Read<T>(long fromPosition = 0) where T : IEvent {
-        return Read(fromPosition).OfType<T>();
-    }
-    
-    public long GetPosition() {
-        lock (_lock) {
-            return _position;
-        }
-    }
-}
+| Implementation | Package | Use |
+|----------------|---------|-----|
+| `InMemoryEventStore` | `Whizbang.Core` | Testing and single-process scenarios. Thread-safe; NOT for multi-process production use. |
+| Postgres event stores (Dapper / EF Core) | `Whizbang.Data.*` | Production. Events land in the `wh_event_store` table via the work coordinator. |
+
+```csharp{title="In-Memory Implementation" description="InMemoryEventStore for tests and single-process scenarios" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "InMemory", "Implementation"]}
+// Thread-safe in-memory ledger for tests / single-process apps
+var store = new InMemoryEventStore();
+
+// Or, with envelope-registry support so raw-message appends keep tracing context
+var store = new InMemoryEventStore(envelopeRegistry);
 ```
 
 ## Event Storage
 
-### Event Structure
+### Record Structure
 
-```csharp{title="Event Structure" description="Event Structure" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Structure"]}
-public interface IEvent {
-    Guid Id { get; }
-    DateTimeOffset Timestamp { get; }
-    string AggregateId { get; }
-    int Version { get; }
-}
+Relational backends persist one `EventStoreRecord` per event:
 
-// Stored event wrapper
-internal class StoredEvent {
-    public long Position { get; set; }
-    public string EventType { get; set; }
-    public IEvent Event { get; set; }
-    public DateTimeOffset Timestamp { get; set; }
+```csharp{title="Record Structure" description="EventStoreRecord - the persisted shape of a ledger entry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Structure"]}
+public sealed class EventStoreRecord {
+  public Guid Id { get; set; }                       // Event ID (UUIDv7)
+  public required Guid StreamId { get; set; }        // Stream (aggregate) identity
+  public required Guid AggregateId { get; set; }     // Back-compat alias of StreamId
+  public required string AggregateType { get; set; } // CLR type name (no assembly)
+  public required int Version { get; set; }          // Per-stream optimistic-concurrency version
+  public required string EventType { get; set; }     // "Namespace.Type, Assembly"
+  public required JsonElement EventData { get; set; }// Event payload as JSON
+  public required EnvelopeMetadata Metadata { get; set; } // Hops, correlation, causation
+  public PerspectiveScope? Scope { get; set; }       // Security scope (tenant/user/...)
+  public DateTime CreatedAt { get; set; }
+  public long? CommitSequence { get; set; }          // Global commit stamp (async)
+  // ... origin fields for cross-service provenance
 }
 ```
 
 ### Appending Events
 
-:::new
-Events are automatically appended by the dispatcher:
-:::
+Events reach the ledger automatically: receptors return events, and the dispatch pipeline stores them (outbox → work coordinator → event store). You can also append directly:
 
 ```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Appending"]}
-// Events flow from receptors through dispatcher to ledger
-public class OrderReceptor : IReceptor<CreateOrder> {
-    public OrderCreated Receive(CreateOrder cmd) {
-        return new OrderCreated {
-            Id = Guid.NewGuid(),
-            Timestamp = DateTimeOffset.UtcNow,
-            AggregateId = cmd.OrderId.ToString(),
-            Version = 1,
-            CustomerId = cmd.CustomerId,
-            Items = cmd.Items,
-            Total = cmd.Total
-        };
-        // Event automatically appended to ledger by dispatcher
-    }
-}
+// Direct append - envelope (with tracing context) is looked up automatically
+await eventStore.AppendAsync(order.StreamId, new OrderShipped {
+  OrderId = order.Id,
+  ShippedAt = timeProvider.GetUtcNow()
+});
 ```
 
 ### Reading Events
 
-:::new
-Basic event retrieval in v1.0.0:
-:::
-
 ```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Reading"]}
-public class EventReader {
-    private readonly ILedger _ledger;
-    
-    // Read all events
-    public void ReadAllEvents() {
-        var events = _ledger.Read();
-        foreach (var @event in events) {
-            Console.WriteLine($"{@event.Timestamp}: {@event.GetType().Name}");
-        }
-    }
-    
-    // Read specific event types
-    public void ReadOrderEvents() {
-        var orderEvents = _ledger.Read<OrderCreated>();
-        foreach (var order in orderEvents) {
-            Console.WriteLine($"Order {order.AggregateId}: {order.Total}");
-        }
-    }
-    
-    // Read from checkpoint
-    public void ReadNewEvents(long lastPosition) {
-        var newEvents = _ledger.Read(fromPosition: lastPosition);
-        foreach (var @event in newEvents) {
-            ProcessEvent(@event);
-        }
-    }
-}
-```
-
-## Integration with Dispatcher
-
-The ledger is automatically integrated with the dispatcher:
-
-```csharp{title="Integration with Dispatcher" description="The ledger is automatically integrated with the dispatcher:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Integration", "Dispatcher"]}
-// Source generated registration
-public static partial class WhizbangGenerated {
-    public static void RegisterLedger(IServiceCollection services) {
-        services.AddSingleton<ILedger, InMemoryLedger>();
-    }
+// Read a whole stream, strongly typed
+await foreach (var envelope in eventStore.ReadAsync<OrderCreated>(streamId, fromSequence: 0)) {
+  Console.WriteLine($"{envelope.Payload.OrderId}");
 }
 
-// Dispatcher automatically appends events
-public class Dispatcher : IDispatcher {
-    private readonly ILedger _ledger;
-    
-    public async Task<TResult> Dispatch<TCommand, TResult>(TCommand command) 
-        where TResult : IEvent {
-        
-        // Execute receptor
-        var result = await ExecuteReceptor(command);
-        
-        // Append to ledger
-        await _ledger.Append(result);
-        
-        // Update perspectives
-        await UpdatePerspectives(result);
-        
-        return result;
-    }
+// Read from a checkpoint (events AFTER this event ID)
+await foreach (var envelope in eventStore.ReadAsync<OrderCreated>(streamId, fromEventId: lastSeenEventId)) {
+  ProcessEvent(envelope.Payload);
 }
-```
 
-## Debugging with the Ledger
-
-:::new
-The ledger enables powerful debugging capabilities:
-:::
-
-```csharp{title="Debugging with the Ledger" description="Debugging with the Ledger" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Debugging", "Ledger"]}
-public class LedgerDebugger {
-    private readonly ILedger _ledger;
-    
-    // Show event timeline
-    public void ShowTimeline(DateTime from, DateTime to) {
-        var events = _ledger.Read()
-            .Where(e => e.Timestamp >= from && e.Timestamp <= to)
-            .OrderBy(e => e.Timestamp);
-        
-        foreach (var @event in events) {
-            Console.WriteLine($"{@event.Timestamp:HH:mm:ss.fff} " +
-                            $"[{@event.GetType().Name}] " +
-                            $"Aggregate: {@event.AggregateId}");
-        }
-    }
-    
-    // Analyze event patterns
-    public void AnalyzePatterns() {
-        var events = _ledger.Read();
-        
-        var stats = events
-            .GroupBy(e => e.GetType().Name)
-            .Select(g => new {
-                EventType = g.Key,
-                Count = g.Count(),
-                FirstOccurred = g.Min(e => e.Timestamp),
-                LastOccurred = g.Max(e => e.Timestamp)
-            });
-        
-        foreach (var stat in stats) {
-            Console.WriteLine($"{stat.EventType}: {stat.Count} events");
-        }
-    }
+// Polymorphic read - mixed event types in one stream
+var eventTypes = new[] { typeof(OrderCreated), typeof(OrderShipped) };
+await foreach (var envelope in eventStore.ReadPolymorphicAsync(streamId, fromEventId: null, eventTypes)) {
+  switch (envelope.Payload) {
+    case OrderCreated created: /* ... */ break;
+    case OrderShipped shipped: /* ... */ break;
+  }
 }
 ```
 
 ## Testing with the Ledger
 
-```csharp{title="Testing with the Ledger" description="Testing with the Ledger" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Testing", "Ledger"]}
+`InMemoryEventStore` makes ledger-level assertions easy:
+
+```csharp{title="Testing with the Ledger" description="Testing with the Ledger" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Testing", "Ledger"]}
 [Test]
-public class LedgerTests {
-    private InMemoryLedger _ledger;
-    
-    [SetUp]
-    public void Setup() {
-        _ledger = new InMemoryLedger();
-    }
-    
-    [Test]
-    public async Task Append_ShouldReturnIncrementingPosition() {
-        // Arrange
-        var event1 = new TestEvent { Id = Guid.NewGuid() };
-        var event2 = new TestEvent { Id = Guid.NewGuid() };
-        
-        // Act
-        var pos1 = await _ledger.Append(event1);
-        var pos2 = await _ledger.Append(event2);
-        
-        // Assert
-        Assert.Equal(1, pos1);
-        Assert.Equal(2, pos2);
-    }
-    
-    [Test]
-    public async Task Read_ShouldReturnEventsInOrder() {
-        // Arrange
-        var events = new[] {
-            new TestEvent { Id = Guid.NewGuid() },
-            new TestEvent { Id = Guid.NewGuid() },
-            new TestEvent { Id = Guid.NewGuid() }
-        };
-        
-        foreach (var @event in events) {
-            await _ledger.Append(@event);
-        }
-        
-        // Act
-        var readEvents = _ledger.Read().ToList();
-        
-        // Assert
-        Assert.Equal(3, readEvents.Count);
-        Assert.Equal(events[0].Id, readEvents[0].Id);
-        Assert.Equal(events[2].Id, readEvents[2].Id);
-    }
-    
-    [Test]
-    public async Task Read_FromPosition_ShouldSkipEarlierEvents() {
-        // Arrange
-        for (int i = 0; i < 5; i++) {
-            await _ledger.Append(new TestEvent());
-        }
-        
-        // Act
-        var events = _ledger.Read(fromPosition: 3).ToList();
-        
-        // Assert
-        Assert.Equal(2, events.Count); // Only events 4 and 5
-    }
+public async Task Append_ShouldIncrementSequenceAsync() {
+  // Arrange
+  var store = new InMemoryEventStore();
+  var streamId = (Guid)TrackedGuid.NewMedo();
+
+  // Empty stream reports -1
+  await Assert.That(await store.GetLastSequenceAsync(streamId)).IsEqualTo(-1);
+
+  // Act
+  await store.AppendAsync(streamId, new TestEvent());
+  await store.AppendAsync(streamId, new TestEvent());
+
+  // Assert - sequences are per stream and monotonic
+  await Assert.That(await store.GetLastSequenceAsync(streamId)).IsEqualTo(1);
+
+  var events = new List<MessageEnvelope<TestEvent>>();
+  await foreach (var e in store.ReadAsync<TestEvent>(streamId, fromSequence: 0)) {
+    events.Add(e);
+  }
+  await Assert.That(events.Count).IsEqualTo(2);
 }
 ```
 
-## IDE Features
+## Characteristics
 
-```csharp{title="IDE Features" description="IDE Features" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IDE", "Features"]}
-// IDE shows: "Events stored: 1,234 | Size: 5.2MB | Last: 2s ago"
-public interface ILedger { }
-
-// IDE shows: "Appended 45 times | Avg: 0.1ms"
-public Task<long> Append(IEvent @event) { }
-
-// IDE shows: "Warning: Reading all events can be expensive"
-public IEnumerable<IEvent> Read(long fromPosition = 0) { }
-```
-
-## Performance Characteristics
-
-| Operation | Target | Actual |
-|-----------|--------|--------|
-| Append | < 1μs | TBD |
-| Read (1000 events) | < 1ms | TBD |
-| Read by type | < 2ms | TBD |
-| Get position | < 100ns | TBD |
-
-## Limitations in v1.0.0
-
-:::info
-These limitations are addressed in future versions:
-:::
-
-- **In-memory only** - Events lost on restart
-- **No streaming** - Must load all events at once
-- **No snapshots** - Can't optimize long event streams
-- **Single stream** - No concept of aggregate streams
-- **No queries** - Basic sequential read only
-
-## Migration Path
-
-### To v0.2.0 (Persistence)
-
-:::planned
-v0.2.0 adds persistent storage:
-:::
-
-```csharp{title="To v0.2.0 (Persistence)" description="To v0.2.0 (Persistence)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "V0.2.0", "Persistence"]}
-// v0.2.0 - File-based persistence
-public interface ILedger {
-    Task<long> Append(string streamId, IEvent @event);
-    IAsyncEnumerable<IEvent> ReadStream(string streamId);
-    Task<Snapshot> CreateSnapshot(string streamId);
-}
-```
-
-### To v0.3.0 (Event Sourcing)
-
-:::planned
-v0.3.0 adds full event sourcing:
-:::
-
-```csharp{title="To v0.3.0 (Event Sourcing)" description="To v0.3.0 (Event Sourcing)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "V0.3.0", "Event"]}
-// v0.3.0 - Event sourcing with projections
-public interface IEventStore : ILedger {
-    Task<T> LoadAggregate<T>(string aggregateId) where T : IAggregate;
-    Task SaveAggregate<T>(T aggregate) where T : IAggregate;
-    Task<ProjectionState> GetProjection(string projectionName);
-    Task RebuildProjection(string projectionName, DateTime? from = null);
-}
-```
+- **Append-only** - no update or delete operations exist on the interface
+- **Per-stream ordering** - monotonic sequence numbers within each stream
+- **Time-ordered event IDs** - UUIDv7 (`TrackedGuid.NewMedo()`) makes event IDs sortable across streams
+- **AOT-compatible** - generic append/read with source-generated JSON contexts; no reflection
+- **Thread-safe** - `InMemoryEventStore` uses concurrent collections; Postgres backends rely on transactional inserts with retry
 
 ## Best Practices
 
@@ -404,19 +195,15 @@ public interface IEventStore : ILedger {
 2. **Use meaningful event names** - OrderCreated not Event1
 3. **Include all relevant data** - Events should be self-contained
 4. **Keep events small** - Large payloads impact performance
-5. **Version your events** - Plan for schema evolution
-6. **Test with the ledger** - Verify event flow in tests
+5. **Version your events** - Plan for schema evolution (see [Event Upcasting](event-upcasting.md))
+6. **Test with the ledger** - Use `InMemoryEventStore` to verify event flow in tests
 
 ## Related Documentation
 
+- [Event Store](event-store.md) - Full `IEventStore` API, `AppendAndWaitAsync`, decorator stack
+- [Event Store Query](event-store-query.md) - Querying the ledger
+- [Event Streams](event-streams.md) - Stream organization and `StreamId`
+- [Stream ID](stream-id.md) - How stream identity is assigned
+- [Event Upcasting](event-upcasting.md) - Evolving stored events
 - [Receptors](../receptors/receptors.md) - Where events come from
-- [Dispatcher](../dispatcher/dispatcher.md) - How events reach the ledger
 - [Perspectives](../perspectives/perspectives.md) - How events update views
-- Testing - Testing with the ledger
-- [Feature Evolution](../../../roadmap/FEATURE-EVOLUTION.md) - How the ledger evolves
-
-## Next Steps
-
-- See [v0.2.0 Persistence](ledger.md) for file-based storage
-- See [v0.3.0 Event Sourcing](ledger.md) for full ES/CQRS
-- Review Examples for event design patterns

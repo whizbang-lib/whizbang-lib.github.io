@@ -1,6 +1,8 @@
 ---
 title: Envelope Registry
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 22
@@ -10,6 +12,8 @@ tags: 'envelope, registry, message-tracking, observability'
 codeReferences:
   - src/Whizbang.Core/Observability/IEnvelopeRegistry.cs
   - src/Whizbang.Core/Observability/EnvelopeRegistry.cs
+testReferences:
+  - tests/Whizbang.Observability.Tests/EnvelopeRegistryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -140,39 +144,45 @@ public class EventStore : IEventStore {
       await StoreWithEnvelopeAsync(streamId, envelope, ct);
     } else {
       // Create minimal envelope for orphan message
-      var minimalEnvelope = MessageEnvelope.Create(message);
+      var minimalEnvelope = new MessageEnvelope<TMessage> {
+        MessageId = MessageId.New(),
+        Payload = message,
+        Hops = []
+      };
       await StoreWithEnvelopeAsync(streamId, minimalEnvelope, ct);
     }
   }
 }
 ```
 
-### Security Context Propagation
+### Security Scope Propagation
 
-```csharp{title="Security Context Propagation" description="Security Context Propagation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Security", "Context"]}
-public class SecurityContextEventStoreDecorator : IEventStore {
+```csharp{title="Security Scope Propagation" description="Reading the scope carried on envelope hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Security", "Context"]}
+public class ScopePropagatingEventStoreDecorator : IEventStore {
   private readonly IEnvelopeRegistry _envelopeRegistry;
   private readonly IEventStore _inner;
 
   public async Task AppendAsync<TMessage>(
       Guid streamId,
       TMessage message,
-      CancellationToken ct = default) {
+      CancellationToken ct = default) where TMessage : notnull {
 
     var envelope = _envelopeRegistry.TryGetEnvelope(message);
 
-    // Propagate security context from envelope
-    var securityContext = envelope?.Hops
-        .FirstOrDefault(h => h.SecurityContext != null)?
-        .SecurityContext;
+    // Propagate security scope from the envelope's current hop (MessageHop.Scope)
+    var scope = envelope?.GetCurrentScope();
 
-    // Apply security context to storage
-    using (_securityScope.UseContext(securityContext)) {
+    // Apply scope to storage
+    using (_securityScope.UseContext(scope)) {
       await _inner.AppendAsync(streamId, message, ct);
     }
   }
 }
 ```
+
+:::updated
+The shipped `SecurityContextEventStoreDecorator` in `Whizbang.Core` does **not** use the envelope registry — it resolves scope and correlation from the ambient context via `CascadeContext.ResolveHopFirstScope`/`ResolveHopFirstIdentity` when appending raw messages. The example above illustrates a custom decorator built on `IEnvelopeRegistry`.
+:::
 
 ### Correlation Tracking
 
@@ -184,9 +194,9 @@ public class CorrelationTrackingReceptor : IReceptor<CreateOrder, OrderCreated> 
       CreateOrder command,
       CancellationToken ct = default) {
 
-    // Get correlation ID from envelope
+    // Get correlation ID from envelope hops
     var envelope = _envelopeRegistry.TryGetEnvelope(command);
-    var correlationId = envelope?.CorrelationId ?? Guid.NewGuid();
+    var correlationId = envelope?.GetCorrelationId() ?? CorrelationId.New();
 
     _logger.LogInformation(
         "Processing CreateOrder with CorrelationId {CorrelationId}",
@@ -207,7 +217,7 @@ The default implementation uses a pooled `Dictionary` with `ReferenceEqualityCom
 public sealed class EnvelopeRegistry : IEnvelopeRegistry, IDisposable {
   private static readonly ConcurrentBag<Dictionary<object, IMessageEnvelope>> _pool = [];
   private readonly Dictionary<object, IMessageEnvelope> _entries;
-  private readonly object _lock = new();
+  private readonly Lock _lock = new();
 
   public EnvelopeRegistry() {
     // Rent from pool if available, otherwise create with ReferenceEqualityComparer
@@ -232,7 +242,7 @@ public sealed class EnvelopeRegistry : IEnvelopeRegistry, IDisposable {
 
   public void Dispose() {
     lock (_lock) { _entries.Clear(); }
-    _pool.Add(_entries); // Return to pool
+    _pool.Add(_entries); // Return to pool (bounded at 256 pooled dictionaries)
   }
 }
 ```

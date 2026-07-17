@@ -1,6 +1,8 @@
 ---
 title: Debugger-Aware Clock
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Features
 order: 1
@@ -12,6 +14,9 @@ codeReferences:
   - src/Whizbang.Core/Diagnostics/IActiveStopwatch.cs
   - src/Whizbang.Core/Diagnostics/DebuggerAwareClockOptions.cs
   - src/Whizbang.Core/Diagnostics/DebuggerDetectionMode.cs
+  - src/Whizbang.Core/ServiceCollectionExtensions.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Diagnostics/DebuggerAwareClockTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -120,13 +125,13 @@ public enum DebuggerDetectionMode {
 }
 ```
 
-| Mode | Best For | Detection Quality | Performance |
-|------|----------|-------------------|-------------|
-| `Disabled` | Production | None | Fastest |
-| `DebuggerAttached` | Normal debugging | Good | Fast |
-| `CpuTimeSampling` | External pauses | Better | Some overhead |
-| `ExternalHook` | VS Code extension | Best | Requires extension |
-| `Auto` | Default | Adaptive | Balanced |
+| Mode | Best For | Detection at This Commit | Performance |
+|------|----------|--------------------------|-------------|
+| `Disabled` | Production | None (`IsPaused` always false) | Fastest |
+| `DebuggerAttached` | Reserved | No active detection yet (no sampling timer) | Fast |
+| `CpuTimeSampling` | External pauses | CPU/wall ratio sampling | Some overhead |
+| `ExternalHook` | Reserved for VS Code extension | No active detection yet | Fast |
+| `Auto` | Default | CPU sampling, gated on `Debugger.IsAttached` | Balanced |
 
 ### DebuggerAwareClockOptions {#debugger-aware-clock-options}
 
@@ -239,23 +244,27 @@ public class MyService {
 
 ### Custom Configuration
 
+`AddWhizbang()` uses `TryAddSingleton`, so a registration you add **before** it wins:
+
 ```csharp{title="Custom Configuration" description="Custom Configuration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Custom", "Configuration"]}
-builder.Services.AddWhizbang(options => {
-  options.ConfigureDebuggerAwareClock(clockOptions => {
-    clockOptions.Mode = DebuggerDetectionMode.CpuTimeSampling;
-    clockOptions.SamplingInterval = TimeSpan.FromMilliseconds(50);
-  });
-});
+// Register a custom-configured clock BEFORE AddWhizbang()
+builder.Services.AddSingleton<IDebuggerAwareClock>(
+  new DebuggerAwareClock(new DebuggerAwareClockOptions {
+    Mode = DebuggerDetectionMode.CpuTimeSampling,
+    SamplingInterval = TimeSpan.FromMilliseconds(50)
+  })
+);
+
+builder.Services.AddWhizbang();  // TryAddSingleton - keeps your registration
 ```
 
 ## How Detection Works
 
 ### Auto Mode (Default)
 
-1. Check if `Debugger.IsAttached`
-2. If attached, enable CPU time sampling
-3. Compare wall time to CPU time each sampling interval
-4. If ratio exceeds threshold, mark as paused
+1. The CPU sampling timer runs continuously (every `SamplingInterval`)
+2. Each sample compares wall time delta to CPU time delta
+3. Execution is marked paused only when `Debugger.IsAttached` **and** the wall/CPU ratio exceeds `FrozenThreshold`
 
 ### CPU Time Sampling
 
@@ -264,29 +273,20 @@ The clock periodically samples `Process.TotalProcessorTime` and compares it to w
 - **Wall time >> CPU time**: Execution is frozen (breakpoint, sleep, etc.)
 - **Wall time ~ CPU time**: Normal execution
 
-This works even when the debugger is not attached, detecting external pauses.
+In `CpuTimeSampling` mode this works even when the debugger is not attached, detecting external pauses.
 
-### External Hook
-
-For VS Code extension integration, the clock can wait for external signals:
-
-```csharp{title="External Hook" description="For VS Code extension integration, the clock can wait for external signals:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "External", "Hook"]}
-// VS Code extension signals pause via IPC
-clock.SignalPause();  // When breakpoint hit
-clock.SignalResume(); // When continuing
-```
+:::updated
+At this commit, only `CpuTimeSampling` and `Auto` modes start the sampling timer. `DebuggerAttached` and `ExternalHook` are defined in the enum but perform no active pause detection yet — in those modes `IsPaused` remains `false`. There is no public `SignalPause()`/`SignalResume()` API on `DebuggerAwareClock`; `ExternalHook` is reserved for future VS Code extension integration. Use `OnPauseStateChanged` to observe pause transitions detected by CPU sampling.
+:::
 
 ## Integration Points
 
-The debugger-aware clock is used throughout Whizbang:
+The debugger-aware clock is wired into Whizbang where false timeouts hurt most during debugging:
 
 | Component | Usage |
 |-----------|-------|
-| Perspective Sync | Prevent false sync timeouts |
-| Work Coordinator | Debugger-safe work batching |
-| Transport Layer | Message timeout handling |
-| Health Checks | Accurate timeout reporting |
-| Retry Policies | Don't count breakpoint time |
+| Perspective Sync (`PerspectiveSyncAwaiter`) | Sync waits time out on active time, not wall time |
+| Generated Dispatcher (send-and-wait paths) | Resolves `IDebuggerAwareClock` for timeout tracking |
 
 ## Best Practices
 
@@ -312,7 +312,7 @@ public async Task WorkCoordinator_Timeout_UsesActiveTimeAsync() {
   // Act & Assert
   var stopwatch = clock.StartNew();
   await Task.Delay(100);
-  Assert.That(stopwatch.HasTimedOut(TimeSpan.FromSeconds(1)), Is.False);
+  await Assert.That(stopwatch.HasTimedOut(TimeSpan.FromSeconds(1))).IsFalse();
 }
 ```
 

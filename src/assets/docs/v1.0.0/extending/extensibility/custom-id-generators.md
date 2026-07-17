@@ -1,25 +1,91 @@
 ---
 title: Custom ID Generators
-pageType: concept
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Extensibility
 order: 8
 description: >-
-  Implement custom ID generation strategies - Snowflake IDs, ULID, CUID, or
-  custom schemes
-tags: 'id-generation, uuidv7, snowflake, ulid, cuid'
+  Implement custom ID generation strategies via IWhizbangIdProvider -
+  Snowflake IDs, ULID, or custom schemes
+tags: 'id-generation, uuidv7, trackedguid, whizbangid, snowflake, ulid'
 codeReferences:
-  - src/Whizbang.Core/ValueObjects/MessageId.cs
+  - src/Whizbang.Core/IWhizbangIdProvider.cs
+  - src/Whizbang.Core/IWhizbangIdProviderGeneric.cs
+  - src/Whizbang.Core/Uuid7IdProvider.cs
+  - src/Whizbang.Core/WhizbangIdProvider.cs
+  - src/Whizbang.Core/WhizbangIdServiceCollectionExtensions.cs
+  - src/Whizbang.Core/ValueObjects/TrackedGuid.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/Uuid7IdProviderTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/IWhizbangIdProviderGenericTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdServiceCollectionExtensionsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Custom ID Generators
 
-**Custom ID generators** provide alternative ID schemes beyond UUIDv7. Implement Snowflake IDs, ULID, CUID, or custom distributed ID generation strategies.
+**Custom ID generators** provide alternative ID schemes beyond the default UUIDv7. Whizbang's extension point is the `IWhizbangIdProvider` interface - implement it to plug Snowflake IDs, ULID, sequential test IDs, or any custom strategy into every WhizbangId type.
 
 :::note
-Whizbang uses UUIDv7 by default for time-ordered, database-friendly IDs. Custom generators are for specialized scenarios.
+Whizbang uses UUIDv7 by default (via `Uuid7IdProvider`, which calls `TrackedGuid.NewMedo()`) for time-ordered, database-friendly IDs with sub-millisecond precision. Custom generators are for specialized scenarios.
 :::
+
+---
+
+## The Extension Point: IWhizbangIdProvider
+
+```csharp{title="IWhizbangIdProvider Interface" description="The ID generation extension point" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "IWhizbangIdProvider", "Interface"]}
+namespace Whizbang.Core;
+
+// Global provider - customizes ID generation for all WhizbangId types
+public interface IWhizbangIdProvider {
+  TrackedGuid NewGuid();
+}
+
+// Strongly-typed provider - resolve per WhizbangId type from DI
+public interface IWhizbangIdProvider<TId> where TId : struct {
+  TId NewId();
+}
+```
+
+Key points:
+
+- `NewGuid()` returns a **`TrackedGuid`** - a `Guid` wrapper carrying metadata about how the value was generated (source, precision). Wrap external values with `TrackedGuid.FromExternal(guid)`.
+- The default implementation is **`Uuid7IdProvider`**, which returns `TrackedGuid.NewMedo()` (UUIDv7, time-ordered).
+- Typed `IWhizbangIdProvider<TId>` implementations are **source-generated** for every `[WhizbangId]` type and delegate to the configured global provider.
+
+---
+
+## Configuring a Custom Provider
+
+```csharp{title="Provider Registration" description="Configure the global WhizbangId provider" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Registration", "DI"]}
+// Program.cs - set the global provider before any IDs are generated
+services.ConfigureWhizbangIdProvider(new MyCustomIdProvider());
+
+// Or without DI:
+WhizbangIdProvider.SetProvider(new MyCustomIdProvider());
+
+// Register the generated typed providers (IWhizbangIdProvider<TId>) in DI
+services.AddWhizbangIdProviders();
+```
+
+```csharp{title="Typed Provider Usage" description="Resolve a strongly-typed ID provider from DI" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "WhizbangId", "DI"]}
+public class OrderService {
+  private readonly IWhizbangIdProvider<OrderId> _idProvider;
+
+  public OrderService(IWhizbangIdProvider<OrderId> idProvider) {
+    _idProvider = idProvider;
+  }
+
+  public Order CreateOrder() {
+    var orderId = _idProvider.NewId();  // Type-safe, uses the configured strategy
+    return new Order { Id = orderId };
+  }
+}
+```
 
 ---
 
@@ -30,13 +96,13 @@ Whizbang uses UUIDv7 by default for time-ordered, database-friendly IDs. Custom 
 | **UUIDv7** (default) | Time-ordered, standard | 128-bit size |
 | **Snowflake** | 64-bit, Twitter-scale | Requires clock sync |
 | **ULID** | Lexicographically sortable | Custom parsing |
-| **CUID** | Collision-resistant | Custom format |
+| **Sequential (testing)** | Deterministic tests | Not production-safe |
 
 **When to use custom IDs**:
-- ✅ 64-bit ID requirements
+- ✅ Deterministic IDs in tests
 - ✅ Specific ordering needs
-- ✅ Custom collision resistance
 - ✅ Legacy system compatibility
+- ✅ Custom collision resistance
 
 ---
 
@@ -96,11 +162,32 @@ public class SnowflakeIdGenerator {
 }
 ```
 
-**Usage**:
-```csharp{title="Pattern 1: Twitter Snowflake (2)" description="Pattern 1: Twitter Snowflake" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Twitter"]}
-var generator = new SnowflakeIdGenerator(machineId: 42);
-var id = generator.NextId();  // 64-bit time-ordered ID
+### Plugging It into Whizbang
+
+Pack the 64-bit Snowflake value into a `Guid` and wrap it with `TrackedGuid.FromExternal`:
+
+```csharp{title="Snowflake Whizbang Provider" description="Adapt Snowflake IDs to IWhizbangIdProvider" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Snowflake", "IWhizbangIdProvider"]}
+public class SnowflakeWhizbangIdProvider : IWhizbangIdProvider {
+  private readonly SnowflakeIdGenerator _generator;
+
+  public SnowflakeWhizbangIdProvider(long machineId) {
+    _generator = new SnowflakeIdGenerator(machineId);
+  }
+
+  public TrackedGuid NewGuid() {
+    Span<byte> bytes = stackalloc byte[16];
+    BitConverter.TryWriteBytes(bytes, _generator.NextId());
+    return TrackedGuid.FromExternal(new Guid(bytes));
+  }
+}
+
+// Registration
+services.ConfigureWhizbangIdProvider(new SnowflakeWhizbangIdProvider(machineId: 42));
 ```
+
+:::warning
+Non-UUIDv7 schemes lose the time-ordering guarantees that Whizbang's event ordering and database indexing are tuned for. Ensure your custom scheme is still monotonically increasing per generator if events rely on ID ordering.
+:::
 
 ---
 
@@ -109,22 +196,20 @@ var id = generator.NextId();  // 64-bit time-ordered ID
 ### Pattern 2: Universally Unique Lexicographically Sortable ID
 
 ```csharp{title="Pattern 2: Universally Unique Lexicographically Sortable ID" description="Pattern 2: Universally Unique Lexicographically Sortable ID" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Universally"]}
-using Ulid;
-
-public class UlidGenerator {
-  public static string NewId() {
-    return Ulid.NewUlid().ToString();  // 26-character string
-  }
-
-  public static Ulid Parse(string ulidString) {
-    return Ulid.Parse(ulidString);
+// Ulid struct from the "Ulid" NuGet package (Cysharp)
+public class UlidWhizbangIdProvider : IWhizbangIdProvider {
+  public TrackedGuid NewGuid() {
+    // ULID is 128-bit and time-ordered - converts cleanly to Guid
+    return TrackedGuid.FromExternal(Ulid.NewUlid().ToGuid());
   }
 }
 ```
 
 **Usage**:
-```csharp{title="Pattern 2: Universally Unique Lexicographically Sortable ID" description="Pattern 2: Universally Unique Lexicographically Sortable ID" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Universally"]}
-var id = UlidGenerator.NewId();  // "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+```csharp{title="ULID Provider Usage" description="ULID-backed WhizbangId generation" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Universally"]}
+services.ConfigureWhizbangIdProvider(new UlidWhizbangIdProvider());
+
+var id = WhizbangIdProvider.NewGuid();  // TrackedGuid backed by a ULID
 ```
 
 ---
@@ -133,7 +218,8 @@ var id = UlidGenerator.NewId();  // "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 
 **Core Concepts**:
 - [Message Context](../../fundamentals/messages/message-context.md) - MessageId, CorrelationId
+- [WhizbangIds](../../fundamentals/identity/whizbang-ids.md) - Strongly-typed ID types and the `[WhizbangId]` attribute
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

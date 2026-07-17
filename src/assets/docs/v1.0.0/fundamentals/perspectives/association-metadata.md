@@ -1,6 +1,8 @@
 ---
 title: Perspective Association Info
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Perspectives
 order: 4
@@ -9,17 +11,24 @@ description: >-
   source generator discovery
 tags: 'perspectives, association, metadata, source-generators, registration'
 codeReferences:
-  - src/Whizbang.Core/Perspectives/PerspectiveAssociationInfo.cs
+  - src/Whizbang.Generators/PerspectiveInfo.cs
   - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
+  - src/Whizbang.Generators/PerspectiveRunnerRegistryGenerator.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveRunnerRegistry.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveAssociationGenerator.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/PerspectiveDiscoveryGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveRunnerRegistryGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/EFCorePerspectiveAssociationGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Perspective Association Info
 
-`PerspectiveAssociationInfo` is a metadata structure used by source generators to track the relationship between perspective implementations and their model types. It enables compile-time discovery and runtime registration of perspectives.
+Perspective association metadata tracks the relationship between perspective implementations, their model types, and the event types they handle. It enables compile-time discovery and runtime registration of perspectives without reflection.
 
 :::updated
-This page covers the **non-generic** `PerspectiveAssociationInfo` class used by source generators for **compile-time discovery and registration**. For the **generic** `PerspectiveAssociationInfo<TModel, TEvent>` record used for **runtime invocation** of perspective Apply methods via strongly-typed delegates, see [PerspectiveAssociationInfo (Typed Delegates)](association-info.md).
+This page covers the **compile-time discovery metadata** used by source generators. The primary metadata record at the shipped commit is the generator-internal `PerspectiveInfo` (in `Whizbang.Generators`); a smaller internal record named `PerspectiveAssociationInfo` exists inside the EF Core association generator. Neither is a public runtime type — the public runtime metadata surface is `MessageAssociation` and `PerspectiveRegistrationInfo`. For the **generic** `PerspectiveAssociationInfo<TModel, TEvent>` record used for **runtime invocation** of perspective Apply methods via strongly-typed delegates, see [PerspectiveAssociationInfo (Typed Delegates)](association-info.md).
 :::
 
 ## Purpose
@@ -29,43 +38,71 @@ The perspective discovery system needs to know:
 - Which event types the perspective handles
 - How to construct and invoke the perspective runner
 
-`PerspectiveAssociationInfo` provides this metadata bridge between compile-time analysis and runtime execution.
+The discovery metadata provides this bridge between compile-time analysis and runtime execution.
 
 ## Structure
 
-```csharp{title="Structure" description="Structure" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Structure"]}
+### Compile-time: `PerspectiveInfo` (generator-internal)
+
+`PerspectiveDiscoveryGenerator` extracts one `PerspectiveInfo` per discovered perspective interface. It is a value-equality record (critical for incremental generator performance) defined in `Whizbang.Generators`:
+
+```csharp{title="PerspectiveInfo (abridged)" description="Generator-internal discovery metadata record" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Structure"]}
+namespace Whizbang.Generators;
+
+/// <summary>
+/// Value type containing information about a discovered perspective.
+/// This record uses value equality which is critical for incremental generator performance.
+/// </summary>
+internal sealed record PerspectiveInfo(
+    string ClassName,              // Fully qualified class name (global:: prefixed)
+    string SimpleName,             // Simple class name (incl. parent for nested classes)
+    string ClrTypeName,            // CLR format name for database storage ("Namespace.Parent+Child")
+    string[] InterfaceTypeArguments, // TModel, TEvent1, TEvent2, ... from IPerspectiveFor
+    string[] EventTypes,           // Fully qualified event type names
+    string[] MessageTypeNames,     // Event names in database format ("TypeName, AssemblyName")
+    string? StreamIdPropertyName = null,
+    // ... validation, physical fields, storage mode, record-model flag, scope inheritance
+    bool IsWithActionsInterface = false,
+    bool IsModelRecord = false
+);
+```
+
+### Runtime: `PerspectiveRegistrationInfo` (public)
+
+The generated `PerspectiveRunnerRegistry` exposes registered perspectives through `IPerspectiveRunnerRegistry.GetRegisteredPerspectives()`:
+
+```csharp{title="PerspectiveRegistrationInfo" description="Public runtime metadata exposed by IPerspectiveRunnerRegistry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Structure"]}
 namespace Whizbang.Core.Perspectives;
 
 /// <summary>
-/// Associates a perspective implementation with its model type and tracked event types.
+/// Information about a registered perspective for diagnostic purposes.
 /// </summary>
-/// <remarks>
-/// This type is used by source generators to create the mapping between
-/// perspectives and their models during perspective discovery.
-/// </remarks>
-public sealed class PerspectiveAssociationInfo {
-  /// <summary>
-  /// The perspective type (e.g., OrderSummaryPerspective).
-  /// </summary>
-  public required Type PerspectiveType { get; init; }
+public sealed record PerspectiveRegistrationInfo(
+    string ClrTypeName,                 // Lookup key ("MyApp.Perspectives.OrderPerspective")
+    string FullyQualifiedName,          // For code generation ("global::MyApp.Perspectives.OrderPerspective")
+    string ModelType,                   // "global::MyApp.Models.OrderModel"
+    IReadOnlyList<string> EventTypes    // Fully qualified event types handled
+);
+```
 
-  /// <summary>
-  /// The model type this perspective projects to (e.g., OrderSummaryDto).
-  /// </summary>
-  public required Type ModelType { get; init; }
+### EF Core generator: internal `PerspectiveAssociationInfo`
 
-  /// <summary>
-  /// The event types this perspective handles.
-  /// </summary>
-  public required IReadOnlyList<Type> EventTypes { get; init; }
-}
+The EF Core association generator carries its own minimal internal record — a (perspective, message-type) pair used to emit JSON association registrations:
+
+```csharp{title="EF Core PerspectiveAssociationInfo" description="Internal record in Whizbang.Data.EFCore.Postgres.Generators" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Structure"]}
+namespace Whizbang.Data.EFCore.Postgres.Generators;
+
+internal sealed record PerspectiveAssociationInfo(
+    string PerspectiveClrTypeName,  // "Namespace.Parent+Child" for nested types
+    string MessageTypeName          // Database format: "TypeName, AssemblyName"
+);
 ```
 
 ## How It Works
 
 ### Compile-Time Discovery
 
-The `PerspectiveDiscoveryGenerator` scans for types implementing `IPerspectiveFor<TModel, TEvent>`:
+The `PerspectiveDiscoveryGenerator` scans for types implementing the `IPerspectiveFor<TModel, TEvent...>` family (and `IPerspectiveWithActionsFor<TModel, TEvent...>`), including classes that implement multiple perspective interfaces:
 
 ```csharp{title="Compile-Time Discovery" description="The PerspectiveDiscoveryGenerator scans for types implementing IPerspectiveFor<TModel, TEvent>:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Compile-Time", "Discovery"]}
 // Your code
@@ -78,84 +115,68 @@ public class OrderSummaryPerspective :
 }
 ```
 
-### Generated Association
+### Generated Associations
 
-The generator creates an association entry:
+From the extracted `PerspectiveInfo`, the generator emits `MessageAssociation` entries into `PerspectiveRegistrationExtensions.GetMessageAssociations(serviceName)`:
 
-```csharp{title="Generated Association" description="The generator creates an association entry:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Generated", "Association"]}
-// Auto-generated code
-new PerspectiveAssociationInfo {
-  PerspectiveType = typeof(OrderSummaryPerspective),
-  ModelType = typeof(OrderSummaryDto),
-  EventTypes = new[] {
-    typeof(OrderCreated),
-    typeof(OrderShipped)
-  }
-}
+```csharp{title="Generated Association" description="The generator creates association entries:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Generated", "Association"]}
+// Auto-generated inside GetMessageAssociations(serviceName)
+return new MessageAssociation[] {
+  new MessageAssociation("MyApp.Events.OrderCreated, MyApp", "perspective", "MyApp.Perspectives.OrderSummaryPerspective", serviceName),
+  new MessageAssociation("MyApp.Events.OrderShipped, MyApp", "perspective", "MyApp.Perspectives.OrderSummaryPerspective", serviceName)
+};
 ```
 
 ### Runtime Registration
 
-The generated registration code uses this metadata to:
-
-1. Register the perspective runner in `IPerspectiveRunnerRegistry`
-2. Register the perspective in DI container
-3. Create event subscription mappings
+`AddWhizbangPerspectives()` (generated into `{AssemblyName}.Generated`) registers each perspective against its interface as a **Scoped** service:
 
 ```csharp{title="Runtime Registration" description="Runtime Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Runtime", "Registration"]}
-// Auto-generated registration
-services.AddTransient<OrderSummaryPerspective>();
-services.AddTransient<IPerspectiveRunner>(sp =>
-  new OrderSummaryPerspectiveRunner(
-    sp,
-    sp.GetRequiredService<IEventStore>(),
-    sp.GetRequiredService<IPerspectiveStore<OrderSummaryDto>>()
-  )
-);
+// Auto-generated registration inside AddWhizbangPerspectives()
+services.AddScoped<
+    IPerspectiveFor<OrderSummaryDto, OrderCreated, OrderShipped>,
+    OrderSummaryPerspective>();
 ```
 
 ## Generated Components
 
-For each `PerspectiveAssociationInfo`, the generator creates:
+For each discovered perspective, the generators create:
 
 ### 1. Perspective Runner
+
+`PerspectiveRunnerGenerator` emits an `IPerspectiveRunner` implementation per perspective. `RunAsync` returns a `PerspectiveCursorCompletion`:
 
 ```csharp{title="Perspective Runner" description="Perspective Runner" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Perspective", "Runner"]}
 internal sealed class OrderSummaryPerspectiveRunner : IPerspectiveRunner {
   // Implements event replay logic
-  public async Task<PerspectiveCheckpointCompletion> RunAsync(
+  public async Task<PerspectiveCursorCompletion> RunAsync(
       Guid streamId,
       string perspectiveName,
       Guid? lastProcessedEventId,
       CancellationToken ct) {
-    // Load model, apply events, save checkpoint
+    // Load model, apply events, save cursor
   }
 }
 ```
 
 ### 2. Registry Entry
 
+`PerspectiveRunnerRegistryGenerator` emits a `PerspectiveRunnerRegistry` class implementing `IPerspectiveRunnerRegistry` with a zero-reflection switch on the CLR type name:
+
 ```csharp{title="Registry Entry" description="Registry Entry" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registry", "Entry"]}
 // In generated PerspectiveRunnerRegistry
-registry.Register(
-  perspectiveName: "OrderSummaryPerspective",
-  factory: sp => new OrderSummaryPerspectiveRunner(...)
-);
+public IPerspectiveRunner? GetRunner(string perspectiveName, IServiceProvider serviceProvider) {
+  return perspectiveName switch {
+    "MyApp.Perspectives.OrderSummaryPerspective"
+        => serviceProvider.GetRequiredService<OrderSummaryPerspectiveRunner>(),
+    _ => null
+  };
+}
 ```
 
-### 3. Event Subscriptions
+### 3. Event Namespace Subscriptions
 
-```csharp{title="Event Subscriptions" description="Event Subscriptions" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Event", "Subscriptions"]}
-// In generated EventSubscriptionDiscovery
-subscriptions.Add(new EventSubscription {
-  EventType = typeof(OrderCreated),
-  PerspectiveName = "OrderSummaryPerspective"
-});
-subscriptions.Add(new EventSubscription {
-  EventType = typeof(OrderShipped),
-  PerspectiveName = "OrderSummaryPerspective"
-});
-```
+Module initializers populate the `EventNamespaceRegistry` with the namespaces of handled events. At transport startup, the runtime `EventSubscriptionDiscovery` service (in `Whizbang.Core.Routing`) combines these auto-discovered namespaces with manual `RoutingOptions.SubscribeTo()` subscriptions — minus owned domains — to determine which event topics the service subscribes to.
 
 ## Example Workflow
 
@@ -183,31 +204,31 @@ public class ProductCatalogPerspective :
 }
 ```
 
-### Step 2: Generator Creates Association
+### Step 2: Generator Extracts Metadata
 
-```csharp{title="Step 2: Generator Creates Association" description="Step 2: Generator Creates Association" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Step", "Generator"]}
-// Auto-generated metadata
-new PerspectiveAssociationInfo {
-  PerspectiveType = typeof(ProductCatalogPerspective),
-  ModelType = typeof(ProductDto),
-  EventTypes = new[] {
-    typeof(ProductCreated),
-    typeof(ProductUpdated)
-  }
-}
+```csharp{title="Step 2: Generator Extracts Metadata" description="Step 2: Generator Extracts Metadata" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Step", "Generator"]}
+// Extracted at compile time (generator-internal, one per perspective interface)
+new PerspectiveInfo(
+  ClassName: "global::MyApp.Perspectives.ProductCatalogPerspective",
+  SimpleName: "ProductCatalogPerspective",
+  ClrTypeName: "MyApp.Perspectives.ProductCatalogPerspective",
+  InterfaceTypeArguments: ["global::MyApp.Models.ProductDto", "global::MyApp.Events.ProductCreated"],
+  EventTypes: ["global::MyApp.Events.ProductCreated"],
+  MessageTypeNames: ["MyApp.Events.ProductCreated, MyApp"]
+)
 ```
 
 ### Step 3: Generator Creates Runner
 
 ```csharp{title="Step 3: Generator Creates Runner" description="Step 3: Generator Creates Runner" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Step", "Generator"]}
-// Auto-generated runner
+// Auto-generated runner (simplified)
 internal sealed class ProductCatalogPerspectiveRunner : IPerspectiveRunner {
-  public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {
+  public async Task<PerspectiveCursorCompletion> RunAsync(...) {
     var perspective = _serviceProvider.GetRequiredService<ProductCatalogPerspective>();
     var model = await _perspectiveStore.GetByStreamIdAsync(streamId, ct)
         ?? CreateEmptyModel(streamId);
 
-    await foreach (var envelope in _eventStore.ReadAsync<IEvent>(streamId, lastProcessedEventId, ct)) {
+    await foreach (var envelope in _eventStore.ReadPolymorphicAsync(streamId, lastProcessedEventId, eventTypes, ct)) {
       model = envelope.Payload switch {
         ProductCreated created => perspective.Apply(model, created),
         ProductUpdated updated => perspective.Apply(model, updated),
@@ -216,7 +237,7 @@ internal sealed class ProductCatalogPerspectiveRunner : IPerspectiveRunner {
     }
 
     await _perspectiveStore.UpsertAsync(streamId, model, ct);
-    return new PerspectiveCheckpointCompletion { ... };
+    return new PerspectiveCursorCompletion { ... };
   }
 }
 ```
@@ -241,24 +262,29 @@ internal sealed class ProductCatalogPerspectiveRunner : IPerspectiveRunner {
 
 ## Diagnostics
 
-The generator emits diagnostics when processing associations:
+The generators emit diagnostics when processing perspectives:
 
-**WHIZ020**: Perspective discovered
+**WHIZ007**: Perspective discovered (Info)
 ```
-info WHIZ020: Discovered perspective 'OrderSummaryPerspective' for model 'OrderSummaryDto' handling 2 event types
+info WHIZ007: Found perspective 'OrderSummaryPerspective' listening to OrderCreated, OrderShipped
 ```
 
-**WHIZ021**: Multiple perspectives for same model
+**WHIZ028**: Perspective runner registry generated (Info)
 ```
-info WHIZ021: Multiple perspectives discovered for model 'OrderSummaryDto': OrderSummaryPerspective, OrderDetailsPerspective
+info WHIZ028: Generated perspective runner registry with 4 runner(s) for zero-reflection lookup (AOT-compatible)
+```
+
+**WHIZ032**: Perspective name collision (Error)
+```
+error WHIZ032: Multiple perspectives found with name 'OrderSummaryPerspective': MyApp.A.OrderSummaryPerspective, MyApp.B.OrderSummaryPerspective. Use unique class names.
 ```
 
 ## See Also
 
 - [Perspectives Guide](./perspectives.md) - Perspective fundamentals
-- [Perspective Discovery](../../extending/source-generators/perspective-discovery.md) - Source generator details
+- [PerspectiveAssociationInfo (Typed Delegates)](association-info.md) - Runtime invocation via delegates
+- [Typed Associations](typed-associations.md) - GetPerspectiveAssociations method details
 - [Perspective Worker](../../operations/workers/perspective-worker.md) - Runtime execution
-- Perspective Store - Model persistence
 
 ---
 
