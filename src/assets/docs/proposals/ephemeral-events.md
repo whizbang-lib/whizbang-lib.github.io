@@ -40,7 +40,7 @@ Same programming model, different durability semantics. **Mode name = `Ephemeral
 
 Ephemeral builds on existing "never persisted" and "hard delete" seams rather than inventing new ones:
 
-- **`Route.LocalNoPersist`** / **`DispatchModes.LocalNoPersist`** (`Dispatch/Route.cs`, `Dispatch/DispatchMode.cs`) — `LocalNoPersist == LocalDispatch` deliberately omits the `EventStore` bit, so the dispatcher (`Dispatcher._dispatchByModeAsync`) invokes in-process receptors but **never** appends to `wh_event_store`. The existing "dispatch, don't persist" path an in-memory ephemeral event rides on.
+- **`Route.LocalNoPersist`** / **`DispatchModes.LocalNoPersist`** (`Dispatch/Route.cs`, `Dispatch/DispatchMode.cs`) — `LocalNoPersist == LocalDispatch` deliberately omits the `EventStore` bit, so the dispatcher (`Dispatcher._dispatchByModeAsync`) invokes in-process receptors but **never** appends to `wh_event_store`. A real "dispatch, don't persist" seam — but **not** the path ephemeral events take: because delivery to a stream's owning instance is DB-mediated (see [Transient storage](#transient-storage-where-the-read-model-lives-developer-picks)), an ephemeral event that fed a stream-routed perspective still persists + routes normally. LocalNoPersist stays a fire-and-forget local-signal primitive, not an ephemeral-persistence mode.
 - **`ICompositeEvent`** (`Messaging/ICompositeEvent.cs`) — is `IMessage`-not-`IEvent`, so it is *structurally* excluded from the event-store append and fans out to children that are persisted instead. The closest precedent to "flows through dispatch, is never event-stored."
 - **`ModelAction.Purge`** / **`ApplyResult<T>.Purge()`** (`Perspectives/ModelAction.cs`, `ApplyResult.cs`) → the generated runner's `pendingPurge` path → **`IPerspectiveStore.PurgeAsync(streamId, ct)`** (`EFCorePostgresPerspectiveStore`, `ExecuteDeleteAsync`). The read-model **hard-delete** primitive the reaper reuses.
 - **`EventFlags`** treatment-bit convention (`Messaging/EventFlags.cs`) — `Collective=1`, `Composite=2`, `NoRebroadcast=4`. Category vs treatment bits, read in SQL as `(flags & N)` (migrations `061`/`062`). The derived hot-path marker for ephemeral is the next bit.
@@ -215,7 +215,7 @@ WHERE b.event_id = p.event_id
 
 Because the pointer survives, a reaped event reads back as **pointer-present / body-NULL** — the exact deterministic signal the [rebuild guard](#the-runtime-guard-backstop) needs: it knows the event existed and refuses/redirects, instead of silently rebuilding a shorter, wrong history.
 
-**Why one body table, not one per class.** A single uniform table keeps the C# model uniform, makes reclassification a flag flip, and makes cross-class reads a single join — at the cost of `O(1)` partition-drop reclaim and per-class `UNLOGGED`. That cost is a non-issue here: the only high-churn ephemeral (presence / typing) is `Route.LocalNoPersist` and **never reaches the body table**, so it only ever holds moderate-volume *persisted* ephemeral, where a row-`DELETE` is healthy — and **continuous appends recycle the reaped space, so the table converges to a bounded steady state** (Sourced-forever + a rolling ephemeral working set) rather than growing without bound. The body table just gets aggressive per-table autovacuum, with a rare compaction backstop. (If a persisted-ephemeral workload ever outgrows that, time-partitioning `wh_event_body` is a later, reap-logic-preserving lever — it buys vacuum locality, though not partition-drop, since Sourced rows pin every partition.)
+**Why one body table, not one per class.** A single uniform table keeps the C# model uniform, makes reclassification a flag flip, and makes cross-class reads a single join — at the cost of `O(1)` partition-drop reclaim and per-class `UNLOGGED`. That cost is a non-issue here: high-churn ephemeral (presence / typing) *does* reach the body table — every event persists + routes — but its bodies are **reaped almost immediately** (consumption-gated + a short grace window), so a row-`DELETE` is healthy and **continuous appends recycle the reaped space, so the table converges to a bounded steady state** (Sourced-forever + a rolling ephemeral working set) rather than growing without bound. The body table just gets aggressive per-table autovacuum, with a rare compaction backstop. (If a persisted-ephemeral workload ever outgrows that, time-partitioning `wh_event_body` is a later, reap-logic-preserving lever — it buys vacuum locality, though not partition-drop, since Sourced rows pin every partition.)
 
 The reaper runs in **two tiers**:
 
@@ -268,16 +268,18 @@ Snapshots (`CreateSnapshotAsync(streamId, perspectiveName, …)` with a `snapsho
 
 A "mixed" perspective is simply one that touches some ephemeral streams **and** some sourced streams; each `(stream, perspective)` pair runs its own policy independently. There is no special mixed plumbing — the existing per-stream granularity plus the homogeneous-stream invariant does the work, so **normal, mixed, and ephemeral perspectives all flow through one mechanism** that branches on a single per-stream bit. *(One edge: a **collective** perspective — the `__collective__` sink folding many streams into one shared model — is not per-stream and needs its own snapshot story; rare, handled separately.)*
 
-## Transient storage: in-memory or a TTL'd row (developer picks)
+## Transient storage: where the read model lives (developer picks)
 
-Where the authoritative ephemeral *state* lives is **orthogonal** to ephemeral-ness, chosen per perspective:
+This axis chooses only the **perspective store** strategy — it is **orthogonal** to ephemeral-ness and does **not** change how the event is delivered.
 
-| Storage | How | Survives restart? | Use |
+> **The event is always DB-persisted and routed.** Whizbang's delivery is DB-mediated: an instance writes its inbox rows to the database, which assigns each to the stream's owning instance (`wh_active_streams`, stream affinity), and the owner drains it. That hand-off *is* the delivery mechanism, so an ephemeral event **cannot** skip the store and still reach the right instance — there is no `Route.LocalNoPersist` path for anything that feeds a stream-routed perspective. The event-store side is the consumption-gated ephemeral substrate (offloaded body, reaped once consumed + aged, above). This axis is purely about the **read model** built from that event.
+
+| Storage | How | Survives an instance change? | Use |
 |---|---|---|---|
-| **In-memory** | reuse `InMemoryUpsertStrategy` (`InMemoryDriverExtensions`) + realtime push | No | presence / typing / cursor — losing it is fine |
-| **TTL'd `wh_per_*` row** | a normal perspective row with an `expires_at` marker | Yes | chat thread state, session layout — lens-queryable, restart-safe |
+| **In-memory** | hold the model in `InMemoryUpsertStrategy` (per-instance RAM) *after* the DB routes the event to the owner + realtime push | **No** — silently lost on rebalance / restart, and an ephemeral stream can't rebuild | presence / typing / cursor **only** — self-heals from the next ping |
+| **TTL'd `wh_per_*` row** | a normal perspective row with an `expires_at` marker | Yes — restart-safe, lens-queryable | chat thread state, session layout |
 
-Both are read through the existing `ILensQuery` path — **the read side is unaffected**; it already reads only `wh_per_*` rows. An in-memory ephemeral event is routed through `Route.LocalNoPersist` (dispatch-only, no event-store append); a TTL'd one may still publish, flagged ephemeral.
+Both are read through the existing `ILensQuery` path — **the read side is unaffected**; it already reads only `wh_per_*` rows. **In-memory is a narrow presence-only optimization**, not a way to avoid persistence: it trades the `wh_per_*` write for RAM, accepting that a rebalance wipes the model (fine for presence, a data-loss footgun otherwise). The TTL'd row's *expiry duration* comes from the TTL machinery (`Destruction.AfterTtl`, phase E2), so the row-expiry half lands with E2. Neither is enforced at runtime yet.
 
 ## Keeping it alive: renew, defer, hold
 
