@@ -1,6 +1,8 @@
 ---
 title: Outbox Migration
 pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Migration Guide
 order: 8
@@ -10,6 +12,13 @@ description: >-
 tags: 'migration, outbox, inbox, durability, messaging'
 codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs
+  - src/Whizbang.Core/Workers/WorkerPipelineExtensions.cs
+  - src/Whizbang.Core/Workers/DeadLetterRecoveryWorker.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/FlushApiTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorSchemaTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorBroadTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

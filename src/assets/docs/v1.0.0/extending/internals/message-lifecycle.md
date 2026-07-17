@@ -575,12 +575,12 @@ var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(comman
 
 ```csharp{title="Immediate Strategy (Lowest Latency)" description="Immediate Strategy (Lowest Latency)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Internals", "Immediate", "Strategy"]}
 public class ImmediateWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
-    public async Task QueueOutboxMessage(NewOutboxMessage message) {
+    public void QueueOutboxMessage(OutboxMessage message) {
         _pendingOutbox.Add(message);
 
-        // Flush immediately (no batching)
-        await FlushAsync();
+        // Flush immediately (no batching) - fire-and-forget flush follows
     }
+    // FlushAsync(WorkBatchOptions.None) invoked right after each queue call
 }
 ```
 
@@ -592,14 +592,14 @@ public class ImmediateWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
 
 ```csharp{title="Scoped Strategy (Per-Request Batching)" description="Scoped Strategy (Per-Request Batching)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Scoped", "Strategy"]}
 public class ScopedWorkCoordinatorStrategy : IWorkCoordinatorStrategy, IAsyncDisposable {
-    public async Task QueueOutboxMessage(NewOutboxMessage message) {
+    public void QueueOutboxMessage(OutboxMessage message) {
         _pendingOutbox.Add(message);
         // Don't flush yet - batch until scope disposal
     }
 
     public async ValueTask DisposeAsync() {
         // Flush on scope disposal (end of HTTP request)
-        await FlushAsync();
+        await FlushAsync(WorkBatchOptions.None);
     }
 }
 ```
@@ -612,7 +612,7 @@ public class ScopedWorkCoordinatorStrategy : IWorkCoordinatorStrategy, IAsyncDis
 
 ```csharp{title="Interval Strategy (Highest Throughput)" description="Interval Strategy (Highest Throughput)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Interval", "Strategy"]}
 public class IntervalWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
-    public async Task QueueOutboxMessage(NewOutboxMessage message) {
+    public void QueueOutboxMessage(OutboxMessage message) {
         _pendingOutbox.Add(message);
         // Don't flush - timer will flush every 100ms
     }
@@ -620,7 +620,7 @@ public class IntervalWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
     private async Task TimerCallback() {
         while (!_cts.IsCancellationRequested) {
             await Task.Delay(_options.IntervalMilliseconds, _cts.Token);
-            await FlushAsync();  // Batch flush
+            await FlushAsync(WorkBatchOptions.None);  // Batch flush
         }
     }
 }
@@ -690,9 +690,9 @@ BEGIN
         SELECT message_id FROM wh_outbox
         WHERE partition_number IN (SELECT * FROM assigned_partitions)
           AND (instance_id IS NULL OR lease_expiry < NOW())
-          AND status = 'Stored'
-        ORDER BY sequence_order
-        LIMIT 100
+          AND (status & 4) != 4       -- not yet Published
+          AND (status & 32768) = 0    -- not Failed
+        ORDER BY created_at
         FOR UPDATE SKIP LOCKED  -- Non-blocking claim
     )
     RETURNING *;
