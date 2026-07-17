@@ -59,7 +59,7 @@ Per-assembly shard (`Whizbang.Core.Tests.json`) — keys use the **code-tests-ma
 
 The library repo needs a secret so CI can push data commits here:
 
-1. Create a **fine-grained PAT**: repository access = `whizbang-lib/whizbang-lib.github.io` only, permission = **Contents: read/write**. Set a ≥6-month expiry and calendar the renewal — the staleness banner is the runtime symptom of an expired token.
+1. Create a **fine-grained PAT** (resource owner = the `whizbang-lib` org): repository access = `whizbang-lib/whizbang-lib.github.io` only, permissions = **Contents: read/write** AND **Pull requests: read/write** (the publish path is branch → PR → instant merge because this repo's `main` ruleset requires PRs). Set a ≥6-month expiry and calendar the renewal — the staleness banner is the runtime symptom of an expired token.
 2. Add it as `DOCS_REPO_PUSH_TOKEN` in the **whizbang** repo's Actions secrets.
 3. The publish job no-ops gracefully when the secret is absent, so forks and PRs are unaffected.
 
