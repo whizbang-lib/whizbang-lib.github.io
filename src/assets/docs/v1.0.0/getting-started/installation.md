@@ -1,6 +1,8 @@
 ---
 title: Installation Guide
 pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Getting Started
 order: 2
@@ -11,6 +13,9 @@ tags: 'installation, setup, nuget, project-templates'
 codeReferences:
   - Directory.Build.props
   - Directory.Packages.props
+testReferences:
+  - tests/Whizbang.Generators.Tests/ServiceRegistrationGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -24,17 +29,17 @@ Before installing Whizbang, ensure you have:
 
 ### Required
 
-- **.NET 10.0 SDK** (RC2 or later)
+- **.NET 10.0 SDK** (10.0.100 or later — the repository pins `10.0.100` in `global.json`)
   ```bash
   dotnet --version
-  # Should show 10.0.0 or later
+  # Should show 10.0.100 or later
   ```
 
-- **C# 13** language support (included with .NET 10 SDK)
+- **Latest C# language version** (the repository builds with `<LangVersion>latest</LangVersion>`, included with the .NET 10 SDK)
 
 ### Recommended
 
-- **Visual Studio 2024** (17.12+) or **Visual Studio Code** with C# Dev Kit
+- **Visual Studio** (with .NET 10 SDK support) or **Visual Studio Code** with C# Dev Kit
 - **Docker Desktop** (for PostgreSQL and Azure Service Bus Emulator)
 - **.NET Aspire Workload** (for orchestration):
   ```bash
@@ -54,8 +59,9 @@ dotnet add package Whizbang.Core
 ```
 
 **Includes**:
-- Core interfaces (`IDispatcher`, `IReceptor`, `IPerspectiveOf`)
+- Core interfaces (`IDispatcher`, `IReceptor`, `IPerspectiveFor`, `ILensQuery`)
 - Message envelope and observability
+- Background workers (outbox publish, inbox dispatch, perspectives)
 - Object pooling for performance
 - Policy engine foundation
 
@@ -85,6 +91,12 @@ dotnet add package Whizbang.Transports.AzureServiceBus
 dotnet add package Whizbang.Hosting.Azure.ServiceBus
 ```
 
+**RabbitMQ**:
+```bash{title="Transport Packages - RabbitMQ" description="RabbitMQ:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Transport", "Packages"]}
+dotnet add package Whizbang.Transports.RabbitMQ
+dotnet add package Whizbang.Hosting.RabbitMQ
+```
+
 #### Source Generators
 
 **Automatic Discovery**:
@@ -93,10 +105,10 @@ dotnet add package Whizbang.Generators
 ```
 
 **Includes**:
-- Receptor discovery and registration
-- Perspective discovery
+- Receptor discovery and registration (generated `AddReceptors()` / `AddWhizbangDispatcher()`)
+- Perspective discovery (generated `AddPerspectiveRunners()`)
 - Message registry generation (VSCode extension)
-- Aggregate ID generation
+- Strongly-typed ID generation (`[WhizbangId]`)
 - AOT-compatible JSON contexts
 
 ### Option 2: Package Bundle
@@ -106,11 +118,11 @@ For complete functionality, add all packages:
 ```xml{title="Option 2: Package Bundle" description="For complete functionality, add all packages:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Xml", "Option", "Package", "Bundle"]}
 <!-- YourProject.csproj -->
 <ItemGroup>
-  <PackageReference Include="Whizbang.Core" Version="0.1.0" />
-  <PackageReference Include="Whizbang.Generators" Version="0.1.0" />
-  <PackageReference Include="Whizbang.Data.Dapper.Postgres" Version="0.1.0" />
-  <PackageReference Include="Whizbang.Transports.AzureServiceBus" Version="0.1.0" />
-  <PackageReference Include="Whizbang.Hosting.Azure.ServiceBus" Version="0.1.0" />
+  <PackageReference Include="Whizbang.Core" Version="x.x.x" />
+  <PackageReference Include="Whizbang.Generators" Version="x.x.x" />
+  <PackageReference Include="Whizbang.Data.Dapper.Postgres" Version="x.x.x" />
+  <PackageReference Include="Whizbang.Transports.AzureServiceBus" Version="x.x.x" />
+  <PackageReference Include="Whizbang.Hosting.Azure.ServiceBus" Version="x.x.x" />
 </ItemGroup>
 ```
 
@@ -127,13 +139,13 @@ Use `Directory.Packages.props` for version management:
 
   <ItemGroup>
     <!-- Whizbang Packages -->
-    <PackageVersion Include="Whizbang.Core" Version="0.1.0" />
-    <PackageVersion Include="Whizbang.Generators" Version="0.1.0" />
-    <PackageVersion Include="Whizbang.Data.Dapper.Postgres" Version="0.1.0" />
-    <PackageVersion Include="Whizbang.Data.EFCore.Postgres" Version="0.1.0" />
-    <PackageVersion Include="Whizbang.Data.EFCore.Postgres.Generators" Version="0.1.0" />
-    <PackageVersion Include="Whizbang.Transports.AzureServiceBus" Version="0.1.0" />
-    <PackageVersion Include="Whizbang.Hosting.Azure.ServiceBus" Version="0.1.0" />
+    <PackageVersion Include="Whizbang.Core" Version="x.x.x" />
+    <PackageVersion Include="Whizbang.Generators" Version="x.x.x" />
+    <PackageVersion Include="Whizbang.Data.Dapper.Postgres" Version="x.x.x" />
+    <PackageVersion Include="Whizbang.Data.EFCore.Postgres" Version="x.x.x" />
+    <PackageVersion Include="Whizbang.Data.EFCore.Postgres.Generators" Version="x.x.x" />
+    <PackageVersion Include="Whizbang.Transports.AzureServiceBus" Version="x.x.x" />
+    <PackageVersion Include="Whizbang.Hosting.Azure.ServiceBus" Version="x.x.x" />
   </ItemGroup>
 </Project>
 ```
@@ -179,7 +191,7 @@ Ensure your project targets .NET 10:
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <LangVersion>13</LangVersion> <!-- C# 13 for latest features -->
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 </Project>
 ```
@@ -193,7 +205,7 @@ Create solution-level build configuration:
 <Project>
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <LangVersion>13</LangVersion>
+    <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -285,9 +297,9 @@ builder.Build().Run();
 
 ## IDE Configuration
 
-### Visual Studio 2024
+### Visual Studio
 
-1. **Install .NET 10 SDK** (included with VS 2024 17.12+)
+1. **Install .NET 10 SDK** (bundled with recent Visual Studio releases)
 2. **Enable Source Generators**:
    - Tools → Options → Text Editor → C# → Advanced
    - Check "Enable source generators"
@@ -348,15 +360,18 @@ Build succeeded.
 ls .whizbang/cache/
 ```
 
-**Expected files** (after adding receptors):
+**Expected files** (after adding receptors — generated sources are grouped per generator):
 ```
-Whizbang.Generators/
-├── ReceptorDiscoveryGenerator/
-│   └── ReceptorRegistrations.g.cs
-├── PerspectiveDiscoveryGenerator/
-│   └── PerspectiveRegistrations.g.cs
-└── MessageRegistryGenerator/
-    └── MessageRegistry.g.cs
+.whizbang/cache/
+└── Whizbang.Generators/
+    ├── Whizbang.Generators.ReceptorDiscoveryGenerator/
+    │   ├── ReceptorRegistry.g.cs
+    │   ├── DispatcherRegistrations.g.cs
+    │   └── Dispatcher.g.cs
+    ├── Whizbang.Generators.PerspectiveDiscoveryGenerator/
+    │   └── PerspectiveRegistrations.g.cs
+    └── Whizbang.Generators.MessageRegistryGenerator/
+        └── MessageRegistry.g.cs
 ```
 
 ### 3. Run Tests (if added)

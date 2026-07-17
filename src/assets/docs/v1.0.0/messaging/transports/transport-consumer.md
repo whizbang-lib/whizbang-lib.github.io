@@ -1,6 +1,8 @@
 ---
 title: Transport Consumer
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 description: >-
@@ -14,6 +16,13 @@ codeReferences:
   - src/Whizbang.Core/Resilience/SubscriptionState.cs
   - src/Whizbang.Core/Resilience/SubscriptionRetryHelper.cs
   - src/Whizbang.Core/Transports/ITransportWithRecovery.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsServiceNameTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerResilienceTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerConnectionRecoveryTests.cs
+  - tests/Whizbang.Core.Tests/Resilience/SubscriptionRetryHelperTests.cs
+  - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -72,9 +81,9 @@ services.AddWhizbang()
         routing.OwnDomains("myapp.orders.commands");
     })
     .AddTransportConsumer(config => {
-        // Add custom destination
+        // Add custom destination (address + routing key)
         config.AdditionalDestinations.Add(
-            new TransportDestination("custom-topic", "my-subscription"));
+            new TransportDestination("custom-topic", "custom.events.#"));
 
         // Add multiple custom destinations
         config.AdditionalDestinations.Add(
@@ -154,8 +163,8 @@ Configuration options for subscription retry behavior. Controls exponential back
 **SubscriptionStatus**:
 Enumeration tracking subscription states:
 - `Pending` - Waiting to subscribe
-- `Active` - Successfully subscribed
 - `Recovering` - Retrying after failure
+- `Healthy` - Successfully subscribed
 - `Failed` - Failed (when `RetryIndefinitely = false`)
 
 **SubscriptionState**:
@@ -224,14 +233,13 @@ app.MapHealthChecks("/health");  // Includes subscription health
 ```
 
 Health check results:
-- **Healthy**: All subscriptions active
-- **Degraded**: Some subscriptions recovering or pending
+- **Healthy**: All subscriptions healthy
+- **Degraded**: Mixed status (some subscriptions recovering, pending, or failed)
 - **Unhealthy**: All subscriptions failed
 
 The health check includes diagnostic data:
 - `failed_destinations`: List of failed subscription addresses
 - `recovering_destinations`: List of subscriptions currently retrying
-- `pending_destinations`: List of subscriptions waiting for first attempt
 
 ### Connection Recovery
 
@@ -249,8 +257,8 @@ This ensures subscriptions survive both initial failures and runtime connection 
 Monitor subscription state through:
 
 **Logging**:
-- Initial retries (attempts 1-5): Warning level with full details
-- Indefinite retries (attempts 6+): Info level with reduced verbosity
+- Initial retries (attempts 1 through `InitialRetryAttempts`): Warning level with full details
+- Indefinite retries (beyond `InitialRetryAttempts`): logged only every 10th attempt to reduce noise
 
 **Metrics** (if using health checks):
 - Total subscriptions count

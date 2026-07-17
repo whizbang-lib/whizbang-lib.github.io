@@ -1,6 +1,8 @@
 ---
 title: Migration Checklist
 pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Migration Guide
 order: 10
@@ -10,6 +12,11 @@ codeReferences:
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
   - src/Whizbang.Core/IDispatcher.cs
   - src/Whizbang.Core/ICommand.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
+  - tests/Whizbang.Migrate.Tests/Commands/AnalyzeCommandTests.cs
+  - tests/Whizbang.Migrate.Tests/Transformers/HandlerToReceptorTransformerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -114,9 +121,8 @@ For each projection:
 
 - [ ] Replace `IDocumentStore` with `IEventStore`
 - [ ] Replace `IDocumentSession` with direct `IEventStore` injection
-- [ ] Replace `session.Events.Append()` with `eventStore.AppendAsync<T>()`
-- [ ] Create `MessageEnvelope<T>` for each event
-- [ ] Use `Guid.CreateVersion7()` for new stream IDs
+- [ ] Replace `session.Events.Append()` with `eventStore.AppendAsync(streamId, @event)` (envelopes are created automatically; pass a `MessageEnvelope<T>` only when you need explicit tracing control)
+- [ ] Use `TrackedGuid.NewMedo()` for new stream IDs (time-ordered UUIDv7)
 - [ ] Remove `session.SaveChangesAsync()` calls
 - [ ] Update concurrency handling to sequence-based
 - [ ] Update event queries to use `IEventStore` methods
@@ -137,8 +143,8 @@ For each projection:
 
 - [ ] Remove `UseDurableOutbox()` configuration
 - [ ] Remove `UseDurableInbox()` configuration
-- [ ] Configure `IWorkCoordinatorStrategy`
-- [ ] Add `WorkCoordinatorPublisherWorker` hosted service
+- [ ] Configure `WorkCoordinatorOptions` (strategy: Immediate, Scoped, Interval, Batch)
+- [ ] Verify background workers start (registered automatically by `AddWhizbang()` — `OutboxPublishWorker`, `InboxDispatchWorker`, drain workers; no hosted services to add yourself)
 - [ ] Update retry policies
 
 ---
@@ -267,16 +273,18 @@ Use `whizbang-migrate` to automate common transformations:
 dotnet tool install -g whizbang-migrate
 
 # Analyze
-whizbang migrate analyze --project ./MyApp.sln
+whizbang-migrate analyze --project ./MyApp.sln
 
-# Plan
-whizbang migrate plan --project ./MyApp.sln
+# Plan (no changes applied)
+whizbang-migrate plan --project ./MyApp.sln
 
-# Apply (guided)
-whizbang migrate apply --mode guided
+# Apply (preview first with --dry-run)
+whizbang-migrate apply --project ./MyApp.sln --dry-run
+whizbang-migrate apply --project ./MyApp.sln
 
-# Check status
-whizbang migrate status
+# Check status / rollback to a checkpoint
+whizbang-migrate status
+whizbang-migrate rollback
 ```
 
 ---
