@@ -129,7 +129,7 @@ npm install && npm run build</code></pre>
 # MCP Tools: search-docs, find-examples, get-code-location, get-related-docs, get-tests-for-code</code></pre>
     </div>
 
-    <p class="stats">Generated: 2026-07-17T13:18:55.384Z | Total documents: 319</p>
+    <p class="stats">Generated: 2026-07-17T13:50:43.941Z | Total documents: 319</p>
   </header>
 
   <nav>
@@ -116316,7 +116316,7 @@ npm install && npm run build</code></pre>
 
 <p>The library repo needs a secret so CI can push data commits here:</p>
 
-<ul><li>Create a <strong>fine-grained PAT</strong>: repository access = <code>whizbang-lib/whizbang-lib.github.io</code> only, permission = <strong>Contents: read/write</strong>. Set a ≥6-month expiry and calendar the renewal — the staleness banner is the runtime symptom of an expired token.</li>
+<ul><li>Create a <strong>fine-grained PAT</strong> (resource owner = the <code>whizbang-lib</code> org): repository access = <code>whizbang-lib/whizbang-lib.github.io</code> only, permissions = <strong>Contents: read/write</strong> AND <strong>Pull requests: read/write</strong> (the publish path is branch → PR → instant merge because this repo's <code>main</code> ruleset requires PRs). Set a ≥6-month expiry and calendar the renewal — the staleness banner is the runtime symptom of an expired token.</li>
 <li>Add it as <code>DOCS_REPO_PUSH_TOKEN</code> in the <strong>whizbang</strong> repo's Actions secrets.</li>
 <li>The publish job no-ops gracefully when the secret is absent, so forks and PRs are unaffected.</li>
 </ul>
