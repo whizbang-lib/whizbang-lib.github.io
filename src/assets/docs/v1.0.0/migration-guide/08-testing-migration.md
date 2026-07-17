@@ -1,13 +1,22 @@
 ---
 title: Testing Migration
 pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Migration Guide
 order: 9
 description: Updating test infrastructure when migrating to Whizbang
 tags: 'migration, testing, tunit, mocks, integration-tests'
 codeReferences:
-  - src/Whizbang.Testing/InMemoryEventStore.cs
+  - src/Whizbang.Core/Messaging/InMemoryEventStore.cs
+  - src/Whizbang.Testing/Async/AsyncTestHelpers.cs
+  - src/Whizbang.Testing/Lifecycle/LifecycleStageAwaiter.cs
+  - src/Whizbang.Testing/Lifecycle/PerspectiveCompletionWaiter.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
