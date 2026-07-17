@@ -1,6 +1,8 @@
 ---
 title: Event Store Query
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 10
@@ -13,6 +15,11 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IFilterableEventStoreQuery.cs
   - src/Whizbang.Core/Messaging/IScopedEventStoreQuery.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreFilterableEventStoreQuery.cs
+  - src/Whizbang.Core/Lenses/IScopedLensFactory.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/IEventStoreQueryTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IScopedEventStoreQueryTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IFilterableEventStoreQueryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -70,7 +77,7 @@ public class EventsController : ControllerBase {
 ```csharp{title="Global Access (Admin Operations)" description="Global Access (Admin Operations)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Global", "Access"]}
 // Global access requires explicit permission
 var globalQuery = _lensFactory.GetEventStoreQuery(
-    ScopeFilter.None,
+    ScopeFilters.None,
     Permission.Read("events:global"));
 
 // Or use convenience method (no permission check)
@@ -167,6 +174,8 @@ The table schema is:
 - `metadata` (JSONB) - Envelope metadata
 - `scope` (JSONB) - Multi-tenancy scope
 - `created_at` (TIMESTAMPTZ) - Creation timestamp
+- `commit_sequence` (BIGINT, nullable) - Database-local commit order stamp
+- `origin_service_id`, `origin_commit_sequence` (nullable) - Originating service identity for cross-service events
 
 ## Best Practices
 

@@ -1,6 +1,8 @@
 ---
 title: Custom Work Coordinators
-pageType: concept
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Extensibility
 order: 11
@@ -10,6 +12,15 @@ description: >-
 tags: 'work-coordination, iworkcoordinator, distributed-locks, redis-queues'
 codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Core/Messaging/ClaimWorkRequest.cs
+  - src/Whizbang.Core/Messaging/WorkCategory.cs
+  - src/Whizbang.Core/Messaging/HeartbeatRequest.cs
+  - src/Whizbang.Core/Messaging/HandlerCommitRequest.cs
+  - src/Whizbang.Core/Messaging/FlushCompletionsRequest.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultInterfaceTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorDeepPathTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorBroadTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -42,16 +53,74 @@ Whizbang uses PostgreSQL stored procedures for work coordination by default. Cus
 
 ## IWorkCoordinator Interface
 
-```csharp{title="IWorkCoordinator Interface" description="IWorkCoordinator Interface" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "IWorkCoordinator", "Interface"]}
+`IWorkCoordinator` is a large interface, but most members ship **default interface implementations**. Only six members are abstract (must be implemented); the rest either throw `NotImplementedException` until you opt in, or no-op safely for backends that don't need them.
+
+```csharp{title="IWorkCoordinator Interface" description="IWorkCoordinator Interface (abridged)" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "IWorkCoordinator", "Interface"]}
+namespace Whizbang.Core.Messaging;
+
 public interface IWorkCoordinator {
-  Task<WorkBatch> ProcessWorkBatchAsync(
-    Guid instanceId,
-    string serviceName,
-    // ... parameters
-    CancellationToken ct = default
-  );
+  // --- Abstract members (every implementation MUST provide these) ---
+
+  // Graceful-shutdown deregistration: releases all leases, removes instance row
+  Task DeregisterInstanceAsync(Guid instanceId, CancellationToken cancellationToken = default);
+
+  // Expensive COUNT-based queue-depth statistics (called ~every 60 ticks)
+  Task<WorkCoordinatorStatistics> GatherStatisticsAsync(CancellationToken cancellationToken = default);
+
+  // Lightweight inbox insert with deduplication (transport consumer path)
+  Task StoreInboxMessagesAsync(InboxMessage[] messages, int partitionCount,
+    CancellationToken cancellationToken = default);
+
+  // Out-of-band perspective cursor reporting
+  Task ReportPerspectiveCompletionAsync(PerspectiveCursorCompletion completion,
+    CancellationToken cancellationToken = default);
+  Task ReportPerspectiveFailureAsync(PerspectiveCursorFailure failure,
+    CancellationToken cancellationToken = default);
+  Task<PerspectiveCursorInfo?> GetPerspectiveCursorAsync(Guid streamId, string perspectiveName,
+    CancellationToken cancellationToken = default);
+
+  // --- Core work-pump surface (defaults THROW until overridden) ---
+
+  // The only method the polling ClaimWorker calls; returns claimed work / stream ids
+  Task<WorkBatch> ClaimWorkAsync(ClaimWorkRequest request,
+    CancellationToken cancellationToken = default);
+
+  // Decoupled heartbeat (C# HeartbeatWorker, 5 s default cadence)
+  Task RecordHeartbeatAsync(HeartbeatRequest request, CancellationToken cancellationToken = default);
+
+  // Coalesced completion/failure flushers
+  Task<int> CompleteOutboxPublishedAsync(IReadOnlyList<Guid> ids, bool debugMode,
+    CancellationToken cancellationToken = default);
+  Task CompletePerspectiveAsync(IReadOnlyList<PerspectiveCursorCompletion> cursors,
+    IReadOnlyList<Guid> eventWorkIds, bool debugMode, CancellationToken cancellationToken = default);
+  Task<int> RenewLeasesAsync(WorkCategory category, IReadOnlyList<Guid> ids,
+    int leaseSeconds = 300, CancellationToken cancellationToken = default);
+  Task ReportFailuresAsync(WorkCategory category, IReadOnlyList<MessageFailure> failures,
+    CancellationToken cancellationToken = default);
+  Task FlushCompletionsAsync(FlushCompletionsRequest request,
+    CancellationToken cancellationToken = default);
+
+  // SAVEPOINT-per-handler batched commit (inbox completion + emitted messages, atomically)
+  Task CommitHandlerResultAsync(HandlerCommitRequest request,
+    CancellationToken cancellationToken = default);
+  Task<IReadOnlyList<HandlerBatchResult>> CommitHandlerBatchAsync(
+    IReadOnlyList<HandlerCommitRequest> requests, CancellationToken cancellationToken = default);
+
+  // --- Defaults that NO-OP safely (override when your backend supports them) ---
+  // StoreOutboxMessagesAsync, FetchOutboxBatchAsync / FetchInboxBatchAsync (per-stream drain),
+  // ClaimAndFetchPendingPerspectiveEventsAsync, FetchEventsByIdsAsync,
+  // CleanupCompletedStreamsAsync, RecomputePartitionNumbersAsync,
+  // lifecycle reconciliation, rewind scans, maintenance, stuck-row sentinels, ...
 }
 ```
+
+:::updated
+`ProcessWorkBatchAsync(ProcessWorkBatchRequest, CancellationToken)` still exists on the interface but is **compatibility-only**: its default implementation returns an empty `WorkBatch`, and the legacy orchestrator SQL function `process_work_batch` has been dropped. Work coordination is now decomposed into `ClaimWorkAsync`, `StoreOutboxMessagesAsync` / `StoreInboxMessagesAsync`, the per-completion/per-failure flushers, and `CommitHandlerBatchAsync`.
+:::
+
+### Claim/drain split
+
+`ClaimWorkAsync` returns *stream ids* (`WorkBatch.OutboxStreamIds`, `InboxStreamIds`, `PerspectiveStreamIds`) — a small payload. Dedicated drain workers then fetch message bodies per stream via `FetchOutboxBatchAsync` / `FetchInboxBatchAsync` in stream-FIFO order. A custom coordinator must preserve this contract: claiming leases work to an instance; draining returns only rows leased to that instance.
 
 ---
 
@@ -61,6 +130,7 @@ public interface IWorkCoordinator {
 
 ```csharp{title="Pattern 1: Redis Queue-Based Coordination" description="Pattern 1: Redis Queue-Based Coordination" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Redis"]}
 using StackExchange.Redis;
+using Whizbang.Core.Messaging;
 
 public class RedisWorkCoordinator : IWorkCoordinator {
   private readonly IConnectionMultiplexer _redis;
@@ -74,48 +144,58 @@ public class RedisWorkCoordinator : IWorkCoordinator {
     _logger = logger;
   }
 
-  public async Task<WorkBatch> ProcessWorkBatchAsync(
-    Guid instanceId,
-    string serviceName,
-    string hostName,
-    int processId,
-    Dictionary<string, JsonElement>? metadata,
-    MessageCompletion[] outboxCompletions,
-    MessageFailure[] outboxFailures,
-    // ... other parameters
-    CancellationToken ct = default
+  // Claim work: pop stream ids from a Redis list and lease them to this instance
+  public async Task<WorkBatch> ClaimWorkAsync(
+    ClaimWorkRequest request,
+    CancellationToken cancellationToken = default
   ) {
     var db = _redis.GetDatabase();
+    var claimedStreams = new List<Guid>();
 
-    // 1. Process completions (remove from Redis)
-    foreach (var completion in outboxCompletions) {
-      await db.ListRemoveAsync(
-        "outbox:pending",
-        JsonSerializer.Serialize(completion.MessageId),
-        ct
+    for (int i = 0; i < request.MaxStreams; i++) {
+      var streamId = await db.ListLeftPopAsync("outbox:pending-streams");
+      if (streamId.IsNullOrEmpty) break;
+
+      var id = Guid.Parse(streamId!);
+
+      // Lease the stream to this instance (expires after LeaseSeconds)
+      await db.StringSetAsync(
+        $"lease:outbox:{id}",
+        request.InstanceId.ToString(),
+        TimeSpan.FromSeconds(request.LeaseSeconds)
       );
-    }
-
-    // 2. Process failures (update retry count)
-    foreach (var failure in outboxFailures) {
-      // Increment retry count, re-queue if needed
-      // ...
-    }
-
-    // 3. Claim new work (atomic LPOP)
-    var claimedWork = new List<OutboxMessage>();
-    for (int i = 0; i < 100; i++) {
-      var workItem = await db.ListLeftPopAsync("outbox:pending", ct);
-      if (workItem.IsNullOrEmpty) break;
-
-      var message = JsonSerializer.Deserialize<OutboxMessage>(workItem!);
-      claimedWork.Add(message!);
+      claimedStreams.Add(id);
     }
 
     return new WorkBatch {
-      ClaimedOutboxMessages = claimedWork.ToArray()
+      OutboxWork = [],
+      InboxWork = [],
+      PerspectiveWork = [],
+      OutboxStreamIds = claimedStreams  // drain worker fetches bodies per stream
     };
   }
+
+  // Completion flush: delete published messages and release stream leases
+  public async Task<int> CompleteOutboxPublishedAsync(
+    IReadOnlyList<Guid> ids,
+    bool debugMode,
+    CancellationToken cancellationToken = default
+  ) {
+    var db = _redis.GetDatabase();
+    var removed = 0;
+    foreach (var id in ids) {
+      if (await db.KeyDeleteAsync($"outbox:message:{id}")) {
+        removed++;
+      }
+    }
+    return removed;
+  }
+
+  // ... implement the remaining abstract members (DeregisterInstanceAsync,
+  // GatherStatisticsAsync, StoreInboxMessagesAsync, perspective cursor reporting)
+  // and override FetchOutboxBatchAsync / FetchInboxBatchAsync, RecordHeartbeatAsync,
+  // RenewLeasesAsync, ReportFailuresAsync, CommitHandlerBatchAsync for a
+  // fully functional coordinator.
 }
 ```
 

@@ -1,6 +1,8 @@
 ---
 title: Stuck Row Sentinel
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Observability
 order: 8
@@ -15,6 +17,10 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/Migrations/054_StuckRowSentinel.sql
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStuckRowSentinelTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StuckRowSentinelSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreFindStuckRowsTests.cs
 ---
 
 # Stuck Row Sentinel
@@ -26,7 +32,7 @@ The stuck-row sentinel is a structural canary that surfaces `wh_outbox` and `wh_
 The slot-3 forensic (June 2026) exposed a class of bug where rows accumulate `attempts` indefinitely without reaching the drainer:
 
 - No publish attempt is made — so [Dead Letter Queue](../dead-letter-queue/internal-dlq.md) promotion never fires.
-- No exception is thrown — so the [Lifecycle Failure Capture](../dead-letter-queue/lifecycle-failure-capture.md) `error` column stays NULL.
+- No exception is thrown — so the failure-capture `error` column stays NULL.
 - No `Warning` is emitted — so operator dashboards stay silent.
 
 The specific instance was [Empty Stream ID](../configuration/empty-stream-id-policy.md): rows whose `stream_id = Guid.Empty` bypassed the `??` coalesce. That's now closed at three surfaces — but the class of bug ("claim_work returns the row, but it never makes it to the drain channel") is broader than the Empty-stream instance.
@@ -64,7 +70,7 @@ The Warning carries all five forensic fields from `StuckRow`:
 
 ## Configuration
 
-The sentinel ships enabled by default with sensible knobs. All three properties live on [`MaintenanceWorkerOptions`](../../fundamentals/work-coordinator/configuration-reference.md):
+The sentinel ships enabled by default with sensible knobs. All three properties live on `MaintenanceWorkerOptions`:
 
 ```csharp{title="Sentinel Configuration" description="Tune the stuck-row sentinel" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Maintenance", "StuckRow"]}
 services.Configure<MaintenanceWorkerOptions>(options => {
@@ -80,7 +86,7 @@ Default `true`. Set to `false` if the canary ever becomes noisy (e.g., during a 
 
 ### Threshold — `StuckRowSentinelMaxAttempts`
 
-Default `10`. Matches the [`OutboxDrainWorkerOptions.MaxOutboxAttempts`](../../fundamentals/work-coordinator/per-stream-drain.md) default — rows past that threshold are by definition past the DLQ promotion gate. If you raise `MaxOutboxAttempts`, raise this knob to match so the sentinel fires after DLQ has had its chance.
+Default `10`. Matches the `OutboxDrainWorkerOptions.MaxOutboxAttempts` default (see [Internal DLQ](../dead-letter-queue/internal-dlq.md)) — rows past that threshold are by definition past the DLQ promotion gate. If you raise `MaxOutboxAttempts`, raise this knob to match so the sentinel fires after DLQ has had its chance.
 
 ### Per-cycle Cap — `StuckRowSentinelLimit`
 
@@ -101,11 +107,11 @@ category: "Observability"
 difficulty: "ADVANCED"
 tags: ["stuck-row", "sentinel", "partial-index", "wh_outbox", "wh_inbox", "sql"]
 }
-CREATE INDEX idx_outbox_stuck_sentinel
+CREATE INDEX IF NOT EXISTS idx_outbox_stuck_sentinel
   ON wh_outbox (attempts)
   WHERE processed_at IS NULL AND attempts > 5;
 
-CREATE INDEX idx_inbox_stuck_sentinel
+CREATE INDEX IF NOT EXISTS idx_inbox_stuck_sentinel
   ON wh_inbox (attempts)
   WHERE processed_at IS NULL AND attempts > 5;
 ```
@@ -193,5 +199,4 @@ Match `since` (the row's `created_at`) against your deploy times. A correlation 
 ## See Also
 
 - [Empty Stream ID Policy](../configuration/empty-stream-id-policy.md) — the specific bug class this sentinel was designed to defend against future analogues of
-- [Maintenance Worker](../../fundamentals/work-coordinator/maintenance.md) — host process for the sentinel
 - [Internal Dead Letter Queue](../dead-letter-queue/internal-dlq.md) — downstream defense for rows the drainer **does** reach

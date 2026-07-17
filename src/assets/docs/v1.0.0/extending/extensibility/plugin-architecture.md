@@ -1,6 +1,8 @@
 ---
 title: Plugin Architecture
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Extensibility
 order: 12
@@ -11,6 +13,10 @@ tags: 'plugins, dynamic-loading, hot-reload, extensibility'
 codeReferences:
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
   - src/Whizbang.Core/ServiceRegistrationCallbacks.cs
+  - src/Whizbang.Core/Configuration/ServiceRegistrationOptions.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/ServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Generators.Tests/ServiceRegistrationGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -38,6 +44,26 @@ This is an advanced topic for building extensible systems on top of Whizbang. Mo
 - ✅ Multi-tenant customizations
 - ✅ Hot-reloadable features
 - ✅ 3rd-party integrations
+
+---
+
+## Whizbang's Built-In Extension Mechanism
+
+Before reaching for dynamic assembly loading, note how Whizbang itself composes "plugins": **module-initializer callbacks**. Source generators (ServiceRegistrationGenerator, ReceptorDiscoveryGenerator, etc.) emit `[ModuleInitializer]` methods in each consumer assembly that assign callbacks on the static `ServiceRegistrationCallbacks` class (`LensServices`, `PerspectiveServices`, `Dispatcher`, `RawReceptors`, `PinnedIdRegistry`, `MessageTypeCatalog`, `PerspectivePersistenceOptions`). `services.AddWhizbang()` then invokes every registered callback — zero reflection, fully AOT-compatible.
+
+```csharp{title="Module Initializer Callbacks" description="Whizbang's AOT-compatible assembly composition" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "ModuleInitializer", "Callbacks"]}
+// Generated module initializer in a consumer/extension assembly:
+[ModuleInitializer]
+internal static void RegisterServiceCallbacks() {
+  ServiceRegistrationCallbacks.LensServices = (services, options) =>
+    services.AddLensServices(o => o.IncludeSelfRegistration = options.IncludeSelfRegistration);
+}
+
+// User code - services are auto-registered:
+services.AddWhizbang();  // Invokes all registered callbacks
+```
+
+This is the pattern to prefer for statically-referenced extension assemblies: reference the assembly, its module initializer wires everything up.
 
 ---
 
@@ -104,6 +130,10 @@ public class CustomReceptorPlugin : IWhizbangPlugin {
 }
 ```
 
+:::warning
+Receptor discovery in Whizbang is **compile-time** (source generators build the receptor registry, and `AddWhizbang()` invokes `ServiceRegistrationCallbacks` once at startup). A receptor in an assembly loaded at runtime is NOT in the generated registry, so registering it in DI alone will not make the dispatcher fire it. Plugins loaded after startup must be statically referenced by an assembly that participates in source generation, or expose their own registration surface that your host calls explicitly.
+:::
+
 ---
 
 ## Hot-Reload Support
@@ -156,6 +186,10 @@ public class HotReloadPluginManager {
 - ❌ Allow reflection-heavy plugins (breaks AOT)
 - ❌ Skip versioning (compatibility issues)
 - ❌ Load untrusted plugins (security risk)
+
+:::note
+The `PluginLoader` and hot-reload patterns above rely on `AssemblyLoadContext`, `Assembly.GetTypes()`, and `Activator.CreateInstance` — all reflection-based and **incompatible with Native AOT**. Whizbang's core is zero-reflection/AOT-first; dynamic plugin loading is only an option for JIT-deployed hosts. For AOT deployments, use the module-initializer callback pattern with statically-referenced assemblies instead.
+:::
 
 ---
 

@@ -1,12 +1,15 @@
 ---
 title: PerspectiveAssociationInfo
-pageType: concept
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Perspectives
 codeReferences:
   - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
   - src/Whizbang.Generators/Templates/PerspectiveRegistrationsTemplate.cs
-  - src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveAssociationGenerator.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/PerspectiveDiscoveryGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -520,7 +523,7 @@ assoc.ApplyDelegate(model, productEvent); // Works!
 var model = assoc.ApplyDelegate(currentModel, evt);
 
 // Compare to reflection: ~100-1000ns per call
-// TypeMatcher is 50-500x faster than reflection!
+// Delegate invocation is 50-500x faster than reflection!
 ```
 
 ### Caching Strategy

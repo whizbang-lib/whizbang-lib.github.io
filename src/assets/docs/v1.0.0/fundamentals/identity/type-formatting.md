@@ -1,28 +1,36 @@
 ---
 title: "TypeFormatter: Type Name Formatting Utility"
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Core Concepts"
 order: 27
 description: >-
   TypeFormatter is a static utility that formats .NET Type objects into string representations
-  using TypeQualification flags. Handles namespace, assembly, version, and culture formatting
+  using TypeQualifications flags. Handles namespace, assembly, version, and culture formatting
   with culture-invariant output and full AOT compatibility.
 tags: 'type-formatter, type-formatting, type-names, aot, identity, source-generators'
 codeReferences:
   - src/Whizbang.Core/TypeFormatter.cs
+  - src/Whizbang.Core/TypeQualification.cs
+  - src/Whizbang.Core/TypeNameFormatter.cs
+  - src/Whizbang.Core/Messaging/EventTypeMatchingHelper.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/TypeFormatterTests.cs
+  - tests/Whizbang.Core.Tests/TypeNameFormatterTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # TypeFormatter: Type Name Formatting Utility
 
-TypeFormatter is a static utility class that formats .NET Type objects into string representations according to TypeQualification flags. It handles namespace, assembly, version, culture, and public key token formatting with culture-invariant output.
+TypeFormatter is a static utility class that formats .NET Type objects into string representations according to TypeQualifications flags. It handles namespace, assembly, version, culture, and public key token formatting with culture-invariant output.
 
 ## Overview
 
 **TypeFormatter** provides:
 - ✅ Culture-invariant type name formatting
-- ✅ Respects all TypeQualification flags
+- ✅ Respects all TypeQualifications flags
 - ✅ Handles null types safely
 - ✅ Fully AOT-compatible (no reflection beyond Type.GetName)
 - ✅ Used by source generators and message association APIs
@@ -37,18 +45,18 @@ using Whizbang.Core;
 var type = typeof(ECommerce.Contracts.Events.ProductCreatedEvent);
 
 // Format with preset
-var simple = TypeFormatter.FormatType(type, TypeQualification.Simple);
+var simple = TypeFormatter.FormatType(type, TypeQualifications.Simple);
 Console.WriteLine(simple);
 // Output: "ProductCreatedEvent"
 
-var fullyQualified = TypeFormatter.FormatType(type, TypeQualification.FullyQualified);
+var fullyQualified = TypeFormatter.FormatType(type, TypeQualifications.FullyQualified);
 Console.WriteLine(fullyQualified);
 // Output: "ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts"
 
 // Format with custom flags
 var custom = TypeFormatter.FormatType(
     type,
-    TypeQualification.Namespace | TypeQualification.TypeName
+    TypeQualifications.Namespace | TypeQualifications.TypeName
 );
 Console.WriteLine(custom);
 // Output: "ECommerce.Contracts.Events.ProductCreatedEvent"
@@ -60,7 +68,7 @@ Console.WriteLine(custom);
 // Full assembly qualification with version
 var withVersion = TypeFormatter.FormatType(
     type,
-    TypeQualification.FullyQualifiedWithVersion
+    TypeQualifications.FullyQualifiedWithVersion
 );
 Console.WriteLine(withVersion);
 // Output: "ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"
@@ -68,7 +76,7 @@ Console.WriteLine(withVersion);
 // Without version
 var withoutVersion = TypeFormatter.FormatType(
     type,
-    TypeQualification.FullyQualified
+    TypeQualifications.FullyQualified
 );
 Console.WriteLine(withoutVersion);
 // Output: "ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts"
@@ -83,7 +91,7 @@ TypeFormatter outputs components in this order:
 2. **Namespace** (`MyApp.Events`) - if flag is set
 3. **Dot separator** (`.`) - if both Namespace and TypeName are set
 4. **TypeName** (`ProductCreatedEvent`) - if flag is set
-5. **Comma separator** (`, `) - if TypeName and Assembly are set
+5. **Comma separator** (`, `) - before Assembly, if anything precedes it (omitted when Assembly is the only component)
 6. **Assembly** (`MyApp`) - if flag is set
 7. **Version** (`, Version=1.0.0.0`) - if flag is set
 8. **Culture** (`, Culture=neutral`) - if flag is set
@@ -95,36 +103,36 @@ TypeFormatter outputs components in this order:
 var type = typeof(OrderCreatedEvent);
 
 // TypeName only
-var name = TypeFormatter.FormatType(type, TypeQualification.TypeName);
+var name = TypeFormatter.FormatType(type, TypeQualifications.TypeName);
 // Result: "OrderCreatedEvent"
 
 // Namespace + TypeName
 var ns = TypeFormatter.FormatType(
     type,
-    TypeQualification.Namespace | TypeQualification.TypeName
+    TypeQualifications.Namespace | TypeQualifications.TypeName
 );
 // Result: "MyApp.Events.OrderCreatedEvent"
 
 // GlobalPrefix + TypeName
 var global = TypeFormatter.FormatType(
     type,
-    TypeQualification.GlobalPrefix | TypeQualification.TypeName
+    TypeQualifications.GlobalPrefix | TypeQualifications.TypeName
 );
 // Result: "global::OrderCreatedEvent"
 
 // GlobalPrefix + Namespace + TypeName
 var globalFull = TypeFormatter.FormatType(
     type,
-    TypeQualification.GlobalPrefix | TypeQualification.Namespace | TypeQualification.TypeName
+    TypeQualifications.GlobalPrefix | TypeQualifications.Namespace | TypeQualifications.TypeName
 );
 // Result: "global::MyApp.Events.OrderCreatedEvent"
 
 // Assembly without TypeName (edge case)
-var assemblyOnly = TypeFormatter.FormatType(type, TypeQualification.Assembly);
+var assemblyOnly = TypeFormatter.FormatType(type, TypeQualifications.Assembly);
 // Result: "MyApp"
 
 // None flag
-var empty = TypeFormatter.FormatType(type, TypeQualification.None);
+var empty = TypeFormatter.FormatType(type, TypeQualifications.None);
 // Result: ""
 ```
 
@@ -136,7 +144,7 @@ TypeFormatter uses `CultureInfo.InvariantCulture` for all formatting to ensure c
 // Version, Culture, and PublicKeyToken always use InvariantCulture
 var withVersion = TypeFormatter.FormatType(
     type,
-    TypeQualification.FullyQualifiedWithVersion
+    TypeQualifications.FullyQualifiedWithVersion
 );
 
 // Formatted string interpolation uses InvariantCulture
@@ -155,7 +163,7 @@ public string GenerateEventHandler(Type eventType) {
     // Use GlobalQualified to avoid namespace conflicts
     var typeName = TypeFormatter.FormatType(
         eventType,
-        TypeQualification.GlobalQualified
+        TypeQualifications.GlobalQualified
     );
 
     return $@"
@@ -182,17 +190,17 @@ public class GeneratedHandler {{
 ```csharp{title="Scenario 2: Logging and Diagnostics" description="When: Displaying type information in logs" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Logging"]}
 public void LogTypeInfo(Type type) {
     // Simple name for user-friendly output
-    var simple = TypeFormatter.FormatType(type, TypeQualification.Simple);
+    var simple = TypeFormatter.FormatType(type, TypeQualifications.Simple);
     _logger.LogInformation("Processing: {TypeName}", simple);
 
     // Fully qualified for diagnostic details
-    var full = TypeFormatter.FormatType(type, TypeQualification.FullyQualified);
+    var full = TypeFormatter.FormatType(type, TypeQualifications.FullyQualified);
     _logger.LogDebug("Full type: {FullType}", full);
 
     // With version for complete diagnostics
     var withVersion = TypeFormatter.FormatType(
         type,
-        TypeQualification.FullyQualifiedWithVersion
+        TypeQualifications.FullyQualifiedWithVersion
     );
     _logger.LogTrace("Type with version: {VersionedType}", withVersion);
 }
@@ -217,7 +225,7 @@ public EventConfiguration CreateConfig(Type eventType) {
     return new EventConfiguration {
         EventType = TypeFormatter.FormatType(
             eventType,
-            TypeQualification.FullyQualified
+            TypeQualifications.FullyQualified
         )
     };
 }
@@ -243,9 +251,9 @@ public class TypeDisplayInfo {
 
 public TypeDisplayInfo GetDisplayInfo(Type type) {
     return new TypeDisplayInfo {
-        SimpleName = TypeFormatter.FormatType(type, TypeQualification.Simple),
-        FullName = TypeFormatter.FormatType(type, TypeQualification.NamespaceQualified),
-        AssemblyName = TypeFormatter.FormatType(type, TypeQualification.Assembly)
+        SimpleName = TypeFormatter.FormatType(type, TypeQualifications.Simple),
+        FullName = TypeFormatter.FormatType(type, TypeQualifications.NamespaceQualified),
+        AssemblyName = TypeFormatter.FormatType(type, TypeQualifications.Assembly)
     };
 }
 
@@ -265,7 +273,7 @@ public class GlobalType { }
 
 var formatted = TypeFormatter.FormatType(
     typeof(GlobalType),
-    TypeQualification.NamespaceQualified
+    TypeQualifications.NamespaceQualified
 );
 // Result: "GlobalType" (no leading dot)
 ```
@@ -277,10 +285,11 @@ var genericType = typeof(List<OrderCreatedEvent>);
 
 var formatted = TypeFormatter.FormatType(
     genericType,
-    TypeQualification.FullyQualified
+    TypeQualifications.FullyQualified
 );
-// Result: "System.Collections.Generic.List`1, System.Collections"
-// Note: Generic type parameters are shown as `1, `2, etc.
+// Result: "System.Collections.Generic.List`1, System.Private.CoreLib"
+// Note: TypeFormatter uses Type.Name, so generic arity appears as `1, `2, etc.
+// Generic type arguments are NOT expanded.
 ```
 
 ### Nested Types
@@ -293,10 +302,13 @@ public class OuterClass {
 var nestedType = typeof(OuterClass.InnerClass);
 var formatted = TypeFormatter.FormatType(
     nestedType,
-    TypeQualification.NamespaceQualified
+    TypeQualifications.NamespaceQualified
 );
-// Result: "MyApp.OuterClass+InnerClass"
-// Note: Nested types use '+' separator
+// Result: "MyApp.InnerClass"
+// Note: TypeFormatter uses Type.Name, which for a nested type is just the
+// inner type's name — the declaring type is NOT included. If you need the
+// full '+'-separated nested chain ("MyApp.OuterClass+InnerClass"), use
+// TypeNameFormatter (below), which is based on Type.FullName.
 ```
 
 ### Public Key Token
@@ -307,16 +319,16 @@ var strongType = typeof(System.String);
 
 var withToken = TypeFormatter.FormatType(
     strongType,
-    TypeQualification.FullyQualifiedWithVersion
+    TypeQualifications.FullyQualifiedWithVersion
 );
-// Result: "System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e"
+// Result: "System.String, System.Private.CoreLib, Version=<runtime version>, Culture=neutral, PublicKeyToken=7cec85d7bea7798e"
 
 // Non-strong-named assembly
 var weakType = typeof(MyApp.CustomType);
 
 var withoutToken = TypeFormatter.FormatType(
     weakType,
-    TypeQualification.FullyQualifiedWithVersion
+    TypeQualifications.FullyQualifiedWithVersion
 );
 // Result: "MyApp.CustomType, MyApp, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"
 ```
@@ -329,7 +341,7 @@ TypeFormatter uses `StringBuilder` internally for efficient string building:
 
 ```csharp{title="StringBuilder Allocation" description="TypeFormatter uses StringBuilder internally for efficient string building:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "StringBuilder", "Allocation"]}
 // Efficient - single StringBuilder allocation
-var formatted = TypeFormatter.FormatType(type, TypeQualification.FullyQualified);
+var formatted = TypeFormatter.FormatType(type, TypeQualifications.FullyQualified);
 
 // Less efficient - multiple string concatenations
 var manual = type.Namespace + "." + type.Name + ", " + type.Assembly.GetName().Name;
@@ -341,9 +353,9 @@ Since type formatting is deterministic, consider caching results:
 
 ```csharp{title="Caching Formatted Results" description="Since type formatting is deterministic, consider caching results:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Caching", "Formatted"]}
 public class CachedTypeFormatter {
-    private readonly ConcurrentDictionary<(Type, TypeQualification), string> _cache = new();
+    private readonly ConcurrentDictionary<(Type, TypeQualifications), string> _cache = new();
 
-    public string FormatType(Type type, TypeQualification qualification) {
+    public string FormatType(Type type, TypeQualifications qualification) {
         return _cache.GetOrAdd(
             (type, qualification),
             key => TypeFormatter.FormatType(key.Item1, key.Item2)
@@ -359,7 +371,7 @@ TypeFormatter is used extensively in message association APIs:
 ```csharp{title="Integration with Message Associations" description="TypeFormatter is used extensively in message association APIs:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Integration", "Message"]}
 // Format event type for lookup
 var eventType = typeof(ProductCreatedEvent);
-var simpleType = TypeFormatter.FormatType(eventType, TypeQualification.Simple);
+var simpleType = TypeFormatter.FormatType(eventType, TypeQualifications.Simple);
 
 // Find perspectives handling this event (simple name)
 var perspectives = PerspectiveRegistrationExtensions.GetPerspectivesForEvent(
@@ -369,7 +381,7 @@ var perspectives = PerspectiveRegistrationExtensions.GetPerspectivesForEvent(
 );
 
 // Format for storage in message associations
-var storedType = TypeFormatter.FormatType(eventType, TypeQualification.FullyQualified);
+var storedType = TypeFormatter.FormatType(eventType, TypeQualifications.FullyQualified);
 ```
 
 ## API Reference
@@ -381,26 +393,35 @@ var storedType = TypeFormatter.FormatType(eventType, TypeQualification.FullyQual
 ```csharp{title="Method Signature" description="Namespace: `Whizbang." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Method", "Signature"]}
 public static class TypeFormatter {
     /// <summary>
-    /// Formats a Type according to the specified TypeQualification flags.
+    /// Formats a Type according to the specified TypeQualifications flags.
     /// Uses culture-invariant formatting for consistent output.
     /// </summary>
     /// <param name="type">The Type to format</param>
     /// <param name="qualification">Flags controlling which components to include</param>
     /// <returns>Formatted type name string</returns>
     /// <exception cref="ArgumentNullException">Thrown if type is null</exception>
-    public static string FormatType(Type type, TypeQualification qualification);
+    public static string FormatType(Type type, TypeQualifications qualification);
+
+    /// <summary>
+    /// Parses the assembly name out of a fully qualified type name string
+    /// (e.g. "Namespace.Type, Assembly, Version=1.0.0.0, ...").
+    /// With stripVersion: true returns just the assembly name; with false,
+    /// returns the full assembly string including version/culture/token.
+    /// Returns empty string when no assembly info is present.
+    /// </summary>
+    public static string ParseAssemblyName(string fullTypeName, bool stripVersion);
 }
 ```
 
 ### Parameters
 
 - **type**: The `Type` object to format (cannot be null)
-- **qualification**: `TypeQualification` flags controlling output format
+- **qualification**: `TypeQualifications` flags controlling output format
 
 ### Return Value
 
 - Returns formatted type name as `string`
-- Returns empty string if `qualification` is `TypeQualification.None`
+- Returns empty string if `qualification` is `TypeQualifications.None`
 - Never returns null
 
 ### Exceptions
@@ -424,12 +445,12 @@ public static class TypeFormatter {
 ```csharp{title="❌ Formatting Null Types" description="❌ Formatting Null Types" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Formatting", "Null"]}
 // ❌ WRONG: Null type
 Type? nullType = null;
-var formatted = TypeFormatter.FormatType(nullType!, TypeQualification.Simple);
+var formatted = TypeFormatter.FormatType(nullType!, TypeQualifications.Simple);
 // Throws: ArgumentNullException
 
 // ✅ CORRECT: Check for null first
 if (type != null) {
-    var formatted = TypeFormatter.FormatType(type, TypeQualification.Simple);
+    var formatted = TypeFormatter.FormatType(type, TypeQualifications.Simple);
 }
 ```
 
@@ -438,11 +459,11 @@ if (type != null) {
 ```csharp{title="❌ Assuming Default Format" description="❌ Assuming Default Format" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Assuming", "Default"]}
 // ❌ WRONG: Assuming ToString() matches formatted output
 var toString = type.ToString();
-var formatted = TypeFormatter.FormatType(type, TypeQualification.FullyQualified);
+var formatted = TypeFormatter.FormatType(type, TypeQualifications.FullyQualified);
 // These may not match!
 
 // ✅ CORRECT: Always use TypeFormatter for consistent results
-var formatted = TypeFormatter.FormatType(type, TypeQualification.FullyQualified);
+var formatted = TypeFormatter.FormatType(type, TypeQualifications.FullyQualified);
 ```
 
 ### ❌ Hardcoding Type Names
@@ -454,7 +475,7 @@ var typeName = "ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contra
 // ✅ CORRECT: Use TypeFormatter
 var typeName = TypeFormatter.FormatType(
     typeof(ProductCreatedEvent),
-    TypeQualification.FullyQualified
+    TypeQualifications.FullyQualified
 );
 ```
 
@@ -466,7 +487,7 @@ var version = type.Assembly.GetName().Version;
 var formatted = $"Version={version}"; // May use locale-specific format
 
 // ✅ CORRECT: Use TypeFormatter with InvariantCulture
-var formatted = TypeFormatter.FormatType(type, TypeQualification.FullyQualifiedWithVersion);
+var formatted = TypeFormatter.FormatType(type, TypeQualifications.FullyQualifiedWithVersion);
 ```
 
 ## Related: `TypeNameFormatter` (storage &amp; matching)
@@ -478,11 +499,11 @@ Don't confuse `TypeFormatter` (the flags-based utility above) with **`TypeNameFo
 | `TypeNameFormatter.Format(type)` | `"Namespace.Outer+Nested, Assembly"` (assembly-qualified) | `wh_event_store.event_type`, `wh_outbox`/`wh_inbox.message_type`, `wh_message_associations`, message routing, JSON discriminators |
 | `TypeNameFormatter.FormatClrTypeName(type)` | `"Namespace.Outer+Nested"` (no assembly) | `wh_event_store.aggregate_type`, `wh_message_type_registry.clr_type_name`, `wh_perspective_registry.clr_type_name` |
 
-Both use `+` to separate a nested type from its declaring type (matching `Type.FullName` and the [Nested Types](#nested-types) rule above). The source-generator mirrors are `TypeNameUtilities.FormatTypeNameForRuntime` (assembly-qualified) and `TypeNameUtilities.BuildClrTypeName` (no assembly), so compile-time registration and runtime lookup always agree. Read paths normalize an inbound assembly-qualified name (stripping `Version`/`Culture`/`PublicKeyToken`) via `EventTypeMatchingHelper.NormalizeTypeName` before comparing, so the short `Format` form matches every variant. Existing rows written with the older C#-display (`.`-nested) form are normalized by migration `063_NormalizeClrTypeNamesV2` — see [Migration Tracking → Data Migrations](../../operations/infrastructure/migrations.md#data-migrations-vs-schema-migrations).
+Both are based on `Type.FullName`, so they use `+` to separate a nested type from its declaring type (unlike `TypeFormatter`, which uses `Type.Name` — see [Nested Types](#nested-types) above). The source-generator mirrors are `TypeNameUtilities.FormatTypeNameForRuntime` (assembly-qualified) and `TypeNameUtilities.BuildClrTypeName` (no assembly), so compile-time registration and runtime lookup always agree. Read paths normalize an inbound assembly-qualified name (stripping `Version`/`Culture`/`PublicKeyToken`) via `EventTypeMatchingHelper.NormalizeTypeName` before comparing, so the short `Format` form matches every variant. Existing rows written with the older C#-display (`.`-nested) form are normalized by migration `063_NormalizeClrTypeNamesV2` — see [Migration Tracking → Data Migrations](../../operations/infrastructure/migrations.md#data-migrations-vs-schema-migrations).
 
 ## See Also
 
-- [TypeQualification](type-qualification.md) - Flag enum controlling formatting
+- [TypeQualifications](type-qualification.md) - Flag enum controlling formatting
 - [MatchStrictness](fuzzy-matching.md) - Fuzzy matching with formatted types
 - [TypeMatcher](type-matching.md) - Matching formatted type strings
 - [Perspectives](../perspectives/perspectives.md) - Message associations using formatted types

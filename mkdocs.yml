@@ -156,7 +156,7 @@ nav:
         - 'MatchStrictness: Fuzzy Type Matching Control': fundamentals/identity/fuzzy-matching.md
         - 'TypeFormatter: Type Name Formatting Utility': fundamentals/identity/type-formatting.md
         - 'TypeMatcher: Type Name Matching Utilities': fundamentals/identity/type-matching.md
-        - 'TypeQualification: Type Name Formatting Control': fundamentals/identity/type-qualification.md
+        - 'TypeQualifications: Type Name Formatting Control': fundamentals/identity/type-qualification.md
         - Time Provider: fundamentals/identity/time-provider.md
         - 'Pinned-Type Ledger: Safe, Governed Type Renames': fundamentals/identity/pinned-type-ledger.md
     - Body Offloads:
@@ -271,7 +271,7 @@ nav:
         - Perspective Worker: operations/workers/perspective-worker.md
         - Execution Lifecycle: operations/workers/execution-lifecycle.md
         - Database Readiness: operations/workers/database-readiness.md
-        - 'Process Work Batch — Lease & Heartbeat Semantics': operations/workers/process-work-batch-lease-semantics.md
+        - 'Work Pump — Lease & Heartbeat Semantics': operations/workers/process-work-batch-lease-semantics.md
     - Testing:
         - 'Testing Receptors & Perspectives': operations/testing/testing-receptors.md
         - Lifecycle Synchronization: operations/testing/lifecycle-synchronization.md
@@ -288,10 +288,10 @@ nav:
         - 'WHIZ802: VectorField Invalid Dimensions': operations/diagnostics/whiz802.md
         - 'WHIZ807: Physical Fields Discovered': operations/diagnostics/whiz807.md
         - 'WHIZ071: Missing Pgvector Package': operations/diagnostics/whiz071.md
-        - 'WHIZ030: Perspective Event Missing StreamKey': operations/diagnostics/whiz030.md
+        - 'WHIZ030: Perspective Event Missing StreamId': operations/diagnostics/whiz030.md
         - 'WHIZ121: Pinned-Type Ledger Entry Has No Living Type': operations/diagnostics/whiz121.md
         - 'WHIZ070: Missing Pgvector.EntityFrameworkCore Package': operations/diagnostics/whiz070.md
-        - 'WHIZ031: Multiple StreamKey Attributes': operations/diagnostics/whiz031.md
+        - 'WHIZ031: Multiple StreamId Attributes': operations/diagnostics/whiz031.md
         - 'WHIZ120: Pinned Type Renamed Without Ledger Acknowledgment': operations/diagnostics/whiz120.md
     - 'Deployment & Scaling':
         - Performance Tuning: operations/deployment/performance-tuning.md
@@ -349,3 +349,5 @@ nav:
     - Outbox Migration: migration-guide/07-outbox-migration.md
     - Testing Migration: migration-guide/08-testing-migration.md
     - Migration Checklist: migration-guide/appendix-checklist.md
+- Tools:
+    - MCP Documentation Server: tools/mcp-server.md

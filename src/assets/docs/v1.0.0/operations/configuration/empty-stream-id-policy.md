@@ -1,6 +1,8 @@
 ---
 title: Empty Stream ID Policy
-pageType: concept
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Configuration
 order: 8
@@ -16,7 +18,14 @@ codeReferences:
   - src/Whizbang.Core/Messaging/EmptyStreamIdGuard.cs
   - src/Whizbang.Core/Messaging/MessageFailureReason.cs
   - src/Whizbang.Data.EFCore.Postgres/StreamIdCoalescer.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/Migrations/051_DeadLetterRecovery.sql
+testReferences:
+  - tests/Whizbang.Core.Tests/Configuration/EmptyStreamIdPolicyTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EmptyStreamIdGuardTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EmptyStreamIdExceptionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamIdCoalescerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/DeadLetterRecoverySqlTests.cs
 ---
 
 # Empty Stream ID Policy
@@ -41,10 +50,14 @@ The result: rows with `stream_id = Guid.Empty` were **claimed by `ClaimWorker` e
 |-------|------------------|----------------|
 | `Reject` (default) | Throws `EmptyStreamIdException` at `StoreOutboxMessagesAsync` / `StoreInboxMessagesAsync` time | Coordinator-side recovery is unconditional — Empty → `WorkId` fallback + Warning per row |
 | `FallbackToMessageId` | Storage accepts the row | Same as Reject (always-recover at drain) |
-| `DeadLetter` | Storage accepts the row | Coordinator moves to `wh_dead_letters` with `MessageFailureReason.EmptyStreamId` instead of attempting to drain |
-| `Purge` | Storage accepts the row | Coordinator DELETEs the row + emits Error with the `EmptyStreamId` reason code |
+| `DeadLetter` | Storage accepts the row | *Designed:* coordinator moves to `wh_dead_letters` with `MessageFailureReason.EmptyStreamId` instead of attempting to drain |
+| `Purge` | Storage accepts the row | *Designed:* coordinator DELETEs the row + emits Error with the `EmptyStreamId` reason code |
 
-The drainer's `Empty → WorkId` recovery (slice 3) runs **independently of the policy**. It recovers rows that already landed before the policy was tightened. The policy gates what the producer can write; the drainer always heals.
+The drainer's `Empty → WorkId` recovery runs **independently of the policy**. It recovers rows that already landed before the policy was tightened. The policy gates what the producer can write; the drainer always heals.
+
+:::updated
+**Shipped behavior:** the storage-time guard (for `Reject`) and the unconditional `Empty → WorkId` drain recovery are implemented. The `DeadLetter` and `Purge` drain-time behaviors described above are the design intent but are **not yet wired in the coordinator** — under those policy values, storage accepts the row and the drainer's always-on recovery processes it exactly like `FallbackToMessageId`. The `MessageFailureReason.EmptyStreamId` code (value `11`) and the `recover_dead_letter` Empty→NULL normalization are already in place for when the drain-time policies land.
+:::
 
 ## Default: Reject
 
@@ -59,7 +72,7 @@ Under `Reject`, calling `StoreOutboxMessagesAsync` with a message whose `StreamI
 
 ```
 Whizbang.Core.Messaging.EmptyStreamIdException: Producer attempted to write
-  JDX.Contracts.Auth.RemoveShellUserCommand (message_id=019e92b2-1bbb-708d-...)
+  MyApp.Contracts.RemoveUserCommand (message_id=019e92b2-1bbb-708d-...)
   with stream_id=Guid.Empty (00000000-0000-0000-0000-000000000000). Empty
   stream_id is rejected under EmptyStreamIdPolicy.Reject — pass null for
   singleton-stream messages or a real stream identity. See
@@ -88,9 +101,9 @@ services.AddWhizbang(options => {
 });
 ```
 
-`DeadLetter` preserves every offending row in `wh_dead_letters` with `failure_reason = MessageFailureReason.EmptyStreamId` (value `11`). Use this when you want a forensic trail of producer bugs plus the option to replay rows after the producer is fixed.
+`DeadLetter` is designed to preserve every offending row in `wh_dead_letters` with `failure_reason = MessageFailureReason.EmptyStreamId` (value `11`) — a forensic trail of producer bugs plus the option to replay rows after the producer is fixed. **Not yet wired at drain time** — see the shipped-behavior callout above; today this value behaves like `FallbackToMessageId`.
 
-Recovery is self-healing: `recover_dead_letter` (migration 051) normalizes `Guid.Empty` → `NULL` on the INSERT back into the source table, so a recovered row doesn't immediately re-stick.
+Recovery is self-healing: `recover_dead_letter` (migration 051) normalizes `Guid.Empty` → `NULL` on the INSERT back into the source table, so a recovered row doesn't immediately re-stick. This normalization is implemented and applies to any `wh_dead_letters` row with an Empty `stream_id`, however it got there.
 
 ## Hard Purge: Purge
 
@@ -100,11 +113,11 @@ services.AddWhizbang(options => {
 });
 ```
 
-`Purge` DELETEs the row without publishing and emits an Error log with the `MessageFailureReason.EmptyStreamId` code. Data loss is permanent. Use only for known-spammy producers you've already given up on (e.g., decommissioned services still emitting bad messages).
+`Purge` is designed to DELETE the row without publishing and emit an Error log with the `MessageFailureReason.EmptyStreamId` code. Data loss is permanent — intended only for known-spammy producers you've already given up on (e.g., decommissioned services still emitting bad messages). **Not yet wired at drain time** — see the shipped-behavior callout above; today this value behaves like `FallbackToMessageId`.
 
 ## Defenses in Depth
 
-Three independent surfaces close the slot-3 silent-stuck pattern:
+Three independent surfaces close the silent-stuck pattern:
 
 ```mermaid{title="Empty Stream ID Defenses" description="Three layers of defense across the message lifecycle"}
 flowchart LR
@@ -156,13 +169,13 @@ services.AddWhizbang(options => {
 
 Stay on the default `Reject`. New producers will fail loud at INSERT time, surfacing bugs at the call site before the silent-stuck pattern can ever develop.
 
-### Slot-3-style stuck rows already in the table
+### Stuck rows already in the table
 
-Slice 3's coordinator backstop auto-recovers existing `Guid.Empty` rows on the next claim tick — no manual `DELETE` needed. The recovery emits a Warning per row so you can audit what cleared.
+The coordinator backstop (`StreamIdCoalescer`) auto-recovers existing `Guid.Empty` rows on the next claim tick — no manual `DELETE` needed. The recovery emits a Warning per row so you can audit what cleared.
 
 ## Operator Telemetry
 
-When the drainer recovers an Empty-stream row, it emits a Warning at `Whizbang.Data.EFCore.Postgres.StreamIdCoalescer`:
+When the drainer recovers an Empty-stream row, `StreamIdCoalescer` emits a Warning through the work coordinator's logger (`EFCoreWorkCoordinator<TDbContext>` category):
 
 ```
 Warning: Empty stream_id (00000000-0000-0000-0000-000000000000) detected on
@@ -175,7 +188,7 @@ Grep the Warning rate to track:
 - The pace of legacy-producer cleanup (if running `FallbackToMessageId`)
 - Drift after a `Reject` deploy — every Warning means a producer bypassed the storage path (e.g., raw SQL INSERT)
 
-When `MessageFailureReason.EmptyStreamId` rows accumulate in `wh_dead_letters` under the `DeadLetter` policy, group by `message_type` to find the producer:
+If `MessageFailureReason.EmptyStreamId` rows accumulate in `wh_dead_letters` (once the `DeadLetter` drain-time policy ships), group by `message_type` to find the producer:
 
 ```sql{
 title: "Find producers of Empty stream_id dead letters"
@@ -195,4 +208,4 @@ ORDER BY empty_count DESC;
 
 - [Stuck Row Sentinel](../observability/stuck-row-sentinel.md) — structural canary that catches any future "claimed but never drained" symptom
 - [WhizbangCoreOptions](whizbang-options.md) — parent options class
-- [Message Failure Reasons](../../fundamentals/work-coordinator/configuration-reference.md) — full list of `MessageFailureReason` values
+- [Internal DLQ](../dead-letter-queue/internal-dlq.md) — the `wh_dead_letters` table and `MessageFailureReason` usage

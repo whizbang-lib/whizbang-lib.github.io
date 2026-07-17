@@ -1,6 +1,8 @@
 ---
 title: Perspective Synchronization
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 4
@@ -25,6 +27,11 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/Sync/IEventCompletionAwaiter.cs
   - src/Whizbang.Core/Perspectives/Sync/EventCompletionAwaiter.cs
   - src/Whizbang.Core/Lenses/ISyncAwareLensQuery.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/PerspectiveSyncAwaiterTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncEventTrackerTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncFilterBuilderTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

@@ -1,6 +1,8 @@
 ---
 title: Custom Request DTOs
-pageType: concept
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Mutations
 order: 2
@@ -9,6 +11,11 @@ description: >-
 tags: 'mutations, dto, mapping, requests, commands'
 codeReferences:
   - src/Whizbang.Transports.Mutations/Base/MutationEndpointBase.cs
+  - src/Whizbang.Transports.Mutations/Attributes/CommandEndpointAttribute.cs
+testReferences:
+  - tests/Whizbang.Transports.Mutations.Tests/Unit/MutationEndpointBaseTests.cs
+  - tests/Whizbang.Transports.Mutations.Tests/Unit/CommandEndpointAttributeTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Integration.Tests/GraphQLMutationLifecycleTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -59,30 +66,38 @@ public record OrderItem(
 );
 ```
 
-### Step 3: Configure the Endpoint
+### Step 3: Annotate the Command
 
-```csharp{title="Step 3: Configure the Endpoint" description="Step 3: Configure the Endpoint" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "Step", "Configure"]}
+The `[CommandEndpoint]` attribute goes on the **command class** — the source generators discover it and emit the transport endpoints:
+
+```csharp{title="Step 3: Annotate the Command" description="Step 3: Annotate the Command" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "Step", "Configure"]}
 [CommandEndpoint<CreateOrderCommand, OrderResult>(
     RestRoute = "/api/orders",
     GraphQLMutation = "createOrder",
     RequestType = typeof(CreateOrderRequest))]    // Specify custom request type
-public partial class CreateOrderEndpoint {
-    // ... implementation
-}
+public record CreateOrderCommand(
+    Guid CustomerId,
+    List<OrderItem> Items
+) : ICommand;
 ```
+
+From this, the generators emit two `partial` classes in the `<command namespace>.Generated` namespace:
+
+- `CreateOrderCommandEndpoint` — REST endpoint (FastEndpoints)
+- `CreateOrderCommandMutation` — GraphQL mutation (HotChocolate)
 
 ### Step 4: Override MapRequestToCommandAsync {#mapping}
 
-You **must** override `MapRequestToCommandAsync` when using `RequestType`. The default implementation throws `NotImplementedException`:
+You **must** override `MapRequestToCommandAsync` when using `RequestType`. The default implementation throws `NotImplementedException`. The override lives in your own `partial` half of the **generated** class (declared in the same `.Generated` namespace). Do not restate the `where TRequest : notnull` constraint — override methods inherit constraints from the base declaration:
 
 ```csharp{title="Step 4: Override MapRequestToCommandAsync" description="You must override MapRequestToCommandAsync when using RequestType." category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Step", "Override"]}
-public partial class CreateOrderEndpoint {
+public partial class CreateOrderCommandEndpoint {
     private readonly ICustomerLookup _customers;
     private readonly IProductLookup _products;
 
     protected override async ValueTask<CreateOrderCommand> MapRequestToCommandAsync<TRequest>(
         TRequest request,
-        CancellationToken ct) where TRequest : notnull {
+        CancellationToken ct) {
 
         // Cast to your specific request type
         var orderRequest = (CreateOrderRequest)(object)request;
@@ -185,7 +200,7 @@ public record UpdateProductCommand(
 // Mapping
 protected override ValueTask<UpdateProductCommand> MapRequestToCommandAsync<TRequest>(
     TRequest request,
-    CancellationToken ct) where TRequest : notnull {
+    CancellationToken ct) {
 
     var req = (UpdateProductRequest)(object)request;
 
@@ -202,13 +217,13 @@ protected override ValueTask<UpdateProductCommand> MapRequestToCommandAsync<TReq
 When the command needs data from services:
 
 ```csharp{title="Pattern 2: Enrichment from Services" description="When the command needs data from services:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Pattern", "Enrichment"]}
-public partial class CreateOrderEndpoint {
+public partial class CreateOrderCommandEndpoint {
     private readonly ICurrentUser _user;
     private readonly IClock _clock;
 
     protected override ValueTask<CreateOrderCommand> MapRequestToCommandAsync<TRequest>(
         TRequest request,
-        CancellationToken ct) where TRequest : notnull {
+        CancellationToken ct) {
 
         var req = (CreateOrderRequest)(object)request;
 
@@ -227,13 +242,13 @@ public partial class CreateOrderEndpoint {
 When mapping requires database queries:
 
 ```csharp{title="Pattern 3: Async Lookups" description="When mapping requires database queries:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Pattern", "Async"]}
-public partial class AssignTaskEndpoint {
+public partial class AssignTaskCommandEndpoint {
     private readonly IUserLookup _users;
     private readonly IProjectLookup _projects;
 
     protected override async ValueTask<AssignTaskCommand> MapRequestToCommandAsync<TRequest>(
         TRequest request,
-        CancellationToken ct) where TRequest : notnull {
+        CancellationToken ct) {
 
         var req = (AssignTaskRequest)(object)request;
 
@@ -264,12 +279,12 @@ public partial class AssignTaskEndpoint {
 When mapping logic varies based on request content:
 
 ```csharp{title="Pattern 4: Conditional Mapping" description="When mapping logic varies based on request content:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Pattern", "Conditional"]}
-public partial class ProcessPaymentEndpoint {
+public partial class ProcessPaymentCommandEndpoint {
     private readonly IPaymentGatewayResolver _gateways;
 
     protected override async ValueTask<ProcessPaymentCommand> MapRequestToCommandAsync<TRequest>(
         TRequest request,
-        CancellationToken ct) where TRequest : notnull {
+        CancellationToken ct) {
 
         var req = (PaymentRequest)(object)request;
 
@@ -299,7 +314,7 @@ You can perform validation during mapping:
 ```csharp{title="Validation in Mapping" description="You can perform validation during mapping:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Validation", "Mapping"]}
 protected override async ValueTask<CreateOrderCommand> MapRequestToCommandAsync<TRequest>(
     TRequest request,
-    CancellationToken ct) where TRequest : notnull {
+    CancellationToken ct) {
 
     var req = (CreateOrderRequest)(object)request;
 
@@ -335,13 +350,13 @@ Exceptions thrown from `MapRequestToCommandAsync` are **not** caught by `OnError
 
 ```csharp{title="Error Handling" description="- Mapping errors are typically validation errors (4xx) - Command execution errors are typically business errors" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Error", "Handling"]}
 // Mapping errors - return 400 Bad Request
-protected override ValueTask<TCommand> MapRequestToCommandAsync<TRequest>(...) {
+protected override ValueTask<CreateOrderCommand> MapRequestToCommandAsync<TRequest>(...) {
     // This exception becomes HTTP 400
     throw new ValidationException("Invalid input");
 }
 
 // Execution errors - handled by OnErrorAsync
-protected override async ValueTask OnErrorAsync(...) {
+protected override ValueTask<OrderResult?> OnErrorAsync(...) {
     // Business logic errors handled here
 }
 ```
@@ -358,7 +373,12 @@ public record TransferFundsRequest(
     string? Reference
 );
 
-// Command
+// Command - the attribute goes here; generators emit
+// TransferFundsCommandEndpoint (REST) and TransferFundsCommandMutation (GraphQL)
+[CommandEndpoint<TransferFundsCommand, TransferResult>(
+    RestRoute = "/api/transfers",
+    GraphQLMutation = "transferFunds",
+    RequestType = typeof(TransferFundsRequest))]
 public record TransferFundsCommand(
     Guid TransferId,
     Guid FromAccountId,
@@ -368,19 +388,15 @@ public record TransferFundsCommand(
     Guid InitiatedBy
 ) : ICommand;
 
-// Endpoint
-[CommandEndpoint<TransferFundsCommand, TransferResult>(
-    RestRoute = "/api/transfers",
-    GraphQLMutation = "transferFunds",
-    RequestType = typeof(TransferFundsRequest))]
-public partial class TransferFundsEndpoint {
+// Your partial half of the generated REST endpoint
+public partial class TransferFundsCommandEndpoint {
     private readonly IAccountLookup _accounts;
     private readonly ICurrentUser _user;
     private readonly ICurrencyService _currencies;
 
     protected override async ValueTask<TransferFundsCommand> MapRequestToCommandAsync<TRequest>(
         TRequest request,
-        CancellationToken ct) where TRequest : notnull {
+        CancellationToken ct) {
 
         var req = (TransferFundsRequest)(object)request;
 

@@ -1,6 +1,8 @@
 ---
 title: Messages
 pageType: overview
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 5
@@ -11,6 +13,14 @@ codeReferences:
   - src/Whizbang.Core/IMessage.cs
   - src/Whizbang.Core/ICommand.cs
   - src/Whizbang.Core/IEvent.cs
+  - src/Whizbang.Core/StreamIdAttribute.cs
+  - src/Whizbang.Core/IReceptor.cs
+  - src/Whizbang.Core/IDispatcher.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/MessageRegistryGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/StreamIdGeneratorTests.cs
+  - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -43,9 +53,7 @@ namespace Whizbang.Core;
 /// <item><description>Custom message types - Any application-specific message</description></item>
 /// </list>
 /// </remarks>
-public interface IMessage {
-  // Marker interface - no members required
-}
+public interface IMessage;
 ```
 
 ## Message Type Hierarchy
@@ -111,7 +119,7 @@ Events represent **facts** - things that have happened:
 
 ```csharp{title="Events" description="Events represent facts - things that have happened:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Events"]}
 public record OrderCreated : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid OrderId { get; init; }
   public required Guid CustomerId { get; init; }
   public required OrderItem[] Items { get; init; }
@@ -120,7 +128,7 @@ public record OrderCreated : IEvent {
 }
 
 public record OrderCancelled : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid OrderId { get; init; }
   public required string Reason { get; init; }
   public required DateTimeOffset CancelledAt { get; init; }
@@ -184,18 +192,18 @@ public record CreateOrder : ICommand {
 
 ```csharp{title="Message Constraints" description="IMessage enables generic constraints throughout Whizbang:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Message", "Constraints"]}
 // Receptors handle specific message types
-public interface IReceptor<TMessage, TResponse>
-    where TMessage : notnull {
-
-  ValueTask<TResponse> HandleAsync(TMessage message, CancellationToken ct = default);
+public interface IReceptor<in TMessage, TResponse> {
+  ValueTask<TResponse> HandleAsync(TMessage message, CancellationToken cancellationToken = default);
 }
 
-// Dispatcher accepts any message type
+// Dispatcher constrains message type parameters to notnull
 public interface IDispatcher {
-  Task<TResponse> LocalInvokeAsync<TMessage, TResponse>(
-      TMessage message,
-      CancellationToken ct = default)
+  ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(TMessage message)
       where TMessage : notnull;
+  Task<IDeliveryReceipt> SendAsync<TMessage>(TMessage message)
+      where TMessage : notnull;
+  Task<IDeliveryReceipt> PublishAsync<TEvent>(TEvent eventData);
+  // ... plus context / options / caller-info overloads
 }
 ```
 
@@ -228,14 +236,17 @@ public interface IDispatcher {
 Messages are wrapped in envelopes for routing and tracing:
 
 ```csharp{title="Message Envelopes" description="Messages are wrapped in envelopes for routing and tracing:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Message", "Envelopes"]}
-// Message payload is wrapped in an envelope
-var envelope = MessageEnvelope.Create(
-    messageId: MessageId.New(),
-    correlationId: correlationId,
-    causationId: causationId,
-    payload: message,
-    hops: []
-);
+// The dispatcher wraps every message in a MessageEnvelope<TMessage>.
+// Correlation/causation ride on the hop list, not top-level fields.
+var envelope = new MessageEnvelope<CreateOrder> {
+  MessageId = MessageId.New(),
+  Payload = message,
+  Hops = [originHop],   // at least one hop — the origin
+  DispatchContext = new MessageDispatchContext {
+    Mode = DispatchModes.Local,
+    Source = MessageSource.Local
+  }
+};
 ```
 
 See [Message Envelopes](../../messaging/message-envelopes.md) for details.
@@ -273,7 +284,7 @@ Events should capture **all relevant state**:
 ```csharp{title="Event Data Completeness" description="Events should capture all relevant state:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Event", "Data"]}
 // ✅ GOOD: Complete state snapshot
 public record ProductPriceChanged : IEvent {
-  [StreamKey]
+  [StreamId]
   public required Guid ProductId { get; init; }
   public required decimal OldPrice { get; init; }  // Before
   public required decimal NewPrice { get; init; }  // After

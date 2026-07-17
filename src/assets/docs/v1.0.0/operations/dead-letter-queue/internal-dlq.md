@@ -1,6 +1,8 @@
 ---
 title: Internal DLQ (wh_dead_letters)
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Dead-Letter Queue
 order: 1
@@ -17,7 +19,15 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/050_WhDeadLetters.sql
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
+  - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MoveToDeadLettersSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDeadLetterStoreTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
+  - tests/Whizbang.Core.Tests/Workers/V502DefaultsTests.cs
 ---
 
 # Internal DLQ — `wh_dead_letters`
@@ -39,42 +49,65 @@ category: "Dead Letter Queue"
 difficulty: "INTERMEDIATE"
 tags: ["dead-letter", "wh_dead_letters", "schema", "migration", "postgres"]
 }
-CREATE TABLE wh_dead_letters (
-  dead_letter_id     UUID NOT NULL PRIMARY KEY,
-  source_table       TEXT NOT NULL,    -- 'wh_outbox' | 'wh_inbox' | 'wh_perspective_events'
-  source_id          UUID NOT NULL,    -- original message_id or event_work_id
-  stream_id          UUID,
-  message_type       TEXT,
-  envelope_type      TEXT,
-  event_data         TEXT,             -- forensic snapshot of the payload
-  metadata           JSONB,
-  scope              JSONB,
-  failure_reason     SMALLINT NOT NULL,
-  attempts_when_dlq  INTEGER NOT NULL,
-  error_text         TEXT,
-  dead_lettered_at   TIMESTAMPTZ NOT NULL,
-  instance_id        UUID,
-  generation         TEXT NOT NULL,    -- e.g. "0.502.0-alpha.1"
+CREATE TABLE IF NOT EXISTS wh_dead_letters (
+  -- identity
+  dead_letter_id     UUID PRIMARY KEY,     -- generated; survives re-emission
+  source_table       TEXT NOT NULL,        -- 'wh_outbox' | 'wh_inbox' | 'wh_perspective_events'
+  source_id          UUID NOT NULL,        -- original message_id / event_work_id
+  stream_id          UUID,                 -- nullable for single-source messages
+  message_type       TEXT NOT NULL,
+  destination        TEXT,                 -- routing destination (outbox source)
+  perspective_name   TEXT,                 -- perspective source
 
-  recovery_status              SMALLINT NOT NULL DEFAULT 0,
-  recovery_attempts            INTEGER NOT NULL DEFAULT 0,
-  last_recovery_attempt_at     TIMESTAMPTZ,
-  next_recovery_attempt_at     TIMESTAMPTZ,
-  retried_on_generations       TEXT[] NOT NULL DEFAULT '{}',
-  operator_disposition         SMALLINT NOT NULL DEFAULT 0
+  -- payload (forensic preservation)
+  envelope           JSONB NOT NULL,       -- full envelope at time of failure
+  metadata           JSONB NOT NULL DEFAULT '{}'::JSONB,
+
+  -- failure provenance
+  failure_reason     INTEGER NOT NULL,     -- MessageFailureReason enum
+  error_text         TEXT,
+  attempts_when_dlq  INTEGER NOT NULL,     -- attempts at time of dead-lettering
+  dead_lettered_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  dead_lettered_by   UUID,                 -- instance_id
+
+  -- recovery state
+  recovery_status    INTEGER NOT NULL DEFAULT 0,  -- DeadLetterRecoveryStatus enum
+  recovery_attempts  INTEGER NOT NULL DEFAULT 0,
+  last_recovery_at   TIMESTAMPTZ,
+  next_recovery_at   TIMESTAMPTZ,
+  recovered_at       TIMESTAMPTZ,          -- non-null when permanently recovered
+
+  -- generation tagging (deploy-aware auto-replay)
+  generation                TEXT NOT NULL, -- e.g., "0.502.0-alpha.1+consumer-1.42.0"
+  retried_on_generations    TEXT[] NOT NULL DEFAULT '{}',
+
+  -- operator disposition
+  operator_disposition INTEGER NOT NULL DEFAULT 0, -- DeadLetterDisposition enum
+  operator_notes       TEXT,
+  operator_actor       TEXT,
+
+  -- error fingerprint (first 16 hex chars of SHA256 over type + top frames;
+  -- lets operators triage large backlogs via GROUP BY error_fingerprint)
+  error_fingerprint         VARCHAR(16),
+  error_fingerprint_version SMALLINT
 );
 ```
 
-The columns split into three groups:
+The columns split into four groups:
 
-1. **Snapshot** (`source_*`, `event_data`, `metadata`, `scope`, `failure_reason`,
-   `error_text`) — captured at the move boundary so the original row can be
-   reconstructed if recovery succeeds.
+1. **Snapshot** (`source_*`, `stream_id`, `message_type`, `destination`,
+   `perspective_name`, `envelope`, `metadata`, `failure_reason`, `error_text`,
+   `error_fingerprint`) — captured at the move boundary so the original row can
+   be reconstructed if recovery succeeds. For `wh_perspective_events` rows the
+   envelope holds an `event_id` pointer that recovery rejoins against
+   `wh_event_store`.
 2. **Generation** (`generation`, `retried_on_generations`) — used by the
    "we-shipped-a-fix" auto-replay: on every deploy, any row whose current
    generation isn't in `retried_on_generations` gets one free retry attempt.
-3. **State** (`recovery_status`, `recovery_attempts`, `next_recovery_attempt_at`,
-   `operator_disposition`) — the recovery worker's bookkeeping.
+3. **State** (`recovery_status`, `recovery_attempts`, `last_recovery_at`,
+   `next_recovery_at`, `recovered_at`) — the recovery worker's bookkeeping.
+4. **Operator** (`operator_disposition`, `operator_notes`, `operator_actor`) —
+   manual triage state set through the operator API.
 
 ## The `MoveAsync` boundary
 
@@ -112,24 +145,36 @@ Callers:
 
 | Caller | Trigger | Cap option |
 |---|---|---|
-| `InboxDispatchWorker._processOneInnerAsync` | `attempts > MaxInboxAttempts` | `MaxInboxAttempts` (default 10) |
-| `OutboxDrainWorker` per-row check | `attempts > MaxOutboxAttempts` | `MaxOutboxAttempts` (default 10) |
-| `PerspectiveWorker.FilterDeadLetteredAsync` | `attempts > MaxPerspectiveEventAttempts` | `MaxPerspectiveEventAttempts` (default 10) |
+| `InboxDispatchWorker.ProcessOneInnerAsync` | `attempts > MaxInboxAttempts` (also composite fan-out failures, cap-independent) | `InboxDispatchWorkerOptions.MaxInboxAttempts` (default 10) |
+| `OutboxDrainWorker` pre-publish gate | `attempts > MaxOutboxAttempts`, checked before any publish attempt | `OutboxDrainWorkerOptions.MaxOutboxAttempts` (default 10) |
+| `OutboxPublishWorker` post-failure promotion | `attempts >= MaxOutboxAttempts` after a publish failure | `OutboxPublishWorkerOptions.MaxOutboxAttempts` (default 10) |
+| `PerspectiveWorker.FilterDeadLetteredAsync` | `attempts > MaxPerspectiveEventAttempts` | `PerspectiveWorkerOptions.MaxPerspectiveEventAttempts` (default 10) |
 
 The perspective check runs at the drainer's **pre-deserialization** boundary
 so the typed-envelope parse + apply cost is avoided for rows that are already
-known-doomed. All three callers use one-based attempts semantics:
+known-doomed. The claim-side callers use one-based attempts semantics:
 `attempts=N` on the Nth attempt, so `Max…Attempts=10` permits 10 attempts and
-dead-letters on the 11th.
+dead-letters on the 11th. Dead-lettering only activates when the DLQ surface
+is fully wired (`IDeadLetterStore` + generation provider registered) — when
+unwired, the legacy v0.501 behavior applies.
 
 ## What if `MoveAsync` throws?
 
-Every caller has the same fallback: log a warning and leave the row in its
-source table. The next claim cycle will re-pick-it up and the check runs
-again. This keeps `wh_dead_letters` from silently swallowing rows when the
-DLQ surface itself is broken (DB unhealthy, schema mismatch, etc.). The
-retry budget is already exhausted, so a stuck row at this stage represents
-a partial-availability state worth surfacing — not a correctness issue.
+Every caller treats the move as best-effort — log and fall through — but the
+fallback differs per worker:
+
+- **Inbox**: falls back to the legacy terminal-commit path (row is marked
+  terminal so it never re-claims — the retry budget is already exhausted).
+- **Outbox (drain gate)**: falls through to the publish attempt — better to
+  attempt delivery than leave the row stuck; the next failure cycle retries
+  the DLQ move.
+- **Outbox (publish worker)**: falls through to the failure channel so
+  `attempts` bumps and the next claim retries the move via the drain gate.
+- **Perspective**: the row stays in the apply set and in
+  `wh_perspective_events`; the next claim cycle retries the move.
+
+This keeps `wh_dead_letters` from silently swallowing rows when the DLQ
+surface itself is broken (DB unhealthy, schema mismatch, etc.).
 
 ## Defaults
 
@@ -141,20 +186,17 @@ a partial-availability state worth surfacing — not a correctness issue.
 
 The v0.501 defaults were `null` (unbounded retries). v0.502 ships the 10-attempt
 cap as the floor and the DLQ pipeline as the path of recovery. To disable on
-a per-worker basis, set the option to `null` explicitly in `appsettings.json`:
+a per-worker basis, set the option to `null` explicitly via the options API
+(these worker options are not auto-bound from `appsettings.json`):
 
-```json{
+```csharp{
 title: "Disable inbox dead-lettering per worker"
-description: "Sets MaxInboxAttempts to null in appsettings to restore v0.501 unbounded-retry behavior instead of moving exhausted inbox rows to the DLQ."
+description: "Sets MaxInboxAttempts to null via Configure to restore v0.501 unbounded-retry behavior instead of moving exhausted inbox rows to the DLQ."
 category: "Dead Letter Queue"
 difficulty: "BEGINNER"
 tags: ["dead-letter", "MaxInboxAttempts", "configuration", "inbox"]
 }
-{
-  "Whizbang": {
-    "InboxDispatchWorker": { "MaxInboxAttempts": null }
-  }
-}
+services.Configure<InboxDispatchWorkerOptions>(o => o.MaxInboxAttempts = null);
 ```
 
 ## See also

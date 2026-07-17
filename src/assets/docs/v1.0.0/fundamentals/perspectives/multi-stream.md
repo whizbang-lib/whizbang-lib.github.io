@@ -1,6 +1,8 @@
 ---
 title: Multi-Stream Perspectives
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 1
@@ -12,6 +14,10 @@ tags: >-
   aggregation, read-models, marten
 codeReferences:
   - src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresPerspectiveStore.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/IGlobalPerspectiveForTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresPerspectiveStoreTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -59,7 +65,7 @@ flowchart TB
 /// GetPartitionKey extracts the partition from events (like Marten's Identity method).
 /// Apply methods must be pure functions: no I/O, no side effects, deterministic.
 /// </summary>
-public interface IGlobalPerspectiveFor<TModel, TPartitionKey, TEvent1>
+public interface IGlobalPerspectiveFor<TModel, TPartitionKey, TEvent1> : IGlobalPerspectiveFor<TModel, TPartitionKey>
   where TModel : class
   where TPartitionKey : notnull
   where TEvent1 : IEvent {
@@ -68,13 +74,13 @@ public interface IGlobalPerspectiveFor<TModel, TPartitionKey, TEvent1>
   /// Extracts the partition key from an event to determine which model instance to update.
   /// MUST be a pure function: deterministic, no side effects.
   /// </summary>
-  TPartitionKey GetPartitionKey(TEvent1 @event);
+  TPartitionKey GetPartitionKey(TEvent1 eventData);
 
   /// <summary>
   /// Applies an event to the model and returns a new model.
   /// MUST be a pure function: no I/O, no side effects, deterministic.
   /// </summary>
-  TModel Apply(TModel currentData, TEvent1 @event);
+  TModel Apply(TModel currentData, TEvent1 eventData);
 }
 ```
 
@@ -97,8 +103,8 @@ using Whizbang.Core;
 
 // Order created event (separate stream per order)
 public record OrderCreatedEvent : IEvent {
-  [StreamKey]
-  public Guid OrderId { get; init; }        // Stream key (order stream)
+  [StreamId]
+  public Guid OrderId { get; init; }        // Stream ID (order stream)
 
   public Guid CustomerId { get; init; }     // Partition key (customer)
   public decimal Total { get; init; }
@@ -107,8 +113,8 @@ public record OrderCreatedEvent : IEvent {
 
 // Order completed event
 public record OrderCompletedEvent : IEvent {
-  [StreamKey]
-  public Guid OrderId { get; init; }        // Stream key
+  [StreamId]
+  public Guid OrderId { get; init; }        // Stream ID
 
   public Guid CustomerId { get; init; }     // Partition key
   public DateTime CompletedAt { get; init; }
@@ -499,38 +505,27 @@ public CustomerDto Apply(CustomerDto currentData, OrderCreatedEvent @event) {
 
 ### Storage
 
-Multi-stream perspectives use the same storage pattern as single-stream perspectives:
+Multi-stream perspectives use the **same generated per-model tables** (`wh_per_<model>`) as single-stream perspectives. The row's `id` column stores the **partition key** (instead of the stream ID):
 
-```sql{title="Storage" description="Multi-stream perspectives use the same storage pattern as single-stream perspectives:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Storage"]}
--- Perspective table
-CREATE TABLE wh_per_customer_statistics (
-  partition_key UUID PRIMARY KEY,      -- CustomerId (not stream_id!)
-  data JSONB NOT NULL,                 -- CustomerStatisticsDto
-  version BIGINT NOT NULL,
-  updated_at TIMESTAMPTZ NOT NULL
-);
-```
+- `Guid` partition keys are stored as-is.
+- `string` and other partition key types are converted to a **deterministic Guid** via an MD5 hash of their string representation (see `EFCorePostgresPerspectiveStore._convertPartitionKeyToGuid`).
 
-**Key Difference**: `partition_key` instead of `stream_id`.
+The store exposes partition-key access via `GetByPartitionKeyAsync<TPartitionKey>(...)` and `UpsertByPartitionKeyAsync<TPartitionKey>(...)`.
 
-### Checkpointing
+### Cursor Tracking
 
-Multi-stream perspectives track checkpoints per partition:
+Perspective progress is tracked in `wh_perspective_cursors`, keyed by `(stream_id, perspective_name)`:
 
-```sql{title="Checkpointing" description="Multi-stream perspectives track checkpoints per partition:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Checkpointing"]}
--- Perspective checkpoints
-INSERT INTO wh_perspective_checkpoints (
-  partition_key,              -- CustomerId
-  perspective_name,           -- "CustomerStatisticsPerspective"
-  last_event_id,              -- UUIDv7 of last processed event
-  last_sequence_number,
-  status
-) VALUES (
-  'abc-123',
-  'CustomerStatisticsPerspective',
-  'event-uuid-789',
-  42,
-  'UpToDate'
+```sql{title="Cursor Tracking" description="Perspective cursor table schema" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Checkpointing"]}
+-- Perspective Cursors - Read model projection tracking (checkpoint-style)
+CREATE TABLE IF NOT EXISTS wh_perspective_cursors (
+  stream_id UUID NOT NULL,
+  perspective_name TEXT NOT NULL,
+  last_event_id UUID NOT NULL,
+  status SMALLINT NOT NULL DEFAULT 0,
+  processed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  error TEXT NULL,
+  CONSTRAINT pk_perspective_cursors PRIMARY KEY (stream_id, perspective_name)
 );
 ```
 
@@ -658,7 +653,7 @@ public class CustomerStatisticsPerspectiveTests {
 **Core Concepts**:
 - [Perspectives](perspectives.md) - Single-stream perspectives (IPerspectiveFor)
 - [Lenses](../lenses/lenses.md) - Query interfaces for read models
-- [StreamKey Attribute](../../extending/attributes/streamkey.md) - Stream identification
+- [StreamId Attribute](../../extending/attributes/streamid.md) - Stream identification
 
 **Source Generators**:
 - [Perspective Discovery](../../extending/source-generators/perspective-discovery.md) - Auto-discovery and runner generation

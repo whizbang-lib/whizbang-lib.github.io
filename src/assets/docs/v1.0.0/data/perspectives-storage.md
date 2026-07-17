@@ -1,6 +1,8 @@
 ---
 title: Perspectives Storage
-pageType: concept
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Data Access
 order: 3
@@ -11,14 +13,26 @@ tags: >-
   perspectives, read-models, schema-design, denormalization, postgresql, jsonb,
   partitioning
 codeReferences:
-  - samples/ECommerce/ECommerce.BFF.API/Perspectives/OrderSummaryPerspective.cs
-  - samples/ECommerce/ECommerce.BFF.API/Infrastructure/Migrations/
+  - samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
+  - src/Whizbang.Core/Lenses/PerspectiveRow.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs
+  - src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OrderPerspectiveTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresLensQueryTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaDefinitionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Perspectives Storage
 
 **Perspectives** are event-driven read models that maintain denormalized, query-optimized views of your domain. This guide covers schema design patterns, denormalization strategies, and PostgreSQL-specific features for building high-performance read models.
+
+:::updated{version="1.0.0"}
+**How shipped Whizbang perspectives store data:** you do NOT hand-write SQL for framework-managed perspectives. A perspective is a class of pure `Apply(currentData, @event)` functions implementing `IPerspectiveFor<TModel, TEvent...>`; the framework persists the model into an auto-generated `wh_per_*` table with the fixed `PerspectiveRow<TModel>` shape — `id` (UUID PK), `data` (JSONB), `metadata` (JSONB), `scope` (JSONB), `created_at`, `updated_at`, `version` — plus optional physical/vector columns declared with `[PhysicalField]` / `[VectorField]` on the model (`[PerspectiveStorage(FieldStorageMode...)]` controls the mode). GIN indexes on the JSONB columns are created automatically.
+
+The SQL patterns in the rest of this page are **design guidance for custom read-model tables you maintain yourself** (e.g., populated from a receptor, an external worker, or reporting jobs) — they are not what the framework generates.
+:::
 
 ## Read Models vs Write Models
 
@@ -28,10 +42,10 @@ lastMaintainedCommit: '01f07906'
 | **Purpose** | Enforce business rules | Optimize queries |
 | **Updates** | Command-driven | Event-driven |
 | **Consistency** | Immediate (strong) | Eventual (async) |
-| **Technology** | EF Core (optional) | Dapper + PostgreSQL |
-| **Schema** | Foreign keys, constraints | Flat, JSONB, indexes |
+| **Technology** | Event store (`wh_event_store`) | Framework-managed `wh_per_*` tables (EF Core or Dapper driver) |
+| **Schema** | Append-only event log | JSONB `data` + optional physical columns + indexes |
 
-**Whizbang Philosophy**: Separate write models (domain aggregates) from read models (perspectives) for optimal performance.
+**Whizbang Philosophy**: Separate write models (event streams) from read models (perspectives) for optimal performance.
 
 ---
 
@@ -120,46 +134,34 @@ CREATE TABLE order_summaries (
 );
 ```
 
-**Perspective Update**:
-```csharp{title="Pattern 1: Flat Denormalized Table - OrderSummaryPerspective" description="Perspective Update:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Pattern", "Flat", "Denormalized"]}
-public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
-    private readonly IDbConnectionFactory _db;
+**Framework equivalent** — with a managed Whizbang perspective you express the same denormalization as a pure function; the framework performs the UPSERT into `wh_per_order_summary` for you:
 
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
-        await using var conn = _db.CreateConnection();
+```csharp{title="Pattern 1: Flat Denormalized Model - OrderSummaryPerspective" description="Framework-managed perspective: pure Apply function, generated storage" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Pattern", "Flat", "Denormalized"]}
+[PerspectiveStorage(FieldStorageMode.Extracted)]
+public record OrderSummaryDto {
+    public Guid OrderId { get; init; }
+    public string Status { get; init; } = "";
+    [PhysicalField(Indexed = true)]
+    public Guid CustomerId { get; init; }         // Indexed physical column
+    public string CustomerName { get; init; } = "";
+    public string CustomerEmail { get; init; } = "";
+    public decimal Total { get; init; }
+    public int ItemCount { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+}
 
-        await conn.ExecuteAsync(
-            """
-            INSERT INTO order_summaries (
-                order_id, status, total, item_count, created_at, updated_at,
-                customer_id, customer_name, customer_email,
-                shipping_street, shipping_city, shipping_state, shipping_postal_code
-            ) VALUES (
-                @OrderId, @Status, @Total, @ItemCount, @CreatedAt, @UpdatedAt,
-                @CustomerId, @CustomerName, @CustomerEmail,
-                @ShippingStreet, @ShippingCity, @ShippingState, @ShippingPostalCode
-            )
-            ON CONFLICT (order_id) DO UPDATE SET
-                status = EXCLUDED.status,
-                updated_at = EXCLUDED.updated_at
-            """,
-            new {
-                @event.OrderId,
-                Status = "Created",
-                @event.Total,
-                ItemCount = @event.Items.Length,
-                @event.CreatedAt,
-                UpdatedAt = @event.CreatedAt,
-                @event.CustomerId,
-                @event.CustomerName,
-                @event.CustomerEmail,
-                @event.ShippingAddress.Street,
-                @event.ShippingAddress.City,
-                @event.ShippingAddress.State,
-                @event.ShippingAddress.PostalCode
-            },
-            cancellationToken: ct
-        );
+public class OrderSummaryPerspective : IPerspectiveFor<OrderSummaryDto, OrderCreated> {
+    public OrderSummaryDto Apply(OrderSummaryDto currentData, OrderCreated @event) {
+        return new OrderSummaryDto {
+            OrderId = @event.OrderId,
+            Status = "Created",
+            CustomerId = @event.CustomerId,
+            CustomerName = @event.CustomerName,
+            CustomerEmail = @event.CustomerEmail,
+            Total = @event.Total,
+            ItemCount = @event.Items.Length,
+            CreatedAt = @event.CreatedAt
+        };
     }
 }
 ```
@@ -229,9 +231,9 @@ SELECT * FROM product_catalog
 WHERE metadata->>'brand' ILIKE '%TechCorp%';
 ```
 
-**Perspective Update**:
-```csharp{title="Pattern 2: JSONB for Flexible Data (4)" description="Perspective Update:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "JSONB", "Flexible"]}
-public async Task UpdateAsync(ProductAdded @event, CancellationToken ct = default) {
+**Custom projection handler** (for tables you maintain yourself — managed perspectives get JSONB storage automatically via `PerspectiveRow<TModel>.Data`):
+```csharp{title="Pattern 2: JSONB for Flexible Data (4)" description="Custom projection handler for a self-managed table:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "JSONB", "Flexible"]}
+public async Task ProjectAsync(ProductAdded @event, CancellationToken ct = default) {
     await using var conn = _db.CreateConnection();
 
     var metadata = new {
@@ -292,12 +294,10 @@ CREATE TABLE customer_statistics (
 );
 ```
 
-**Perspective Update** (incremental):
-```csharp{title="Pattern 3: Aggregated Data - CustomerStatisticsPerspective" description="Perspective Update (incremental):" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Aggregated"]}
-public class CustomerStatisticsPerspective : IPerspectiveOf<OrderCreated> {
-    private readonly IDbConnectionFactory _db;
-
-    public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
+**Custom projection handler** (incremental, self-managed table):
+```csharp{title="Pattern 3: Aggregated Data - CustomerStatisticsProjection" description="Custom projection handler (incremental):" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Aggregated"]}
+public class CustomerStatisticsProjection(IDbConnectionFactory _db) {
+    public async Task ProjectAsync(OrderCreated @event, CancellationToken ct = default) {
         await using var conn = _db.CreateConnection();
 
         await conn.ExecuteAsync(
@@ -383,9 +383,9 @@ CREATE INDEX idx_order_metrics_2024_12_timestamp ON order_metrics_2024_12 (times
 CREATE INDEX idx_order_metrics_2024_12_tenant_id ON order_metrics_2024_12 (tenant_id);
 ```
 
-**Perspective Update**:
-```csharp{title="Pattern 4: Time-Series Data (2)" description="Perspective Update:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Time", "Series"]}
-public async Task UpdateAsync(OrderCreated @event, CancellationToken ct = default) {
+**Custom projection handler** (self-managed table):
+```csharp{title="Pattern 4: Time-Series Data (2)" description="Custom projection handler for a self-managed metrics table:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Time", "Series"]}
+public async Task ProjectAsync(OrderCreated @event, CancellationToken ct = default) {
     await using var conn = _db.CreateConnection();
 
     await conn.ExecuteAsync(

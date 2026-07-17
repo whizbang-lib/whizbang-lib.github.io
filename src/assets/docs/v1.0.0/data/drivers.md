@@ -1,464 +1,172 @@
 ---
 title: Drivers Component
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Components
 order: 8
-description: Basic in-memory storage driver for development and testing
-tags: 'drivers, storage, in-memory, abstraction, v0.1.0'
+description: >-
+  Storage driver selection for Whizbang persistence - the fluent
+  WithDriver API, Postgres and InMemory drivers
+tags: 'drivers, storage, postgres, in-memory, efcore, abstraction'
 codeReferences:
   - src/Whizbang.Core/Perspectives/IDriverOptions.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreDriverSelector.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCoreExtensions.cs
   - src/Whizbang.Data.EFCore.Postgres/InMemoryDriverExtensions.cs
   - src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDriverSelectorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreExtensionsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/InMemoryDriverExtensionsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresDriverExtensionsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Drivers Component
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![Status](https://img.shields.io/badge/status-stable-green)
-
-## Version History
-
-:::new
-**New in v1.0.0**: Basic in-memory driver with simple key-value storage abstraction
-:::
-
-
 ## Overview
 
-Drivers provide the storage abstraction layer in Whizbang, allowing the framework to work with different storage backends without changing application code. In v1.0.0, we provide a simple in-memory driver perfect for development, testing, and prototyping.
+Drivers are the storage-backend selection layer in Whizbang. Application code (perspectives, receptors, lenses) never talks to a specific database - it works against Whizbang abstractions (`IPerspectiveStore<T>`, `ILensQuery<T>`, `IEventStore`, `IInbox`, `IOutbox`). A **driver** wires those abstractions to a concrete backend at startup via a fluent builder chain:
 
-## What is a Driver?
+```csharp{title="Driver Selection" description="Driver Selection" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Driver", "Selection"]}
+// Production: PostgreSQL
+services
+    .AddWhizbang()
+    .WithEFCore<MyDbContext>()
+    .WithDriver.Postgres;
 
-A Driver:
-- **Abstracts** storage implementation details
-- **Provides** a consistent interface for data operations
-- **Handles** serialization and deserialization
-- **Manages** connections and resources
+// Testing: EF Core InMemory provider
+services
+    .AddWhizbang()
+    .WithEFCore<MyDbContext>()
+    .WithDriver.InMemory;
+```
 
-Think of drivers as adapters that allow Whizbang to speak different storage "languages" while maintaining a consistent programming model.
+Everything after `.WithDriver.` is an **extension property contributed by a driver package** - referencing `Whizbang.Data.EFCore.Postgres` is what makes `.Postgres` and `.InMemory` appear in IntelliSense.
 
-## Core Interface (v1.0.0)
+## How the Fluent Chain Works
 
-:::new
-The basic driver interface for storage operations:
-:::
+| Step | Type | Provided by |
+|------|------|-------------|
+| `AddWhizbang()` | `WhizbangBuilder` | `Whizbang.Core` |
+| `.WithEFCore<TDbContext>()` | `EFCoreDriverSelector` | `Whizbang.Data.EFCore.Postgres` |
+| `.WithDriver` | `IDriverOptions` | `EFCoreDriverSelector` (returns itself) |
+| `.Postgres` / `.InMemory` | `WhizbangPerspectiveBuilder` | Driver extension properties |
 
-```csharp{title="Core Interface (v1.0.0)" description="Core Interface (v1.0.0)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Core", "Interface"]}
-public interface IDriver {
-    // Basic CRUD operations
-    Task<T?> Get<T>(string key) where T : class;
-    Task Set<T>(string key, T value) where T : class;
-    Task<bool> Delete(string key);
-    Task<bool> Exists(string key);
-    
-    // Collection operations
-    Task<IEnumerable<T>> GetAll<T>(string prefix = "") where T : class;
-    Task Clear(string prefix = "");
-    
-    // Driver metadata
-    string Name { get; }
-    DriverCapabilities Capabilities { get; }
-}
+### IDriverOptions
 
-public enum DriverCapabilities {
-    None = 0,
-    Persistence = 1,
-    Transactions = 2,
-    Queries = 4,
-    Indexing = 8,
-    Streaming = 16
+`IDriverOptions` is a marker interface that serves as the extension point for driver packages:
+
+```csharp{title="IDriverOptions" description="IDriverOptions" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "IDriverOptions", "Interface"]}
+namespace Whizbang.Core.Perspectives;
+
+public interface IDriverOptions {
+    IServiceCollection Services { get; }
 }
 ```
 
-## In-Memory Driver
+Driver packages add extension properties to it using C# 14 extension blocks:
 
-:::new
-The default in-memory driver for v1.0.0:
-:::
-
-```csharp{title="In-Memory Driver" description="In-Memory Driver" category="Implementation" difficulty="ADVANCED" tags=["Data", "In-Memory", "Driver"]}
-[WhizbangDriver("InMemory")]
-public class InMemoryDriver : IDriver {
-    private readonly ConcurrentDictionary<string, object> _store = new();
-    private readonly ReaderWriterLockSlim _lock = new();
-    
-    public string Name => "InMemory";
-    public DriverCapabilities Capabilities => DriverCapabilities.None;
-    
-    public Task<T?> Get<T>(string key) where T : class {
-        _lock.EnterReadLock();
-        try {
-            if (_store.TryGetValue(key, out var value)) {
-                return Task.FromResult(value as T);
-            }
-            return Task.FromResult<T?>(null);
-        }
-        finally {
-            _lock.ExitReadLock();
-        }
-    }
-    
-    public Task Set<T>(string key, T value) where T : class {
-        _lock.EnterWriteLock();
-        try {
-            _store[key] = value;
-            return Task.CompletedTask;
-        }
-        finally {
-            _lock.ExitWriteLock();
-        }
-    }
-    
-    public Task<bool> Delete(string key) {
-        _lock.EnterWriteLock();
-        try {
-            return Task.FromResult(_store.TryRemove(key, out _));
-        }
-        finally {
-            _lock.ExitWriteLock();
-        }
-    }
-    
-    public Task<bool> Exists(string key) {
-        _lock.EnterReadLock();
-        try {
-            return Task.FromResult(_store.ContainsKey(key));
-        }
-        finally {
-            _lock.ExitReadLock();
-        }
-    }
-    
-    public Task<IEnumerable<T>> GetAll<T>(string prefix = "") where T : class {
-        _lock.EnterReadLock();
-        try {
-            var results = _store
-                .Where(kvp => string.IsNullOrEmpty(prefix) || kvp.Key.StartsWith(prefix))
-                .Select(kvp => kvp.Value)
-                .OfType<T>();
-            
-            return Task.FromResult<IEnumerable<T>>(results.ToList());
-        }
-        finally {
-            _lock.ExitReadLock();
-        }
-    }
-    
-    public Task Clear(string prefix = "") {
-        _lock.EnterWriteLock();
-        try {
-            if (string.IsNullOrEmpty(prefix)) {
-                _store.Clear();
-            } else {
-                var keysToRemove = _store.Keys
-                    .Where(k => k.StartsWith(prefix))
-                    .ToList();
-                
-                foreach (var key in keysToRemove) {
-                    _store.TryRemove(key, out _);
+```csharp{title="Driver Extension Property" description="Driver Extension Property" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Driver", "Extension"]}
+public static class PostgresDriverExtensions {
+    extension(IDriverOptions options) {
+        public WhizbangPerspectiveBuilder Postgres {
+            get {
+                if (options is not EFCoreDriverSelector selector) {
+                    throw new InvalidOperationException(
+                        "Postgres driver can only be used with EF Core storage. " +
+                        "Call .WithEFCore<TDbContext>() before .WithDriver.Postgres");
                 }
+                // ... turnkey registration ...
+                return new WhizbangPerspectiveBuilder(selector.Services);
             }
-            return Task.CompletedTask;
-        }
-        finally {
-            _lock.ExitWriteLock();
         }
     }
 }
 ```
 
-## Driver Registration
+### EFCoreDriverSelector
 
-Drivers are registered at startup and discovered by source generators:
+`.WithEFCore<TDbContext>()` returns an `EFCoreDriverSelector`, which captures the `DbContext` type (and optional connection string name) and exposes `.WithDriver`:
 
-```csharp{title="Driver Registration" description="Drivers are registered at startup and discovered by source generators:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Driver", "Registration"]}
-// Manual registration
-services.AddWhizbangDrivers(options => {
-    options.UseInMemory();
-});
+```csharp{title="EFCoreDriverSelector" description="EFCoreDriverSelector" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "EFCoreDriverSelector"]}
+public sealed class EFCoreDriverSelector : IDriverOptions {
+    public IServiceCollection Services { get; }
 
-// Or with configuration
-services.AddWhizbangDrivers(options => {
-    options.UseDriver<InMemoryDriver>("default");
-    options.UseDriver<InMemoryDriver>("cache");
-});
-
-// Source generated registration
-public static partial class WhizbangGenerated {
-    public static void RegisterDrivers(IServiceCollection services) {
-        services.AddSingleton<IDriver, InMemoryDriver>();
-    }
+    // Extension point for driver selection - returns itself as IDriverOptions
+    public IDriverOptions WithDriver => this;
 }
 ```
 
-## Store Abstraction
+`WithEFCore<TDbContext>()` has two overloads:
 
-:::new
-Higher-level store abstraction built on drivers:
+```csharp{title="WithEFCore Overloads" description="WithEFCore Overloads" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "WithEFCore"]}
+// Connection string name comes from the [WhizbangDbContext] attribute
+// or is derived from the DbContext class name
+// (e.g. BffServiceDbContext -> "bffservice-db")
+services.AddWhizbang().WithEFCore<MyDbContext>().WithDriver.Postgres;
+
+// Explicit connection string name from IConfiguration
+services.AddWhizbang().WithEFCore<MyDbContext>("my-database").WithDriver.Postgres;
+```
+
+Both `WhizbangBuilder` (from `AddWhizbang()`) and `WhizbangPerspectiveBuilder` (from the source-generated `AddWhizbangPerspectives()`) support `.WithEFCore<TDbContext>()`.
+
+## The Postgres Driver
+
+`.WithDriver.Postgres` performs turnkey registration for a production PostgreSQL deployment:
+
+- **DbContext + NpgsqlDataSource** - via source-generated registration callbacks (connection string resolution, JSON configuration)
+- **Perspective storage** - `IPerspectiveStore<T>`, `ILensQuery<T>`, `IInbox`, `IOutbox`, and `IEventStore` for all discovered perspective models, using `PostgresUpsertStrategy` (native `ON CONFLICT` support)
+- **Event store sync tracking** - decorator that enables perspective synchronization
+- **Perspective runners** - `IPerspectiveRunnerRegistry`, all generated runners, and the `PerspectiveWorker`
+- **Schema initialization** - hosted service that applies Whizbang schema migrations at startup (workers wait on a schema-ready gate)
+- **Rebuild support** - checkpoint completer and runtime registration of the `RebuildPerspectiveCommand` receptor
+- **Dead-letter queue** - `IDeadLetterStore` and `IDeadLetterRecoveryService`
+- **LISTEN/NOTIFY** - Postgres notification listener with connection-string fallback conventions
+- **Snapshots and metrics** - perspective snapshot store, table statistics collection for OpenTelemetry
+
+## The InMemory Driver
+
+`.WithDriver.InMemory` registers the same storage abstractions against the EF Core InMemory provider using `InMemoryUpsertStrategy` - fast and isolated, ideal for tests and prototyping:
+
+```csharp{title="InMemory for Tests" description="InMemory for Tests" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "InMemory", "Testing"]}
+// In test setup
+services
+    .AddWhizbang()
+    .WithEFCore<MyDbContext>()
+    .WithDriver.InMemory;
+```
+
+:::updated
+The InMemory driver rides on the **EF Core InMemory provider** - it is not a standalone key-value store. Both `.Postgres` and `.InMemory` require `.WithEFCore<TDbContext>()` first; using them on a non-EF Core selector throws `InvalidOperationException`.
 :::
 
-```csharp{title="Store Abstraction" description="Store Abstraction" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Store", "Abstraction"]}
-public interface IStore<T> where T : class {
-    Task<T?> GetById(string id);
-    Task Save(string id, T entity);
-    Task Delete(string id);
-    Task<IEnumerable<T>> GetAll();
-}
+## Dapper-Based Alternative
 
-public class DriverStore<T> : IStore<T> where T : class {
-    private readonly IDriver _driver;
-    private readonly string _prefix;
-    
-    public DriverStore(IDriver driver) {
-        _driver = driver;
-        _prefix = $"{typeof(T).Name}:";
-    }
-    
-    public Task<T?> GetById(string id) {
-        return _driver.Get<T>($"{_prefix}{id}");
-    }
-    
-    public Task Save(string id, T entity) {
-        return _driver.Set($"{_prefix}{id}", entity);
-    }
-    
-    public Task Delete(string id) {
-        return _driver.Delete($"{_prefix}{id}");
-    }
-    
-    public Task<IEnumerable<T>> GetAll() {
-        return _driver.GetAll<T>(_prefix);
-    }
-}
-```
+For services that prefer raw-SQL persistence, the `Whizbang.Data.Dapper.Postgres` package registers Whizbang's PostgreSQL stores (event store, work coordinator, request/response store, sequence provider) via `AddWhizbangPostgres(...)` instead of the EF Core chain. See [Dapper Integration](dapper-integration.md).
 
-## Using Drivers in Components
+## Choosing a Driver
 
-### In Perspectives
-
-```csharp{title="In Perspectives" description="In Perspectives" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Perspectives"]}
-public class OrderPerspective : IPerspectiveOf<OrderCreated> {
-    private readonly IStore<Order> _orderStore;
-    
-    public OrderPerspective(IDriver driver) {
-        _orderStore = new DriverStore<Order>(driver);
-    }
-    
-    public async Task Update(OrderCreated @event) {
-        var order = new Order {
-            Id = @event.OrderId,
-            CustomerId = @event.CustomerId,
-            Items = @event.Items,
-            Total = @event.Total,
-            Status = OrderStatus.Created
-        };
-        
-        await _orderStore.Save(@event.OrderId.ToString(), order);
-    }
-}
-```
-
-### In Lenses
-
-```csharp{title="In Lenses" description="In Lenses" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Lenses"]}
-public class OrderLens : IOrderLens {
-    private readonly IStore<Order> _orderStore;
-    
-    public OrderLens(IDriver driver) {
-        _orderStore = new DriverStore<Order>(driver);
-    }
-    
-    public async Task<Order> Focus(Guid orderId) {
-        return await _orderStore.GetById(orderId.ToString());
-    }
-    
-    public async Task<IEnumerable<Order>> ViewAll() {
-        return await _orderStore.GetAll();
-    }
-}
-```
-
-## Testing with Drivers
-
-```csharp{title="Testing with Drivers" description="Testing with Drivers" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Testing", "Drivers"]}
-[Test]
-public class DriverTests {
-    private InMemoryDriver _driver;
-    
-    [SetUp]
-    public void Setup() {
-        _driver = new InMemoryDriver();
-    }
-    
-    [Test]
-    public async Task SetAndGet_ShouldStoreAndRetrieve() {
-        // Arrange
-        var testObject = new TestEntity { 
-            Id = "test-1", 
-            Name = "Test Entity" 
-        };
-        
-        // Act
-        await _driver.Set("test-1", testObject);
-        var retrieved = await _driver.Get<TestEntity>("test-1");
-        
-        // Assert
-        Assert.NotNull(retrieved);
-        Assert.Equal("Test Entity", retrieved.Name);
-    }
-    
-    [Test]
-    public async Task GetAll_WithPrefix_ShouldFilterResults() {
-        // Arrange
-        await _driver.Set("order:1", new Order { Id = Guid.NewGuid() });
-        await _driver.Set("order:2", new Order { Id = Guid.NewGuid() });
-        await _driver.Set("customer:1", new Customer { Id = Guid.NewGuid() });
-        
-        // Act
-        var orders = await _driver.GetAll<Order>("order:");
-        
-        // Assert
-        Assert.Equal(2, orders.Count());
-    }
-    
-    [Test]
-    public async Task Clear_WithPrefix_ShouldOnlyRemoveMatching() {
-        // Arrange
-        await _driver.Set("temp:1", new object());
-        await _driver.Set("temp:2", new object());
-        await _driver.Set("keep:1", new object());
-        
-        // Act
-        await _driver.Clear("temp:");
-        
-        // Assert
-        Assert.False(await _driver.Exists("temp:1"));
-        Assert.False(await _driver.Exists("temp:2"));
-        Assert.True(await _driver.Exists("keep:1"));
-    }
-}
-```
-
-## Driver Selection Strategy
-
-```csharp{title="Driver Selection Strategy" description="Driver Selection Strategy" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Driver", "Selection", "Strategy"]}
-public interface IDriverSelector {
-    IDriver GetDriver(string name);
-    IDriver GetDriverForType<T>();
-}
-
-public class DriverSelector : IDriverSelector {
-    private readonly Dictionary<string, IDriver> _drivers;
-    
-    public IDriver GetDriver(string name) {
-        return _drivers.TryGetValue(name, out var driver) 
-            ? driver 
-            : _drivers["default"];
-    }
-    
-    public IDriver GetDriverForType<T>() {
-        // Can implement type-based routing
-        var typeName = typeof(T).Name;
-        
-        return typeName switch {
-            "Order" or "Customer" => GetDriver("primary"),
-            "Cache" or "Session" => GetDriver("cache"),
-            _ => GetDriver("default")
-        };
-    }
-}
-```
-
-## IDE Features
-
-```csharp{title="IDE Features" description="IDE Features" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "IDE", "Features"]}
-// IDE shows: "Driver: InMemory | Objects: 234 | Memory: 5.2MB"
-public interface IDriver { }
-
-// IDE shows: "Called 45 times | Avg: 0.1ms | Hit rate: 92%"
-public Task<T?> Get<T>(string key) { }
-
-// IDE shows: "Warning: No persistence - data lost on restart"
-public class InMemoryDriver : IDriver { }
-```
-
-## Performance Characteristics
-
-| Operation | Target | Actual |
-|-----------|--------|--------|
-| Get | < 100ns | TBD |
-| Set | < 500ns | TBD |
-| Delete | < 200ns | TBD |
-| GetAll (1000 items) | < 1ms | TBD |
-| Clear | < 100μs | TBD |
-
-## Limitations in v1.0.0
-
-:::info
-These limitations are addressed in future versions:
-:::
-
-- **No persistence** - Data lost on restart
-- **No queries** - Only key-based lookups
-- **No transactions** - No atomicity guarantees
-- **No indexing** - Linear scans for GetAll
-- **Memory only** - Limited by available RAM
-
-## Migration Path
-
-### To v0.2.0 (File Storage)
-
-:::planned
-v0.2.0 adds persistent file storage:
-:::
-
-```csharp{title="To v0.2.0 (File Storage)" description="To v0.2.0 (File Storage)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "File", "Storage"]}
-// v0.2.0 - File-based driver
-services.AddWhizbangDrivers(options => {
-    options.UseFileDriver(file => {
-        file.DataDirectory = "./data";
-        file.Format = SerializationFormat.Json;
-        file.Compression = true;
-    });
-});
-```
-
-### To v0.4.0 (Database Drivers)
-
-:::planned
-v0.4.0 adds real database support:
-:::
-
-```csharp{title="To v0.4.0 (Database Drivers)" description="To v0.4.0 (Database Drivers)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Database", "Drivers"]}
-// v0.4.0 - SQL and NoSQL drivers
-services.AddWhizbangDrivers(options => {
-    options.UsePostgreSQL("Host=localhost;Database=whizbang");
-    options.UseMongoDB("mongodb://localhost:27017/whizbang");
-    options.UseRedis("localhost:6379");
-});
-```
+| Driver | Backend | Use case |
+|--------|---------|----------|
+| `.WithDriver.Postgres` | PostgreSQL via EF Core | Production |
+| `.WithDriver.InMemory` | EF Core InMemory provider | Unit/integration tests, prototyping |
+| `AddWhizbangPostgres(...)` | PostgreSQL via Dapper | Raw-SQL persistence without EF Core |
 
 ## Best Practices
 
-1. **Use abstractions** - Depend on IDriver, not concrete implementations
-2. **Plan for persistence** - Design assuming data will persist
-3. **Use prefixes** - Organize keys with consistent prefixes
-4. **Handle nulls** - Always check for null returns from Get
-5. **Test with different drivers** - Ensure code works with any driver
-6. **Consider capabilities** - Check driver capabilities before using features
+1. **Depend on abstractions** - inject `ILensQuery<T>` / `IPerspectiveStore<T>`, never a concrete store
+2. **Select the driver once** - at composition root, per service
+3. **Use InMemory in tests** - same abstractions, no database required
+4. **Prefer the connection string convention** - let the `DbContext` name derive the connection string name; override with `WithEFCore<T>("name")` only when needed
 
 ## Related Documentation
 
-- [Perspectives](../fundamentals/perspectives/perspectives.md) - Using drivers for write models
-- [Lenses](../fundamentals/lenses/lenses.md) - Using drivers for read models
-- Testing - Testing with in-memory driver
-- [Feature Evolution](../../roadmap/FEATURE-EVOLUTION.md) - How drivers evolve
-
-## Next Steps
-
-- See [v0.2.0 File Storage](drivers.md) for persistence
-- See [v0.4.0 Databases](drivers.md) for SQL/NoSQL support
-- Review Examples for driver patterns
+- [Perspectives](../fundamentals/perspectives/perspectives.md) - Event-driven read models
+- [Lenses](../fundamentals/lenses/lenses.md) - Query abstractions
+- [EF Core Integration](efcore-integration.md) - DbContext configuration
+- [Dapper Integration](dapper-integration.md) - Dapper-based PostgreSQL stores
+- [Turnkey Initialization](turnkey-initialization.md) - What gets registered at startup

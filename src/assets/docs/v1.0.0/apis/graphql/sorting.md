@@ -1,6 +1,8 @@
 ---
 title: GraphQL Sorting
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: GraphQL
 order: 5
@@ -14,6 +16,11 @@ codeReferences:
   - src/Whizbang.Transports.HotChocolate/QueryTranslation/OrderByStrippingExpressionVisitor.cs
   - src/Whizbang.Transports.HotChocolate/Middleware/UseOrderByStrippingAttribute.cs
   - src/Whizbang.Transports.HotChocolate/Middleware/OrderByStrippingMiddleware.cs
+testReferences:
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/SortConventionTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/OrderByStrippingMiddlewareTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/OrderByStrippingExpressionVisitorTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Integration.Tests/QueryExecutionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -219,11 +226,9 @@ query GetProducts($sortField: ProductSortInput!) {
 
 ## Default Sort Order
 
-If no `order` is specified:
-- With paging: Results are ordered by `id` for consistent pagination
-- Without paging: Database default order (typically insertion order)
+If no `order` is specified, Whizbang does not apply any implicit ordering — rows come back in whatever order the database (or the lens's own pre-existing `OrderBy`, if it has one) produces. Cursor paging over an unordered set is not stable.
 
-**Best Practice**: Always specify an explicit sort order for predictable results.
+**Best Practice**: Always specify an explicit sort order for predictable results, especially when paging.
 
 ## Sort Precedence with Pre-Existing OrderBy
 
@@ -329,7 +334,6 @@ query RecentOrders($tenantId: String!, $status: String) {
       hasNextPage
       endCursor
     }
-    totalCount
   }
 }
 ```

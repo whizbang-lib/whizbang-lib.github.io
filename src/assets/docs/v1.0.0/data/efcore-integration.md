@@ -1,6 +1,8 @@
 ---
 title: EF Core Integration
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Data Access
 order: 2
@@ -9,8 +11,12 @@ description: >-
   UUIDv7, migrations, and advanced querying
 tags: 'ef-core, entity-framework, postgresql, orm, jsonb, uuidv7'
 codeReferences:
-  - src/Whizbang.Data.EFCore.Postgres/WhizbangDbContext.cs
-  - samples/ECommerce/ECommerce.Domain/Infrastructure/ECommerceDbContext.cs
+  - src/Whizbang.Data.EFCore.Custom/WhizbangDbContextAttribute.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
+  - samples/ECommerce/ECommerce.OrderService.API/OrderDbContext.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreEventStoreTests.cs
+  - tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -27,9 +33,9 @@ lastMaintainedCommit: '01f07906'
 | **Learning curve** | Complex (LINQ, migrations, tracking) | Simple (just SQL) |
 | **Features** | Migrations, change tracking, navigation properties | Direct SQL execution |
 | **Type safety** | Full LINQ type safety | SQL string-based |
-| **Use in Whizbang** | ✅ Domain aggregates, write operations | ✅ Perspectives, Lenses |
+| **Use in Whizbang** | ✅ Framework driver (inbox/outbox/event store/perspectives), domain writes | ✅ Optional hand-tuned SQL reads |
 
-**Whizbang Philosophy**: Use **Dapper for reads** (perspectives, lenses), **EF Core for writes** (domain models, commands).
+**Whizbang Philosophy**: The **EF Core Postgres driver** (`.WithEFCore<T>().WithDriver.Postgres`) runs all framework storage — inbox, outbox, event store, and perspective tables. Use EF Core for domain writes, `ILensQuery<TModel>` for LINQ reads over perspectives, and Dapper where you want hand-tuned SQL.
 
 ---
 
@@ -40,10 +46,10 @@ dotnet add package Whizbang.Data.EFCore.Postgres
 ```
 
 **Includes**:
-- `WhizbangDbContext` - Base DbContext with conventions
+- `[WhizbangDbContext]` attribute support - mark your partial `DbContext` and source generators add the Inbox/Outbox/EventStore `DbSet`s, model configuration, and the `EnsureWhizbangDatabaseInitializedAsync()` extension
 - EF Core 10.x (latest version)
-- Npgsql.EntityFrameworkCore.PostgreSQL (PostgreSQL provider)
-- Migration utilities
+- Npgsql.EntityFrameworkCore.PostgreSQL (PostgreSQL provider) + pgvector support
+- Whizbang infrastructure implementations (`EFCoreEventStore`, work coordinator, perspective store, lens queries)
 
 **Additional Tools** (for migrations):
 ```bash{title="Installation (2)" description="Additional Tools (for migrations):" category="Implementation" difficulty="BEGINNER" tags=["Data", "Installation"]}
@@ -108,34 +114,30 @@ var products = await context.Products
 
 ### UUIDv7 Support
 
-EF Core 10 with Npgsql supports **UUIDv7** (time-ordered GUIDs):
+Whizbang standardizes on **UUIDv7** (time-ordered GUIDs), generated client-side via `TrackedGuid.NewMedo()`:
 
-```csharp{title="UUIDv7 Support" description="EF Core 10 with Npgsql supports UUIDv7 (time-ordered GUIDs):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "UUIDv7", "Support"]}
+```csharp{title="UUIDv7 Support" description="Whizbang standardizes on UUIDv7 (time-ordered GUIDs):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "UUIDv7", "Support"]}
+using Whizbang.Core.ValueObjects;
+
 public class Order {
-    public Guid Id { get; set; }  // Will be UUIDv7
+    public Guid Id { get; set; }  // UUIDv7, assigned in code
     public Guid CustomerId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
 
-// DbContext configuration
-protected override void OnModelCreating(ModelBuilder modelBuilder) {
-    modelBuilder.Entity<Order>(entity => {
-        entity.ToTable("orders");
-
-        entity.Property(e => e.Id)
-            .HasDefaultValueSql("uuid_generate_v7()")  // PostgreSQL function
-            .ValueGeneratedOnAdd();
-
-        entity.Property(e => e.CreatedAt)
-            .HasDefaultValueSql("NOW()");
-    });
-}
+// Assign time-ordered IDs when creating entities
+var order = new Order {
+    Id = TrackedGuid.NewMedo(),  // UUIDv7 - implicit conversion to Guid
+    CustomerId = customerId,
+    CreatedAt = DateTimeOffset.UtcNow
+};
 ```
 
 **Benefits**:
 - Time-ordered: Natural chronological sorting
 - Database-friendly: Sequential inserts, no index fragmentation
 - Timestamp embedded: Extract creation time from ID
+- `TrackedGuid` also records which generator produced the value, which Whizbang's analyzers use to enforce UUIDv7 usage
 
 ### Complex Types
 
@@ -205,9 +207,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order> {
 
         builder.HasKey(e => e.Id);
 
-        builder.Property(e => e.Id)
-            .HasDefaultValueSql("uuid_generate_v7()")
-            .ValueGeneratedOnAdd();
+        // Id is assigned client-side via TrackedGuid.NewMedo() (UUIDv7)
 
         builder.Property(e => e.CustomerId)
             .IsRequired();
@@ -282,13 +282,10 @@ dotnet ef migrations list --project src/ECommerce.Infrastructure --startup-proje
 ```csharp{title="Migration Example" description="Migration Example" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Migration"]}
 public partial class InitialCreate : Migration {
     protected override void Up(MigrationBuilder migrationBuilder) {
-        // Enable UUIDv7 extension
-        migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";");
-
         migrationBuilder.CreateTable(
             name: "orders",
             columns: table => new {
-                id = table.Column<Guid>(nullable: false, defaultValueSql: "uuid_generate_v7()"),
+                id = table.Column<Guid>(nullable: false),  // UUIDv7 assigned client-side
                 customer_id = table.Column<Guid>(nullable: false),
                 total = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                 status = table.Column<string>(maxLength: 50, nullable: false),
@@ -854,98 +851,89 @@ Whizbang's EF Core integration is **fully AOT-compatible** with zero reflection.
 
 When you build your application, the **EF Core source generator** runs automatically and:
 
-1. **Embeds Core Infrastructure Schema** - Reads pre-generated SQL from embedded resources (9 core tables: service_instances, message_deduplication, inbox, outbox, event_store, receptor_processing, perspective_checkpoints, request_response, sequences)
+1. **Bundles Core Infrastructure Schema** - Generates the DDL for the `wh_*` infrastructure tables from C# schema definitions (`wh_service_instances`, `wh_active_streams`, `wh_partition_assignments`, `wh_message_deduplication`, `wh_inbox`, `wh_outbox`, `wh_event_store`, `wh_receptor_processing`, `wh_perspective_cursors`, `wh_perspective_snapshots`, `wh_message_associations`, `wh_perspective_registry`, `wh_message_type_registry`, `wh_request_response`, `wh_sequences`)
 
-2. **Discovers Perspective Tables** - Scans your DbContext for `PerspectiveRow<TModel>` properties and generates DDL at build time
+2. **Discovers Perspective Tables** - Finds every discovered perspective model and generates one `wh_per_*` table DDL at build time
 
-3. **Bundles Migration Scripts** - Embeds all PostgreSQL functions and migration SQL as string constants
+3. **Bundles Migration Scripts** - Embeds all PostgreSQL functions and migration SQL (e.g., `process_work_batch`) as string constants
 
-4. **Generates Extension Methods** - Creates `EnsureWhizbangDatabaseInitializedAsync()` that uses only `ExecuteSqlRawAsync()` (AOT-safe)
+4. **Generates Extension Methods** - Creates `EnsureWhizbangDatabaseInitializedAsync()` for each `[WhizbangDbContext]`-attributed DbContext, using only raw SQL execution (AOT-safe), with per-object hash tracking and an advisory lock so concurrent startups are safe
 
 ### Schema Initialization
 
 Initialize your database schema with a single call:
 
 ```csharp{title="Schema Initialization" description="Initialize your database schema with a single call:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Schema", "Initialization"]}
-public class Program {
-    public static async Task Main(string[] args) {
-        var builder = WebApplication.CreateBuilder(args);
+using Whizbang.Data.EFCore.Custom;
 
-        // Register DbContext
-        builder.Services.AddDbContext<OrderDbContext>(options => {
-            options.UseNpgsql(connectionString);
-        });
-
-        var app = builder.Build();
-
-        // Initialize Whizbang database schema (AOT-compatible!)
-        using var scope = app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
-        await dbContext.EnsureWhizbangDatabaseInitializedAsync();
-
-        await app.RunAsync();
-    }
+[WhizbangDbContext]  // Triggers source generation
+public partial class OrderDbContext(DbContextOptions<OrderDbContext> options)
+    : DbContext(options) {
+    // DbSet properties and OnModelCreating are auto-generated in a partial class
 }
+
+// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<OrderDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+builder.Services
+    .AddWhizbang()
+    .WithEFCore<OrderDbContext>()
+    .WithDriver.Postgres;
+
+var app = builder.Build();
+
+// Initialize Whizbang database schema (AOT-compatible!)
+using (var scope = app.Services.CreateScope()) {
+    var dbContext = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await dbContext.EnsureWhizbangDatabaseInitializedAsync(logger);
+}
+
+app.Run();
 ```
 
 **What `EnsureWhizbangDatabaseInitializedAsync()` does**:
-1. Creates core infrastructure tables (9 tables)
-2. Creates perspective tables (one per `PerspectiveRow<TModel>` in your DbContext)
-3. Applies PostgreSQL functions and migrations
-4. All operations are **idempotent** (safe to call multiple times)
+1. Fast path: compares stored per-object schema hashes — if nothing changed, returns without taking any lock
+2. Creates core infrastructure tables (`wh_*`) generated from C# schema definitions
+3. Applies PostgreSQL functions and migrations (with hash tracking)
+4. Creates perspective tables (one `wh_per_*` table per discovered perspective model) and registers perspective associations
+5. All operations are **idempotent** (safe to call multiple times) and guarded by a transaction-level advisory lock (PgBouncer-compatible)
+
+Optional parameters: `logger`, `initConnectionString` (a direct PostgreSQL connection that bypasses PgBouncer), `serviceProvider` (enables message-type-registry reconciliation), and `cancellationToken`.
 
 ### Generated Code Example
 
 When you build your project, the source generator creates this extension method:
 
-```csharp{title="Generated Code Example" description="When you build your project, the source generator creates this extension method:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Generated", "Code"]}
-// Auto-generated: OrderDbContext_SchemaExtensions.g.cs
+```csharp{title="Generated Code Example" description="When you build your project, the source generator creates this extension method (simplified):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Generated", "Code"]}
+// Auto-generated schema extension for OrderDbContext (simplified)
 public static partial class OrderDbContextSchemaExtensions {
     public static async Task EnsureWhizbangDatabaseInitializedAsync(
         this OrderDbContext dbContext,
         ILogger? logger = null,
+        string? initConnectionString = null,
+        IServiceProvider? serviceProvider = null,
         CancellationToken cancellationToken = default) {
 
-        // Step 1: Execute core infrastructure schema (embedded resource)
-        await ExecuteCoreInfrastructureSchemaAsync(dbContext, logger, cancellationToken);
-
-        // Step 2: Execute perspective tables (generated at build time)
-        await ExecutePerspectiveTablesAsync(dbContext, logger, cancellationToken);
-
-        // Step 3: Execute PostgreSQL functions (embedded migrations)
-        await ExecuteMigrationsAsync(dbContext, logger, cancellationToken);
-    }
-
-    private static async Task ExecuteCoreInfrastructureSchemaAsync(...) {
-        // Pre-generated SQL from PostgresSchemaBuilder (5,327 bytes)
-        const string CoreInfrastructureSchema = @"
-            CREATE TABLE IF NOT EXISTS wh_service_instances (...);
-            CREATE TABLE IF NOT EXISTS wh_message_deduplication (...);
-            -- ... all 9 tables
-        ";
-
-        await dbContext.Database.ExecuteSqlRawAsync(
-            CoreInfrastructureSchema,
-            cancellationToken
-        );
-    }
-
-    private static async Task ExecutePerspectiveTablesAsync(...) {
-        // Generated from discovered PerspectiveRow<TModel> types
-        const string PerspectiveTablesSchema = @"
-            CREATE TABLE IF NOT EXISTS wh_per_order (
-                stream_id UUID NOT NULL PRIMARY KEY,
-                data JSONB NOT NULL,
-                version BIGINT NOT NULL,
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            -- ... one per perspective
-        ";
-
-        await dbContext.Database.ExecuteSqlRawAsync(
-            PerspectiveTablesSchema,
-            cancellationToken
-        );
+        // Fast path: bulk-query stored schema hashes; skip everything if unchanged.
+        // Slow path: acquire transaction-level advisory lock, then run only changed phases:
+        //   1. Core infrastructure tables (generated from C# schema definitions)
+        //      CREATE TABLE IF NOT EXISTS wh_inbox (...);
+        //      CREATE TABLE IF NOT EXISTS wh_outbox (...);
+        //      CREATE TABLE IF NOT EXISTS wh_event_store (...);
+        //      -- ... remaining wh_* tables
+        //   2. PostgreSQL migrations/functions (process_work_batch, etc.)
+        //   3. Perspective tables - one per discovered model:
+        //      CREATE TABLE IF NOT EXISTS wh_per_order_summary (
+        //          stream_id UUID NOT NULL PRIMARY KEY,
+        //          data JSONB NOT NULL,
+        //          version BIGINT NOT NULL,
+        //          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        //      );
+        //   4. Perspective associations + registry reconciliation
     }
 }
 ```
@@ -996,7 +984,7 @@ dotnet publish -c Release -r linux-x64
 
 ### Use Dapper When:
 
-- ✅ **Read operations** (perspectives, lenses)
+- ✅ **Hand-tuned SQL reads** (custom reporting, aggregation queries)
 - ✅ **High performance** required (~20x faster than EF Core)
 - ✅ **Simple queries** without complex relationships
 - ✅ **SQL control** needed (optimization, PostgreSQL-specific features)
@@ -1017,17 +1005,14 @@ public class OrderService {
     }
 }
 
-// ✅ Dapper for read model (perspectives/lenses)
-public class OrderLens : ILensQuery {
-    private readonly IDbConnectionFactory _db;
-
-    public async Task<OrderSummary[]> GetRecentOrdersAsync(int limit) {
-        await using var conn = _db.CreateConnection();
-
-        var orders = await conn.QueryAsync<OrderSummary>(
-            "SELECT * FROM order_summaries ORDER BY created_at DESC LIMIT @Limit",
-            new { Limit = limit }
-        );
+// ✅ Framework lens for the read model (registered automatically per perspective model)
+public class OrderQueryService(ILensQuery<OrderSummary> lens) {
+    public async Task<OrderSummary[]> GetRecentOrdersAsync(int limit, CancellationToken ct = default) {
+        var orders = await lens.DefaultScope.Query
+            .OrderByDescending(row => row.UpdatedAt)
+            .Take(limit)
+            .Select(row => row.Data)
+            .ToListAsync(ct);
 
         return orders.ToArray();
     }
@@ -1057,7 +1042,7 @@ public class OrderLens : ILensQuery {
 - ❌ Use change tracking for read-only queries
 - ❌ Use EF Core for high-performance read models (use Dapper)
 - ❌ Manually write SQL migrations (use `dotnet ef migrations add`)
-- ❌ Use `Guid.NewGuid()` for primary keys (use UUIDv7)
+- ❌ Use `Guid.NewGuid()` for primary keys (use `TrackedGuid.NewMedo()` for UUIDv7)
 - ❌ Call SaveChanges() in loops (batch instead)
 - ❌ Use Include() for every query (consider projections)
 - ❌ Ignore N+1 query problems (use Include or SplitQuery)

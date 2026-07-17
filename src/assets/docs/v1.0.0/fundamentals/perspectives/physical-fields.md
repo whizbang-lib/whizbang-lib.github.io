@@ -1,14 +1,26 @@
 ---
 title: Physical Fields
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Perspectives
 codeReferences:
   - src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs
   - src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs
+  - src/Whizbang.Core/Perspectives/FieldStorageMode.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs
+  - >-
+    src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/PhysicalFieldAttributeTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveStorageAttributeTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/FieldStorageModeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalFieldIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalFieldUpsertStrategyTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -57,7 +69,7 @@ public sealed record PhysicalFieldInfo(
 PhysicalFieldRegistry.Register<ProductModel>("Price", "price");
 
 // Query uses unified syntax - automatically routes to physical column
-var expensive = await lens.QueryAsync<ProductModel>()
+var expensive = await lens.Query
     .Where(r => r.Data.Price >= 100.00m)  // Translated to: WHERE price >= 100
     .ToListAsync();
 ```
@@ -216,7 +228,7 @@ Physical fields support unified query syntax - write queries against `r.Data.Pro
 
 ```csharp{title="Query Syntax" description="Physical fields support unified query syntax - write queries against `r." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Query", "Syntax"]}
 // This query uses the indexed physical column automatically
-var results = await lens.QueryAsync<ProductDto>()
+var results = await lens.Query
     .Where(r => r.Data.CategoryId == categoryId)
     .Where(r => r.Data.Price >= 100.00m)
     .OrderBy(r => r.Data.Sku)

@@ -1,6 +1,8 @@
 ---
 title: Event Ordering Invariant
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Architecture
 order: 2
@@ -15,12 +17,25 @@ tags: >-
 codeReferences:
   - src/Whizbang.Core/Workers/SlidingWindowOutboxBatchStrategy.cs
   - src/Whizbang.Core/Workers/SlidingWindowInboxBatchStrategy.cs
+  - src/Whizbang.Core/Workers/SlidingWindowInboxOptions.cs
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
-  - src/Whizbang.Data.Postgres/Migrations/_emit_event_store_chain.sql
+  - src/Whizbang.Core/Workers/SlidingWindowApplyBatchStrategy.cs
+  - src/Whizbang.Core/Messaging/IApplyBatchStrategy.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
+  - src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs
+  - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
+  - src/Whizbang.Data.Postgres/Migrations/061_CollectiveEventRouting.sql
+  - src/Whizbang.Data.Postgres/Migrations/038_GetStreamEvents.sql
+  - src/Whizbang.Data.Postgres/Migrations/042_FetchPendingPerspectiveEvents.sql
+  - src/Whizbang.Data.Postgres/Migrations/043_FetchEventsByIds.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/SlidingWindowOutboxBatchStrategyTests.cs
   - tests/Whizbang.Core.Tests/Workers/SlidingWindowInboxBatchStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Workers/SlidingWindowApplyBatchStrategyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/GetStreamEventsClaimSlice25Tests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/BaseUpsertStrategyInPlaceUpdateTests.cs
 ---
 
 # Event Ordering Invariant
@@ -68,21 +83,23 @@ Tests:
 
 ### 3. `_emit_event_store_chain` SQL
 
-Belt-and-suspenders: the SQL function that fans the C# batch into `wh_event_store` rows sorts the input array by `event_id` ASC before assigning per-stream versions. Catches any caller that forgot to pre-sort.
+Belt-and-suspenders: the SQL function that fans the C# batch into `wh_event_store` rows assigns per-stream versions via `ROW_NUMBER() OVER (PARTITION BY stream_id ORDER BY message_id)` — version assignment matches canonical `event_id` order even if a caller forgot to pre-sort. The input array in `store_outbox_messages` is additionally sorted `ORDER BY stream_id NULLS FIRST, message_id` so `wh_active_streams` row locks are acquired in canonical order (deadlock prevention) with `message_id` as the deterministic tiebreaker.
 
-(Status: planned — see plan file `plans/pump-then-process.md` slice 18c.)
+Code: `_emit_event_store_chain` / `_emit_event_store_chain_for_inbox`, defined in [`029_ProcessWorkBatch.sql`](https://github.com/whizbang-lib/whizbang/blob/main/src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql) and last updated in [`061_CollectiveEventRouting.sql`](https://github.com/whizbang-lib/whizbang/blob/main/src/Whizbang.Data.Postgres/Migrations/061_CollectiveEventRouting.sql) (Phase H step 10 slice 1).
 
-### 4. `InboxDispatchWorker._distributeAsync`
+### 4. `InboxDispatchWorker` stream-affinity partitioning
 
-The slice-14 partition writer groups per-stream batches before fanning out to `Channel<InboxWork>` partitions. Each per-stream group is sorted by `event_id` before the partition-channel writes so parallel consumers see in-order events.
-
-(Status: planned — slice 18d.)
+The slice-14 partition fan-out in `InboxDispatchWorker` spawns N internal queues + N consumer tasks with **stream-affinity hash partitioning**: all work for a given stream routes to the same partition queue, so a stream's events are never processed concurrently by two partition consumers. In-order arrival at the partition is guaranteed upstream — the per-stream inbox sliding window flushes sorted batches (layer 2), and the drain fetch SQL (`fetch_inbox_batch`, migration 040) returns rows `ORDER BY stream_id, message_id`.
 
 ### 5. `PerspectiveWorker` drain fetch
 
-`fetch_pending_perspective_events`, `fetch_event_store_by_ids`, and the `claim_work` per-stream projection all `ORDER BY event_id ASC`. The runner template applies events in the order it receives them.
+The perspective fetch SQL orders every projection:
 
-(Status: planned — slice 18e.)
+- `fetch_pending_perspective_events` (migration 042) — `ORDER BY event_id ASC`
+- `fetch_events_by_ids` (migration 043) — `ORDER BY event_id ASC`
+- `get_stream_events` (migration 038) — `ORDER BY stream_id, commit_sequence ASC NULLS LAST, event_id` (commit order preferred, `event_id` fallback/tiebreak)
+
+The runner template applies events in the order it receives them.
 
 ## Symptoms of a missing sort
 
@@ -102,9 +119,13 @@ The production-grade regression test is the JDX bulk-import smoke run (350 jobs,
 
 ## Companion invariant: idempotent perspective upsert (slice 19)
 
-Even with every batch boundary sorted, cross-batch and cross-process scenarios can still trigger the rewind path. When that fires, the runner re-applies the stream's full history into perspective tables. The apply target — `BaseUpsertStrategy._upsertCoreInnerAsync` — must therefore be idempotent: re-applying an event whose perspective row already exists must succeed, not throw PostgreSQL 23505.
+Even with every batch boundary sorted, cross-batch and cross-process scenarios can still trigger the rewind path. When that fires, the runner re-applies the stream's full history into perspective tables. The apply target — `BaseUpsertStrategy` — must therefore be idempotent: re-applying an event whose perspective row already exists must succeed, not throw PostgreSQL 23505.
 
-Today's implementation uses a SELECT-then-INSERT/UPDATE pattern (not an atomic SQL upsert), which is racy under concurrent application (parallel perspective consumers + rewind re-firing while a normal apply is in flight). `_upsertCoreAsync` wraps the inner call in a bounded retry loop:
+:::updated
+The upsert now has two paths. **Path 1 (slice 21, preferred)**: an atomic raw-SQL `INSERT … ON CONFLICT (id) DO UPDATE`, attempted first whenever `BaseUpsertStrategy.PathOnePersistenceOptionsProvider` is configured — the `PerspectivePersistenceJsonContextGenerator`'s module initializer wires this automatically via `ServiceRegistrationCallbacks.PerspectivePersistenceOptions`, structurally eliminating the 23505 dup-key storm. **Fallback (slice 19)**: the EF SELECT-then-INSERT/UPDATE pattern wrapped in a bounded retry loop, used when Path 1 is not configured or not applicable.
+:::
+
+The slice-19 fallback retry loop:
 
 - On `DbUpdateException` carrying `23505`, the change tracker is cleared and the inner call retries.
 - After `MAX_DUPLICATE_KEY_RETRIES = 3` attempts the exception propagates — the failed work is routed to the failure channel.
@@ -112,9 +133,9 @@ Today's implementation uses a SELECT-then-INSERT/UPDATE pattern (not an atomic S
 
 Code: [`src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs`](https://github.com/whizbang-lib/whizbang/blob/main/src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs)
 
-Tests: `BaseUpsertStrategyInPlaceUpdateTests.cs` covers the in-place update path; concurrent-upsert regression test is a planned follow-up under heavy-PG harness.
+Tests: `BaseUpsertStrategyInPlaceUpdateTests.cs` covers the in-place update path.
 
-**Known follow-up**: EF Core logs each 23505 conflict at `[ERR]` level *before* the retry can catch and recover. The retry is correct (data integrity preserved) but the log is noisy under high contention. Suppressing the EF-level log for caught-and-recovered 23505s is slice 20.
+**Known follow-up (fallback path only)**: EF Core logs each 23505 conflict at `[ERR]` level *before* the retry can catch and recover. The retry is correct (data integrity preserved) but the log is noisy under high contention on the fallback path.
 
 ## Post-slice-18 residual: cursor-advances-past-orphaned-rows race (slice 25)
 
@@ -138,6 +159,13 @@ Code: [`src/Whizbang.Data.Postgres/Migrations/038_GetStreamEvents.sql`](https://
 Tests: `GetStreamEventsClaimSlice25Tests` — orphan-row claim, expired-lease reclaim, other-instance-valid-lease NOT poached, attempts bumps only on takeover.
 
 Companion API: `IWorkCoordinator.ClaimAndFetchPendingPerspectiveEventsAsync` (per-stream-per-perspective variant) for callers that want the same atomic claim+fetch semantics scoped to one `(stream_id, perspective_name)` pair instead of multi-stream batches.
+
+:::updated
+Two later migrations refine `get_stream_events` eligibility on top of the slice-25 claim+fetch:
+
+- **058 (unstamped gate)**: rows whose `commit_sequence` is still NULL are neither claimed nor returned — closing the stamper-lag inversion window — but only within a grace window; rows pending longer than the grace flow again NULLS-LAST, so a lagging/absent stamper degrades to pre-058 behavior instead of stalling the drain.
+- **059 (ownership gate)**: a row whose stream is owned by a *different, live* instance is not claimable even if its row lease expired — enforcing single-writer-per-stream in the live drain. Unowned streams and streams whose owner is dead still fail over.
+:::
 
 ## Cheap rewinds: intermediate snapshots during replay (slice 24c)
 

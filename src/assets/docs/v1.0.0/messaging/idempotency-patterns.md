@@ -1,6 +1,8 @@
 ---
 title: "Idempotency Patterns"
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Messaging"
 order: 7
@@ -10,7 +12,13 @@ description: >-
   delivery guarantees, and transactional boundary patterns.
 tags: 'idempotency, exactly-once, deduplication, at-least-once, inbox, outbox, message-processing'
 codeReferences:
-  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs
+  - src/Whizbang.Data.Postgres/Migrations/021_StoreInboxMessages.sql
+  - src/Whizbang.Data.Postgres/Migrations/032_PerformMaintenance.sql
+  - src/Whizbang.Data.Schema/Schemas/MessageDeduplicationSchema.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StoreInboxMessagesSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreStoreInboxMessagesTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MaintenanceTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -39,114 +47,101 @@ Idempotency ensures that processing the same message multiple times produces the
 
 | Aspect | Inbox | Outbox |
 |---|---|---|
-| **Deduplication** | Permanent table (wh_message_deduplication) | Transactional boundary responsibility |
+| **Deduplication** | Deduplication table (wh_message_deduplication) | Transactional boundary responsibility |
 | **Guarantee** | Exactly-once processing | At-least-once delivery |
 | **Responsibility** | Whizbang framework | Application code |
 | **Rationale** | Prevents duplicate external events | Part of application transaction |
 
 ## Inbox Idempotency {#inbox-idempotency}
 
-### Strategy: Permanent Deduplication Table
+### Strategy: Deduplication Table
 
-**Mechanism**: The `wh_message_deduplication` table permanently tracks all inbox message IDs ever seen. Duplicate messages are rejected via `ON CONFLICT DO NOTHING`.
+**Mechanism**: The `wh_message_deduplication` table tracks all inbox message IDs seen. Duplicate messages are rejected via `ON CONFLICT DO NOTHING` inside the `store_inbox_messages` PostgreSQL function. Entries are retained for a configurable window (default 30 days) and purged by the `perform_maintenance` function.
 
 ### Database Schema
 
 ```sql{title="Database Schema" description="Database Schema" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Sql", "Database", "Schema"]}
-CREATE TABLE wh_message_deduplication (
-  message_id UUID PRIMARY KEY,
-  first_seen_at TIMESTAMPTZ NOT NULL
+CREATE TABLE IF NOT EXISTS wh_message_deduplication (
+  message_id UUID NOT NULL PRIMARY KEY,
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Index for cleanup queries (if ever implemented)
-CREATE INDEX idx_message_dedup_first_seen
-  ON wh_message_deduplication(first_seen_at);
+-- Index used by perform_maintenance retention purge
+CREATE INDEX IF NOT EXISTS idx_message_dedup_first_seen
+  ON wh_message_deduplication (first_seen_at);
 ```
 
 **Characteristics**:
-- **Permanent**: Never deleted (grows over time)
 - **Primary Key**: message_id ensures uniqueness
 - **First Seen**: Tracks when message was first encountered
-- **Cleanup**: Optional (could expire old entries if needed)
+- **Cleanup**: `perform_maintenance` purges entries older than the retention window (`dedup_retention_days` in `wh_settings`, default 30 days)
 
 ### Processing Flow
 
 ```mermaid
 sequenceDiagram
     participant T as Transport<br/>(External)
-    participant App as Application
+    participant TCW as TransportConsumerWorker
     participant WC as WorkCoordinator
     participant DB as PostgreSQL
 
-    T->>App: Deliver message M1<br/>(messageId: abc-123)
-    App->>WC: ProcessWorkBatchAsync(<br/>newInboxMessages: [M1])
-    WC->>DB: process_work_batch()
+    T->>TCW: Deliver message M1<br/>(messageId: abc-123)
+    TCW->>WC: StoreInboxMessagesAsync([M1])
+    WC->>DB: store_inbox_messages()
 
-    DB->>DB: INSERT INTO wh_message_deduplication<br/>(message_id='abc-123', first_seen_at=now)<br/>ON CONFLICT (message_id) DO NOTHING<br/>RETURNING message_id
-    Note over DB: ✅ INSERT succeeds<br/>Returns 'abc-123'
+    DB->>DB: INSERT INTO wh_message_deduplication<br/>(message_id='abc-123', first_seen_at=now)<br/>ON CONFLICT DO NOTHING
+    Note over DB: ✅ INSERT succeeds<br/>ROW_COUNT = 1 (new)
 
-    DB->>DB: v_new_inbox_ids := ['abc-123']
-    DB->>DB: INSERT INTO wh_inbox<br/>WHERE message_id IN (v_new_inbox_ids)
+    DB->>DB: INSERT INTO wh_inbox<br/>(no lease — claimable by ClaimWorker)
     Note over DB: Message stored in inbox
 
-    DB-->>WC: WorkBatch: [M1]
-    WC-->>App: WorkBatch: [M1]
-
-    App->>App: Process M1
+    DB-->>WC: [M1: was_newly_created=true]
 
     Note over T: Network issue causes<br/>duplicate delivery
 
-    T->>App: Deliver message M1 AGAIN<br/>(same messageId: abc-123)
-    App->>WC: ProcessWorkBatchAsync(<br/>newInboxMessages: [M1])
-    WC->>DB: process_work_batch()
+    T->>TCW: Deliver message M1 AGAIN<br/>(same messageId: abc-123)
+    TCW->>WC: StoreInboxMessagesAsync([M1])
+    WC->>DB: store_inbox_messages()
 
-    DB->>DB: INSERT INTO wh_message_deduplication<br/>(message_id='abc-123', first_seen_at=now)<br/>ON CONFLICT (message_id) DO NOTHING<br/>RETURNING message_id
-    Note over DB: ❌ ON CONFLICT<br/>Returns nothing (DO NOTHING)
+    DB->>DB: INSERT INTO wh_message_deduplication<br/>(message_id='abc-123', first_seen_at=now)<br/>ON CONFLICT DO NOTHING
+    Note over DB: ❌ ON CONFLICT<br/>ROW_COUNT = 0 (duplicate)
 
-    DB->>DB: v_new_inbox_ids := [] (empty)
-    DB->>DB: Skip INSERT INTO wh_inbox<br/>(no new message IDs)
+    DB->>DB: Skip INSERT INTO wh_inbox
 
-    DB-->>WC: WorkBatch: [] (empty)
-    WC-->>App: WorkBatch: [] (empty)
+    DB-->>WC: [] (no newly created rows)
 
-    Note over App: ✅ Duplicate prevented<br/>Exactly-once processing
+    Note over TCW: ✅ Duplicate prevented<br/>Exactly-once processing
 ```
 
 ### Implementation Details
 
-**PostgreSQL Function** (lines 348-404 in `014_CreateProcessWorkBatchFunction.sql`):
+**PostgreSQL Function** (`store_inbox_messages`, defined in `021_StoreInboxMessages.sql`):
 
-```sql{title="Implementation Details" description="PostgreSQL Function (lines 348-404 in `014_CreateProcessWorkBatchFunction." category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Sql", "Implementation", "Details"]}
--- Store new inbox messages (with partition assignment and deduplication)
-IF jsonb_array_length(p_new_inbox_messages) > 0 THEN
-  -- First, record all message IDs in permanent deduplication table
-  -- Only messages that are actually new will be returned
-  WITH new_msgs AS (
-    INSERT INTO wh_message_deduplication (message_id, first_seen_at)
-    SELECT (elem->>'MessageId')::UUID, v_now
-    FROM jsonb_array_elements(p_new_inbox_messages) as elem
-    ON CONFLICT (message_id) DO NOTHING  -- ← Deduplication happens here
-    RETURNING message_id
-  )
-  SELECT array_agg(message_id) INTO v_new_inbox_ids FROM new_msgs;
+```sql{title="Implementation Details" description="PostgreSQL function store_inbox_messages in 021_StoreInboxMessages.sql" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Sql", "Implementation", "Details"]}
+-- Deduplication: Try to insert into deduplication table first
+-- If message_id already exists, this returns 0 rows and we skip the inbox insert
+INSERT INTO wh_message_deduplication (message_id, first_seen_at)
+VALUES (v_msg.msg_id, p_now)
+ON CONFLICT ON CONSTRAINT wh_message_deduplication_pkey DO NOTHING;
 
-  -- Handle NULL case (no new messages, all were duplicates)
-  v_new_inbox_ids := COALESCE(v_new_inbox_ids, '{}');
+GET DIAGNOSTICS v_was_new = ROW_COUNT;
 
-  -- Now insert only the truly new messages into inbox
-  FOR v_new_msg IN
-    SELECT ...
-    FROM jsonb_array_elements(p_new_inbox_messages) as elem
-    WHERE (elem->>'MessageId')::UUID = ANY(v_new_inbox_ids)  -- ← Only new IDs
-  LOOP
-    -- Insert into inbox...
-  END LOOP;
+-- Only proceed if deduplication insert succeeded (message is new)
+IF v_was_new = 1 THEN
+  -- Calculate partition for stream-based load balancing
+  -- Insert message without lease — immediately claimable via claim_work
+  INSERT INTO wh_inbox (message_id, handler_name, message_type, ...)
+  VALUES (...)
+  ON CONFLICT ON CONSTRAINT wh_inbox_pkey DO NOTHING;
+
+  -- Return message as newly created (deduplication succeeded)
+  RETURN QUERY SELECT v_msg.msg_id, v_msg.stream_id, (v_was_new = 1);
 END IF;
 ```
 
 ### Testing
 
-**Test Case**: `ProcessWorkBatch_DuplicateInboxMessage_DeduplicationPreventsAsync`
+**Test Case**: `DuplicateMessageId_SecondCallNoOpsViaDedupTableAsync` (in `StoreInboxMessagesSqlTests.cs`)
 
 **Scenario**:
 1. Insert inbox message M1 with `message_id = abc-123`
@@ -162,14 +157,14 @@ END IF;
 - ✅ **Exactly-once**: Guaranteed single processing per message ID
 
 **Disadvantages**:
-- ❌ **Storage Growth**: Table grows indefinitely (one row per unique message ID)
-- ❌ **Performance**: Index size grows over time (mitigated by UUIDs and btree)
-- ❌ **No Expiration**: Old messages never removed (could implement cleanup)
+- ❌ **Storage Growth**: One row per unique message ID within the retention window
+- ❌ **Performance**: Index lookup on every message store (mitigated by UUIDs and btree)
+- ❌ **Bounded Window**: Duplicates arriving after the retention window (default 30 days) are no longer detected
 
 **Mitigation Strategies**:
 - Use UUIDv7 for time-ordered IDs (better index performance)
-- Partition table by first_seen_at (if cleanup needed)
-- Monitor table size and implement retention policy if needed
+- Tune retention via the `dedup_retention_days` key in `wh_settings` (default 30 days)
+- Monitor table size (`perform_maintenance` reports purge counts per run)
 
 ## Outbox Idempotency {#outbox-idempotency}
 
@@ -197,9 +192,9 @@ graph TD
     F --> G[COMMIT TRANSACTION]
     E --> G
 
-    G --> H[Background Worker:<br/>ProcessWorkBatchAsync]
+    G --> H[OutboxPublishWorker:<br/>claims via claim_work]
     H --> I[Publish to Transport]
-    I --> J[Mark as Published,<br/>DELETE from wh_outbox]
+    I --> J[complete_outbox_published:<br/>DELETE from wh_outbox]
 
     style C fill:#e1ffe1
     style D fill:#ffe1e1
@@ -274,7 +269,8 @@ public async Task<Result> HandleCreateOrderAsync(CreateOrderCommand command) {
 sequenceDiagram
     participant App as Application
     participant DB as PostgreSQL<br/>(Application DB)
-    participant WC as WorkCoordinator
+    participant CW as ClaimWorker
+    participant OPW as OutboxPublishWorker
     participant T as Transport
 
     App->>DB: BEGIN TRANSACTION
@@ -284,23 +280,24 @@ sequenceDiagram
 
     Note over DB: Outbox entry persisted<br/>atomically with order
 
-    WC->>DB: ProcessWorkBatchAsync()
-    DB-->>WC: WorkBatch: [OrderCreated event]
+    CW->>DB: claim_work()
+    DB-->>CW: OrderCreated (leased)
+    CW->>OPW: dispatch via outbox channel
 
-    WC->>T: Publish OrderCreated to transport
-    T-->>WC: Ack
+    OPW->>T: Publish OrderCreated to transport
+    T-->>OPW: Ack
 
-    WC->>DB: ProcessWorkBatchAsync(<br/>completions: [OrderCreated: Published])
+    OPW->>DB: complete_outbox_published([id])
     DB->>DB: DELETE FROM wh_outbox<br/>WHERE message_id = ...
 
-    Note over DB: ✅ Message delivered exactly once<br/>Outbox entry removed
+    Note over DB: ✅ Message delivered<br/>Outbox entry removed
 ```
 
 ### Testing
 
-**Test Case**: `ProcessWorkBatch_OutboxNoDuplication_TransactionalBoundaryAsync`
+Duplicate prevention on the outbox side is application logic, so the framework tests cover the at-least-once delivery half of the contract: `CompleteOutboxPublishedSqlTests.cs` verifies that completions delete rows exactly once and that unknown IDs no-op idempotently.
 
-**Scenario**:
+**Application-level scenario** (yours to test):
 1. Application transaction creates order + outbox entry
 2. Same command executed again (simulating duplicate request)
 3. Verify application logic prevents duplicate order
@@ -310,10 +307,10 @@ sequenceDiagram
 
 | Aspect | Inbox Deduplication | Outbox Transactional |
 |---|---|---|
-| **Mechanism** | Permanent deduplication table | Application transaction control |
+| **Mechanism** | Deduplication table with retention purge | Application transaction control |
 | **Guarantee** | Exactly-once processing | At-least-once delivery |
 | **Responsibility** | Whizbang framework | Application code |
-| **Storage** | One row per unique message ID (permanent) | No deduplication table |
+| **Storage** | One row per unique message ID (retention window) | No deduplication table |
 | **Performance** | Index lookup on every message | No overhead |
 | **Complexity** | Simple (database constraint) | Requires application design |
 | **Use Case** | External events (from transports) | Internal events (from application) |
@@ -322,16 +319,14 @@ sequenceDiagram
 
 ### Inbox Best Practices
 
-**1. Use Deterministic Message IDs**:
+**1. Use Stable Message IDs**:
 ```csharp{title="Inbox Best Practices" description="Inbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Inbox", "Best", "Practices"]}
-// ✅ Good: Deterministic ID based on event content
-var messageId = Uuid7.FromName(
-    namespaceId: Uuid7.NamespaceOID,
-    name: $"OrderCreated-{orderId}"
-);
+// ✅ Good: Generate the ID once, reuse it for every retry of the same message
+var messageId = TrackedGuid.NewMedo();  // UUIDv7, time-ordered
+await SendWithRetriesAsync(messageId, orderCreatedEvent);
 
-// ❌ Bad: Random ID (loses idempotency)
-var messageId = Uuid7.NewUuid7();  // Different every time
+// ❌ Bad: Fresh ID per attempt (loses idempotency)
+await SendAsync(TrackedGuid.NewMedo(), orderCreatedEvent);  // Different every retry
 ```
 
 **2. Include Correlation/Causation IDs**:
@@ -345,11 +340,12 @@ SELECT COUNT(*) FROM wh_message_deduplication;
 SELECT pg_total_relation_size('wh_message_deduplication');
 ```
 
-**4. Consider Retention Policy** (optional):
+**4. Tune the Retention Window** (optional):
 ```sql{title="Inbox Best Practices (3)" description="Inbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Sql", "Inbox", "Best", "Practices"]}
--- Delete deduplication records older than 90 days (if needed)
-DELETE FROM wh_message_deduplication
-WHERE first_seen_at < NOW() - INTERVAL '90 days';
+-- perform_maintenance purges entries older than dedup_retention_days (default 30)
+INSERT INTO wh_settings (setting_key, setting_value, value_type, description)
+VALUES ('dedup_retention_days', '90', 'integer', 'Days to retain message deduplication entries')
+ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value;
 ```
 
 ### Outbox Best Practices
@@ -363,7 +359,7 @@ public class CreateOrderCommand {
 
 // Client generates ID
 var command = new CreateOrderCommand {
-    OrderId = Uuid7.NewUuid7(),  // Generated once, by client
+    OrderId = TrackedGuid.NewMedo(),  // Generated once, by client
     // ...
 };
 
@@ -451,10 +447,10 @@ await transaction.CommitAsync();  // Atomic
 **Diagnostic Steps**:
 1. Check if outbox has duplicate entries:
    ```sql
-   SELECT destination, event_type, event_data::TEXT,
+   SELECT destination, message_type, event_data::TEXT,
           COUNT(*)
    FROM wh_outbox
-   GROUP BY destination, event_type, event_data::TEXT
+   GROUP BY destination, message_type, event_data::TEXT
    HAVING COUNT(*) > 1;
    ```
 
@@ -478,29 +474,27 @@ await transaction.CommitAsync();  // Atomic
 
 ## Implementation
 
-### PostgreSQL Function
+### PostgreSQL Functions
 
-See: `014_CreateProcessWorkBatchFunction.sql`
-
-**Key Sections**:
-- Lines 348-404: Inbox deduplication with wh_message_deduplication table
-- Lines 299-344: Outbox storage (no deduplication table)
+- `store_inbox_messages` (`021_StoreInboxMessages.sql`) - Inbox deduplication via wh_message_deduplication table
+- `store_outbox_messages` (`020_StoreOutboxMessages.sql`) - Outbox storage (no deduplication table)
+- `perform_maintenance` (`032_PerformMaintenance.sql`) - Purges deduplication entries past retention
 
 ### C# Coordinator
 
 See: `Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs`
 
-**Method**: `ProcessWorkBatchAsync`
+**Method**: `StoreInboxMessagesAsync`
 
 **Responsibilities**:
-- Serialize new inbox/outbox messages to JSON
-- Call PostgreSQL `process_work_batch` function
-- Return work batch with messages (duplicates already filtered by DB)
+- Serialize new inbox messages to JSON
+- Call PostgreSQL `store_inbox_messages` function
+- Return newly created message IDs (duplicates already filtered by DB)
 
 ### Integration Tests
 
-See: `Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs`
+See: `Whizbang.Data.EFCore.Postgres.Tests/`
 
 **Test Cases**:
-- `ProcessWorkBatch_DuplicateInboxMessage_DeduplicationPreventsAsync` - Inbox idempotency
-- `ProcessWorkBatch_OutboxNoDuplication_TransactionalBoundaryAsync` - Outbox responsibility
+- `StoreInboxMessagesSqlTests.DuplicateMessageId_SecondCallNoOpsViaDedupTableAsync` - Inbox idempotency
+- `MaintenanceTests.PerformMaintenance_PurgesDeduplicationEntries_OlderThanRetentionAsync` - Retention purge

@@ -1,6 +1,8 @@
 ---
 title: AddLensServices
-pageType: concept
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: DI
 order: 4
@@ -9,12 +11,19 @@ description: >-
 tags: 'di, dependency-injection, lenses, service-registration, queries'
 codeReferences:
   - src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs
+  - src/Whizbang.Generators/ServiceRegistrationGenerator.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/ServiceRegistrationGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # AddLensServices
 
 `AddLensServices` is a source-generated extension method that registers all discovered Lens implementations with the dependency injection container.
+
+:::updated
+`AddWhizbang()` invokes this method automatically via `ServiceRegistrationCallbacks` — an explicit call is only needed when registering services without `AddWhizbang()`, or with different options.
+:::
 
 ## Signature
 
@@ -55,26 +64,25 @@ builder.Services.AddLensServices(options =>
 ## What Gets Registered
 
 The source generator discovers classes that:
-- Implement `ILensQuery` interface
+- Implement a user-defined interface extending `ILensQuery` (registered against the user interface), or implement `ILensQuery<TModel>` directly with a closed generic argument (registered against the Whizbang interface)
 - Are not abstract
-- Have accessible constructors
 
 For each discovered Lens, it generates:
 
 ```csharp{title="Generated Registration" description="Example of generated Lens registration" category="DI" difficulty="INTERMEDIATE" tags=["DI", "SourceGenerator"]}
 // Interface registration
-services.AddScoped<IOrderLens, OrderLens>();
+services.AddTransient<IOrderLens, OrderLens>();
 
 // Self-registration (when IncludeSelfRegistration = true)
-services.AddScoped<OrderLens>();
+services.AddTransient<OrderLens>();
 ```
 
 ## Registration Lifetime
 
-All Lenses are registered as **Scoped** services:
-- Matches DbContext lifetime
-- Fresh instance per request/scope
-- Proper cleanup after scope disposal
+All Lenses are registered as **Transient** services:
+- Fresh instance per resolution
+- Scoped dependencies (like `DbContext`) come from the resolving scope
+- No accidental state sharing between resolutions
 
 ## Example Lens
 
@@ -95,16 +103,16 @@ public class OrderLens : IOrderLens {
   public Task<OrderSummary?> GetByIdAsync(OrderId orderId, CancellationToken ct) =>
     _db.OrderSummaries.FirstOrDefaultAsync(o => o.Id == orderId, ct);
 
-  public Task<IReadOnlyList<OrderSummary>> GetByCustomerAsync(
+  public async Task<IReadOnlyList<OrderSummary>> GetByCustomerAsync(
       CustomerId customerId,
       CancellationToken ct) =>
-    _db.OrderSummaries
+    await _db.OrderSummaries
        .Where(o => o.CustomerId == customerId)
        .OrderByDescending(o => o.CreatedAt)
        .ToListAsync(ct);
 
-  public Task<IReadOnlyList<OrderSummary>> GetRecentAsync(int count, CancellationToken ct) =>
-    _db.OrderSummaries
+  public async Task<IReadOnlyList<OrderSummary>> GetRecentAsync(int count, CancellationToken ct) =>
+    await _db.OrderSummaries
        .OrderByDescending(o => o.CreatedAt)
        .Take(count)
        .ToListAsync(ct);
@@ -146,10 +154,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Database
 builder.Services.AddDbContext<AppDbContext>(...);
 
-// Core Whizbang
+// Core Whizbang (auto-registers discovered Perspectives and Lenses)
 builder.Services.AddWhizbang();
 
-// Generated service registrations
+// Explicit generated registrations — only when bypassing AddWhizbang()
 builder.Services.AddPerspectiveServices();
 builder.Services.AddLensServices();
 

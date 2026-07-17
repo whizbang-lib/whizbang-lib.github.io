@@ -1,6 +1,8 @@
 ---
 title: PublishOnceAsync — Exactly-Once Event Emission
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 4
@@ -14,6 +16,9 @@ codeReferences:
   - src/Whizbang.Core/Dispatch/IClaimedEmissionStore.cs
   - src/Whizbang.Data.EFCore.Postgres/Dispatch/EFCoreClaimedEmissionStore.cs
   - src/Whizbang.Data.Postgres/Migrations/060_CreateUniqueEmissionClaims.sql
+testReferences:
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherPublishOnceTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Dispatch/ClaimedEmissionStoreTests.cs
 ---
 
 # PublishOnceAsync — Exactly-Once Event Emission

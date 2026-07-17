@@ -1,10 +1,16 @@
 ---
 title: Polymorphic Discriminator
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Perspectives
 codeReferences:
   - src/Whizbang.Core/Perspectives/PolymorphicDiscriminatorAttribute.cs
+  - >-
+    src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveConfigurationGenerator.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/PolymorphicDiscriminatorAttributeTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -58,7 +64,7 @@ CREATE TABLE wh_per_form_field (
     id UUID PRIMARY KEY,
     stream_id UUID NOT NULL,
     data JSONB NOT NULL,
-    settings_type VARCHAR(255),  -- Discriminator column
+    settings_type TEXT,  -- Discriminator column (TEXT: no max length, fits full type names)
     -- ... other columns
 );
 
@@ -72,29 +78,18 @@ CREATE INDEX idx_form_field_settings_type ON wh_per_form_field(settings_type);
 Query the discriminator column directly:
 
 ```csharp{title="Direct Column Query" description="Query the discriminator column directly:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Direct", "Column"]}
-var textFields = await lens.QueryAsync<FormFieldModel>()
+var textFields = await lens.Query
     .Where(r => r.Data.SettingsTypeName == "TextFieldSettings")
     .ToListAsync();
 ```
 
+The discriminator property is registered as a physical field, so this query is translated to an indexed column lookup (`WHERE settings_type = 'TextFieldSettings'`).
+
 ### Type-Safe Polymorphic API
 
-Use the `WherePolymorphic` extension for type-safe queries:
-
-```csharp{title="Type-Safe Polymorphic API" description="Use the WherePolymorphic extension for type-safe queries:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Type-Safe", "Polymorphic"]}
-var textFields = await lens.QueryAsync<FormFieldModel>()
-    .WherePolymorphic(m => m.Settings)
-    .As<TextFieldSettings>(s => s.MaxLength > 100)
-    .ToListAsync();
-```
-
-This generates SQL that uses both the discriminator column and JSONB for the filter:
-
-```sql{title="Type-Safe Polymorphic API (2)" description="This generates SQL that uses both the discriminator column and JSONB for the filter:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Type-Safe", "Polymorphic"]}
-SELECT * FROM wh_per_form_field
-WHERE settings_type = 'TextFieldSettings'
-  AND (data->'Settings'->>'MaxLength')::int > 100;
-```
+:::planned
+A `WherePolymorphic(...).As<TDerived>(...)` extension for type-safe polymorphic queries is planned but not shipped at this commit. Use the direct discriminator-column query above.
+:::
 
 ## Setting the Discriminator Value
 

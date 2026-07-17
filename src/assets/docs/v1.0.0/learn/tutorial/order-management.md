@@ -1,6 +1,8 @@
 ---
 title: Order Management Service
 pageType: tutorial
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Tutorial
 order: 2
@@ -14,14 +16,20 @@ codeReferences:
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
   - >-
     samples/ECommerce/ECommerce.OrderService.API/Endpoints/Orders/CreateOrderEndpoint.cs
+  - samples/ECommerce/ECommerce.OrderService.API/OrderDbContext.cs
   - samples/ECommerce/ECommerce.Contracts/Commands/CreateOrderCommand.cs
   - samples/ECommerce/ECommerce.Contracts/Events/OrderCreatedEvent.cs
+  - samples/ECommerce/ECommerce.Contracts/Ids.cs
+testReferences:
+  - >-
+    samples/ECommerce/tests/ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs
+  - samples/ECommerce/ECommerce.IntegrationTests/OrderServiceIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Order Management Service
 
-Build the **Order Service** - an HTTP API that accepts order creation requests, validates them, persists to PostgreSQL, and publishes events to Azure Service Bus.
+Build the **Order Service** - an HTTP API that accepts order creation requests, validates them, persists events via Whizbang's event store, and publishes events to the message bus.
 
 :::note
 This is **Part 1** of the ECommerce Tutorial. Start with [Tutorial Overview](tutorial-overview.md) if you haven't already.
@@ -34,170 +42,149 @@ This is **Part 1** of the ECommerce Tutorial. Start with [Tutorial Overview](tut
 ```mermaid
 flowchart TD
     subgraph OSA["Order Service Architecture"]
-        Controller["HTTP Controller<br/>POST /orders"]
+        Endpoint["HTTP Endpoint<br/>POST /api/orders"]
         Dispatcher["Dispatcher"]
-        Receptor["CreateOrderReceptor<br/>- Validate order<br/>- Save to DB<br/>- Publish event"]
-        Orders["Postgres Orders"]
-        Outbox["Outbox Table"]
-        ASB["ASB Bus"]
+        Receptor["CreateOrderReceptor<br/>- Validate order<br/>- Publish event"]
+        EventStore["wh_event_store (Event Store)"]
+        Outbox["wh_outbox (Outbox)"]
+        ASB["Azure Service Bus"]
 
-        Controller --> Dispatcher
-        Dispatcher -->|"CreateOrder command"| Receptor
-        Receptor --> Orders
+        Endpoint --> Dispatcher
+        Dispatcher -->|"CreateOrderCommand"| Receptor
+        Receptor -->|"OrderCreatedEvent"| EventStore
         Receptor --> Outbox
-        Receptor --> ASB
+        Outbox --> ASB
     end
 
-    class Controller layer-core
+    class Endpoint layer-core
     class Dispatcher layer-command
     class Receptor layer-core
-    class Orders layer-event
+    class EventStore layer-event
     class Outbox,ASB layer-command
 ```
 
 **Features**:
-- ✅ HTTP API endpoint for order creation
+- ✅ HTTP API endpoint for order creation (FastEndpoints)
 - ✅ Command handling with validation
-- ✅ PostgreSQL persistence with outbox pattern
+- ✅ Framework-managed event store and outbox (no hand-written SQL)
 - ✅ Event publishing to Azure Service Bus
-- ✅ Message context (correlation, causation, tracing)
+- ✅ Strongly-typed IDs with `[WhizbangId]`
 - ✅ .NET Aspire orchestration
 
 ---
 
 ## Step 1: Define Messages
 
+### Strongly-Typed IDs
+
+**ECommerce.Contracts/Ids.cs**:
+
+```csharp{title="Strongly-Typed IDs" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Ids"]}
+using Whizbang.Core;
+
+namespace ECommerce.Contracts.Commands;
+
+/// <summary>Strongly-typed ID for products using UUIDv7.</summary>
+[WhizbangId]
+public readonly partial struct ProductId;
+
+/// <summary>Strongly-typed ID for orders using UUIDv7.</summary>
+[WhizbangId]
+public readonly partial struct OrderId;
+
+/// <summary>Strongly-typed ID for customers using UUIDv7.</summary>
+[WhizbangId]
+public readonly partial struct CustomerId;
+```
+
+The `[WhizbangId]` source generator produces `OrderId.New()` (time-ordered UUIDv7), `OrderId.From(Guid)`, and a `Value` property — no reflection, AOT-safe.
+
 ### Commands
 
-**ECommerce.Contracts/Commands/CreateOrder.cs**:
+**ECommerce.Contracts/Commands/CreateOrderCommand.cs**:
 
 ```csharp{title="Commands" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Commands"]}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Commands;
 
-public record CreateOrder(
-  string CustomerId,
-  OrderItem[] Items,
-  Address ShippingAddress
-) : ICommand<OrderCreated>;
+/// <summary>
+/// Command to create a new order
+/// </summary>
+public record CreateOrderCommand : ICommand {
+  [StreamId]
+  public required OrderId OrderId { get; init; }
+  public required CustomerId CustomerId { get; init; }
+  public required List<OrderLineItem> LineItems { get; init; }
+  public decimal TotalAmount { get; init; }
+}
 
-public record OrderItem(
-  string ProductId,
-  int Quantity,
-  decimal UnitPrice
-);
-
-public record Address(
-  string Street,
-  string City,
-  string State,
-  string ZipCode,
-  string Country
-);
+public record OrderLineItem {
+  public required ProductId ProductId { get; init; }
+  public required string ProductName { get; init; }
+  public int Quantity { get; init; }
+  public decimal UnitPrice { get; init; }
+}
 ```
 
 ### Events
 
-**ECommerce.Contracts/Events/OrderCreated.cs**:
+**ECommerce.Contracts/Events/OrderCreatedEvent.cs**:
 
 ```csharp{title="Events" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Events"]}
+using ECommerce.Contracts.Commands;
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
 
-public record OrderCreated(
-  string OrderId,
-  string CustomerId,
-  OrderItem[] Items,
-  Address ShippingAddress,
-  decimal TotalAmount,
-  DateTime CreatedAt
-) : IEvent;
-
-public record OrderItem(
-  string ProductId,
-  int Quantity,
-  decimal UnitPrice,
-  decimal LineTotal
-);
-
-public record Address(
-  string Street,
-  string City,
-  string State,
-  string ZipCode,
-  string Country
-);
+/// <summary>
+/// Event published when an order is successfully created
+/// </summary>
+public record OrderCreatedEvent : IEvent {
+  [StreamId]
+  public required OrderId OrderId { get; init; }
+  public required CustomerId CustomerId { get; init; }
+  public required List<OrderLineItem> LineItems { get; init; }
+  public decimal TotalAmount { get; init; }
+  public DateTime CreatedAt { get; init; }
+}
 ```
 
-**Why separate records?**
-- Commands and events have different lifecycles
-- Event includes calculated fields (`OrderId`, `TotalAmount`, `LineTotal`)
-- Event is immutable history, command is intent
+**Key points**:
+- Commands implement `ICommand`, events implement `IEvent` (both are marker interfaces)
+- `[StreamId]` marks the property that identifies the event stream (aggregate) — the source generator creates a zero-reflection stream ID extractor from it
+- The command carries intent; the event includes derived facts (`CreatedAt`)
 
 ---
 
-## Step 2: Database Schema
+## Step 2: Persistence (Framework-Managed)
 
-### Orders Table
+:::updated
+Earlier drafts of this tutorial hand-wrote `orders`, `order_items`, and `outbox` tables with raw SQL migrations. Whizbang now provisions and manages its messaging tables (`wh_event_store`, `wh_outbox`, `wh_inbox`, and perspective tables) automatically — you only declare a `DbContext` with the `[WhizbangDbContext]` attribute.
+:::
 
-**ECommerce.OrderService.API/Database/Migrations/001_CreateOrdersTable.sql**:
+**ECommerce.OrderService.API/OrderDbContext.cs**:
 
-```sql{title="Orders Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Orders", "Table"]}
-CREATE TABLE IF NOT EXISTS orders (
-  order_id TEXT PRIMARY KEY,
-  customer_id TEXT NOT NULL,
-  total_amount NUMERIC(10, 2) NOT NULL,
-  status TEXT NOT NULL,
-  shipping_address JSONB NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
+```csharp{title="Step 2: Persistence" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Persistence", "DbContext"]}
+using Microsoft.EntityFrameworkCore;
+using Whizbang.Data.EFCore.Custom;
 
-CREATE INDEX idx_orders_customer_id ON orders(customer_id);
-CREATE INDEX idx_orders_created_at ON orders(created_at DESC);
+namespace ECommerce.OrderService.API;
+
+/// <summary>
+/// DbContext for OrderService.API - provides Inbox, Outbox, and EventStore via Whizbang EF Core driver.
+/// [WhizbangDbContext] attribute triggers source generation for:
+/// - EnsureWhizbangDatabaseInitializedAsync() extension method
+/// - DbSet properties for Inbox, Outbox, EventStore
+/// - Model configuration in OnModelCreating
+/// </summary>
+[WhizbangDbContext]
+public partial class OrderDbContext(DbContextOptions<OrderDbContext> options) : DbContext(options) {
+  // DbSet properties and OnModelCreating are auto-generated in partial class
+}
 ```
 
-### Order Items Table
-
-**ECommerce.OrderService.API/Database/Migrations/002_CreateOrderItemsTable.sql**:
-
-```sql{title="Order Items Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Order", "Items"]}
-CREATE TABLE IF NOT EXISTS order_items (
-  order_item_id TEXT PRIMARY KEY,
-  order_id TEXT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
-  product_id TEXT NOT NULL,
-  quantity INTEGER NOT NULL,
-  unit_price NUMERIC(10, 2) NOT NULL,
-  line_total NUMERIC(10, 2) NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_order_items_order_id ON order_items(order_id);
-CREATE INDEX idx_order_items_product_id ON order_items(product_id);
-```
-
-### Outbox Table
-
-**ECommerce.OrderService.API/Database/Migrations/003_CreateOutboxTable.sql**:
-
-```sql{title="Outbox Table" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Outbox", "Table"]}
--- Whizbang outbox pattern for reliable event publishing
-CREATE TABLE IF NOT EXISTS outbox (
-  message_id UUID PRIMARY KEY,
-  message_type TEXT NOT NULL,
-  message_body JSONB NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  processed_at TIMESTAMP,
-  retry_count INTEGER NOT NULL DEFAULT 0,
-  next_retry_at TIMESTAMP,
-  error_message TEXT
-);
-
-CREATE INDEX idx_outbox_unprocessed ON outbox(created_at)
-  WHERE processed_at IS NULL;
-```
+At startup, the generated `EnsureWhizbangDatabaseInitializedAsync()` extension creates all Whizbang tables and PostgreSQL functions — no migration SQL to maintain.
 
 ---
 
@@ -206,345 +193,266 @@ CREATE INDEX idx_outbox_unprocessed ON outbox(created_at)
 **ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs**:
 
 ```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
-using Whizbang.Core;
 using ECommerce.Contracts.Commands;
 using ECommerce.Contracts.Events;
-using Npgsql;
-using Dapper;
+using Whizbang.Core;
 
 namespace ECommerce.OrderService.API.Receptors;
 
-public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-  private readonly NpgsqlConnection _db;
-  private readonly IMessageContext _context;
-  private readonly ILogger<CreateOrderReceptor> _logger;
+/// <summary>
+/// Handles CreateOrderCommand and publishes OrderCreatedEvent
+/// </summary>
+public class CreateOrderReceptor(IDispatcher dispatcher, ILogger<CreateOrderReceptor> logger) : IReceptor<CreateOrderCommand, OrderCreatedEvent> {
 
-  public CreateOrderReceptor(
-    NpgsqlConnection db,
-    IMessageContext context,
-    ILogger<CreateOrderReceptor> logger
-  ) {
-    _db = db;
-    _context = context;
-    _logger = logger;
-  }
+  public async ValueTask<OrderCreatedEvent> HandleAsync(
+    CreateOrderCommand message,
+    CancellationToken cancellationToken = default) {
 
-  public async ValueTask<OrderCreated> HandleAsync(
-    CreateOrder command,
-    CancellationToken ct = default
-  ) {
-    // 1. Validate
-    if (command.Items.Length == 0) {
-      throw new ValidationException("Order must have at least one item");
+    logger.LogInformation(
+      "Processing order {OrderId} for customer {CustomerId} with {ItemCount} items",
+      message.OrderId,
+      message.CustomerId,
+      message.LineItems.Count);
+
+    // Validate order (business logic would go here)
+    if (message.TotalAmount <= 0) {
+      throw new InvalidOperationException("Order total must be positive");
     }
 
-    // 2. Calculate totals
-    var orderId = Guid.NewGuid().ToString("N");
-    var totalAmount = command.Items.Sum(i => i.Quantity * i.UnitPrice);
-    var createdAt = DateTime.UtcNow;
-
-    // 3. Save order (with outbox pattern)
-    await using var tx = await _db.BeginTransactionAsync(ct);
-
-    try {
-      // Insert order
-      await _db.ExecuteAsync(
-        """
-        INSERT INTO orders (order_id, customer_id, total_amount, status, shipping_address, created_at, updated_at)
-        VALUES (@OrderId, @CustomerId, @TotalAmount, @Status, @ShippingAddress::jsonb, @CreatedAt, @CreatedAt)
-        """,
-        new {
-          OrderId = orderId,
-          CustomerId = command.CustomerId,
-          TotalAmount = totalAmount,
-          Status = "Pending",
-          ShippingAddress = System.Text.Json.JsonSerializer.Serialize(command.ShippingAddress),
-          CreatedAt = createdAt
-        },
-        transaction: tx
-      );
-
-      // Insert order items
-      foreach (var item in command.Items) {
-        var lineTotal = item.Quantity * item.UnitPrice;
-        await _db.ExecuteAsync(
-          """
-          INSERT INTO order_items (order_item_id, order_id, product_id, quantity, unit_price, line_total, created_at)
-          VALUES (@OrderItemId, @OrderId, @ProductId, @Quantity, @UnitPrice, @LineTotal, @CreatedAt)
-          """,
-          new {
-            OrderItemId = Guid.NewGuid().ToString("N"),
-            OrderId = orderId,
-            ProductId = item.ProductId,
-            Quantity = item.Quantity,
-            UnitPrice = item.UnitPrice,
-            LineTotal = lineTotal,
-            CreatedAt = createdAt
-          },
-          transaction: tx
-        );
-      }
-
-      // 4. Create event
-      var @event = new OrderCreated(
-        OrderId: orderId,
-        CustomerId: command.CustomerId,
-        Items: command.Items.Select(i => new Contracts.Events.OrderItem(
-          ProductId: i.ProductId,
-          Quantity: i.Quantity,
-          UnitPrice: i.UnitPrice,
-          LineTotal: i.Quantity * i.UnitPrice
-        )).ToArray(),
-        ShippingAddress: new Contracts.Events.Address(
-          Street: command.ShippingAddress.Street,
-          City: command.ShippingAddress.City,
-          State: command.ShippingAddress.State,
-          ZipCode: command.ShippingAddress.ZipCode,
-          Country: command.ShippingAddress.Country
-        ),
-        TotalAmount: totalAmount,
-        CreatedAt: createdAt
-      );
-
-      // 5. Insert into outbox (same transaction)
-      await _db.ExecuteAsync(
-        """
-        INSERT INTO outbox (message_id, message_type, message_body, created_at)
-        VALUES (@MessageId, @MessageType, @MessageBody::jsonb, @CreatedAt)
-        """,
-        new {
-          MessageId = _context.MessageId,
-          MessageType = typeof(OrderCreated).FullName,
-          MessageBody = System.Text.Json.JsonSerializer.Serialize(@event),
-          CreatedAt = createdAt
-        },
-        transaction: tx
-      );
-
-      await tx.CommitAsync(ct);
-
-      _logger.LogInformation(
-        "Order {OrderId} created for customer {CustomerId} with {ItemCount} items, total ${TotalAmount}",
-        orderId,
-        command.CustomerId,
-        command.Items.Length,
-        totalAmount
-      );
-
-      return @event;
-    } catch {
-      await tx.RollbackAsync(ct);
-      throw;
+    if (message.LineItems.Count == 0) {
+      throw new InvalidOperationException("Order must contain at least one item");
     }
+
+    // Create the event
+    var orderCreated = new OrderCreatedEvent {
+      OrderId = message.OrderId,
+      CustomerId = message.CustomerId,
+      LineItems = message.LineItems,
+      TotalAmount = message.TotalAmount,
+      CreatedAt = DateTime.UtcNow
+    };
+
+    // Publish the event for cross-service delivery
+    // This will be sent to Azure Service Bus and consumed by other services
+    await dispatcher.PublishAsync(orderCreated);
+
+    logger.LogInformation("Order {OrderId} created and event published", message.OrderId);
+
+    return orderCreated;
   }
 }
 ```
 
 **Key patterns**:
-- ✅ **Outbox Pattern**: Event inserted in same transaction as order
-- ✅ **Validation**: Business rules enforced before persistence
-- ✅ **Message Context**: `_context.MessageId` for correlation
-- ✅ **Transactional**: All-or-nothing via PostgreSQL transaction
+- ✅ **`IReceptor<TMessage, TResponse>`**: `HandleAsync` returns `ValueTask<TResponse>` and takes a `CancellationToken`
+- ✅ **Validation**: Business rules enforced before publishing
+- ✅ **Outbox Pattern**: `PublishAsync` writes to the framework-managed outbox — event store append, outbox insert, and cross-service delivery are handled by Whizbang
+- ✅ **Return value**: The returned event is available to callers using `LocalInvokeAsync`
 
 ---
 
 ## Step 4: HTTP API
 
-**ECommerce.OrderService.API/Controllers/OrdersController.cs**:
+The sample uses **FastEndpoints** for the REST API.
+
+**ECommerce.OrderService.API/Endpoints/Orders/CreateOrderEndpoint.cs**:
 
 ```csharp{title="Step 4: HTTP API" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "HTTP"]}
-using Microsoft.AspNetCore.Mvc;
-using Whizbang.Core;
 using ECommerce.Contracts.Commands;
+using ECommerce.Contracts.Events;
+using ECommerce.OrderService.API.Endpoints.Models;
+using FastEndpoints;
+using Whizbang.Core;
 
-namespace ECommerce.OrderService.API.Controllers;
+namespace ECommerce.OrderService.API.Endpoints.Orders;
 
-[ApiController]
-[Route("api/[controller]")]
-public class OrdersController : ControllerBase {
-  private readonly IDispatcher _dispatcher;
-  private readonly ILogger<OrdersController> _logger;
+/// <summary>
+/// FastEndpoints endpoint for creating orders
+/// </summary>
+public class CreateOrderEndpoint(IDispatcher dispatcher) : Endpoint<CreateOrderRequest, CreateOrderResponse> {
 
-  public OrdersController(
-    IDispatcher dispatcher,
-    ILogger<OrdersController> logger
-  ) {
-    _dispatcher = dispatcher;
-    _logger = logger;
+  public override void Configure() {
+    Post("/orders");
+    AllowAnonymous();
   }
 
-  [HttpPost]
-  [ProducesResponseType(StatusCodes.Status201Created)]
-  [ProducesResponseType(StatusCodes.Status400BadRequest)]
-  public async Task<IActionResult> CreateOrder(
-    [FromBody] CreateOrder command,
-    CancellationToken ct
-  ) {
-    try {
-      var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
+  public override async Task HandleAsync(CreateOrderRequest req, CancellationToken ct) {
+    var orderId = OrderId.New();
+    var items = req.LineItems.Select(li => new OrderLineItem {
+      ProductId = ProductId.From(Guid.Parse(li.ProductId)),
+      ProductName = li.ProductName,
+      Quantity = li.Quantity,
+      UnitPrice = li.UnitPrice
+    }).ToList();
 
-      return CreatedAtAction(
-        nameof(GetOrder),
-        new { orderId = result.OrderId },
-        result
-      );
-    } catch (ValidationException ex) {
-      return BadRequest(new { error = ex.Message });
-    }
-  }
+    var totalAmount = items.Sum(i => i.Quantity * i.UnitPrice);
 
-  [HttpGet("{orderId}")]
-  [ProducesResponseType(StatusCodes.Status200OK)]
-  [ProducesResponseType(StatusCodes.Status404NotFound)]
-  public async Task<IActionResult> GetOrder(string orderId) {
-    // TODO: Implement query (Part 4 - Customer Service)
-    return NotFound();
+    var command = new CreateOrderCommand {
+      OrderId = orderId,
+      CustomerId = CustomerId.From(Guid.Parse(req.CustomerId)),
+      LineItems = items,
+      TotalAmount = totalAmount
+    };
+
+    // Dispatch the command locally and wait for the result
+    var orderCreated = await dispatcher.LocalInvokeAsync<OrderCreatedEvent>(command);
+
+    Response = new CreateOrderResponse {
+      OrderId = orderCreated.OrderId.Value.ToString(),
+      Status = "Created",
+      TotalAmount = orderCreated.TotalAmount
+    };
   }
 }
 ```
+
+**Request/response models** (**ECommerce.OrderService.API/Endpoints/Models/**):
+
+```csharp{title="Step 4: HTTP API - Models" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "HTTP"]}
+namespace ECommerce.OrderService.API.Endpoints.Models;
+
+public record CreateOrderRequest {
+  public required string CustomerId { get; init; }
+  public required List<OrderLineItemDto> LineItems { get; init; }
+}
+
+public record OrderLineItemDto {
+  public required string ProductId { get; init; }
+  public required string ProductName { get; init; }
+  public int Quantity { get; init; }
+  public decimal UnitPrice { get; init; }
+}
+
+public record CreateOrderResponse {
+  public required string OrderId { get; init; }
+  public required string Status { get; init; }
+  public decimal TotalAmount { get; init; }
+}
+```
+
+**Dispatcher patterns** — pick the one that fits:
+- `dispatcher.LocalInvokeAsync<OrderCreatedEvent>(command)` — in-process RPC, returns the typed business result (used here)
+- `dispatcher.SendAsync(command)` — returns `Task<IDeliveryReceipt>`; the command may be routed over the wire
+- `dispatcher.PublishAsync(eventData)` — broadcast an event to all interested handlers
 
 ---
 
 ## Step 5: Service Configuration
 
-**ECommerce.OrderService.API/Program.cs**:
+**ECommerce.OrderService.API/Program.cs** (condensed from the sample):
 
 ```csharp{title="Step 5: Service Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"]}
+using ECommerce.Contracts.Generated;
+using ECommerce.OrderService.API;
+using ECommerce.OrderService.API.Generated;
+using FastEndpoints;
+using FastEndpoints.Swagger;
+using Microsoft.EntityFrameworkCore;
 using Whizbang.Core;
-using Whizbang.Data.Postgres;
+using Whizbang.Core.Generated;
+using Whizbang.Core.Messaging;
+using Whizbang.Core.Observability;
+using Whizbang.Core.Workers;
+using Whizbang.Data.EFCore.Postgres;
 using Whizbang.Transports.AzureServiceBus;
-using Whizbang.Hosting.Azure.ServiceBus;
-using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add Whizbang
-builder.Services.AddWhizbang(options => {
-  options.ServiceName = "OrderService";
-  options.EnableOutbox = true;
-  options.EnableInbox = true;
-});
-
-// 2. Add PostgreSQL
-builder.Services.AddScoped<NpgsqlConnection>(sp => {
-  var connectionString = builder.Configuration.GetConnectionString("OrdersDb");
-  return new NpgsqlConnection(connectionString);
-});
-
-// 3. Add Azure Service Bus
-builder.AddAzureServiceBus("messaging");
-
-// 4. Add Aspire service defaults
+// Aspire service defaults (telemetry, health checks, service discovery)
 builder.AddServiceDefaults();
 
-// 5. Add controllers
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// FastEndpoints REST API
+builder.Services.AddFastEndpoints();
+builder.Services.SwaggerDocument();
+
+// Connection strings resolved by Aspire
+var postgresConnection = builder.Configuration.GetConnectionString("ordersdb")
+    ?? throw new InvalidOperationException("PostgreSQL connection string 'ordersdb' not found");
+var serviceBusConnection = builder.Configuration.GetConnectionString("servicebus")
+    ?? throw new InvalidOperationException("Azure Service Bus connection string 'servicebus' not found");
+
+// Register Azure Service Bus transport
+builder.Services.AddAzureServiceBusTransport(serviceBusConnection);
+builder.Services.AddAzureServiceBusHealthChecks();
+
+// Observability + worker infrastructure
+builder.Services.AddSingleton<ITraceStore, InMemoryTraceStore>();
+builder.Services.AddSingleton<IServiceInstanceProvider, ServiceInstanceProvider>();
+builder.Services.AddSingleton<OrderedStreamProcessor>();
+
+// EF Core DbContext for Inbox/Outbox/EventStore
+builder.Services.AddDbContext<OrderDbContext>(options =>
+  options.UseNpgsql(postgresConnection));
+
+// Unified Whizbang API with EF Core Postgres driver
+// Automatically registers IInbox, IOutbox, IEventStore
+_ = builder.Services
+  .AddWhizbang()
+  .WithEFCore<OrderDbContext>()
+  .WithDriver.Postgres;
+
+// Whizbang generated services (receptor discovery + dispatcher)
+builder.Services.AddReceptors();
+builder.Services.AddWhizbangDispatcher();
 
 var app = builder.Build();
 
-// Configure HTTP pipeline
-if (app.Environment.IsDevelopment()) {
-  app.UseSwagger();
-  app.UseSwaggerUI();
+// Initialize Whizbang tables (Inbox/Outbox/EventStore + PostgreSQL functions)
+using (var scope = app.Services.CreateScope()) {
+  var dbContext = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
+  var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+  await dbContext.EnsureWhizbangDatabaseInitializedAsync(logger);
 }
 
-app.UseHttpsRedirection();
-app.UseAuthorization();
-app.MapControllers();
+app.UseFastEndpoints(config => {
+  config.Endpoints.RoutePrefix = "api";
+});
 
-// Run database migrations
-await app.MigrateDatabaseAsync();
+app.MapDefaultEndpoints();
 
 app.Run();
 ```
 
-**Database migration helper**:
-
-**ECommerce.OrderService.API/Extensions/MigrationExtensions.cs**:
-
-```csharp{title="Step 5: Service Configuration - MigrationExtensions" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
-using Npgsql;
-using Dapper;
-
-namespace ECommerce.OrderService.API.Extensions;
-
-public static class MigrationExtensions {
-  public static async Task MigrateDatabaseAsync(this WebApplication app) {
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<NpgsqlConnection>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-    var migrationFiles = Directory.GetFiles(
-      Path.Combine(AppContext.BaseDirectory, "Database/Migrations"),
-      "*.sql"
-    ).OrderBy(f => f);
-
-    foreach (var file in migrationFiles) {
-      var sql = await File.ReadAllTextAsync(file);
-      await db.ExecuteAsync(sql);
-      logger.LogInformation("Applied migration: {File}", Path.GetFileName(file));
-    }
-  }
-}
-```
+:::updated
+There is no `AddWhizbang(options => ...)` overload with `ServiceName`/`EnableOutbox` flags. Configuration is expressed through the fluent chain: `AddWhizbang().WithEFCore<TDbContext>().WithDriver.Postgres` (plus `.WithRouting(...)` and `.AddTransportConsumer()` on services that consume from the bus — see the Inventory tutorial).
+:::
 
 ---
 
 ## Step 6: Aspire Orchestration
 
-**ECommerce.AppHost/Program.cs**:
+**ECommerce.AppHost/Program.cs** (condensed from the sample):
 
 ```csharp{title="Step 6: Aspire Orchestration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Aspire"]}
 var builder = DistributedApplication.CreateBuilder(args);
 
-// 1. Add PostgreSQL
+// PostgreSQL with pgAdmin (persistent across restarts)
 var postgres = builder.AddPostgres("postgres")
-  .WithPgAdmin();
+    .WithDataVolume("postgres-data")
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WithPgAdmin();
 
-var ordersDb = postgres.AddDatabase("orders-db");
+var ordersDb = postgres.AddDatabase("ordersdb");
 
-// 2. Add Azure Service Bus (emulator for local dev)
-var serviceBus = builder.AddAzureServiceBus("messaging")
-  .RunAsEmulator();
+// Azure Service Bus emulator for local development
+var messagingInfra = builder.AddAzureServiceBus("servicebus")
+    .RunAsEmulator(configureContainer => configureContainer
+        .WithLifetime(ContainerLifetime.Persistent));
 
-// 3. Add Order Service
-var orderService = builder.AddProject<Projects.ECommerce_OrderService_API>("order-service")
-  .WithReference(ordersDb)
-  .WithReference(serviceBus);
+// "orders" topic with per-service subscriptions
+var ordersTopic = messagingInfra.AddServiceBusTopic("orders");
+ordersTopic.AddServiceBusSubscription("sub-inventory-orders");
+ordersTopic.AddServiceBusSubscription("sub-payment-orders");
+
+// Order Service
+var orderService = builder.AddProject("orderservice", "../ECommerce.OrderService.API/ECommerce.OrderService.API.csproj")
+    .WithReference(ordersDb)
+    .WithReference(messagingInfra)
+    .WaitFor(ordersDb)
+    .WaitFor(messagingInfra)
+    .WithExternalHttpEndpoints();
 
 builder.Build().Run();
-```
-
-**appsettings.json**:
-
-```json{title="Step 6: Aspire Orchestration (2)" description="**appsettings." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Aspire"]}
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning",
-      "Whizbang": "Debug"
-    }
-  },
-  "AllowedHosts": "*",
-  "ConnectionStrings": {
-    "OrdersDb": "Host=localhost;Database=orders;Username=postgres;Password=postgres"
-  },
-  "Whizbang": {
-    "ServiceName": "OrderService",
-    "Outbox": {
-      "Enabled": true,
-      "BatchSize": 100,
-      "PollingInterval": "00:00:05"
-    },
-    "Inbox": {
-      "Enabled": true,
-      "BatchSize": 100
-    }
-  }
-}
 ```
 
 ---
@@ -558,7 +466,7 @@ cd ECommerce.AppHost
 dotnet run
 ```
 
-Open Aspire Dashboard: `http://localhost:15000`
+Open the Aspire Dashboard from the URL printed in the console.
 
 ### 2. Create Order
 
@@ -566,26 +474,15 @@ Open Aspire Dashboard: `http://localhost:15000`
 curl -X POST http://localhost:5000/api/orders \
   -H "Content-Type: application/json" \
   -d '{
-    "customerId": "cust-123",
-    "items": [
+    "customerId": "0195b3f0-1234-7abc-8def-0123456789ab",
+    "lineItems": [
       {
-        "productId": "prod-456",
+        "productId": "0195b3f0-5678-7abc-8def-0123456789ab",
+        "productName": "Widget",
         "quantity": 2,
         "unitPrice": 19.99
-      },
-      {
-        "productId": "prod-789",
-        "quantity": 1,
-        "unitPrice": 49.99
       }
-    ],
-    "shippingAddress": {
-      "street": "123 Main St",
-      "city": "Springfield",
-      "state": "IL",
-      "zipCode": "62701",
-      "country": "USA"
-    }
+    ]
   }'
 ```
 
@@ -593,57 +490,30 @@ curl -X POST http://localhost:5000/api/orders \
 
 ```json{title="Create Order (2)" description="Expected response:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Create", "Order"]}
 {
-  "orderId": "a1b2c3d4e5f6",
-  "customerId": "cust-123",
-  "items": [
-    {
-      "productId": "prod-456",
-      "quantity": 2,
-      "unitPrice": 19.99,
-      "lineTotal": 39.98
-    },
-    {
-      "productId": "prod-789",
-      "quantity": 1,
-      "unitPrice": 49.99,
-      "lineTotal": 49.99
-    }
-  ],
-  "shippingAddress": {
-    "street": "123 Main St",
-    "city": "Springfield",
-    "state": "IL",
-    "zipCode": "62701",
-    "country": "USA"
-  },
-  "totalAmount": 89.97,
-  "createdAt": "2024-12-12T10:30:00Z"
+  "orderId": "0195b3f0-9abc-7abc-8def-0123456789ab",
+  "status": "Created",
+  "totalAmount": 39.98
 }
 ```
 
 ### 3. Verify Database
 
 ```sql{title="Verify Database" description="Verify Database" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Verify", "Database"]}
--- Connect to PostgreSQL
-psql -h localhost -U postgres -d orders
+-- Connect to PostgreSQL (ordersdb)
 
--- Check order
-SELECT * FROM orders;
+-- Check the event store (OrderCreatedEvent appended)
+SELECT stream_id, event_type, created_at FROM wh_event_store ORDER BY created_at DESC;
 
--- Check items
-SELECT * FROM order_items;
-
--- Check outbox (event pending)
-SELECT message_id, message_type, created_at, processed_at
-FROM outbox;
+-- Check the outbox (pending rows are removed once delivered)
+SELECT message_id, status, created_at FROM wh_outbox;
 ```
 
 ### 4. Verify Event Publishing
 
 Check Aspire Dashboard:
 - **Order Service**: HTTP request logged
-- **Service Bus**: OrderCreated event published
-- **Outbox Worker**: Picked up event from outbox table
+- **Service Bus**: OrderCreatedEvent published to the `orders` topic
+- **Outbox Worker**: Picked up event from `wh_outbox`
 
 ---
 
@@ -653,9 +523,9 @@ Check Aspire Dashboard:
 
 ```mermaid
 flowchart TD
-    subgraph TOP["Transactional Outbox Pattern"]
-        TX["PostgreSQL Transaction<br/>1. INSERT INTO orders (...)<br/>2. INSERT INTO order_items (...)<br/>3. INSERT INTO outbox (...) ← Same TX!<br/>COMMIT;"]
-        Worker["Background Worker (Whizbang)<br/>- SELECT * FROM outbox WHERE processed_at IS NULL<br/>- Publish to Azure Service Bus<br/>- UPDATE outbox SET processed_at = NOW()"]
+    subgraph TOP["Transactional Outbox Pattern (Whizbang-managed)"]
+        TX["PostgreSQL Transaction<br/>1. Append event to wh_event_store<br/>2. INSERT INTO wh_outbox ← Same TX!<br/>COMMIT;"]
+        Worker["Outbox Worker (Whizbang)<br/>- Claims pending wh_outbox rows (lease-based)<br/>- Publishes to Azure Service Bus<br/>- Completes/removes the row"]
 
         TX --> Worker
     end
@@ -665,19 +535,24 @@ flowchart TD
 ```
 
 **Benefits**:
-- ✅ **Atomic**: Order + event in single transaction
+- ✅ **Atomic**: Event store append + outbox insert in a single transaction
 - ✅ **Reliable**: Event guaranteed published (eventually)
-- ✅ **Consistent**: No partial state (order saved but event lost)
+- ✅ **Zero boilerplate**: You call `PublishAsync` — Whizbang does the rest
 
 ### Message Context
 
+Every dispatched message carries an `IMessageContext` for correlation and tracing:
+
 ```csharp{title="Message Context" description="Message Context" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Message", "Context"]}
 public interface IMessageContext {
-  Guid MessageId { get; }           // Unique ID for this message
-  Guid? CorrelationId { get; }      // Business transaction ID
-  Guid? CausationId { get; }        // ID of message that caused this one
-  string? UserId { get; }           // User who initiated request
-  IDictionary<string, string> Metadata { get; } // Custom metadata
+  MessageId MessageId { get; }         // Unique ID for this message
+  CorrelationId CorrelationId { get; } // Business transaction ID
+  MessageId CausationId { get; }       // ID of the message that caused this one
+  DateTimeOffset Timestamp { get; }    // When the message was created
+  string? UserId { get; }              // User who initiated the request
+  string? TenantId { get; }            // Tenant context (multi-tenant scenarios)
+  IReadOnlyDictionary<string, object> Metadata { get; } // Custom metadata
+  // ... plus security scope and caller info
 }
 ```
 
@@ -688,12 +563,12 @@ HTTP Request
   CorrelationId: req-123
   MessageId: msg-001
 
-CreateOrder Command
+CreateOrderCommand
   CorrelationId: req-123 (same)
   CausationId: msg-001
   MessageId: msg-002
 
-OrderCreated Event
+OrderCreatedEvent
   CorrelationId: req-123 (same)
   CausationId: msg-002
   MessageId: msg-003
@@ -707,121 +582,111 @@ This enables **distributed tracing** across services.
 
 ### Unit Test
 
-**ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs**:
+**samples/ECommerce/tests/ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs** (condensed):
 
 ```csharp{title="Unit Test" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
-using TUnit.Core;
-using TUnit.Assertions;
-using ECommerce.OrderService.API.Receptors;
 using ECommerce.Contracts.Commands;
+using ECommerce.Contracts.Events;
+using ECommerce.OrderService.API.Receptors;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ECommerce.OrderService.Tests;
 
 public class CreateOrderReceptorTests {
   [Test]
-  public async Task HandleAsync_ValidOrder_ReturnsOrderCreatedEvent() {
-    // Arrange
-    var db = new MockNpgsqlConnection();
-    var context = new MockMessageContext();
-    var logger = new MockLogger<CreateOrderReceptor>();
-    var receptor = new CreateOrderReceptor(db, context, logger);
+  public async Task CreateOrderReceptor_ValidOrder_PublishesEventAsync() {
+    // Arrange - TestDispatcher records published messages (see sample for full impl)
+    var dispatcher = new TestDispatcher();
+    var logger = NullLogger<CreateOrderReceptor>.Instance;
+    var receptor = new CreateOrderReceptor(dispatcher, logger);
 
-    var command = new CreateOrder(
-      CustomerId: "cust-123",
-      Items: [
-        new OrderItem("prod-456", 2, 19.99m)
+    var command = new CreateOrderCommand {
+      OrderId = OrderId.New(),
+      CustomerId = CustomerId.New(),
+      LineItems = [
+        new OrderLineItem {
+          ProductId = ProductId.New(),
+          ProductName = "Widget",
+          Quantity = 2,
+          UnitPrice = 19.99m
+        }
       ],
-      ShippingAddress: new Address("123 Main", "Springfield", "IL", "62701", "USA")
-    );
+      TotalAmount = 39.98m
+    };
 
     // Act
     var result = await receptor.HandleAsync(command);
 
     // Assert
-    await Assert.That(result.CustomerId).IsEqualTo("cust-123");
+    await Assert.That(result.OrderId).IsEqualTo(command.OrderId);
     await Assert.That(result.TotalAmount).IsEqualTo(39.98m);
-    await Assert.That(result.Items).HasCount().EqualTo(1);
+    await Assert.That(dispatcher.PublishCount).IsEqualTo(1);
+    await Assert.That(dispatcher.PublishedMessages[0]).IsTypeOf<OrderCreatedEvent>();
+  }
+
+  [Test]
+  public async Task CreateOrderReceptor_EmptyLineItems_ThrowsInvalidOperationExceptionAsync() {
+    // Arrange
+    var dispatcher = new TestDispatcher();
+    var receptor = new CreateOrderReceptor(dispatcher, NullLogger<CreateOrderReceptor>.Instance);
+
+    var command = new CreateOrderCommand {
+      OrderId = OrderId.New(),
+      CustomerId = CustomerId.New(),
+      LineItems = [],  // Empty list
+      TotalAmount = 39.98m
+    };
+
+    // Act & Assert
+    await Assert.That(async () => await receptor.HandleAsync(command))
+      .Throws<InvalidOperationException>()
+      .WithMessage("Order must contain at least one item");
   }
 }
 ```
 
-### Integration Test
-
-```csharp{title="Integration Test" description="Integration Test" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Integration", "Test"]}
-[Test]
-public async Task CreateOrder_EndToEnd_PublishesEvent() {
-  // Arrange
-  var factory = new WebApplicationFactory<Program>();
-  var client = factory.CreateClient();
-
-  var command = new {
-    customerId = "cust-123",
-    items = new[] {
-      new { productId = "prod-456", quantity = 2, unitPrice = 19.99 }
-    },
-    shippingAddress = new {
-      street = "123 Main",
-      city = "Springfield",
-      state = "IL",
-      zipCode = "62701",
-      country = "USA"
-    }
-  };
-
-  // Act
-  var response = await client.PostAsJsonAsync("/api/orders", command);
-
-  // Assert
-  await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Created);
-
-  var result = await response.Content.ReadFromJsonAsync<OrderCreated>();
-  await Assert.That(result!.TotalAmount).IsEqualTo(39.98m);
-}
-```
+Receptors take `IDispatcher` + `ILogger` — no database mocking needed. Use a recording `TestDispatcher` (see the sample test file) to assert on published events.
 
 ---
 
 ## Common Issues
 
-### Issue 1: "Outbox table not found"
+### Issue 1: "Whizbang tables not found"
 
-**Cause**: Migration not run
-**Fix**:
-```bash{title="Issue 1: 'Outbox table not found'" description="Cause: Migration not run Fix:" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Issue", "'Outbox"]}
-# Ensure migrations executed on startup
-dotnet run --project ECommerce.OrderService.API
-```
+**Cause**: `EnsureWhizbangDatabaseInitializedAsync()` not called on startup
+**Fix**: Add the initialization scope shown in Step 5 before `app.Run()`.
 
 ### Issue 2: "Event not published"
 
-**Cause**: Outbox worker not running
-**Fix**: Check Aspire dashboard for worker logs. Verify Service Bus connection.
+**Cause**: Outbox worker not running or transport not registered
+**Fix**: Check Aspire dashboard for worker logs. Verify `AddAzureServiceBusTransport(...)` is registered and the Service Bus emulator is healthy.
 
-### Issue 3: "Transaction deadlock"
+### Issue 3: "ReceptorNotFoundException"
 
-**Cause**: Long-running transaction
-**Fix**: Keep receptor logic fast. Move heavy processing to event handlers.
+**Cause**: `AddReceptors()` (generated registration) not called, or the receptor assembly isn't referenced
+**Fix**: Call `builder.Services.AddReceptors()` and `builder.Services.AddWhizbangDispatcher()`.
 
 ---
 
 ## Next Steps
 
 Continue to **[Inventory Service](inventory-service.md)** to:
-- Subscribe to `OrderCreated` events
+- Subscribe to order events
 - Implement inventory reservation
-- Publish `InventoryReserved` events
-- Handle compensation (stock release)
+- Publish `InventoryReservedEvent`
+- Maintain perspectives (read models)
 
 ---
 
 ## Key Takeaways
 
-✅ **Outbox Pattern** - Atomic event publishing with database transactions
+✅ **Outbox Pattern** - Atomic event publishing, managed by the framework
 ✅ **Command/Event Separation** - Clear intent (command) vs. fact (event)
+✅ **Strongly-Typed IDs** - `[WhizbangId]` structs with UUIDv7 time-ordering
 ✅ **Message Context** - Distributed tracing with correlation IDs
 ✅ **Validation** - Business rules enforced in receptors
 ✅ **.NET Aspire** - Local orchestration with PostgreSQL + Service Bus emulators
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

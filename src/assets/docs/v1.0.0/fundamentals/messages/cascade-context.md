@@ -1,6 +1,8 @@
 ---
 title: Cascade Context & Security Propagation
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 6
@@ -23,6 +25,11 @@ codeReferences:
   - src/Whizbang.Core/IMessageContext.cs
   - src/Whizbang.Core/MessageContext.cs
 testReferences:
+  - tests/Whizbang.Observability.Tests/CascadeContextTests.cs
+  - tests/Whizbang.Observability.Tests/CascadeContextFactoryTests.cs
+  - tests/Whizbang.Core.Tests/Security/ScopeContextAccessorTests.cs
+  - tests/Whizbang.Core.Tests/Security/ScopeContextAccessorInitiatingContextTests.cs
+  - tests/Whizbang.Core.Tests/Security/ScopedMessageContextTests.cs
   - tests/Whizbang.Core.Tests/Security/SecurityContextHelperTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxCascadeIdentityPersistenceIntegrationTests.cs
 lastMaintainedCommit: '1fe307a4'
@@ -255,7 +262,7 @@ public interface IMessageContext {
 }
 ```
 
-This is critical for deferred lifecycle stages (like `PostPerspectiveAsync`) where the original HTTP context is no longer available. The scope context persists because the message carries it.
+This is critical for deferred lifecycle stages (like `PostPerspectiveDetached`) where the original HTTP context is no longer available. The scope context persists because the message carries it.
 
 ---
 
@@ -369,7 +376,7 @@ If `InitiatingContext` changes (e.g., a new message enters the processing scope)
 | 2 | `IScopeContext.Scope` | Populated from envelope hop SecurityContext |
 | 3 | `IMessageContextAccessor.Current` | Backward-compatibility fallback |
 
-This ensures tenant context is always available, even in deferred lifecycle stages like `PostPerspectiveAsync` where the original HTTP context is gone.
+This ensures tenant context is always available, even in deferred lifecycle stages like `PostPerspectiveDetached` where the original HTTP context is gone.
 
 ---
 

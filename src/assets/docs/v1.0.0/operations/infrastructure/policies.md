@@ -1,6 +1,8 @@
 ---
 title: Policy-Based Routing
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Infrastructure
 order: 4
@@ -22,6 +24,7 @@ testReferences:
   - tests/Whizbang.Policies.Tests/PolicyConfigurationExtensionsTests.cs
   - tests/Whizbang.Policies.Tests/PolicyConfigurationTransportTests.cs
   - tests/Whizbang.Policies.Tests/PolicyContextPoolTests.cs
+  - tests/Whizbang.Policies.Tests/PolicyDecisionTests.cs
   - tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs
 lastMaintainedCommit: '01f07906'
 ---

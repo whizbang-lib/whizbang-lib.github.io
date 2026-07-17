@@ -1,6 +1,8 @@
 ---
 title: 'WHIZ058: GUID Call Intercepted'
 pageType: troubleshooting
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   Informational diagnostic indicating a GUID creation call has been intercepted
   and wrapped with TrackedGuid
@@ -16,6 +18,9 @@ codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/GuidInterceptorGenerator.cs
   - src/Whizbang.Core/ValueObjects/TrackedGuid.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/GuidInterceptorGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/ThirdPartyGuidInterceptionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -26,14 +31,16 @@ lastMaintainedCommit: '01f07906'
 
 ## Description
 
-This informational diagnostic is reported when the `GuidInterceptorGenerator` intercepts a GUID creation call and wraps it with `TrackedGuid`. This enables metadata tracking for the generated GUID.
+This informational diagnostic is reported when the `GuidInterceptorGenerator` identifies a GUID creation call eligible for interception and wraps it with `TrackedGuid`. This enables metadata tracking for the generated GUID.
 
-This diagnostic is only reported when GUID interception is enabled via the MSBuild property `WhizbangGuidInterceptionEnabled=true`.
+The diagnostic itself is reported whenever the generator finds an interceptable call — even if `WhizbangGuidInterceptionEnabled` is not set. However, the actual interceptor code (the `TrackedGuid` wrapping) is only generated when the MSBuild property `WhizbangGuidInterceptionEnabled=true` is set.
+
+Calls inside `Whizbang.*` namespaces are never intercepted (the library controls its own GUID creation), so no WHIZ058 is reported for them.
 
 ## Diagnostic Message
 
 ```
-GUID call 'System.Guid.NewGuid()' at file.cs:15 intercepted and wrapped with TrackedGuid
+Intercepted System.Guid.NewGuid() at /src/MyApp/OrderService.cs:15 - wrapped with TrackedGuid for metadata tracking
 ```
 
 ## What Gets Intercepted
@@ -85,13 +92,19 @@ public class TestFixtures {
 
 ### Pragma Suppression
 
+Wrapping a call in `#pragma warning disable WHIZ055` (or `WHIZ056`) disables interception entirely for that call — no interceptor is generated and neither WHIZ058 nor WHIZ059 is reported:
+
 ```csharp{title="Pragma Suppression" description="Pragma Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Pragma", "Suppression"]}
-#pragma warning disable WHIZ058
-var id = Guid.NewGuid();
-#pragma warning restore WHIZ058
+#pragma warning disable WHIZ055
+var id = Guid.NewGuid();  // Not intercepted, no WHIZ058
+#pragma warning restore WHIZ055
 ```
 
+Note: `#pragma warning disable WHIZ058` does **not** stop interception — the generator keys pragma suppression off the analyzer IDs WHIZ055/WHIZ056, not WHIZ058.
+
 ### Project-Level Suppression
+
+Hides the WHIZ058 informational message from build output. This does **not** stop interception — use `[SuppressGuidInterception]` or the WHIZ055/WHIZ056 pragma for that:
 
 ```xml{title="Project-Level Suppression" description="Project-Level Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Level", "Suppression"]}
 <PropertyGroup>

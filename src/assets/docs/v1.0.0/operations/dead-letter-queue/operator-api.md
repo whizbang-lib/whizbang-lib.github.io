@@ -1,6 +1,8 @@
 ---
 title: Operator HTTP API
-pageType: concept
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Dead-Letter Queue
 order: 3
@@ -12,6 +14,13 @@ tags: >-
   dead-letter-queue, operator-api, MapWhizbangDeadLetterEndpoints, http
 codeReferences:
   - src/Whizbang.Hosting.AspNet/DeadLetterOperatorEndpoints.cs
+  - src/Whizbang.Core/Messaging/IDeadLetterRecoveryService.cs
+  - src/Whizbang.Core/Messaging/DeadLetterRecoveryTypes.cs
+  - src/Whizbang.Data.Postgres/Migrations/051_DeadLetterRecovery.sql
+testReferences:
+  - tests/Whizbang.Hosting.AspNet.Tests/DeadLetterOperatorEndpointsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDeadLetterRecoveryServiceTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/DeadLetterRecoverySqlTests.cs
 ---
 
 # Operator HTTP API
@@ -80,7 +89,7 @@ tags: ["dead-letter", "operator-api", "DeadLetterEntry", "json-response"]
     "deadLetterId": "019e8b1d-7e90-77cc-a3c7-ff3469de0f33",
     "sourceTable": "wh_inbox",
     "sourceId": "019e8b1d-7e90-77cc-a3d6-0a826384b4fd",
-    "streamId": null,
+    "streamId": "019e8b1d-7e90-77cc-a3e1-1c5f2a7b9d02",
     "messageType": "MyApp.InventoryAdjustCommand",
     "failureReason": 5,
     "attemptsWhenDlq": 10,
@@ -94,13 +103,19 @@ tags: ["dead-letter", "operator-api", "DeadLetterEntry", "json-response"]
 
 `failureReason` is the integer value of `MessageFailureReason`
 (e.g. `5 = MaxAttemptsExceeded`, `8 = Throttled`). Consumers should
-map the enum on the client side.
+map the enum on the client side. Null-valued fields (e.g. `streamId`
+for singleton-stream messages) are omitted from the JSON — the context
+uses `JsonIgnoreCondition.WhenWritingNull`. Rows come back FIFO-ordered
+by `dead_lettered_at`.
 
 ### `POST /whizbang/dlq/{id}/retry`
 
-Schedules the row for immediate retry (`next_recovery_attempt_at = NOW()`).
-The `DeadLetterRecoveryWorker` picks it up on the next tick. Idempotent —
-re-issuing the call just re-sets the timestamp.
+Schedules the row for immediate retry — `next_recovery_at = NOW()` and
+`recovery_status` back to `Pending`, so it also resurrects a held row.
+The `DeadLetterRecoveryWorker` picks it up on the next scan (within
+milliseconds when the `DeadLetterReady` NOTIFY signal is wired — migration
+056 — otherwise on the next backstop tick). Idempotent — re-issuing the
+call just re-sets the timestamp.
 
 ### `POST /whizbang/dlq/{id}/hold`
 
@@ -115,11 +130,14 @@ row is truly unrecoverable. Forensic snapshot stays in the table.
 
 ### `POST /whizbang/dlq/scan-now?generation=…`
 
-Manual generation-replay sweep. Schedules every non-terminal DLQ row whose
-current generation hasn't seen the supplied generation for immediate
-retry. When the query parameter is absent, the configured
-`IGenerationProvider.GetGeneration()` is used — typically the running
-build's identity.
+Manual generation-replay sweep (`reset_dead_letters_for_generation`).
+Schedules every DLQ row that hasn't yet been retried on the supplied
+generation for immediate retry — excluding `PermanentlyFailed` rows and
+rows whose operator disposition is `HoldIndefinitely`. `HoldForReview`
+rows ARE included: the sweep returns them to `Pending`, so a new
+generation gives held rows one fresh attempt. When the query parameter
+is absent, the configured `IGenerationProvider.GetGeneration()` is used
+— typically the running build's identity.
 
 Response:
 
@@ -133,7 +151,7 @@ tags: ["dead-letter", "operator-api", "generation-replay", "scan-now"]
 { "generation": "0.502.0-alpha.1", "scheduled": 42 }
 ```
 
-`scheduled` is the number of rows whose `next_recovery_attempt_at` got
+`scheduled` is the number of rows whose `next_recovery_at` got
 reset. Idempotent: rows already in `retried_on_generations` for this
 generation are skipped.
 

@@ -1,6 +1,8 @@
 ---
 title: Message Context & Tracing
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 5
@@ -15,6 +17,9 @@ codeReferences:
   - src/Whizbang.Core/ValueObjects/CausationId.cs
   - src/Whizbang.Core/Observability/MessageEnvelope.cs
   - src/Whizbang.Core/Observability/ICallerInfo.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/ValueObjects/IdentityValueObjectTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/CorrelationIdW3CTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -77,14 +82,18 @@ graph TB
 
 **Purpose**: Unique identifier for each message (never reused).
 
-**Type**: Strongly-typed value object using UUIDv7.
+**Type**: Strongly-typed value object using UUIDv7, declared with the `[WhizbangId]` attribute. The source generator emits the members:
 
 ```csharp{title="MessageId" description="Type: Strongly-typed value object using UUIDv7." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "MessageId"]}
-public record struct MessageId(Guid Value) {
-    public static MessageId New() => new(Guid.CreateVersion7());
+[WhizbangId]
+public readonly partial struct MessageId;
 
-    public override string ToString() => Value.ToString();
-}
+// Generated members (via the WhizbangId source generator):
+// public Guid Value { get; init; }
+// public static MessageId New();          // TrackedGuid.NewMedo() — monotonic UUIDv7
+// public static MessageId From(Guid);     // validates UUIDv7
+// public static MessageId Parse(string);  // validates UUIDv7
+// public override string ToString();
 ```
 
 **Key Characteristics**:
@@ -165,16 +174,14 @@ public readonly partial struct CorrelationId {
 ### Usage
 
 ```csharp{title="Usage (2)" description="Usage (2)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Usage"]}
-// Create new correlation for HTTP request
-var correlationId = CorrelationId.New();
-
-// The dispatcher then propagates that correlation id to every message in the workflow —
-// no manual plumbing needed.
+// The dispatcher mints (or inherits) the correlation id and propagates it to
+// every message in the workflow — no manual plumbing needed.
 var command = new CreateOrder(customerId, items);
-var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
+var (result, receipt) = await _dispatcher
+    .LocalInvokeWithReceiptAsync<CreateOrder, OrderCreated>(command);
 
-// Result carries the same CorrelationId — the client's X-Correlation-ID.
-Console.WriteLine($"Correlation ID: {result.CorrelationId}");
+// The receipt carries the workflow's CorrelationId (e.g., the client's X-Correlation-ID).
+Console.WriteLine($"Correlation ID: {receipt.CorrelationId}");
 ```
 
 ### Querying by CorrelationId
@@ -210,13 +217,18 @@ public async Task<Message[]> GetWorkflowMessagesAsync(
 
 **Purpose**: Identifies the **parent message** that caused this message to exist.
 
-**Type**: Strongly-typed value object using Guid (refers to a MessageId).
+**Type**: There is **no separate `CausationId` type** — a causation id *is* the parent message's `MessageId`, so Whizbang uses `MessageId` directly (e.g., `IMessageContext.CausationId` is a `MessageId`).
 
-```csharp{title="CausationId" description="Type: Strongly-typed value object using Guid (refers to a MessageId)." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CausationId"]}
-public record struct CausationId(Guid Value) {
-    public static CausationId From(MessageId messageId) => new(messageId.Value);
+```csharp{title="CausationId" description="CausationId is just the parent's MessageId - no separate type." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CausationId"]}
+// From src/Whizbang.Core/ValueObjects/CausationId.cs:
+// "CausationId is just a MessageId of the parent/causing message.
+//  No need for a separate type - use MessageId directly."
 
-    public override string ToString() => Value.ToString();
+public interface IMessageContext {
+    MessageId MessageId { get; }
+    CorrelationId CorrelationId { get; }
+    MessageId CausationId { get; }   // parent's MessageId
+    // ...
 }
 ```
 
@@ -259,20 +271,22 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         // Business logic...
 
         return new OrderCreated(
-            MessageId: MessageId.New(),              // New unique ID
-            CorrelationId: message.CorrelationId,    // Inherit correlation
-            CausationId: CausationId.From(message.MessageId),  // Parent is CreateOrder
             OrderId: Guid.CreateVersion7(),
             CustomerId: message.CustomerId,
             Items: message.Items,
             Total: CalculateTotal(message.Items),
             CreatedAt: DateTimeOffset.UtcNow
         );
+
+        // The event's envelope automatically receives:
+        //   MessageId    = new unique ID
+        //   CorrelationId = inherited from CreateOrder's envelope
+        //   CausationId  = CreateOrder's MessageId (the parent)
     }
 }
 ```
 
-**Whizbang handles this automatically via MessageEnvelope!**
+**Whizbang handles the identity stamping automatically via MessageEnvelope hops** — you never assign these ids on your domain events.
 
 ---
 
@@ -281,13 +295,16 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 Whizbang wraps all messages in a **MessageEnvelope** containing context:
 
 ```csharp{title="MessageEnvelope" description="Whizbang wraps all messages in a MessageEnvelope containing context:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "MessageEnvelope"]}
-public class MessageEnvelope {
-    public MessageId MessageId { get; init; }
-    public CorrelationId CorrelationId { get; init; }
-    public CausationId? CausationId { get; init; }
-    public object Payload { get; init; }  // Your actual message
-    public List<MessageHop> Hops { get; init; }  // Trace hops
-    public DateTimeOffset CreatedAt { get; init; }
+public class MessageEnvelope<TMessage> : IMessageEnvelope<TMessage> {
+    public required MessageId MessageId { get; init; }
+    public required TMessage Payload { get; init; }        // Your actual message
+    public required List<MessageHop> Hops { get; init; }   // Trace hops (each hop carries CorrelationId/CausationId/Scope)
+    public int Version { get; init; }
+    public MessageDispatchContext? DispatchContext { get; init; }
+
+    // Correlation and causation are read from the hops:
+    public CorrelationId? GetCorrelationId();
+    public MessageId? GetCausationId();
 }
 ```
 

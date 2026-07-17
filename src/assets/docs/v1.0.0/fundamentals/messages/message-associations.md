@@ -1,6 +1,8 @@
 ---
 title: Message Associations
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 24
@@ -10,6 +12,9 @@ tags: 'message-associations, perspectives, receptors, discovery'
 codeReferences:
   - src/Whizbang.Core/Messaging/MessageAssociationRecord.cs
   - src/Whizbang.Data.Schema/Schemas/MessageAssociationsSchema.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MessageAssociationRegistrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/MessageAssociationRegistryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -107,6 +112,9 @@ public static class MessageAssociationsSchema {
     ],
     Indexes: [
       new("idx_message_associations_message_type", [Columns.MESSAGE_TYPE]),
+      new("idx_message_associations_association_type", [Columns.ASSOCIATION_TYPE]),
+      new("idx_message_associations_target_name", [Columns.TARGET_NAME]),
+      new("idx_message_associations_service_name", [Columns.SERVICE_NAME]),
       new("idx_message_associations_target_lookup",
           [Columns.ASSOCIATION_TYPE, Columns.TARGET_NAME, Columns.SERVICE_NAME])
     ],
@@ -265,6 +273,15 @@ CREATE TABLE wb_message_associations (
 
 CREATE INDEX idx_message_associations_message_type
   ON wb_message_associations (message_type);
+
+CREATE INDEX idx_message_associations_association_type
+  ON wb_message_associations (association_type);
+
+CREATE INDEX idx_message_associations_target_name
+  ON wb_message_associations (target_name);
+
+CREATE INDEX idx_message_associations_service_name
+  ON wb_message_associations (service_name);
 
 CREATE INDEX idx_message_associations_target_lookup
   ON wb_message_associations (association_type, target_name, service_name);

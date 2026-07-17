@@ -1,6 +1,8 @@
 ---
 title: AddAllWhizbangServices
-pageType: concept
+pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: DI
 order: 5
@@ -10,12 +12,18 @@ description: >-
 tags: 'di, dependency-injection, service-registration, convenience'
 codeReferences:
   - src/Whizbang.Generators/Templates/ServiceRegistrationsTemplate.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/ServiceRegistrationGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # AddAllWhizbangServices
 
-`AddAllWhizbangServices` is a convenience method that registers all discovered Perspective and Lens implementations with the dependency injection container in a single call.
+`AddAllWhizbangServices` is a convenience method that registers all discovered Perspective and Lens implementations with the dependency injection container in a single call. All registrations are **Transient**.
+
+:::updated
+Calling this method explicitly is usually unnecessary: `AddWhizbang()` auto-invokes the generated registrations via `ServiceRegistrationCallbacks` when your assembly loads. Use the explicit call when you register services without `AddWhizbang()`, or configure auto-registration through `options.Services` instead (see [ServiceRegistrationOptions](service-registration-options)).
+:::
 
 ## Signature
 
@@ -71,16 +79,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
-// 2. Add core Whizbang services
+// 2. Add core Whizbang services (auto-registers discovered services)
 builder.Services.AddWhizbang(options => {
-  options.Tags.UseHook<NotificationTagAttribute, SignalRNotificationHook>();
+  options.Tags.UseHook<SignalTagAttribute, SignalRNotificationHook<NotificationHub>>();
 });
 
-// 3. Register Perspective message handlers (for dispatch routing)
+// 3. Register perspective runners (for perspective materialization)
 builder.Services.AddWhizbangPerspectives();
-
-// 4. Register generated service registrations (for DI resolution)
-builder.Services.AddAllWhizbangServices();
 
 var app = builder.Build();
 ```
@@ -112,9 +117,12 @@ The method returns `IServiceCollection` for fluent configuration:
 
 ```csharp{title="Method Chaining" description="Chain service registration methods" category="DI" difficulty="BEGINNER" tags=["DI", "Fluent"]}
 builder.Services
-    .AddWhizbang()
-    .AddWhizbangPerspectives()
-    .AddAllWhizbangServices();
+    .AddPerspectiveServices()
+    .AddLensServices();
+
+// Note: AddWhizbang() returns a WhizbangBuilder (for storage configuration
+// chaining like .WithEFCore<T>()), not IServiceCollection — call it as a
+// separate statement.
 ```
 
 ## See Also

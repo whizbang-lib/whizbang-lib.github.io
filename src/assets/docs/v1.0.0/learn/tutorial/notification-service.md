@@ -1,6 +1,8 @@
 ---
 title: Notification Service
 pageType: tutorial
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Tutorial
 order: 5
@@ -14,12 +16,15 @@ codeReferences:
     samples/ECommerce/ECommerce.NotificationWorker/Receptors/SendNotificationReceptor.cs
   - samples/ECommerce/ECommerce.Contracts/Commands/SendNotificationCommand.cs
   - samples/ECommerce/ECommerce.Contracts/Events/NotificationSentEvent.cs
+testReferences:
+  - >-
+    samples/ECommerce/tests/ECommerce.NotificationWorker.Tests/SendNotificationReceptorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Notification Service
 
-Build the **Notification Worker** - a background service that subscribes to multiple events (`OrderCreated`, `PaymentProcessed`, `ShipmentCreated`) and sends notifications via email/SMS.
+Build the **Notification Worker** - a background service that handles `SendNotificationCommand`, sends notifications via email/SMS/push providers, and publishes `NotificationSentEvent`.
 
 :::note
 This is **Part 4** of the ECommerce Tutorial. Complete [Payment Processing](payment-processing.md) first.
@@ -33,38 +38,146 @@ This is **Part 4** of the ECommerce Tutorial. Complete [Payment Processing](paym
 flowchart TD
     subgraph NSA["Notification Service Architecture"]
         ASB["Azure Service Bus"]
-        Receptors["Multiple Event Receptors<br/>- OrderConfirmationReceptor<br/>- PaymentReceiptReceptor<br/>- ShipmentNotificationReceptor"]
+        Receptor["SendNotificationReceptor<br/>- Render message<br/>- Send via provider<br/>- Publish NotificationSentEvent"]
         Template["Template Engine<br/>(Scriban)"]
-        Email["Email Provider<br/>(SendGrid/Twilio)"]
-        Tracking["Postgres Tracking Table"]
+        Email["Email/SMS Provider<br/>(SendGrid/Twilio)"]
+        EventStore["wh_event_store (Event Store)"]
 
-        ASB -->|"OrderCreated, PaymentProcessed, etc."| Receptors
-        Receptors --> Template
-        Receptors --> Email
-        Receptors --> Tracking
+        ASB -->|"SendNotificationCommand"| Receptor
+        Receptor --> Template
+        Receptor --> Email
+        Receptor --> EventStore
     end
 
     class ASB layer-command
-    class Receptors layer-core
+    class Receptor layer-core
     class Template,Email layer-infrastructure
-    class Tracking layer-event
+    class EventStore layer-event
 ```
 
 **Features**:
-- ✅ Multi-event subscriptions
-- ✅ Email notifications (SendGrid)
-- ✅ SMS notifications (Twilio)
+- ✅ Command-driven notifications (Email / SMS / Push)
+- ✅ `NotificationSentEvent` for delivery tracking
+- ✅ Provider abstraction (SendGrid, Twilio)
 - ✅ Template rendering (Scriban)
-- ✅ Delivery tracking
-- ✅ Retry logic for failed sends
+- ✅ Framework-managed inbox/outbox
 
 ---
 
-## Step 1: Notification Providers
+## Step 1: Define Messages
 
-### Email Provider (SendGrid)
+### SendNotificationCommand
 
-**ECommerce.NotificationWorker/Services/IEmailProvider.cs**:
+**ECommerce.Contracts/Commands/SendNotificationCommand.cs**:
+
+```csharp{title="SendNotificationCommand" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "SendNotification", "Command"]}
+using Whizbang.Core;
+
+namespace ECommerce.Contracts.Commands;
+
+/// <summary>
+/// Command to send a notification to a customer
+/// </summary>
+public record SendNotificationCommand : ICommand {
+  public required string CustomerId { get; init; }
+  public required string Subject { get; init; }
+  public required string Message { get; init; }
+  public NotificationType Type { get; init; }
+}
+
+public enum NotificationType {
+  Email,
+  Sms,
+  Push
+}
+```
+
+### NotificationSentEvent
+
+**ECommerce.Contracts/Events/NotificationSentEvent.cs**:
+
+```csharp{title="NotificationSentEvent" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "NotificationSent", "Event"]}
+using ECommerce.Contracts.Commands;
+using Whizbang.Core;
+
+namespace ECommerce.Contracts.Events;
+
+/// <summary>
+/// Event published when a notification is successfully sent
+/// </summary>
+public record NotificationSentEvent : IEvent {
+  [StreamId]
+  public required string CustomerId { get; init; }
+  public required string Subject { get; init; }
+  public NotificationType Type { get; init; }
+  public DateTime SentAt { get; init; }
+}
+```
+
+---
+
+## Step 2: Implement Receptor
+
+**ECommerce.NotificationWorker/Receptors/SendNotificationReceptor.cs**:
+
+```csharp{title="Step 2: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
+using ECommerce.Contracts.Commands;
+using ECommerce.Contracts.Events;
+using Whizbang.Core;
+
+namespace ECommerce.NotificationWorker.Receptors;
+
+/// <summary>
+/// Handles SendNotificationCommand and publishes NotificationSentEvent
+/// </summary>
+public class SendNotificationReceptor(IDispatcher dispatcher, ILogger<SendNotificationReceptor> logger) : IReceptor<SendNotificationCommand, NotificationSentEvent> {
+
+  public async ValueTask<NotificationSentEvent> HandleAsync(
+    SendNotificationCommand message,
+    CancellationToken cancellationToken = default) {
+
+    logger.LogInformation(
+      "Sending {NotificationType} notification to customer {CustomerId}: {Subject}",
+      message.Type,
+      message.CustomerId,
+      message.Subject);
+
+    // Send the notification (business logic would go here)
+    // In a real system, this would call an email/SMS/push notification service
+
+    // Simulate sending delay
+    await Task.Delay(100, cancellationToken);
+
+    var notificationSent = new NotificationSentEvent {
+      CustomerId = message.CustomerId,
+      Subject = message.Subject,
+      Type = message.Type,
+      SentAt = DateTime.UtcNow
+    };
+
+    // Publish the event
+    await dispatcher.PublishAsync(notificationSent);
+
+    logger.LogInformation(
+      "Notification sent to customer {CustomerId}",
+      message.CustomerId);
+
+    return notificationSent;
+  }
+}
+```
+
+:::updated
+Earlier drafts showed per-event receptors (`IReceptor<OrderCreated, NotificationSent>`, etc.) with `Task<T> HandleAsync` and hand-written tracking SQL. The receptor contract is `ValueTask<TResponse> HandleAsync(TMessage, CancellationToken)`. If you want a notification per upstream event (order created, payment processed, shipment created), add one receptor per event type — events can have receptors too (see `PaymentShippingReceptor` in the Shipping tutorial). Delivery tracking belongs in a perspective over `NotificationSentEvent`, not ad-hoc SQL.
+:::
+
+---
+
+## Step 3: Notification Providers (Production)
+
+The sample simulates delivery. In production, put providers behind interfaces so you can swap vendors and mock in tests. These are plain .NET services — inject them into the receptor.
+
+**Email provider abstraction**:
 
 ```csharp{title="Email Provider (SendGrid)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Email", "Provider"]}
 namespace ECommerce.NotificationWorker.Services;
@@ -86,7 +199,7 @@ public record EmailResult(
 );
 ```
 
-**ECommerce.NotificationWorker/Services/SendGridEmailProvider.cs**:
+**SendGrid implementation (condensed)**:
 
 ```csharp{title="Email Provider (SendGrid) - SendGridEmailProvider" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Email", "Provider"]}
 using SendGrid;
@@ -94,805 +207,73 @@ using SendGrid.Helpers.Mail;
 
 namespace ECommerce.NotificationWorker.Services;
 
-public class SendGridEmailProvider : IEmailProvider {
-  private readonly SendGridClient _client;
-  private readonly string _fromEmail;
-  private readonly string _fromName;
-  private readonly ILogger<SendGridEmailProvider> _logger;
-
-  public SendGridEmailProvider(
-    IConfiguration configuration,
-    ILogger<SendGridEmailProvider> logger
-  ) {
-    var apiKey = configuration["SendGrid:ApiKey"]
-      ?? throw new InvalidOperationException("SendGrid:ApiKey not configured");
-
-    _client = new SendGridClient(apiKey);
-    _fromEmail = configuration["SendGrid:FromEmail"] ?? "noreply@ecommerce.example.com";
-    _fromName = configuration["SendGrid:FromName"] ?? "ECommerce Platform";
-    _logger = logger;
-  }
+public class SendGridEmailProvider(IConfiguration configuration, ILogger<SendGridEmailProvider> logger) : IEmailProvider {
+  private readonly SendGridClient _client = new(configuration["SendGrid:ApiKey"]
+    ?? throw new InvalidOperationException("SendGrid:ApiKey not configured"));
 
   public async Task<EmailResult> SendEmailAsync(
     string to,
     string subject,
     string htmlBody,
     string? textBody = null,
-    CancellationToken ct = default
-  ) {
-    try {
-      var from = new EmailAddress(_fromEmail, _fromName);
-      var toAddress = new EmailAddress(to);
-      var msg = MailHelper.CreateSingleEmail(
-        from,
-        toAddress,
-        subject,
-        textBody ?? htmlBody,
-        htmlBody
-      );
+    CancellationToken ct = default) {
 
-      var response = await _client.SendEmailAsync(msg, ct);
+    var from = new EmailAddress(
+      configuration["SendGrid:FromEmail"] ?? "noreply@ecommerce.example.com",
+      configuration["SendGrid:FromName"] ?? "ECommerce Platform");
+    var msg = MailHelper.CreateSingleEmail(from, new EmailAddress(to), subject, textBody ?? htmlBody, htmlBody);
 
-      if (response.IsSuccessStatusCode) {
-        var messageId = response.Headers.GetValues("X-Message-Id").FirstOrDefault();
-        _logger.LogInformation(
-          "Email sent to {To}, subject: {Subject}, messageId: {MessageId}",
-          to,
-          subject,
-          messageId
-        );
+    var response = await _client.SendEmailAsync(msg, ct);
 
-        return new EmailResult(
-          Success: true,
-          MessageId: messageId,
-          ErrorMessage: null
-        );
-      } else {
-        var errorBody = await response.Body.ReadAsStringAsync();
-        _logger.LogError(
-          "Email send failed to {To}: {StatusCode} - {Error}",
-          to,
-          response.StatusCode,
-          errorBody
-        );
-
-        return new EmailResult(
-          Success: false,
-          MessageId: null,
-          ErrorMessage: $"{response.StatusCode}: {errorBody}"
-        );
-      }
-    } catch (Exception ex) {
-      _logger.LogError(ex, "Email send exception for {To}", to);
-      return new EmailResult(
-        Success: false,
-        MessageId: null,
-        ErrorMessage: ex.Message
-      );
+    if (response.IsSuccessStatusCode) {
+      var messageId = response.Headers.GetValues("X-Message-Id").FirstOrDefault();
+      logger.LogInformation("Email sent to {To}, messageId: {MessageId}", to, messageId);
+      return new EmailResult(true, messageId, null);
     }
+
+    var errorBody = await response.Body.ReadAsStringAsync(ct);
+    logger.LogError("Email send failed to {To}: {StatusCode} - {Error}", to, response.StatusCode, errorBody);
+    return new EmailResult(false, null, $"{response.StatusCode}: {errorBody}");
   }
 }
 ```
 
-### SMS Provider (Twilio)
+**SMS (Twilio)** follows the same shape — `ISmsProvider.SendSmsAsync(to, message, ct)` returning an `SmsResult`.
 
-**ECommerce.NotificationWorker/Services/ISmsProvider.cs**:
+### Template Rendering (Scriban)
 
-```csharp{title="SMS Provider (Twilio)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "SMS", "Provider"]}
-namespace ECommerce.NotificationWorker.Services;
+```csharp{title="Step 3: Template Engine" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Template"]}
+using Scriban;
 
-public interface ISmsProvider {
-  Task<SmsResult> SendSmsAsync(
-    string to,
-    string message,
-    CancellationToken ct = default
-  );
-}
-
-public record SmsResult(
-  bool Success,
-  string? MessageSid,
-  string? ErrorMessage
-);
-```
-
-**ECommerce.NotificationWorker/Services/TwilioSmsProvider.cs**:
-
-```csharp{title="SMS Provider (Twilio) - TwilioSmsProvider" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "SMS", "Provider"]}
-using Twilio;
-using Twilio.Rest.Api.V2010.Account;
-using Twilio.Types;
-
-namespace ECommerce.NotificationWorker.Services;
-
-public class TwilioSmsProvider : ISmsProvider {
-  private readonly string _fromNumber;
-  private readonly ILogger<TwilioSmsProvider> _logger;
-
-  public TwilioSmsProvider(
-    IConfiguration configuration,
-    ILogger<TwilioSmsProvider> logger
-  ) {
-    var accountSid = configuration["Twilio:AccountSid"]
-      ?? throw new InvalidOperationException("Twilio:AccountSid not configured");
-    var authToken = configuration["Twilio:AuthToken"]
-      ?? throw new InvalidOperationException("Twilio:AuthToken not configured");
-
-    _fromNumber = configuration["Twilio:FromNumber"] ?? "+15551234567";
-
-    TwilioClient.Init(accountSid, authToken);
-    _logger = logger;
-  }
-
-  public async Task<SmsResult> SendSmsAsync(
-    string to,
-    string message,
-    CancellationToken ct = default
-  ) {
-    try {
-      var smsMessage = await MessageResource.CreateAsync(
-        to: new PhoneNumber(to),
-        from: new PhoneNumber(_fromNumber),
-        body: message
-      );
-
-      if (smsMessage.Status == MessageResource.StatusEnum.Queued ||
-          smsMessage.Status == MessageResource.StatusEnum.Sent) {
-        _logger.LogInformation(
-          "SMS sent to {To}, sid: {Sid}",
-          to,
-          smsMessage.Sid
-        );
-
-        return new SmsResult(
-          Success: true,
-          MessageSid: smsMessage.Sid,
-          ErrorMessage: null
-        );
-      } else {
-        _logger.LogError(
-          "SMS send failed to {To}: {Status} - {ErrorMessage}",
-          to,
-          smsMessage.Status,
-          smsMessage.ErrorMessage
-        );
-
-        return new SmsResult(
-          Success: false,
-          MessageSid: null,
-          ErrorMessage: smsMessage.ErrorMessage
-        );
-      }
-    } catch (Exception ex) {
-      _logger.LogError(ex, "SMS send exception for {To}", to);
-      return new SmsResult(
-        Success: false,
-        MessageSid: null,
-        ErrorMessage: ex.Message
-      );
-    }
-  }
-}
-```
-
----
-
-## Step 2: Template Engine
-
-**ECommerce.NotificationWorker/Services/ITemplateRenderer.cs**:
-
-```csharp{title="Step 2: Template Engine" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Step", "Template"]}
 namespace ECommerce.NotificationWorker.Services;
 
 public interface ITemplateRenderer {
-  Task<string> RenderAsync<TModel>(
-    string templateName,
-    TModel model,
-    CancellationToken ct = default
-  );
+  Task<string> RenderAsync<TModel>(string templateName, TModel model, CancellationToken ct = default);
 }
-```
 
-**ECommerce.NotificationWorker/Services/ScribanTemplateRenderer.cs**:
-
-```csharp{title="Step 2: Template Engine - ScribanTemplateRenderer" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Template"]}
-using Scriban;
-using Scriban.Runtime;
-
-namespace ECommerce.NotificationWorker.Services;
-
-public class ScribanTemplateRenderer : ITemplateRenderer {
-  private readonly string _templateDirectory;
+public class ScribanTemplateRenderer(IConfiguration configuration) : ITemplateRenderer {
+  private readonly string _templateDirectory = configuration["Templates:Directory"] ?? "Templates";
   private readonly Dictionary<string, Template> _cache = new();
-  private readonly ILogger<ScribanTemplateRenderer> _logger;
 
-  public ScribanTemplateRenderer(
-    IConfiguration configuration,
-    ILogger<ScribanTemplateRenderer> logger
-  ) {
-    _templateDirectory = configuration["Templates:Directory"] ?? "Templates";
-    _logger = logger;
-  }
-
-  public async Task<string> RenderAsync<TModel>(
-    string templateName,
-    TModel model,
-    CancellationToken ct = default
-  ) {
-    var template = await GetTemplateAsync(templateName, ct);
-
-    var scriptObject = new ScriptObject();
-    scriptObject.Import(model, renamer: member => member.Name);
-
-    var context = new TemplateContext();
-    context.PushGlobal(scriptObject);
-
-    return await template.RenderAsync(context);
-  }
-
-  private async Task<Template> GetTemplateAsync(string templateName, CancellationToken ct) {
-    if (_cache.TryGetValue(templateName, out var cachedTemplate)) {
-      return cachedTemplate;
+  public async Task<string> RenderAsync<TModel>(string templateName, TModel model, CancellationToken ct = default) {
+    if (!_cache.TryGetValue(templateName, out var template)) {
+      var content = await File.ReadAllTextAsync(Path.Combine(_templateDirectory, $"{templateName}.liquid"), ct);
+      template = Template.Parse(content);
+      _cache[templateName] = template;
     }
 
-    var templatePath = Path.Combine(_templateDirectory, $"{templateName}.liquid");
-    if (!File.Exists(templatePath)) {
-      throw new FileNotFoundException($"Template not found: {templatePath}");
-    }
-
-    var templateContent = await File.ReadAllTextAsync(templatePath, ct);
-    var template = Template.Parse(templateContent);
-
-    if (template.HasErrors) {
-      var errors = string.Join(", ", template.Messages);
-      throw new InvalidOperationException($"Template parse errors: {errors}");
-    }
-
-    _cache[templateName] = template;
-    return template;
+    return await template.RenderAsync(model, member => member.Name);
   }
 }
 ```
-
-**Templates/order-confirmation.liquid**:
 
 ```liquid
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; }
-    .header { background-color: #4CAF50; color: white; padding: 20px; }
-    .content { padding: 20px; }
-    .order-items { border-collapse: collapse; width: 100%; }
-    .order-items th, .order-items td { border: 1px solid #ddd; padding: 8px; }
-    .total { font-weight: bold; font-size: 1.2em; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>Order Confirmation</h1>
-  </div>
-  <div class="content">
-    <p>Hi {{ customer_name }},</p>
-    <p>Thank you for your order! Your order <strong>#{{ order_id }}</strong> has been received and is being processed.</p>
-
-    <h2>Order Details</h2>
-    <table class="order-items">
-      <thead>
-        <tr>
-          <th>Product</th>
-          <th>Quantity</th>
-          <th>Unit Price</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{ for item in items }}
-        <tr>
-          <td>{{ item.product_id }}</td>
-          <td>{{ item.quantity }}</td>
-          <td>${{ item.unit_price }}</td>
-          <td>${{ item.line_total }}</td>
-        </tr>
-        {{ end }}
-      </tbody>
-    </table>
-
-    <p class="total">Total: ${{ total_amount }}</p>
-
-    <h2>Shipping Address</h2>
-    <p>
-      {{ shipping_address.street }}<br>
-      {{ shipping_address.city }}, {{ shipping_address.state }} {{ shipping_address.zip_code }}<br>
-      {{ shipping_address.country }}
-    </p>
-
-    <p>We'll send you another email when your order ships.</p>
-    <p>Thanks,<br>The ECommerce Team</p>
-  </div>
-</body>
-</html>
-```
-
----
-
-## Step 3: Database Schema
-
-**ECommerce.NotificationWorker/Database/Migrations/001_CreateNotificationsTable.sql**:
-
-```sql{title="Step 3: Database Schema" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Database"]}
-CREATE TABLE IF NOT EXISTS notifications (
-  notification_id TEXT PRIMARY KEY,
-  order_id TEXT NOT NULL,
-  notification_type TEXT NOT NULL,  -- 'OrderConfirmation', 'PaymentReceipt', 'ShipmentNotification'
-  channel TEXT NOT NULL,  -- 'Email', 'SMS'
-  recipient TEXT NOT NULL,
-  subject TEXT,
-  message TEXT NOT NULL,
-  status TEXT NOT NULL,  -- 'Sent', 'Failed', 'Pending'
-  provider_message_id TEXT,
-  error_message TEXT,
-  sent_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_notifications_order_id ON notifications(order_id);
-CREATE INDEX idx_notifications_status ON notifications(status);
-CREATE INDEX idx_notifications_created_at ON notifications(created_at DESC);
-```
-
----
-
-## Step 4: Implement Receptors
-
-### Order Confirmation Receptor
-
-**ECommerce.NotificationWorker/Receptors/OrderConfirmationReceptor.cs**:
-
-```csharp{title="Order Confirmation Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Order", "Confirmation"]}
-using Whizbang.Core;
-using ECommerce.Contracts.Events;
-using ECommerce.NotificationWorker.Services;
-using Npgsql;
-using Dapper;
-
-namespace ECommerce.NotificationWorker.Receptors;
-
-public class OrderConfirmationReceptor : IReceptor<OrderCreated, NotificationSent> {
-  private readonly NpgsqlConnection _db;
-  private readonly IEmailProvider _emailProvider;
-  private readonly ITemplateRenderer _templateRenderer;
-  private readonly ILogger<OrderConfirmationReceptor> _logger;
-
-  public OrderConfirmationReceptor(
-    NpgsqlConnection db,
-    IEmailProvider emailProvider,
-    ITemplateRenderer templateRenderer,
-    ILogger<OrderConfirmationReceptor> logger
-  ) {
-    _db = db;
-    _emailProvider = emailProvider;
-    _templateRenderer = templateRenderer;
-    _logger = logger;
-  }
-
-  public async Task<NotificationSent> HandleAsync(
-    OrderCreated @event,
-    CancellationToken ct = default
-  ) {
-    var notificationId = Guid.NewGuid().ToString("N");
-
-    try {
-      // 1. Get customer email (in production, query customer service)
-      var customerEmail = $"{@event.CustomerId}@example.com";  // Demo
-
-      // 2. Render email template
-      var htmlBody = await _templateRenderer.RenderAsync(
-        "order-confirmation",
-        new {
-          customer_name = @event.CustomerId,
-          order_id = @event.OrderId,
-          items = @event.Items.Select(i => new {
-            product_id = i.ProductId,
-            quantity = i.Quantity,
-            unit_price = i.UnitPrice,
-            line_total = i.LineTotal
-          }),
-          total_amount = @event.TotalAmount,
-          shipping_address = new {
-            street = @event.ShippingAddress.Street,
-            city = @event.ShippingAddress.City,
-            state = @event.ShippingAddress.State,
-            zip_code = @event.ShippingAddress.ZipCode,
-            country = @event.ShippingAddress.Country
-          }
-        },
-        ct
-      );
-
-      // 3. Send email
-      var result = await _emailProvider.SendEmailAsync(
-        to: customerEmail,
-        subject: $"Order Confirmation - #{@event.OrderId}",
-        htmlBody: htmlBody,
-        ct: ct
-      );
-
-      // 4. Track notification
-      await _db.ExecuteAsync(
-        """
-        INSERT INTO notifications (
-          notification_id, order_id, notification_type, channel, recipient, subject, message,
-          status, provider_message_id, error_message, sent_at, created_at
-        )
-        VALUES (
-          @NotificationId, @OrderId, @NotificationType, @Channel, @Recipient, @Subject, @Message,
-          @Status, @ProviderMessageId, @ErrorMessage, @SentAt, NOW()
-        )
-        """,
-        new {
-          NotificationId = notificationId,
-          OrderId = @event.OrderId,
-          NotificationType = "OrderConfirmation",
-          Channel = "Email",
-          Recipient = customerEmail,
-          Subject = $"Order Confirmation - #{@event.OrderId}",
-          Message = htmlBody,
-          Status = result.Success ? "Sent" : "Failed",
-          ProviderMessageId = result.MessageId,
-          ErrorMessage = result.ErrorMessage,
-          SentAt = result.Success ? DateTime.UtcNow : (DateTime?)null
-        }
-      );
-
-      if (result.Success) {
-        _logger.LogInformation(
-          "Order confirmation sent for order {OrderId} to {Email}",
-          @event.OrderId,
-          customerEmail
-        );
-
-        return new NotificationSent(
-          NotificationId: notificationId,
-          OrderId: @event.OrderId,
-          NotificationType: "OrderConfirmation",
-          Channel: "Email",
-          SentAt: DateTime.UtcNow
-        );
-      } else {
-        throw new NotificationFailedException(
-          notificationId,
-          "OrderConfirmation",
-          result.ErrorMessage ?? "Email send failed"
-        );
-      }
-    } catch (Exception ex) when (ex is not NotificationFailedException) {
-      _logger.LogError(ex, "Failed to send order confirmation for order {OrderId}", @event.OrderId);
-      throw new NotificationFailedException(notificationId, "OrderConfirmation", ex.Message);
-    }
-  }
-}
-
-public record NotificationSent(
-  string NotificationId,
-  string OrderId,
-  string NotificationType,
-  string Channel,
-  DateTime SentAt
-) : IEvent;
-
-public class NotificationFailedException : Exception {
-  public NotificationFailedException(string notificationId, string type, string message)
-    : base($"Notification {notificationId} ({type}) failed: {message}") { }
-}
-```
-
-### Payment Receipt Receptor
-
-**ECommerce.NotificationWorker/Receptors/PaymentReceiptReceptor.cs**:
-
-```csharp{title="Payment Receipt Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Payment", "Receipt"]}
-using Whizbang.Core;
-using ECommerce.Contracts.Events;
-using ECommerce.NotificationWorker.Services;
-using Npgsql;
-using Dapper;
-
-namespace ECommerce.NotificationWorker.Receptors;
-
-public class PaymentReceiptReceptor : IReceptor<PaymentProcessed, NotificationSent> {
-  private readonly NpgsqlConnection _db;
-  private readonly IEmailProvider _emailProvider;
-  private readonly ITemplateRenderer _templateRenderer;
-  private readonly ILogger<PaymentReceiptReceptor> _logger;
-
-  public PaymentReceiptReceptor(
-    NpgsqlConnection db,
-    IEmailProvider emailProvider,
-    ITemplateRenderer templateRenderer,
-    ILogger<PaymentReceiptReceptor> logger
-  ) {
-    _db = db;
-    _emailProvider = emailProvider;
-    _templateRenderer = templateRenderer;
-    _logger = logger;
-  }
-
-  public async Task<NotificationSent> HandleAsync(
-    PaymentProcessed @event,
-    CancellationToken ct = default
-  ) {
-    var notificationId = Guid.NewGuid().ToString("N");
-
-    // Similar implementation to OrderConfirmationReceptor
-    // Render "payment-receipt" template and send email
-
-    // For brevity, omitted - follows same pattern as OrderConfirmation
-
-    return new NotificationSent(
-      NotificationId: notificationId,
-      OrderId: @event.OrderId,
-      NotificationType: "PaymentReceipt",
-      Channel: "Email",
-      SentAt: DateTime.UtcNow
-    );
-  }
-}
-```
-
-### Shipment Notification Receptor (SMS)
-
-**ECommerce.NotificationWorker/Receptors/ShipmentNotificationReceptor.cs**:
-
-```csharp{title="Shipment Notification Receptor (SMS)" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Shipment", "Notification"]}
-using Whizbang.Core;
-using ECommerce.Contracts.Events;
-using ECommerce.NotificationWorker.Services;
-using Npgsql;
-using Dapper;
-
-namespace ECommerce.NotificationWorker.Receptors;
-
-public class ShipmentNotificationReceptor : IReceptor<ShipmentCreated, NotificationSent> {
-  private readonly NpgsqlConnection _db;
-  private readonly ISmsProvider _smsProvider;
-  private readonly ILogger<ShipmentNotificationReceptor> _logger;
-
-  public ShipmentNotificationReceptor(
-    NpgsqlConnection db,
-    ISmsProvider smsProvider,
-    ILogger<ShipmentNotificationReceptor> logger
-  ) {
-    _db = db;
-    _smsProvider = smsProvider;
-    _logger = logger;
-  }
-
-  public async Task<NotificationSent> HandleAsync(
-    ShipmentCreated @event,
-    CancellationToken ct = default
-  ) {
-    var notificationId = Guid.NewGuid().ToString("N");
-
-    try {
-      // 1. Get customer phone (in production, query customer service)
-      var customerPhone = "+15551234567";  // Demo
-
-      // 2. Build SMS message
-      var message = $"Your order #{@event.OrderId} has shipped! " +
-                    $"Tracking: {@event.TrackingNumber}. " +
-                    $"Estimated delivery: {@event.EstimatedDelivery:MM/dd/yyyy}";
-
-      // 3. Send SMS
-      var result = await _smsProvider.SendSmsAsync(
-        to: customerPhone,
-        message: message,
-        ct: ct
-      );
-
-      // 4. Track notification
-      await _db.ExecuteAsync(
-        """
-        INSERT INTO notifications (
-          notification_id, order_id, notification_type, channel, recipient, message,
-          status, provider_message_id, error_message, sent_at, created_at
-        )
-        VALUES (
-          @NotificationId, @OrderId, @NotificationType, @Channel, @Recipient, @Message,
-          @Status, @ProviderMessageId, @ErrorMessage, @SentAt, NOW()
-        )
-        """,
-        new {
-          NotificationId = notificationId,
-          OrderId = @event.OrderId,
-          NotificationType = "ShipmentNotification",
-          Channel = "SMS",
-          Recipient = customerPhone,
-          Message = message,
-          Status = result.Success ? "Sent" : "Failed",
-          ProviderMessageId = result.MessageSid,
-          ErrorMessage = result.ErrorMessage,
-          SentAt = result.Success ? DateTime.UtcNow : (DateTime?)null
-        }
-      );
-
-      if (result.Success) {
-        _logger.LogInformation(
-          "Shipment notification sent for order {OrderId} to {Phone}",
-          @event.OrderId,
-          customerPhone
-        );
-
-        return new NotificationSent(
-          NotificationId: notificationId,
-          OrderId: @event.OrderId,
-          NotificationType: "ShipmentNotification",
-          Channel: "SMS",
-          SentAt: DateTime.UtcNow
-        );
-      } else {
-        throw new NotificationFailedException(
-          notificationId,
-          "ShipmentNotification",
-          result.ErrorMessage ?? "SMS send failed"
-        );
-      }
-    } catch (Exception ex) when (ex is not NotificationFailedException) {
-      _logger.LogError(ex, "Failed to send shipment notification for order {OrderId}", @event.OrderId);
-      throw new NotificationFailedException(notificationId, "ShipmentNotification", ex.Message);
-    }
-  }
-}
-```
-
----
-
-## Step 5: Service Configuration
-
-**ECommerce.NotificationWorker/Program.cs**:
-
-```csharp{title="Step 5: Service Configuration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
-using Whizbang.Core;
-using Whizbang.Data.Postgres;
-using Whizbang.Transports.AzureServiceBus;
-using Npgsql;
-using ECommerce.NotificationWorker.Services;
-
-var builder = Host.CreateApplicationBuilder(args);
-
-// 1. Add Whizbang
-builder.Services.AddWhizbang(options => {
-  options.ServiceName = "NotificationWorker";
-  options.EnableInbox = true;
-});
-
-// 2. Add PostgreSQL
-builder.Services.AddScoped<NpgsqlConnection>(sp => {
-  var connectionString = builder.Configuration.GetConnectionString("NotificationDb");
-  return new NpgsqlConnection(connectionString);
-});
-
-// 3. Add Azure Service Bus
-builder.AddAzureServiceBus("messaging");
-
-// 4. Add notification providers
-builder.Services.AddSingleton<IEmailProvider, SendGridEmailProvider>();
-builder.Services.AddSingleton<ISmsProvider, TwilioSmsProvider>();
-builder.Services.AddSingleton<ITemplateRenderer, ScribanTemplateRenderer>();
-
-// 5. Add Worker
-builder.Services.AddHostedService<Worker>();
-
-var host = builder.Build();
-await host.MigrateDatabaseAsync();
-await host.RunAsync();
-```
-
-**appsettings.json**:
-
-```json{title="Step 5: Service Configuration (2)" description="**appsettings." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"]}
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Whizbang": "Debug"
-    }
-  },
-  "ConnectionStrings": {
-    "NotificationDb": "Host=localhost;Database=notification;Username=postgres;Password=postgres"
-  },
-  "SendGrid": {
-    "ApiKey": "SG.xxx",
-    "FromEmail": "noreply@ecommerce.example.com",
-    "FromName": "ECommerce Platform"
-  },
-  "Twilio": {
-    "AccountSid": "ACxxx",
-    "AuthToken": "xxx",
-    "FromNumber": "+15551234567"
-  },
-  "Templates": {
-    "Directory": "Templates"
-  },
-  "Whizbang": {
-    "ServiceName": "NotificationWorker",
-    "Inbox": {
-      "Enabled": true,
-      "BatchSize": 100,
-      "PollingInterval": "00:00:05"
-    }
-  }
-}
-```
-
----
-
-## Step 6: Test Notifications
-
-### 1. Update Aspire
-
-**ECommerce.AppHost/Program.cs**:
-
-```csharp{title="Update Aspire" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Update", "Aspire"]}
-var notificationDb = postgres.AddDatabase("notification-db");
-
-var notificationWorker = builder.AddProject<Projects.ECommerce_NotificationWorker>("notification-worker")
-  .WithReference(notificationDb)
-  .WithReference(serviceBus);
-```
-
-### 2. Create Order
-
-```bash{title="Create Order" description="Create Order" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
-curl -X POST http://localhost:5000/api/orders \
-  -H "Content-Type: application/json" \
-  -d '{ ... }'
-```
-
-### 3. Check Email (SendGrid Dashboard)
-
-Navigate to SendGrid dashboard → Activity Feed → Search for recipient email
-
-### 4. Verify Database
-
-```sql{title="Verify Database" description="Verify Database" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Database"]}
-SELECT * FROM notifications WHERE order_id = '<order-id>';
-```
-
-**Expected**:
-- Row for `OrderConfirmation` (Email) with `status = 'Sent'`
-- Row for `PaymentReceipt` (Email) with `status = 'Sent'`
-- Row for `ShipmentNotification` (SMS) with `status = 'Sent'`
-
----
-
-## Key Concepts
-
-### Multi-Event Subscriptions
-
-```csharp{title="Multi-Event Subscriptions" description="Multi-Event Subscriptions" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Multi-Event", "Subscriptions"]}
-// Single service subscribes to multiple events
-public class OrderConfirmationReceptor : IReceptor<OrderCreated, NotificationSent> { }
-public class PaymentReceiptReceptor : IReceptor<PaymentProcessed, NotificationSent> { }
-public class ShipmentNotificationReceptor : IReceptor<ShipmentCreated, NotificationSent> { }
-```
-
-**Azure Service Bus**:
-- OrderCreated → `order-confirmation-subscription`
-- PaymentProcessed → `payment-receipt-subscription`
-- ShipmentCreated → `shipment-notification-subscription`
-
-### Template Rendering
-
-```liquid
+<p>Hi {{ customer_name }},</p>
+<p>Thank you for your order <strong>#{{ order_id }}</strong>!</p>
 {{ for item in items }}
-  <tr>
-    <td>{{ item.product_id }}</td>
-    <td>{{ item.quantity }}</td>
-    <td>${{ item.unit_price }}</td>
-  </tr>
+  <li>{{ item.product_name }} × {{ item.quantity }} — ${{ item.unit_price }}</li>
 {{ end }}
+<p class="total">Total: ${{ total_amount }}</p>
 ```
 
 **Benefits**:
@@ -902,32 +283,146 @@ public class ShipmentNotificationReceptor : IReceptor<ShipmentCreated, Notificat
 
 ---
 
+## Step 4: Service Configuration
+
+**ECommerce.NotificationWorker/Program.cs** (condensed from the sample):
+
+```csharp{title="Step 4: Service Configuration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
+using Whizbang.Core;
+using Whizbang.Core.Generated;
+using Whizbang.Data.EFCore.Postgres;
+using Whizbang.Transports.AzureServiceBus;
+using ECommerce.Contracts.Generated;
+using ECommerce.NotificationWorker;
+using ECommerce.NotificationWorker.Generated;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+builder.AddServiceDefaults();
+
+var serviceBusConnection = builder.Configuration.GetConnectionString("servicebus")
+    ?? throw new InvalidOperationException("Azure Service Bus connection string 'servicebus' not found");
+
+builder.Services.AddAzureServiceBusTransport(serviceBusConnection);
+builder.Services.AddAzureServiceBusHealthChecks();
+
+// Unified Whizbang API: routing + EF Core Postgres driver + transport consumer
+_ = builder.Services
+  .AddWhizbang()
+  .WithRouting(routing => {
+    routing
+      .OwnDomains("ecommerce.notification.commands")
+      .SubscribeTo("ecommerce.orders.events")
+      .Inbox.UseSharedTopic("inbox");
+  })
+  .WithEFCore<NotificationDbContext>()
+  .WithDriver.Postgres
+  .AddTransportConsumer();
+
+builder.Services.AddReceptors();
+builder.Services.AddWhizbangDispatcher();
+
+// Production: register providers here
+// builder.Services.AddSingleton<IEmailProvider, SendGridEmailProvider>();
+// builder.Services.AddSingleton<ISmsProvider, TwilioSmsProvider>();
+// builder.Services.AddSingleton<ITemplateRenderer, ScribanTemplateRenderer>();
+
+var host = builder.Build();
+
+using (var scope = host.Services.CreateScope()) {
+  var dbContext = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
+  var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+  await dbContext.EnsureWhizbangDatabaseInitializedAsync(logger);
+}
+
+host.Run();
+```
+
+---
+
+## Step 5: Test Notifications
+
+### 1. Update Aspire
+
+**ECommerce.AppHost/Program.cs** (excerpt matching the sample):
+
+```csharp{title="Update Aspire" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Update", "Aspire"]}
+var notificationDb = postgres.AddDatabase("notificationdb");
+
+ordersTopic.AddServiceBusSubscription("sub-notification-orders");
+inboxTopic.AddServiceBusSubscription("sub-inbox-notification").WithDestinationFilter("notification-service");
+
+var notificationWorker = builder.AddProject("notificationworker", "../ECommerce.NotificationWorker/ECommerce.NotificationWorker.csproj")
+    .WithReference(notificationDb)
+    .WithReference(messagingInfra)
+    .WaitFor(notificationDb)
+    .WaitFor(messagingInfra);
+```
+
+### 2. Create Order
+
+```bash{title="Create Order" description="Create Order" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Create", "Order"]}
+curl -X POST http://localhost:5000/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{ "customerId": "...", "lineItems": [ ... ] }'
+```
+
+### 3. Verify Events
+
+```sql{title="Verify Database" description="Verify Database" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Database"]}
+SELECT stream_id, event_type, created_at
+FROM wh_event_store
+WHERE event_type LIKE '%Notification%'
+ORDER BY created_at DESC;
+```
+
+**Expected**: a `NotificationSentEvent` row per notification, streamed by `CustomerId`.
+
+---
+
+## Key Concepts
+
+### One Receptor per Message Type
+
+```csharp{title="Multi-Event Subscriptions" description="Multi-Event Subscriptions" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Multi-Event", "Subscriptions"]}
+// Commands have receptors...
+public class SendNotificationReceptor : IReceptor<SendNotificationCommand, NotificationSentEvent> { /* ... */ }
+
+// ...and events can have receptors too (event → follow-up command/notification)
+public class OrderConfirmationReceptor : IReceptor<OrderCreatedEvent, SendNotificationCommand> { /* ... */ }
+public class ShipmentNotificationReceptor : IReceptor<ShipmentCreatedEvent, SendNotificationCommand> { /* ... */ }
+```
+
+Routing determines which topics this worker consumes (`SubscribeTo("ecommerce.orders.events")`), and receptor discovery wires each message type to its handler — no per-subscription plumbing.
+
+---
+
 ## Testing
 
-### Unit Test - Email Rendering
+**tests/ECommerce.NotificationWorker.Tests/SendNotificationReceptorTests.cs** (condensed):
 
-```csharp{title="Unit Test - Email Rendering" description="Unit Test - Email Rendering" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Send Notification" description="Unit Test - Send Notification" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
-public async Task OrderConfirmation_RendersTemplateCorrectlyAsync() {
+public async Task HandleAsync_SendsNotification_ReturnsNotificationSentEventAsync() {
   // Arrange
-  var renderer = new ScribanTemplateRenderer(mockConfig, mockLogger);
-  var model = new {
-    customer_name = "John Doe",
-    order_id = "order-123",
-    items = new[] {
-      new { product_id = "prod-456", quantity = 2, unit_price = 19.99m, line_total = 39.98m }
-    },
-    total_amount = 39.98m,
-    shipping_address = new { street = "123 Main", city = "Springfield", state = "IL", zip_code = "62701", country = "USA" }
+  var dispatcher = new TestDispatcher(); // records PublishAsync calls
+  var logger = NullLogger<SendNotificationReceptor>.Instance;
+  var receptor = new SendNotificationReceptor(dispatcher, logger);
+
+  var command = new SendNotificationCommand {
+    CustomerId = "customer-123",
+    Subject = "Order Confirmation",
+    Message = "Your order has been confirmed.",
+    Type = NotificationType.Email
   };
 
   // Act
-  var html = await renderer.RenderAsync("order-confirmation", model);
+  var result = await receptor.HandleAsync(command, CancellationToken.None);
 
   // Assert
-  await Assert.That(html).Contains("Order Confirmation");
-  await Assert.That(html).Contains("order-123");
-  await Assert.That(html).Contains("$39.98");
+  await Assert.That(result.CustomerId).IsEqualTo("customer-123");
+  await Assert.That(result.Type).IsEqualTo(NotificationType.Email);
+  await Assert.That(dispatcher.PublishedEvents).Count().IsEqualTo(1);
 }
 ```
 
@@ -936,21 +431,20 @@ public async Task OrderConfirmation_RendersTemplateCorrectlyAsync() {
 ## Next Steps
 
 Continue to **[Shipping Service](shipping-service.md)** to:
-- Subscribe to `PaymentProcessed` events
-- Create shipments via carrier API
-- Publish `ShipmentCreated` events
-- Track shipment status
+- React to `PaymentProcessedEvent` with a receptor
+- Create shipments and publish `ShipmentCreatedEvent`
+- See event → command chaining in action
 
 ---
 
 ## Key Takeaways
 
-✅ **Multi-Event Subscriptions** - Single service handles multiple event types
-✅ **Template Rendering** - Scriban for maintainable email templates
+✅ **Command-Driven Notifications** - `SendNotificationCommand` → `NotificationSentEvent`
+✅ **Receptor Contract** - `ValueTask<TResponse> HandleAsync(TMessage, CancellationToken)`
 ✅ **Provider Abstraction** - Swap email/SMS providers easily
-✅ **Delivery Tracking** - Store notification history for auditing
-✅ **Graceful Failures** - Log errors, don't block order processing
+✅ **Template Rendering** - Scriban for maintainable email templates
+✅ **Delivery Tracking** - Materialize `NotificationSentEvent` into a perspective for auditing
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

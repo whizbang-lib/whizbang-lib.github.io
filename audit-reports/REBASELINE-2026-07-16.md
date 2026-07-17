@@ -52,3 +52,13 @@ WHIZBANG_LIB_PATH=/path/to/whizbang-at-develop \
 ```
 
 (`WHIZBANG_LIB_PATH` override added 2026-07-16 so audits can run against a clean worktree instead of the sibling checkout.)
+
+## Upstream library findings from the Phase 2b sweep (not doc-fixable)
+
+Found while verifying diagnostics pages against `1b31f58d` — candidates for library-repo issues:
+
+- **Diagnostic ID collisions shipped**: WHIZ070 and WHIZ071 are each emitted by two different analyzers (Whizbang.Generators vs EFCore.Postgres.Generators) with different severities/messages; same for WHIZ400/WHIZ401 (InheritScopeAnalyzer vs EFCore).
+- **WHIZ900 mislabeled**: `PerspectiveSyncInInlineReceptor` descriptor's XML comment says WHIZ200 but ships as `id: "WHIZ900"`.
+- **WHIZ005 dead**: `StreamIdMustBeGuid` descriptor is defined but never emitted.
+- **Typed-associations first-match limitation**: when multiple perspectives share the same (TModel, TEvent), the generated association method returns only the first match (documented with workaround; may warrant a library fix).
+- **EmptyStreamIdPolicy.DeadLetter/Purge**: enum values accepted but drain-time behaviors unimplemented (behave like FallbackToMessageId).

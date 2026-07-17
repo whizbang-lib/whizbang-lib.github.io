@@ -1,6 +1,8 @@
 ---
 title: Deployment
 pageType: tutorial
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Tutorial
 order: 10
@@ -182,7 +184,8 @@ spec:
             secretKeyRef:
               name: database-secrets
               key: orders-db-connection-string
-        - name: Whizbang__ServiceBus__ConnectionString
+        # Services resolve the transport via GetConnectionString("servicebus")
+        - name: ConnectionStrings__servicebus
           valueFrom:
             secretKeyRef:
               name: servicebus-secrets
@@ -194,15 +197,17 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+        # Paths match ServiceDefaults' MapDefaultEndpoints():
+        # /alive = liveness-tagged checks only, /health = all checks
         livenessProbe:
           httpGet:
-            path: /health
+            path: /alive
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /health/ready
+            path: /health
             port: 8080
           initialDelaySeconds: 10
           periodSeconds: 5
@@ -575,25 +580,23 @@ jobs:
 
 **Program.cs**:
 
+The sample's `ECommerce.ServiceDefaults` project (wired by `builder.AddServiceDefaults()`) already configures OpenTelemetry with the modern `AddOpenTelemetry()` builder:
+
 ```csharp{title="Application Insights Integration" description="Application Insights Integration" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Application", "Insights"]}
-builder.Services.AddApplicationInsightsTelemetry(options => {
-  options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
-});
+// From ECommerce.ServiceDefaults/Extensions.cs (applied via builder.AddServiceDefaults())
+builder.Services.AddOpenTelemetry()
+  .WithMetrics(metrics => {
+    metrics.AddAspNetCoreInstrumentation()
+           .AddHttpClientInstrumentation()
+           .AddRuntimeInstrumentation();
+  })
+  .WithTracing(tracing => {
+    tracing.AddAspNetCoreInstrumentation()
+           .AddHttpClientInstrumentation();
+  });
 
-builder.Services.AddOpenTelemetryMetrics(metrics => {
-  metrics
-    .AddAspNetCoreInstrumentation()
-    .AddHttpClientInstrumentation()
-    .AddRuntimeInstrumentation();
-});
-
-builder.Services.AddOpenTelemetryTracing(tracing => {
-  tracing
-    .AddAspNetCoreInstrumentation()
-    .AddHttpClientInstrumentation()
-    .AddNpgsql()
-    .AddAzureServiceBusInstrumentation();
-});
+// The OTLP exporter is enabled when OTEL_EXPORTER_OTLP_ENDPOINT is configured
+// (Aspire sets this automatically; in AKS point it at your collector).
 ```
 
 ### Prometheus Metrics
@@ -621,25 +624,22 @@ spec:
 **Receptors/CreateOrderReceptor.cs**:
 
 ```csharp{title="Custom Metrics" description="**Receptors/CreateOrderReceptor." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Custom", "Metrics"]}
-private readonly Meter _meter = new("ECommerce.OrderService");
-private readonly Counter<long> _ordersCreated;
+private static readonly Meter _meter = new("ECommerce.OrderService");
+private static readonly Counter<long> _ordersCreated = _meter.CreateCounter<long>(
+  "orders_created_total",
+  description: "Total number of orders created"
+);
 
-public CreateOrderReceptor(...) {
-  _ordersCreated = _meter.CreateCounter<long>(
-    "orders_created_total",
-    description: "Total number of orders created"
-  );
-}
-
-public async Task<OrderCreated> HandleAsync(CreateOrder command, CancellationToken ct) {
-  // ... process order
+public async ValueTask<OrderCreatedEvent> HandleAsync(
+    CreateOrderCommand message,
+    CancellationToken cancellationToken = default) {
+  // ... process order (validate, build OrderCreatedEvent, PublishAsync)
 
   _ordersCreated.Add(1, new TagList {
-    { "customer_id", command.CustomerId },
-    { "item_count", command.Items.Length }
+    { "item_count", message.LineItems.Count }
   });
 
-  return @event;
+  return orderCreated;
 }
 ```
 
@@ -680,6 +680,10 @@ spec:
 kubectl apply -f k8s/jobs/migrate-orders-db.yaml
 kubectl wait --for=condition=complete job/migrate-orders-db --timeout=5m
 ```
+
+:::note
+Whizbang's own schema (inbox, outbox, event store, and `PerspectiveRow<T>` tables plus their PostgreSQL functions) is created at service startup by the generated `EnsureWhizbangDatabaseInitializedAsync()` extension — no separate job needed for it. This migration job covers the service's *custom* tables (e.g. `customer_activity`, the analytics time-series tables); the `migrate` argument is a CLI entry point you implement in the service.
+:::
 
 ---
 

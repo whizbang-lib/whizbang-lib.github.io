@@ -1,6 +1,8 @@
 ---
 title: GraphQL Integration
 pageType: overview
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: GraphQL
 order: 1
@@ -11,6 +13,12 @@ description: >-
 tags: 'graphql, hotchocolate, lenses, aot, query-generation, paging, projection'
 codeReferences:
   - src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangExtensions.cs
+  - src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensAttribute.cs
+  - src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensScope.cs
+  - src/Whizbang.Transports.HotChocolate/Middleware/ScopeMiddlewareExtensions.cs
+testReferences:
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ServiceRegistrationTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/GraphQLLensAttributeTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -48,7 +56,8 @@ public interface IOrderLens : ILensQuery<OrderReadModel> { }
 // Program.cs
 builder.Services.AddGraphQLServer()
     .AddWhizbangLenses()
-    .AddQueryType<Query>();
+    .AddQueryType<Query>()
+    .AddWhizbangLensQueries();  // Registers the generated lens query fields
 
 // Add scope middleware for multi-tenancy
 builder.Services.AddWhizbangScope();
@@ -83,10 +92,11 @@ app.MapGraphQL();
       hasNextPage
       endCursor
     }
-    totalCount
   }
 }
 ```
+
+> `totalCount` is available on a connection only when the resolver opts in with `[UsePaging(IncludeTotalCount = true)]` — the generated lens resolvers do not enable it by default.
 
 ## Documentation
 
@@ -116,7 +126,7 @@ flowchart TD
 | Type | Purpose |
 |------|---------|
 | `GraphQLLensAttribute` | Marks lens interfaces for GraphQL exposure |
-| `GraphQLLensScope` | Controls which fields are exposed (Data, Metadata, Scope, SystemFields) |
+| `GraphQLLensScopes` | Flags enum controlling which fields are exposed (Data, Metadata, Scope, SystemFields) |
 | `WhizbangScopeMiddleware` | Extracts scope from HTTP context |
 | `WhizbangScopeOptions` | Configures claim/header mappings |
 | `PerspectiveRow<T>` | Wrapper with Data, Metadata, Scope, and system fields |

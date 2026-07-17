@@ -1,6 +1,8 @@
 ---
 title: Diagnostics
-pageType: troubleshooting
+pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Observability
 order: 3
@@ -10,6 +12,10 @@ description: >-
 tags: 'diagnostics, health-check, monitoring, system-commands, observability'
 codeReferences:
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
+  - src/Whizbang.Core/IReceptor.cs
+  - src/Whizbang.Core/Lenses/ILensQuery.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Commands/System/SystemCommandsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -231,14 +237,12 @@ public class DiagnosticsController : ControllerBase {
   }
 
   [HttpPost("diagnostics/health")]
-  public async Task<IActionResult> CheckHealthAsync(
-      CancellationToken ct) {
+  public async Task<IActionResult> CheckHealthAsync() {
     var correlationId = Guid.NewGuid();
 
     // Send command to all services
     await _dispatcher.SendAsync(
-        new DiagnosticsCommand(DiagnosticType.HealthCheck, correlationId),
-        ct
+        new DiagnosticsCommand(DiagnosticType.HealthCheck, correlationId)
     );
 
     // Responses will be published as DiagnosticResponse events
@@ -247,13 +251,11 @@ public class DiagnosticsController : ControllerBase {
   }
 
   [HttpPost("diagnostics/full")]
-  public async Task<IActionResult> CollectFullDiagnosticsAsync(
-      CancellationToken ct) {
+  public async Task<IActionResult> CollectFullDiagnosticsAsync() {
     var correlationId = Guid.NewGuid();
 
     await _dispatcher.SendAsync(
-        new DiagnosticsCommand(DiagnosticType.Full, correlationId),
-        ct
+        new DiagnosticsCommand(DiagnosticType.Full, correlationId)
     );
 
     return Accepted(new { correlationId });
@@ -263,29 +265,50 @@ public class DiagnosticsController : ControllerBase {
 
 ## Collecting Diagnostic Responses
 
-Use a perspective to aggregate diagnostic responses from all services:
+Use a perspective to materialize diagnostic responses into a read model.
+Perspectives are pure functions (`IPerspectiveFor<TModel, TEvent...>`) —
+they hold no state of their own; Whizbang persists the returned model and
+you read it back through a lens query:
 
-```csharp{title="Diagnostic Collector Perspective" description="Aggregate diagnostic responses" category="Usage" difficulty="INTERMEDIATE" tags=["Diagnostics", "Perspectives", "Aggregation"]}
-public class DiagnosticCollectorPerspective : IPerspective {
-  private readonly Dictionary<string, DiagnosticResponse> _responses = new();
+```csharp{title="Diagnostic Report Perspective" description="Materialize diagnostic responses into a read model" category="Usage" difficulty="INTERMEDIATE" tags=["Diagnostics", "Perspectives", "Aggregation"]}
+// Read model materialized from DiagnosticResponse events
+public class DiagnosticReport {
+  public string ServiceName { get; set; } = "";
+  public string Status { get; set; } = "";
+  public DateTimeOffset Timestamp { get; set; }
+  public Guid? CorrelationId { get; set; }
+}
 
-  public void Apply(DiagnosticResponse response) {
-    // Store response by service name
-    _responses[response.ServiceName] = response;
+// Pure-function perspective — the latest response wins per stream
+public class DiagnosticReportPerspective :
+  IPerspectiveFor<DiagnosticReport, DiagnosticResponse> {
+
+  public DiagnosticReport Apply(DiagnosticReport currentData, DiagnosticResponse @event) {
+    return new DiagnosticReport {
+      ServiceName = @event.ServiceName,
+      Status = @event.Status,
+      Timestamp = @event.Timestamp,
+      CorrelationId = @event.CorrelationId
+    };
+  }
+}
+```
+
+Read the materialized reports back with `ILensQuery<TModel>`:
+
+```csharp{title="Diagnostic Lens Queries" description="Query materialized diagnostic reports via ILensQuery" category="Usage" difficulty="INTERMEDIATE" tags=["Diagnostics", "Lenses", "Queries"]}
+public class DiagnosticsLens(ILensQuery<DiagnosticReport> query) {
+  public async Task<IReadOnlyList<DiagnosticReport>> GetByCorrelationAsync(
+      Guid correlationId, CancellationToken ct = default) {
+    return await query.DefaultScope.Query
+        .Where(row => row.Data.CorrelationId == correlationId)
+        .Select(row => row.Data)
+        .ToListAsync(ct);
   }
 
-  public IReadOnlyDictionary<string, DiagnosticResponse> GetAllResponses() {
-    return _responses;
-  }
-
-  public IEnumerable<DiagnosticResponse> GetResponsesByCorrelation(
-      Guid correlationId) {
-    return _responses.Values
-        .Where(r => r.CorrelationId == correlationId);
-  }
-
-  public bool AreAllServicesHealthy() {
-    return _responses.Values.All(r => r.Status == "Healthy");
+  public async Task<bool> AreAllServicesHealthyAsync(CancellationToken ct = default) {
+    return await query.DefaultScope.Query
+        .AllAsync(row => row.Data.Status == "Healthy", ct);
   }
 }
 ```
@@ -294,14 +317,14 @@ public class DiagnosticCollectorPerspective : IPerspective {
 
 Integrate diagnostics with monitoring dashboards:
 
-```csharp{title="Dashboard Diagnostics" description="Expose diagnostics via API" category="Usage" difficulty="INTERMEDIATE" tags=["Operations", "Observability", "C#", "Dashboard", "Diagnostics"]}
+```csharp{title="Dashboard Diagnostics" description="Expose diagnostics via a SignalR hub backed by a lens query" category="Usage" difficulty="INTERMEDIATE" tags=["Operations", "Observability", "C#", "Dashboard", "Diagnostics"]}
 public class SystemDiagnosticsHub : Hub {
   private readonly IDispatcher _dispatcher;
-  private readonly ILens<DiagnosticCollectorPerspective> _diagnosticsLens;
+  private readonly DiagnosticsLens _diagnosticsLens;
 
   public SystemDiagnosticsHub(
       IDispatcher dispatcher,
-      ILens<DiagnosticCollectorPerspective> diagnosticsLens) {
+      DiagnosticsLens diagnosticsLens) {
     _dispatcher = dispatcher;
     _diagnosticsLens = diagnosticsLens;
   }
@@ -314,12 +337,11 @@ public class SystemDiagnosticsHub : Hub {
         new DiagnosticsCommand(DiagnosticType.HealthCheck, correlationId)
     );
 
-    // Wait briefly for responses to accumulate
+    // Wait briefly for responses to materialize through the perspective
     await Task.Delay(TimeSpan.FromSeconds(2));
 
-    // Query perspective for aggregated results
-    var perspective = await _diagnosticsLens.QueryAsync();
-    var responses = perspective.GetResponsesByCorrelation(correlationId);
+    // Query the read model for aggregated results
+    var responses = await _diagnosticsLens.GetByCorrelationAsync(correlationId);
 
     // Push to dashboard
     await Clients.Caller.SendAsync(
@@ -337,8 +359,7 @@ public class SystemDiagnosticsHub : Hub {
 
     await Task.Delay(TimeSpan.FromSeconds(5));
 
-    var perspective = await _diagnosticsLens.QueryAsync();
-    var responses = perspective.GetResponsesByCorrelation(correlationId);
+    var responses = await _diagnosticsLens.GetByCorrelationAsync(correlationId);
 
     await Clients.Caller.SendAsync(
         "FullDiagnosticResults",
@@ -399,6 +420,8 @@ public class ResourceMetricsCollector {
 ### Diagnostic Handler Design
 
 ```csharp{title="Diagnostic Handler Best Practices" description="Best practices for implementing diagnostic handlers" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Diagnostics", "Best-Practices"]}
+// DiagnosticResponse.Timeout / .Error / .Healthy are application-defined
+// factory helpers on your response record, like Unknown / NotImplemented above.
 public class DiagnosticsReceptor : IReceptor<DiagnosticsCommand, DiagnosticResponse> {
   // DO: Implement timeouts for diagnostic collection
   private static readonly TimeSpan HealthCheckTimeout = TimeSpan.FromSeconds(5);
@@ -466,11 +489,11 @@ _diagnosticRequests[correlationId] = new DiagnosticRequest {
 await Task.Delay(TimeSpan.FromSeconds(2));
 
 // DO: Handle partial responses gracefully
-var responses = perspective.GetResponsesByCorrelation(correlationId);
-if (responses.Count() < _knownServiceCount) {
+var responses = await _diagnosticsLens.GetByCorrelationAsync(correlationId);
+if (responses.Count < _knownServiceCount) {
   _logger.LogWarning(
       "Received {Count} of {Expected} diagnostic responses",
-      responses.Count(),
+      responses.Count,
       _knownServiceCount);
 }
 ```

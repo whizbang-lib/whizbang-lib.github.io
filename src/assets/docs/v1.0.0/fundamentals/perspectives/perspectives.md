@@ -1,6 +1,8 @@
 ---
 title: Perspectives Guide
 pageType: overview
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 3
@@ -9,7 +11,7 @@ description: >-
   eventually consistent read models optimized for queries
 tags: >-
   perspectives, read-models, cqrs, eventual-consistency, event-driven,
-  pure-functions, streamkey
+  pure-functions, streamid
 codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveBase.cs
@@ -119,22 +121,21 @@ See [Persistence](../persistence/persistence.md) for DbContext key configuration
 
 ---
 
-## StreamKey Attribute
+## StreamId Attribute
 
-The `[StreamKey]` attribute marks the property that identifies the stream/aggregate for event ordering and perspective model identification.
+The `[StreamId]` attribute marks the property that identifies the stream/aggregate for event ordering and perspective model identification.
 
 **Required on**:
 - **Event types**: Identifies which stream the event belongs to
 - **Model types**: Identifies which stream the model represents
 
 **Example**:
-```csharp{title="StreamKey Attribute" description="StreamKey Attribute" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "StreamKey", "Attribute"]}
+```csharp{title="StreamId Attribute" description="StreamId Attribute" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "StreamId", "Attribute"]}
 using Whizbang.Core;
 
-// Event with StreamKey
+// Event with StreamId
 public record ProductCreatedEvent : IEvent {
-    [AggregateId]  // Optional: marks as aggregate identifier
-    [StreamKey]    // Required: used for event replay ordering
+    [StreamId]    // Required: used for event replay ordering
     public Guid ProductId { get; init; }
 
     public string Name { get; init; } = string.Empty;
@@ -142,9 +143,9 @@ public record ProductCreatedEvent : IEvent {
     public decimal Price { get; init; }
 }
 
-// Model with StreamKey
+// Model with StreamId
 public record ProductDto {
-    [StreamKey]
+    [StreamId]
     public Guid ProductId { get; init; }
 
     public string Name { get; init; } = string.Empty;
@@ -155,8 +156,8 @@ public record ProductDto {
 ```
 
 **Diagnostics**:
-- **WHIZ030**: Event type must have exactly one property marked with `[StreamKey]`
-- **WHIZ031**: Event type has multiple properties marked with `[StreamKey]` (only one allowed)
+- **WHIZ030**: Event type used in a perspective is missing the `[StreamId]` attribute
+- **WHIZ031**: Event type has multiple properties marked with `[StreamId]` (only one allowed)
 
 **Why required?**
 - Enables stream-based event replay
@@ -173,7 +174,7 @@ using Whizbang.Core.Perspectives;
 
 // Event
 public record ProductCreatedEvent : IEvent {
-    [StreamKey]
+    [StreamId]
     public Guid ProductId { get; init; }
     public string Name { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
@@ -183,7 +184,7 @@ public record ProductCreatedEvent : IEvent {
 
 // Read Model
 public record ProductDto {
-    [StreamKey]
+    [StreamId]
     public Guid ProductId { get; init; }
     public string Name { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
@@ -266,7 +267,7 @@ Whizbang automatically generates `IPerspectiveRunner` implementations for each p
 
 **What gets generated**:
 - Runner class per perspective (e.g., `ProductCatalogPerspectiveRunner`)
-- `ExtractStreamId` methods per event type (extracts stream ID from event's `[StreamKey]` property)
+- `ExtractStreamId` methods per event type (extracts stream ID from event's `[StreamId]` property)
 - Unit-of-work event replay logic
 - Checkpoint management
 
@@ -591,11 +592,12 @@ One event can update **multiple read models**:
 ```csharp{title="Multiple Perspectives per Event" description="One event can update multiple read models:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "C#", "Multiple"]}
 // Event published once
 public record OrderCreatedEvent : IEvent {
-    [StreamKey]
+    [StreamId]
     public Guid OrderId { get; init; }
     public Guid CustomerId { get; init; }
     public OrderLineItem[] Items { get; init; } = [];
     public decimal Total { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
 }
 
 // Perspective 1: Order summary (for customer order history)
@@ -616,7 +618,7 @@ public class CustomerActivityPerspective : IPerspectiveFor<CustomerActivityDto, 
     public CustomerActivityDto Apply(CustomerActivityDto currentData, OrderCreatedEvent @event) {
         return new CustomerActivityDto {
             CustomerId = @event.CustomerId,
-            LastOrderDate = DateTime.UtcNow,
+            LastOrderDate = @event.CreatedAt,  // Event timestamp, not DateTime.UtcNow (WHIZ104)
             OrderCount = (currentData?.OrderCount ?? 0) + 1,
             TotalSpent = (currentData?.TotalSpent ?? 0) + @event.Total
         };
@@ -693,7 +695,7 @@ Different perspectives for different use cases:
 ```csharp{title="Multiple Read Models" description="Different perspectives for different use cases:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Multiple", "Read"]}
 // Read Model 1: Product catalog (for product listing UI)
 public record ProductCatalogDto {
-    [StreamKey]
+    [StreamId]
     public Guid ProductId { get; init; }
     public string Name { get; init; } = string.Empty;
     public decimal Price { get; init; }
@@ -702,7 +704,7 @@ public record ProductCatalogDto {
 
 // Read Model 2: Product details (for product detail page)
 public record ProductDetailsDto {
-    [StreamKey]
+    [StreamId]
     public Guid ProductId { get; init; }
     public string Name { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
@@ -714,7 +716,7 @@ public record ProductDetailsDto {
 
 // Read Model 3: Inventory levels (for warehouse dashboard)
 public record InventoryLevelsDto {
-    [StreamKey]
+    [StreamId]
     public Guid ProductId { get; init; }
     public int Quantity { get; init; }
     public int Reserved { get; init; }
@@ -737,13 +739,13 @@ Each read model has its own **perspective** and **table schema** optimized for i
 builder.Services.AddTransient<ProductCatalogPerspective>();
 
 // Register perspective store (scoped - per request)
-builder.Services.AddScoped<IPerspectiveStore<ProductDto>, PostgresPerspectiveStore<ProductDto>>();
+builder.Services.AddScoped<IPerspectiveStore<ProductDto>, EFCorePostgresPerspectiveStore<ProductDto>>();
 ```
 
 **Auto-Discovery** (with Whizbang.Generators):
 ```csharp{title="Registration (2)" description="Auto-Discovery (with Whizbang." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registration"]}
 // Discovers all IPerspectiveFor implementations and registers runners
-builder.Services.AddPerspectiveRunners();  // Generated by source generator
+builder.Services.AddWhizbangPerspectives();  // Generated by source generator
 ```
 
 ### Lifetime
@@ -761,7 +763,7 @@ builder.Services.AddPerspectiveRunners();  // Generated by source generator
 
 ```csharp{title="Lifetime" description="Runners: Transient (created per RunAsync call) - Stateless (no shared state between runs)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Lifetime"]}
 builder.Services.AddTransient<ProductCatalogPerspective>();
-builder.Services.AddScoped<IPerspectiveStore<ProductDto>, PostgresPerspectiveStore<ProductDto>>();
+builder.Services.AddScoped<IPerspectiveStore<ProductDto>, EFCorePostgresPerspectiveStore<ProductDto>>();
 ```
 
 ---
@@ -779,7 +781,7 @@ public class ProductCatalogPerspectiveTests {
         var currentData = new ProductDto();  // Empty model
 
         var @event = new ProductCreatedEvent {
-            ProductId = Guid.NewGuid(),
+            ProductId = TrackedGuid.NewMedo(),
             Name = "Test Product",
             Description = "Test Description",
             Price = 19.99m,
@@ -801,7 +803,7 @@ public class ProductCatalogPerspectiveTests {
     public async Task Apply_Deterministic_SameInputProducesSameOutputAsync() {
         // Arrange
         var perspective = new ProductCatalogPerspective();
-        var currentData = new ProductDto { ProductId = Guid.NewGuid() };
+        var currentData = new ProductDto { ProductId = TrackedGuid.NewMedo() };
         var @event = new ProductUpdatedEvent {
             ProductId = currentData.ProductId,
             Name = "Updated Name",
@@ -823,7 +825,7 @@ public class ProductCatalogPerspectiveTests {
         // Arrange
         var perspective = new ProductCatalogPerspective();
         var createEvent = new ProductCreatedEvent {
-            ProductId = Guid.NewGuid(),
+            ProductId = TrackedGuid.NewMedo(),
             Name = "Product",
             Price = 10m,
             CreatedAt = DateTime.UtcNow
@@ -1016,7 +1018,7 @@ public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {
 ### DO ✅
 
 - ✅ Make `Apply()` methods **pure functions** (synchronous, deterministic, no I/O)
-- ✅ Use `[StreamKey]` on **both events and models**
+- ✅ Use `[StreamId]` on **both events and models**
 - ✅ Return **new model instance** from `Apply()` (don't mutate currentData)
 - ✅ Use `record` types for immutability
 - ✅ Handle null `currentData` defensively
@@ -1032,8 +1034,8 @@ public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {
 - ❌ Make `Apply()` async (pure functions are synchronous)
 - ❌ Mutate `currentData` parameter
 - ❌ Store state in perspective instances
-- ❌ Forget `[StreamKey]` attribute (will fail at runtime)
-- ❌ Use multiple `[StreamKey]` attributes (WHIZ031 error)
+- ❌ Forget `[StreamId]` attribute (WHIZ030 build error)
+- ❌ Use multiple `[StreamId]` attributes (WHIZ031 error)
 - ❌ Perform complex joins in read models (defeats denormalization)
 - ❌ Call receptors from perspectives (perspectives are read-only)
 - ❌ Throw exceptions for business logic (return appropriate model state)
@@ -1046,11 +1048,11 @@ public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {
 - [Dispatcher](../dispatcher/dispatcher.md) - How to publish events
 - [Lenses](../lenses/lenses.md) - Query interfaces for read models
 - [Receptors](../receptors/receptors.md) - Command handlers that produce events
-- [StreamKey Attribute](../../extending/attributes/streamkey.md) - Stream identification
+- [StreamId Attribute](../../extending/attributes/streamid.md) - Stream identification
 
 **Source Generators**:
 - [Perspective Discovery](../../extending/source-generators/perspective-discovery.md) - Auto-discovery and runner generation
-- [Diagnostics (WHIZ030/WHIZ031)](../../operations/diagnostics/whiz030.md) - StreamKey validation
+- [Diagnostics (WHIZ030/WHIZ031)](../../operations/diagnostics/whiz030.md) - StreamId validation
 
 **Data Access**:
 - IPerspectiveStore - Persistence abstraction
