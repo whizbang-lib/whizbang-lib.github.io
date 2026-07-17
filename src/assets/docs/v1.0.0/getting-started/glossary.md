@@ -1,6 +1,8 @@
 ---
 title: Glossary
 pageType: reference
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Getting Started
 order: 5
@@ -8,6 +10,11 @@ description: >-
   Definitions of key terms and concepts used throughout Whizbang documentation -
   CQRS, event sourcing, perspectives, receptors, and framework-specific terminology
 tags: 'glossary, terminology, definitions, concepts, vocabulary, reference'
+testReferences:
+  - tests/Whizbang.Core.Tests/Dispatch/RouteTests.cs
+  - tests/Whizbang.Core.Tests/Dispatch/DispatchModeTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -53,8 +60,8 @@ Acknowledgment returned by `SendAsync` containing MessageId, CorrelationId, Stat
 **Dispatcher**
 The central message router providing three patterns: `SendAsync` (commands), `LocalInvokeAsync` (RPC), `PublishAsync` (events). See [Dispatcher Guide](../fundamentals/dispatcher/dispatcher.md).
 
-**DispatchMode**
-Flags enum controlling where messages route: `Local`, `Outbox`, `Both`, `EventStoreOnly`, `LocalNoPersist`. See [Dispatcher](../fundamentals/dispatcher/dispatcher.md#dispatch-mode).
+**DispatchModes**
+Flags enum controlling where messages route. Base flags: `None`, `LocalDispatch`, `Outbox`, `EventStore`. Combined values: `Local` (dispatch + persist), `LocalNoPersist`, `Both` (local + outbox), `EventStoreOnly`. See [Dispatcher](../fundamentals/dispatcher/dispatcher.md#dispatch-mode).
 
 ## E
 
@@ -102,7 +109,7 @@ Singleton that manages stage transitions, guarantees exactly-once firing, and co
 A [Receptor](#receptor) decorated with `[FireAt]` that executes at a specific stage in the message processing pipeline. See [Lifecycle Receptors](../fundamentals/receptors/lifecycle-receptors.md).
 
 **Lifecycle Stage**
-One of 24 stages in the message processing pipeline (Immediate, LocalImmediate, Distribute, Outbox, Inbox, Perspective, PostAllPerspectives, PostLifecycle). See [Lifecycle Stages](../fundamentals/lifecycle/lifecycle-stages.md).
+One of 24 stages in the message processing pipeline. Stage names carry a `Detached` or `Inline` suffix (e.g., `ImmediateDetached`, `PostPerspectiveInline`, `PostAllPerspectivesDetached`, `PostLifecycleInline`) covering the Immediate, Distribute, Outbox, Inbox, Perspective, PostAllPerspectives, and PostLifecycle phases. See [Lifecycle Stages](../fundamentals/lifecycle/lifecycle-stages.md).
 
 ## M
 
@@ -137,7 +144,7 @@ A stateless message handler that encapsulates business logic. Receives commands/
 Reconstructing a [Perspective](#perspective)'s read model from event history. Modes: Blue-Green, In-Place, Selected Streams. See [Perspective Rebuild](../fundamentals/perspectives/rebuild.md).
 
 **Route**
-Static factory class for controlling message dispatch: `Route.Local()`, `Route.Outbox()`, `Route.Both()`, `Route.None()`, `Route.EventStoreOnly()`.
+Static factory class for controlling message dispatch: `Route.Local()`, `Route.LocalNoPersist()`, `Route.Outbox()`, `Route.Both()`, `Route.None()`, `Route.EventStoreOnly()`.
 
 ## S
 
@@ -149,9 +156,6 @@ Roslyn-based compile-time code generator that enables zero-reflection, AOT-compa
 
 **StreamId**
 Property marked with `[StreamId]` that identifies which event stream a message belongs to. Required on all events and perspective models. See [Stream ID](../fundamentals/events/stream-id.md).
-
-**StreamKey**
-Alias for [StreamId](#streamid). The `[StreamKey]` attribute marks the stream identifier property.
 
 ## T
 

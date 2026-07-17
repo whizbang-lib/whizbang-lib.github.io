@@ -1,6 +1,8 @@
 ---
 title: Scaling Patterns
 pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Advanced Topics
 order: 8
@@ -11,9 +13,13 @@ tags: >-
   scaling, horizontal-scaling, partitioning, load-balancing, autoscaling,
   performance
 codeReferences:
-  - src/Whizbang.Core/Workers/WorkCoordinatorPublisherWorker.cs
+  - src/Whizbang.Core/Workers/ClaimWorker.cs
+  - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerGapTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -129,10 +135,10 @@ spec:
   - type: Pods
     pods:
       metric:
-        name: outbox_backlog
+        name: whizbang_queue_estimated_depth  # Whizbang.TableStatistics gauge (queue_name="outbox")
       target:
         type: AverageValue
-        averageValue: "100"  # 100 messages per pod
+        averageValue: "100"  # 100 unprocessed messages per pod
 ```
 
 **Expose custom metrics** (Prometheus Adapter):
@@ -232,13 +238,13 @@ public class PostgresConnectionFactory : IDbConnectionFactory {
 
 ```csharp{title="Read Replicas (3)" description="Read Replicas" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Read", "Replicas"]}
 // Write operations use primary
-public async Task<OrderCreated> HandleAsync(CreateOrder command, CancellationToken ct) {
+public async ValueTask<OrderCreatedEvent> HandleAsync(CreateOrderCommand command, CancellationToken ct = default) {
   await using var connection = await _dbFactory.CreateWriteConnectionAsync(ct);
   // Insert order...
 }
 
 // Read operations use replicas
-public async Task<OrderRow?> GetOrderAsync(string orderId, CancellationToken ct) {
+public async Task<OrderRow?> GetOrderAsync(Guid orderId, CancellationToken ct) {
   await using var connection = await _dbFactory.CreateReadConnectionAsync(ct);
   return await connection.QuerySingleOrDefaultAsync<OrderRow>(
     "SELECT * FROM orders WHERE order_id = @OrderId",
@@ -246,6 +252,8 @@ public async Task<OrderRow?> GetOrderAsync(string orderId, CancellationToken ct)
   );
 }
 ```
+
+**Important**: point **Whizbang's own connection string at the primary** - the outbox/inbox pipeline and perspective materialization are write-heavy and depend on read-your-writes consistency. Use replicas only for application-level read paths that tolerate replication lag.
 
 ### Table Partitioning
 
@@ -356,82 +364,16 @@ CREATE TABLE orders_7 PARTITION OF orders FOR VALUES WITH (MODULUS 8, REMAINDER 
 
 ---
 
-## Outbox/Inbox Partitioning
+## Outbox/Inbox Work Distribution (Built In)
 
-### Partition by Instance
+You don't shard Whizbang's queues or write claim SQL yourself - horizontal scaling of the message pipeline is the library's job:
 
-**Multiple instances claim work from different partitions**:
+- **Add pods, get throughput**: each pod runs a `ClaimWorker` that claims pending work from `wh_outbox` / `wh_inbox` through the `process_work_batch` database function. Claiming uses skip-locked semantics, so competing pods never grab the same work and no static partition assignment (pod ordinals, partition numbers) is required.
+- **Poller claims stream IDs, drainers fetch bodies**: the claim pass returns *stream identifiers only*; per-stream drain workers (`OutboxDrainWorker`, `InboxDrainWorker`) then fetch and process the message bodies. This split makes double-processing structurally impossible rather than merely unlikely.
+- **Per-stream ordering is preserved**: a stream is processed by one pod at a time (cross-pod stream pinning plus per-stream serialization inside `PerspectiveWorker`), so scaling out never reorders a stream's events. Parallelism grows **across** streams.
+- **Completed work is deleted**: finished `wh_outbox` / `wh_inbox` rows are removed on completion, keeping claim scans fast without manual partition maintenance.
 
-```sql{title="Partition by Instance" description="Multiple instances claim work from different partitions:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Partition", "Instance"]}
-CREATE TABLE outbox (
-  message_id UUID PRIMARY KEY,
-  partition_number INT NOT NULL,  -- 0-9 (10 partitions)
-  message_type TEXT NOT NULL,
-  message_body JSONB NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  processed_at TIMESTAMP NULL
-);
-
-CREATE INDEX idx_outbox_partition ON outbox(partition_number, created_at)
-  WHERE processed_at IS NULL;
-```
-
-**Claim work from specific partition**:
-
-```csharp{title="Partition by Instance (2)" description="Claim work from specific partition:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Partition", "Instance"]}
-public async Task<OutboxMessage[]> ClaimWorkAsync(
-  Guid instanceId,
-  int partitionNumber,
-  int batchSize,
-  CancellationToken ct = default
-) {
-  return await _db.QueryAsync<OutboxMessage>(
-    """
-    UPDATE outbox
-    SET processed_at = NOW(), processed_by = @InstanceId
-    WHERE message_id IN (
-      SELECT message_id
-      FROM outbox
-      WHERE partition_number = @PartitionNumber
-        AND processed_at IS NULL
-      ORDER BY created_at
-      LIMIT @BatchSize
-      FOR UPDATE SKIP LOCKED
-    )
-    RETURNING *
-    """,
-    new { InstanceId = instanceId, PartitionNumber = partitionNumber, BatchSize = batchSize }
-  ).ToArray();
-}
-```
-
-**Assign partition to instance**:
-
-```csharp{title="Partition by Instance - OutboxWorker" description="Assign partition to instance:" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Partition", "Instance"]}
-public class OutboxWorker : BackgroundService {
-  private readonly int _partitionNumber;
-
-  public OutboxWorker(IConfiguration config) {
-    // Assign partition based on instance index (K8s pod ordinal)
-    var podName = Environment.GetEnvironmentVariable("POD_NAME") ?? "pod-0";
-    _partitionNumber = int.Parse(podName.Split('-').Last()) % 10;
-  }
-
-  protected override async Task ExecuteAsync(CancellationToken ct) {
-    while (!ct.IsCancellationRequested) {
-      var messages = await _outbox.ClaimWorkAsync(
-        _instanceId,
-        _partitionNumber,  // Only claim from assigned partition
-        batchSize: 100,
-        ct
-      );
-
-      await ProcessMessagesAsync(messages, ct);
-      await Task.Delay(TimeSpan.FromSeconds(1), ct);
-    }
-  }
-}
-```
+**What you tune instead of building**: `MessageProcessingOptions.MaxConcurrentMessages` (per-pod handler concurrency), the inbox/outbox batch window options, and your pod replica count (HPA). Watch `whizbang.work_coordinator.*` and `whizbang.queue.estimated_depth` metrics to decide when to scale.
 
 ---
 
@@ -505,11 +447,11 @@ builder.Services.AddStackExchangeRedisCache(options => {
 **Usage**:
 
 ```csharp{title="Distributed Cache (Redis) - GetOrderReceptor" description="Distributed Cache (Redis) - GetOrderReceptor" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Distributed", "Cache"]}
-public class GetOrderReceptor : IReceptor<GetOrder, OrderRow?> {
+public class GetOrderReceptor : IReceptor<GetOrderQuery, OrderRow?> {
   private readonly IDistributedCache _cache;
   private readonly IDbConnection _db;
 
-  public async Task<OrderRow?> HandleAsync(GetOrder query, CancellationToken ct) {
+  public async ValueTask<OrderRow?> HandleAsync(GetOrderQuery query, CancellationToken ct = default) {
     var cacheKey = $"order:{query.OrderId}";
 
     // Try cache first
@@ -543,17 +485,16 @@ public class GetOrderReceptor : IReceptor<GetOrder, OrderRow?> {
 
 ### Cache Invalidation
 
-**OrderSummaryPerspective.cs**:
+Perspectives are pure `Apply` functions - side effects like cache invalidation belong in a **lifecycle receptor**. `PostPerspectiveInline` fires after the perspective row is committed, so evicting there can never resurrect stale data:
 
-```csharp{title="Cache Invalidation" description="**OrderSummaryPerspective." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Cache", "Invalidation"]}
-public async Task HandleAsync(OrderCreated @event, CancellationToken ct) {
-  // Update read model
-  await _db.ExecuteAsync(
-    "INSERT INTO order_summary (...) VALUES (...)"
-  );
+```csharp{title="Cache Invalidation" description="Cache-evicting lifecycle receptor at PostPerspectiveInline" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Cache", "Invalidation"]}
+[FireAt(LifecycleStage.PostPerspectiveInline)]  // after perspective data is committed
+public sealed class OrderCacheInvalidationReceptor(IDistributedCache cache)
+  : IReceptor<OrderCreatedEvent> {
 
-  // Invalidate cache
-  await _cache.RemoveAsync($"order:{@event.OrderId}", ct);
+  public async ValueTask HandleAsync(OrderCreatedEvent @event, CancellationToken cancellationToken = default) {
+    await cache.RemoveAsync($"order:{@event.OrderId}", cancellationToken);
+  }
 }
 ```
 
@@ -573,21 +514,18 @@ public async Task HandleAsync(OrderCreated @event, CancellationToken ct) {
 }
 ```
 
-**Connection pool metrics**:
+**Connection pool metrics**: Npgsql publishes pool metrics (open/busy/idle connections, pending requests) through its built-in `Npgsql` meter - no custom gauge code required:
 
-```csharp{title="Npgsql Connection Pool - ConnectionPoolMetrics" description="Connection pool metrics:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Npgsql", "Connection"]}
-public class ConnectionPoolMetrics {
-  private static readonly Gauge ActiveConnections = Metrics.CreateGauge(
-    "npgsql_active_connections",
-    "Number of active PostgreSQL connections"
-  );
-
-  public static void RecordMetrics() {
-    var poolingDataSource = (NpgsqlDataSource)_dataSource;
-    ActiveConnections.Set(poolingDataSource.Statistics.Idle + poolingDataSource.Statistics.Busy);
-  }
-}
+```csharp{title="Npgsql Connection Pool - Metrics" description="Subscribe to Npgsql's built-in meter" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Npgsql", "Connection"]}
+builder.Services.AddOpenTelemetry()
+  .WithMetrics(metrics => {
+    metrics
+      .AddMeter("Whizbang.*")
+      .AddMeter("Npgsql");  // connection pool gauges (npgsql.connections.*, etc.)
+  });
 ```
+
+Size `MaxPoolSize` against `MessageProcessingOptions.MaxConcurrentMessages` - each concurrent Whizbang message handler holds a pooled connection during its `process_work_batch` flush, and the default of 40 assumes a 100-connection pool with headroom.
 
 ---
 

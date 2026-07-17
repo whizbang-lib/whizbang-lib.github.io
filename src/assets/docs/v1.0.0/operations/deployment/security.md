@@ -1,6 +1,8 @@
 ---
 title: Security Best Practices
 pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Advanced Topics
 order: 5
@@ -13,6 +15,12 @@ codeReferences:
   - src/Whizbang.Core/Security/MessageSecurityServiceCollectionExtensions.cs
   - src/Whizbang.Core/Security/ISecurityContextExtractor.cs
   - src/Whizbang.Core/Security/MessageSecurityOptions.cs
+  - src/Whizbang.Core/Security/Attributes/RequirePermissionAttribute.cs
+  - src/Whizbang.Hosting.AspNet/WhizbangSecurityHeadersMiddleware.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Security/MessageSecurityContextProviderTests.cs
+  - tests/Whizbang.Core.Integration.Tests/SecurityIntegrationTests.cs
+  - tests/Whizbang.Hosting.AspNet.Tests/WhizbangSecurityHeadersMiddlewareTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -84,11 +92,10 @@ app.UseAuthorization();
 
 ```csharp{title="Require Authentication on Endpoints" description="Require Authentication on Endpoints" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Require", "Authentication"]}
 app.MapPost("/orders", async (
-  CreateOrder command,
-  IDispatcher dispatcher,
-  CancellationToken ct
+  CreateOrderCommand command,
+  IDispatcher dispatcher
 ) => {
-  var result = await dispatcher.DispatchAsync<CreateOrder, OrderCreated>(command, ct);
+  var result = await dispatcher.LocalInvokeAsync<CreateOrderCommand, OrderCreatedEvent>(command);
   return Results.Created($"/orders/{result.OrderId}", result);
 })
 .RequireAuthorization();  // ✅ Require authentication
@@ -119,11 +126,10 @@ builder.Services.AddAuthorizationBuilder()
 
 ```csharp{title="Policy-Based Authorization (2)" description="Policy-Based Authorization" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Policy-Based", "Authorization"]}
 app.MapPost("/orders", async (
-  CreateOrder command,
-  IDispatcher dispatcher,
-  CancellationToken ct
+  CreateOrderCommand command,
+  IDispatcher dispatcher
 ) => {
-  var result = await dispatcher.DispatchAsync<CreateOrder, OrderCreated>(command, ct);
+  var result = await dispatcher.LocalInvokeAsync<CreateOrderCommand, OrderCreatedEvent>(command);
   return Results.Created($"/orders/{result.OrderId}", result);
 })
 .RequireAuthorization("CreateOrder");  // ✅ Require specific policy
@@ -218,6 +224,30 @@ app.MapDelete("/orders/{orderId}", async (
 .RequireAuthorization();
 ```
 
+### Whizbang Message Security
+
+HTTP-level authorization covers your endpoints; **message-level security** covers everything flowing through the dispatcher and transports. Whizbang ships this as a first-class subsystem:
+
+```csharp{title="Whizbang Message Security" description="AddWhizbangMessageSecurity + receptor permission gates" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Message", "Security"]}
+// Program.cs - message security pipeline
+builder.Services.AddWhizbangMessageSecurity(options => {
+  options.AllowAnonymous = false;               // default: reject messages without a security context
+  options.EnableAuditLogging = true;            // default: true
+  options.ValidateCredentials = true;           // default: true
+  options.PropagateToOutgoingMessages = true;   // default: true - context flows to cascaded/outgoing messages
+  options.ExemptMessageTypes.Add(typeof(HealthPingCommand));  // opt specific messages out
+});
+
+// Receptor-level permission gate - enforced by the receptor interceptor pipeline
+[RequirePermission("orders.write")]
+public class CreateOrderReceptor(IDispatcher dispatcher, ILogger<CreateOrderReceptor> logger)
+  : IReceptor<CreateOrderCommand, OrderCreatedEvent> {
+  // ...
+}
+```
+
+The security context captured at the edge (e.g., from the JWT) travels **with the message** across the outbox, transport, and inbox - receptors on other services see the same principal. Row-level scoping (`[Scoped]`) and column-level masking (`[FieldPermission]`) build on the same context; see the Security fundamentals page for the full model.
+
 ---
 
 ## Encryption
@@ -307,9 +337,9 @@ public class AesDataEncryptionService : IDataEncryptionService {
 **Usage**:
 
 ```csharp{title="AES-256 Encryption (At Rest) (2)" description="AES-256 Encryption (At Rest)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "AES-256", "Encryption"]}
-public async Task<PaymentProcessed> HandleAsync(
-  ProcessPayment command,
-  CancellationToken ct = default
+public async ValueTask<PaymentProcessedEvent> HandleAsync(
+  ProcessPaymentCommand command,
+  CancellationToken cancellationToken = default
 ) {
   // Encrypt sensitive data before storing
   var encryptedCardNumber = _encryption.Encrypt(
@@ -328,7 +358,7 @@ public async Task<PaymentProcessed> HandleAsync(
     }
   );
 
-  return new PaymentProcessed { PaymentId = paymentId };
+  return new PaymentProcessedEvent { PaymentId = paymentId };
 }
 ```
 
@@ -413,18 +443,14 @@ az keyvault set-policy \
 
 ```csharp{title="Command Validation" description="**CreateOrderValidator." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Command", "Validation"]}
 public static class CreateOrderValidator {
-  public static ValidationResult Validate(CreateOrder command) {
+  public static ValidationResult Validate(CreateOrderCommand command) {
     var errors = new List<string>();
 
-    if (string.IsNullOrWhiteSpace(command.CustomerId)) {
-      errors.Add("Customer ID is required");
-    }
-
-    if (command.Items.Length == 0) {
+    if (command.LineItems.Count == 0) {
       errors.Add("Order must contain at least one item");
     }
 
-    foreach (var item in command.Items) {
+    foreach (var item in command.LineItems) {
       if (item.Quantity <= 0) {
         errors.Add($"Item {item.ProductId}: Quantity must be greater than zero");
       }
@@ -441,23 +467,27 @@ public static class CreateOrderValidator {
 }
 ```
 
-**ValidationPolicy.cs**:
+**Enforce in the receptor** (the pattern used by the ECommerce sample - validation runs before any event is published):
 
-```csharp{title="Command Validation - ValidationPolicy" description="**ValidationPolicy." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Command", "Validation"]}
-public class ValidationPolicy : IPolicy {
-  public async Task ApplyAsync(PolicyContext context, CancellationToken ct = default) {
-    var result = context.Message switch {
-      CreateOrder cmd => CreateOrderValidator.Validate(cmd),
-      UpdateOrder cmd => UpdateOrderValidator.Validate(cmd),
-      _ => ValidationResult.Success()
-    };
+```csharp{title="Command Validation - Receptor Guard" description="Validate at the top of HandleAsync, before publishing" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Command", "Validation"]}
+public class CreateOrderReceptor(IDispatcher dispatcher, ILogger<CreateOrderReceptor> logger)
+  : IReceptor<CreateOrderCommand, OrderCreatedEvent> {
 
+  public async ValueTask<OrderCreatedEvent> HandleAsync(
+    CreateOrderCommand command,
+    CancellationToken cancellationToken = default) {
+
+    var result = CreateOrderValidator.Validate(command);
     if (!result.IsSuccess) {
       throw new ValidationException(string.Join("; ", result.Errors));
     }
+
+    // ... publish OrderCreatedEvent only after validation passes
   }
 }
 ```
+
+For validation that must run for *every* message of a type regardless of which receptor handles it, register a lifecycle receptor with `[FireAt(LifecycleStage.PreOutboxInline)]` (sender side) or `[FireAt(LifecycleStage.PreInboxInline)]` (receiver side) - inline stages block the pipeline until the guard completes.
 
 ### SQL Injection Prevention
 
@@ -522,9 +552,15 @@ await _db.ExecuteAsync(
 
 ```csharp{title="Insecure Design" description="✅ Mitigation: Principle of least privilege + defense in depth" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Insecure", "Design"]}
 // Multiple layers of security
-.RequireAuthorization("CreateOrder")  // Layer 1: Policy
-.AddPolicy(new ValidationPolicy())    // Layer 2: Validation
-.AddPolicy(new TenantIsolationPolicy())  // Layer 3: Tenant isolation
+app.MapPost("/orders", CreateOrderEndpoint)
+  .RequireAuthorization("CreateOrder");            // Layer 1: HTTP policy
+
+builder.Services.AddWhizbangMessageSecurity();     // Layer 2: message security context
+
+[RequirePermission("orders.write")]                // Layer 3: receptor permission gate
+public class CreateOrderReceptor : IReceptor<CreateOrderCommand, OrderCreatedEvent> {
+  // Layer 4: command validation inside HandleAsync
+}
 ```
 
 ### 5. Security Misconfiguration
@@ -591,29 +627,13 @@ options.TokenValidationParameters = new TokenValidationParameters {
 
 ### 8. Software and Data Integrity Failures
 
-**✅ Mitigation**: Message signing + envelope validation
+**✅ Mitigation**: Envelope identity + inbox deduplication + authenticated transports
 
-```csharp{title="Software and Data Integrity Failures" description="✅ Mitigation: Message signing + envelope validation" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Software", "Data"]}
-public class MessageIntegrityPolicy : IPolicy {
-  public async Task ApplyAsync(PolicyContext context, CancellationToken ct = default) {
-    var signature = context.Envelope.Headers.GetValueOrDefault("signature");
-    if (string.IsNullOrEmpty(signature)) {
-      throw new SecurityException("Missing message signature");
-    }
+Every Whizbang message travels in a `MessageEnvelope` with a unique `MessageId` and a per-service hop chain (`CorrelationId` / `CausationId`), and the inbox **deduplicates** on message identity - a replayed or duplicated message is rejected before your receptors run (`whizbang.dispatcher.duplicates_detected` counts these). Combine that with:
 
-    var expectedSignature = ComputeSignature(context.Message);
-    if (signature != expectedSignature) {
-      throw new SecurityException("Invalid message signature");
-    }
-  }
-
-  private string ComputeSignature(object message) {
-    var json = JsonSerializer.Serialize(message);
-    var hash = SHA256.HashData(Encoding.UTF8.GetBytes(json));
-    return Convert.ToBase64String(hash);
-  }
-}
-```
+- **Authenticated transports** - Azure Service Bus (AAD / SAS) and RabbitMQ credentials authenticate every publish and consume; TLS protects the payload in transit.
+- **Credential validation on messages** - `MessageSecurityOptions.ValidateCredentials = true` (default) rejects messages whose security context fails validation.
+- **Supply-chain integrity** - lock files + signed packages for the software half of this OWASP category.
 
 ### 9. Security Logging and Monitoring Failures
 
@@ -632,55 +652,46 @@ _logger.LogWarning(
 **✅ Mitigation**: Whitelist allowed hosts + URL validation
 
 ```csharp{title="Server-Side Request Forgery (SSRF)" description="✅ Mitigation: Whitelist allowed hosts + URL validation" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "10.", "Server-Side"]}
-public class UrlValidationPolicy : IPolicy {
+// Guard any receptor that makes outbound calls from message-supplied URLs
+public static class OutboundUrlGuard {
   private static readonly string[] AllowedHosts = [
     "api.stripe.com",
     "api.twilio.com"
   ];
 
-  public async Task ApplyAsync(PolicyContext context, CancellationToken ct = default) {
-    if (context.Message is IExternalApiCall apiCall) {
-      var uri = new Uri(apiCall.Url);
-      if (!AllowedHosts.Contains(uri.Host)) {
-        throw new SecurityException($"Host not allowed: {uri.Host}");
-      }
+  public static void EnsureAllowed(string url) {
+    var uri = new Uri(url);
+    if (uri.Scheme != Uri.UriSchemeHttps || !AllowedHosts.Contains(uri.Host)) {
+      throw new SecurityException($"Host not allowed: {uri.Host}");
     }
   }
 }
+
+// In the receptor, before calling out:
+OutboundUrlGuard.EnsureAllowed(command.CallbackUrl);
 ```
 
 ---
 
 ## Security Headers
 
-**SecurityHeadersMiddleware.cs**:
+Whizbang ships a security-headers middleware in **`Whizbang.Hosting.AspNet`** - opt in with one line instead of hand-rolling:
 
-```csharp{title="Security Headers" description="**SecurityHeadersMiddleware." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Security", "Headers"]}
-app.Use(async (context, next) => {
-  // Prevent clickjacking
-  context.Response.Headers.Append("X-Frame-Options", "DENY");
+```csharp{title="Security Headers" description="UseWhizbangSecurityHeaders from Whizbang.Hosting.AspNet" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Security", "Headers"]}
+// Defaults: Strict-Transport-Security (1y, includeSubDomains, preload),
+// X-Content-Type-Options: nosniff, X-Frame-Options: DENY,
+// CSP: frame-ancestors 'none', Referrer-Policy: strict-origin-when-cross-origin,
+// Permissions-Policy: camera=(), microphone=(), geolocation=()
+app.UseWhizbangSecurityHeaders();
 
-  // Prevent MIME sniffing
-  context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
-
-  // Enable XSS protection
-  context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
-
-  // Content Security Policy
-  context.Response.Headers.Append(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self'; style-src 'self'"
-  );
-
-  // Strict Transport Security (HSTS)
-  context.Response.Headers.Append(
-    "Strict-Transport-Security",
-    "max-age=31536000; includeSubDomains"
-  );
-
-  await next();
+// Or customize (set a header value to null to suppress it):
+app.UseWhizbangSecurityHeaders(options => {
+  options.ContentSecurityPolicy = "default-src 'self'; script-src 'self'; style-src 'self'";
+  options.XFrameOptions = "SAMEORIGIN";
 });
 ```
+
+Headers are only added when absent, so app-specific values you set elsewhere win.
 
 ---
 
@@ -705,11 +716,10 @@ app.UseRateLimiter();
 
 ```csharp{title="Rate Limiting (2)" description="Rate Limiting" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Rate", "Limiting"]}
 app.MapPost("/orders", async (
-  CreateOrder command,
-  IDispatcher dispatcher,
-  CancellationToken ct
+  CreateOrderCommand command,
+  IDispatcher dispatcher
 ) => {
-  var result = await dispatcher.DispatchAsync<CreateOrder, OrderCreated>(command, ct);
+  var result = await dispatcher.LocalInvokeAsync<CreateOrderCommand, OrderCreatedEvent>(command);
   return Results.Created($"/orders/{result.OrderId}", result);
 })
 .RequireAuthorization()

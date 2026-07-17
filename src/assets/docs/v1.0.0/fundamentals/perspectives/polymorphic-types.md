@@ -1,12 +1,18 @@
 ---
 title: Polymorphic Types in Perspectives
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Perspectives
 codeReferences:
   - src/Whizbang.Data.EFCore.Postgres.Generators/PerspectiveModelPolymorphicAnalyzer.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Core/Perspectives/PolymorphicDiscriminatorAttribute.cs
+  - src/Whizbang.Generators/Templates/Snippets/JsonContextSnippets.cs
+testReferences:
+  - >-
+    tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveModelPolymorphicAnalyzerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -72,13 +78,13 @@ public record FormModel {
 Consider a form builder where fields can have different settings types:
 
 :::updated
-**Discriminator contract correction (verified against library commit `f2657adc`)**: the source generator treats `[JsonPolymorphic]`/`[JsonDerivedType]` as **discovery markers only**. The generated `JsonTypeInfo` always uses the discriminator property **`$type`** and **simple type names** as discriminator values — custom `TypeDiscriminatorPropertyName` and custom `[JsonDerivedType]` strings (like `"text"` below) are **not honored** (`JsonContextSnippets.cs` hardcodes `$type`; `MessageJsonContextGenerator` emits simple names). Payloads written expecting custom discriminators fail typed readback. Write examples with the default `$type` + type-name values until attribute configuration is supported.
+**Discriminator contract correction (re-verified against library commit `1b31f58d`)**: the source generator treats `[JsonPolymorphic]`/`[JsonDerivedType]` as **discovery markers only**. The generated `JsonTypeInfo` always uses the discriminator property **`$type`** and **simple type names** as discriminator values — custom `TypeDiscriminatorPropertyName` and custom `[JsonDerivedType]` strings are **not honored** (`JsonContextSnippets.cs` hardcodes `$type`; the JSON context generator emits simple names). Payloads written expecting custom discriminators fail typed readback. Write examples with the default `$type` + type-name values until attribute configuration is supported.
 :::
 
 ```csharp{title="The Problem" description="Consider a form builder where fields can have different settings types:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Problem"]}
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
-[JsonDerivedType(typeof(TextFieldSettings), "text")]
-[JsonDerivedType(typeof(NumberFieldSettings), "number")]
+[JsonPolymorphic]  // Discovery marker; generated discriminator is always $type + simple type names
+[JsonDerivedType(typeof(TextFieldSettings))]
+[JsonDerivedType(typeof(NumberFieldSettings))]
 public abstract class AbstractFieldSettings {
     public bool Required { get; init; }
 }
@@ -96,9 +102,9 @@ public class NumberFieldSettings : AbstractFieldSettings {
 Querying by derived type in JSONB requires parsing JSON at query time:
 
 ```sql{title="The Problem (2)" description="Querying by derived type in JSONB requires parsing JSON at query time:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Problem"]}
--- Slow: parses JSON for every row
+-- Slow: parses JSON for every row (discriminator values are simple type names)
 SELECT * FROM wh_per_form
-WHERE data->'Settings'->>'$type' = 'text';
+WHERE data->'Settings'->>'$type' = 'TextFieldSettings';
 ```
 
 ### The Solution
@@ -123,7 +129,7 @@ Now queries use the indexed column:
 ```sql{title="The Solution (2)" description="Now queries use the indexed column:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Solution"]}
 -- Fast: uses indexed column
 SELECT * FROM wh_per_form
-WHERE settings_type = 'text';
+WHERE settings_type = 'TextFieldSettings';
 ```
 
 ## Best Practices
@@ -131,7 +137,7 @@ WHERE settings_type = 'text';
 1. **Add discriminators for queried types**: If you filter by polymorphic type, add a discriminator
 2. **Skip rarely-queried types**: Not all polymorphic properties need discriminators
 3. **Use meaningful names**: `SettingsTypeName` is clearer than `Type`
-4. **Consider the polymorphic API**: Use `WherePolymorphic` for type-safe queries
+4. **Query the discriminator column directly** (a type-safe `WherePolymorphic` API is planned but not yet shipped)
 
 ## Suppressing the Analyzer
 

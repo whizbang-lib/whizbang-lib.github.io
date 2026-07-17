@@ -1,6 +1,8 @@
 ---
 title: "Implementing Multi-Tenancy"
-pageType: concept
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Core Concepts"
 order: 9
@@ -12,6 +14,24 @@ tags: 'multi-tenancy, tenant-isolation, security-options, scope-filters, rbac, s
 codeReferences:
   - src/Whizbang.Core/Security/SecurityOptions.cs
   - src/Whizbang.Core/Security/IPermissionExtractor.cs
+  - src/Whizbang.Core/Security/RoleBuilder.cs
+  - src/Whizbang.Core/Security/ScopeContext.cs
+  - src/Whizbang.Core/Security/ScopeContextAccessor.cs
+  - src/Whizbang.Core/Security/Exceptions/AccessDeniedException.cs
+  - src/Whizbang.Core/Lenses/ScopedLensFactory.cs
+  - src/Whizbang.Core/Lenses/InheritScopeAttribute.cs
+  - src/Whizbang.Core/IScopeEvent.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveScopeFor.cs
+  - src/Whizbang.Core/IMessageContext.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Security/RoleBuilderTests.cs
+  - tests/Whizbang.Core.Tests/Security/PermissionExtractorTests.cs
+  - tests/Whizbang.Core.Tests/Security/ScopeContextTests.cs
+  - tests/Whizbang.Core.Tests/Security/AccessDeniedExceptionTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryTests.cs
+  - tests/Whizbang.Core.Tests/Scoping/InheritScopeAttributeTests.cs
+  - tests/Whizbang.Core.Tests/Scoping/IScopeEventTests.cs
+  - tests/Whizbang.Core.Tests/Scoping/IPerspectiveScopeForTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -153,29 +173,29 @@ public class OrderLens : IOrderLens {
   public async Task<List<Order>> GetAllAsync() {
     var query = _context.Set<PerspectiveRow<Order>>().AsQueryable();
 
-    // Apply scope filters
-    if (_filterInfo.Filters.HasFlag(ScopeFilter.Tenant)) {
+    // Apply scope filters (ScopeFilters is the flags enum)
+    if (_filterInfo.Filters.HasFlag(ScopeFilters.Tenant)) {
       query = query.Where(r => r.Scope.TenantId == _filterInfo.TenantId);
     }
 
+    var principalStrings = _filterInfo.SecurityPrincipals.Select(p => (string)p).ToList();
+
     if (_filterInfo.UseOrLogicForUserAndPrincipal) {
-      // User OR Principal
+      // User OR Principal (AllowedPrincipals is List<string>)
       query = query.Where(r =>
         r.Scope.UserId == _filterInfo.UserId ||
-        r.Scope.AllowedPrincipals!.Any(p =>
-          _filterInfo.SecurityPrincipals.Contains(p)));
+        r.Scope.AllowedPrincipals.Any(p => principalStrings.Contains(p)));
     } else {
-      if (_filterInfo.Filters.HasFlag(ScopeFilter.User)) {
+      if (_filterInfo.Filters.HasFlag(ScopeFilters.User)) {
         query = query.Where(r => r.Scope.UserId == _filterInfo.UserId);
       }
-      if (_filterInfo.Filters.HasFlag(ScopeFilter.Principal)) {
+      if (_filterInfo.Filters.HasFlag(ScopeFilters.Principal)) {
         query = query.Where(r =>
-          r.Scope.AllowedPrincipals!.Any(p =>
-            _filterInfo.SecurityPrincipals.Contains(p)));
+          r.Scope.AllowedPrincipals.Any(p => principalStrings.Contains(p)));
       }
     }
 
-    return await query.Select(r => r.Data).ToListAsync();
+    return await query.Select(r => r.Model).ToListAsync();
   }
 
   public async Task<Order?> GetByIdAsync(Guid id) {
@@ -234,7 +254,7 @@ public class OrdersController : ControllerBase {
   public async Task<IActionResult> DeleteOrder(Guid id) {
     // Require delete permission
     var lens = _lensFactory.GetLens<IOrderLens>(
-      ScopeFilter.Tenant,
+      ScopeFilters.Tenant,
       Permission.Delete("orders"));
 
     // Will throw AccessDeniedException if not authorized
@@ -245,30 +265,31 @@ public class OrdersController : ControllerBase {
 
 ## Step 6: Store Data with Scope
 
-When creating perspective rows, set the appropriate scope.
+Perspectives implement a pure `Apply` — the perspective runner persists rows and writes the `scope` column automatically from the message's propagated scope. Declare **which** scope fields a row inherits with `[InheritScope]` on the perspective **model**:
 
-```csharp{title="Step 6: Store Data with Scope" description="When creating perspective rows, set the appropriate scope." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Store"]}
+```csharp{title="Step 6: Store Data with Scope" description="Declare scope inheritance on the perspective model; the runner persists scope automatically." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Store"]}
+// Owner-style rows: tenant + creating user pinned at INSERT, never mutated after.
+[InheritScope(OnCreate = ScopeFields.Tenant | ScopeFields.User)]
+public class Order {
+  public Guid OrderId { get; init; }
+  public string? CustomerId { get; init; }
+  // ...
+}
+
 public class OrderPerspective : IPerspectiveFor<Order, OrderCreatedEvent> {
-  private readonly IPerspectiveStore<Order> _store;
-  private readonly IScopeContextAccessor _accessor;
-
-  public async Task Update(OrderCreatedEvent @event, CancellationToken ct) {
-    var context = _accessor.Current!;
-    var order = Apply(new Order(), @event);
-
-    await _store.UpsertAsync(
-      @event.OrderId,
-      order,
-      new PerspectiveScope {
-        TenantId = context.Scope.TenantId,
-        UserId = context.Scope.UserId,
-        // Optional: Allow sharing with user's groups
-        AllowedPrincipals = context.SecurityPrincipals.ToList()
-      },
-      ct);
+  public Order Apply(Order current, OrderCreatedEvent @event) {
+    // Pure projection — no store access, no manual scope handling.
+    return new Order { OrderId = @event.OrderId, CustomerId = @event.CustomerId };
   }
 }
 ```
+
+Scope inheritance rules at this release:
+
+- **Attribute absent** = `[InheritScope]` defaults: `OnCreate = ScopeFields.Tenant`, `Always = ScopeFields.None`. Only the tenant is copied onto new rows — copying actor identity automatically would conflate audit with access control.
+- **`Always = ScopeFields.User`** gives last-writer semantics (the user field tracks the latest writer).
+- **Scope is set-once on INSERT** and preserved across updates. To change a row's scope afterwards (e.g. share with groups via `AllowedPrincipals`), publish an event implementing **`IScopeEvent`**, which carries a proposed `PerspectiveScope`.
+- A perspective can implement **`IPerspectiveScopeFor<TModel>`** to merge, override, or reject proposed scope changes — it takes precedence over both `[InheritScope]` and `IScopeEvent`.
 
 ## Step 7: Handle Access Denied
 
@@ -305,14 +326,15 @@ public class SecurityExceptionMiddleware {
 For organization-based access within a tenant:
 
 ```csharp{title="Advanced: Organization Hierarchy" description="For organization-based access within a tenant:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Advanced:", "Organization"]}
-// Store with organization scope
+// Store with organization scope (IPerspectiveStore<T>.UpsertAsync overload with scope).
+// AllowedPrincipals is List<string>; SecurityPrincipalId converts implicitly.
 await _store.UpsertAsync(id, data, new PerspectiveScope {
   TenantId = "tenant-123",
   OrganizationId = "org-sales",
-  AllowedPrincipals = new[] {
+  AllowedPrincipals = [
     SecurityPrincipalId.Group("org:sales"),
     SecurityPrincipalId.Group("org:management")
-  }
+  ]
 });
 
 // Query organization's data
@@ -324,18 +346,18 @@ var lens = _lensFactory.GetOrganizationLens<IReportLens>();
 Use extensions for custom scope dimensions:
 
 ```csharp{title="Advanced: Department-Based Extensions" description="Use extensions for custom scope dimensions:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Advanced:", "Department-Based"]}
-// Store with custom extensions
-await _store.UpsertAsync(id, data, new PerspectiveScope {
-  TenantId = "tenant-123",
-  Extensions = new Dictionary<string, string?> {
-    ["department"] = "engineering",
-    ["costCenter"] = "CC-1234",
-    ["project"] = "alpha"
-  }
-});
+// Store with custom extensions — Extensions is List<ScopeExtension>
+// (not a dictionary, for EF Core ComplexProperty().ToJson() compatibility).
+// Use SetExtension to add entries:
+var scope = new PerspectiveScope { TenantId = "tenant-123" };
+scope.SetExtension("department", "engineering");
+scope.SetExtension("costCenter", "CC-1234");
+scope.SetExtension("project", "alpha");
 
-// Access in queries
-var department = row.Scope["department"];
+await _store.UpsertAsync(id, data, scope);
+
+// Access via GetValue (there is no string indexer)
+var department = row.Scope.GetValue("department");
 ```
 
 ## Multi-Tenancy in Background Processing
@@ -344,7 +366,7 @@ var department = row.Scope["department"];
 Background processing tenant support added in v1.0.0
 :::
 
-When using lifecycle receptors (`PostPerspectiveAsync`, etc.) or background workers, HTTP context is unavailable. This section explains how tenant context flows through the system and how to access it.
+When using lifecycle receptors (`PostPerspectiveDetached`, `PostPerspectiveInline`, etc.) or background workers, HTTP context is unavailable. This section explains how tenant context flows through the system and how to access it.
 
 ### Security Context Propagation Flow
 
@@ -355,10 +377,10 @@ flowchart TD
     Request["HTTP Request (TenantId from JWT)"]
     Middleware["ScopeContextMiddleware<br/>IScopeContextAccessor.Current<br/>= { TenantId: #quot;tenant-123#quot; }"]
     Dispatch["Command Dispatch<br/>dispatcher.SendAsync(cmd)"]
-    Outbox["Outbox (wh_outbox)<br/>hop.SecurityContext.TenantId<br/>= #quot;tenant-123#quot;"]
-    Consumer["ServiceBusConsumerWorker<br/>Extracts TenantId from hop<br/>Establishes IScopeContext"]
+    Outbox["Outbox (wh_outbox)<br/>hop.Scope (ScopeDelta) carries<br/>TenantId = #quot;tenant-123#quot;"]
+    Consumer["ServiceBusConsumerWorker<br/>Merges scope deltas from hops<br/>Establishes IScopeContext"]
     Processing["Perspective Processing<br/>TenantId flows to event"]
-    Receptor["PostPerspectiveAsync Receptor<br/>IMessageContext.TenantId<br/>= #quot;tenant-123#quot; ✓"]
+    Receptor["PostPerspectiveDetached Receptor<br/>IMessageContext.TenantId<br/>= #quot;tenant-123#quot; ✓"]
 
     Request --> Middleware
     Middleware --> Dispatch
@@ -379,7 +401,7 @@ Choose the access method that fits your needs:
 For simple tenant access, inject `IMessageContext`:
 
 ```csharp{title="Option 1: IMessageContext (Simplest)" description="For simple tenant access, inject IMessageContext:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Option", "IMessageContext"]}
-[FireAt(LifecycleStage.PostPerspectiveAsync)]
+[FireAt(LifecycleStage.PostPerspectiveDetached)]
 public class TenantAwareBackgroundHandler : IReceptor<OrderCreatedEvent> {
   private readonly IMessageContext _messageContext;
   private readonly ITenantDbFactory _dbFactory;
@@ -412,7 +434,7 @@ public class TenantAwareBackgroundHandler : IReceptor<OrderCreatedEvent> {
 For access to roles, permissions, and custom properties:
 
 ```csharp{title="Option 2: IScopeContextAccessor (Full Scope)" description="For access to roles, permissions, and custom properties:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Option", "IScopeContextAccessor"]}
-[FireAt(LifecycleStage.PostPerspectiveAsync)]
+[FireAt(LifecycleStage.PostPerspectiveDetached)]
 public class AuthorizedBackgroundHandler : IReceptor<SensitiveEvent> {
   private readonly IScopeContextAccessor _scopeContextAccessor;
 
@@ -520,21 +542,21 @@ public class UserContextManager {
 
 This pattern allows the same service to work in both HTTP and background contexts.
 
-### Explicit Tenant Override with WithTenant()
+### Explicit Tenant Override with ForTenant()
 
-For system operations that need to target a specific tenant:
+For system operations that need to target a specific tenant (the older `WithTenant(...)` name was replaced by the explicit tenant-strategy API — `ForTenant(id)` / `ForAllTenants()` / `KeepTenant()`):
 
-```csharp{title="Explicit Tenant Override with WithTenant()" description="For system operations that need to target a specific tenant:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Explicit", "Tenant"]}
+```csharp{title="Explicit Tenant Override with ForTenant()" description="For system operations that need to target a specific tenant:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Explicit", "Tenant"]}
 // System job processing for a specific tenant
 await dispatcher
   .AsSystem()
-  .WithTenant("target-tenant-123")
+  .ForTenant("target-tenant-123")
   .SendAsync(new TenantMaintenanceCommand());
 
 // Admin operation on behalf of a tenant
 await dispatcher
   .RunAs("admin@example.com")
-  .WithTenant("customer-tenant-id")
+  .ForTenant("customer-tenant-id")
   .SendAsync(new DebugCommand());
 ```
 

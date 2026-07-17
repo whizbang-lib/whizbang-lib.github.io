@@ -1,6 +1,8 @@
 ---
 title: Exactly-Once Receptor Firing
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 11
@@ -21,7 +23,10 @@ codeReferences:
   - src/Whizbang.Core/Observability/MessageEnvelope.cs
   - src/Whizbang.Core/Configuration/WhizbangOptions.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerExactlyOnceTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvocationTrackingTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ReceptorFiringLockInTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EnvelopeReceptorDedupStoreTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/DuplicateReceptorFireExceptionTests.cs
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTrackerTests.cs
   - samples/ECommerce/tests/ECommerce.Lifecycle.Integration.Tests/PostAllPerspectivesTests.cs
   - samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Lifecycle/PerspectiveLifecycleTests.cs
@@ -33,7 +38,7 @@ Whizbang's firing contract is straightforward: **a receptor fires exactly once i
 
 ## The contract
 
-A receptor registered at one or more lifecycle stages (explicit `[FireAt]` or the three default stages) is only expected to produce **one invocation per message**. The stage-level filters in [`ReceptorInvoker`](lifecycle-receptors) (`source-service` filtering at `PostInbox`, namespace routing at `PreOutbox`, the `LocalDispatch` flag) are designed so that exactly one of a receptor's registered stages fires per message lifetime — the other stages short-circuit.
+A receptor registered at one or more lifecycle stages (explicit `[FireAt]` or the default stages `LocalImmediateDetached` + `PostInboxDetached`) is only expected to produce **one invocation per message**. The stage-level filters in [`ReceptorInvoker`](lifecycle-receptors) (source-service filtering at `PostInbox`, owned-domain filtering and the local-dispatch flag at `PreOutbox`) are designed so that exactly one of a receptor's registered stages fires per message lifetime — the other stages short-circuit.
 
 If a receptor fires twice for the same message — whether at the same stage or across two different stages — that is a bug. The guardrail described below catches it.
 
@@ -50,7 +55,7 @@ The guardrail recognizes these stages and does not raise a double-fire warning f
 | `LocalImmediateInline`, `LocalImmediateDetached` | 1 | `(messageId, receptorId)` |
 | `PreOutboxInline`, `PreOutboxDetached`, `PostOutboxInline`, `PostOutboxDetached` | 1 | `(messageId, receptorId)` |
 | `PreInboxInline`, `PreInboxDetached`, `PostInboxInline`, `PostInboxDetached` | 1 | `(messageId, receptorId)` |
-| `PreDistributeInline`, `DistributeInline`, `PostDistributeInline`, and their `Detached` siblings | 1 | `(messageId, receptorId)` |
+| `PreDistributeInline`, `PostDistributeInline`, their `Detached` siblings, and `DistributeDetached` | 1 | `(messageId, receptorId)` |
 | `PrePerspectiveInline`, `PrePerspectiveDetached` | **N** (one per perspective) | `(messageId, receptorId, perspectiveType)` |
 | `PostPerspectiveInline`, `PostPerspectiveDetached` | **N** (one per perspective) | `(messageId, receptorId, perspectiveType)` |
 | `ImmediateDetached` under a perspective context | **N** (one per perspective) | `(messageId, receptorId, perspectiveType)` |
@@ -120,7 +125,7 @@ The default implementation is `EnvelopeReceptorDedupStore` (registered via `TryA
 services.AddSingleton<IReceptorDedupStore, MyDatabaseReceptorDedupStore>();
 services.AddWhizbang()
   .WithEFCore<MyDbContext>()
-  .WithDriver.Postgres();
+  .WithDriver.Postgres;
 ```
 
 ## Observability

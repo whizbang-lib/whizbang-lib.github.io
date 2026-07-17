@@ -1,6 +1,8 @@
 ---
 title: Trace Verbosity Levels
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Tracing
 order: 1
@@ -11,6 +13,11 @@ tags: 'tracing, verbosity, observability, diagnostics, configuration'
 codeReferences:
   - src/Whizbang.Core/Tracing/TraceVerbosity.cs
   - src/Whizbang.Core/Tracing/TracingOptions.cs
+  - src/Whizbang.Core/Tracing/TraceComponents.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Tracing/TraceVerbosityTests.cs
+  - tests/Whizbang.Core.Tests/Tracing/TracingOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Tracing/TraceComponentsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

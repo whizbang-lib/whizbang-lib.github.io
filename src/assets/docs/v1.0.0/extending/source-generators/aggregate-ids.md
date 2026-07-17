@@ -1,356 +1,243 @@
 ---
 title: Aggregate IDs
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Source Generators
 order: 4
 description: >-
-  Zero-reflection aggregate ID extraction for PolicyContext - compile-time
-  discovery of [AggregateId] marked properties
+  Zero-reflection stream ID extraction with [StreamId] - compile-time
+  discovery of stream (aggregate) identifiers on events and commands
 tags: >-
-  source-generators, aggregate-ids, policy-context, zero-reflection,
+  source-generators, stream-ids, aggregate-ids, policy-context, zero-reflection,
   compile-time, uuidv7
 codeReferences:
-  - src/Whizbang.Generators/AggregateIdGenerator.cs
+  - src/Whizbang.Generators/StreamIdGenerator.cs
+  - src/Whizbang.Generators/Templates/StreamIdExtractorsTemplate.cs
+  - src/Whizbang.Generators/Templates/Snippets/StreamIdSnippets.cs
+  - src/Whizbang.Core/StreamIdAttribute.cs
+  - src/Whizbang.Core/GenerateStreamIdAttribute.cs
   - src/Whizbang.Core/Policies/PolicyContext.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/StreamIdGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/StreamIdGeneratorCoverageTests.cs
+  - tests/Whizbang.Generators.Tests/GenerateStreamIdGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/StreamIdInfoTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Aggregate IDs
 
-The **AggregateIdGenerator** discovers properties marked with `[AggregateId]` at compile-time and generates zero-reflection extractor methods. This enables `PolicyContext` to extract aggregate IDs from messages for distributed tracing, tenant isolation, and policy decisions without runtime reflection.
+:::updated
+**Renamed in the shipped library (verified at commit `1b31f58d`)**: the early `AggregateIdGenerator` + `[AggregateId]` design described by previous versions of this page was replaced by the **`StreamIdGenerator`** + **`[StreamId]`** attribute. "Aggregate ID" and "stream ID" refer to the same concept — the identifier of the stream (aggregate/entity) a message belongs to — and `PolicyContext.GetAggregateId()` is still the policy-facing accessor, but discovery, generation, and extraction all run through `[StreamId]`.
+:::
 
-## Why Aggregate IDs?
+The **StreamIdGenerator** discovers properties (or record parameters) marked with `[StreamId]` at compile-time and generates zero-reflection extractor methods. This lets the framework resolve which stream a message belongs to — for event sourcing, tracing, and policy decisions — without any runtime reflection.
 
-**Aggregate IDs** are the primary identifiers for domain entities (Orders, Customers, Products). Whizbang uses them for:
+## Why Stream IDs?
+
+**Stream IDs** identify the stream (aggregate) a message belongs to (Orders, Customers, Products). Whizbang uses them for:
 
 | Use Case | Description | Example |
 |----------|-------------|---------|
-| **Distributed Tracing** | Group all events for an aggregate | All events for Order #123 |
-| **Tenant Isolation** | Route messages to correct tenant database | Customer #456 → Tenant A database |
-| **Policy Decisions** | Make routing decisions based on ID | High-value orders → Priority queue |
-| **Stream Keys** | Organize events in Event Store | Stream: `Order-abc123` |
-| **Partitioning** | Distribute work across instances | Order #789 → Instance 2 |
+| **Event Sourcing** | Group all events for an aggregate into one stream | All events for Order #123 |
+| **Ordering** | Events for the same stream process in order | Per-stream sequential drain |
+| **Policy Decisions** | `PolicyContext.GetAggregateId()` for routing decisions | High-value orders → priority handling |
+| **Delivery Receipts** | `IDeliveryReceipt.StreamId` extraction | Track outcome per stream |
+| **Partitioning** | Distribute work across instances by stream | Order #789 → Instance 2 |
 
 **Problem**: Extracting IDs at runtime requires **reflection** (slow, not AOT-compatible).
 
-**Solution**: Generator discovers IDs at compile-time, generates **zero-reflection extractors**.
+**Solution**: The generator discovers `[StreamId]` members at compile-time and generates **zero-reflection extractors**.
 
 ---
 
 ## How It Works
 
-### 1. Mark Properties with [AggregateId]
+### 1. Mark Properties with [StreamId]
 
-```csharp{title="Mark Properties with [AggregateId]" description="Mark Properties with [AggregateId]" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Mark", "Properties"]}
+```csharp{title="Mark Properties with [StreamId]" description="Mark Properties with [StreamId]" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Mark", "Properties"]}
 using Whizbang.Core;
 
-// Command
+// Command (record parameter form)
 public record CreateOrder(
-    [property: AggregateId] Guid OrderId,  // ← Marked as aggregate ID
-    Guid CustomerId,
-    OrderItem[] Items
+    [property: StreamId] Guid OrderId,  // ← Marked as stream ID
+    Guid CustomerId
 ) : ICommand;
 
-// Event
-public record OrderCreated(
-    [property: AggregateId] Guid OrderId,  // ← Marked as aggregate ID
-    Guid CustomerId,
-    decimal Total,
-    DateTimeOffset CreatedAt
-) : IEvent;
-```
-
-**Convention**: One `[AggregateId]` per message type (typically the primary entity ID).
-
----
-
-### 2. Compile-Time Discovery
-
-```mermaid
-flowchart TD
-    Generator["AggregateIdGenerator (Roslyn)<br/><br/>1. Scan syntax tree for records/classes<br/>2. Check properties for [AggregateId] attribute<br/>3. Extract: Message type, Property name<br/>4. Validate: Must be Guid or Guid?"]
-    Generated["Generated: AggregateIdExtractors.g.cs<br/><br/>- Static extractor methods (zero reflection)<br/>- Type-safe property access<br/>- AOT-compatible"]
-
-    Generator --> Generated
-
-    class Generator layer-infrastructure
-    class Generated layer-core
-```
-
----
-
-### 3. Generated Code
-
-**AggregateIdExtractors.g.cs**:
-```csharp{title="Generated Code" description="**AggregateIdExtractors." category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"]}
-// <auto-generated/>
-using System;
-
-namespace MyApp.Generated;
-
-public static class AggregateIdExtractors {
-    /// <summary>
-    /// Extracts aggregate ID from a message (zero reflection, AOT-compatible).
-    /// Generated for 3 message types with [AggregateId] attributes.
-    /// </summary>
-    public static Guid? ExtractAggregateId(object message, Type messageType) {
-        // CreateOrder
-        if (messageType == typeof(global::MyApp.Commands.CreateOrder)) {
-            return ((global::MyApp.Commands.CreateOrder)message).OrderId;
-        }
-
-        // OrderCreated
-        if (messageType == typeof(global::MyApp.Events.OrderCreated)) {
-            return ((global::MyApp.Events.OrderCreated)message).OrderId;
-        }
-
-        // ShipOrder
-        if (messageType == typeof(global::MyApp.Commands.ShipOrder)) {
-            return ((global::MyApp.Commands.ShipOrder)message).OrderId;
-        }
-
-        return null;  // No [AggregateId] found
-    }
+// Event (property form)
+public record OrderCreated : IEvent {
+    [StreamId]
+    public Guid OrderId { get; set; }
+    public Guid CustomerId { get; init; }
+    public decimal Total { get; init; }
 }
 ```
 
-**Key Features**:
-- **Zero Reflection**: Direct type checks and casts
-- **Type Safe**: Compile-time property access
-- **AOT Compatible**: No `MakeGenericType` or `GetProperty` calls
-- **Fast**: < 10ns per extraction (vs ~1,000ns with reflection)
+**Requirements** (from `StreamIdAttribute`):
+- Property must be `Guid`, `Guid?`, or a WhizbangId type (a type whose value resolves to a `Guid`)
+- Only one `[StreamId]` per message type
+- The attribute is inherited by derived message types
+
+### 2. Compile-Time Discovery
+
+The generator runs four discovery pipelines over public `record`/`class` declarations with base lists:
+
+1. **`IEvent` types with `[StreamId]`** (on a property or constructor parameter, including inherited members)
+2. **`IEvent` types without `[StreamId]`** — reported as WHIZ009 warnings
+3. **`ICommand` types with `[StreamId]`**
+4. **Concrete `ICompositeEvent` types with `[StreamId]`** — composites are `IMessage`-not-`IEvent`, but carry a `[StreamId]` their fanned-out inner events inherit; they get an object-typed extractor so producer-side fan-out routes children correctly
+
+Non-public types are skipped (generated code could not access them), and abstract composites (e.g., `CompositeEventBase` itself) are skipped.
+
+### 3. Generated Code
+
+One file, **StreamIdExtractors.g.cs**, is emitted into the `{AssemblyName}.Generated` namespace. Its public surface:
+
+```csharp{title="Generated Code" description="Public surface of StreamIdExtractors.g.cs" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"]}
+public static partial class StreamIdExtractors {
+    // Resolve stream ID as string (throws if the type has no [StreamId])
+    public static string Resolve(IEvent @event);
+    public static string Resolve(ICommand command);
+
+    // Try to resolve as Guid (returns null if missing/not parseable)
+    public static Guid? TryResolveAsGuid(IEvent? @event);
+    public static Guid? TryResolveAsGuid(ICommand? command);
+    public static Guid? TryResolveAsGuid(object? message);  // composites, perspective DTOs
+
+    // [GenerateStreamId] support (used by the Dispatcher)
+    public static (bool ShouldGenerate, bool OnlyIfEmpty) GetGenerationPolicy(object message);
+    public static bool SetStreamId(object message, Guid streamId);
+}
+
+// Delegates to the static extractors; implements Whizbang.Core.IStreamIdExtractor
+internal sealed class GeneratedStreamIdExtractor : IStreamIdExtractor { /* ... */ }
+
+// DI hook: registers the composite extractor as IStreamIdExtractor
+public static class StreamIdExtractorRegistrations {
+    public static IServiceCollection AddWhizbangStreamIdExtractor(this IServiceCollection services);
+}
+```
+
+Each discovered type gets a type-dispatch case plus a per-type extractor, e.g.:
+
+```csharp{title="Generated Code (2)" description="Per-type dispatch and extractor" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"]}
+// Dispatch (inside Resolve/TryResolveAsGuid)
+if (@event is global::MyApp.Events.OrderCreated e0) {
+    return TryExtractAsGuid(e0);
+}
+
+// Per-type extractor for a Guid property
+private static global::System.Guid? TryExtractAsGuid(global::MyApp.Events.OrderCreated @event) {
+    return @event.OrderId;
+}
+```
+
+String and other property types are supported via `Guid.TryParse` on the value's string form; null or whitespace keys return `null` from `TryResolveAsGuid` (and throw from `Resolve`).
+
+### 4. Multi-Assembly Registration
+
+A `[ModuleInitializer]` in the generated file registers the assembly's extractor with the global `StreamIdExtractorRegistry` when the assembly loads — **priority 100 for contracts assemblies, 1000 for services** — so shared-contracts extractors are tried first. `AddWhizbangStreamIdExtractor()` (called by `AddWhizbangDispatcher()`) then registers the registry's composite as the DI `IStreamIdExtractor`.
+
+---
+
+## Auto-Generating Stream IDs
+
+Apply `[GenerateStreamId]` alongside `[StreamId]` to have the Dispatcher mint a stream ID at dispatch time:
+
+```csharp{title="GenerateStreamId" description="Auto-generation patterns" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GenerateStreamId"]}
+// Stream-initiating event: ALWAYS gets a new StreamId
+public record OrderCreatedEvent : IEvent {
+    [StreamId] [GenerateStreamId]
+    public Guid OrderId { get; set; }
+}
+
+// Flexible event: inherits parent StreamId in cascades, generates if standalone
+public record InventoryReserved : IEvent {
+    [StreamId] [GenerateStreamId(OnlyIfEmpty = true)]
+    public Guid ReservationId { get; set; }
+}
+
+// Class-level: for a [StreamId] inherited from a base class
+[GenerateStreamId]
+public record OrderCreatedFromBase : BaseEvent;
+```
+
+The generated `GetGenerationPolicy` returns `(ShouldGenerate, OnlyIfEmpty)` per type, and `SetStreamId` writes the minted value back through the `[StreamId]` property — which is why that property must be a mutable `get; set;` (see WHIZ013 below). Events with `[StreamId]` but **without** `[GenerateStreamId]` must have a stream ID assigned before dispatch.
 
 ---
 
 ## Usage in PolicyContext
 
-### PolicyContext Integration
+`PolicyContext.GetAggregateId()` resolves the `IStreamIdExtractor` from the service provider and extracts the stream ID from the current message:
 
-```csharp{title="PolicyContext Integration" description="PolicyContext Integration" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "PolicyContext", "Integration"]}
-using Whizbang.Core.Policies;
+```csharp{title="PolicyContext Integration" description="PolicyContext.GetAggregateId() uses the generated extractor" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "PolicyContext", "Integration"]}
+// Inside a policy, the aggregate/stream ID comes from the generated extractor:
+var aggregateId = context.GetAggregateId();
 
-public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-    private readonly IPolicyEngine _policies;
-
-    public async ValueTask<OrderCreated> HandleAsync(
-        CreateOrder message,
-        CancellationToken ct = default) {
-
-        // PolicyContext automatically extracts OrderId via generated extractor
-        var context = new PolicyContext {
-            Message = message,
-            MessageType = typeof(CreateOrder),
-            AggregateId = AggregateIdExtractors.ExtractAggregateId(message, typeof(CreateOrder)),  // ← Generated method
-            UserId = GetCurrentUserId(),
-            TenantId = GetCurrentTenantId()
-        };
-
-        // Policy decisions based on aggregate ID
-        var decision = await _policies.EvaluateAsync("OrderRouting", context, ct);
-
-        // Route based on aggregate ID
-        if (decision.IsAllowed) {
-            // Process order...
-        }
-
-        return new OrderCreated(/* ... */);
-    }
-}
-```
-
-**Automatic Extraction** (via MessageEnvelope):
-```csharp{title="PolicyContext Integration (2)" description="Automatic Extraction (via MessageEnvelope):" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "PolicyContext", "Integration"]}
-// MessageEnvelope automatically extracts aggregate ID
-var envelope = MessageEnvelope.Create(
-    messageId: MessageId.New(),
-    correlationId: CorrelationId.New(),
-    causationId: null,
-    payload: message,
-    currentHop: new MessageHop {
-        // Aggregate ID extracted automatically via generator
-        StreamKey: AggregateIdExtractors.ExtractAggregateId(message, message.GetType())?.ToString()
-    }
-);
-```
-
----
-
-## Patterns
-
-### Pattern 1: Simple Aggregate ID
-
-```csharp{title="Pattern 1: Simple Aggregate ID" description="Pattern 1: Simple Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Simple"]}
-public record CreateOrder(
-    [property: AggregateId] Guid OrderId,  // ← Primary entity ID
-    Guid CustomerId,
-    OrderItem[] Items
-) : ICommand;
-```
-
-**Generated**:
-```csharp{title="Pattern 1: Simple Aggregate ID (2)" description="Pattern 1: Simple Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Simple"]}
-if (messageType == typeof(CreateOrder)) {
-    return ((CreateOrder)message).OrderId;
-}
-```
-
----
-
-### Pattern 2: Nullable Aggregate ID
-
-```csharp{title="Pattern 2: Nullable Aggregate ID" description="Pattern 2: Nullable Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Nullable"]}
-public record GetOrders(
-    [property: AggregateId] Guid? OrderId,  // ← Nullable (optional filter)
-    Guid CustomerId
-) : ICommand;
-```
-
-**Generated**:
-```csharp{title="Pattern 2: Nullable Aggregate ID (2)" description="Pattern 2: Nullable Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Nullable"]}
-if (messageType == typeof(GetOrders)) {
-    return ((GetOrders)message).OrderId;  // Returns Guid? (nullable)
-}
-```
-
-**Use Case**: Query commands where aggregate ID is optional.
-
----
-
-### Pattern 3: Inherited Aggregate ID
-
-```csharp{title="Pattern 3: Inherited Aggregate ID" description="Pattern 3: Inherited Aggregate ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Inherited"]}
-// Base class
-public abstract record OrderCommand {
-    [AggregateId]
-    public Guid OrderId { get; init; }
-}
-
-// Derived commands inherit [AggregateId]
-public record ShipOrder(Guid OrderId, string TrackingNumber) : OrderCommand, ICommand;
-public record CancelOrder(Guid OrderId, string Reason) : OrderCommand, ICommand;
-```
-
-**Generated** (one extractor per type):
-```csharp{title="Pattern 3: Inherited Aggregate ID (2)" description="Generated (one extractor per type):" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Inherited"]}
-if (messageType == typeof(ShipOrder)) {
-    return ((ShipOrder)message).OrderId;  // Inherited property
-}
-
-if (messageType == typeof(CancelOrder)) {
-    return ((CancelOrder)message).OrderId;  // Inherited property
-}
+// Throws InvalidOperationException if:
+// - IStreamIdExtractor is not registered, or
+// - the message type has no property marked with [StreamId]
 ```
 
 ---
 
 ## Diagnostics
 
-### WHIZ004: Aggregate ID Property Discovered
+| ID | Severity | Message |
+|----|----------|---------|
+| **WHIZ004** | Info | `Found [StreamId] on command {0}.{1}` |
+| **WHIZ005** | Error | `[StreamId] on {0}.{1} must be of type Guid, Guid?, or a type with a .Value property returning Guid` |
+| **WHIZ006** | Warning | `Type {0} has multiple [StreamId] attributes. Only the first property '{1}' will be used.` |
+| **WHIZ009** | Warning | `Type '{0}' implements {1} but has no property or parameter marked with [StreamId]. Stream ID resolution will fail at runtime.` |
+| **WHIZ010** | Info | `Found [StreamId] on {0}.{1}` |
+| **WHIZ013** | Error | `[GenerateStreamId]` on an **init-only** `[StreamId]` property — the generated `SetStreamId` writer cannot target `init`, so the minted ID would silently never be written. Change the property to `get; set;`. |
 
-**Severity**: Info
-
-**Message**: `Found [AggregateId] on property '{0}.{1}'`
-
-**Example**:
+**Example build output**:
 ```
-info WHIZ004: Found [AggregateId] on property 'CreateOrder.OrderId'
-info WHIZ004: Found [AggregateId] on property 'OrderCreated.OrderId'
-```
-
----
-
-### WHIZ005: Multiple [AggregateId] Attributes
-
-**Severity**: Warning
-
-**Message**: `Type '{0}' has multiple [AggregateId] attributes. Using first: '{1}'`
-
-**Example**:
-```
-warning WHIZ005: Type 'CreateOrder' has multiple [AggregateId] attributes. Using first: 'OrderId'
-```
-
-**Cause**:
-```csharp{title="WHIZ005: Multiple [AggregateId] Attributes" description="WHIZ005: Multiple [AggregateId] Attributes" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ005:", "Multiple"]}
-public record CreateOrder(
-    [property: AggregateId] Guid OrderId,  // ← First (used)
-    [property: AggregateId] Guid CustomerId  // ← Second (ignored)
-) : ICommand;
-```
-
-**Fix**: Only mark **one property** per message type.
-
----
-
-### WHIZ006: Invalid Property Type
-
-**Severity**: Error
-
-**Message**: `Property '{0}.{1}' has [AggregateId] but is not Guid or Guid?`
-
-**Example**:
-```
-error WHIZ006: Property 'CreateOrder.OrderId' has [AggregateId] but is not Guid or Guid?
-```
-
-**Cause**:
-```csharp{title="WHIZ006: Invalid Property Type" description="WHIZ006: Invalid Property Type" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ006:", "Invalid"]}
-public record CreateOrder(
-    [property: AggregateId] string OrderId,  // ❌ String, not Guid
-    Guid CustomerId
-) : ICommand;
-```
-
-**Fix**: Use `Guid` or `Guid?`:
-```csharp{title="WHIZ006: Invalid Property Type - CreateOrder" description="Fix: Use Guid or `Guid?" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ006:", "Invalid"]}
-public record CreateOrder(
-    [property: AggregateId] Guid OrderId,  // ✅ Guid
-    Guid CustomerId
-) : ICommand;
+info WHIZ010: Found [StreamId] on OrderCreated.OrderId
+info WHIZ004: Found [StreamId] on command CreateOrder.OrderId
+warning WHIZ009: Type 'LegacyEvent' implements IEvent but has no property or parameter marked with [StreamId]. Stream ID resolution will fail at runtime.
 ```
 
 ---
 
-## Performance
+## Patterns
 
-### Benchmark: Extraction Speed
+### Pattern 1: Record Parameter
 
-| Method | Overhead | Notes |
-|--------|----------|-------|
-| **Generated Extractor** | ~8ns | Direct cast + property access |
-| **Reflection** | ~1,000ns | `GetProperty()` + `GetValue()` |
-
-**125x faster** than reflection!
-
-```csharp{title="Benchmark: Extraction Speed" description="125x faster than reflection!" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Benchmark:", "Extraction"]}
-// ✅ Generated (fast)
-var id = AggregateIdExtractors.ExtractAggregateId(message, typeof(CreateOrder));
-
-// ❌ Reflection (slow)
-var property = typeof(CreateOrder).GetProperty("OrderId");
-var id = (Guid?)property?.GetValue(message);
+```csharp{title="Pattern 1: Record Parameter" description="Record parameter form" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Record"]}
+public record OrderCreated(
+    [property: StreamId] Guid OrderId,
+    string ProductName
+) : IEvent;
 ```
 
-### Zero Allocations
+### Pattern 2: Nullable Guid
 
-Generated code produces **zero allocations**:
-
-```csharp{title="Zero Allocations" description="Generated code produces zero allocations:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Allocations"]}
-// Generated code (no boxing/unboxing, no reflection overhead)
-if (messageType == typeof(CreateOrder)) {
-    return ((CreateOrder)message).OrderId;  // Direct property access
+```csharp{title="Pattern 2: Nullable Guid" description="Nullable stream ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Nullable"]}
+public record OrderArchived : IEvent {
+    [StreamId]
+    public Guid? OrderId { get; set; }  // TryResolveAsGuid returns null when unset
 }
 ```
 
-**Benchmark**:
+### Pattern 3: Inherited [StreamId]
+
+```csharp{title="Pattern 3: Inherited [StreamId]" description="Inherited stream ID from base class" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Inherited"]}
+// Base class carries the attribute (Inherited = true)
+public abstract record OrderEventBase : IEvent {
+    [StreamId]
+    public Guid OrderId { get; set; }
+}
+
+// Derived events are each discovered with the inherited property
+public record OrderShipped(string TrackingNumber) : OrderEventBase;
+public record OrderCancelled(string Reason) : OrderEventBase;
 ```
-Memory Diagnostics:
-  Gen 0: 0
-  Gen 1: 0
-  Gen 2: 0
-  Allocated: 0 bytes
-```
+
+`FindPropertyWithAttribute` (see [Type Symbol Extensions](type-symbol-extensions.md)) walks the base-type chain, so the derived events each get their own extractor.
 
 ---
 
@@ -358,85 +245,52 @@ Memory Diagnostics:
 
 ### DO ✅
 
-- ✅ **Mark primary entity ID** with `[AggregateId]`
-- ✅ **Use Guid or Guid?** for ID properties
-- ✅ **Use UUIDv7** for time-ordered IDs (`Guid.CreateVersion7()`)
-- ✅ **One [AggregateId] per message** (typically the main entity)
-- ✅ **Consistent naming** (OrderId, CustomerId, ProductId)
-- ✅ **Apply to both commands and events** for traceability
+- ✅ **Mark the stream identifier** with `[StreamId]` on every `IEvent` and stream-addressed `ICommand`
+- ✅ **Use Guid / Guid? / WhizbangId types** for ID properties
+- ✅ **Use `[GenerateStreamId]`** for stream-initiating events; `OnlyIfEmpty = true` for cascade-friendly events
+- ✅ **Keep `[StreamId]` + `[GenerateStreamId]` properties mutable** (`get; set;`) so the generated writer can assign them
+- ✅ **Use UUIDv7-style IDs** (`TrackedGuid`/WhizbangId types) for time-ordering
 
 ### DON'T ❌
 
-- ❌ Mark multiple properties (only first is used)
-- ❌ Use non-Guid types (must be Guid or Guid?)
-- ❌ Skip [AggregateId] on primary entities (breaks tracing)
-- ❌ Use random GUIDs (use UUIDv7 for time-ordering)
+- ❌ Mark multiple properties (WHIZ006 — only the first is used)
+- ❌ Use non-Guid-compatible types (WHIZ005 error)
+- ❌ Leave events without `[StreamId]` (WHIZ009 — runtime resolution will fail)
+- ❌ Combine `[GenerateStreamId]` with an init-only property (WHIZ013 error)
 
 ---
 
 ## Troubleshooting
 
-### Problem: Extractor Returns Null
+### Problem: "No stream ID extractor found for event type ..."
 
-**Symptoms**: `ExtractAggregateId()` returns `null` for message.
+**Symptoms**: `Resolve()` throws `InvalidOperationException` at runtime.
 
 **Causes**:
-1. Property not marked with `[AggregateId]`
-2. Wrong message type passed
+1. The type has no `[StreamId]` property or parameter
+2. The type is not public (generated code skips non-public types)
 
 **Solution**:
-```csharp{title="Problem: Extractor Returns Null" description="Problem: Extractor Returns Null" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Extractor"]}
-// ✅ Mark property
+```csharp{title="Problem: No extractor found" description="Add [StreamId] on a public type" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Extractor"]}
 public record CreateOrder(
-    [property: AggregateId] Guid OrderId,  // Add attribute
-    Guid CustomerId
-) : ICommand;
-
-// ✅ Pass correct type
-var id = AggregateIdExtractors.ExtractAggregateId(message, message.GetType());
-```
-
-### Problem: Property Ignored
-
-**Symptoms**: Warning WHIZ005, second property not used.
-
-**Cause**: Multiple `[AggregateId]` attributes on same type.
-
-**Solution**: Remove duplicate:
-```csharp{title="Problem: Property Ignored" description="Solution: Remove duplicate:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Problem:", "Property"]}
-// ❌ Multiple attributes
-public record CreateOrder(
-    [property: AggregateId] Guid OrderId,
-    [property: AggregateId] Guid CustomerId  // ← Remove this
-) : ICommand;
-
-// ✅ Single attribute
-public record CreateOrder(
-    [property: AggregateId] Guid OrderId,
+    [property: StreamId] Guid OrderId,  // Add attribute
     Guid CustomerId
 ) : ICommand;
 ```
 
----
+### Problem: Second [StreamId] Ignored
 
-## Integration with Event Store
+**Symptoms**: Warning WHIZ006, second property not used.
 
-### Stream Key Generation
+**Solution**: Keep exactly one `[StreamId]` per message type.
 
-Aggregate IDs are used to generate **Event Store stream keys**:
+### Problem: Auto-Generated ID Stays Empty
 
-```csharp{title="Stream Key Generation" description="Aggregate IDs are used to generate Event Store stream keys:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Stream", "Key"]}
-// Event Store automatically uses aggregate ID for stream key
-var streamKey = AggregateIdExtractors.ExtractAggregateId(@event, @event.GetType())?.ToString();
+**Symptoms**: Dispatch fails at the outbox; `[GenerateStreamId]` appears to do nothing.
 
-// Stream: "Order-abc123-def456-..."
-// All events for Order #abc123 in same stream
-```
+**Cause**: The `[StreamId]` property is init-only, so `SetStreamId` cannot write to it (WHIZ013 reports this at build time).
 
-**Benefits**:
-- **Consistent Ordering**: Events for same aggregate always ordered
-- **Rebuild Capability**: Replay events for specific aggregate
-- **Query Efficiency**: Read all events for aggregate in one query
+**Solution**: Change the property to `get; set;`.
 
 ---
 
@@ -445,7 +299,7 @@ var streamKey = AggregateIdExtractors.ExtractAggregateId(@event, @event.GetType(
 **Source Generators**:
 - [Receptor Discovery](receptor-discovery.md) - Compile-time receptor discovery
 - [Perspective Discovery](perspective-discovery.md) - Compile-time perspective discovery
-- [Message Registry](message-registry.md) - VSCode extension integration
+- [Type Symbol Extensions](type-symbol-extensions.md) - Inherited-property discovery used by this generator
 - [JSON Contexts](json-contexts.md) - AOT-compatible JSON serialization
 
 **Core Concepts**:
@@ -460,4 +314,4 @@ var streamKey = AggregateIdExtractors.ExtractAggregateId(@event, @event.GetType(
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*

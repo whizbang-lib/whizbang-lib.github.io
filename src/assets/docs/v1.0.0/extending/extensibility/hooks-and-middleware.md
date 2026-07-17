@@ -1,6 +1,8 @@
 ---
 title: Hooks and Middleware
-pageType: concept
+pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Extensibility
 order: 1
@@ -12,6 +14,11 @@ tags: >-
   aop
 codeReferences:
   - src/Whizbang.Core/Pipeline/IPipelineBehavior.cs
+  - src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs
+  - src/Whizbang.Core/SystemEvents/SystemEventServiceCollectionExtensions.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Pipeline/PipelineBehaviorTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditPipelineBehaviorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -76,10 +83,12 @@ flowchart TD
 ### Definition
 
 ```csharp{title="Definition" description="Definition" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Definition"]}
+namespace Whizbang.Core.Pipeline;
+
 public interface IPipelineBehavior<in TRequest, TResponse> {
-  Task<TResponse> Handle(
+  Task<TResponse> HandleAsync(
     TRequest request,
-    Func<Task<TResponse>> next,
+    Func<Task<TResponse>> continuation,
     CancellationToken cancellationToken = default
   );
 }
@@ -87,7 +96,7 @@ public interface IPipelineBehavior<in TRequest, TResponse> {
 
 **Parameters**:
 - `request` - The message being processed (command or query)
-- `next` - Delegate to invoke next behavior or receptor
+- `continuation` - Delegate to invoke next behavior or receptor
 - `cancellationToken` - Cancellation token
 
 **Return**: Response from receptor (potentially modified by behavior)
@@ -98,21 +107,25 @@ public interface IPipelineBehavior<in TRequest, TResponse> {
 public abstract class PipelineBehavior<TRequest, TResponse>
   : IPipelineBehavior<TRequest, TResponse> {
 
-  public abstract Task<TResponse> Handle(
+  public abstract Task<TResponse> HandleAsync(
     TRequest request,
-    Func<Task<TResponse>> next,
+    Func<Task<TResponse>> continuation,
     CancellationToken cancellationToken = default
   );
 
-  protected async Task<TResponse> ExecuteNextAsync(Func<Task<TResponse>> next) {
-    return await next();
+  protected async Task<TResponse> ExecuteNextAsync(Func<Task<TResponse>> continuation) {
+    return await continuation();
   }
 }
 ```
 
 ---
 
-## Built-In Behaviors
+## Example Behaviors
+
+:::note
+The behaviors below are **example implementations** you write in your application. The library itself ships one built-in behavior: `CommandAuditPipelineBehavior<TCommand, TResponse>` (in `Whizbang.Core.SystemEvents`), registered automatically by `services.AddSystemEventAuditing(...)` to emit `CommandAudited` system events after command processing.
+:::
 
 ### 1. Logging Behavior
 
@@ -129,7 +142,7 @@ public class LoggingBehavior<TRequest, TResponse>
     _logger = logger;
   }
 
-  public async Task<TResponse> Handle(
+  public async Task<TResponse> HandleAsync(
     TRequest request,
     Func<Task<TResponse>> next,
     CancellationToken cancellationToken
@@ -196,7 +209,7 @@ public class ValidationBehavior<TRequest, TResponse>
     _validators = validators;
   }
 
-  public async Task<TResponse> Handle(
+  public async Task<TResponse> HandleAsync(
     TRequest request,
     Func<Task<TResponse>> next,
     CancellationToken cancellationToken
@@ -254,7 +267,7 @@ public class RetryBehavior<TRequest, TResponse>
     _logger = logger;
   }
 
-  public async Task<TResponse> Handle(
+  public async Task<TResponse> HandleAsync(
     TRequest request,
     Func<Task<TResponse>> next,
     CancellationToken cancellationToken
@@ -305,7 +318,7 @@ public class CachingBehavior<TRequest, TResponse>
     _logger = logger;
   }
 
-  public async Task<TResponse> Handle(
+  public async Task<TResponse> HandleAsync(
     TRequest request,
     Func<Task<TResponse>> next,
     CancellationToken cancellationToken
@@ -354,7 +367,7 @@ public class PerformanceBehavior<TRequest, TResponse>
     _logger = logger;
   }
 
-  public async Task<TResponse> Handle(
+  public async Task<TResponse> HandleAsync(
     TRequest request,
     Func<Task<TResponse>> next,
     CancellationToken cancellationToken
@@ -448,7 +461,7 @@ public class AuthorizationBehavior<TRequest, TResponse>
 
   private readonly IAuthorizationService _authService;
 
-  public async Task<TResponse> Handle(
+  public async Task<TResponse> HandleAsync(
     TRequest request,
     Func<Task<TResponse>> next,
     CancellationToken cancellationToken
@@ -481,7 +494,7 @@ public class EnrichmentBehavior<TRequest, TResponse>
 
   private readonly IUserContextService _userContext;
 
-  public async Task<TResponse> Handle(
+  public async Task<TResponse> HandleAsync(
     TRequest request,
     Func<Task<TResponse>> next,
     CancellationToken cancellationToken
@@ -507,7 +520,7 @@ public class TransactionBehavior<TRequest, TResponse>
 
   private readonly IDbConnectionFactory _connectionFactory;
 
-  public async Task<TResponse> Handle(
+  public async Task<TResponse> HandleAsync(
     TRequest request,
     Func<Task<TResponse>> next,
     CancellationToken cancellationToken
@@ -587,14 +600,14 @@ builder.Services.AddTransient(
 **Solution**:
 ```csharp{title="Problem: Pipeline Hangs" description="Problem: Pipeline Hangs" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Problem:", "Pipeline"]}
 // ❌ WRONG: Forgot to call next()
-public async Task<TResponse> Handle(TRequest request, Func<Task<TResponse>> next, ...) {
+public async Task<TResponse> HandleAsync(TRequest request, Func<Task<TResponse>> next, ...) {
   _logger.LogInformation("Processing...");
   // Missing: await next()
   return default!;  // Never executes handler!
 }
 
 // ✅ CORRECT: Always call next()
-public async Task<TResponse> Handle(TRequest request, Func<Task<TResponse>> next, ...) {
+public async Task<TResponse> HandleAsync(TRequest request, Func<Task<TResponse>> next, ...) {
   _logger.LogInformation("Processing...");
   return await next();  // ⭐ Essential
 }

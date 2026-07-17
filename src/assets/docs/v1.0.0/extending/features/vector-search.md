@@ -1,6 +1,8 @@
 ---
 title: Vector Search
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Features
 order: 2
@@ -10,6 +12,15 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/VectorSearchExtensions.cs
   - src/Whizbang.Data.EFCore.Postgres/DbContextRegistrationRegistry.cs
   - src/Whizbang.Data.EFCore.Custom/WhizbangDbContextAttribute.cs
+  - src/Whizbang.Core/Perspectives/VectorFieldAttribute.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveConfigurationGenerator.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/VectorFieldPackageReferenceAnalyzer.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/VectorSearchExtensionsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/VectorSearchIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/VectorFieldPackageReferenceAnalyzerTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/VectorFieldAttributeTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -30,10 +41,14 @@ Whizbang provides a **turnkey experience** for pgvector. When your perspective m
 
 ```csharp{title="Turnkey Setup" description="Whizbang provides a turnkey experience for pgvector." category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Turnkey", "Setup"]}
 // Single call configures everything:
-// - NpgsqlDataSource with UseVector()
+// - NpgsqlDataSource with UseVector() (connection string resolved from configuration)
 // - DbContext with UseVector()
-// - HasPostgresExtension("vector") in OnModelCreating
-builder.Services.AddMyAppDbContext(connectionString);
+// - HasPostgresExtension("vector") via generated ConfigureWhizbang()
+// - CREATE EXTENSION vector pre-created at data-source build (if missing)
+builder.Services.AddMyAppDbContext();
+
+// Or override the configuration key to read the connection string from:
+builder.Services.AddMyAppDbContext(connectionStringName: "my-service-db");
 ```
 
 The `DbContextRegistrationRegistry` tracks which DbContexts have vector fields and ensures proper initialization order with all required pgvector setup.
@@ -44,7 +59,7 @@ The `VectorConfigurationRegistry` is the source generator's internal registry th
 
 ### VectorConfigurationRegistry
 
-This internal class (part of the source generator) tracks:
+This static class is **generated into your consumer assembly** by `EFCoreServiceRegistrationGenerator` and tracks:
 - **Which DbContexts** have vector fields
 - **Which perspective models** use `[VectorField]` attributes
 - **Vector dimensions** for each field
@@ -57,7 +72,7 @@ The registry ensures:
 
 ### DbContextRegistrationRegistry
 
-This companion registry (also internal to the generator) tracks:
+This companion registry (a runtime static class in `Whizbang.Data.EFCore.Postgres`) tracks:
 - **Which DbContexts** need registration extension methods
 - **Dependencies** between DbContexts and data sources
 - **Configuration callbacks** for customization
@@ -104,6 +119,7 @@ The generator produces:
 ```csharp{title="Generated Configuration (2)" description="The generator produces:" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "Generated", "Configuration"]}
 // In generated DbContext configuration
 public static void ConfigureWhizbang(ModelBuilder modelBuilder) {
+  // Auto-configured: pgvector extension required for [VectorField] columns
   modelBuilder.HasPostgresExtension("vector");
 
   modelBuilder.Entity<DocumentPerspectiveRow>(entity => {
@@ -112,25 +128,36 @@ public static void ConfigureWhizbang(ModelBuilder modelBuilder) {
   });
 }
 
-// In generated registration extension
+// In generated registration extension (abridged)
 public static IServiceCollection AddMyAppDbContext(
     this IServiceCollection services,
-    string connectionString,
-    Action<NpgsqlDataSourceBuilder>? configureDataSource = null,
-    Action<DbContextOptionsBuilder>? configureDbContext = null) {
+    string? connectionStringName = null) {
 
-  var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-  dataSourceBuilder.UseVector();  // Auto-added when vector fields detected
-  configureDataSource?.Invoke(dataSourceBuilder);
-  var dataSource = dataSourceBuilder.Build();
+  var connectionStringKey = connectionStringName ?? "DefaultConnection";
 
-  services.AddDbContext<MyAppDbContext>(options => {
-    options.UseNpgsql(dataSource, npgsql => {
-      npgsql.UseVector();  // Auto-added when vector fields detected
-    });
-    configureDbContext?.Invoke(options);
+  // NpgsqlDataSource singleton - IConfiguration resolved at provider-build time
+  services.RemoveAll<NpgsqlDataSource>();
+  services.AddSingleton<NpgsqlDataSource>(sp => {
+    var config = sp.GetRequiredService<IConfiguration>();
+    var connectionString = config.GetConnectionString(connectionStringKey)
+        ?? throw new InvalidOperationException(
+            $"Connection string '{connectionStringKey}' not found in configuration.");
+
+    var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+    dataSourceBuilder.ConfigureJsonOptions(JsonContextRegistry.CreateCombinedOptions());
+    dataSourceBuilder.EnableDynamicJson();
+
+    // Auto-configured: pgvector support required for [VectorField] columns
+    dataSourceBuilder.UseVector();
+
+    // Pre-create the vector extension before Build() so Npgsql's pg_type
+    // catalog scan finds it (skipped when infrastructure pre-created it)
+    // ... CREATE EXTENSION vector (if missing) ...
+
+    return dataSourceBuilder.Build();
   });
 
+  // DbContext registration with UseVector() on the Npgsql options follows...
   return services;
 }
 ```
@@ -156,26 +183,31 @@ If you forget these packages, compiler diagnostics will guide you:
 
 ## Customization
 
-### Configure Data Source
+### Connection String Name
 
-Pass a callback to customize the NpgsqlDataSource:
+The generated extension reads the connection string from configuration. The default key comes from `[WhizbangDbContext(ConnectionStringName = "...")]`; override it per call:
 
-```csharp{title="Configure Data Source" description="Pass a callback to customize the NpgsqlDataSource:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Configure", "Data"]}
-builder.Services.AddMyAppDbContext(connectionString, dataSourceBuilder => {
-  dataSourceBuilder.ConfigureJsonOptions(jsonOptions);
-  dataSourceBuilder.EnableDynamicJson();
-});
+```csharp{title="Connection String Name" description="Override the configuration key used to resolve the connection string." category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Configure", "Data"]}
+// Reads ConnectionStrings:chat-service-db from configuration
+builder.Services.AddMyAppDbContext(connectionStringName: "chat-service-db");
 ```
 
-### Configure DbContext
+### Connection Pool Settings
 
-Pass a callback to customize DbContext options:
+The generated data source factory applies pool settings from the `ConnectionPool` configuration section automatically:
 
-```csharp{title="Configure DbContext" description="Pass a callback to customize DbContext options:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Configure", "DbContext"]}
-builder.Services.AddMyAppDbContext(connectionString, configureDbContext: options => {
-  options.EnableSensitiveDataLogging();
-});
+```json{title="Connection Pool Settings" description="ConnectionPool configuration section." category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Configure", "DbContext"]}
+{
+  "ConnectionPool": {
+    "MaxPoolSize": 100,
+    "MinPoolSize": 5,
+    "Timeout": 15,
+    "CommandTimeout": 30
+  }
+}
 ```
+
+For anything beyond these knobs (custom Npgsql options, DbContext options callbacks), use manual configuration below.
 
 ## Manual Configuration
 

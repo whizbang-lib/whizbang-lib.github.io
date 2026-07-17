@@ -1,6 +1,8 @@
 ---
 title: Temporal Lens Queries
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Lenses
 order: 4
@@ -10,6 +12,10 @@ tags: 'lenses, temporal, history, time-travel, activity-feed, audit'
 codeReferences:
   - src/Whizbang.Core/Lenses/ITemporalLensQuery.cs
   - src/Whizbang.Core/Lenses/TemporalPerspectiveRow.cs
+  - src/Whizbang.Core/Perspectives/TemporalActionType.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Lenses/ITemporalLensQueryTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/TemporalPerspectiveRowTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -67,22 +73,22 @@ Each row in a temporal perspective contains:
 ```csharp{title="TemporalPerspectiveRow Structure" description="Each row in a temporal perspective contains:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "TemporalPerspectiveRow", "Structure"]}
 public class TemporalPerspectiveRow<TModel> where TModel : class {
   // Identity
-  public Guid Id { get; init; }           // Unique row ID (UUIDv7)
-  public Guid StreamId { get; init; }     // Aggregate/entity ID
-  public Guid EventId { get; init; }      // Source event ID
+  public required Guid Id { get; init; }           // Unique row ID (UUIDv7)
+  public required Guid StreamId { get; init; }     // Aggregate/entity ID
+  public required Guid EventId { get; init; }      // Source event ID
 
   // Data
-  public TModel Data { get; init; }       // The log entry model (JSONB)
+  public required TModel Data { get; init; }       // The log entry model (JSONB)
 
   // Metadata
-  public PerspectiveMetadata Metadata { get; set; }  // Event type, correlation, etc.
-  public PerspectiveScope Scope { get; set; }        // Tenant, user, org
+  public required PerspectiveMetadata Metadata { get; set; }  // Event type, correlation, etc.
+  public required PerspectiveScope Scope { get; set; }        // Tenant, user, org
 
   // Temporal fields
-  public TemporalActionType ActionType { get; init; } // Insert/Update/Delete
-  public DateTime PeriodStart { get; init; }          // When recorded (system time)
-  public DateTime PeriodEnd { get; init; }            // When superseded
-  public DateTimeOffset ValidTime { get; init; }      // When it happened (business time)
+  public required TemporalActionType ActionType { get; init; } // Insert/Update/Delete
+  public required DateTime PeriodStart { get; init; }          // When recorded (system time)
+  public required DateTime PeriodEnd { get; init; }            // When superseded (DateTime.MaxValue while current)
+  public required DateTimeOffset ValidTime { get; init; }      // When it happened (business time)
 }
 ```
 

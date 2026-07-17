@@ -1,6 +1,8 @@
 ---
 title: 'WHIZ300: Inconsistent Perspective Model Types'
 pageType: troubleshooting
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   Error diagnostic when a perspective class implements multiple perspective
   interfaces with different TModel types
@@ -15,6 +17,8 @@ tags:
   - analyzer
 codeReferences:
   - src/Whizbang.Generators/Analyzers/PerspectiveModelConsistencyAnalyzer.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/Analyzers/PerspectiveModelConsistencyAnalyzerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -149,12 +153,7 @@ dotnet_diagnostic.WHIZ300.severity = none
 
 ## Why This Matters
 
-The perspective runner processes events by routing them to the correct `Apply` method on a perspective class. Internally, it resolves a single `TModel` per perspective instance. When a class declares multiple perspective interfaces with different model types, the runner cannot determine which model to use, resulting in a runtime failure:
-
-```
-InvalidOperationException: Perspective 'OrderPerspective' declares inconsistent model types.
-Expected all interfaces to use the same TModel, but found: OrderView, ProductView.
-```
+The perspective runner processes events by routing them to the correct `Apply` method on a perspective class. Internally, the generated runner and its storage registration resolve a **single** `TModel` per perspective class — one perspective table, one model type. When a class declares multiple perspective interfaces with different model types, the runner cannot determine which model to load and persist, and perspective processing fails at runtime.
 
 The WHIZ300 analyzer moves this error to compile time, providing immediate feedback in your IDE.
 

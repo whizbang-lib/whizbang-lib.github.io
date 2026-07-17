@@ -1,6 +1,8 @@
 ---
 title: Persistence
 pageType: overview
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Core Concepts
 order: 12
@@ -11,12 +13,20 @@ tags: 'persistence, event-sourcing, batching, outbox, configuration'
 codeReferences:
   - src/Whizbang.Core/Persistence/PersistenceMode.cs
   - src/Whizbang.Core/Attributes/PersistenceStrategyAttribute.cs
+  - src/Whizbang.Core/Messaging/IEventStore.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Persistence/PersistenceModeTests.cs
+  - tests/Whizbang.Core.Tests/Persistence/PersistenceStrategyTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
 # Persistence
 
 Whizbang provides flexible persistence strategies for event sourcing, allowing you to optimize for throughput, consistency, or reliability based on your specific use case.
+
+:::updated
+**Shipped surface (verified against library commit `1b31f58d`)**: the `PersistenceMode` enum and the `[PersistenceStrategy]` attribute exist exactly as documented below and are locked by tests (`PersistenceModeTests`, `PersistenceStrategyTests`) — but at this commit they are **declarative metadata only**. No runtime component reads the attribute yet, the `Whizbang:Persistence` configuration section shown on this page (`DefaultMode`, the `Batched`/`Outbox` option blocks, named `Strategies`) is not bound or consumed by the library, and `IEventStore` exposes **no `FlushAsync`** member. Events persist through the event-store/outbox pipeline regardless of the declared mode. The mode semantics and configuration shapes below describe the intended behavior documented in the enum's own XML docs.
+:::
 
 ## Overview
 
@@ -65,13 +75,15 @@ await _eventStore.AppendAsync(orderId, new OrderCreated(...));
 Events are buffered and committed when `FlushAsync` is called or when a configured batch threshold is reached.
 
 ```csharp{title="Batched Mode" description="Events are buffered and committed when FlushAsync is called or when a configured batch threshold is reached." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Batched", "Mode"]}
-// Events are buffered
+// Design intent (see callout above — IEventStore has no FlushAsync yet):
+// events are buffered ...
 await _eventStore.AppendAsync(streamId1, event1);
 await _eventStore.AppendAsync(streamId2, event2);
 await _eventStore.AppendAsync(streamId3, event3);
 
-// Commit all buffered events
-await _eventStore.FlushAsync();
+// ... then committed as one batch on flush / threshold.
+// Today, use AppendBatchAsync for multi-append in one call:
+await _eventStore.AppendBatchAsync(entries);
 ```
 
 **Best for**: High-throughput event ingestion scenarios

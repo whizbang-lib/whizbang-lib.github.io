@@ -1,6 +1,8 @@
 ---
 title: "Raw SQL and Connection Access"
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Lenses"
 order: 6
@@ -11,6 +13,9 @@ description: >-
 tags: 'raw-sql, sql, connection-access, bulk-operations, npgsql, lenses'
 codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/LensQueryConnectionExtensions.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/LensQueryConnectionExtensionsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/LensQueryConnectionExtensionsExecutionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -141,6 +146,8 @@ var searchResults = await lensQuery.ExecuteSqlAsync<Document, SearchResult>(
 3. **AOT Compatibility**: These methods are AOT-compatible when using Npgsql's source-generated JSON serialization.
 
 4. **Type Safety**: `ExecuteSqlAsync<TModel, TResult>` requires `TResult` to be a class with properties matching the SQL projection.
+
+5. **Implementation Requirement**: These extensions require an `ILensQuery<TModel>` implementation that exposes its DbContext (e.g., `EFCorePostgresLensQuery`). Other implementations throw `InvalidOperationException`.
 
 ## See Also
 

@@ -1,16 +1,32 @@
 ---
 title: "Failure Handling"
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Messaging"
 order: 6
 description: >-
   Sophisticated failure handling in Whizbang messaging including exponential
-  backoff retry scheduling, stream-based failure cascades, poison message
-  detection, and bitwise message processing status tracking.
+  backoff retry scheduling, stream-based failure cascades, dead-letter
+  promotion, and bitwise message processing status tracking.
 tags: 'failure-handling, retry, exponential-backoff, poison-messages, error-recovery, stream-cascade, resilience'
 codeReferences:
-  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs
+  - src/Whizbang.Core/Messaging/WorkCoordinatorEnums.cs
+  - src/Whizbang.Core/Messaging/MessageFailureReason.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Core/Messaging/IDeadLetterStore.cs
+  - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
+  - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
+  - src/Whizbang.Data.Postgres/Migrations/017_ProcessOutboxFailures.sql
+  - src/Whizbang.Data.Postgres/Migrations/018_ProcessInboxFailures.sql
+  - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
+testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/MessageFailureTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresFunctionTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -29,10 +45,12 @@ Messages track their processing state using bitwise flags in the `status` column
 ```csharp{title="Message Processing Status" description="Messages track their processing state using bitwise flags in the status column:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Message", "Processing", "Status"]}
 [Flags]
 public enum MessageProcessingStatus {
-    Stored = 1,         // Bit 0: Message stored in database
-    EventStored = 2,    // Bit 1: Event persisted to event store
-    Published = 4,      // Bit 2: Message published to transport
-    Failed = 32768      // Bit 15: Processing failed
+    None = 0,           // No processing stages completed
+    Stored = 1 << 0,    // Bit 0: Message persisted to inbox/outbox table
+    EventStored = 1 << 1, // Bit 1: Event written to the event store (events only)
+    Published = 1 << 2, // Bit 2: Message published to transport (outbox only)
+    // Bits 3-14 reserved for future pipeline stages
+    Failed = 1 << 15    // Bit 15 (32768): Processing failed at some stage
 }
 ```
 
@@ -46,14 +64,23 @@ public enum MessageProcessingStatus {
 
 ```csharp{title="Failure Classification" description="Failure Classification" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Failure", "Classification"]}
 public enum MessageFailureReason {
-    Unknown = 99,                    // Default (not classified)
-    TransportUnavailable = 1,        // Network/transport issues
-    HandlerException = 2,            // Handler threw exception
-    ValidationFailure = 3,           // Message validation failed
-    TimeoutExceeded = 4,             // Processing timeout
-    SerializationError = 5,          // Cannot deserialize message
-    DependencyFailure = 6,           // External dependency unavailable
-    PoisonMessage = 7                // Exceeded retry limit
+    None = 0,                                  // No failure
+    TransportNotReady = 1,                     // Transport not yet available
+    TransportException = 2,                    // Transport threw during publish
+    SerializationError = 3,                    // Cannot (de)serialize message
+    ValidationError = 4,                       // Message validation failed
+    MaxAttemptsExceeded = 5,                   // Exceeded retry limit (dead-lettered)
+    LeaseExpired = 6,                          // Work lease expired mid-processing
+    EventStorageFailure = 7,                   // Event store append failed
+    Throttled = 8,                             // Broker throttled the publish
+    SecurityContextEstablishmentFailure = 10,  // Could not establish security context
+    EmptyStreamId = 11,                        // Event arrived with an empty stream id
+    MessageBodyTooLarge = 12,                  // Body exceeds transport limits
+    BodyClaimProviderUnknown = 13,             // Offloaded-body claim provider unknown
+    BodyClaimIntegrityFailure = 14,            // Offloaded-body integrity check failed
+    CompositeInnerEventLimitExceeded = 15,     // Composite exceeded inner-event cap
+    CompositeExpansionFailure = 16,            // Composite fan-out failed
+    Unknown = 99                               // Default (not classified)
 }
 ```
 
@@ -64,20 +91,20 @@ public enum MessageFailureReason {
 
 ### Retry Scheduling
 
-**Exponential Backoff Formula**:
+**Exponential Backoff Formula** (from `process_outbox_failures` / `process_inbox_failures`):
 ```
-scheduled_for = now + (base_interval * 2^attempts)
+scheduled_for = now + (30 seconds * LEAST(POWER(2, LEAST(attempts, 10)), 10))
 
-Base interval: 30 seconds
-Attempts:
-- 0: First attempt (no backoff)
+Base interval: 30 seconds, multiplier capped at 10 (5-minute ceiling)
+Attempts at failure time:
+- 0: 30s * 2^0 = 30 seconds
 - 1: 30s * 2^1 = 1 minute
 - 2: 30s * 2^2 = 2 minutes
 - 3: 30s * 2^3 = 4 minutes
-- 4: 30s * 2^4 = 8 minutes
-- 5: 30s * 2^5 = 16 minutes
-- ...
+- 4+: capped at 30s * 10 = 5 minutes
 ```
+
+Note: the failure functions record the error and release the lease but do **not** increment `attempts` — attempt counting happens solely at claim time (`claim_orphaned_outbox` / `claim_orphaned_inbox` set `attempts = attempts + 1`), so each claim-process-fail cycle counts exactly once.
 
 ## Failure Processing Flow {#failure-flow}
 
@@ -96,8 +123,8 @@ sequenceDiagram
     H-->>I: ❌ Exception: Network timeout
 
     I->>DB: ProcessWorkBatchAsync(<br/>failures: [M1: error="Network timeout"])
-    DB->>DB: UPDATE wh_outbox<br/>SET status = status | Failed (32768),<br/>error = "Network timeout",<br/>attempts = attempts + 1,<br/>scheduled_for = now + (30s * 2^attempts),<br/>instance_id = NULL,<br/>lease_expiry = NULL<br/>WHERE message_id = M1
-    Note over DB: M1: attempts=1<br/>scheduled_for = now + 1 min<br/>Status: Stored | Failed (32769)
+    DB->>DB: UPDATE wh_outbox<br/>SET status = status | Failed (32768),<br/>error = "Network timeout",<br/>failure_reason = ...,<br/>scheduled_for = now + (30s * LEAST(2^attempts, 10)),<br/>instance_id = NULL,<br/>lease_expiry = NULL<br/>WHERE message_id = M1
+    Note over DB: M1: attempts=1 (bumped at claim time)<br/>scheduled_for = now + 1 min<br/>Status: Stored | Failed (32769)
 
     Note over I: Wait 1 minute...
 
@@ -117,16 +144,16 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    F0["M1 initial attempt<br/>Fail (attempts=0)<br/>scheduled_for = now + 30s * 2^1 = now + 1 min"]
+    F0["M1 initial attempt<br/>Fail (attempts=0)<br/>scheduled_for = now + 30s * 2^0 = now + 30s"]
     W0["Cannot claim<br/>(scheduled_for > now)"]
-    R1["Retry #1<br/>Fail (attempts=1)<br/>scheduled_for = now + 30s * 2^2 = now + 2 min"]
+    R1["Retry #1 (claim bumps attempts to 1)<br/>Fail<br/>scheduled_for = now + 30s * 2^1 = now + 1 min"]
     W1["Cannot claim<br/>(scheduled_for > now)"]
     R2["Retry #2<br/>Success → Published"]
 
     F0 --> W0
-    W0 -->|"1 min later"| R1
+    W0 -->|"30s later"| R1
     R1 --> W1
-    W1 -->|"2 min later"| R2
+    W1 -->|"1 min later"| R2
 
     class F0,R1 layer-event
     class W0,W1 layer-command
@@ -152,20 +179,21 @@ When message M1 in stream S fails, what happens to messages M2, M3, M4 that come
 
 ```csharp{title="Status=0 Release Pattern" description="Mechanism: Completing a message with Status = 0 clears its lease without changing status flags, allowing it to be" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Status=0", "Release", "Pattern"]}
 // Release messages M2, M3 (let them be retried)
-await coordinator.ProcessWorkBatchAsync(
-    // ...
-    outboxCompletions: [
-        new MessageCompletion { MessageId = message2Id, Status = 0 },  // Release
-        new MessageCompletion { MessageId = message3Id, Status = 0 }   // Release
+await coordinator.ProcessWorkBatchAsync(new ProcessWorkBatchRequest {
+    // ... instance identity fields + other required arrays (empty) elided ...
+    OutboxCompletions = [
+        new MessageCompletion { MessageId = message2Id, Status = MessageProcessingStatus.None },  // Release
+        new MessageCompletion { MessageId = message3Id, Status = MessageProcessingStatus.None }   // Release
     ],
-    outboxFailures: [
+    OutboxFailures = [
         new MessageFailure {
             MessageId = message1Id,
             CompletedStatus = MessageProcessingStatus.Stored,
-            Error = "Processing failed"
+            Error = "Processing failed",
+            Reason = MessageFailureReason.TransportException
         }
     ]
-);
+});
 ```
 
 **Effect**:
@@ -260,8 +288,8 @@ M2, M3, M4: Other events (independent)
 
 ```sql{title="Detection Criteria" description="Detection Criteria" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Sql", "Detection", "Criteria"]}
 -- Find potential poison messages
-SELECT message_id, destination, event_type, attempts, error,
-       scheduled_for, created_at
+SELECT message_id, destination, message_type, attempts, error,
+       failure_reason, scheduled_for, created_at
 FROM wh_outbox
 WHERE attempts >= 10  -- High retry count
   AND (status & 32768) = 32768  -- Failed flag set
@@ -269,30 +297,26 @@ WHERE attempts >= 10  -- High retry count
 ORDER BY attempts DESC, created_at ASC;
 ```
 
-### Handling Strategies
+### Built-In Dead-Letter Promotion
 
-**1. Dead Letter Queue** (recommended):
-```csharp{title="Handling Strategies" description="Handling Strategies" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Handling", "Strategies"]}
-// Move to dead letter queue after N attempts
-if (message.Attempts >= 10) {
-    await MoveToDeadLetterQueueAsync(message);
+Whizbang ships a first-class internal dead-letter queue (the `wh_dead_letters` table, written via `IDeadLetterStore`). Three internal paths promote rows whose `attempts` exceed a configurable cap — each cap defaults to **10**:
 
-    // Complete with Status=0 to prevent re-claiming
-    await coordinator.ProcessWorkBatchAsync(
-        outboxCompletions: [
-            new MessageCompletion { MessageId = message.MessageId, Status = 0 }
-        ]
-    );
-}
-```
+| Path | Worker | Option (default) |
+|---|---|---|
+| Inbox dispatch | `InboxDispatchWorker` | `InboxDispatchWorkerOptions.MaxInboxAttempts = 10` |
+| Outbox publish | `OutboxPublishWorker` / `OutboxDrainWorker` | `MaxOutboxAttempts = 10` |
+| Perspective apply | `PerspectiveWorker` (pre-apply filter) | `PerspectiveWorkerOptions.MaxPerspectiveEventAttempts = 10` |
 
-**2. Manual Intervention**:
+When the cap is exceeded, the row is moved to `wh_dead_letters` with `MessageFailureReason.MaxAttemptsExceeded` (preserving the last real error text as the forensic snapshot) and deleted from its work table, unblocking the stream. Setting an option to `null` restores infinite-retry behavior. See the Dead Letter Queue operations pages for recovery flows.
+
+### Additional Handling Strategies
+
+**1. Manual Intervention**:
 - Set `scheduled_for = NULL` (prevents retry)
-- Set custom `FailureReason = PoisonMessage`
 - Alert operations team
 - Release downstream messages (Status=0)
 
-**3. Circuit Breaker**:
+**2. Circuit Breaker**:
 - Detect repeated failures of same type
 - Temporarily stop processing that message type
 - Alert and investigate root cause
@@ -308,6 +332,7 @@ public record MessageFailure {
     public required Guid MessageId { get; init; }
     public required MessageProcessingStatus CompletedStatus { get; init; }
     public required string Error { get; init; }
+    public MessageFailureReason Reason { get; init; } = MessageFailureReason.Unknown;
 }
 ```
 
@@ -331,13 +356,18 @@ await coordinator.ProcessWorkBatchAsync(
 
 ### SQL Update Logic
 
-```sql{title="SQL Update Logic" description="SQL Update Logic" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Sql", "SQL", "Update", "Logic"]}
-UPDATE wh_outbox
-SET status = (status | v_failure.status_flags | 32768),  -- Add completed flags + Failed flag
+```sql{title="SQL Update Logic" description="SQL Update Logic (from 017_ProcessOutboxFailures.sql)" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Sql", "SQL", "Update", "Logic"]}
+UPDATE wh_outbox o
+SET status = o.status | v_failure.status_flags | 32768,  -- Add completed flags + Failed flag
     error = v_failure.error_message,
-    attempts = attempts + 1,
-    scheduled_for = now + (INTERVAL '30 seconds' * POWER(2, attempts + 1))
-WHERE message_id = v_failure.msg_id;
+    failure_reason = COALESCE(v_failure.failure_reason, 0),
+    -- Exponential backoff: 30s * 2^attempts, capped at 5 minutes
+    scheduled_for = p_now + (INTERVAL '30 seconds' * LEAST(POWER(2, LEAST(o.attempts, 10)), 10)),
+    instance_id = NULL,
+    lease_expiry = NULL
+WHERE o.message_id = v_failure.msg_id;
+-- Note: attempts is NOT incremented here; claim_orphaned_outbox is the
+-- sole source of attempt counting.
 ```
 
 **Rationale**:
@@ -389,24 +419,17 @@ WHERE attempts >= 10
 
 ### Retry Configuration
 
-**Base Interval** (default: 30 seconds):
-- Shorter: Faster retries, higher load
-- Longer: Slower recovery, lower load
-- Recommended: 30-60 seconds
+**Base Interval** (fixed at 30 seconds in the SQL failure functions):
+- The `30s * 2^attempts` schedule is baked into `process_outbox_failures` / `process_inbox_failures`.
 
-**Max Attempts** (application-defined):
-- Low (5-10): Quick poison message detection
+**Backoff Cap** (built-in, 5 minutes):
+- The multiplier is capped at 10 (`LEAST(POWER(2, LEAST(attempts, 10)), 10)`), so no retry waits longer than 5 minutes.
+
+**Max Attempts** (worker options, default 10):
+- `MaxInboxAttempts`, `MaxOutboxAttempts`, and `MaxPerspectiveEventAttempts` each default to 10; exceeding the cap promotes the row to `wh_dead_letters`.
+- Low (5-10): Quick dead-letter promotion
 - High (20+): Aggressive retry (long outages)
-- Recommended: 10 attempts
-
-**Backoff Cap** (optional):
-```csharp{title="Retry Configuration" description="Backoff Cap (optional):" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Retry", "Configuration"]}
-// Cap exponential backoff at 1 hour
-var backoffSeconds = Math.Min(
-    30 * Math.Pow(2, attempts),
-    3600  // 1 hour max
-);
-```
+- `null`: Infinite retry (legacy behavior)
 
 ### Stream Ordering vs. Availability
 
@@ -498,32 +521,31 @@ var backoffSeconds = Math.Min(
 
 ## Implementation
 
-### PostgreSQL Function
+### PostgreSQL Functions
 
-See: `014_CreateProcessWorkBatchFunction.sql`
+The retry/failure machinery is split across per-concern migration functions (all called from `process_work_batch`, migration `029_ProcessWorkBatch.sql`):
 
-**Key Sections**:
-- Lines 158-195: Failure processing with exponential backoff
-- Lines 728-738 (outbox), 770-780 (inbox): Scheduled retry blocking via NOT EXISTS
+- `017_ProcessOutboxFailures.sql` — `process_outbox_failures`: Failed flag, error text, failure_reason, exponential backoff
+- `018_ProcessInboxFailures.sql` — `process_inbox_failures`: inbox-side equivalent
+- `024_ClaimOrphanedOutbox.sql` / `025_ClaimOrphanedInbox.sql` — attempt counting (`attempts = attempts + 1` at claim time)
+- `050_WhDeadLetters.sql` / `051_DeadLetterRecovery.sql` — internal dead-letter table + recovery functions
 
 ### C# Records
 
-See: `Whizbang.Core/Messaging/MessageFailure.cs`
+See: `src/Whizbang.Core/Messaging/IWorkCoordinator.cs` (the `MessageFailure` and `MessageCompletion` records live alongside the coordinator interface)
 
-```csharp{title="C# Records" description="See: `Whizbang." category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Records"]}
+```csharp{title="C# Records" description="MessageFailure record from IWorkCoordinator.cs" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Records"]}
 public record MessageFailure {
     public required Guid MessageId { get; init; }
     public required MessageProcessingStatus CompletedStatus { get; init; }
     public required string Error { get; init; }
+    public MessageFailureReason Reason { get; init; } = MessageFailureReason.Unknown;
 }
 ```
 
-### Integration Tests
+### Tests
 
-See: `Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorTests.cs`
-
-**Test Cases**:
-- `ProcessWorkBatch_FailsOutboxMessages_MarksAsFailedWithErrorAsync` - Basic failure
-- `ProcessWorkBatch_StreamBasedFailureCascade_ReleasesLaterMessagesInSameStreamAsync` - Cascade release
-- `ProcessWorkBatch_ScheduledRetry_BlocksLaterMessagesInStreamAsync` - Scheduled retry blocking
-- `ProcessWorkBatch_ScheduledRetryExpires_UnblocksStreamAsync` - Time-based unblocking
+- `tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresFunctionTests.cs` — `ProcessOutboxFailures_SetsFailureFlagsAndSchedulesRetryAsync` and related SQL-function tests
+- `tests/Whizbang.Core.Tests/Messaging/MessageFailureTests.cs` — failure record + reason classification
+- `tests/Whizbang.Core.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs` — outbox max-attempts dead-letter promotion
+- `tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs` — perspective pre-apply dead-letter filter

@@ -1,6 +1,8 @@
 ---
 title: Introduction to Whizbang
 pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Getting Started
 order: 1
@@ -11,8 +13,12 @@ tags: 'introduction, overview, philosophy, getting-started'
 codeReferences:
   - src/Whizbang.Core/IDispatcher.cs
   - src/Whizbang.Core/IReceptor.cs
-  - src/Whizbang.Core/IPerspectiveOf.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
   - README.md
+testReferences:
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
+  - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -43,7 +49,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         CancellationToken cancellationToken = default) {
 
         // Business logic here
-        return new OrderCreated(OrderId: Guid.CreateVersion7(), /* ... */);
+        return new OrderCreated(OrderId: TrackedGuid.NewMedo(), /* ... */);
     }
 }
 
@@ -81,11 +87,11 @@ Built around three core patterns:
 // Receptor: Receives command, produces event
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> { }
 
-// Perspective: Listens to events, updates read model
-public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> { }
+// Perspective: Applies events to a read model (pure function)
+public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreated> { }
 
-// Lens: Query interface for read model
-public class OrderLens : ILensQuery { }
+// Lens: Query interface for a read model (registered automatically per model)
+public class OrderQueryService(ILensQuery<OrderSummary> lens) { }
 ```
 
 ## Core Concepts (Quick Overview)
@@ -122,7 +128,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
         // Make decision, return event
         return new OrderCreated(
-            OrderId: Guid.CreateVersion7(),
+            OrderId: TrackedGuid.NewMedo(),
             CustomerId: message.CustomerId,
             Items: message.Items,
             Total: message.Items.Sum(i => i.Quantity * i.Price),
@@ -134,43 +140,45 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### Perspectives
 
-Event-driven read model updates:
+Event-driven read model updates via **pure Apply functions** — no I/O, no side effects; the framework handles persistence:
 
 ```csharp{title="Perspectives" description="Event-driven read model updates:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Perspectives"]}
-public class OrderSummaryPerspective : IPerspectiveOf<OrderCreated> {
-    private readonly IDbConnectionFactory _db;
+public sealed record OrderSummary {
+    [StreamId]
+    public Guid OrderId { get; init; }
+    public Guid CustomerId { get; init; }
+    public decimal Total { get; init; }
+    public string Status { get; init; } = "";
+    public DateTimeOffset CreatedAt { get; init; }
+}
 
-    public async Task Update(OrderCreated @event, CancellationToken ct = default) {
-        // Update denormalized read model
-        await using var conn = _db.CreateConnection();
-        await conn.ExecuteAsync(
-            "INSERT INTO order_summaries (order_id, customer_id, total, status, created_at) VALUES (@OrderId, @CustomerId, @Total, @Status, @CreatedAt)",
-            new {
-                @event.OrderId,
-                @event.CustomerId,
-                @event.Total,
-                Status = "Created",
-                @event.CreatedAt
-            }
-        );
-    }
+public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreated> {
+    public OrderSummary Apply(OrderSummary currentData, OrderCreated eventData) =>
+        currentData with {
+            OrderId = eventData.OrderId,
+            CustomerId = eventData.CustomerId,
+            Total = eventData.Total,
+            Status = "Created",
+            CreatedAt = eventData.CreatedAt
+        };
 }
 ```
 
 ### Lenses
 
-Query-optimized read repositories:
+Query-optimized read access. `ILensQuery<TModel>` is registered automatically for every discovered perspective model:
 
 ```csharp{title="Lenses" description="Query-optimized read repositories:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Lenses"]}
-public class OrderLens : ILensQuery {
-    private readonly IDbConnectionFactory _db;
+public class OrderQueryService(ILensQuery<OrderSummary> lens) {
+    public Task<OrderSummary?> GetOrderAsync(Guid orderId, CancellationToken ct = default) =>
+        lens.DefaultScope.GetByIdAsync(orderId, ct);
 
-    public async Task<OrderSummary?> GetOrderAsync(Guid orderId) {
-        await using var conn = _db.CreateConnection();
-        return await conn.QuerySingleOrDefaultAsync<OrderSummary>(
-            "SELECT * FROM order_summaries WHERE order_id = @OrderId",
-            new { OrderId = orderId }
-        );
+    public async Task<List<OrderSummary>> GetRecentOrdersAsync(CancellationToken ct = default) {
+        return await lens.DefaultScope.Query
+            .OrderByDescending(row => row.UpdatedAt)
+            .Take(50)
+            .Select(row => row.Data)
+            .ToListAsync(ct);
     }
 }
 ```
@@ -181,33 +189,39 @@ Whizbang is built on modern .NET:
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| .NET | 10.0 | Target framework (RC2+) |
-| Source Generators | Roslyn 4.8+ | Compile-time discovery |
-| Vogen | 8.0+ | Strongly-typed IDs |
-| Dapper | Latest | Lightweight data access |
-| EF Core | 10.0 | Full-featured ORM option |
-| Azure Service Bus | Latest | Message transport |
+| .NET | 10.0 | Target framework |
+| Source Generators | Roslyn | Compile-time discovery |
+| `[WhizbangId]` generator | Built-in | Strongly-typed UUIDv7 IDs |
+| EF Core | 10.0 | Primary data driver (Postgres) |
+| Dapper | Latest | Lightweight data access option |
+| Azure Service Bus / RabbitMQ | Latest | Message transports |
 | PostgreSQL | 16+ | Primary database |
 | .NET Aspire | Latest | Orchestration & observability |
 
-## Project Structure (15 Library Projects)
+## Project Structure (Library Projects)
 
 ```
 whizbang/
 ├── src/
-│   ├── Whizbang.Core/                          # Core interfaces, dispatcher, pooling
+│   ├── Whizbang.Core/                          # Core interfaces, dispatcher, workers, pooling
 │   ├── Whizbang.Generators/                    # Source generators (discovery)
-│   ├── Whizbang.Generators.Shared/             # Shared generator utilities
+│   ├── Whizbang.Data.EFCore.Postgres/          # EF Core + PostgreSQL driver
+│   ├── Whizbang.Data.EFCore.Postgres.Generators/ # EF Core schema/registration generators
+│   ├── Whizbang.Data.EFCore.Custom/            # EF Core attributes ([WhizbangDbContext])
 │   ├── Whizbang.Data.Dapper.Postgres/          # Dapper + PostgreSQL
 │   ├── Whizbang.Data.Dapper.Sqlite/            # Dapper + SQLite
 │   ├── Whizbang.Data.Dapper.Custom/            # Dapper base classes
-│   ├── Whizbang.Data.EFCore.Postgres/          # EF Core + PostgreSQL
-│   ├── Whizbang.Data.EFCore.Postgres.Generators/ # EF Core generators
-│   ├── Whizbang.Data.EFCore.Custom/            # EF Core attributes
-│   ├── Whizbang.Data.Postgres/                 # PostgreSQL utilities
-│   ├── Whizbang.Data.Schema/                   # Schema definition
+│   ├── Whizbang.Data.Postgres/                 # PostgreSQL utilities + migrations
+│   ├── Whizbang.Data.Schema/                   # Schema definitions (wh_* tables)
 │   ├── Whizbang.Transports.AzureServiceBus/    # Azure Service Bus transport
-│   ├── Whizbang.Hosting.Azure.ServiceBus/      # Hosting extensions
+│   ├── Whizbang.Transports.RabbitMQ/           # RabbitMQ transport
+│   ├── Whizbang.Transports.FastEndpoints/      # FastEndpoints integration
+│   ├── Whizbang.Transports.HotChocolate/       # GraphQL integration
+│   ├── Whizbang.Hosting.Azure.ServiceBus/      # Hosting extensions (ASB)
+│   ├── Whizbang.Hosting.RabbitMQ/              # Hosting extensions (RabbitMQ)
+│   ├── Whizbang.Sagas/                         # Saga support
+│   ├── Whizbang.SignalR/                       # SignalR integration
+│   ├── Whizbang.Observability/                 # Observability extensions
 │   └── Whizbang.Testing/                       # Testing utilities
 └── samples/
     └── ECommerce/                               # 12-project production sample
@@ -247,6 +261,7 @@ whizbang/
 ### Transports
 
 - ✅ **Azure Service Bus**: Production-ready message transport
+- ✅ **RabbitMQ**: Production-ready message transport (local-dev friendly)
 - ✅ **In-Memory**: Fast testing and development
 
 ## Real-World Example: ECommerce Sample
@@ -255,19 +270,19 @@ Whizbang includes a complete **12-project production sample** demonstrating:
 
 - **Backend for Frontend (BFF)** with SignalR real-time updates
 - **Microservices** (Order, Inventory, Payment, Shipping, Notification)
-- **Angular 20 UI** with NgRx state management
+- **Angular UI** with NgRx state management
 - **Event-driven workflows** with Outbox/Inbox patterns
 - **.NET Aspire orchestration** for local development
 - **Integration testing** with TUnit
 
 **Services**:
 - `ECommerce.BFF.API` - Backend for Frontend (perspectives + lenses + SignalR)
-- `ECommerce.OrderService.API` - REST + GraphQL order management
+- `ECommerce.OrderService.API` - REST (FastEndpoints) + GraphQL order management
 - `ECommerce.InventoryWorker` - Inventory reservation
 - `ECommerce.PaymentWorker` - Payment processing
 - `ECommerce.ShippingWorker` - Fulfillment coordination
 - `ECommerce.NotificationWorker` - Cross-cutting notifications
-- `ECommerce.UI` - Angular 20 application
+- `ECommerce.UI` - Angular application
 
 See [ECommerce Tutorial](../../drafts/metrics/overview.md) for complete walkthrough.
 
@@ -295,8 +310,8 @@ See [ECommerce Tutorial](../../drafts/metrics/overview.md) for complete walkthro
 |-----------|--------|-------------|
 | LocalInvoke | < 20ns | In-process receptor invocation (zero allocation) |
 | SendAsync | < 100μs | Outbox write + receipt generation |
-| Perspective Update | < 50μs | Read model update via Dapper |
-| Lens Query | < 10μs | Dapper query execution |
+| Perspective Update | < 50μs | Read model upsert |
+| Lens Query | < 10μs | Indexed read model query |
 | Source Generation | < 500ms | Full rebuild with all generators |
 
 ## Learning Path

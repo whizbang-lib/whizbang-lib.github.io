@@ -1,6 +1,8 @@
 ---
 title: Transport DLQ Recovery
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Dead-Letter Queue
 order: 4
@@ -16,6 +18,10 @@ codeReferences:
   - src/Whizbang.Core/Workers/TransportDeadLetterDrainWorker.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusDeadLetterDrainer.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMqDeadLetterDrainer.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/TransportDeadLetterDrainWorkerTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusDeadLetterDrainerTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMqDeadLetterDrainerTests.cs
 ---
 
 # Transport DLQ Recovery
@@ -31,7 +37,7 @@ Whizbang's event store is source of truth. When a broker DLQs a message,
 the underlying event still replays from `wh_event_store` via the normal
 claim path — no data is lost. But the broker's DLQ doesn't know that. It
 holds onto messages forever (or up to the broker's retention cap), pages
-PRs about queue depth, and ultimately needs an operator to drain it.
+operators about queue depth, and ultimately needs someone to drain it.
 
 `TransportDeadLetterDrainWorker` does that drain automatically on a
 backstop interval (default 10 min). Each registered
@@ -43,35 +49,40 @@ slow — broker DLQ recovery isn't latency-sensitive.
 
 ## Defaults
 
-```json{
+Configure via `TransportDeadLetterDrainWorkerOptions` — registered with
+`AddOptions()` and not auto-bound from `appsettings.json`:
+
+```csharp{
 title: "Configure the transport DLQ drain worker"
-description: "appsettings defaults controlling the broker DLQ drain backstop — enable flag, sweep interval, and the per-tick message cap."
+description: "Options defaults controlling the broker DLQ drain backstop — enable flag, sweep interval, and the per-tick message cap."
+framework: "NET10"
 category: "Operations"
 difficulty: "BEGINNER"
-tags: ["dead-letter", "transport-recovery", "TransportDeadLetterDrainWorker", "configuration"]
+tags: ["dead-letter", "transport-recovery", "TransportDeadLetterDrainWorkerOptions", "configuration"]
 }
-{
-  "Whizbang": {
-    "TransportDeadLetterDrainWorker": {
-      "Enabled": true,
-      "IntervalMinutes": 10,
-      "MaxPerTick": 500
-    }
-  }
-}
+services.Configure<TransportDeadLetterDrainWorkerOptions>(o => {
+  o.Enabled = true;        // killswitch (default true)
+  o.IntervalMinutes = 10;  // backstop cadence between sweeps (default 10)
+  o.MaxPerTick = 500;      // max messages re-submitted per drainer per tick (default 500)
+});
 ```
 
 `Enabled = false` is the killswitch — broker DLQs stay full until an
 operator drains them manually via broker-side tooling.
 
+Drainers are not auto-registered by the transport hosting extensions at
+this release — register one `ITransportDeadLetterDrainer` per subscription
+/ queue as shown below. With no drainers registered, the worker idles.
+
 ## Azure Service Bus
 
 `AzureServiceBusDeadLetterDrainer` reads from
 `<topic>/Subscriptions/<sub>/$DeadLetterQueue` and re-sends each message
-back to `<topic>` using a fresh `ServiceBusMessage`. Body, application
-properties, and routing fields (`subject`, `correlationId`, `messageId`,
-`sessionId`, `partitionKey`) are copied; `DeliveryCount` resets on the
-new message.
+back to `<topic>` using a fresh `ServiceBusMessage`. Body, content type,
+application properties, and routing fields (`subject`, `correlationId`,
+`messageId`, `sessionId`, `partitionKey`, `to`, `replyTo`,
+`replyToSessionId`) are copied; `DeliveryCount` resets on the new
+message.
 
 Registration (one per subscription):
 
@@ -130,7 +141,7 @@ Both implementations are best-effort:
 - ASB: if `SendMessageAsync` or `CompleteMessageAsync` throws, the
   message is `AbandonMessageAsync`-ed back to DLQ for the next sweep.
 - RMQ: if `BasicPublishAsync` or `BasicAckAsync` throws, the message is
-  `BasicNack`-ed with `requeue=true` so it stays in DLQ.
+  `BasicNackAsync`-ed with `requeue: true` so it stays in DLQ.
 
 A single drainer failing doesn't stop the others — the worker continues
 through the remaining drainers on the current tick.
@@ -159,9 +170,9 @@ app.MapPost("/admin/transport-dlq/drain-now", async (
 
 ## Telemetry
 
-| Metric | Type | Dimensions |
-|---|---|---|
-| `whizbang.transport_dlq.drained` | counter | `transport` (e.g. `asb:orders/inventory-svc`) |
+| Metric | Meter | Type | Dimensions |
+|---|---|---|---|
+| `whizbang.transport_dlq.drained` | `Whizbang.TransportDeadLetterDrain` | counter | `transport` (e.g. `asb:orders/inventory-svc`) |
 
 Worker also exposes `TotalDrained` (a `long`) for in-process introspection
 — useful for tests and health endpoints.

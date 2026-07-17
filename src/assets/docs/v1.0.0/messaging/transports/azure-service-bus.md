@@ -1,6 +1,8 @@
 ---
 title: Azure Service Bus Transport
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Transports
 order: 1
@@ -29,6 +31,12 @@ testReferences:
     tests/Whizbang.Transports.AzureServiceBus.Tests/SubscriptionNameDerivationTests.cs
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusInfrastructureProvisionerTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/SqlFilterPatternMatchingTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusBatchSubscribeTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -124,7 +132,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddAzureServiceBusTransport(
   connectionString: "Endpoint=sb://...",
   configureOptions: options => {
-    options.MaxConcurrentCalls = 20;              // Default: 10
+    options.MaxConcurrentCalls = 100;             // Default: 200
     options.MaxAutoLockRenewalDuration = TimeSpan.FromMinutes(5);
     options.MaxDeliveryAttempts = 10;             // Default: 10
     options.DefaultSubscriptionName = "default";  // Default: "default"
@@ -192,21 +200,25 @@ app.Run();
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `MaxConcurrentCalls` | 10 | Maximum concurrent message processing calls |
+| `MaxConcurrentCalls` | 200 | Maximum concurrent message processing calls (non-session processors) |
 | `MaxAutoLockRenewalDuration` | 5 minutes | Maximum duration for automatic lock renewal |
 | `MaxDeliveryAttempts` | 10 | Retry limit before dead-lettering |
 | `DefaultSubscriptionName` | "default" | Fallback subscription name if not specified |
 | `AutoProvisionInfrastructure` | `true` | Auto-create topics and subscriptions when subscribing |
-| `EnableSessions` | `false` | Enable session-based FIFO ordering (sets SessionId from StreamId) |
-| `MaxConcurrentSessions` | 64 | Maximum concurrent sessions processed per processor (only when EnableSessions is true) |
+| `EnableSessions` | `true` | Session-based FIFO ordering (sets SessionId from StreamId) |
+| `MaxConcurrentSessions` | 200 | Maximum concurrent sessions processed per processor (only when EnableSessions is true) |
+| `SessionIdleTimeout` | 1 second | How long a session processor waits for the next message before releasing the session |
+| `PrefetchCount` | 50 | Messages prefetched per processor |
+| `PublishMaxConcurrency` | 200 | Maximum concurrent publish operations |
+| `SendTimeout` | 30 seconds | Timeout applied to each send operation |
 
 ### Sessions and FIFO Ordering {#sessions}
 
-Azure Service Bus supports strict FIFO message ordering within a **session**. When `EnableSessions` is true:
+Azure Service Bus supports strict FIFO message ordering within a **session**. When `EnableSessions` is true (the default):
 
 - Messages with a `StreamId` have their `SessionId` set to the StreamId value
 - The `SessionProcessor` delivers messages with the same SessionId in order to a single consumer
-- `MaxConcurrentSessions` controls how many different streams are processed in parallel (default: 64)
+- `MaxConcurrentSessions` controls how many different streams are processed in parallel (default: 200)
 - `MaxConcurrentCallsPerSession` is always 1 (strict FIFO within each session)
 - The transport claims `TransportCapabilities.Ordered` only when sessions are enabled
 
@@ -216,8 +228,8 @@ Azure Service Bus supports strict FIFO message ordering within a **session**. Wh
 builder.Services.AddAzureServiceBusTransport(
     connectionString: "Endpoint=sb://...",
     configureOptions: options => {
-        options.EnableSessions = true;           // Enable FIFO ordering
-        options.MaxConcurrentSessions = 128;     // Process up to 128 streams in parallel
+        options.EnableSessions = true;           // FIFO ordering (default: true)
+        options.MaxConcurrentSessions = 128;     // Process up to 128 streams in parallel (default: 200)
     }
 );
 ```
@@ -567,106 +579,71 @@ var destination = new TransportDestination(
 
 ## Usage Patterns
 
+In a Whizbang application you rarely call the transport directly — publishing flows through the **outbox** (`dispatcher.PublishAsync` → outbox → `OutboxDrainWorker` → transport), and subscribing is handled by `TransportConsumerWorker` via `AddTransportConsumer()`. The examples below show the transport-level API those workers use.
+
 ### Publishing Messages
 
-```csharp{title="Publishing Messages" description="Publishing Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Publishing", "Messages"]}
+```csharp{title="Publishing Messages" description="Transport-level publish (normally driven by the outbox workers)" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Publishing", "Messages"]}
 using Whizbang.Core.Transports;
 
-public class OrderService {
-  private readonly ITransport _transport;
+// ITransport.PublishAsync signature:
+//   Task PublishAsync(
+//     IMessageEnvelope envelope,
+//     TransportDestination destination,
+//     string? envelopeType = null,
+//     ReadOnlyMemory<byte>? preSerializedBytes = null,
+//     CancellationToken cancellationToken = default);
 
-  public OrderService(ITransport transport) {
-    _transport = transport;
+var destination = new TransportDestination(
+  Address: "whizbang-events",
+  RoutingKey: "inventory-service",
+  Metadata: new Dictionary<string, JsonElement> {
+    // StreamId in metadata → SessionId for FIFO ordering (sessions enabled)
+    ["StreamId"] = JsonSerializer.SerializeToElement(streamId.ToString()),
+    ["Destination"] = JsonSerializer.SerializeToElement("inventory")
   }
+);
 
-  public async Task CreateOrderAsync(CreateOrder command) {
-    // Process order...
-    var @event = new OrderCreated(orderId, customerId, total, DateTimeOffset.UtcNow);
-
-    // Create envelope
-    var envelope = MessageEnvelope.Create(
-      messageId: MessageId.New(),
-      correlationId: CorrelationId.New(),
-      causationId: null,
-      payload: @event,
-      currentHop: new MessageHop {
-        StreamKey = orderId.ToString(),
-        Timestamp = DateTimeOffset.UtcNow
-      }
-    );
-
-    // Publish to multiple destinations
-    var inventoryDest = new TransportDestination(
-      Address: "whizbang-events",
-      RoutingKey: "inventory-service",
-      Metadata: new Dictionary<string, JsonElement> {
-        ["Destination"] = JsonSerializer.SerializeToElement("inventory")
-      }
-    );
-
-    var notificationDest = new TransportDestination(
-      Address: "whizbang-events",
-      RoutingKey: "notification-service",
-      Metadata: new Dictionary<string, JsonElement> {
-        ["Destination"] = JsonSerializer.SerializeToElement("notifications")
-      }
-    );
-
-    await _transport.PublishAsync(envelope, inventoryDest);
-    await _transport.PublishAsync(envelope, notificationDest);
-  }
-}
+// envelope: an IMessageEnvelope produced by the dispatcher/outbox pipeline
+await transport.PublishAsync(envelope, destination, cancellationToken: ct);
 ```
 
 ### Subscribing to Messages
 
-```csharp{title="Subscribing to Messages" description="Subscribing to Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Subscribing", "Messages"]}
+The transport exposes **batch** subscription — `TransportConsumerWorker` uses `SubscribeBatchAsync` and feeds batches into the inbox pipeline:
+
+```csharp{title="Subscribing to Messages" description="Transport-level batch subscribe (normally driven by TransportConsumerWorker)" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Subscribing", "Messages"]}
 using Whizbang.Core.Transports;
 
-public class InventoryServiceWorker : BackgroundService {
-  private readonly ITransport _transport;
-  private readonly IDispatcher _dispatcher;
-  private ISubscription? _subscription;
+await transport.InitializeAsync(stoppingToken);
 
-  public InventoryServiceWorker(ITransport transport, IDispatcher dispatcher) {
-    _transport = transport;
-    _dispatcher = dispatcher;
+var destination = new TransportDestination(
+  Address: "whizbang-events",
+  RoutingKey: "inventory-service",
+  Metadata: new Dictionary<string, JsonElement> {
+    ["SubscriberName"] = JsonSerializer.SerializeToElement("inventory-service"),
+    ["DestinationFilter"] = JsonSerializer.SerializeToElement("inventory")
   }
+);
 
-  protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
-    // Initialize transport
-    await _transport.InitializeAsync(stoppingToken);
-
-    // Subscribe to messages
-    var destination = new TransportDestination(
-      Address: "whizbang-events",
-      RoutingKey: "inventory-service",
-      Metadata: new Dictionary<string, JsonElement> {
-        ["DestinationFilter"] = JsonSerializer.SerializeToElement("inventory")
-      }
-    );
-
-    _subscription = await _transport.SubscribeAsync(
-      handler: async (envelope, ct) => {
-        // Dispatch message to appropriate receptor
-        await _dispatcher.LocalInvokeAsync(envelope.Payload, ct);
-      },
-      destination: destination,
-      cancellationToken: stoppingToken
-    );
-
-    // Keep worker running
-    await Task.Delay(Timeout.Infinite, stoppingToken);
-  }
-
-  public override async Task StopAsync(CancellationToken cancellationToken) {
-    if (_subscription != null) {
-      await _subscription.DisposeAsync();
+ISubscription subscription = await transport.SubscribeBatchAsync(
+  batchHandler: async (messages, ct) => {
+    // TransportConsumerWorker: filter by EnvelopeType header, deserialize,
+    // store via StoreInboxMessagesAsync — handlers fire from the inbox pipeline
+    foreach (var message in messages) {
+      await ProcessTransportMessageAsync(message, ct);
     }
-    await base.StopAsync(cancellationToken);
-  }
-}
+  },
+  destination: destination,
+  batchOptions: new TransportBatchOptions(),
+  cancellationToken: stoppingToken
+);
+
+// Dispose the subscription on shutdown (ISubscription : IDisposable)
+subscription.Dispose();
 ```
+
+**Prefer the turnkey path**: `services.AddWhizbang().WithRouting(...).AddTransportConsumer()` wires all of this — subscriptions, resilience, inbox storage, and handler dispatch — automatically. See [Transport Consumer](./transport-consumer.md).
 
 ### Correlation Filters (Production)
 
@@ -706,7 +683,8 @@ The Azure Service Bus transport declares these capabilities:
 ```csharp{title="Transport Capabilities" description="The Azure Service Bus transport declares these capabilities:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Transport", "Capabilities"]}
 TransportCapabilities.PublishSubscribe |   // ✅ Pub/sub via topics
 TransportCapabilities.Reliable |           // ✅ At-least-once delivery
-TransportCapabilities.Ordered              // ✅ FIFO within sessions
+TransportCapabilities.BulkPublish |        // ✅ Batched sends
+(EnableSessions ? TransportCapabilities.Ordered : None)  // ✅ FIFO within sessions
 ```
 
 **Not Supported**:
@@ -760,9 +738,9 @@ var envelope = JsonSerializer.Deserialize(json, typeInfo) as IMessageEnvelope;
 Whizbang detects the emulator automatically:
 
 ```csharp{title="Aspire Service Bus Emulator" description="Whizbang detects the emulator automatically:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Aspire", "Service"]}
-// Detection logic
-_isEmulator = connectionString.Contains("localhost") ||
-              connectionString.Contains("127.0.0.1");
+// Detection logic (from the connection string's endpoint)
+_isEmulator = endpoint.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
+              endpoint.Contains("127.0.0.1");
 ```
 
 **Emulator Differences**:
@@ -940,13 +918,15 @@ options.MaxConcurrentCalls = 20;  // Process 20 messages in parallel
 - **I/O-bound handlers**: Set to 2-4x CPU core count
 - **High throughput**: Increase to 50-100 (monitor memory)
 
-### Batching (Future)
+### Batching
 
-Service Bus supports batch sends (not yet implemented):
+The transport implements bulk publish (`TransportCapabilities.BulkPublish`): messages destined for the same topic are packed into `ServiceBusMessageBatch` chunks and sent with one network call per batch:
 
-```csharp{title="Batching (Future)" description="Service Bus supports batch sends (not yet implemented):" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Batching", "Future"]}
-// TODO: Batch sending for higher throughput
-await sender.SendMessagesAsync(batch);  // Send multiple at once
+```csharp{title="Batching" description="Bulk publish packs messages into ServiceBusMessageBatch chunks" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Batching", "Future"]}
+// Inside the bulk publish path (simplified):
+var currentBatch = await sender.CreateMessageBatchAsync(ct);
+// ... TryAddMessage until full, then:
+await sender.SendMessagesAsync(batch, cancellationToken);  // One call, many messages
 ```
 
 ---
@@ -1098,8 +1078,8 @@ await foreach (var message in dlqReceiver.ReceiveMessagesAsync()) {
 
   // Common reasons:
   // - "MissingEnvelopeType" → Publisher didn't set ApplicationProperties["EnvelopeType"]
-  // - "UnresolvableEnvelopeType" → Type not found (assembly not loaded)
-  // - "DeserializationFailed" → JSON mismatch or missing JsonTypeInfo
+  // - "MissingJsonTypeInfo" → Envelope type not registered in JsonContextRegistry
+  // - "DeserializationFailed" → JSON mismatch
   // - "MaxDeliveryAttemptsExceeded" → Handler keeps failing
 }
 ```

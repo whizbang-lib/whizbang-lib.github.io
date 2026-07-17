@@ -1,6 +1,8 @@
 ---
 title: REST Mutations
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: REST
 order: 3
@@ -10,9 +12,15 @@ description: >-
 tags: 'rest, mutations, commands, fastendpoints, validation, hooks'
 codeReferences:
   - src/Whizbang.Transports.FastEndpoints/Endpoints/RestMutationEndpointBase.cs
-  - src/Whizbang.Transports.Mutations/MutationEndpointBase.cs
+  - src/Whizbang.Transports.Mutations/Base/MutationEndpointBase.cs
+  - src/Whizbang.Transports.Mutations/Base/IMutationContext.cs
+  - src/Whizbang.Transports.Mutations/Attributes/CommandEndpointAttribute.cs
+  - src/Whizbang.Transports.FastEndpoints.Generators/RestMutationEndpointGenerator.cs
 testReferences:
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/RestMutationEndpointBaseTests.cs
+  - tests/Whizbang.Transports.Mutations.Tests/Unit/MutationEndpointBaseTests.cs
+  - tests/Whizbang.Transports.Mutations.Tests/Unit/MutationContextTests.cs
+  - tests/Whizbang.Transports.Mutations.Tests/Unit/CommandEndpointAttributeTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -24,37 +32,46 @@ Whizbang generates REST mutation endpoints for commands using FastEndpoints, pro
 
 REST mutations provide:
 
-- **Generated Endpoints** - Source generators create FastEndpoints from `[CommandEndpoint]` attributes
+- **Generated Endpoints** - Source generators create endpoint classes from `[CommandEndpoint]` attributes on command classes
 - **Hook Architecture** - `OnBefore`, `OnAfter`, `OnError` hooks for customization
 - **Partial Classes** - Extend generated endpoints with custom logic
-- **Consistent Patterns** - Same hooks across REST, GraphQL, and SignalR transports
+- **Consistent Patterns** - Same hooks across REST (FastEndpoints) and GraphQL (HotChocolate) transports
 
 ## Defining Mutation Endpoints
+
+The `[CommandEndpoint<TCommand, TResult>]` attribute is placed on the **command class** itself. The source generator discovers it and emits a `<CommandName>Endpoint` class in a `.Generated` sub-namespace.
 
 ### Basic Command Endpoint
 
 ```csharp{title="Basic Command Endpoint" description="Basic Command Endpoint" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Basic", "Command"]}
 [CommandEndpoint<CreateOrderCommand, OrderResult>(RestRoute = "/api/orders")]
-public partial class CreateOrderEndpoint;
+public class CreateOrderCommand : ICommand {
+    public required Guid CustomerId { get; init; }
+}
+// Generates: CreateOrderCommandEndpoint (POST /api/orders)
 ```
 
-### With HTTP Method
+### With Custom Request DTO
 
-```csharp{title="With HTTP Method" description="With HTTP Method" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "HTTP", "Method"]}
-[CommandEndpoint<UpdateOrderCommand, OrderResult>(
-    RestRoute = "/api/orders/{id}",
-    HttpMethod = "PUT")]
-public partial class UpdateOrderEndpoint;
+```csharp{title="With Custom Request DTO" description="With Custom Request DTO" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Custom", "Request"]}
+[CommandEndpoint<CreateOrderCommand, OrderResult>(
+    RestRoute = "/api/orders",
+    RequestType = typeof(CreateOrderRequest))]
+public class CreateOrderCommand : ICommand { }
+// You must override MapRequestToCommandAsync in your partial class
 ```
 
-### Delete Operation
+### CommandEndpointAttribute Properties
 
-```csharp{title="Delete Operation" description="Delete Operation" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Delete", "Operation"]}
-[CommandEndpoint<DeleteOrderCommand, bool>(
-    RestRoute = "/api/orders/{id}",
-    HttpMethod = "DELETE")]
-public partial class DeleteOrderEndpoint;
-```
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `RestRoute` | `string?` | `null` | REST route; if null, no REST endpoint is generated |
+| `GraphQLMutation` | `string?` | `null` | GraphQL mutation field name; if null, no GraphQL mutation is generated |
+| `RequestType` | `Type?` | `null` | Optional custom request DTO type |
+
+:::updated
+There is no `HttpMethod` property on `[CommandEndpoint]`. All generated REST mutation endpoints are registered as **POST** routes (`MapPost`) at this commit.
+:::
 
 ## RestMutationEndpointBase
 
@@ -69,12 +86,21 @@ public abstract class RestMutationEndpointBase<TCommand, TResult>
 
 ## Hook Architecture
 
+The hook lifecycle in `ExecuteAsync` is:
+
+1. Check cancellation
+2. `OnBeforeExecuteAsync`
+3. `DispatchCommandAsync`
+4. `OnAfterExecuteAsync` (on success) or `OnErrorAsync` (on failure)
+
+An `IMutationContext` is passed to every hook. It exposes the request `CancellationToken` and an `Items` dictionary (`IDictionary<string, object?>`) for sharing state between hooks.
+
 ### OnBeforeExecuteAsync
 
-Called before command execution. Use for validation, authorization, or logging.
+Called before command dispatch. Use for validation, authorization, or logging.
 
 ```csharp{title="OnBeforeExecuteAsync" description="Called before command execution." category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "OnBeforeExecuteAsync"]}
-public partial class CreateOrderEndpoint {
+public partial class CreateOrderCommandEndpoint {
     protected override async ValueTask OnBeforeExecuteAsync(
         CreateOrderCommand command,
         IMutationContext context,
@@ -90,13 +116,13 @@ public partial class CreateOrderEndpoint {
 
 ### OnAfterExecuteAsync
 
-Called after successful command execution. Use for post-processing or notifications.
+Called after successful command dispatch. Not called if dispatch throws. Use for post-processing or notifications.
 
 ```csharp{title="OnAfterExecuteAsync" description="Called after successful command execution." category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "OnAfterExecuteAsync"]}
-public partial class CreateOrderEndpoint {
+public partial class CreateOrderCommandEndpoint {
     protected override async ValueTask OnAfterExecuteAsync(
         CreateOrderCommand command,
-        TResult result,
+        OrderResult result,
         IMutationContext context,
         CancellationToken ct) {
         // Send confirmation email
@@ -110,23 +136,25 @@ public partial class CreateOrderEndpoint {
 
 ### OnErrorAsync
 
-Called when command execution fails. Use for error logging or custom error responses.
+Called when command dispatch throws. Return a result to **suppress** the exception, or return `null` (the default) to **rethrow** it.
 
 ```csharp{title="OnErrorAsync" description="Called when command execution fails." category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "OnErrorAsync"]}
-public partial class CreateOrderEndpoint {
-    protected override async ValueTask<TResult?> OnErrorAsync(
+public partial class CreateOrderCommandEndpoint {
+    protected override ValueTask<OrderResult?> OnErrorAsync(
         CreateOrderCommand command,
-        Exception exception,
+        Exception ex,
         IMutationContext context,
         CancellationToken ct) {
-        _logger.LogError(exception, "Failed to create order for customer {CustomerId}", command.CustomerId);
+        _logger.LogError(ex, "Failed to create order for customer {CustomerId}", command.CustomerId);
 
-        // Return a custom error result or re-throw
-        if (exception is ValidationException validationEx) {
-            return new OrderResult { Success = false, Errors = validationEx.Errors };
+        // Return a fallback result to suppress known errors
+        if (ex is ValidationException) {
+            return ValueTask.FromResult<OrderResult?>(
+                new OrderResult(Guid.Empty, "ValidationFailed", 0m));
         }
 
-        throw; // Re-throw unexpected exceptions
+        // Return null to rethrow unexpected exceptions
+        return ValueTask.FromResult<OrderResult?>(null);
     }
 }
 ```
@@ -136,6 +164,7 @@ public partial class CreateOrderEndpoint {
 ### Command Definition
 
 ```csharp{title="Command Definition" description="Command Definition" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Command", "Definition"]}
+[CommandEndpoint<CreateOrderCommand, OrderResult>(RestRoute = "/api/orders")]
 public record CreateOrderCommand(
     Guid CustomerId,
     List<OrderLineItem> Items,
@@ -150,22 +179,28 @@ public record OrderResult(
 ### Generated Endpoint (Simplified)
 
 ```csharp{title="Generated Endpoint (Simplified)" description="Generated Endpoint (Simplified)" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "Generated", "Endpoint"]}
-// Generated by source generator
-public partial class CreateOrderEndpoint : RestMutationEndpointBase<CreateOrderCommand, OrderResult> {
+// Generated by RestMutationEndpointGenerator in the <CommandNamespace>.Generated namespace
+public partial class CreateOrderCommandEndpoint
+    : RestMutationEndpointBase<CreateOrderCommand, OrderResult>,
+      IEndpoint {
     private readonly IDispatcher _dispatcher;
 
-    public CreateOrderEndpoint(IDispatcher dispatcher) {
+    public CreateOrderCommandEndpoint(IDispatcher dispatcher) {
         _dispatcher = dispatcher;
     }
 
-    public override void Configure() {
-        Post("/api/orders");
-        AllowAnonymous(); // Configure authorization as needed
+    public void Configure(IEndpointRouteBuilder routeBuilder) {
+        routeBuilder.MapPost("/api/orders", HandleAsync);
     }
 
-    public override async Task HandleAsync(CreateOrderCommand cmd, CancellationToken ct) {
-        var result = await ExecuteAsync(cmd, ct);
-        await SendAsync(result, cancellation: ct);
+    protected override async ValueTask<OrderResult> DispatchCommandAsync(
+        CreateOrderCommand command,
+        CancellationToken ct) {
+        return await _dispatcher.LocalInvokeAsync<CreateOrderCommand, OrderResult>(command, ct);
+    }
+
+    public async Task<OrderResult> HandleAsync(CreateOrderCommand command, CancellationToken ct) {
+        return await ExecuteAsync(command, ct);
     }
 }
 ```
@@ -174,15 +209,16 @@ public partial class CreateOrderEndpoint : RestMutationEndpointBase<CreateOrderC
 
 ```csharp{title="Custom Extension" description="Custom Extension" category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "Custom", "Extension"]}
 // Your partial class for customization
-public partial class CreateOrderEndpoint {
+// Must be declared in the same <CommandNamespace>.Generated namespace as the generated class
+public partial class CreateOrderCommandEndpoint {
     private readonly IValidator<CreateOrderCommand> _validator;
-    private readonly ILogger<CreateOrderEndpoint> _logger;
+    private readonly ILogger<CreateOrderCommandEndpoint> _logger;
 
-    // Additional constructor parameters are merged with generated constructor
-    public CreateOrderEndpoint(
+    // Chain to the generated constructor for additional dependencies
+    public CreateOrderCommandEndpoint(
         IDispatcher dispatcher,
         IValidator<CreateOrderCommand> validator,
-        ILogger<CreateOrderEndpoint> logger) : this(dispatcher) {
+        ILogger<CreateOrderCommandEndpoint> logger) : this(dispatcher) {
         _validator = validator;
         _logger = logger;
     }
@@ -239,12 +275,15 @@ Content-Type: application/json
 
 ### Update Order
 
+Updates are modeled as separate commands with their own routes. All generated mutation endpoints use POST.
+
 **Request:**
 ```http
-PUT /api/orders/550e8400-e29b-41d4-a716-446655440000
+POST /api/orders/update
 Content-Type: application/json
 
 {
+  "orderId": "550e8400-e29b-41d4-a716-446655440000",
   "status": "Shipped",
   "trackingNumber": "1Z999AA10123456784"
 }
@@ -273,10 +312,8 @@ protected override async ValueTask OnBeforeExecuteAsync(
     CancellationToken ct) {
     var result = await _validator.ValidateAsync(command, ct);
     if (!result.IsValid) {
-        foreach (var error in result.Errors) {
-            AddError(error.ErrorMessage, error.PropertyName);
-        }
-        ThrowIfAnyErrors();
+        // Throwing propagates to OnErrorAsync, which can suppress or rethrow
+        throw new ValidationException(result.Errors);
     }
 }
 ```

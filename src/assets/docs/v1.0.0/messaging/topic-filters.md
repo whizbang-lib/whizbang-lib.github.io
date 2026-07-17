@@ -1,6 +1,8 @@
 ---
 title: "Topic Filters"
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Messaging"
 order: 9
@@ -12,6 +14,10 @@ tags: 'topic-filters, routing, attributes, source-generation, AOT, message-routi
 codeReferences:
   - src/Whizbang.Core/TopicFilterAttribute.cs
   - src/Whizbang.Core/TopicFilterAttribute{TEnum}.cs
+  - src/Whizbang.Generators/TopicFilterGenerator.cs
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/TopicFilterGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -279,16 +285,17 @@ public record CreateOrderCommand : ICommand { }
 ### 5. Validate Topics at Startup
 
 ```csharp{title="Validate Topics at Startup" description="Validate Topics at Startup" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Validate", "Topics", "Startup"]}
-// ✅ GOOD: Validate all topics exist in your message broker
-public static void ValidateTopics(IServiceProvider services) {
+// ✅ GOOD: Validate command filters against your expected topic list at startup.
+// (ITransport does not expose a topic-existence query — validate against
+// configuration, or rely on transport auto-provisioning to create topics.)
+public static void ValidateTopics(IReadOnlySet<string> knownTopics) {
   var allFilters = TopicFilterRegistry.GetAllFilters();
-  var transport = services.GetRequiredService<ITransport>();
 
   foreach (var (command, topics) in allFilters) {
     foreach (var topic in topics) {
-      if (!transport.TopicExists(topic)) {
+      if (!knownTopics.Contains(topic)) {
         throw new InvalidOperationException(
-          $"Command '{command}' references non-existent topic '{topic}'"
+          $"Command '{command}' references unknown topic '{topic}'"
         );
       }
     }
@@ -301,8 +308,10 @@ public static void ValidateTopics(IServiceProvider services) {
 Topic filters integrate with Whizbang's transport abstraction:
 
 ```csharp{title="Integration with Transports" description="Topic filters integrate with Whizbang's transport abstraction:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Integration", "Transports"]}
-// Query filters when publishing commands
-public async Task PublishCommandAsync<TCommand>(TCommand command)
+// Query filters when publishing a command's envelope
+public async Task PublishCommandAsync<TCommand>(
+    IMessageEnvelope envelope,
+    CancellationToken ct = default)
     where TCommand : ICommand {
 
   var topics = TopicFilterRegistry.GetTopicFilters<TCommand>();
@@ -314,12 +323,10 @@ public async Task PublishCommandAsync<TCommand>(TCommand command)
   }
 
   foreach (var topic in topics) {
-    var destination = new TransportDestination {
-      Topic = topic,
-      // ... other routing metadata
-    };
+    // TransportDestination is a positional record: (Address, RoutingKey, Metadata)
+    var destination = new TransportDestination(Address: topic);
 
-    await _transport.PublishAsync(command, destination);
+    await _transport.PublishAsync(envelope, destination, cancellationToken: ct);
   }
 }
 ```
@@ -344,7 +351,7 @@ Generated for every discovered topic filter. Useful for verifying generation.
 Info WHIZ023: Enum value 'Topics.OrdersCreated' has no [Description] attribute. Using enum symbol name 'OrdersCreated' as filter.
 ```
 
-Warns when an enum value lacks a `[Description]` attribute. The symbol name is used as fallback.
+Reported (Info severity) when an enum value lacks a `[Description]` attribute. The symbol name is used as fallback.
 
 ### WHIZ025: TopicFilter On Non-Command (Warning)
 

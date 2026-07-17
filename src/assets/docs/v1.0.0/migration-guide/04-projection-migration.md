@@ -1,6 +1,8 @@
 ---
 title: Projection Migration
 pageType: guide
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Migration Guide
 order: 5
@@ -8,7 +10,12 @@ description: Converting Marten projections to Whizbang Perspectives
 tags: 'migration, projections, perspectives, marten, read-models'
 codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
+  - src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/IGlobalPerspectiveForTests.cs
+  - tests/Whizbang.Migrate.Tests/Transformers/ProjectionToPerspectiveTransformerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -74,6 +81,7 @@ public class OrderSummaryProjection : SingleStreamProjection<OrderSummary> {
 
 ```csharp{title="Whizbang Perspective" description="Whizbang Perspective" category="Reference" difficulty="ADVANCED" tags=["Migration-guide", "C#", "Whizbang", "Perspective"]}
 // Whizbang: Pure functions, returns new model
+// Event types must implement IEvent; up to 20 event types per perspective
 public class OrderSummaryPerspective :
     IPerspectiveFor<OrderSummary, OrderCreated, OrderItemAdded, OrderShipped, OrderCancelled> {
 
@@ -148,6 +156,8 @@ public class CustomerOrderStatsProjection :
 
 ```csharp{title="Whizbang Global Perspective" description="Whizbang Global Perspective" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Global", "Perspective"]}
 // Whizbang: Global perspective with partition key
+// GetPartitionKey mirrors Marten's Identity() method
+// (variants currently support up to 3 event types)
 public class CustomerOrderStatsPerspective :
     IGlobalPerspectiveFor<CustomerOrderStats, Guid, OrderCreated, OrderCompleted> {
 
@@ -339,13 +349,16 @@ services.AddMarten(opts => {
 ### Whizbang Perspective Registration
 
 ```csharp{title="Whizbang Perspective Registration" description="Whizbang Perspective Registration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Perspective", "Registration"]}
-services.AddWhizbang(options => {
-    // Perspectives are auto-discovered via source generators
-    // Explicit registration if needed:
-    options.AddPerspective<OrderSummaryPerspective>();
-    options.AddPerspective<CustomerOrderStatsPerspective>();
-});
+// Perspectives are auto-discovered at compile time by source generators.
+// The storage chain registers every discovered perspective automatically -
+// there is no per-perspective registration call and no lifecycle enum:
+services
+    .AddWhizbang()
+    .WithEFCore<AppDbContext>()
+    .WithDriver.Postgres;
 ```
+
+There is no equivalent of Marten's `ProjectionLifecycle.Inline`/`Async` choice: all perspectives are applied asynchronously (eventually consistent) by the perspective worker pipeline.
 
 ## Testing Perspectives
 
@@ -353,12 +366,12 @@ Perspectives are easy to test because they're pure functions:
 
 ```csharp{title="Testing Perspectives" description="Perspectives are easy to test because they're pure functions:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Testing", "Perspectives"]}
 [Test]
-public void Apply_OrderCreated_CreatesNewSummaryAsync() {
+public async Task Apply_OrderCreated_CreatesNewSummaryAsync() {
     // Arrange
     var perspective = new OrderSummaryPerspective();
     var @event = new OrderCreated(
-        Guid.CreateVersion7(),
-        CustomerId: Guid.CreateVersion7(),
+        TrackedGuid.NewMedo(),
+        CustomerId: TrackedGuid.NewMedo(),
         Items: new[] { new OrderItem("SKU1", 2, 29.99m) }
     );
 
@@ -371,11 +384,11 @@ public void Apply_OrderCreated_CreatesNewSummaryAsync() {
 }
 
 [Test]
-public void Apply_OrderShipped_UpdatesStatusAsync() {
+public async Task Apply_OrderShipped_UpdatesStatusAsync() {
     // Arrange
     var perspective = new OrderSummaryPerspective();
     var current = new OrderSummary {
-        Id = Guid.CreateVersion7(),
+        Id = TrackedGuid.NewMedo(),
         Status = OrderStatus.Created
     };
     var @event = new OrderShipped(current.Id, DateTimeOffset.UtcNow);
@@ -393,6 +406,7 @@ public void Apply_OrderShipped_UpdatesStatusAsync() {
 
 - [ ] Replace `SingleStreamProjection<T>` with `IPerspectiveFor<T, TEvent...>`
 - [ ] Replace `MultiStreamProjection<T, TKey>` with `IGlobalPerspectiveFor<T, TKey, TEvent...>`
+- [ ] Ensure all event types implement `IEvent` (required by the interface constraints)
 - [ ] Convert mutation (`model.X = y`) to immutable (`current with { X = y }`)
 - [ ] Move async operations to receptors
 - [ ] Use `sealed record` for model types

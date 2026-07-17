@@ -1,6 +1,8 @@
 ---
 title: "WhizbangIds: Strongly-Typed Identity Values"
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Core Concepts"
 order: 24
@@ -14,7 +16,38 @@ codeReferences:
   - src/Whizbang.Core/ValueObjects/WhizbangId.cs
   - src/Whizbang.Core/ValueObjects/TrackedGuid.cs
   - src/Whizbang.Core/ValueObjects/GuidMetadata.cs
+  - src/Whizbang.Core/ValueObjects/TrackedGuidJsonConverter.cs
   - src/Whizbang.Core/WhizbangIdProviderRegistry.cs
+  - src/Whizbang.Core/WhizbangIdProvider.cs
+  - src/Whizbang.Core/IWhizbangIdProvider.cs
+  - src/Whizbang.Core/IWhizbangIdProviderGeneric.cs
+  - src/Whizbang.Core/Uuid7IdProvider.cs
+  - src/Whizbang.Core/WhizbangIdServiceCollectionExtensions.cs
+  - src/Whizbang.Core/WhizbangIdAttribute.cs
+  - src/Whizbang.Core/SuppressGuidInterceptionAttribute.cs
+  - src/Whizbang.Core/Configuration/WhizbangOptions.cs
+  - src/Whizbang.Core/Validation/GuidOrderingValidator.cs
+  - src/Whizbang.Generators/WhizbangIdGenerator.cs
+  - src/Whizbang.Generators/GuidInterceptorGenerator.cs
+  - src/Whizbang.Generators/GuidUsageAnalyzer.cs
+  - tools/Whizbang.Migrate/Transformers/GuidToTrackedGuidTransformer.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidJsonConverterTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidMonotonicityTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderRegistryTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/Uuid7IdProviderTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/IWhizbangIdProviderGenericTests.cs
+  - tests/Whizbang.Core.Tests/Validation/GuidOrderingValidatorTests.cs
+  - tests/Whizbang.Generators.Tests/WhizbangIdGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/GuidInterceptorGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/ThirdPartyGuidInterceptionTests.cs
+  - tests/Whizbang.Generators.Tests/GuidUsageAnalyzerTests.cs
+  - tests/Whizbang.Migrate.Tests/Transformers/GuidToTrackedGuidTransformerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -45,7 +78,7 @@ var tracked = TrackedGuid.NewMedo();  // Uses Medo.Uuid7 internally
 bool isTimeOrdered = tracked.IsTimeOrdered;           // true
 bool subMs = tracked.SubMillisecondPrecision;         // true
 DateTimeOffset when = tracked.Timestamp;              // Extracted from UUIDv7
-GuidMetadata metadata = tracked.Metadata;             // Version7 | SourceMedo
+GuidMetadatas metadata = tracked.Metadata;            // Version7 | SourceMedo
 
 // Implicit conversion to Guid
 Guid guid = tracked;
@@ -69,9 +102,9 @@ var external = TrackedGuid.FromExternal(someGuid);
 
 ### Tracking GUID Sources
 
-`TrackedGuid` tracks where and how each GUID was created using the `GuidMetadata` flags:
+`TrackedGuid` tracks where and how each GUID was created using the `GuidMetadatas` flags (note the plural — the enum type is `GuidMetadatas`, declared in `GuidMetadata.cs`):
 
-```csharp{title="Tracking GUID Sources" description="TrackedGuid tracks where and how each GUID was created using the GuidMetadata flags:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Tracking", "GUID"]}
+```csharp{title="Tracking GUID Sources" description="TrackedGuid tracks where and how each GUID was created using the GuidMetadatas flags:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Tracking", "GUID"]}
 // Freshly created - full metadata available
 var fresh = TrackedGuid.NewMedo();
 Console.WriteLine(fresh.IsTracking);           // true (authoritative)
@@ -85,7 +118,7 @@ Console.WriteLine(loaded.SubMillisecondPrecision); // false (unknown source)
 Console.WriteLine(loaded.Metadata);            // Version7 | SourceExternal (inferred)
 ```
 
-**Key Point**: Only GUIDs created through `NewMedo()`, `NewMicrosoftV7()`, or `NewRandom()` have **authoritative** metadata (`IsTracking = true`). GUIDs loaded from external sources have **inferred** metadata based on version detection.
+**Key Point**: Only GUIDs created through `NewMedo()`, `NewMicrosoftV7()`, or `NewRandom()` (and interceptor-generated `FromIntercepted` calls) have **authoritative** metadata (`IsTracking = true` — defined as having a `SourceMedo` or `SourceMicrosoft` flag). GUIDs loaded from external sources have **inferred** metadata based on version detection.
 
 ### Debugging with TrackedGuid
 
@@ -107,10 +140,10 @@ public class OrderService {
 
     // Check source
     var source = orderId.Metadata switch {
-      var m when (m & GuidMetadata.SourceMedo) != 0 => "Medo.Uuid7",
-      var m when (m & GuidMetadata.SourceMicrosoft) != 0 => "Microsoft GUID",
-      var m when (m & GuidMetadata.SourceExternal) != 0 => "Database/API",
-      var m when (m & GuidMetadata.SourceParsed) != 0 => "Parsed string",
+      var m when (m & GuidMetadatas.SourceMedo) != 0 => "Medo.Uuid7",
+      var m when (m & GuidMetadatas.SourceMicrosoft) != 0 => "Microsoft GUID",
+      var m when (m & GuidMetadatas.SourceExternal) != 0 => "Database/API",
+      var m when (m & GuidMetadatas.SourceParsed) != 0 => "Parsed string",
       _ => "Unknown"
     };
 
@@ -134,7 +167,7 @@ Processing order 019c7df5-494b-77d6-b994-e7145b796ec0 from source: Database/API,
 public void DebugIdOrdering(List<TrackedGuid> ids) {
   foreach (var id in ids) {
     var timestamp = id.Timestamp;
-    var version = (id.Metadata & GuidMetadata.Version7) != 0 ? "v7" : "v4";
+    var version = (id.Metadata & GuidMetadatas.Version7) != 0 ? "v7" : "v4";
     var precision = id.SubMillisecondPrecision ? "sub-ms" : "ms-only";
 
     Console.WriteLine(
@@ -165,21 +198,21 @@ ID: 550e8400-e29b-41d4-a716-446655440000, Version: v4, Timestamp: 0001-01-01T00:
 public class IdGenerationValidator {
   public void ValidateIdUsage(TrackedGuid id, string context) {
     // Check if using recommended generator
-    if ((id.Metadata & GuidMetadata.SourceMedo) != 0) {
+    if ((id.Metadata & GuidMetadatas.SourceMedo) != 0) {
       Console.WriteLine($"✅ {context}: Using recommended Medo.Uuid7");
       return;
     }
 
     // Check if using Microsoft v7 (acceptable but not optimal)
-    if ((id.Metadata & GuidMetadata.SourceMicrosoft) != 0 &&
-        (id.Metadata & GuidMetadata.Version7) != 0) {
+    if ((id.Metadata & GuidMetadatas.SourceMicrosoft) != 0 &&
+        (id.Metadata & GuidMetadatas.Version7) != 0) {
       Console.WriteLine(
           $"⚠️  {context}: Using Guid.CreateVersion7() - consider TrackedGuid.NewMedo() for sub-ms precision");
       return;
     }
 
     // Check if using v4 (problematic)
-    if ((id.Metadata & GuidMetadata.Version4) != 0) {
+    if ((id.Metadata & GuidMetadatas.Version4) != 0) {
       Console.WriteLine(
           $"❌ {context}: Using UUIDv4 (random) - not time-ordered, fragments indexes");
       return;
@@ -251,15 +284,23 @@ var order = new Order {
   CustomerName = "Alice"
 };
 
+// TrackedGuid has no [JsonConverter] attribute — register the converter in your
+// options. (Whizbang registers it automatically in its JsonContextRegistry, so
+// framework serialization paths already use it.)
+var options = new JsonSerializerOptions {
+  PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+  Converters = { new TrackedGuidJsonConverter() }
+};
+
 // Serialize to JSON
-var json = JsonSerializer.Serialize(order);
+var json = JsonSerializer.Serialize(order, options);
 // Result: {"orderId":"019c7df5-494b-77d6-b994-e7145b796ec0","customerName":"Alice"}
 // NOT: {"orderId":{"value":"...","metadata":5}}
 
 // Deserialize from JSON
-var deserialized = JsonSerializer.Deserialize<Order>(json);
+var deserialized = JsonSerializer.Deserialize<Order>(json, options);
 Console.WriteLine(deserialized.OrderId.IsTracking); // false (metadata lost)
-Console.WriteLine(deserialized.OrderId.Metadata);   // Version7 | SourceExternal
+Console.WriteLine(deserialized.OrderId.Metadata);   // Version7 | SourceExternal (inferred via FromExternal)
 ```
 
 **Why serialize as string?**
@@ -293,49 +334,54 @@ When enabled, the following calls are intercepted:
 
 The `GuidInterceptorGenerator` uses C# 12 `[InterceptsLocation]` to replace GUID creation calls at compile-time.
 
-#### GuidMetadata Flags {#guid-metadata}
+#### GuidMetadatas Flags {#guid-metadata}
 
-The `GuidMetadata` flags enum tracks both the UUID version and creation source:
+The `GuidMetadatas` flags enum (declared in `GuidMetadata.cs`) tracks both the UUID version and creation source:
 
-```csharp{title="GuidMetadata Flags" description="The GuidMetadata flags enum tracks both the UUID version and creation source:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "GuidMetadata", "Flags"]}
+```csharp{title="GuidMetadatas Flags" description="The GuidMetadatas flags enum tracks both the UUID version and creation source:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "GuidMetadatas", "Flags"]}
 namespace Whizbang.Core.ValueObjects;
 
 [Flags]
-public enum GuidMetadata : ushort {
+public enum GuidMetadatas : ushort {
   None = 0,
 
   // UUID Version (bits 0-1)
   Version4 = 1 << 0,  // Random UUID - not time-ordered
   Version7 = 1 << 1,  // Time-ordered UUID - chronologically sortable
 
-  // Creation Source (bits 2-5)
+  // Creation Source (bits 2-6)
   SourceMedo = 1 << 2,       // Medo.Uuid7 - sub-millisecond precision
   SourceMicrosoft = 1 << 3,  // Guid.NewGuid() / CreateVersion7()
   SourceParsed = 1 << 4,     // Parsed from string
   SourceExternal = 1 << 5,   // From database, API, deserialization
   SourceUnknown = 1 << 6,    // Implicit conversion from Guid
+  Reserved = 1 << 7,         // Reserved for future use
 
-  // Third-Party Libraries (bits 8-15)
+  // Third-Party Libraries (bits 8-13)
   SourceMarten = 1 << 8,     // Marten CombGuidIdGeneration
   SourceUuidNext = 1 << 9,   // UUIDNext library
-  // ... additional sources
+  SourceDaanV2 = 1 << 10,    // DaanV2.UUID library
+  SourceUuids = 1 << 11,     // UUIDs library
+  SourceGuidOne = 1 << 12,   // GuidOne library
+  SourceTaiizor = 1 << 13    // Taiizor UUID library
 }
 ```
 
 **Usage**:
 
-```csharp{title="GuidMetadata Flags (2)" description="GuidMetadata Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "GuidMetadata", "Flags"]}
+```csharp{title="GuidMetadatas Flags (2)" description="GuidMetadatas Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "GuidMetadatas", "Flags"]}
 // Your code (with interception enabled)
 var id = Guid.NewGuid();
 
-// After interception (generated code)
+// After interception (generated code — FromIntercepted is internal,
+// callable only by the generated interceptors)
 var id = TrackedGuid.FromIntercepted(
     Guid.NewGuid(),
-    GuidMetadata.Version4 | GuidMetadata.SourceMicrosoft);
+    GuidMetadatas.Version4 | GuidMetadatas.SourceMicrosoft);
 
 // Check metadata flags
-bool isV7 = (id.Metadata & GuidMetadata.Version7) != 0;
-bool fromMedo = (id.Metadata & GuidMetadata.SourceMedo) != 0;
+bool isV7 = (id.Metadata & GuidMetadatas.Version7) != 0;
+bool fromMedo = (id.Metadata & GuidMetadatas.SourceMedo) != 0;
 
 // Common combinations (internal helpers)
 // MEDO_V7 = Version7 | SourceMedo
@@ -412,7 +458,7 @@ Whizbang includes a Roslyn analyzer (`GuidUsageAnalyzer`) that detects problemat
 ```csharp{title="GuidUsageAnalyzer: Roslyn Analyzer (WHIZ055-WHIZ056)" description="Whizbang includes a Roslyn analyzer (GuidUsageAnalyzer) that detects problematic GUID generation patterns at" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "GuidUsageAnalyzer:", "Roslyn"]}
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class GuidUsageAnalyzer : DiagnosticAnalyzer {
-  // Detects: Guid.NewGuid(), Guid.CreateVersion7(), raw Guid in ID positions
+  // Detects: Guid.NewGuid() (WHIZ055) and Guid.CreateVersion7() (WHIZ056)
 }
 ```
 
@@ -559,13 +605,13 @@ public readonly partial struct CustomerId;
 
 The `[WhizbangId]` attribute triggers source generation that creates:
 - Value object with `Value` property (Guid)
-- `New()` static method for creating new IDs
-- `From(Guid)` static method for wrapping existing GUIDs
-- `Parse(string)` method for deserialization
+- `New()` static method for creating new IDs (uses `TrackedGuid.NewMedo()` internally)
+- `From(Guid)` / `From(TrackedGuid)` static methods for wrapping existing GUIDs — **both validate UUIDv7** and throw `ArgumentException` for non-v7 values
+- `Parse(string)` method for deserialization (validates UUIDv7)
 - Equality operators and `IComparable<T>`
-- Implicit conversion to Guid
+- Implicit conversion to Guid (explicit conversion from Guid)
 - JSON converter
-- **Strongly-typed provider** (`IWhizbangIdProvider<TId>`)
+- **Strongly-typed provider** (`IWhizbangIdProvider<TId>`) via `CreateProvider(...)`
 - **Auto-registration** via ModuleInitializer
 
 ### Using WhizbangIds
@@ -574,10 +620,10 @@ The `[WhizbangId]` attribute triggers source generation that creates:
 // Static creation (uses global WhizbangIdProvider)
 var orderId = OrderId.New();
 
-// From existing GUID
+// From existing GUID (must be UUIDv7 — throws ArgumentException otherwise)
 var existingId = OrderId.From(guid);
 
-// Parse from string
+// Parse from string (must parse to a UUIDv7)
 var parsedId = OrderId.Parse("3c5e4...");
 
 // Implicit conversion to Guid
@@ -599,7 +645,7 @@ public class Repository<TEntity> {
     private readonly IWhizbangIdProvider _idProvider;
 
     public async Task<TEntity> CreateAsync(TEntity entity) {
-        entity.Id = _idProvider.NewGuid(); // Returns Guid - not type-safe!
+        entity.Id = _idProvider.NewGuid(); // Returns TrackedGuid - not type-safe!
     }
 }
 
@@ -643,7 +689,7 @@ public class Repository<TEntity> {
   private readonly IWhizbangIdProvider _provider;
 
   public TEntity Create() {
-    var id = _provider.NewGuid();  // Returns Guid - not type-safe!
+    var id = _provider.NewGuid();  // Returns TrackedGuid - not type-safe!
     // Need to manually wrap: var orderId = OrderId.From(id);
   }
 }
@@ -772,20 +818,25 @@ var app = builder.Build();
 **When**: Using database sequences, tenant-specific IDs, or custom ID generation
 
 ```csharp{title="Custom Base Provider" description="When: Using database sequences, tenant-specific IDs, or custom ID generation" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Custom", "Base"]}
-// Custom ID generator
+// Custom ID generator — IWhizbangIdProvider.NewGuid() returns TrackedGuid, not Guid.
+// NOTE: generated WhizbangId types validate UUIDv7, so a custom base provider
+// must produce time-ordered (v7-form) GUIDs.
 public class SequenceBasedIdProvider : IWhizbangIdProvider {
     private readonly IDbConnection _db;
 
-    public Guid NewGuid() {
+    public TrackedGuid NewGuid() {
         var sequence = _db.GetNextSequence("id_sequence");
-        return GuidFromSequence(sequence);
+        return TrackedGuid.FromExternal(GuidV7FromSequence(sequence));
     }
 }
 
-// Register custom provider
-builder.Services.AddSingleton<IWhizbangIdProvider, SequenceBasedIdProvider>();
+// Register custom provider AFTER AddWhizbangIdProviders — typed providers resolve
+// IWhizbangIdProvider from DI lazily, and the LAST registration wins.
 builder.Services.AddWhizbangIdProviders();
+builder.Services.AddSingleton<IWhizbangIdProvider, SequenceBasedIdProvider>();
 // Now ALL typed providers use SequenceBasedIdProvider
+// (For a dependency-free provider, pass an instance instead:
+//  builder.Services.AddWhizbangIdProviders(new CustomIdProvider());)
 ```
 
 ### 3. Override Specific ID Types
@@ -810,15 +861,15 @@ builder.Services.AddSingleton<IWhizbangIdProvider<CustomerId>>(sp => {
 // Test setup
 var services = new ServiceCollection();
 
-// Use sequential IDs for tests
-services.AddSingleton<IWhizbangIdProvider, SequentialTestIdProvider>();
-services.AddWhizbangIdProviders();
+// Use sequential IDs for tests — pass the instance as the base provider
+services.AddWhizbangIdProviders(new SequentialTestIdProvider());
 
 // All typed providers now use SequentialTestIdProvider
 var provider = services.BuildServiceProvider();
 var orderIdProvider = provider.GetRequiredService<IWhizbangIdProvider<TestOrderId>>();
-var id1 = orderIdProvider.NewId(); // TestOrderId(00000000-0000-0000-0000-000000000001)
-var id2 = orderIdProvider.NewId(); // TestOrderId(00000000-0000-0000-0000-000000000002)
+var id1 = orderIdProvider.NewId(); // TestOrderId(00000000-0000-7000-8000-000000000001)
+var id2 = orderIdProvider.NewId(); // TestOrderId(00000000-0000-7000-8000-000000000002)
+// Note the v7 version/variant nibbles: generated WhizbangId types reject non-v7 GUIDs.
 ```
 
 ### 5. No DI - Direct Provider Creation
@@ -835,18 +886,27 @@ var orderId = orderIdProvider.NewId();
 
 ### 6. Global Provider Configuration
 
-**When**: Want to use global static provider AND DI
+**When**: Want to use the global static provider AND DI
+
+:::updated
+The static configuration method is **`WhizbangIdProvider.SetProvider(...)`** (there is no `Configure` method). Note the shipped behavior: the generated static `OrderId.New()` always calls `TrackedGuid.NewMedo()` directly — it does **not** consult the global provider. `SetProvider` affects only code that calls `WhizbangIdProvider.NewGuid()` itself. Use the DI-based typed providers (`IWhizbangIdProvider<TId>`) when you need to customize ID generation.
+:::
 
 ```csharp{title="Global Provider Configuration" description="When: Want to use global static provider AND DI" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Global", "Provider"]}
-// Configure global provider (affects OrderId.New())
-WhizbangIdProvider.Configure(new Uuid7IdProvider());
+// Configure the global static provider
+WhizbangIdProvider.SetProvider(new Uuid7IdProvider());
 
 // ALSO register with DI (for injection)
 builder.Services.AddWhizbangIdProviders();
 
-// Now works both ways:
-var id1 = OrderId.New(); // Uses global provider
-var id2 = orderIdProvider.NewId(); // Uses injected provider (same implementation)
+// Static API — uses the provider set via SetProvider:
+TrackedGuid raw = WhizbangIdProvider.NewGuid();
+
+// Generated static factory — always TrackedGuid.NewMedo(), ignores SetProvider:
+var id1 = OrderId.New();
+
+// DI path — uses the base provider registered with AddWhizbangIdProviders:
+var id2 = orderIdProvider.NewId();
 ```
 
 ### 7. Hybrid - Static + DI
@@ -854,17 +914,17 @@ var id2 = orderIdProvider.NewId(); // Uses injected provider (same implementatio
 **When**: Some code uses static `New()`, some uses DI
 
 ```csharp{title="Hybrid - Static + DI" description="When: Some code uses static New(), some uses DI" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Hybrid", "Static"]}
-// Configure global provider
-WhizbangIdProvider.Configure(new Uuid7IdProvider());
+// Configure global static provider (used by WhizbangIdProvider.NewGuid() callers)
+WhizbangIdProvider.SetProvider(new Uuid7IdProvider());
 
 // Register for DI
 builder.Services.AddWhizbangIdProviders();
 
 public class OrderService {
-    // Option 1: Use static New()
+    // Option 1: Use static New() — always TrackedGuid.NewMedo() (see callout above)
     public Order CreateOrder() {
         return new Order {
-            Id = OrderId.New() // Uses global provider
+            Id = OrderId.New()
         };
     }
 
@@ -891,16 +951,18 @@ public class OrderService {
 
 ```csharp{title="Multi-Tenant ID Generation" description="When: IDs need tenant prefix or tenant-specific sequences" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Multi-Tenant", "Generation"]}
 public class TenantAwareIdProvider : IWhizbangIdProvider {
-    private readonly IHttpContextAccessor _contextAccessor;
+    private readonly IHttpContextAccessor _contextAccessor; // singleton-safe accessor
 
-    public Guid NewGuid() {
+    public TrackedGuid NewGuid() {
         var tenantId = _contextAccessor.HttpContext?.User.FindFirst("tenant_id")?.Value;
-        return GenerateTenantPrefixedGuid(tenantId);
+        return TrackedGuid.FromExternal(GenerateTenantPrefixedV7Guid(tenantId));
     }
 }
 
-builder.Services.AddScoped<IWhizbangIdProvider, TenantAwareIdProvider>();
+// Register as singleton AFTER AddWhizbangIdProviders (last registration wins);
+// typed providers are singletons, so use IHttpContextAccessor for per-request data.
 builder.Services.AddWhizbangIdProviders();
+builder.Services.AddSingleton<IWhizbangIdProvider, TenantAwareIdProvider>();
 // All typed providers now include tenant context
 ```
 
@@ -912,30 +974,32 @@ builder.Services.AddWhizbangIdProviders();
 public class PostgresSequenceIdProvider : IWhizbangIdProvider {
     private readonly NpgsqlConnection _connection;
 
-    public Guid NewGuid() {
+    public TrackedGuid NewGuid() {
         var sequence = _connection.ExecuteScalar<long>(
             "SELECT nextval('global_id_sequence')"
         );
-        return ConvertSequenceToGuid(sequence);
+        return TrackedGuid.FromExternal(ConvertSequenceToV7Guid(sequence));
     }
 }
 
-builder.Services.AddSingleton<IWhizbangIdProvider, PostgresSequenceIdProvider>();
+// Register AFTER AddWhizbangIdProviders so this provider wins for typed providers
 builder.Services.AddWhizbangIdProviders();
+builder.Services.AddSingleton<IWhizbangIdProvider, PostgresSequenceIdProvider>();
 ```
 
-### 10. Scoped vs Singleton Providers
+### 10. Provider Lifetimes (Singleton Only)
 
-**When**: Provider needs request-scoped dependencies
+**When**: Understanding provider lifetimes in DI
 
-```csharp{title="Scoped vs Singleton Providers" description="When: Provider needs request-scoped dependencies" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "10.", "Scoped"]}
-// Scoped base provider
-builder.Services.AddScoped<IWhizbangIdProvider, RequestScopedIdProvider>();
+:::updated
+Shipped behavior: `AddWhizbangIdProviders()` registers the base `IWhizbangIdProvider` **and every generated `IWhizbangIdProvider<TId>` as singletons**. Scoped base providers are not supported — a scoped `IWhizbangIdProvider` registration would be captured by the singleton typed providers. If a provider needs per-request data, inject a singleton-safe accessor (e.g. `IHttpContextAccessor`) into a singleton provider, as in the multi-tenant pattern above.
+:::
 
-// Register typed providers as scoped
+```csharp{title="Provider Lifetimes" description="All providers registered by AddWhizbangIdProviders are singletons" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "10.", "Lifetimes"]}
 builder.Services.AddWhizbangIdProviders();
 
-// Now IWhizbangIdProvider<OrderId> is scoped, uses scoped base provider
+// IWhizbangIdProvider        → singleton (the base provider instance)
+// IWhizbangIdProvider<OrderId> → singleton (resolves the base provider from DI lazily)
 ```
 
 ## Advanced Scenarios
@@ -951,7 +1015,7 @@ public class CustomOrderIdProvider : IWhizbangIdProvider<OrderId> {
     }
 
     public OrderId NewId() {
-        var id = OrderId.From(Guid.CreateVersion7());
+        var id = OrderId.From(TrackedGuid.NewMedo());
         _logger.LogDebug("Generated OrderId: {OrderId}", id);
         return id;
     }
@@ -968,7 +1032,7 @@ public class CompositeIdProvider : IWhizbangIdProvider {
     private readonly IWhizbangIdProvider _primary;
     private readonly IWhizbangIdProvider _fallback;
 
-    public Guid NewGuid() {
+    public TrackedGuid NewGuid() {
         try {
             return _primary.NewGuid();
         }
@@ -1073,16 +1137,16 @@ builder.Services.AddWhizbangIdProviders(new CustomIdProvider());
 public class SequentialTestIdProvider : IWhizbangIdProvider {
     private long _counter = 0;
 
-    public Guid NewGuid() {
+    public TrackedGuid NewGuid() {
         var value = Interlocked.Increment(ref _counter);
-        return new Guid($"00000000-0000-0000-0000-{value:D12}");
+        // v7 version/variant nibbles — generated WhizbangId types reject non-v7 GUIDs
+        return TrackedGuid.FromExternal(new Guid($"00000000-0000-7000-8000-{value:D12}"));
     }
 }
 
-// In tests
+// In tests — pass the instance as the base provider
 var services = new ServiceCollection();
-services.AddSingleton<IWhizbangIdProvider, SequentialTestIdProvider>();
-services.AddWhizbangIdProviders();
+services.AddWhizbangIdProviders(new SequentialTestIdProvider());
 ```
 
 ### Test with Known IDs
@@ -1100,8 +1164,8 @@ public class KnownIdProvider<TId> : IWhizbangIdProvider<TId>
     public TId NewId() => _ids.Dequeue();
 }
 
-// In tests
-var knownOrderId = OrderId.From(new Guid("11111111-1111-1111-1111-111111111111"));
+// In tests — the known Guid must be v7-form (From validates UUIDv7)
+var knownOrderId = OrderId.From(new Guid("00000000-0000-7000-8000-111111111111"));
 var provider = new KnownIdProvider<OrderId>(knownOrderId);
 
 var order = new Order { Id = provider.NewId() };
@@ -1134,21 +1198,24 @@ public void OrderId_CreateProvider_GeneratesValidIds() {
 Whizbang provides automated code transformation for migrating from raw Guid usage:
 
 ```bash{title="Automated Migration with `whizbang-migrate`" description="Whizbang provides automated code transformation for migrating from raw Guid usage:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Automated", "Migration"]}
-# Analyze codebase for Guid patterns
-whizbang-migrate analyze ./src
+# Analyze a project for migration scope (Marten/Wolverine → Whizbang)
+whizbang-migrate analyze --project ./src/MyApp.csproj
 
-# Transform Guid.NewGuid()/CreateVersion7() to TrackedGuid.NewMedo()
-whizbang-migrate transform --transformer GuidToTrackedGuid ./src
+# Preview transformations without modifying files
+whizbang-migrate apply --project ./src/MyApp.csproj --dry-run
 
-# Or transform to IWhizbangIdProvider pattern (for DI)
-whizbang-migrate transform --transformer GuidToIdProvider ./src
+# Apply the transformations (Guid → TrackedGuid included)
+whizbang-migrate apply --project ./src/MyApp.csproj
 ```
 
-The `GuidToTrackedGuidTransformer` automatically:
+The CLI exposes `analyze`, `plan`, `apply`, `rollback`, and `status` commands (transformers are not selected individually via flags — they run as part of the `apply` pipeline). The `GuidToTrackedGuidTransformer` automatically:
 - Converts `Guid.NewGuid()` → `TrackedGuid.NewMedo()`
 - Converts `Guid.CreateVersion7()` → `TrackedGuid.NewMedo()`
+- Converts Marten's `CombGuidIdGeneration.NewGuid()` → `TrackedGuid.NewMedo()`
 - Adds `using Whizbang.Core.ValueObjects;` directive
-- Emits warnings about return types that may need updating
+- Emits warnings for default-StreamId check patterns and collision-retry patterns that need manual review
+
+A companion `GuidToIdProviderTransformer` rewrites raw Guid generation to the `IWhizbangIdProvider` pattern for DI scenarios.
 
 ### Migrating from Guid to WhizbangId
 
@@ -1203,7 +1270,7 @@ public class Repository<TEntity> {
     }
 
     public TEntity Create(TEntity entity) {
-        entity.Id = _idProvider.NewGuid(); // ❌ Returns Guid
+        entity.Id = _idProvider.NewGuid(); // ❌ Returns TrackedGuid, needs manual wrapping
         return entity;
     }
 }
@@ -1234,7 +1301,7 @@ var orderRepo = new Repository<Order, OrderId>(orderIdProvider);
 
 1. **Use typed providers in generic code** - Enables type safety in repositories, services, utilities
 2. **Prefer DI over static New()** - Makes testing easier, allows custom providers
-3. **Configure global provider early** - In `Program.cs` before any IDs are created
+3. **Configure providers early** - Call `AddWhizbangIdProviders()` (and `WhizbangIdProvider.SetProvider()` if you use the static API) in `Program.cs` before any IDs are created
 4. **Use auto-registration** - Let ModuleInitializer handle registration automatically
 5. **Override specific types when needed** - Register custom implementations after `AddWhizbangIdProviders()`
 6. **Test with sequential IDs** - Makes tests predictable and debuggable

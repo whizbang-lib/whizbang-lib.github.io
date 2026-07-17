@@ -1,6 +1,8 @@
 ---
 title: Schema Migration
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Data Access
 order: 7
@@ -11,6 +13,14 @@ description: >-
 tags: 'schema-migration, drift-detection, database-schema, perspectives, ddl, sha256'
 codeReferences:
   - src/Whizbang.Generators.Shared/Utilities/SchemaHashUtilities.cs
+  - src/Whizbang.Data.Schema/Schemas/PerspectiveRegistrySchema.cs
+  - src/Whizbang.Data.Postgres/Migrations/030_ReconcilePerspectiveRegistry.sql
+  - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
+  - src/Whizbang.Generators.Shared/Models/TableNameConfig.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/Utilities/SchemaHashUtilitiesTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationConcurrencyTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -50,54 +60,43 @@ flowchart TD
 
 ### What Causes Drift
 
+The hash covers the *table* schema — the fixed `PerspectiveRow` columns plus any physical/vector columns and their indexes. Plain model properties live inside the JSONB `data` column and do not affect the hash.
+
 | Change Type | Example | Drift Detected? |
 |-------------|---------|-----------------|
-| Add property | Add `Email` to `CustomerData` | Yes |
-| Remove property | Remove `Phone` from `CustomerData` | Yes |
-| Change type | `int CustomerId` → `Guid CustomerId` | Yes |
+| Add plain property (JSONB-only) | Add `Email` to `CustomerData` | No* |
 | Add physical field | Add `[PhysicalField]` attribute | Yes |
-| Add index | Add `[Index]` attribute | Yes |
-| Rename property | `Name` → `FullName` | Yes |
-| Reorder properties | Move `Email` before `Name` | No* |
+| Remove physical field | Remove `[PhysicalField]` attribute | Yes |
+| Change physical field type | `int Total` → `decimal Total` | Yes |
+| Add vector field | Add `[VectorField(1536)]` or change dimensions | Yes |
+| Add index | Set `[PhysicalField(Indexed = true)]` | Yes |
+| Rename physical field | `Name` → `FullName` (column rename) | Yes |
+| Reorder properties | Move `Email` before `Name` | No** |
 
-*Property order doesn't affect the schema hash.
+*JSONB-only changes need no table change — new rows simply serialize the new shape.
+**Columns and indexes are sorted canonically before hashing, so order never matters.
 
 ### Handling Drift
 
-When drift is detected, Whizbang logs a warning:
+When drift is detected during registry reconciliation, Whizbang logs a warning and updates the registry with the new schema JSON and hash:
 
 ```
-[WRN] Schema drift detected for MyApp.CustomerProjection
-      Expected hash: a1b2c3d4...
-      Stored hash:   e5f6g7h8...
-      Table: wh_per_customer
+[WRN] Schema drift detected for perspective: MyApp.CustomerProjection (wh_per_customer)
 ```
 
-You have several options:
+:::updated{version="1.0.0"}
+There is no configurable drift behavior (no `SchemaDriftBehavior` option). Shipped behavior is fixed: drift is logged as a warning and the registry entry is updated — initialization never throws or recreates tables because of drift. New tables and new *infrastructure* columns are created idempotently (`CREATE TABLE IF NOT EXISTS` + `ALTER TABLE ADD COLUMN IF NOT EXISTS`), but structural changes to existing perspective tables (new physical columns, type changes) require a manual migration.
+:::
 
-#### Option 1: Ignore (Default)
+Your options when you see the warning:
 
-If the changes are backward-compatible (adding nullable columns), you can proceed safely:
+#### Option 1: Ignore
 
-```csharp{title="Option 1: Ignore (Default)" description="If the changes are backward-compatible (adding nullable columns), you can proceed safely:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Option", "Ignore", "Default"]}
-services.AddWhizbang(options => {
-  options.Perspectives.OnSchemaDrift = SchemaDriftBehavior.LogWarning;
-});
-```
+If the change only affects data inside the JSONB `data` column (adding or removing model properties), no table change is needed — new rows simply serialize the new shape. The warning is informational.
 
-#### Option 2: Throw Exception
+#### Option 2: Manual Migration
 
-For strict environments where drift should block deployment:
-
-```csharp{title="Option 2: Throw Exception" description="For strict environments where drift should block deployment:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Option", "Throw", "Exception"]}
-services.AddWhizbang(options => {
-  options.Perspectives.OnSchemaDrift = SchemaDriftBehavior.ThrowException;
-});
-```
-
-#### Option 3: Manual Migration
-
-For breaking changes, create a migration:
+For changes that affect physical columns or need backfill, create a migration:
 
 ```sql{title="Option 3: Manual Migration" description="For breaking changes, create a migration:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Sql", "Option", "Manual", "Migration"]}
 -- Add new column
@@ -152,36 +151,15 @@ The rename operation is safe because:
 
 ### Development vs Production
 
-```csharp{title="Development vs Production" description="Development vs Production" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Development", "Production"]}
-services.AddWhizbang(options => {
-  if (env.IsDevelopment()) {
-    // Recreate tables on schema change (lose data)
-    options.Perspectives.OnSchemaDrift = SchemaDriftBehavior.RecreateTable;
-  } else {
-    // Strict mode for production
-    options.Perspectives.OnSchemaDrift = SchemaDriftBehavior.ThrowException;
-  }
-});
-```
+In development, the simplest way to absorb a breaking perspective schema change is to drop the affected `wh_per_*` table (and its `wh_perspective_registry` row) and restart — initialization recreates the table and perspectives rebuild from the event store. In production, treat drift warnings as a signal to write a manual migration before relying on the new shape.
 
 ### CI/CD Pipeline
 
-Include schema validation in your deployment pipeline:
-
-```yaml{title="CI/CD Pipeline" description="Include schema validation in your deployment pipeline:" category="Implementation" difficulty="BEGINNER" tags=["Data", "Pipeline"]}
-# Azure DevOps / GitHub Actions example
-- name: Validate Schema
-  run: |
-    dotnet run --project MyApp.Api -- --validate-schema-only
-    if [ $? -ne 0 ]; then
-      echo "Schema drift detected! Run migrations before deploying."
-      exit 1
-    fi
-```
+Drift warnings surface in startup logs (`Schema drift detected for perspective: ...`). Since drift never fails startup, monitor deployment logs (or your log aggregation alerts) for these warnings after each deploy and follow up with a manual migration when a physical column is affected.
 
 ## Infrastructure Schema
 
-Whizbang infrastructure tables are versioned and migrated automatically:
+Whizbang infrastructure tables are versioned and migrated automatically. Key tables include:
 
 | Table | Purpose |
 |-------|---------|
@@ -189,59 +167,60 @@ Whizbang infrastructure tables are versioned and migrated automatically:
 | `wh_outbox` | Transactional messaging |
 | `wh_event_store` | Event persistence |
 | `wh_perspective_registry` | CLR type → table mapping |
-| `wh_perspective_checkpoints` | Projection progress tracking |
+| `wh_perspective_cursors` | Projection progress tracking |
 | `wh_service_instances` | Distributed coordination |
 
 ### Migration Files
 
-Infrastructure migrations are embedded in the Whizbang.Data.Postgres package:
+Infrastructure migrations are embedded in the Whizbang.Data.Postgres package (numbered `000`–`064` at this commit):
 
 ```
 Migrations/
+├── 000_MigrationTracking.sql
 ├── 001_CreateComputePartitionFunction.sql
-├── 002_CreateAcquireReceptorProcessingFunction.sql
 ├── ...
-├── 030_DecompositionComplete.sql
-└── 031_ReconcilePerspectiveRegistry.sql
+├── 029_ProcessWorkBatch.sql          (hosts claim_work + focused work-pump functions)
+├── 030_ReconcilePerspectiveRegistry.sql
+├── 033_RenamePerspectiveCheckpointsToCursors.sql
+├── ...
+└── 064_ReconcileMessageTypeRegistry_LedgerAware.sql
 ```
 
-Migrations are applied automatically and idempotently.
+Migrations are applied automatically and idempotently — each file's hash is tracked in `wh_schema_migrations`, so unchanged migrations are skipped on subsequent startups.
 
 ## Schema JSON Format
 
-The registry stores full schema definitions as JSON:
+The registry stores full schema definitions as canonical JSON (columns and indexes sorted by name, camelCase keys, `false`/`null` values omitted — this guarantees byte-stable SHA-256 hashes across platforms):
 
-```json{title="Schema JSON Format" description="The registry stores full schema definitions as JSON:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Json", "Schema", "JSON", "Format"]}
+```json{title="Schema JSON Format" description="The registry stores full schema definitions as canonical JSON:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Json", "Schema", "JSON", "Format"]}
 {
   "columns": [
     {
-      "name": "id",
-      "type": "uuid",
-      "nullable": false,
-      "isPrimaryKey": true
+      "name": "customer_id",
+      "nullable": true,
+      "type": "uuid"
     },
     {
       "name": "data",
-      "type": "jsonb",
-      "nullable": false
+      "type": "jsonb"
     },
     {
-      "name": "customer_id",
-      "type": "uuid",
-      "nullable": true,
-      "isPhysicalField": true
+      "isPrimaryKey": true,
+      "name": "id",
+      "type": "uuid"
     }
   ],
   "indexes": [
     {
-      "name": "idx_customer_customer_id",
       "columns": ["customer_id"],
-      "type": "btree",
-      "isUnique": false
+      "name": "idx_customer_customer_id",
+      "type": "btree"
     }
   ]
 }
 ```
+
+Vector columns additionally carry `"isVector": true` and `"vectorDimensions": n`.
 
 ### Supported Column Types
 
@@ -297,9 +276,9 @@ For zero-downtime migrations:
 **Cause**: C# class changed but database table wasn't updated.
 
 **Solutions**:
-1. For nullable additions: Safe to ignore
-2. For breaking changes: Run migration
-3. For development: Set `RecreateTable` behavior
+1. For JSONB-only model changes: Safe to ignore (warning is informational)
+2. For physical-column changes: Run a manual migration
+3. For development: Drop the `wh_per_*` table and its registry row, then restart to recreate and rebuild
 
 ### "Table rename failed"
 

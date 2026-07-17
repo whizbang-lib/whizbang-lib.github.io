@@ -1,21 +1,22 @@
 ---
 title: Analytics Service
 pageType: tutorial
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Tutorial
 order: 8
 description: >-
-  Build the Analytics Worker - real-time analytics, time-series perspectives,
-  and reporting dashboards
-tags: 'tutorial, analytics-service, perspectives, time-series, reporting, dashboards'
+  Build the Analytics Worker - real-time analytics, time-series projection
+  receptors, and reporting dashboards
+tags: 'tutorial, analytics-service, receptors, time-series, reporting, dashboards'
 codeReferences:
-  - >-
-    samples/ECommerce/ECommerce.BFF.API/Perspectives/PerspectiveModels.cs
-  - >-
-    samples/ECommerce/ECommerce.BFF.API/Hubs/OrderStatusHub.cs
-  - >-
-    samples/ECommerce/ECommerce.BFF.API/Hubs/ProductInventoryHub.cs
-  - samples/ECommerce/ECommerce.BFF.API/Endpoints/GetOrderHistoryEndpoint.cs
+  - samples/ECommerce/ECommerce.Contracts/Events/OrderCreatedEvent.cs
+  - samples/ECommerce/ECommerce.Contracts/Commands/CreateOrderCommand.cs
+  - samples/ECommerce/ECommerce.InventoryWorker/Program.cs
+  - src/Whizbang.Core/IReceptor.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Receptors/VoidReceptorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -35,24 +36,28 @@ This is **Part 7** of the ECommerce Tutorial. Complete [Customer Service](custom
 flowchart TD
     subgraph ASA["Analytics Service Architecture"]
         ASB["Azure Service Bus"]
-        Perspectives["Time-Series Perspectives<br/>- DailySalesAnalyticsPerspective<br/>- HourlySalesAnalyticsPerspective<br/>- ProductAnalyticsPerspective"]
+        Receptors["Time-Series Projection Receptors<br/>- DailySalesAnalyticsReceptor<br/>- HourlySalesAnalyticsReceptor<br/>- ProductAnalyticsReceptor"]
         Tables["PostgreSQL Time-Series Tables<br/>(Partitioned by date)"]
         API["Analytics API (REST)<br/>GET /analytics/sales/daily<br/>GET /analytics/products/top"]
 
-        ASB -->|"ALL domain events<br/>(OrderCreated, PaymentProcessed, etc.)"| Perspectives
-        Perspectives --> Tables
+        ASB -->|"domain events<br/>(OrderCreatedEvent, PaymentProcessedEvent, etc.)"| Receptors
+        Receptors --> Tables
         Tables --> API
     end
 
     class ASB layer-command
-    class Perspectives layer-read
+    class Receptors layer-read
     class Tables layer-event
     class API layer-core
 ```
 
+:::note
+**Why receptors and not perspectives?** Whizbang perspectives are *pure* `Apply` functions over framework-managed, per-stream read models — no I/O, no side effects, so replays reconstruct identical state. Cross-stream time-series aggregation into custom partitioned tables is side-effecting projection work, and side effects belong in **receptors** (`IReceptor<TEvent>`).
+:::
+
 **Features**:
 - ✅ Real-time event aggregation
-- ✅ Time-series perspectives (hourly, daily, monthly)
+- ✅ Time-series projections (hourly, daily, monthly)
 - ✅ Product performance analytics
 - ✅ Customer cohort analysis
 - ✅ Partitioned tables for performance
@@ -135,34 +140,34 @@ CREATE INDEX idx_product_analytics_revenue ON product_analytics(total_revenue DE
 
 ---
 
-## Step 2: Perspectives
+## Step 2: Projection Receptors
 
-### Daily Sales Analytics Perspective
+### Daily Sales Analytics Receptor
 
-**ECommerce.AnalyticsWorker/Perspectives/DailySalesAnalyticsPerspective.cs**:
+**ECommerce.AnalyticsWorker/Receptors/DailySalesAnalyticsReceptor.cs**:
 
-```csharp{title="Daily Sales Analytics Perspective" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Daily", "Sales"]}
+```csharp{title="Daily Sales Analytics Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Daily", "Sales"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
 using Dapper;
 
-namespace ECommerce.AnalyticsWorker.Perspectives;
+namespace ECommerce.AnalyticsWorker.Receptors;
 
-public class DailySalesAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
+public class DailySalesAnalyticsReceptor : IReceptor<OrderCreatedEvent> {
   private readonly NpgsqlConnection _db;
-  private readonly ILogger<DailySalesAnalyticsPerspective> _logger;
+  private readonly ILogger<DailySalesAnalyticsReceptor> _logger;
 
-  public DailySalesAnalyticsPerspective(
+  public DailySalesAnalyticsReceptor(
     NpgsqlConnection db,
-    ILogger<DailySalesAnalyticsPerspective> logger
+    ILogger<DailySalesAnalyticsReceptor> logger
   ) {
     _db = db;
     _logger = logger;
   }
 
-  public async Task HandleAsync(
-    OrderCreated @event,
+  public async ValueTask HandleAsync(
+    OrderCreatedEvent @event,
     CancellationToken ct = default
   ) {
     var date = @event.CreatedAt.Date;
@@ -183,7 +188,7 @@ public class DailySalesAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
       new {
         Date = date,
         TotalAmount = @event.TotalAmount,
-        ItemCount = @event.Items.Sum(i => i.Quantity)
+        ItemCount = @event.LineItems.Sum(i => i.Quantity)
       }
     );
 
@@ -196,32 +201,32 @@ public class DailySalesAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
 }
 ```
 
-### Hourly Sales Analytics Perspective
+### Hourly Sales Analytics Receptor
 
-**ECommerce.AnalyticsWorker/Perspectives/HourlySalesAnalyticsPerspective.cs**:
+**ECommerce.AnalyticsWorker/Receptors/HourlySalesAnalyticsReceptor.cs**:
 
-```csharp{title="Hourly Sales Analytics Perspective" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Hourly", "Sales"]}
+```csharp{title="Hourly Sales Analytics Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Hourly", "Sales"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
 using Dapper;
 
-namespace ECommerce.AnalyticsWorker.Perspectives;
+namespace ECommerce.AnalyticsWorker.Receptors;
 
-public class HourlySalesAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
+public class HourlySalesAnalyticsReceptor : IReceptor<OrderCreatedEvent> {
   private readonly NpgsqlConnection _db;
-  private readonly ILogger<HourlySalesAnalyticsPerspective> _logger;
+  private readonly ILogger<HourlySalesAnalyticsReceptor> _logger;
 
-  public HourlySalesAnalyticsPerspective(
+  public HourlySalesAnalyticsReceptor(
     NpgsqlConnection db,
-    ILogger<HourlySalesAnalyticsPerspective> logger
+    ILogger<HourlySalesAnalyticsReceptor> logger
   ) {
     _db = db;
     _logger = logger;
   }
 
-  public async Task HandleAsync(
-    OrderCreated @event,
+  public async ValueTask HandleAsync(
+    OrderCreatedEvent @event,
     CancellationToken ct = default
   ) {
     // Truncate to hour (e.g., 2024-12-12 10:00:00)
@@ -258,38 +263,39 @@ public class HourlySalesAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
 }
 ```
 
-### Product Analytics Perspective
+### Product Analytics Receptor
 
-**ECommerce.AnalyticsWorker/Perspectives/ProductAnalyticsPerspective.cs**:
+**ECommerce.AnalyticsWorker/Receptors/ProductAnalyticsReceptor.cs**:
 
-```csharp{title="Product Analytics Perspective" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Product", "Analytics"]}
+```csharp{title="Product Analytics Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Product", "Analytics"]}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
 using Dapper;
 
-namespace ECommerce.AnalyticsWorker.Perspectives;
+namespace ECommerce.AnalyticsWorker.Receptors;
 
-public class ProductAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
+public class ProductAnalyticsReceptor : IReceptor<OrderCreatedEvent> {
   private readonly NpgsqlConnection _db;
-  private readonly ILogger<ProductAnalyticsPerspective> _logger;
+  private readonly ILogger<ProductAnalyticsReceptor> _logger;
 
-  public ProductAnalyticsPerspective(
+  public ProductAnalyticsReceptor(
     NpgsqlConnection db,
-    ILogger<ProductAnalyticsPerspective> logger
+    ILogger<ProductAnalyticsReceptor> logger
   ) {
     _db = db;
     _logger = logger;
   }
 
-  public async Task HandleAsync(
-    OrderCreated @event,
+  public async ValueTask HandleAsync(
+    OrderCreatedEvent @event,
     CancellationToken ct = default
   ) {
     var date = @event.CreatedAt.Date;
 
     // Update analytics for each product in the order
-    foreach (var item in @event.Items) {
+    foreach (var item in @event.LineItems) {
+      var lineTotal = item.Quantity * item.UnitPrice;
       await _db.ExecuteAsync(
         """
         INSERT INTO product_analytics (
@@ -303,10 +309,10 @@ public class ProductAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
           updated_at = NOW()
         """,
         new {
-          ProductId = item.ProductId,
+          ProductId = item.ProductId.ToString(),
           Date = date,
           Quantity = item.Quantity,
-          LineTotal = item.LineTotal
+          LineTotal = lineTotal
         }
       );
 
@@ -315,7 +321,7 @@ public class ProductAnalyticsPerspective : IPerspectiveOf<OrderCreated> {
         item.ProductId,
         date,
         item.Quantity,
-        item.LineTotal
+        lineTotal
       );
     }
   }
@@ -517,28 +523,49 @@ public record ProductAnalyticsRow(
 
 ```csharp{title="Step 4: Service Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"]}
 using Whizbang.Core;
-using Whizbang.Data.Postgres;
+using Whizbang.Core.Messaging;
+using Whizbang.Core.Observability;
+using Whizbang.Core.Routing;
+using Whizbang.Data.EFCore.Postgres;
 using Whizbang.Transports.AzureServiceBus;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add Whizbang
-builder.Services.AddWhizbang(options => {
-  options.ServiceName = "AnalyticsWorker";
-  options.EnableInbox = true;
-});
+// 1. Azure Service Bus transport
+var serviceBusConnection = builder.Configuration.GetConnectionString("servicebus")
+    ?? throw new InvalidOperationException("Azure Service Bus connection string 'servicebus' not found");
+builder.Services.AddAzureServiceBusTransport(serviceBusConnection);
+builder.Services.AddAzureServiceBusHealthChecks();
 
-// 2. Add PostgreSQL
-builder.Services.AddScoped<NpgsqlConnection>(sp => {
+// 2. Core plumbing
+builder.Services.AddSingleton<IServiceInstanceProvider, ServiceInstanceProvider>();
+builder.Services.AddSingleton<OrderedStreamProcessor>();
+
+// 3. Unified Whizbang API — routing + EF Core Postgres driver + transport consumer
+builder.Services
+  .AddWhizbang()
+  .WithRouting(routing => {
+    routing
+      .OwnDomains("ecommerce.analytics.commands")
+      .SubscribeTo("ecommerce.orders.events")
+      .Inbox.UseSharedTopic("inbox");
+  })
+  .WithEFCore<AnalyticsDbContext>()
+  .WithDriver.Postgres
+  .AddTransportConsumer();
+
+// 4. Receptors (generated registration picks up the analytics receptors)
+builder.Services.AddReceptors();
+builder.Services.AddWhizbangDispatcher();
+
+// 5. Direct Npgsql connection for the time-series tables + dashboard queries
+builder.Services.AddScoped<NpgsqlConnection>(_ => {
   var connectionString = builder.Configuration.GetConnectionString("AnalyticsDb");
   return new NpgsqlConnection(connectionString);
 });
 
-// 3. Add Azure Service Bus
-builder.AddAzureServiceBus("messaging");
-
-// 4. Add controllers
+// 6. Controllers
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -554,7 +581,14 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
-await app.MigrateDatabaseAsync();
+// Initialize Whizbang schema (Inbox/Outbox/EventStore tables + functions),
+// then apply the service's own time-series migrations.
+using (var scope = app.Services.CreateScope()) {
+  var dbContext = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
+  var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+  await dbContext.EnsureWhizbangDatabaseInitializedAsync(logger);
+}
+
 app.Run();
 ```
 
@@ -642,9 +676,9 @@ curl "http://localhost:5002/api/analytics/products/top?limit=5"
 
 ## Key Concepts
 
-### Time-Series Perspectives
+### Time-Series Projections
 
-```csharp{title="Time-Series Perspectives" description="Time-Series Perspectives" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Time-Series", "Perspectives"]}
+```csharp{title="Time-Series Projections" description="Time-Series Projections" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Time-Series", "Projections"]}
 // Truncate timestamp to hour for hourly aggregation
 var hour = new DateTime(
   @event.CreatedAt.Year,
@@ -710,25 +744,29 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY monthly_sales_summary;
 
 ## Testing
 
-### Unit Test - Daily Sales Perspective
+### Unit Test - Daily Sales Receptor
 
-```csharp{title="Unit Test - Daily Sales Perspective" description="Unit Test - Daily Sales Perspective" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Daily Sales Receptor" description="Unit Test - Daily Sales Receptor" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
 [Test]
-public async Task DailySalesPerspective_OrderCreated_UpdatesDailySalesAsync() {
+public async Task DailySalesReceptor_OrderCreated_UpdatesDailySalesAsync() {
   // Arrange
   var db = new MockNpgsqlConnection();
-  var perspective = new DailySalesAnalyticsPerspective(db, mockLogger);
-  var @event = new OrderCreated(
-    OrderId: "order-123",
-    CustomerId: "cust-456",
-    Items: [new OrderItem("prod-789", 2, 19.99m, 39.98m)],
-    TotalAmount: 39.98m,
-    CreatedAt: new DateTime(2024, 12, 12, 10, 30, 0)
-    // ... other fields
-  );
+  var receptor = new DailySalesAnalyticsReceptor(db, mockLogger);
+  var @event = new OrderCreatedEvent {
+    OrderId = OrderId.New(),
+    CustomerId = CustomerId.New(),
+    LineItems = [new OrderLineItem {
+      ProductId = ProductId.New(),
+      ProductName = "Widget",
+      Quantity = 2,
+      UnitPrice = 19.99m
+    }],
+    TotalAmount = 39.98m,
+    CreatedAt = new DateTime(2024, 12, 12, 10, 30, 0)
+  };
 
   // Act
-  await perspective.HandleAsync(@event);
+  await receptor.HandleAsync(@event);
 
   // Assert
   var sales = db.GetDailySales(new DateTime(2024, 12, 12));
@@ -751,9 +789,9 @@ Continue to **[Testing Strategy](testing-strategy.md)** to:
 
 ## Key Takeaways
 
-✅ **Time-Series Perspectives** - Real-time aggregation with hour/day truncation
+✅ **Time-Series Projection Receptors** - Real-time aggregation with hour/day truncation
 ✅ **Partitioned Tables** - Performance optimization for large datasets
-✅ **Event Aggregation** - Single perspective handles all analytics
+✅ **Event Aggregation** - Receptors project domain events into analytics tables
 ✅ **Dashboard APIs** - REST endpoints for frontend dashboards
 ✅ **Materialized Views** - Pre-computed complex aggregations
 

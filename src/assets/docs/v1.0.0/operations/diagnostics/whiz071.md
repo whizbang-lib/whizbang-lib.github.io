@@ -1,6 +1,8 @@
 ---
 title: 'WHIZ071: Missing Pgvector Package'
 pageType: troubleshooting
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 description: >-
   Error diagnostic when a perspective model uses [VectorField] but the required
   base Pgvector package is not referenced
@@ -16,6 +18,8 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres.Generators/VectorFieldPackageReferenceAnalyzer.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Core/Perspectives/SuppressVectorPackageCheckAttribute.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/VectorFieldPackageReferenceAnalyzerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -26,13 +30,19 @@ lastMaintainedCommit: '01f07906'
 
 ## Description
 
-This error is reported when a perspective model property has the `[VectorField]` attribute but the project does not reference the base `Pgvector` package. This package is required for `NpgsqlDataSourceBuilder.UseVector()` support.
+This error is reported by the `VectorFieldPackageReferenceAnalyzer` (in `Whizbang.Data.EFCore.Postgres.Generators`) when a perspective model property has the `[VectorField]` attribute but the project does not reference the base `Pgvector` package. This package is required for `NpgsqlDataSourceBuilder.UseVector()` support.
+
+The check fires when a non-abstract class implements `IPerspectiveFor<TModel, TEvent...>` (or `IPerspectiveWithActionsFor`/`IPerspectiveBase`) whose model type has a `[VectorField]` property. It is reported once per compilation, at compilation end, with no source location. A `[VectorField]` on a model that no perspective uses does not trigger it.
 
 ## Diagnostic Message
 
 ```
-Perspective model uses [VectorField] but Pgvector package is not referenced. Add <PackageReference Include="Pgvector" /> for NpgsqlDataSourceBuilder.UseVector() support.
+Perspective model uses [VectorField] but Pgvector package is not referenced. Add <PackageReference Include="Pgvector" /> to your project.
 ```
+
+:::updated
+The diagnostic ID `WHIZ071` is also used by `Whizbang.Generators` for an unrelated **Info** diagnostic, "Polymorphic Base Type Discovered" (see [Polymorphic Serialization](../../extending/source-generators/polymorphic-serialization.md)). If you see WHIZ071 as an informational build message rather than an error, it is that diagnostic, not this one.
+:::
 
 ## Common Causes
 
@@ -104,11 +114,17 @@ When using `[VectorField]`, you typically need **both** packages:
 // Missing: <PackageReference Include="Pgvector" />
 
 public record ProductDto {
+  [StreamId]
   public Guid Id { get; init; }
   public string Name { get; init; } = string.Empty;
 
   [VectorField(1536)]  // WHIZ071: Package not referenced
   public float[]? Embedding { get; init; }
+}
+
+// The model must be used by a perspective for the check to fire
+public class ProductPerspective : IPerspectiveFor<ProductDto, ProductCreatedEvent> {
+  public ProductDto Apply(ProductDto currentData, ProductCreatedEvent @event) => /* ... */;
 }
 ```
 
@@ -118,6 +134,7 @@ public record ProductDto {
 // Added: <PackageReference Include="Pgvector" />
 
 public record ProductDto {
+  [StreamId]
   public Guid Id { get; init; }
   public string Name { get; init; } = string.Empty;
 
@@ -128,19 +145,18 @@ public record ProductDto {
 
 ## Suppressing This Diagnostic
 
-If you intentionally want to use `[VectorField]` without the Pgvector package (e.g., for testing or code generation scenarios), add the assembly-level suppression attribute:
+If you intentionally want to use `[VectorField]` without the Pgvector package (e.g., for testing or code generation scenarios), add the assembly-level suppression attribute (defined in `Whizbang.Core.Perspectives`). It disables this analyzer entirely (both WHIZ070 and WHIZ071):
 
 ```csharp{title="Suppressing This Diagnostic" description="If you intentionally want to use [VectorField] without the Pgvector package (e." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
 [assembly: SuppressVectorPackageCheck]
 ```
 
-Or use pragma suppression:
+Pragma suppression does **not** work for this diagnostic — it is reported at compilation end with no source location, which `#pragma warning` regions cannot reach. To suppress it without the attribute, set the severity to `none` in a global analyzer config file:
 
-```csharp{title="Suppressing This Diagnostic (2)" description="Or use pragma suppression:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
-#pragma warning disable WHIZ071
-[VectorField(1536)]
-public float[]? Embedding { get; init; }
-#pragma warning restore WHIZ071
+```ini{title="Suppressing This Diagnostic (2)" description="Project-wide suppression via .globalconfig:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
+# .globalconfig
+is_global = true
+dotnet_diagnostic.WHIZ071.severity = none
 ```
 
 ## Why This Matters
