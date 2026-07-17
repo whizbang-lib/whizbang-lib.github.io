@@ -162,37 +162,24 @@ builder.Services.Configure<WorkCoordinatorOptions>(options => {
 
 ## Work Coordinator Strategies
 
-### Interval Strategy (Default)
+The strategy controls how buffered work (outbox writes, completions) is flushed to the database. Select it via `WorkCoordinatorOptions.Strategy`:
 
-Polls the outbox at regular intervals:
+| Strategy | Behavior | Best for |
+|----------|----------|----------|
+| `Immediate` | Flushes each operation immediately | Lowest latency, highest DB load |
+| `Scoped` (default) | Batches within a scope (e.g., HTTP request), flushes on scope disposal | Balanced latency/efficiency |
+| `Interval` | Batches and flushes on a timer (`IntervalMilliseconds`) | High-throughput background workers |
+| `Batch` | Flushes at `BatchSize` or after a debounce quiet period | Bulk imports, seeding |
 
-```csharp{title="Interval Strategy (Default)" description="Polls the outbox at regular intervals:" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Interval", "Strategy", "Default"]}
-builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
-    new IntervalWorkCoordinatorStrategy(
-        pollInterval: TimeSpan.FromMilliseconds(100)));
+```csharp{title="Selecting a Strategy" description="Selecting a work coordinator strategy:" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Interval", "Strategy", "Default"]}
+builder.Services.Configure<WorkCoordinatorOptions>(options => {
+    options.Strategy = WorkCoordinatorStrategy.Interval;
+    options.IntervalMilliseconds = 100;
+    options.CoalesceWindowMilliseconds = 50;  // recommended for Interval strategy
+});
 ```
 
-### Notification Strategy
-
-Uses database notifications for immediate processing:
-
-```csharp{title="Notification Strategy" description="Uses database notifications for immediate processing:" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Notification", "Strategy"]}
-builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
-    new NotificationWorkCoordinatorStrategy(
-        connectionString,
-        channelName: "outbox_notify"));
-```
-
-### Hybrid Strategy
-
-Combines notification with interval fallback:
-
-```csharp{title="Hybrid Strategy" description="Combines notification with interval fallback:" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Hybrid", "Strategy"]}
-builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
-    new HybridWorkCoordinatorStrategy(
-        notificationChannel: "outbox_notify",
-        fallbackInterval: TimeSpan.FromSeconds(5)));
-```
+Postgres `LISTEN`/`NOTIFY` wake-ups for new work are built into the Postgres drivers — there is no separate "notification strategy" to configure.
 
 ## Error Handling
 
@@ -207,20 +194,23 @@ opts.Handlers.OnAnyException()
     .Then.MoveToErrorQueue();
 ```
 
-### Whizbang Retry Configuration
+### Whizbang Retry Behavior
+
+Retries are lease-based rather than policy-chain-based:
+
+- Failed work is released back to the pool when its lease expires (`WorkCoordinatorOptions.LeaseSeconds`, default 300) and is picked up again automatically.
+- Transports enforce `MaxDeliveryAttempts` (default 10 on both RabbitMQ and Azure Service Bus options) before dead-lettering a message.
+- Rows that exhaust delivery move to the `wh_dead_letters` table, where `DeadLetterRecoveryWorker` applies the configured `IDeadLetterRecoveryPolicy` (re-emit, hold for review, or mark permanently failed).
 
 ```csharp{title="Whizbang Retry Configuration" description="Whizbang Retry Configuration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Retry", "Configuration"]}
-builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
-    new IntervalWorkCoordinatorStrategy(
-        pollInterval: TimeSpan.FromMilliseconds(100),
-        batchSize: 100,
-        maxRetries: 5,
-        retryDelays: new[] {
-            TimeSpan.FromSeconds(1),
-            TimeSpan.FromSeconds(5),
-            TimeSpan.FromSeconds(30)
-        },
-        onMaxRetriesExceeded: OutboxAction.MoveToDeadLetter));
+builder.Services.Configure<WorkCoordinatorOptions>(options => {
+    options.LeaseSeconds = 300;                          // lease before failed work is reclaimed
+    options.AbandonStaleInstanceThresholdSeconds = 30;   // dead-instance detection
+});
+
+builder.Services.AddRabbitMQTransport(connectionString, options => {
+    options.MaxDeliveryAttempts = 10;                    // then dead-letter
+});
 ```
 
 ## Dead Letter Queue
@@ -234,16 +224,13 @@ builder.Services.AddSingleton<IWorkCoordinatorStrategy>(
 
 ### Whizbang Dead Letter
 
-```csharp{title="Whizbang Dead Letter" description="Whizbang Dead Letter" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Dead", "Letter"]}
-// Failed messages moved to whizbang.dead_letters table
-// Query via:
-var deadLetters = await _dbContext.DeadLetters
-    .Where(d => d.CreatedAt > cutoff)
-    .ToListAsync();
-
-// Replay dead letter
-await _workCoordinator.ReplayDeadLetterAsync(deadLetterId, ct);
+```sql{title="Whizbang Dead Letter" description="Whizbang Dead Letter" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "Sql", "Whizbang", "Dead", "Letter"]}
+-- Failed messages are moved to the wh_dead_letters table.
+-- Inspect them with SQL:
+SELECT * FROM wh_dead_letters ORDER BY created_at DESC;
 ```
+
+Recovery is automated: `DeadLetterRecoveryWorker` (registered by `AddWhizbang()`) periodically scans `wh_dead_letters`, applies the configured `IDeadLetterRecoveryPolicy`, and either re-emits rows to the source work table or marks them terminal (hold-for-review / permanently-failed). Transport-level DLQs (RabbitMQ dead-letter exchange, Service Bus DLQ subscriptions) are drained back into the pipeline by `TransportDeadLetterDrainWorker`.
 
 ## Database Schema
 
@@ -258,70 +245,33 @@ CREATE TABLE wolverine_incoming_envelopes (...);
 ### Whizbang Tables
 
 ```sql{title="Whizbang Tables" description="Whizbang Tables" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "Sql", "Whizbang", "Tables"]}
--- Whizbang outbox tables
-CREATE TABLE whizbang.outbox (
-    id uuid PRIMARY KEY,
-    message_type text NOT NULL,
-    payload jsonb NOT NULL,
-    created_at timestamptz NOT NULL,
-    scheduled_at timestamptz,
-    attempts int DEFAULT 0,
-    last_error text,
-    completed_at timestamptz
-);
-
-CREATE TABLE whizbang.inbox (
-    message_id uuid PRIMARY KEY,
-    received_at timestamptz NOT NULL
-);
-
-CREATE TABLE whizbang.dead_letters (
-    id uuid PRIMARY KEY,
-    original_id uuid NOT NULL,
-    message_type text NOT NULL,
-    payload jsonb NOT NULL,
-    error text NOT NULL,
-    created_at timestamptz NOT NULL
-);
+-- Whizbang provisions its own infrastructure tables on startup
+-- (prefix "wh_"); you never create them by hand. The messaging set includes:
+--   wh_outbox            -- outgoing messages awaiting publish (created_at timestamps)
+--   wh_inbox             -- received messages for dedup/processing (received_at timestamps)
+--   wh_event_store       -- append-only event streams
+--   wh_dead_letters      -- messages that exhausted delivery
+--   wh_active_streams    -- stream claim/ordering state
+--   wh_service_instances -- instance heartbeat + partition assignment
 ```
+
+> **Note**: Rows in `wh_outbox`/`wh_inbox` are deleted on successful completion in production. Enable `WorkCoordinatorOptions.DebugMode` to keep completed rows for debugging.
 
 ## Transactional Consistency
 
 ### Ensuring Atomicity
 
+Atomicity is handled by the framework, not by user-managed transactions. When a receptor returns an event (or you dispatch through `IDispatcher`), the work coordinator persists the event-store row and the outbox row together in a single `process_work_batch` database call — there is no `IOutbox.EnqueueAsync` API to call and no transaction to manage:
+
 ```csharp{title="Ensuring Atomicity" description="Ensuring Atomicity" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Ensuring", "Atomicity"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-    private readonly IEventStore _eventStore;
-    private readonly IOutbox _outbox;
-    private readonly AppDbContext _dbContext;
-
-    public async ValueTask<OrderCreated> HandleAsync(
+    public ValueTask<OrderCreated> HandleAsync(
         CreateOrder message,
         CancellationToken ct = default) {
 
-        // All operations in same transaction
-        await using var transaction = await _dbContext.Database
-            .BeginTransactionAsync(ct);
-
-        try {
-            // 1. Append event
-            var @event = new OrderCreated(message.OrderId);
-            await _eventStore.AppendAsync(message.OrderId,
-                EnvelopeFactory.Create(@event), ct);
-
-            // 2. Write to outbox (same transaction)
-            await _outbox.EnqueueAsync(
-                new NotifyCustomer(message.CustomerEmail),
-                ct);
-
-            // 3. Commit together
-            await transaction.CommitAsync(ct);
-
-            return @event;
-        } catch {
-            await transaction.RollbackAsync(ct);
-            throw;
-        }
+        // Event store write + outbox write happen atomically
+        // in the work coordinator - no explicit transaction needed.
+        return ValueTask.FromResult(new OrderCreated(message.OrderId));
     }
 }
 ```
@@ -330,11 +280,11 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 - [ ] Remove `UseDurableOutbox()` configuration
 - [ ] Remove `UseDurableInbox()` configuration
-- [ ] Configure `IWorkCoordinatorStrategy`
-- [ ] Add `WorkCoordinatorPublisherWorker` hosted service
-- [ ] Update retry policies to Whizbang format
-- [ ] Initialize Whizbang schema (includes outbox tables)
-- [ ] Update dead letter handling
+- [ ] Remove manual outbox enqueue calls (events returned from receptors cascade automatically)
+- [ ] Optionally tune `WorkCoordinatorOptions` (strategy, lease, batch size)
+- [ ] Set transport `MaxDeliveryAttempts` to match your old retry policy
+- [ ] Verify Whizbang provisions its schema on startup (`wh_outbox`, `wh_inbox`, `wh_event_store`, `wh_dead_letters`)
+- [ ] Review dead-letter recovery policy (`IDeadLetterRecoveryPolicy`)
 - [ ] Test transactional consistency
 
 ---

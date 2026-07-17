@@ -1,6 +1,8 @@
 ---
 title: RabbitMQ Transport
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Transports
 order: 2
@@ -16,11 +18,19 @@ codeReferences:
   - src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMQChannelPool.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMQConnectionRetry.cs
+  - src/Whizbang.Transports.RabbitMQ/RabbitMQSubscription.cs
+  - src/Whizbang.Transports.RabbitMQ/RabbitMQInfrastructureProvisioner.cs
+  - src/Whizbang.Transports.RabbitMQ/RabbitMQHealthCheck.cs
+  - src/Whizbang.Transports.RabbitMQ/RabbitMQReadinessCheck.cs
 testReferences:
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQTransportTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQChannelPoolTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQConnectionRetryTests.cs
-  - samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/
+  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQBatchSubscribeTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQSubscriptionTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQHealthCheckTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Tests/ServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Integration.Tests/RabbitMQFifoIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

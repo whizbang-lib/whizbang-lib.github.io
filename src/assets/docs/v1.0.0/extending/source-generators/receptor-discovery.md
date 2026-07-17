@@ -1,6 +1,8 @@
 ---
 title: Receptor Discovery
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: Source Generators
 order: 1
@@ -10,7 +12,15 @@ description: >-
 tags: 'source-generators, receptors, roslyn, compile-time, zero-reflection, aot'
 codeReferences:
   - src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs
+  - src/Whizbang.Generators/ReceptorInfo.cs
+  - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/Templates/DispatcherTemplate.cs
+  - src/Whizbang.Generators/Templates/DispatcherRegistrationsTemplate.cs
+  - src/Whizbang.Generators/Templates/Snippets/DispatcherSnippets.cs
+testReferences:
+  - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorCoverageTests.cs
+  - tests/Whizbang.Generators.Tests/ReceptorInfoTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -56,7 +66,7 @@ services.AddScoped<IReceptor<ShipOrder, OrderShipped>, ShipOrderReceptor>();
 flowchart TD
     Code["Your Code<br/><br/>public class OrderReceptor<br/>: IReceptor&lt;CreateOrder, OrderCreated&gt; {<br/>// Implementation...<br/>}"]
     Generator["ReceptorDiscoveryGenerator (Roslyn)<br/><br/>1. Scan syntax tree for classes<br/>2. Filter classes with base types<br/>3. Check for IReceptor&lt;TMessage, TResponse&gt;<br/>4. Extract: Class, Message, Response types"]
-    Generated["Generated Code (3 files)<br/><br/>1. DispatcherRegistrations.g.cs<br/>— services.AddScoped&lt;IReceptor&lt;...&gt;, ...&gt;()<br/><br/>2. Dispatcher.g.cs<br/>— Type-safe routing logic<br/><br/>3. ReceptorDiscoveryDiagnostics.g.cs<br/>— Startup diagnostics"]
+    Generated["Generated Code (4 files)<br/><br/>1. DispatcherRegistrations.g.cs<br/>— AddReceptors() / AddWhizbangDispatcher()<br/><br/>2. Dispatcher.g.cs<br/>— Type-safe routing logic<br/><br/>3. ReceptorRegistry.g.cs<br/>— Receptor registry for lifecycle invocation<br/><br/>4. ReceptorDiscoveryDiagnostics.g.cs<br/>— Startup diagnostics"]
 
     Code --> Generator
     Generator --> Generated
@@ -75,18 +85,33 @@ using Whizbang.Core;
 
 namespace MyApp.Generated;
 
+// Module initializer auto-wires these registrations into AddWhizbang():
+internal static class DispatcherRegistrationInitializer {
+    [System.Runtime.CompilerServices.ModuleInitializer]
+    internal static void Initialize() {
+        Whizbang.Core.ServiceRegistrationCallbacks.Dispatcher = services => {
+            services.AddReceptors();
+            services.AddWhizbangDispatcher();
+        };
+    }
+}
+
 public static class DispatcherRegistrations {
-    public static IServiceCollection AddWhizbangDispatchers(
-        this IServiceCollection services) {
+    public static IServiceCollection AddReceptors(this IServiceCollection services) {
+        // Generated receptor registrations (3 found).
+        // Keyed for single-handler resolution (LocalInvoke), plus non-keyed
+        // for multi-handler resolution (Publish/cascade). Transient lifetime.
+        services.AddKeyedTransient<IReceptor<CreateOrder, OrderCreated>, OrderReceptor>("OrderReceptor");
+        services.AddTransient<IReceptor<CreateOrder, OrderCreated>, OrderReceptor>();
+        // ... one pair per discovered receptor ...
+        return services;
+    }
 
-        // Generated receptor registrations (3 found)
-        services.AddScoped<IReceptor<CreateOrder, OrderCreated>, OrderReceptor>();
-        services.AddScoped<IReceptor<ShipOrder, OrderShipped>, ShipOrderReceptor>();
-        services.AddScoped<IReceptor<CancelOrder, OrderCancelled>, CancelOrderReceptor>();
-
-        // Register generated dispatcher
-        services.AddScoped<IDispatcher, GeneratedDispatcher>();
-
+    public static IServiceCollection AddWhizbangDispatcher(this IServiceCollection services) {
+        // Registers the receptor registry, stream-id extractors, and the
+        // generated zero-reflection dispatcher (Singleton; scoped services
+        // like IEventStore are resolved per-call from the active scope).
+        services.AddSingleton<IDispatcher>(sp => new GeneratedDispatcher(sp, /* ... */));
         return services;
     }
 }
