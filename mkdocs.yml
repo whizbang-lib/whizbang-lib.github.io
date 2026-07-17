@@ -90,6 +90,8 @@ nav:
     - Dispatcher:
         - Dispatcher Deep Dive: fundamentals/dispatcher/dispatcher.md
         - Namespace-Based Routing: fundamentals/dispatcher/routing.md
+        - Dispatch Patterns: fundamentals/dispatcher/dispatch-patterns.md
+        - Automatic Message Cascade: fundamentals/dispatcher/message-cascade.md
         - PublishOnceAsync — Exactly-Once Event Emission: fundamentals/dispatcher/publish-once.md
         - SyncMode — Read-After-Write Dispatch: fundamentals/dispatcher/sync-mode.md
         - RPC Response Extraction: fundamentals/dispatcher/rpc-extraction.md
@@ -174,15 +176,15 @@ nav:
         - Message Security Context Propagation: fundamentals/security/message-security.md
         - 'HTTP Security Headers & Method Filtering': fundamentals/security/http-security-headers.md
         - Scoping: fundamentals/security/scoping.md
-    - Persistence:
-        - 'Observability & Message Hops': fundamentals/persistence/observability.md
-        - Caller Information Capture: fundamentals/persistence/caller-info-capture.md
-        - Persistence: fundamentals/persistence/persistence.md
     - Workers:
         - Pinned Worker Connection Pool: fundamentals/workers/pinned-connection-pool.md
         - PerspectiveWorker NOTIFY Wake: fundamentals/workers/perspective-worker-notify.md
         - Instance Liveness — Advisory Lock + Heartbeat Fallback: fundamentals/workers/instance-liveness.md
         - Worker Classification — A through F: fundamentals/workers/worker-classification.md
+    - Persistence:
+        - 'Observability & Message Hops': fundamentals/persistence/observability.md
+        - Caller Information Capture: fundamentals/persistence/caller-info-capture.md
+        - Persistence: fundamentals/persistence/persistence.md
 - Messaging:
     - Outbox Pattern: messaging/outbox-pattern.md
     - Inbox Pattern: messaging/inbox-pattern.md

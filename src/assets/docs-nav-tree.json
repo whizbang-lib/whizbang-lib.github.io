@@ -205,9 +205,19 @@
               "order": 1
             },
             {
+              "slug": "v1.0.0/fundamentals/dispatcher/dispatch-patterns",
+              "title": "Dispatch Patterns",
+              "order": 2
+            },
+            {
               "slug": "v1.0.0/fundamentals/dispatcher/routing",
               "title": "Namespace-Based Routing",
               "order": 2
+            },
+            {
+              "slug": "v1.0.0/fundamentals/dispatcher/message-cascade",
+              "title": "Automatic Message Cascade",
+              "order": 3
             },
             {
               "slug": "v1.0.0/fundamentals/dispatcher/publish-once",
@@ -667,32 +677,9 @@
           "children": []
         },
         {
-          "name": "persistence",
-          "title": "Persistence",
-          "order": 10,
-          "pages": [
-            {
-              "slug": "v1.0.0/fundamentals/persistence/observability",
-              "title": "Observability & Message Hops",
-              "order": 6
-            },
-            {
-              "slug": "v1.0.0/fundamentals/persistence/caller-info-capture",
-              "title": "Caller Information Capture",
-              "order": 7
-            },
-            {
-              "slug": "v1.0.0/fundamentals/persistence",
-              "title": "Persistence",
-              "order": 12
-            }
-          ],
-          "children": []
-        },
-        {
           "name": "workers",
           "title": "Workers",
-          "order": 999,
+          "order": 9,
           "pages": [
             {
               "slug": "v1.0.0/fundamentals/workers/pinned-connection-pool",
@@ -713,6 +700,29 @@
               "slug": "v1.0.0/fundamentals/workers/worker-classification",
               "title": "Worker Classification — A through F",
               "order": 9
+            }
+          ],
+          "children": []
+        },
+        {
+          "name": "persistence",
+          "title": "Persistence",
+          "order": 10,
+          "pages": [
+            {
+              "slug": "v1.0.0/fundamentals/persistence/observability",
+              "title": "Observability & Message Hops",
+              "order": 6
+            },
+            {
+              "slug": "v1.0.0/fundamentals/persistence/caller-info-capture",
+              "title": "Caller Information Capture",
+              "order": 7
+            },
+            {
+              "slug": "v1.0.0/fundamentals/persistence",
+              "title": "Persistence",
+              "order": 12
             }
           ],
           "children": []

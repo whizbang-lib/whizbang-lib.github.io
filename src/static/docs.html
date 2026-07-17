@@ -129,7 +129,7 @@ npm install && npm run build</code></pre>
 # MCP Tools: search-docs, find-examples, get-code-location, get-related-docs, get-tests-for-code</code></pre>
     </div>
 
-    <p class="stats">Generated: 2026-07-17T13:09:44.039Z | Total documents: 317</p>
+    <p class="stats">Generated: 2026-07-17T13:18:55.384Z | Total documents: 319</p>
   </header>
 
   <nav>
@@ -264,7 +264,9 @@ npm install && npm run build</code></pre>
       <li>
         <strong>Dispatcher</strong>
         <ul>
+          <li><a href="#v1-0-0-fundamentals-dispatcher-dispatch-patterns">Dispatch Patterns</a></li>
           <li><a href="#v1-0-0-fundamentals-dispatcher-dispatcher">Dispatcher Deep Dive</a></li>
+          <li><a href="#v1-0-0-fundamentals-dispatcher-message-cascade">Automatic Message Cascade</a></li>
           <li><a href="#v1-0-0-fundamentals-dispatcher-publish-once">PublishOnceAsync — Exactly-Once Event Emission</a></li>
           <li><a href="#v1-0-0-fundamentals-dispatcher-routing">Namespace-Based Routing</a></li>
           <li><a href="#v1-0-0-fundamentals-dispatcher-rpc-extraction">RPC Response Extraction</a></li>
@@ -23407,97 +23409,21 @@ npm install && npm run build</code></pre>
   <h2 class="category-header">Fundamentals</h2>
 <section class="doc-category">
   <h3 class="category-header">Dispatcher</h3>
-<article id="v1-0-0-fundamentals-dispatcher-dispatcher" class="doc-section">
-  <h4>Dispatcher Deep Dive</h4>
-  <p class="doc-path"><code>v1.0.0/fundamentals/dispatcher/dispatcher</code></p>
-  <p class="doc-description"><em>Master the Whizbang Dispatcher - three dispatch patterns (SendAsync, LocalInvokeAsync, PublishAsync) for commands, queries, and events</em></p>
+<article id="v1-0-0-fundamentals-dispatcher-dispatch-patterns" class="doc-section">
+  <h4>Dispatch Patterns</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/dispatcher/dispatch-patterns</code></p>
+  <p class="doc-description"><em>Deep reference for the three dispatch patterns — SendAsync, LocalInvokeAsync, PublishAsync — plus sync/receipt variants, batch operations, and error handling</em></p>
   <div class="doc-content">
 
-<h1>Dispatcher Deep Dive</h1>
+<h1>Dispatch Patterns</h1>
 
-<p>The <strong>Dispatcher</strong> is Whizbang's central message router. It provides three distinct dispatch patterns for different messaging scenarios: commands, queries, and events.</p>
-
-<h2>Quick Reference</h2>
-
-<p>| Pattern | Use Case | Return Type | Performance | Distribution |</p>
-<p>|---------|----------|-------------|-------------|--------------|</p>
-<p>| <code>SendAsync</code> | Commands with delivery tracking | <code>IDeliveryReceipt</code> | ~100μs | Local or Remote |</p>
-<p>| <code>LocalInvokeAsync</code> | In-process queries/commands | <code>TResult</code> | < 20ns | Local only |</p>
-<p>| <code>LocalInvokeWithReceiptAsync</code> | In-process RPC with receipt | <code>InvokeResult<TResult></code> | ~100μs | Local only |</p>
-<p>| <code>LocalInvokeAndSyncAsync</code> (W4) | Invoke + wait per <code>SyncMode</code> (CT-only) | <code>ValueTask</code> | Varies | Local only |</p>
-<p>| <code>LocalInvokeAndSyncAsync</code> (legacy, <code>[Obsolete]</code>) | Commands with perspective sync | <code>TResult</code> / <code>SyncResult</code> | Varies | Local only |</p>
-<p>| <code>PublishAsync</code> | Event broadcasting | <code>IDeliveryReceipt</code> | ~50μs | Local or Remote |</p>
-<p>| <code>SendManyAsync</code> | Batch commands (local + outbox) | <code>IEnumerable<IDeliveryReceipt></code> | Optimized | Local + Remote |</p>
-<p>| <code>PublishManyAsync</code> | Batch event publishing | <code>IEnumerable<IDeliveryReceipt></code> | Optimized | Local + Remote |</p>
-<p>| <code>LocalSendManyAsync</code> | Batch local-only dispatch | <code>IEnumerable<IDeliveryReceipt></code> | ~20ns/msg | Local only |</p>
-
-<h2>IDispatcher Interface</h2>
-
-<p>``<code>csharp{title="IDispatcher Interface" description="IDispatcher Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "IDispatcher", "Interface"]}</p>
-<p>namespace Whizbang.Core;</p>
-
-<p>public interface IDispatcher {</p>
-<p>    // Pattern 1: Command dispatch with delivery receipt</p>
-<p>    Task<IDeliveryReceipt> SendAsync<TMessage>(</p>
-<p>        TMessage message</p>
-<p>    ) where TMessage : notnull;</p>
-
-<p>    // Pattern 2: In-process RPC with typed result</p>
-<p>    ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(</p>
-<p>        TMessage message</p>
-<p>    ) where TMessage : notnull;</p>
-
-<p>    // In-process RPC returning both result AND delivery receipt</p>
-<p>    ValueTask<InvokeResult<TResult>> LocalInvokeWithReceiptAsync<TMessage, TResult>(</p>
-<p>        TMessage message</p>
-<p>    ) where TMessage : notnull;</p>
-
-<p>    // W4: invoke + wait per SyncMode (CancellationToken-only; no TimeSpan timeout)</p>
-<p>    ValueTask LocalInvokeAndSyncAsync<TMessage>(</p>
-<p>        TMessage message,</p>
-<p>        SyncMode mode,</p>
-<p>        CancellationToken cancellationToken = default</p>
-<p>    ) where TMessage : notnull;</p>
-
-<p>    // LEGACY ([Obsolete]): in-process RPC with perspective sync + TimeSpan timeout</p>
-<p>    [Obsolete]</p>
-<p>    Task<TResult> LocalInvokeAndSyncAsync<TMessage, TResult>(</p>
-<p>        TMessage message,</p>
-<p>        TimeSpan? timeout = null,</p>
-<p>        Action<SyncWaitingContext>? onWaiting = null,</p>
-<p>        Action<SyncDecisionContext>? onDecisionMade = null,</p>
-<p>        CancellationToken cancellationToken = default</p>
-<p>    ) where TMessage : notnull;</p>
-
-<p>    // Pattern 3: Event broadcasting with delivery receipt</p>
-<p>    Task<IDeliveryReceipt> PublishAsync<TEvent>(</p>
-<p>        TEvent eventData</p>
-<p>    );</p>
-
-<p>    // Exactly-once event emission per claim key (see PublishOnceAsync page)</p>
-<p>    Task<bool> PublishOnceAsync<TEvent>(</p>
-<p>        string claimKey,</p>
-<p>        TEvent eventData,</p>
-<p>        CancellationToken cancellationToken = default);</p>
-
-<p>    // Advanced/Internal: Cascade a message using a source envelope's security context</p>
-<p>    Task CascadeMessageAsync(</p>
-<p>        IMessage message,</p>
-<p>        IMessageEnvelope? sourceEnvelope,</p>
-<p>        DispatchModes mode,</p>
-<p>        CancellationToken cancellationToken = default);</p>
-<p>}</p>
-<pre><code class="language-">
-<p>Most methods also have overloads accepting an explicit </code>IMessageContext<code> (with caller-info parameters) and/or </code>DispatchOptions<code> — the block above shows the primary shapes only. See <a href="sync-mode">SyncMode</a> for the W4 </code>LocalInvokeAndSyncAsync<code> contract and <a href="publish-once">PublishOnceAsync</a> for exactly-once emission.</p>
-
-<hr>
-
+<p>Deep-dive reference for each dispatch pattern. For the decision matrix, interface overview, and configuration, see the <a href="dispatcher">Dispatcher overview</a>.</p>
 <h2>Pattern 1: SendAsync - Command Dispatch</h2>
 
 <strong>Use Case</strong>: Send commands with delivery tracking, supports both local and remote dispatch.
 
 <strong>Signature</strong>:
-<p></code></pre>csharp{title="Pattern 1: SendAsync - Command Dispatch" description="Pattern 1: SendAsync - Command Dispatch" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "SendAsync"]}</p>
+<p>``<code>csharp{title="Pattern 1: SendAsync - Command Dispatch" description="Pattern 1: SendAsync - Command Dispatch" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "SendAsync"]}</p>
 <p>Task<IDeliveryReceipt> SendAsync<TMessage>(</p>
 <p>    TMessage message</p>
 <p>) where TMessage : notnull;</p>
@@ -23886,7 +23812,7 @@ npm install && npm run build</code></pre>
 <pre><code class="language-">
 <hr>
 
-<h2>LocalInvokeAndSyncAsync - Invoke with Perspective Sync</h2>
+<h2>LocalInvokeAndSyncAsync - Invoke with Perspective Sync {#local-invoke-and-sync}</h2>
 
 <strong>Use Case</strong>: Invoke a handler and wait for ALL perspectives to process any events emitted during the invocation. This enables synchronous-feeling APIs over event-sourced systems.
 
@@ -24200,107 +24126,6 @@ npm install && npm run build</code></pre>
 
 <hr>
 
-<h2>AppendAsync vs PublishAsync vs SendAsync</h2>
-
-<p>:::new{type="important"}</p>
-<p>Understanding when to use </code>IEventStore.AppendAsync<code> versus </code>IDispatcher.PublishAsync<code> is critical. Using both together is usually <strong>redundant</strong>.</p>
-<p>:::</p>
-
-<h3>Key Differences</h3>
-
-<p>| Method | Responsibility | Triggers Perspectives | Uses Outbox | Return |</p>
-<p>|--------|---------------|----------------------|-------------|--------|</p>
-<p>| </code>IEventStore.AppendAsync<code> | Persist event to event store | No | No | </code>Task<code> |</p>
-<p>| </code>IDispatcher.PublishAsync<code> | Broadcast event | Yes (local) | Yes (remote) | </code>IDeliveryReceipt<code> |</p>
-<p>| </code>IDispatcher.SendAsync<code> | Route command | No | Yes | </code>IDeliveryReceipt<code> |</p>
-
-<h3>Correct Patterns</h3>
-
-<strong>For Events (most common case):</strong>
-
-<p></code></pre>csharp{title="Correct Patterns" description="For Events (most common case):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}</p>
-<p>// ✅ CORRECT: Just publish - handles perspectives + outbox</p>
-<p>public async ValueTask<OrderCreated> HandleAsync(</p>
-<p>    CreateOrder command,</p>
-<p>    CancellationToken ct) {</p>
-
-<p>    var @event = new OrderCreated(command.OrderId, command.Items);</p>
-
-<p>    // PublishAsync triggers local perspectives AND queues for remote delivery</p>
-<p>    await _dispatcher.PublishAsync(@event);</p>
-
-<p>    return @event;</p>
-<p>}</p>
-<pre><code class="language-">
-<strong>For Commands:</strong>
-
-<p></code></pre>csharp{title="Correct Patterns (2)" description="For Commands:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}</p>
-<p>// ✅ CORRECT: Send command with delivery tracking</p>
-<p>await _dispatcher.SendAsync(new ProcessPayment(orderId, amount));</p>
-<pre><code class="language-">
-<strong>For Direct Event Store Access (rare - infrastructure/workers only):</strong>
-
-<p></code></pre>csharp{title="Correct Patterns (3)" description="For Direct Event Store Access (rare - infrastructure/workers only):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}</p>
-<p>// ✅ CORRECT: Direct append for infrastructure code, replay, or migration scripts.</p>
-<p>// No perspectives fire and nothing is queued to the outbox.</p>
-<p>await _eventStore.AppendAsync(streamId, @event, ct);</p>
-<pre><code class="language-">
-<h3>Anti-Patterns to Avoid</h3>
-
-<p></code></pre>csharp{title="Anti-Patterns to Avoid" description="Anti-Patterns to Avoid" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Anti-Patterns", "Avoid"]}</p>
-<p>// ❌ WRONG: Redundant - calling both AppendAsync and PublishAsync</p>
-<p>await _eventStore.AppendAsync(orderId, @event, ct);</p>
-<p>await _dispatcher.PublishAsync(@event);</p>
-<p>// PublishAsync already handles persistence + perspectives + outbox!</p>
-<pre><code class="language-">
-<h3>When to Use Each</h3>
-
-<p>| Scenario | Use |</p>
-<p>|----------|-----|</p>
-<p>| Publishing an event from a receptor | </code>PublishAsync<code> |</p>
-<p>| Sending a command to another service | </code>SendAsync<code> |</p>
-<p>| In-process query with typed response | </code>LocalInvokeAsync<code> |</p>
-<p>| Infrastructure/worker code appending directly (no perspectives, no transport) | </code>AppendAsync<code> |</p>
-<p>| Event replay/migration scripts | </code>AppendAsync<code> |</p>
-
-<hr>
-
-<h2>Decision Matrix</h2>
-
-<h3>When to Use Each Pattern</h3>
-
-<p>| Scenario | Pattern | Reason |</p>
-<p>|----------|---------|--------|</p>
-<p>| <strong>Create order (synchronous response needed)</strong> | </code>LocalInvokeAsync<code> | Need typed </code>OrderCreated<code> response immediately |</p>
-<p>| <strong>Create order (async processing)</strong> | </code>SendAsync<code> | Return receipt, process in background |</p>
-<p>| <strong>Query order details</strong> | </code>LocalInvokeAsync<code> | Need typed </code>OrderDetails<code> response |</p>
-<p>| <strong>Update read models after command</strong> | </code>PublishAsync<code> | Broadcast event to perspectives |</p>
-<p>| <strong>Send email notification</strong> | </code>PublishAsync<code> | Fire-and-forget to notification perspective |</p>
-<p>| <strong>Remote command (cross-service)</strong> | </code>SendAsync<code> | Delivery tracking, supports transport |</p>
-<p>| <strong>In-process RPC-style call</strong> | </code>LocalInvokeAsync<code> | Fastest, type-safe |</p>
-
-<h3>Pattern Comparison</h3>
-
-<p></code></pre>csharp{title="Pattern Comparison" description="Pattern Comparison" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern", "Comparison"]}</p>
-<p>// Scenario: Create an order</p>
-
-<p>// Option 1: SendAsync (async semantics, delivery tracking)</p>
-<p>var receipt = await _dispatcher.SendAsync(command);</p>
-<p>// Returns: DeliveryReceipt { MessageId, CorrelationId, Timestamp }</p>
-<p>// Use: When you need to track delivery or process asynchronously</p>
-
-<p>// Option 2: LocalInvokeAsync (sync semantics, typed response)</p>
-<p>var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);</p>
-<p>// Returns: OrderCreated { OrderId, CustomerId, Total, ... }</p>
-<p>// Use: When you need the result immediately (< 20ns overhead)</p>
-
-<p>// Option 3: PublishAsync (broadcast to listeners)</p>
-<p>await _dispatcher.PublishAsync(orderCreated);</p>
-<p>// Returns: void</p>
-<p>// Use: After command completes, update all perspectives</p>
-<pre><code class="language-">
-<hr>
-
 <h2>Batch Operations</h2>
 
 <h3>SendManyAsync</h3>
@@ -24381,7 +24206,7 @@ npm install && npm run build</code></pre>
 <pre><code class="language-">
 <strong>Source</strong>: </code>src/Whizbang.Core/Dispatcher.cs<code> · <strong>Tests</strong>: </code>tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs<code>
 
-<h3>LocalSendManyAsync</h3>
+<h3>LocalSendManyAsync {#localsendmanyasync}</h3>
 
 <strong>Use Case</strong>: Send multiple messages to local receptors <strong>only</strong> — no outbox delivery. Useful when you want batch local-only processing without cross-service propagation.
 
@@ -24664,16 +24489,499 @@ npm install && npm run build</code></pre>
 
 <p>    return Ok(new { ordersCreated = results.Count, orders = results });</p>
 <p>}</p>
+<p></code>``</p>
+
+<hr>
+  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-fundamentals-dispatcher-dispatcher" class="doc-section">
+  <h4>Dispatcher Deep Dive</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/dispatcher/dispatcher</code></p>
+  <p class="doc-description"><em>Master the Whizbang Dispatcher - three dispatch patterns (SendAsync, LocalInvokeAsync, PublishAsync) for commands, queries, and events</em></p>
+  <div class="doc-content">
+
+<h1>Dispatcher Deep Dive</h1>
+
+<p>The <strong>Dispatcher</strong> is Whizbang's central message router. It provides three distinct dispatch patterns for different messaging scenarios: commands, queries, and events.</p>
+
+<h2>Quick Reference</h2>
+
+<p>| Pattern | Use Case | Return Type | Performance | Distribution |</p>
+<p>|---------|----------|-------------|-------------|--------------|</p>
+<p>| <code>SendAsync</code> | Commands with delivery tracking | <code>IDeliveryReceipt</code> | ~100μs | Local or Remote |</p>
+<p>| <code>LocalInvokeAsync</code> | In-process queries/commands | <code>TResult</code> | < 20ns | Local only |</p>
+<p>| <code>LocalInvokeWithReceiptAsync</code> | In-process RPC with receipt | <code>InvokeResult<TResult></code> | ~100μs | Local only |</p>
+<p>| <code>LocalInvokeAndSyncAsync</code> (W4) | Invoke + wait per <code>SyncMode</code> (CT-only) | <code>ValueTask</code> | Varies | Local only |</p>
+<p>| <code>LocalInvokeAndSyncAsync</code> (legacy, <code>[Obsolete]</code>) | Commands with perspective sync | <code>TResult</code> / <code>SyncResult</code> | Varies | Local only |</p>
+<p>| <code>PublishAsync</code> | Event broadcasting | <code>IDeliveryReceipt</code> | ~50μs | Local or Remote |</p>
+<p>| <code>SendManyAsync</code> | Batch commands (local + outbox) | <code>IEnumerable<IDeliveryReceipt></code> | Optimized | Local + Remote |</p>
+<p>| <code>PublishManyAsync</code> | Batch event publishing | <code>IEnumerable<IDeliveryReceipt></code> | Optimized | Local + Remote |</p>
+<p>| <code>LocalSendManyAsync</code> | Batch local-only dispatch | <code>IEnumerable<IDeliveryReceipt></code> | ~20ns/msg | Local only |</p>
+
+<h2>IDispatcher Interface</h2>
+
+<p>``<code>csharp{title="IDispatcher Interface" description="IDispatcher Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "IDispatcher", "Interface"]}</p>
+<p>namespace Whizbang.Core;</p>
+
+<p>public interface IDispatcher {</p>
+<p>    // Pattern 1: Command dispatch with delivery receipt</p>
+<p>    Task<IDeliveryReceipt> SendAsync<TMessage>(</p>
+<p>        TMessage message</p>
+<p>    ) where TMessage : notnull;</p>
+
+<p>    // Pattern 2: In-process RPC with typed result</p>
+<p>    ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(</p>
+<p>        TMessage message</p>
+<p>    ) where TMessage : notnull;</p>
+
+<p>    // In-process RPC returning both result AND delivery receipt</p>
+<p>    ValueTask<InvokeResult<TResult>> LocalInvokeWithReceiptAsync<TMessage, TResult>(</p>
+<p>        TMessage message</p>
+<p>    ) where TMessage : notnull;</p>
+
+<p>    // W4: invoke + wait per SyncMode (CancellationToken-only; no TimeSpan timeout)</p>
+<p>    ValueTask LocalInvokeAndSyncAsync<TMessage>(</p>
+<p>        TMessage message,</p>
+<p>        SyncMode mode,</p>
+<p>        CancellationToken cancellationToken = default</p>
+<p>    ) where TMessage : notnull;</p>
+
+<p>    // LEGACY ([Obsolete]): in-process RPC with perspective sync + TimeSpan timeout</p>
+<p>    [Obsolete]</p>
+<p>    Task<TResult> LocalInvokeAndSyncAsync<TMessage, TResult>(</p>
+<p>        TMessage message,</p>
+<p>        TimeSpan? timeout = null,</p>
+<p>        Action<SyncWaitingContext>? onWaiting = null,</p>
+<p>        Action<SyncDecisionContext>? onDecisionMade = null,</p>
+<p>        CancellationToken cancellationToken = default</p>
+<p>    ) where TMessage : notnull;</p>
+
+<p>    // Pattern 3: Event broadcasting with delivery receipt</p>
+<p>    Task<IDeliveryReceipt> PublishAsync<TEvent>(</p>
+<p>        TEvent eventData</p>
+<p>    );</p>
+
+<p>    // Exactly-once event emission per claim key (see PublishOnceAsync page)</p>
+<p>    Task<bool> PublishOnceAsync<TEvent>(</p>
+<p>        string claimKey,</p>
+<p>        TEvent eventData,</p>
+<p>        CancellationToken cancellationToken = default);</p>
+
+<p>    // Advanced/Internal: Cascade a message using a source envelope's security context</p>
+<p>    Task CascadeMessageAsync(</p>
+<p>        IMessage message,</p>
+<p>        IMessageEnvelope? sourceEnvelope,</p>
+<p>        DispatchModes mode,</p>
+<p>        CancellationToken cancellationToken = default);</p>
+<p>}</p>
+<pre><code class="language-">
+<p>Most methods also have overloads accepting an explicit </code>IMessageContext<code> (with caller-info parameters) and/or </code>DispatchOptions<code> — the block above shows the primary shapes only. See <a href="sync-mode">SyncMode</a> for the W4 </code>LocalInvokeAndSyncAsync<code> contract and <a href="publish-once">PublishOnceAsync</a> for exactly-once emission.</p>
+
+<hr>
+
+<h2>AppendAsync vs PublishAsync vs SendAsync</h2>
+
+<p>:::new{type="important"}</p>
+<p>Understanding when to use </code>IEventStore.AppendAsync<code> versus </code>IDispatcher.PublishAsync<code> is critical. Using both together is usually <strong>redundant</strong>.</p>
+<p>:::</p>
+
+<h3>Key Differences</h3>
+
+<p>| Method | Responsibility | Triggers Perspectives | Uses Outbox | Return |</p>
+<p>|--------|---------------|----------------------|-------------|--------|</p>
+<p>| </code>IEventStore.AppendAsync<code> | Persist event to event store | No | No | </code>Task<code> |</p>
+<p>| </code>IDispatcher.PublishAsync<code> | Broadcast event | Yes (local) | Yes (remote) | </code>IDeliveryReceipt<code> |</p>
+<p>| </code>IDispatcher.SendAsync<code> | Route command | No | Yes | </code>IDeliveryReceipt<code> |</p>
+
+<h3>Correct Patterns</h3>
+
+<strong>For Events (most common case):</strong>
+
+<p></code></pre>csharp{title="Correct Patterns" description="For Events (most common case):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}</p>
+<p>// ✅ CORRECT: Just publish - handles perspectives + outbox</p>
+<p>public async ValueTask<OrderCreated> HandleAsync(</p>
+<p>    CreateOrder command,</p>
+<p>    CancellationToken ct) {</p>
+
+<p>    var @event = new OrderCreated(command.OrderId, command.Items);</p>
+
+<p>    // PublishAsync triggers local perspectives AND queues for remote delivery</p>
+<p>    await _dispatcher.PublishAsync(@event);</p>
+
+<p>    return @event;</p>
+<p>}</p>
+<pre><code class="language-">
+<strong>For Commands:</strong>
+
+<p></code></pre>csharp{title="Correct Patterns (2)" description="For Commands:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}</p>
+<p>// ✅ CORRECT: Send command with delivery tracking</p>
+<p>await _dispatcher.SendAsync(new ProcessPayment(orderId, amount));</p>
+<pre><code class="language-">
+<strong>For Direct Event Store Access (rare - infrastructure/workers only):</strong>
+
+<p></code></pre>csharp{title="Correct Patterns (3)" description="For Direct Event Store Access (rare - infrastructure/workers only):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}</p>
+<p>// ✅ CORRECT: Direct append for infrastructure code, replay, or migration scripts.</p>
+<p>// No perspectives fire and nothing is queued to the outbox.</p>
+<p>await _eventStore.AppendAsync(streamId, @event, ct);</p>
+<pre><code class="language-">
+<h3>Anti-Patterns to Avoid</h3>
+
+<p></code></pre>csharp{title="Anti-Patterns to Avoid" description="Anti-Patterns to Avoid" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Anti-Patterns", "Avoid"]}</p>
+<p>// ❌ WRONG: Redundant - calling both AppendAsync and PublishAsync</p>
+<p>await _eventStore.AppendAsync(orderId, @event, ct);</p>
+<p>await _dispatcher.PublishAsync(@event);</p>
+<p>// PublishAsync already handles persistence + perspectives + outbox!</p>
+<pre><code class="language-">
+<h3>When to Use Each</h3>
+
+<p>| Scenario | Use |</p>
+<p>|----------|-----|</p>
+<p>| Publishing an event from a receptor | </code>PublishAsync<code> |</p>
+<p>| Sending a command to another service | </code>SendAsync<code> |</p>
+<p>| In-process query with typed response | </code>LocalInvokeAsync<code> |</p>
+<p>| Infrastructure/worker code appending directly (no perspectives, no transport) | </code>AppendAsync<code> |</p>
+<p>| Event replay/migration scripts | </code>AppendAsync<code> |</p>
+
+<hr>
+
+<h2>Decision Matrix</h2>
+
+<h3>When to Use Each Pattern</h3>
+
+<p>| Scenario | Pattern | Reason |</p>
+<p>|----------|---------|--------|</p>
+<p>| <strong>Create order (synchronous response needed)</strong> | </code>LocalInvokeAsync<code> | Need typed </code>OrderCreated<code> response immediately |</p>
+<p>| <strong>Create order (async processing)</strong> | </code>SendAsync<code> | Return receipt, process in background |</p>
+<p>| <strong>Query order details</strong> | </code>LocalInvokeAsync<code> | Need typed </code>OrderDetails<code> response |</p>
+<p>| <strong>Update read models after command</strong> | </code>PublishAsync<code> | Broadcast event to perspectives |</p>
+<p>| <strong>Send email notification</strong> | </code>PublishAsync<code> | Fire-and-forget to notification perspective |</p>
+<p>| <strong>Remote command (cross-service)</strong> | </code>SendAsync<code> | Delivery tracking, supports transport |</p>
+<p>| <strong>In-process RPC-style call</strong> | </code>LocalInvokeAsync<code> | Fastest, type-safe |</p>
+
+<h3>Pattern Comparison</h3>
+
+<p></code></pre>csharp{title="Pattern Comparison" description="Pattern Comparison" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern", "Comparison"]}</p>
+<p>// Scenario: Create an order</p>
+
+<p>// Option 1: SendAsync (async semantics, delivery tracking)</p>
+<p>var receipt = await _dispatcher.SendAsync(command);</p>
+<p>// Returns: DeliveryReceipt { MessageId, CorrelationId, Timestamp }</p>
+<p>// Use: When you need to track delivery or process asynchronously</p>
+
+<p>// Option 2: LocalInvokeAsync (sync semantics, typed response)</p>
+<p>var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);</p>
+<p>// Returns: OrderCreated { OrderId, CustomerId, Total, ... }</p>
+<p>// Use: When you need the result immediately (< 20ns overhead)</p>
+
+<p>// Option 3: PublishAsync (broadcast to listeners)</p>
+<p>await _dispatcher.PublishAsync(orderCreated);</p>
+<p>// Returns: void</p>
+<p>// Use: After command completes, update all perspectives</p>
 <pre><code class="language-">
 <hr>
 
-<h2>Automatic Message Cascade {#automatic-message-cascade}</h2>
 
-<p>Whizbang automatically extracts and dispatches </code>IMessage<code> instances (both </code>IEvent<code> and </code>ICommand<code>) from receptor return values. This enables a cleaner pattern where receptors can return tuples or arrays containing messages without explicit </code>PublishAsync<code> or </code>SendAsync<code> calls.</p>
+<h2>Pattern Deep Dives</h2>
+
+<p>Each pattern has a full reference on the <a href="dispatch-patterns">Dispatch Patterns</a> page:</p>
+
+<p>| Pattern | Deep dive |</p>
+<p>|---------|-----------|</p>
+<p>| </code>SendAsync<code> — command dispatch with delivery receipt | <a href="dispatch-patterns#pattern-1-sendasync-command-dispatch">Dispatch Patterns § Pattern 1</a> |</p>
+<p>| </code>LocalInvokeAsync<code> — in-process RPC (+ sync and receipt variants) | <a href="dispatch-patterns#pattern-2-localinvokeasync-in-process-rpc">Dispatch Patterns § Pattern 2</a> |</p>
+<p>| </code>PublishAsync<code> — event broadcasting | <a href="dispatch-patterns#pattern-3-publishasync-event-broadcasting">Dispatch Patterns § Pattern 3</a> |</p>
+<p>| Batch operations (</code>LocalSendManyAsync<code>) | <a href="dispatch-patterns#batch-operations">Dispatch Patterns § Batch Operations</a> |</p>
+<p>| Error handling & advanced composition | <a href="dispatch-patterns#error-handling">Dispatch Patterns § Error Handling</a> |</p>
+
+<p>Message cascading (receptor return values flowing onward automatically, route wrappers, event-store-only mode, the deferred event channel) moved to <a href="message-cascade">Automatic Message Cascade</a>.</p>
+
+<h2>Dispatcher Configuration Options {#dispatch-options}</h2>
+
+<p></code>DispatchOptions<code> provides fine-grained control over dispatch behavior, including cancellation, timeouts, and perspective synchronization.</p>
+
+<h3>Basic Options</h3>
+
+<p></code></pre>csharp{title="Basic Options" description="Basic Options" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Options"]}</p>
+<p>// Cancellation token</p>
+<p>using var cts = new CancellationTokenSource();</p>
+<p>var options = new DispatchOptions().WithCancellationToken(cts.Token);</p>
+<p>await dispatcher.SendAsync(command, options);</p>
+
+<p>// Timeout</p>
+<p>var options = new DispatchOptions().WithTimeout(TimeSpan.FromSeconds(30));</p>
+<p>await dispatcher.SendAsync(command, options);</p>
+
+<p>// Chained fluent API</p>
+<p>var options = new DispatchOptions()</p>
+<p>    .WithCancellationToken(cts.Token)</p>
+<p>    .WithTimeout(TimeSpan.FromMinutes(5));</p>
+<pre><code class="language-">
+<h3>Perspective Synchronization</h3>
+
+<p>Wait for all perspectives to finish processing cascaded events before returning:</p>
+
+<p></code></pre>csharp{title="Perspective Synchronization" description="Wait for all perspectives to finish processing cascaded events before returning:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"]}</p>
+<p>// Wait with default timeout (30 seconds)</p>
+<p>var options = new DispatchOptions().WithPerspectiveWait();</p>
+<p>var result = await dispatcher.LocalInvokeAsync<OrderCreated>(</p>
+<p>    command,</p>
+<p>    options</p>
+<p>);</p>
+
+<p>// Wait with custom timeout</p>
+<p>var options = new DispatchOptions().WithPerspectiveWait(TimeSpan.FromMinutes(2));</p>
+<pre><code class="language-">
+<strong>Use cases</strong>:
+<ul><li>RPC-style calls requiring immediate consistency</li>
+<li>APIs that query read models after commands</li>
+<li>GraphQL mutations returning freshly updated data</li>
+</ul>
+<strong>How it works</strong>:
+<ul><li>Invokes the receptor via </code>LocalInvokeAsync<code></li>
+<li>Tracks all cascaded events via </code>IScopedEventTracker<code></li>
+<li>Waits for </code>IEventCompletionAwaiter.WaitForEventsAsync()<code> to complete</li>
+<li>Returns the result (or throws </code>TimeoutException<code> if perspectives don't finish in time)</li>
+</ul>
+<strong>Alternative API</strong>: Use </code>LocalInvokeAndSyncAsync<code> for built-in perspective synchronization without explicit options:
+
+<p></code></pre>csharp{title="Perspective Synchronization (2)" description="Alternative API: Use LocalInvokeAndSyncAsync for built-in perspective synchronization without explicit options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"]}</p>
+<p>// Equivalent to LocalInvokeAsync with DispatchOptions.WithPerspectiveWait()</p>
+<p>var result = await dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderCreated>(</p>
+<p>    command,</p>
+<p>    timeout: TimeSpan.FromSeconds(10)</p>
+<p>);</p>
+<pre><code class="language-">
+<p>See <a href="#localinvokeandsyncasync---invoke-with-perspective-sync">LocalInvokeAndSyncAsync</a> for details.</p>
+
+<h3>DispatchOptions Properties</h3>
+
+<p>| Property | Type | Default | Description |</p>
+<p>|----------|------|---------|-------------|</p>
+<p>| </code>CancellationToken<code> | </code>CancellationToken<code> | </code>None<code> | Cancels the dispatch operation |</p>
+<p>| </code>Timeout<code> | </code>TimeSpan?<code> | </code>null<code> | Maximum time for dispatch completion |</p>
+<p>| </code>WaitForPerspectives<code> | </code>bool<code> | </code>false<code> | Wait for all perspectives to finish |</p>
+<p>| </code>PerspectiveWaitTimeout<code> | </code>TimeSpan<code> | 30 seconds | Timeout for perspective processing |</p>
+
+<h3>Example: Timeout Handling</h3>
+
+<p></code></pre>csharp{title="Example: Timeout Handling" description="Example: Timeout Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "Timeout"]}</p>
+<p>try {</p>
+<p>    var options = new DispatchOptions()</p>
+<p>        .WithTimeout(TimeSpan.FromSeconds(5))</p>
+<p>        .WithPerspectiveWait();</p>
+
+<p>    var result = await dispatcher.LocalInvokeAsync<OrderCreated>(</p>
+<p>        command,</p>
+<p>        options</p>
+<p>    );</p>
+<p>} catch (OperationCanceledException ex) {</p>
+<p>    // Timeout exceeded</p>
+<p>    _logger.LogWarning(ex, "Command timed out after 5 seconds");</p>
+<p>} catch (TimeoutException ex) {</p>
+<p>    // Perspectives didn't finish in time (but command succeeded)</p>
+<p>    _logger.LogWarning(ex, "Perspectives timed out (command succeeded)");</p>
+<p>}</p>
+<pre><code class="language-">
+<hr>
+
+<h2>Performance Considerations</h2>
+
+<h3>LocalInvokeAsync Benchmarks</h3>
+
+<p>| Scenario | Overhead | Allocations |</p>
+<p>|----------|----------|-------------|</p>
+<p>| Direct method call | 0ns | 0 bytes |</p>
+<p>| LocalInvokeAsync (cold) | 15-20ns | 0 bytes (pooled) |</p>
+<p>| LocalInvokeAsync (warm) | < 10ns | 0 bytes |</p>
+<p>| SendAsync | ~100μs | Minimal (envelope) |</p>
+<p>| PublishAsync | ~50μs | Minimal |</p>
+
+<strong>Tips</strong>:
+<ul><li>Use </code>LocalInvokeAsync<code> for hot paths (< 20ns)</li>
+<li>Use </code>SendAsync<code> for asynchronous commands (acceptable ~100μs)</li>
+<li>Use </code>PublishAsync<code> for events (fire-and-forget)</li>
+</ul>
+<h3>Envelope Allocation</h3>
+
+<p>Envelope creation is internal to the dispatcher — application code never constructs envelopes for dispatch. The fast path (</code>LocalInvokeAsync<code> without tracing or a receipt) skips envelope creation entirely; receipt-returning paths (</code>SendAsync<code>, </code>PublishAsync<code>, </code>LocalInvokeWithReceiptAsync<code>) create an envelope because the receipt needs its metadata.</p>
+
+<strong>Result</strong>: Minimal allocations in steady state; zero-allocation fast path for plain </code>LocalInvokeAsync<code>.
+
+<hr>
+
+<h2>Integration with Patterns</h2>
+
+<h3>Outbox Pattern</h3>
+
+<p></code>SendAsync<code> and </code>PublishAsync<code> integrate with the Outbox pattern automatically: messages destined for the transport are serialized into </code>wh_outbox<code> in the same batch as the rest of the dispatch's work, then published by background workers.</p>
+
+<p></code></pre>csharp{title="Outbox Pattern" description="Dispatch writes to the outbox; background workers publish from it:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Outbox", "Pattern"]}</p>
+<p>// Application code: just dispatch — the outbox write is part of the dispatch</p>
+<p>var receipt = await _dispatcher.PublishAsync(new OrderCreated(/<em> ... </em>/));</p>
+
+<p>// Framework internals (workers): work is claimed and flushed through</p>
+<p>// IWorkCoordinator.ProcessWorkBatchAsync(ProcessWorkBatchRequest, ct),</p>
+<p>// which returns OutboxWork / InboxWork / PerspectiveWork batches.</p>
+<pre><code class="language-">
+<p>See <a href="../../messaging/outbox-pattern.md">Outbox Pattern</a> for details.</p>
+
+<h3>Inbox Pattern</h3>
+
+<p>Incoming transport messages integrate with the Inbox pattern for exactly-once processing: the </code>TransportConsumerWorker<code> persists received messages to </code>wh_inbox<code>, deduplicates by message ID, and dispatches them to local receptors. Duplicate deliveries are detected at the inbox and never re-invoke your handlers.</p>
+
+<p>See <a href="../../messaging/inbox-pattern.md">Inbox Pattern</a> for details.</p>
+
+<hr>
+
+<h2>Testing</h2>
+
+<h3>Testing with Dispatcher</h3>
+
+<p></code></pre>csharp{title="Testing with Dispatcher" description="Testing with Dispatcher" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "C#", "Testing"]}</p>
+<p>public class OrderEndpointsTests {</p>
+<p>    private IDispatcher _dispatcher;</p>
+<p>    private OrdersController _controller;</p>
+
+<p>    [Before(Test)]</p>
+<p>    public void Setup() {</p>
+<p>        var services = new ServiceCollection();</p>
+<p>        services.AddWhizbangCore();</p>
+<p>        services.AddTransient<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();</p>
+
+<p>        var provider = services.BuildServiceProvider();</p>
+<p>        _dispatcher = provider.GetRequiredService<IDispatcher>();</p>
+<p>        _controller = new OrdersController(_dispatcher);</p>
+<p>    }</p>
+
+<p>    [Test]</p>
+<p>    public async Task CreateOrder_ValidRequest_ReturnsCreatedAsync() {</p>
+<p>        // Arrange</p>
+<p>        var request = new CreateOrderRequest(</p>
+<p>            CustomerId: Guid.NewGuid(),</p>
+<p>            Items: [new OrderLineItem(Guid.NewGuid(), 5, 19.99m)]</p>
+<p>        );</p>
+
+<p>        // Act</p>
+<p>        var result = await _controller.CreateOrder(request, CancellationToken.None);</p>
+
+<p>        // Assert</p>
+<p>        await Assert.That(result.Result).IsTypeOf<CreatedAtActionResult>();</p>
+
+<p>        var createdResult = (CreatedAtActionResult)result.Result!;</p>
+<p>        await Assert.That(createdResult.Value).IsTypeOf<OrderCreated>();</p>
+<p>    }</p>
+<p>}</p>
+<pre><code class="language-">
+<hr>
+
+<h2>DispatchOptions Record {#dispatch-options-record}</h2>
+
+<p></code>DispatchOptions<code> controls cancellation, timeouts, and perspective wait behavior for dispatch operations. All </code>SendAsync<code>, </code>LocalInvokeAsync<code>, </code>PublishAsync<code>, and </code>LocalInvokeWithReceiptAsync<code> methods accept an optional </code>DispatchOptions<code> parameter.</p>
+
+<h3>Properties</h3>
+
+<p>| Property | Type | Default | Description |</p>
+<p>|----------|------|---------|-------------|</p>
+<p>| </code>CancellationToken<code> | </code>CancellationToken<code> | </code>CancellationToken.None<code> | Token to cancel the dispatch operation. Throws </code>OperationCanceledException<code> when cancelled. |</p>
+<p>| </code>Timeout<code> | </code>TimeSpan?<code> | </code>null<code> (no timeout) | Maximum time to wait for dispatch completion. Throws </code>OperationCanceledException<code> when exceeded. |</p>
+<p>| </code>WaitForPerspectives<code> | </code>bool<code> | </code>false<code> | When </code>true<code>, </code>LocalInvokeAsync<code> waits for all perspectives to finish processing cascaded events before returning. |</p>
+<p>| </code>PerspectiveWaitTimeout<code> | </code>TimeSpan<code> | 30 seconds | Timeout for waiting for perspectives. Only used when </code>WaitForPerspectives<code> is </code>true<code>. |</p>
+
+<h3>Fluent API</h3>
+
+<p></code></pre>csharp{title="DispatchOptions Fluent API" description="Fluent builder methods for DispatchOptions" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "DispatchOptions", "Fluent"]}</p>
+<p>// With cancellation token</p>
+<p>using var cts = new CancellationTokenSource();</p>
+<p>var options = new DispatchOptions().WithCancellationToken(cts.Token);</p>
+<p>await dispatcher.SendAsync(command, options);</p>
+
+<p>// With timeout</p>
+<p>var options = new DispatchOptions().WithTimeout(TimeSpan.FromSeconds(30));</p>
+<p>await dispatcher.SendAsync(command, options);</p>
+
+<p>// Chained fluent API</p>
+<p>var options = new DispatchOptions()</p>
+<p>    .WithCancellationToken(cts.Token)</p>
+<p>    .WithTimeout(TimeSpan.FromMinutes(5));</p>
+
+<p>// Wait for perspectives with default timeout (30s)</p>
+<p>var options = new DispatchOptions().WithPerspectiveWait();</p>
+<p>await dispatcher.LocalInvokeAsync<TResult>(command, options);</p>
+
+<p>// Wait for perspectives with custom timeout</p>
+<p>var options = new DispatchOptions().WithPerspectiveWait(TimeSpan.FromMinutes(2));</p>
+<pre><code class="language-">
+<h3>Perspective Wait</h3>
+
+<p>Use </code>WithPerspectiveWait()<code> for RPC-style calls where you need all perspectives to have processed cascaded events before the response is returned to the caller:</p>
+
+<p></code></pre>csharp{title="DispatchOptions Perspective Wait" description="Wait for perspectives to complete before returning" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "DispatchOptions", "PerspectiveWait"]}</p>
+<p>[HttpPost("orders")]</p>
+<p>public async Task<ActionResult<OrderResult>> CreateOrder(</p>
+<p>    [FromBody] CreateOrderRequest request,</p>
+<p>    CancellationToken ct) {</p>
+
+<p>    var command = new CreateOrder(request.CustomerId, request.Items);</p>
+
+<p>    var options = new DispatchOptions()</p>
+<p>        .WithCancellationToken(ct)</p>
+<p>        .WithPerspectiveWait(TimeSpan.FromSeconds(10));</p>
+
+<p>    // All perspectives will have processed events before this returns</p>
+<p>    var result = await _dispatcher.LocalInvokeAsync<OrderResult>(command, options);</p>
+
+<p>    return Ok(result);</p>
+<p>}</p>
+<p></code>`<code></p>
+
+<strong>Source</strong>: </code>src/Whizbang.Core/Dispatch/DispatchOptions.cs<code> · <strong>Tests</strong>: </code>tests/Whizbang.Core.Tests/Dispatch/DispatchOptionsTests.cs`
+
+<hr>
+
+<h2>Further Reading</h2>
+
+<strong>Core Concepts</strong>:
+<ul><li><a href="../receptors/receptors.md">Receptors</a> - Message handlers that dispatcher invokes</li>
+<li><a href="../perspectives/perspectives.md">Perspectives</a> - Event listeners for read models</li>
+<li><a href="../messages/message-context.md">Message Context</a> - Correlation and causation tracking</li>
+</ul>
+<strong>Messaging Patterns</strong>:
+<ul><li><a href="../../messaging/outbox-pattern.md">Outbox Pattern</a> - Reliable event publishing</li>
+<li><a href="../../messaging/inbox-pattern.md">Inbox Pattern</a> - Exactly-once processing</li>
+<li><a href="../../messaging/work-coordinator.md">Work Coordination</a> - Distributed work coordination</li>
+</ul>
+<strong>Examples</strong>:
+<ul><li>ECommerce: Order Service - Real-world dispatcher usage</li>
+</ul>
+<h3>For Contributors</h3>
+
+<p>Looking to extend or customize dispatch behavior? See:</p>
+<ul><li><a href="../../extending/extensibility/custom-dispatchers.md">Custom Dispatchers</a> — Build custom dispatch strategies like mediator patterns or event sourcing dispatchers</li>
+</ul>
+<hr>
+
+<em>Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12</em>
+  </div>
+  <p><a href="#top">[Back to top]</a></p>
+</article>
+
+<article id="v1-0-0-fundamentals-dispatcher-message-cascade" class="doc-section">
+  <h4>Automatic Message Cascade</h4>
+  <p class="doc-path"><code>v1.0.0/fundamentals/dispatcher/message-cascade</code></p>
+  <p class="doc-description"><em>How receptor return values cascade automatically — MessageExtractor, route wrappers, outbox auto-cascade, event-store-only mode, and the deferred event channel</em></p>
+  <div class="doc-content">
+
+<h1>Automatic Message Cascade {#automatic-message-cascade}</h1>
+
+<p>How messages returned from receptors cascade onward automatically. For dispatch basics see the <a href="dispatcher">Dispatcher overview</a>; for the individual patterns see <a href="dispatch-patterns">Dispatch Patterns</a>.</p>
+
+<p>Whizbang automatically extracts and dispatches <code>IMessage</code> instances (both <code>IEvent</code> and <code>ICommand</code>) from receptor return values. This enables a cleaner pattern where receptors can return tuples or arrays containing messages without explicit <code>PublishAsync</code> or <code>SendAsync</code> calls.</p>
 
 <h3>The Problem (Without Auto-Cascade)</h3>
 
-<p></code></pre>csharp{title="The Problem (Without Auto-Cascade)" description="The Problem (Without Auto-Cascade)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Problem", "Without"]}</p>
+<p>``<code>csharp{title="The Problem (Without Auto-Cascade)" description="The Problem (Without Auto-Cascade)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Problem", "Without"]}</p>
 <p>// ❌ VERBOSE: Explicit PublishAsync required</p>
 <p>public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {</p>
 <p>    private readonly IDispatcher _dispatcher;</p>
@@ -25163,272 +25471,28 @@ npm install && npm run build</code></pre>
 
 <hr>
 
-<h2>Dispatcher Configuration Options {#dispatch-options}</h2>
+<h2>Deferred Event Channel {#deferred-event-channel}</h2>
 
-<p></code>DispatchOptions<code> provides fine-grained control over dispatch behavior, including cancellation, timeouts, and perspective synchronization.</p>
+<p>When </code>PublishAsync<code> is called <strong>outside an active transaction context</strong> (for example from a PostPerspective handler), the event cannot join the current outbox transaction. Instead it is queued on the process-wide, thread-safe </code>IDeferredOutboxChannel<code> and written to the outbox in the <strong>next lifecycle loop</strong>: the work coordinator drains the channel (</code>DrainAll()<code>) at the start of each cycle and signals that pending work exists so the write happens promptly.</p>
 
-<h3>Basic Options</h3>
-
-<p></code></pre>csharp{title="Basic Options" description="Basic Options" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Options"]}</p>
-<p>// Cancellation token</p>
-<p>using var cts = new CancellationTokenSource();</p>
-<p>var options = new DispatchOptions().WithCancellationToken(cts.Token);</p>
-<p>await dispatcher.SendAsync(command, options);</p>
-
-<p>// Timeout</p>
-<p>var options = new DispatchOptions().WithTimeout(TimeSpan.FromSeconds(30));</p>
-<p>await dispatcher.SendAsync(command, options);</p>
-
-<p>// Chained fluent API</p>
-<p>var options = new DispatchOptions()</p>
-<p>    .WithCancellationToken(cts.Token)</p>
-<p>    .WithTimeout(TimeSpan.FromMinutes(5));</p>
-<pre><code class="language-">
-<h3>Perspective Synchronization</h3>
-
-<p>Wait for all perspectives to finish processing cascaded events before returning:</p>
-
-<p></code></pre>csharp{title="Perspective Synchronization" description="Wait for all perspectives to finish processing cascaded events before returning:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"]}</p>
-<p>// Wait with default timeout (30 seconds)</p>
-<p>var options = new DispatchOptions().WithPerspectiveWait();</p>
-<p>var result = await dispatcher.LocalInvokeAsync<OrderCreated>(</p>
-<p>    command,</p>
-<p>    options</p>
-<p>);</p>
-
-<p>// Wait with custom timeout</p>
-<p>var options = new DispatchOptions().WithPerspectiveWait(TimeSpan.FromMinutes(2));</p>
-<pre><code class="language-">
-<strong>Use cases</strong>:
-<ul><li>RPC-style calls requiring immediate consistency</li>
-<li>APIs that query read models after commands</li>
-<li>GraphQL mutations returning freshly updated data</li>
-</ul>
-<strong>How it works</strong>:
-<ul><li>Invokes the receptor via </code>LocalInvokeAsync<code></li>
-<li>Tracks all cascaded events via </code>IScopedEventTracker<code></li>
-<li>Waits for </code>IEventCompletionAwaiter.WaitForEventsAsync()<code> to complete</li>
-<li>Returns the result (or throws </code>TimeoutException<code> if perspectives don't finish in time)</li>
-</ul>
-<strong>Alternative API</strong>: Use </code>LocalInvokeAndSyncAsync<code> for built-in perspective synchronization without explicit options:
-
-<p></code></pre>csharp{title="Perspective Synchronization (2)" description="Alternative API: Use LocalInvokeAndSyncAsync for built-in perspective synchronization without explicit options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"]}</p>
-<p>// Equivalent to LocalInvokeAsync with DispatchOptions.WithPerspectiveWait()</p>
-<p>var result = await dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderCreated>(</p>
-<p>    command,</p>
-<p>    timeout: TimeSpan.FromSeconds(10)</p>
-<p>);</p>
-<pre><code class="language-">
-<p>See <a href="#localinvokeandsyncasync---invoke-with-perspective-sync">LocalInvokeAndSyncAsync</a> for details.</p>
-
-<h3>DispatchOptions Properties</h3>
-
-<p>| Property | Type | Default | Description |</p>
-<p>|----------|------|---------|-------------|</p>
-<p>| </code>CancellationToken<code> | </code>CancellationToken<code> | </code>None<code> | Cancels the dispatch operation |</p>
-<p>| </code>Timeout<code> | </code>TimeSpan?<code> | </code>null<code> | Maximum time for dispatch completion |</p>
-<p>| </code>WaitForPerspectives<code> | </code>bool<code> | </code>false<code> | Wait for all perspectives to finish |</p>
-<p>| </code>PerspectiveWaitTimeout<code> | </code>TimeSpan<code> | 30 seconds | Timeout for perspective processing |</p>
-
-<h3>Example: Timeout Handling</h3>
-
-<p></code></pre>csharp{title="Example: Timeout Handling" description="Example: Timeout Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "Timeout"]}</p>
-<p>try {</p>
-<p>    var options = new DispatchOptions()</p>
-<p>        .WithTimeout(TimeSpan.FromSeconds(5))</p>
-<p>        .WithPerspectiveWait();</p>
-
-<p>    var result = await dispatcher.LocalInvokeAsync<OrderCreated>(</p>
-<p>        command,</p>
-<p>        options</p>
-<p>    );</p>
-<p>} catch (OperationCanceledException ex) {</p>
-<p>    // Timeout exceeded</p>
-<p>    _logger.LogWarning(ex, "Command timed out after 5 seconds");</p>
-<p>} catch (TimeoutException ex) {</p>
-<p>    // Perspectives didn't finish in time (but command succeeded)</p>
-<p>    _logger.LogWarning(ex, "Perspectives timed out (command succeeded)");</p>
+<p></code></pre>csharp{</p>
+<p>title: "IDeferredOutboxChannel"</p>
+<p>description: "In-memory channel for events deferred to the next lifecycle loop"</p>
+<p>category: "Architecture"</p>
+<p>difficulty: "ADVANCED"</p>
+<p>tags: ["Dispatcher", "Cascade", "Outbox", "Deferred"]</p>
 <p>}</p>
-<pre><code class="language-">
-<hr>
+<p>public interface IDeferredOutboxChannel {</p>
+<p>  // Queue a message for deferred outbox write in the next lifecycle loop</p>
+<p>  ValueTask QueueAsync(OutboxMessage message, CancellationToken ct = default);</p>
 
-<h2>Performance Considerations</h2>
+<p>  // Drain all queued messages; called by the work coordinator each cycle</p>
+<p>  IReadOnlyList<OutboxMessage> DrainAll();</p>
 
-<h3>LocalInvokeAsync Benchmarks</h3>
-
-<p>| Scenario | Overhead | Allocations |</p>
-<p>|----------|----------|-------------|</p>
-<p>| Direct method call | 0ns | 0 bytes |</p>
-<p>| LocalInvokeAsync (cold) | 15-20ns | 0 bytes (pooled) |</p>
-<p>| LocalInvokeAsync (warm) | < 10ns | 0 bytes |</p>
-<p>| SendAsync | ~100μs | Minimal (envelope) |</p>
-<p>| PublishAsync | ~50μs | Minimal |</p>
-
-<strong>Tips</strong>:
-<ul><li>Use </code>LocalInvokeAsync<code> for hot paths (< 20ns)</li>
-<li>Use </code>SendAsync<code> for asynchronous commands (acceptable ~100μs)</li>
-<li>Use </code>PublishAsync<code> for events (fire-and-forget)</li>
-</ul>
-<h3>Envelope Allocation</h3>
-
-<p>Envelope creation is internal to the dispatcher — application code never constructs envelopes for dispatch. The fast path (</code>LocalInvokeAsync<code> without tracing or a receipt) skips envelope creation entirely; receipt-returning paths (</code>SendAsync<code>, </code>PublishAsync<code>, </code>LocalInvokeWithReceiptAsync<code>) create an envelope because the receipt needs its metadata.</p>
-
-<strong>Result</strong>: Minimal allocations in steady state; zero-allocation fast path for plain </code>LocalInvokeAsync<code>.
-
-<hr>
-
-<h2>Integration with Patterns</h2>
-
-<h3>Outbox Pattern</h3>
-
-<p></code>SendAsync<code> and </code>PublishAsync<code> integrate with the Outbox pattern automatically: messages destined for the transport are serialized into </code>wh_outbox<code> in the same batch as the rest of the dispatch's work, then published by background workers.</p>
-
-<p></code></pre>csharp{title="Outbox Pattern" description="Dispatch writes to the outbox; background workers publish from it:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Outbox", "Pattern"]}</p>
-<p>// Application code: just dispatch — the outbox write is part of the dispatch</p>
-<p>var receipt = await _dispatcher.PublishAsync(new OrderCreated(/<em> ... </em>/));</p>
-
-<p>// Framework internals (workers): work is claimed and flushed through</p>
-<p>// IWorkCoordinator.ProcessWorkBatchAsync(ProcessWorkBatchRequest, ct),</p>
-<p>// which returns OutboxWork / InboxWork / PerspectiveWork batches.</p>
-<pre><code class="language-">
-<p>See <a href="../../messaging/outbox-pattern.md">Outbox Pattern</a> for details.</p>
-
-<h3>Inbox Pattern</h3>
-
-<p>Incoming transport messages integrate with the Inbox pattern for exactly-once processing: the </code>TransportConsumerWorker<code> persists received messages to </code>wh_inbox<code>, deduplicates by message ID, and dispatches them to local receptors. Duplicate deliveries are detected at the inbox and never re-invoke your handlers.</p>
-
-<p>See <a href="../../messaging/inbox-pattern.md">Inbox Pattern</a> for details.</p>
-
-<hr>
-
-<h2>Testing</h2>
-
-<h3>Testing with Dispatcher</h3>
-
-<p></code></pre>csharp{title="Testing with Dispatcher" description="Testing with Dispatcher" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "C#", "Testing"]}</p>
-<p>public class OrderEndpointsTests {</p>
-<p>    private IDispatcher _dispatcher;</p>
-<p>    private OrdersController _controller;</p>
-
-<p>    [Before(Test)]</p>
-<p>    public void Setup() {</p>
-<p>        var services = new ServiceCollection();</p>
-<p>        services.AddWhizbangCore();</p>
-<p>        services.AddTransient<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();</p>
-
-<p>        var provider = services.BuildServiceProvider();</p>
-<p>        _dispatcher = provider.GetRequiredService<IDispatcher>();</p>
-<p>        _controller = new OrdersController(_dispatcher);</p>
-<p>    }</p>
-
-<p>    [Test]</p>
-<p>    public async Task CreateOrder_ValidRequest_ReturnsCreatedAsync() {</p>
-<p>        // Arrange</p>
-<p>        var request = new CreateOrderRequest(</p>
-<p>            CustomerId: Guid.NewGuid(),</p>
-<p>            Items: [new OrderLineItem(Guid.NewGuid(), 5, 19.99m)]</p>
-<p>        );</p>
-
-<p>        // Act</p>
-<p>        var result = await _controller.CreateOrder(request, CancellationToken.None);</p>
-
-<p>        // Assert</p>
-<p>        await Assert.That(result.Result).IsTypeOf<CreatedAtActionResult>();</p>
-
-<p>        var createdResult = (CreatedAtActionResult)result.Result!;</p>
-<p>        await Assert.That(createdResult.Value).IsTypeOf<OrderCreated>();</p>
-<p>    }</p>
+<p>  // Whether pending messages exist</p>
+<p>  bool HasPending { get; }</p>
 <p>}</p>
-<pre><code class="language-">
-<hr>
-
-<h2>DispatchOptions {#dispatch-options}</h2>
-
-<p></code>DispatchOptions<code> controls cancellation, timeouts, and perspective wait behavior for dispatch operations. All </code>SendAsync<code>, </code>LocalInvokeAsync<code>, </code>PublishAsync<code>, and </code>LocalInvokeWithReceiptAsync<code> methods accept an optional </code>DispatchOptions<code> parameter.</p>
-
-<h3>Properties</h3>
-
-<p>| Property | Type | Default | Description |</p>
-<p>|----------|------|---------|-------------|</p>
-<p>| </code>CancellationToken<code> | </code>CancellationToken<code> | </code>CancellationToken.None<code> | Token to cancel the dispatch operation. Throws </code>OperationCanceledException<code> when cancelled. |</p>
-<p>| </code>Timeout<code> | </code>TimeSpan?<code> | </code>null<code> (no timeout) | Maximum time to wait for dispatch completion. Throws </code>OperationCanceledException<code> when exceeded. |</p>
-<p>| </code>WaitForPerspectives<code> | </code>bool<code> | </code>false<code> | When </code>true<code>, </code>LocalInvokeAsync<code> waits for all perspectives to finish processing cascaded events before returning. |</p>
-<p>| </code>PerspectiveWaitTimeout<code> | </code>TimeSpan<code> | 30 seconds | Timeout for waiting for perspectives. Only used when </code>WaitForPerspectives<code> is </code>true<code>. |</p>
-
-<h3>Fluent API</h3>
-
-<p></code></pre>csharp{title="DispatchOptions Fluent API" description="Fluent builder methods for DispatchOptions" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "DispatchOptions", "Fluent"]}</p>
-<p>// With cancellation token</p>
-<p>using var cts = new CancellationTokenSource();</p>
-<p>var options = new DispatchOptions().WithCancellationToken(cts.Token);</p>
-<p>await dispatcher.SendAsync(command, options);</p>
-
-<p>// With timeout</p>
-<p>var options = new DispatchOptions().WithTimeout(TimeSpan.FromSeconds(30));</p>
-<p>await dispatcher.SendAsync(command, options);</p>
-
-<p>// Chained fluent API</p>
-<p>var options = new DispatchOptions()</p>
-<p>    .WithCancellationToken(cts.Token)</p>
-<p>    .WithTimeout(TimeSpan.FromMinutes(5));</p>
-
-<p>// Wait for perspectives with default timeout (30s)</p>
-<p>var options = new DispatchOptions().WithPerspectiveWait();</p>
-<p>await dispatcher.LocalInvokeAsync<TResult>(command, options);</p>
-
-<p>// Wait for perspectives with custom timeout</p>
-<p>var options = new DispatchOptions().WithPerspectiveWait(TimeSpan.FromMinutes(2));</p>
-<pre><code class="language-">
-<h3>Perspective Wait</h3>
-
-<p>Use </code>WithPerspectiveWait()<code> for RPC-style calls where you need all perspectives to have processed cascaded events before the response is returned to the caller:</p>
-
-<p></code></pre>csharp{title="DispatchOptions Perspective Wait" description="Wait for perspectives to complete before returning" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "DispatchOptions", "PerspectiveWait"]}</p>
-<p>[HttpPost("orders")]</p>
-<p>public async Task<ActionResult<OrderResult>> CreateOrder(</p>
-<p>    [FromBody] CreateOrderRequest request,</p>
-<p>    CancellationToken ct) {</p>
-
-<p>    var command = new CreateOrder(request.CustomerId, request.Items);</p>
-
-<p>    var options = new DispatchOptions()</p>
-<p>        .WithCancellationToken(ct)</p>
-<p>        .WithPerspectiveWait(TimeSpan.FromSeconds(10));</p>
-
-<p>    // All perspectives will have processed events before this returns</p>
-<p>    var result = await _dispatcher.LocalInvokeAsync<OrderResult>(command, options);</p>
-
-<p>    return Ok(result);</p>
-<p>}</p>
-<p></code>`<code></p>
-
-<strong>Source</strong>: </code>src/Whizbang.Core/Dispatch/DispatchOptions.cs<code> · <strong>Tests</strong>: </code>tests/Whizbang.Core.Tests/Dispatch/DispatchOptionsTests.cs`
-
-<hr>
-
-<h2>Further Reading</h2>
-
-<strong>Core Concepts</strong>:
-<ul><li><a href="../receptors/receptors.md">Receptors</a> - Message handlers that dispatcher invokes</li>
-<li><a href="../perspectives/perspectives.md">Perspectives</a> - Event listeners for read models</li>
-<li><a href="../messages/message-context.md">Message Context</a> - Correlation and causation tracking</li>
-</ul>
-<strong>Messaging Patterns</strong>:
-<ul><li><a href="../../messaging/outbox-pattern.md">Outbox Pattern</a> - Reliable event publishing</li>
-<li><a href="../../messaging/inbox-pattern.md">Inbox Pattern</a> - Exactly-once processing</li>
-<li><a href="../../messaging/work-coordinator.md">Work Coordination</a> - Distributed work coordination</li>
-</ul>
-<strong>Examples</strong>:
-<ul><li>ECommerce: Order Service - Real-world dispatcher usage</li>
-</ul>
-<h3>For Contributors</h3>
-
-<p>Looking to extend or customize dispatch behavior? See:</p>
-<ul><li><a href="../../extending/extensibility/custom-dispatchers.md">Custom Dispatchers</a> — Build custom dispatch strategies like mediator patterns or event sourcing dispatchers</li>
-</ul>
-<hr>
-
-<em>Version 1.0.0 - Foundation Release | Last Updated: 2024-12-12</em>
+<p></code>``</p>
   </div>
   <p><a href="#top">[Back to top]</a></p>
 </article>
