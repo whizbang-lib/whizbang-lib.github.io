@@ -1,6 +1,8 @@
 ---
 title: "Message Security Context Propagation"
 pageType: concept
+verifiedAgainstCommit: 1b31f58d
+verifiedDate: 2026-07-16
 version: 1.0.0
 category: "Core Concepts"
 order: 10
@@ -18,7 +20,26 @@ codeReferences:
   - src/Whizbang.Core/Security/SecurityContextHelper.cs
   - src/Whizbang.Core/Security/IMessageContextAccessor.cs
   - src/Whizbang.Core/Security/MessageSecurityServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Security/ImmutableScopeContext.cs
+  - src/Whizbang.Core/Security/SecurityExtraction.cs
+  - src/Whizbang.Core/Security/SecurityContextType.cs
+  - src/Whizbang.Core/Security/ISecurityContextCallback.cs
+  - src/Whizbang.Core/Security/Exceptions/SecurityContextRequiredException.cs
+  - src/Whizbang.Core/SystemEvents/Security/ScopeContextEstablished.cs
+  - src/Whizbang.Core/Observability/MessageHop.cs
+  - src/Whizbang.Core/IMessageContext.cs
   - src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Security/MessageSecurityContextProviderTests.cs
+  - tests/Whizbang.Core.Tests/Security/MessageSecurityIntegrationTests.cs
+  - tests/Whizbang.Core.Tests/Security/MessageSecurityOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Security/MessageSecurityServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/Security/MessageHopSecurityExtractorTests.cs
+  - tests/Whizbang.Core.Tests/Security/ImmutableScopeContextTests.cs
+  - tests/Whizbang.Core.Tests/Security/MessageContextAccessorTests.cs
+  - tests/Whizbang.Core.Tests/Dispatch/DispatcherSecurityBuilderTests.cs
+  - tests/Whizbang.Core.Tests/Dispatch/SystemDispatcherBuilderTests.cs
+  - tests/Whizbang.Core.Tests/Dispatch/ImpersonationDispatcherBuilderTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -41,7 +62,7 @@ When messages arrive from external transports (Azure Service Bus, RabbitMQ, etc.
 flowchart TD
     Arrives["Message Arrives"]
     Provider["IMessageSecurityContextProvider<br/>(DefaultMessageSecurityContextProvider)"]
-    Extractors["ISecurityContextExtractor[]<br/>• MessageHopSecurityExtractor (100)<br/>• JwtPayloadExtractor (200)<br/>• TransportMetadataExtractor (300)"]
+    Extractors["ISecurityContextExtractor[]<br/>• MessageHopSecurityExtractor (100, built-in)<br/>• JwtPayloadExtractor (200, custom)<br/>• TransportMetadataExtractor (300, custom)"]
     Context["ImmutableScopeContext<br/>(wraps SecurityExtraction)"]
     Accessor["Populates IScopeContextAccessor.Current"]
     Callbacks["ISecurityContextCallback[]<br/>• UserContextManagerCallback<br/>• AuditLogCallback"]
@@ -166,16 +187,16 @@ See the [ImmutableScopeContext](#immutable-scope-context) section below for full
 Extracts security context from the message envelope's hop chain. This is the default extractor for distributed message security propagation.
 
 ```csharp{title="MessageHopSecurityExtractor (Priority: 100)" description="Extracts security context from the message envelope's hop chain." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "MessageHopSecurityExtractor", "Priority:"]}
-// Message hops carry SecurityContext through the system
+// Message hops carry scope as a ScopeDelta (MessageHop.Scope)
 var hop = new MessageHop {
   ServiceInstance = serviceInstance,
-  SecurityContext = new SecurityContext {
+  Scope = ScopeDelta.FromPerspectiveScope(new PerspectiveScope {
     TenantId = "tenant-123",
     UserId = "user-456"
-  }
+  })
 };
 
-// MessageHopSecurityExtractor reads this automatically
+// MessageHopSecurityExtractor merges hop scope deltas automatically
 ```
 
 **When to use**: Messages flowing between Whizbang services that already have security context attached to their hop chain.
@@ -187,23 +208,23 @@ The `MessageHopSecurityExtractor` is the default built-in extractor that reads s
 **How it works**:
 
 1. Examines the message envelope's hop chain
-2. Looks for the most recent hop with a `SecurityContext` populated
-3. Extracts `TenantId`, `UserId`, and other scope information
-4. Creates a `SecurityExtraction` with the found values
+2. Merges the `ScopeDelta` from every `Current` hop (via `ScopeDelta.ApplyTo`) to rebuild the full scope
+3. Returns `null` when no scope is found, or when both `TenantId` and `UserId` are empty
+4. Otherwise creates a `SecurityExtraction` carrying the full merged context (scope, roles, permissions, principals, claims, impersonation info)
 
 **Example**:
 
 ```csharp{title="Message Hop Extractor" description="Message Hop Extractor" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Message", "Hop"]}
-// Message hops carry SecurityContext through the system
+// Message hops carry scope as a ScopeDelta (MessageHop.Scope)
 var hop = new MessageHop {
   ServiceInstance = serviceInstance,
-  SecurityContext = new SecurityContext {
+  Scope = ScopeDelta.FromPerspectiveScope(new PerspectiveScope {
     TenantId = "tenant-123",
     UserId = "user-456"
-  }
+  })
 };
 
-// MessageHopSecurityExtractor reads this automatically
+// MessageHopSecurityExtractor merges hop scope deltas automatically
 ```
 
 ## Custom Extractors {#custom-extractors}
@@ -539,10 +560,11 @@ The `IMessageContext` interface provides direct access to security information f
 
 ```csharp{title="Message Context Accessor" description="The IMessageContext interface provides direct access to security information from the current message being processed." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Message", "Context"]}
 public interface IMessageContext {
-  string? TenantId { get; }
+  CorrelationId CorrelationId { get; }
+  DateTimeOffset Timestamp { get; }
   string? UserId { get; }
-  string? OrganizationId { get; }
-  string? CustomerId { get; }
+  string? TenantId { get; }
+  IReadOnlyDictionary<string, object> Metadata { get; }
 }
 
 // Usage in a receptor
@@ -553,7 +575,7 @@ public class OrderReceptor : IReceptor<CreateOrder> {
     _messageContext = messageContext;
   }
 
-  public async Task ReceiveAsync(CreateOrder message, CancellationToken ct) {
+  public async ValueTask HandleAsync(CreateOrder message, CancellationToken ct = default) {
     var tenantId = _messageContext.TenantId;
     var userId = _messageContext.UserId;
     // Process message with security context
@@ -582,54 +604,24 @@ services.AddWhizbangMessageSecurity();
 services.AddSingleton<IMessageSecurityContextProvider, DefaultMessageSecurityContextProvider>();
 ```
 
-## Service Bus Metadata {#service-bus-metadata}
-
-For Azure Service Bus, transport metadata can be accessed via the `ITransportMetadataAware` interface:
-
-```csharp{title="Service Bus Metadata" description="For Azure Service Bus, transport metadata can be accessed via the ITransportMetadataAware interface:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Service", "Bus"]}
-public class ServiceBusMetadataExtractor : ISecurityContextExtractor {
-  public int Priority => 300;
-
-  public ValueTask<SecurityExtraction?> ExtractAsync(
-    IMessageEnvelope envelope,
-    MessageSecurityOptions options,
-    CancellationToken cancellationToken = default) {
-
-    // Access transport metadata if available
-    if (envelope is not ITransportMetadataAware metadataAware ||
-        metadataAware.TransportMetadata is not ServiceBusTransportMetadata metadata) {
-      return ValueTask.FromResult<SecurityExtraction?>(null);
-    }
-
-    // Extract from Service Bus application properties
-    var tenantId = metadata.GetProperty<string>("X-Tenant-Id");
-    var userId = metadata.GetProperty<string>("X-User-Id");
-
-    if (string.IsNullOrEmpty(tenantId) && string.IsNullOrEmpty(userId)) {
-      return ValueTask.FromResult<SecurityExtraction?>(null);
-    }
-
-    return ValueTask.FromResult<SecurityExtraction?>(new SecurityExtraction {
-      Scope = new PerspectiveScope {
-        TenantId = tenantId,
-        UserId = userId
-      },
-      Roles = new HashSet<string>(),
-      Permissions = new HashSet<Permission>(),
-      SecurityPrincipals = new HashSet<SecurityPrincipalId>(),
-      Claims = new Dictionary<string, string>(),
-      Source = "ServiceBusMetadata"
-    });
-  }
-}
-```
-
 ## Transport Metadata {#transport-metadata}
 
-For extracting security from transport-level headers (e.g., Azure Service Bus application properties):
+<a id="service-bus-metadata"></a>
 
-```csharp{title="Transport Metadata" description="For extracting security from transport-level headers (e." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Transport", "Metadata"]}
-public class ServiceBusMetadataExtractor : ISecurityContextExtractor {
+For extracting security from transport-level headers (e.g., Azure Service Bus application properties), Whizbang ships the metadata types — `ITransportMetadata` and `ServiceBusTransportMetadata` (with `GetProperty<T>` / `TryGetProperty<T>`) in `Whizbang.Core.Transports`.
+
+:::updated
+Shipped behavior: `IMessageEnvelope` does **not** expose transport metadata (there is no `ITransportMetadataAware` interface or `TransportMetadata` envelope property at this release). A transport-metadata extractor is therefore a **custom pattern**: your transport adapter must hand the received metadata to the extractor itself — for example via a scoped accessor it populates when the message is received.
+:::
+
+```csharp{title="Transport Metadata" description="Custom extractor reading Service Bus application properties via a scoped accessor your transport adapter populates." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Transport", "Metadata"]}
+// Your transport adapter populates this scoped accessor when receiving the message.
+public class TransportMetadataAccessor {
+  public ITransportMetadata? Current { get; set; }
+}
+
+public class ServiceBusMetadataExtractor(TransportMetadataAccessor metadataAccessor)
+    : ISecurityContextExtractor {
   public int Priority => 300;
 
   public ValueTask<SecurityExtraction?> ExtractAsync(
@@ -637,9 +629,7 @@ public class ServiceBusMetadataExtractor : ISecurityContextExtractor {
     MessageSecurityOptions options,
     CancellationToken cancellationToken = default) {
 
-    // Access transport metadata if available
-    if (envelope is not ITransportMetadataAware metadataAware ||
-        metadataAware.TransportMetadata is not ServiceBusTransportMetadata metadata) {
+    if (metadataAccessor.Current is not ServiceBusTransportMetadata metadata) {
       return ValueTask.FromResult<SecurityExtraction?>(null);
     }
 
@@ -675,13 +665,10 @@ The message security system defines specific exceptions for security failures:
 Thrown when a message requires security context but none could be established:
 
 ```csharp{title="SecurityContextRequiredException" description="Thrown when a message requires security context but none could be established:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "SecurityContextRequiredException"]}
-public class SecurityContextRequiredException : Exception {
-  public Type? MessageType { get; init; }
+public sealed class SecurityContextRequiredException : Exception {
+  public Type? MessageType { get; }
 
-  public SecurityContextRequiredException(Type? messageType)
-    : base($"Security context required for {messageType?.Name ?? "message"} but none established") {
-    MessageType = messageType;
-  }
+  // (Constructors set MessageType and build a descriptive message.)
 }
 ```
 
@@ -703,9 +690,8 @@ try {
 
 When messages are reconstructed from transport (deserialization), the security context must be re-established. The `IMessageEnvelope` provides access to:
 
-- **Hops**: Message hop chain with security context
+- **Hops**: Message hop chain carrying scope deltas (`MessageHop.Scope`)
 - **Payload**: The actual message (may contain security tokens)
-- **Transport Metadata**: Transport-specific headers and properties
 
 **Example**:
 
@@ -714,11 +700,10 @@ When messages are reconstructed from transport (deserialization), the security c
 var envelope = new MessageEnvelope {
   MessageId = messageId,
   Payload = deserializedMessage,
-  Hops = deserializedHops,  // Contains SecurityContext
-  TransportMetadata = serviceBusMetadata
+  Hops = deserializedHops  // Contains ScopeDelta on each hop
 };
 
-// Extractors can read from all these sources
+// Extractors can read from these sources
 await provider.EstablishContextAsync(envelope, scopedProvider, ct);
 ```
 
@@ -799,9 +784,9 @@ if (context is ImmutableScopeContext immutable) {
 When `MessageSecurityOptions.PropagateToOutgoingMessages` is `true` (the default), the Dispatcher automatically attaches security context from the ambient scope to all outgoing message hops:
 
 1. **Dispatcher checks** `IScopeContextAccessor.Current` for an established security context
-2. **If** `ImmutableScopeContext.ShouldPropagate` is `true`, extracts `UserId` and `TenantId`
-3. **Populates** `MessageHop.SecurityContext` on all outgoing envelopes
-4. **Downstream services** extract via `MessageHopSecurityExtractor`
+2. **If** `ImmutableScopeContext.ShouldPropagate` is `true`, computes the scope changes as a `ScopeDelta`
+3. **Populates** `MessageHop.Scope` on all outgoing envelopes
+4. **Downstream services** extract via `MessageHopSecurityExtractor` (which merges the hop deltas)
 
 This enables seamless security context flow across service boundaries without manual propagation.
 
@@ -825,16 +810,14 @@ To disable security propagation, set `ShouldPropagate = false` when creating `Im
 ```csharp{title="How It Works (2)" description="How It Works" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Works"]}
 // When a message is sent, the Dispatcher:
 // 1. Reads IScopeContextAccessor.Current
-// 2. If ImmutableScopeContext with ShouldPropagate=true, extracts security info
-// 3. Attaches to outgoing MessageHop
+// 2. If ImmutableScopeContext with ShouldPropagate=true, computes the scope delta
+// 3. Attaches it to the outgoing MessageHop.Scope
 
 var hop = new MessageHop {
   Type = HopType.Current,
   ServiceInstance = serviceInstance,
-  SecurityContext = new SecurityContext {
-    UserId = scopeContext.Scope.UserId,
-    TenantId = scopeContext.Scope.TenantId
-  }
+  // Full scope on the first hop; only the delta from the previous hop afterwards
+  Scope = ScopeDelta.CreateDelta(previousScope, scopeContext)
 };
 ```
 
@@ -866,7 +849,7 @@ flowchart LR
         direction TB
         Middleware["WhizbangScopeMiddleware<br/>establishes IScopeContext"]
         Logic["Business logic calls<br/>dispatcher.SendAsync()"]
-        Hop["MessageHop.SecurityContext<br/>= { UserId, TenantId }"]
+        Hop["MessageHop.Scope (ScopeDelta)<br/>carries { UserId, TenantId }"]
         Middleware --> Logic
         Logic -->|"Dispatcher attaches security"| Hop
     end
@@ -874,7 +857,7 @@ flowchart LR
     subgraph ServiceB["Service B (Message Consumer)"]
         direction TB
         Consumer["ServiceBusConsumerWorker"]
-        Extractor["MessageHopSecurityExtractor<br/>reads SecurityContext"]
+        Extractor["MessageHopSecurityExtractor<br/>merges hop scope deltas"]
         Accessor["IScopeContextAccessor<br/>.Current = context"]
         Consumer --> Extractor
         Extractor --> Accessor
@@ -987,7 +970,7 @@ This message security system complements existing security tools:
 |--------------|--------------|
 | **IScopeContext/Accessor** | Provider populates this - single source of truth |
 | **WhizbangScopeMiddleware** | HTTP equivalent; this is the message equivalent |
-| **MessageHop.SecurityContext** | Default extractor reads from this |
+| **MessageHop.Scope (ScopeDelta)** | Default extractor merges these |
 | **PerspectiveScope** | Included in IScopeContext.Scope |
 | **Scoped Lens Factory** | Reads from IScopeContextAccessor (works automatically) |
 | **System Events** | Provider emits `ScopeContextEstablished` for audit |
