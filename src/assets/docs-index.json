@@ -799,6 +799,19 @@
     "wordCount": 1603
   },
   {
+    "slug": "v1.0.0/fundamentals/dispatcher/dispatch-patterns",
+    "title": "Dispatch Patterns",
+    "category": "Core Concepts",
+    "order": 2,
+    "description": "Deep reference for the three dispatch patterns — SendAsync, LocalInvokeAsync, PublishAsync — plus sync/receipt variants, batch operations, and error handling",
+    "tags": "dispatcher, sendasync, localinvokeasync, publishasync, batch, patterns",
+    "version": "v1.0.0",
+    "pageType": "reference",
+    "readingTime": 22,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatch-patterns.md",
+    "wordCount": 4380
+  },
+  {
     "slug": "v1.0.0/fundamentals/dispatcher/dispatcher",
     "title": "Dispatcher Deep Dive",
     "category": "Core Concepts",
@@ -807,9 +820,22 @@
     "tags": "dispatcher, messaging, commands, events, patterns",
     "version": "v1.0.0",
     "pageType": "overview",
-    "readingTime": 45,
+    "readingTime": 12,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/dispatcher.md",
-    "wordCount": 8903
+    "wordCount": 2311
+  },
+  {
+    "slug": "v1.0.0/fundamentals/dispatcher/message-cascade",
+    "title": "Automatic Message Cascade",
+    "category": "Core Concepts",
+    "order": 3,
+    "description": "How receptor return values cascade automatically — MessageExtractor, route wrappers, outbox auto-cascade, event-store-only mode, and the deferred event channel",
+    "tags": "dispatcher, cascade, outbox, routing, message-extractor",
+    "version": "v1.0.0",
+    "pageType": "concept",
+    "readingTime": 14,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/message-cascade.md",
+    "wordCount": 2641
   },
   {
     "slug": "v1.0.0/fundamentals/dispatcher/publish-once",
