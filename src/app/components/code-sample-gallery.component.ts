@@ -200,7 +200,7 @@ interface FilterOptions {
         >
           <p-card class="sample-card" styleClass="sample-card">
             <!-- Card Header -->
-            <ng-template pTemplate="header">
+            <ng-template #header>
               <div class="card-header">
                 <div class="sample-meta">
                   <div class="framework-badge" *ngIf="sample.framework">
@@ -228,7 +228,7 @@ interface FilterOptions {
             </ng-template>
 
             <!-- Card Content -->
-            <ng-template pTemplate="content">
+            <ng-template #content>
               <div class="sample-content">
                 <h4 class="sample-title">{{ sample.title }}</h4>
                 <p class="sample-description">{{ sample.description }}</p>
@@ -247,7 +247,7 @@ interface FilterOptions {
             </ng-template>
 
             <!-- Card Footer -->
-            <ng-template pTemplate="footer">
+            <ng-template #footer>
               <div class="sample-actions">
                 <button
                   pButton
@@ -296,10 +296,10 @@ interface FilterOptions {
       <div class="samples-grid" *ngIf="loading">
         <div *ngFor="let i of [1,2,3,4,5,6]" class="sample-card-wrapper">
           <p-card class="sample-card skeleton-card">
-            <ng-template pTemplate="header">
+            <ng-template #header>
               <p-skeleton height="2rem" class="mb-2"></p-skeleton>
             </ng-template>
-            <ng-template pTemplate="content">
+            <ng-template #content>
               <p-skeleton height="1.5rem" class="mb-3"></p-skeleton>
               <p-skeleton height="4rem" class="mb-3"></p-skeleton>
               <div class="flex gap-2">
@@ -307,7 +307,7 @@ interface FilterOptions {
                 <p-skeleton width="3rem" height="1.5rem"></p-skeleton>
               </div>
             </ng-template>
-            <ng-template pTemplate="footer">
+            <ng-template #footer>
               <div class="flex gap-2">
                 <p-skeleton width="6rem" height="2rem"></p-skeleton>
                 <p-skeleton width="2rem" height="2rem"></p-skeleton>
