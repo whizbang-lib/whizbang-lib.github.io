@@ -65,18 +65,12 @@ export function uriToFilePath(uri: string): string {
   const parsed = parseUri(uri);
 
   if (parsed.scheme === 'doc') {
-    // Convert to proper case for directories
-    const path = parsed.path
-      .split('/')
-      .map((part, index) => {
-        // First part might be a category (capitalize first letter)
-        if (index === 0 && parsed.category) {
-          return part.charAt(0).toUpperCase() + part.slice(1);
-        }
-        return part;
-      })
-      .join('/');
-    return `${path}.md`;
+    // Docs directories are all lowercase kebab-case (v1.0.0, fundamentals,
+    // getting-started, drafts, contributors, spec…). Return the path as-is —
+    // an earlier version capitalized the first segment (a leftover from the
+    // flat `Tutorials/`/`Advanced/` layout that no longer exists), which broke
+    // versioned paths like v1.0.0 -> V1.0.0 on case-sensitive filesystems.
+    return `${parsed.path}.md`;
   }
 
   if (parsed.scheme === 'roadmap') {
