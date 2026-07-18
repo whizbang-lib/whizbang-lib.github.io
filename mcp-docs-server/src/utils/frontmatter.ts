@@ -96,8 +96,16 @@ export function createResourceMetadata(frontmatter: DocFrontmatter): Record<stri
     metadata.order = frontmatter.order;
   }
 
-  if (frontmatter.tags && frontmatter.tags.length > 0) {
-    metadata.tags = frontmatter.tags.join(', ');
+  if (frontmatter.tags) {
+    // tags may be a YAML list (string[]) or a comma-separated scalar string —
+    // a bare string also has .length, so it slipped past the old guard and
+    // .join() threw. Normalize both to a clean comma-separated string.
+    const tags = Array.isArray(frontmatter.tags)
+      ? frontmatter.tags
+      : String(frontmatter.tags).split(',').map((t) => t.trim()).filter(Boolean);
+    if (tags.length > 0) {
+      metadata.tags = tags.join(', ');
+    }
   }
 
   if (frontmatter.difficulty) {
