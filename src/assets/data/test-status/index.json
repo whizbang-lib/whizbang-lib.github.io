@@ -1,0 +1,287 @@
+{
+  "run": {
+    "runId": "29656454504",
+    "sha": "787f15615dc7a4a9f2755afde714dc373b795a78",
+    "branch": "develop",
+    "libraryVersion": "0.951.52-alpha.15",
+    "completedAt": "2026-07-18T20:34:56.767Z"
+  },
+  "total": {
+    "passed": 15651,
+    "failed": 0,
+    "skipped": 8
+  },
+  "suites": {
+    "azureblob": {
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0
+    },
+    "inmemory": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    "postgres": {
+      "passed": 2169,
+      "failed": 0,
+      "skipped": 0
+    },
+    "rabbitmq": {
+      "passed": 96,
+      "failed": 0,
+      "skipped": 0
+    },
+    "servicebus-ecommerce": {
+      "passed": 82,
+      "failed": 0,
+      "skipped": 0
+    },
+    "servicebus-whizbang": {
+      "passed": 71,
+      "failed": 0,
+      "skipped": 0
+    },
+    "unit": {
+      "passed": 13212,
+      "failed": 0,
+      "skipped": 8
+    }
+  },
+  "assemblies": {
+    "ECommerce.BFF.API.Tests": {
+      "file": "ECommerce.BFF.API.Tests.json",
+      "passed": 50,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ECommerce.Contracts.Tests": {
+      "file": "ECommerce.Contracts.Tests.json",
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ECommerce.InMemory.Integration.Tests": {
+      "file": "ECommerce.InMemory.Integration.Tests.json",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ECommerce.Integration.Tests": {
+      "file": "ECommerce.Integration.Tests.json",
+      "passed": 82,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ECommerce.InventoryWorker.Tests": {
+      "file": "ECommerce.InventoryWorker.Tests.json",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ECommerce.NotificationWorker.Tests": {
+      "file": "ECommerce.NotificationWorker.Tests.json",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ECommerce.OrderService.Tests": {
+      "file": "ECommerce.OrderService.Tests.json",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ECommerce.PaymentWorker.Tests": {
+      "file": "ECommerce.PaymentWorker.Tests.json",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ECommerce.RabbitMQ.Integration.Tests": {
+      "file": "ECommerce.RabbitMQ.Integration.Tests.json",
+      "passed": 61,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ECommerce.ShippingWorker.Tests": {
+      "file": "ECommerce.ShippingWorker.Tests.json",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Core.Tests": {
+      "file": "Whizbang.Core.Tests.json",
+      "passed": 8598,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Data.Dapper.Postgres.Tests": {
+      "file": "Whizbang.Data.Dapper.Postgres.Tests.json",
+      "passed": 480,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Data.EFCore.Postgres.Tests": {
+      "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
+      "passed": 1689,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Data.Schema.Tests": {
+      "file": "Whizbang.Data.Schema.Tests.json",
+      "passed": 334,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Data.Tests": {
+      "file": "Whizbang.Data.Tests.json",
+      "passed": 84,
+      "failed": 0,
+      "skipped": 8
+    },
+    "Whizbang.Documentation.Tests": {
+      "file": "Whizbang.Documentation.Tests.json",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Execution.Tests": {
+      "file": "Whizbang.Execution.Tests.json",
+      "passed": 126,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Generators.Tests": {
+      "file": "Whizbang.Generators.Tests.json",
+      "passed": 1402,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Hosting.AspNet.Tests": {
+      "file": "Whizbang.Hosting.AspNet.Tests.json",
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Hosting.Azure.ServiceBus.Tests": {
+      "file": "Whizbang.Hosting.Azure.ServiceBus.Tests.json",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Migrate.Tests": {
+      "file": "Whizbang.Migrate.Tests.json",
+      "passed": 338,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Observability.Tests": {
+      "file": "Whizbang.Observability.Tests.json",
+      "passed": 302,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Offloads.AzureBlob.Integration.Tests": {
+      "file": "Whizbang.Offloads.AzureBlob.Integration.Tests.json",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Offloads.AzureBlob.Tests": {
+      "file": "Whizbang.Offloads.AzureBlob.Tests.json",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Offloads.InMemory.Tests": {
+      "file": "Whizbang.Offloads.InMemory.Tests.json",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Partitioning.Tests": {
+      "file": "Whizbang.Partitioning.Tests.json",
+      "passed": 56,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Policies.Tests": {
+      "file": "Whizbang.Policies.Tests.json",
+      "passed": 117,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Sagas.Tests": {
+      "file": "Whizbang.Sagas.Tests.json",
+      "passed": 160,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Sequencing.Tests": {
+      "file": "Whizbang.Sequencing.Tests.json",
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.SignalR.Tests": {
+      "file": "Whizbang.SignalR.Tests.json",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Testing.Tests": {
+      "file": "Whizbang.Testing.Tests.json",
+      "passed": 227,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Transports.AzureServiceBus.Integration.Tests": {
+      "file": "Whizbang.Transports.AzureServiceBus.Integration.Tests.json",
+      "passed": 71,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Transports.AzureServiceBus.Tests": {
+      "file": "Whizbang.Transports.AzureServiceBus.Tests.json",
+      "passed": 316,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Transports.FastEndpoints.Tests": {
+      "file": "Whizbang.Transports.FastEndpoints.Tests.json",
+      "passed": 82,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Transports.HotChocolate.Tests": {
+      "file": "Whizbang.Transports.HotChocolate.Tests.json",
+      "passed": 259,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Transports.Mutations.Tests": {
+      "file": "Whizbang.Transports.Mutations.Tests.json",
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Transports.RabbitMQ.Integration.Tests": {
+      "file": "Whizbang.Transports.RabbitMQ.Integration.Tests.json",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Transports.RabbitMQ.Tests": {
+      "file": "Whizbang.Transports.RabbitMQ.Tests.json",
+      "passed": 209,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Transports.Tests": {
+      "file": "Whizbang.Transports.Tests.json",
+      "passed": 232,
+      "failed": 0,
+      "skipped": 0
+    }
+  }
+}
