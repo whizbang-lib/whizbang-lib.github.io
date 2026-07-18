@@ -13,26 +13,21 @@ import { GlobalToastService } from './services/global-toast.service';
       <h2>Toast Test</h2>
       <div style="display: flex; flex-direction: column; gap: 10px; max-width: 300px;">
         <h3>Global Toast Service Examples</h3>
-        <button pButton 
-                class="p-button-outlined p-button-success" 
-                label="Success Toast" 
-                (click)="showSuccessToast()"></button>
-        <button pButton 
-                class="p-button-outlined p-button-primary" 
-                label="Info Toast" 
-                (click)="showInfoToast()"></button>
-        <button pButton 
-                class="p-button-outlined p-button-warn" 
-                label="Warning Toast" 
-                (click)="showWarningToast()"></button>
-        <button pButton 
-                class="p-button-outlined p-button-danger" 
-                label="Error Toast" 
-                (click)="showErrorToast()"></button>
-        <button pButton 
-                class="p-button-outlined p-button-secondary" 
-                label="Sticky Toast" 
-                (click)="showStickyToast()"></button>
+        <button pButton
+                class="p-button-outlined p-button-success"
+                (click)="showSuccessToast()"><span pButtonLabel>Success Toast</span></button>
+        <button pButton
+                class="p-button-outlined p-button-primary"
+                (click)="showInfoToast()"><span pButtonLabel>Info Toast</span></button>
+        <button pButton
+                class="p-button-outlined p-button-warn"
+                (click)="showWarningToast()"><span pButtonLabel>Warning Toast</span></button>
+        <button pButton
+                class="p-button-outlined p-button-danger"
+                (click)="showErrorToast()"><span pButtonLabel>Error Toast</span></button>
+        <button pButton
+                class="p-button-outlined p-button-secondary"
+                (click)="showStickyToast()"><span pButtonLabel>Sticky Toast</span></button>
       </div>
       <p>Screen width: {{ screenWidth }}px</p>
     </div>

@@ -12,27 +12,29 @@ import { ThemeService, ThemeMode } from '../services/theme.service';
   template: `
     <div class="theme-toggle-container">
       <!-- Quick Toggle Button -->
-      <button 
-        pButton 
+      <button
+        pButton
+        iconOnly
         type="button"
-        [icon]="currentIcon()"
         class="p-button-text p-button-rounded theme-toggle-btn"
         [pTooltip]="quickToggleTooltip()"
         tooltipPosition="bottom"
         (click)="quickToggle()"
         [attr.aria-label]="quickToggleTooltip()">
+        <i [class]="currentIcon()" pButtonIcon></i>
       </button>
       
       <!-- Advanced Options Button -->
-      <button 
-        pButton 
+      <button
+        pButton
+        iconOnly
         type="button"
-        icon="pi pi-chevron-down"
         class="p-button-text p-button-rounded theme-options-btn"
         pTooltip="Theme options"
         tooltipPosition="bottom"
         (click)="optionsPanel.toggle($event)"
         [attr.aria-label]="'Theme options'">
+        <i class="pi pi-chevron-down" pButtonIcon></i>
       </button>
       
       <!-- Theme Options Panel -->
