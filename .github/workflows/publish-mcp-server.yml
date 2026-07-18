@@ -1,19 +1,21 @@
 name: Publish MCP Server to npm
 
-# Tag-driven release: push a tag like mcp-v1.1.0 (must match
-# mcp-docs-server/package.json version). Builds, bundles a docs snapshot,
-# and publishes with provenance. Requires the NPM_TOKEN secret (automation
-# token for the @whizbang scope; fallback scope @whizbang-lib if unavailable).
+# Publishes @whizbang/docs-mcp-server via npm Trusted Publishing (OIDC) — NO
+# stored token. The version is derived from the Whizbang library's latest
+# published nuget release (revision-aware, so a docs-only re-release for the
+# same library version bumps a `.N` suffix instead of colliding).
+#
+# Trigger: manual (Run workflow). Requires a Trusted Publisher configured on the
+# npm package: npmjs.com → @whizbang/docs-mcp-server → Settings → Trusted
+# Publisher → GitHub Actions, whizbang-lib/whizbang-lib.github.io,
+# publish-mcp-server.yml, "Allow npm publish". No NPM_TOKEN secret is used.
 
 on:
-  push:
-    tags:
-      - 'mcp-v*'
   workflow_dispatch:
 
 permissions:
   contents: read
-  id-token: write # npm provenance
+  id-token: write # OIDC trusted publishing + provenance
 
 jobs:
   publish:
@@ -31,14 +33,16 @@ jobs:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Verify tag matches package version
-        if: startsWith(github.ref, 'refs/tags/mcp-v')
+      # OIDC trusted publishing needs npm >= 11.5.1; the runner's bundled npm
+      # can lag, so pin the latest.
+      - name: Ensure npm supports OIDC trusted publishing
+        run: npm install -g npm@latest
+
+      - name: Derive version from latest published library
         run: |
-          TAG_VERSION="${GITHUB_REF_NAME#mcp-v}"
-          PKG_VERSION=$(node -p "require('./package.json').version")
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "Tag $TAG_VERSION != package.json $PKG_VERSION"; exit 1
-          fi
+          V=$(node scripts/derive-version.mjs)
+          echo "Publishing @whizbang/docs-mcp-server@$V (tracks library release)"
+          npm version "$V" --no-git-tag-version --allow-same-version
 
       - name: Install
         run: npm ci || npm install
@@ -52,7 +56,9 @@ jobs:
       - name: Smoke test
         run: npm test
 
-      - name: Publish
+      # No NODE_AUTH_TOKEN: npm detects the GitHub OIDC environment and exchanges
+      # it for a short-lived credential via the configured Trusted Publisher.
+      # Prerelease versions require an explicit --tag; whizbang is all-prerelease
+      # so `latest` resolves to the newest build.
+      - name: Publish (Trusted Publishing / OIDC)
         run: npm publish --provenance --access public --tag latest
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
