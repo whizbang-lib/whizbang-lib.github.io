@@ -1,17 +1,27 @@
 #!/usr/bin/env node
-// Prints the version the MCP docs server should publish as: the LARGEST
-// published version of the Whizbang library on nuget.org (by semver, including
-// prereleases). The docs server tracks the library release it documents.
+// Prints the version the MCP docs server should publish as — it tracks the
+// Whizbang library release it documents.
 //
-// Largest-by-semver — NOT nuget's "latest stable" — on purpose: the library is
-// all-prerelease, and a stray/bad stable (e.g. 0.9.4) must never outrank the
-// real newest alpha (e.g. 0.860.8-alpha.9).
-//
-// Interim source: nuget.org. Follow-up: read the library version carried by the
-// living-docs test-status pipeline instead (test-status/index.json.libraryVersion).
+// Base version source, in order:
+//   1. The SHARED source: the library version carried by the living-docs
+//      test-status pipeline (src/assets/data/test-status/index.json →
+//      run.libraryVersion). The library CI stamps its GitVersion there, so this
+//      is the same number the site already shows — no second lookup to drift.
+//   2. Fallback: the largest published version of the library on nuget.org (by
+//      semver INCLUDING prereleases — NOT nuget's "latest stable", since the
+//      library is all-prerelease and a stray stable like 0.9.4 must not win).
+// The shared source is authoritative once the test-status pipeline is active
+// (needs DOCS_REPO_PUSH_TOKEN); until then nuget keeps this working.
 
+import { readFileSync } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG = 'softwareextravaganza.whizbang.core';
 const URL = `https://api.nuget.org/v3-flatcontainer/${PKG}/index.json`;
+const TEST_STATUS = path.resolve(__dirname, '../../src/assets/data/test-status/index.json');
+const SEMVER_RE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
 function semverKey(v) {
   const m = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?/.exec(v);
@@ -37,17 +47,32 @@ function cmp(a, b) {
   return 0;
 }
 
-const res = await fetch(URL);
-if (!res.ok) {
-  console.error(`Failed to query nuget.org for ${PKG}: ${res.status}`);
-  process.exit(1);
+// 1. Shared source: the library version stamped by the test-status pipeline.
+function baseFromTestStatus() {
+  try {
+    const v = JSON.parse(readFileSync(TEST_STATUS, 'utf8'))?.run?.libraryVersion;
+    return typeof v === 'string' && SEMVER_RE.test(v) ? v : null;
+  } catch {
+    return null; // file absent (pipeline not active yet) — fall back to nuget
+  }
 }
-const { versions } = await res.json();
-if (!Array.isArray(versions) || versions.length === 0) {
-  console.error('No versions returned from nuget.org');
-  process.exit(1);
+
+// 2. Fallback: largest published library version on nuget.
+async function baseFromNuget() {
+  const res = await fetch(URL);
+  if (!res.ok) throw new Error(`nuget.org query for ${PKG} failed: ${res.status}`);
+  const { versions } = await res.json();
+  if (!Array.isArray(versions) || versions.length === 0) throw new Error('no versions from nuget.org');
+  return [...versions].sort(cmp).at(-1);
 }
-const base = [...versions].sort(cmp).at(-1);
+
+let base = baseFromTestStatus();
+if (base) {
+  console.error(`base version from test-status pipeline: ${base}`);
+} else {
+  base = await baseFromNuget();
+  console.error(`base version from nuget.org fallback: ${base}`);
+}
 
 // The npm version tracks the library version. But the docs server may need to
 // re-release for the SAME library version (a docs/server fix with no library
