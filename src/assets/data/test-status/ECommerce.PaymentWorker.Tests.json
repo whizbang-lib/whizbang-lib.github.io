@@ -1,0 +1,1 @@
+{"ProcessPaymentReceptorTests.ProcessPaymentReceptor_ImplementsIReceptor_CorrectlyAsync":{"o":"passed","d":263,"s":"unit"},"ProcessPaymentReceptorTests.HandleAsync_WithValidCommand_PublishesCorrectEventTypeAsync":{"o":"passed","d":284,"s":"unit"},"ProcessPaymentReceptorTests.HandleAsync_ProcessesPayment_PublishesEventAsync":{"o":"passed","d":296,"s":"unit"}}
