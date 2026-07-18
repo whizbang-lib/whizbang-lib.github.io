@@ -1,23 +1,23 @@
-// Generates square favicon assets from the wide wordmark logo.
-// The brand ships only a landscape wordmark (logo-dark.svg, light-gray ink) and
-// there is no square mark, so we composite the wordmark centered on a dark
-// branded square (matching the site background). Run: node scripts/gen-favicons.mjs
+// Generates square favicon assets from the Whizbang "W!" brand mark.
+// Source is the transparent-background mark (logo-mark.png). The "!" is dark, so
+// the mark is composited on a white tile to stay visible on dark browser chrome.
+// Run: node scripts/gen-favicons.mjs
 import sharp from 'sharp';
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const LOGO = 'src/assets/branding/logo-dark.svg'; // light-gray ink, for dark bg
-const BG = { r: 0x0b, g: 0x0b, b: 0x12, alpha: 1 }; // #0b0b12 — site dark slate
+const MARK = 'src/assets/branding/logo-mark.png';
+const BG = { r: 255, g: 255, b: 255, alpha: 1 }; // white tile (mark's "!" is dark)
 const OUT_DIR = 'src/assets/branding';
 
 async function square(size) {
-  // Render the wordmark to ~78% of the tile width, preserve aspect ratio.
-  const logoW = Math.round(size * 0.78);
-  const logo = await sharp(readFileSync(LOGO), { density: 384 })
-    .resize({ width: logoW, fit: 'inside' })
+  // Fit the mark to ~86% of the tile, preserving aspect ratio.
+  const inner = Math.round(size * 0.86);
+  const mark = await sharp(readFileSync(MARK))
+    .resize({ width: inner, height: inner, fit: 'inside' })
     .png()
     .toBuffer();
   return sharp({ create: { width: size, height: size, channels: 4, background: BG } })
-    .composite([{ input: logo, gravity: 'center' }])
+    .composite([{ input: mark, gravity: 'center' }])
     .png()
     .toBuffer();
 }
@@ -40,9 +40,8 @@ function pngToIco(png, size) {
   return Buffer.concat([header, dir, png]);
 }
 
-const apple = await square(180);
-writeFileSync(`${OUT_DIR}/apple-touch-icon.png`, apple);
+writeFileSync(`${OUT_DIR}/apple-touch-icon.png`, await square(180));
 writeFileSync(`${OUT_DIR}/favicon-32.png`, await square(32));
 writeFileSync(`${OUT_DIR}/favicon-16.png`, await square(16));
 writeFileSync('src/favicon.ico', pngToIco(await square(32), 32));
-console.log('Generated: apple-touch-icon.png (180), favicon-32.png, favicon-16.png, favicon.ico');
+console.log('Generated from W! mark: apple-touch-icon.png (180), favicon-32.png, favicon-16.png, favicon.ico');
