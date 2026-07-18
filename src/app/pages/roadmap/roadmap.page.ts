@@ -58,13 +58,12 @@ import { SeoService } from '../../services/seo.service';
                 </div>
 
                 <div class="timeline-actions">
-                  <button 
-                    pButton 
-                    type="button" 
-                    label="View Documentation" 
-                    icon="pi pi-book"
+                  <button
+                    pButton
+                    type="button"
                     class="p-button-outlined"
                     (click)="navigateToVersion(event.version)">
+                    <i class="pi pi-book" pButtonIcon></i><span pButtonLabel>View Documentation</span>
                   </button>
                 </div>
               </div>
@@ -96,12 +95,11 @@ import { SeoService } from '../../services/seo.service';
               </div>
               <p class="state-description">{{ state.description }}</p>
               <div class="state-actions">
-                <button 
-                  pButton 
-                  type="button" 
-                  label="Explore" 
-                  icon="pi pi-arrow-right"
+                <button
+                  pButton
+                  type="button"
                   class="p-button-text">
+                  <i class="pi pi-arrow-right" pButtonIcon></i><span pButtonLabel>Explore</span>
                 </button>
               </div>
             </div>

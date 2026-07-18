@@ -7,7 +7,7 @@ import { ButtonModule } from 'primeng/button';
   selector: 'wb-code',
   template: `
     <pre><code #codeEl [innerHTML]="content"></code></pre>
-    <button pButton icon="pi pi-copy" class="copy-btn" (click)="copy()"></button>
+    <button pButton iconOnly class="copy-btn" (click)="copy()"><i class="pi pi-copy" pButtonIcon></i></button>
   `,
   styles: [`.copy-btn{position:absolute;top:8px;right:8px}`]
 })

@@ -87,67 +87,63 @@ export interface CodeSampleMetadata {
         
         <!-- Action Buttons -->
         <div class="action-buttons">
-          <button 
-            pButton 
-            type="button" 
-            icon="pi pi-external-link" 
-            label="StackBlitz"
+          <button
+            pButton
+            type="button"
             class="p-button-outlined p-button-sm"
             *ngIf="metadata.stackblitzUrl"
             (click)="openExternal(metadata.stackblitzUrl!)"
             pTooltip="Open in StackBlitz">
+            <i class="pi pi-external-link" pButtonIcon></i><span pButtonLabel>StackBlitz</span>
           </button>
           
-          <button 
-            pButton 
-            type="button" 
-            icon="pi pi-external-link" 
-            label="CodeSandbox"
+          <button
+            pButton
+            type="button"
             class="p-button-outlined p-button-sm"
             *ngIf="metadata.codesandboxUrl"
             (click)="openExternal(metadata.codesandboxUrl!)"
             pTooltip="Open in CodeSandbox">
+            <i class="pi pi-external-link" pButtonIcon></i><span pButtonLabel>CodeSandbox</span>
           </button>
           
-          <button 
-            pButton 
-            type="button" 
-            icon="pi pi-github" 
-            label="GitHub"
+          <button
+            pButton
+            type="button"
             class="p-button-outlined p-button-sm"
             *ngIf="metadata.githubRepo"
             (click)="openExternal(metadata.githubRepo!)"
             pTooltip="View source on GitHub">
+            <i class="pi pi-github" pButtonIcon></i><span pButtonLabel>GitHub</span>
           </button>
           
-          <button 
-            pButton 
-            type="button" 
-            icon="pi pi-play" 
-            label="Live Demo"
+          <button
+            pButton
+            type="button"
             class="p-button-outlined p-button-sm"
             *ngIf="metadata.demoUrl"
             (click)="openExternal(metadata.demoUrl!)"
             pTooltip="View live demo">
+            <i class="pi pi-play" pButtonIcon></i><span pButtonLabel>Live Demo</span>
           </button>
           
-          <button 
-            pButton 
-            type="button" 
-            icon="pi pi-copy" 
-            label="Copy All"
+          <button
+            pButton
+            type="button"
             class="p-button-outlined p-button-sm"
             (click)="copyAllFiles()"
             pTooltip="Copy all files to clipboard">
+            <i class="pi pi-copy" pButtonIcon></i><span pButtonLabel>Copy All</span>
           </button>
           
-          <button 
-            pButton 
-            type="button" 
-            icon="pi pi-download" 
+          <button
+            pButton
+            iconOnly
+            type="button"
             class="p-button-outlined p-button-sm"
             (click)="downloadZip()"
             pTooltip="Download as ZIP">
+            <i class="pi pi-download" pButtonIcon></i>
           </button>
         </div>
       </div>
@@ -182,32 +178,35 @@ export interface CodeSampleMetadata {
                 </div>
                 
                 <div class="file-buttons">
-                  <button 
-                    pButton 
-                    type="button" 
-                    icon="pi pi-copy" 
+                  <button
+                    pButton
+                    iconOnly
+                    type="button"
                     class="p-button-text p-button-sm"
                     (click)="copyFileContent(file)"
                     pTooltip="Copy file content">
+                    <i class="pi pi-copy" pButtonIcon></i>
                   </button>
                   
-                  <button 
-                    pButton 
-                    type="button" 
-                    icon="pi pi-github" 
+                  <button
+                    pButton
+                    iconOnly
+                    type="button"
                     class="p-button-text p-button-sm"
                     *ngIf="file.githubUrl"
                     (click)="openExternal(file.githubUrl!)"
                     pTooltip="View on GitHub">
+                    <i class="pi pi-github" pButtonIcon></i>
                   </button>
                   
-                  <button 
-                    pButton 
-                    type="button" 
-                    icon="pi pi-download" 
+                  <button
+                    pButton
+                    iconOnly
+                    type="button"
                     class="p-button-text p-button-sm"
                     (click)="downloadFile(file)"
                     pTooltip="Download file">
+                    <i class="pi pi-download" pButtonIcon></i>
                   </button>
                 </div>
               </div>
@@ -232,13 +231,14 @@ export interface CodeSampleMetadata {
                 </div>
                 
                 <!-- Copy button overlay -->
-                <button 
-                  pButton 
-                  type="button" 
-                  icon="pi pi-copy" 
+                <button
+                  pButton
+                  iconOnly
+                  type="button"
                   class="copy-overlay-btn"
                   (click)="copyFileContent(file)"
                   pTooltip="Copy to clipboard">
+                  <i class="pi pi-copy" pButtonIcon></i>
                 </button>
               </div>
             </div>
@@ -275,12 +275,12 @@ export interface CodeSampleMetadata {
       <div class="error-message">
         <i class="pi pi-exclamation-triangle"></i>
         <p>Failed to load code sample: {{ error }}</p>
-        <button 
-          pButton 
-          type="button" 
-          label="Retry" 
+        <button
+          pButton
+          type="button"
           class="p-button-sm"
           (click)="loadCodeSample()">
+          <span pButtonLabel>Retry</span>
         </button>
       </div>
     </div>
