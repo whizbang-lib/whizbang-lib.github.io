@@ -132,16 +132,14 @@ interface FilterOptions {
 
           <!-- Clear Filters -->
           <div class="filter-actions">
-            <button 
-              pButton 
-              type="button" 
-              icon="pi pi-filter-slash" 
-              label="Clear"
+            <button
+              pButton
+              type="button"
               class="p-button-outlined p-button-sm"
               (click)="clearFilters()"
               [disabled]="!hasActiveFilters()"
               pTooltip="Clear all filters"
-            ></button>
+            ><i class="pi pi-filter-slash" pButtonIcon></i><span pButtonLabel>Clear</span></button>
           </div>
         </div>
 
@@ -251,45 +249,43 @@ interface FilterOptions {
             <!-- Card Footer -->
             <ng-template pTemplate="footer">
               <div class="sample-actions">
-                <button 
-                  pButton 
-                  type="button" 
-                  icon="pi pi-eye" 
-                  label="View Code"
+                <button
+                  pButton
+                  type="button"
                   class="p-button-outlined p-button-sm"
                   (click)="viewSample(sample)"
                   pTooltip="View code sample"
-                ></button>
-                
-                <button 
-                  pButton 
-                  type="button" 
-                  icon="pi pi-external-link" 
+                ><i class="pi pi-eye" pButtonIcon></i><span pButtonLabel>View Code</span></button>
+
+                <button
+                  pButton
+                  iconOnly
+                  type="button"
                   class="p-button-text p-button-sm"
                   *ngIf="sample.stackblitzUrl"
                   (click)="openExternal(sample.stackblitzUrl!)"
                   pTooltip="Open in StackBlitz"
-                ></button>
-                
-                <button 
-                  pButton 
-                  type="button" 
-                  icon="pi pi-github" 
+                ><i class="pi pi-external-link" pButtonIcon></i></button>
+
+                <button
+                  pButton
+                  iconOnly
+                  type="button"
                   class="p-button-text p-button-sm"
                   *ngIf="sample.githubRepo"
                   (click)="openExternal(sample.githubRepo!)"
                   pTooltip="View on GitHub"
-                ></button>
-                
-                <button 
-                  pButton 
-                  type="button" 
-                  icon="pi pi-play" 
+                ><i class="pi pi-github" pButtonIcon></i></button>
+
+                <button
+                  pButton
+                  iconOnly
+                  type="button"
                   class="p-button-text p-button-sm"
                   *ngIf="sample.demoUrl"
                   (click)="openExternal(sample.demoUrl!)"
                   pTooltip="Live demo"
-                ></button>
+                ><i class="pi pi-play" pButtonIcon></i></button>
               </div>
             </ng-template>
           </p-card>
@@ -327,14 +323,13 @@ interface FilterOptions {
           <i class="pi pi-search empty-icon"></i>
           <h3>No samples found</h3>
           <p>Try adjusting your filters or search terms.</p>
-          <button 
-            pButton 
-            type="button" 
-            label="Clear Filters" 
+          <button
+            pButton
+            type="button"
             class="p-button-outlined"
             (click)="clearFilters()"
             *ngIf="hasActiveFilters()"
-          ></button>
+          ><span pButtonLabel>Clear Filters</span></button>
         </div>
       </div>
     </div>
