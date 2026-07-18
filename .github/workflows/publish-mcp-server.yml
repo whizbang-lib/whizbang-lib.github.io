@@ -2,8 +2,14 @@ name: Publish MCP Server to npm
 
 # Tag-driven release: push a tag like mcp-v1.1.0 (must match
 # mcp-docs-server/package.json version). Builds, bundles a docs snapshot,
-# and publishes with provenance. Requires the NPM_TOKEN secret (automation
-# token for the @whizbang scope; fallback scope @whizbang-lib if unavailable).
+# and publishes to npm via Trusted Publishing (OIDC) — NO stored token.
+#
+# Prerequisites (one-time, after the package's first publish exists):
+#   1. On npmjs.com, open the @whizbang/docs-mcp-server package → Settings →
+#      Trusted Publisher → add: repository whizbang-lib/whizbang-lib.github.io,
+#      workflow file publish-mcp-server.yml (environment left blank).
+#   2. Delete the NPM_TOKEN repo secret + revoke the npm token — no longer used.
+# Provenance is attached automatically by trusted publishing.
 
 on:
   push:
@@ -13,7 +19,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # npm provenance
+  id-token: write # OIDC trusted publishing + provenance
 
 jobs:
   publish:
@@ -30,6 +36,11 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
+
+      # OIDC trusted publishing needs npm >= 11.5.1; the runner's bundled npm
+      # can lag behind, so pin the latest.
+      - name: Ensure npm supports OIDC trusted publishing
+        run: npm install -g npm@latest
 
       - name: Verify tag matches package version
         if: startsWith(github.ref, 'refs/tags/mcp-v')
@@ -52,7 +63,8 @@ jobs:
       - name: Smoke test
         run: npm test
 
-      - name: Publish
+      # No NODE_AUTH_TOKEN: npm 11.5.1+ detects the GitHub OIDC environment and
+      # exchanges it for a short-lived publish credential via the configured
+      # Trusted Publisher. --provenance is implied but kept explicit.
+      - name: Publish (Trusted Publishing / OIDC)
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
