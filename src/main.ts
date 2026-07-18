@@ -54,6 +54,10 @@ bootstrapApplication(AppComponent, {
     provideRouter(routes),
     provideAnimationsAsync(),
     providePrimeNG({
+            // PrimeNG 22 Community license (free tier). Registered client-side, so it
+            // necessarily ships in the browser bundle — this is PrimeNG's designed model,
+            // not a secret. Clears the "Invalid PrimeUI License" banner. Renews 2027-07-18.
+            license: 'eyJpZCI6IjVjYmRkMGJmLWViOTItNGIyZi05MWM5LTk0NjZkNGE1ODBkOCIsInByb2R1Y3QiOiJwcmltZXVpIiwidGllciI6ImNvbW11bml0eSIsInR5cGUiOiJkZXYiLCJpYXQiOjE3ODQ0MTA2NzQsImV4cCI6MTgxNTk0NjY3NH0.N_c974qaVzpVFRBP63of_XSexVd27L6JHyHornWvBJ3eMZqq-4L2f7QX38aShDE0-p7LGByEfNXEOGh1p4jODQ',
             theme: {
                 preset: WhizbangPreset,
                 options: {
