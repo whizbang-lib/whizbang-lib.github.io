@@ -19,11 +19,11 @@ codeReferences:
 
 ## Quick start
 
-No install required — point your MCP client at `npx`:
+No install required — point your MCP client at `npx` with `@latest` so it always pulls the current published build:
 
 ```json{
 title: "Claude Desktop / Claude Code configuration"
-description: "Add to claude_desktop_config.json or use: claude mcp add whizbang-docs -- npx @whizbang/docs-mcp-server"
+description: "Add to claude_desktop_config.json or use: claude mcp add whizbang-docs -- npx -y @whizbang/docs-mcp-server@latest"
 category: "Configuration"
 difficulty: "BEGINNER"
 tags: ["MCP", "Setup"]
@@ -32,25 +32,41 @@ tags: ["MCP", "Setup"]
   "mcpServers": {
     "whizbang-docs": {
       "command": "npx",
-      "args": ["@whizbang/docs-mcp-server"]
+      "args": ["-y", "@whizbang/docs-mcp-server@latest"]
     }
   }
 }
 ```
 
-Or with the Claude Code CLI:
+Or register it with the Claude Code CLI:
 
 ```bash{
 title: "Claude Code CLI"
-description: "One-line MCP server registration"
+description: "One-line MCP server registration (always latest)"
 category: "Configuration"
 difficulty: "BEGINNER"
 tags: ["MCP", "Setup", "CLI"]
 }
-claude mcp add whizbang-docs -- npx @whizbang/docs-mcp-server
+claude mcp add whizbang-docs -- npx -y @whizbang/docs-mcp-server@latest
+```
+
+Prefer a global install (e.g. for Cursor or a shared machine)? The `whizbang-docs-mcp` binary is on your PATH afterward:
+
+```bash{
+title: "Global install"
+description: "Install the latest published version globally"
+category: "Configuration"
+difficulty: "BEGINNER"
+tags: ["MCP", "Setup", "CLI"]
+}
+npm install -g @whizbang/docs-mcp-server@latest
 ```
 
 The npm package bundles a versioned snapshot of these docs (works offline; `bundle-info.json` records the source commit). Live test status is always fetched from the site so it can never go stale.
+
+:::note
+**Versioning**: the package version tracks the Whizbang library release it documents (e.g. `0.860.8-alpha.9`). Whizbang is pre-1.0, so the published versions are prereleases — `@latest` resolves to the newest one. Pin a specific build with `@whizbang/docs-mcp-server@0.860.8-alpha.9` if you need reproducibility.
+:::
 
 ## What your assistant can do with it
 
