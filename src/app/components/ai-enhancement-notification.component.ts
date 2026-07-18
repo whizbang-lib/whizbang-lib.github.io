@@ -11,9 +11,9 @@ import { takeUntil } from 'rxjs/operators';
   standalone: true,
   imports: [CommonModule, ToastModule],
   template: `
-    <p-toast position="bottom-right" [baseZIndex]="1000" key="ai-enhancement" 
+    <p-toast position="top-right" [baseZIndex]="1000" key="ai-enhancement"
              styleClass="mobile-toast-fix">
-      <ng-template let-message pTemplate="message">
+      <ng-template #message let-message>
         <div class="custom-toast-content">
           <div class="toast-header">
             <i [class]="getIconClass(message.severity)" class="toast-icon"></i>
@@ -206,7 +206,7 @@ import { takeUntil } from 'rxjs/operators';
     /* Toast positioning - responsive with max-width */
     :host ::ng-deep .mobile-toast-fix {
       position: fixed !important;
-      bottom: 20px !important;
+      top: 72px !important;
       right: 20px !important;
       left: auto !important;
       width: auto !important;

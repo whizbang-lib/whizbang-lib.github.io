@@ -161,7 +161,7 @@ export interface CodeSampleMetadata {
             [header]="file.filename"
             [selected]="i === 0">
             
-            <ng-template pTemplate="header">
+            <ng-template #header>
               <div class="tab-header">
                 <i [class]="getFileIcon(file.language)" class="file-icon"></i>
                 <span class="filename">{{ file.filename }}</span>
