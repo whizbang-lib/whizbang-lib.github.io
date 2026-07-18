@@ -11,7 +11,7 @@ import { takeUntil } from 'rxjs/operators';
   standalone: true,
   imports: [CommonModule, ToastModule],
   template: `
-    <p-toast position="top-right" [baseZIndex]="1000" key="ai-enhancement"
+    <p-toast position="bottom-right" [baseZIndex]="1000" key="ai-enhancement"
              styleClass="mobile-toast-fix">
       <ng-template #message let-message>
         <div class="custom-toast-content">
@@ -204,9 +204,23 @@ import { takeUntil } from 'rxjs/operators';
     }
     
     /* Toast positioning - responsive with max-width */
+    /* Disable PrimeNG 22's collapsed-stack ("pile") behavior so messages flow
+       as a normal vertical list instead of overlapping. styleClass is not placed
+       on the .p-toast container in v22, so target .p-toast-message directly. */
+    :host ::ng-deep .p-toast-message {
+      position: relative !important;
+      transform: none !important;
+      inset: auto !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+      margin-bottom: 12px !important;
+      opacity: 1 !important;
+    }
+
     :host ::ng-deep .mobile-toast-fix {
       position: fixed !important;
-      top: 72px !important;
+      bottom: 20px !important;
       right: 20px !important;
       left: auto !important;
       width: auto !important;
@@ -369,8 +383,10 @@ export class AIEnhancementNotificationComponent implements OnInit, OnDestroy {
         // The template will automatically update with new progress values
         return;
       } else {
-        // For state changes, clear and create new
-        this.messageService.clear(this.currentToastId);
+        // For state changes, clear and create new. clear() filters by the
+        // message key ('ai-enhancement'), NOT currentToastId — passing the id
+        // was a no-op, so old status toasts piled up instead of being replaced.
+        this.messageService.clear('ai-enhancement');
         this.currentToastId = null;
       }
     }
