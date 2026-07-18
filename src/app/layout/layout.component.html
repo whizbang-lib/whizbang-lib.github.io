@@ -1,6 +1,6 @@
 <header class="fixed-header">
     <p-toolbar class="gradient-bg">
-        <ng-template pTemplate="start">
+        <ng-template #start>
             <div class="toolbar-start">
                 <wb-hamburger-menu></wb-hamburger-menu>
                 <img 
@@ -11,7 +11,7 @@
                 />
             </div>
         </ng-template>
-        <ng-template pTemplate="end">
+        <ng-template #end>
             <div class="toolbar-end">
                 <!-- Search, version selector, and theme toggle now handled by hamburger menu on mobile -->
                 <div class="desktop-only">
