@@ -20,12 +20,12 @@ import { ButtonModule } from 'primeng/button';
       </button>
       
       <!-- PrimeNG Button -->
-      <button 
-        pButton 
-        label="PrimeNG Button"
+      <button
+        pButton
         (click)="incrementCounter()"
         type="button"
         style="margin: 5px;">
+        <span pButtonLabel>PrimeNG Button</span>
       </button>
       
       <!-- Alternative event handling -->

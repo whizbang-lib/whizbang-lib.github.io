@@ -123,74 +123,78 @@ interface CodeBlockOptions {
         
         <div class="code-actions">
           <!-- Collapse Toggle - Now Icon Only -->
-          <button 
+          <button
             *ngIf="isCollapsible"
-            pButton 
+            pButton
+            iconOnly
             type="button"
-            [icon]="collapsed ? 'pi pi-chevron-down' : 'pi pi-chevron-up'" 
             class="p-button-sm p-button-outlined"
             [pTooltip]="collapsed ? 'Show Full Code' : 'Show Less'"
             (click)="toggleCollapse($event)"
             [@buttonAnimation]>
+            <i [class]="collapsed ? 'pi pi-chevron-down' : 'pi pi-chevron-up'" pButtonIcon></i>
           </button>
           
           <!-- Copy Button -->
-          <button 
+          <button
             *ngIf="options.showCopyButton !== false"
-            pButton 
+            pButton
             type="button"
-            icon="pi pi-copy" 
-            class="p-button-sm p-button-text" 
+            class="p-button-sm p-button-text"
             pTooltip="Copy code"
             (click)="copyCode($event)"
             [disabled]="copying">
+            <i class="pi pi-copy" pButtonIcon></i>
             <span *ngIf="copying">Copied!</span>
           </button>
           
           <!-- Copy with Usings Button -->
-          <button 
+          <button
             *ngIf="options.showCopyButton !== false && options.usingStatements && options.usingStatements.length > 0"
-            pButton 
+            pButton
             type="button"
-            icon="pi pi-clone" 
-            class="p-button-sm p-button-text" 
+            class="p-button-sm p-button-text"
             pTooltip="Copy code with using statements"
             (click)="copyCodeWithUsings($event)"
             [disabled]="copyingWithUsings">
+            <i class="pi pi-clone" pButtonIcon></i>
             <span *ngIf="copyingWithUsings">Copied!</span>
           </button>
           
           <!-- Download Button -->
-          <button 
+          <button
             *ngIf="options.showDownloadButton"
-            pButton 
+            pButton
+            iconOnly
             type="button"
-            icon="pi pi-download" 
             class="p-button-sm p-button-text"
             pTooltip="Download file"
             (click)="downloadCode($event)">
+            <i class="pi pi-download" pButtonIcon></i>
           </button>
           
           <!-- GitHub Link -->
-          <button 
+          <button
             *ngIf="options.githubUrl"
-            pButton 
+            pButton
+            iconOnly
             type="button"
-            icon="pi pi-github" 
             class="p-button-sm p-button-text"
             pTooltip="View on GitHub"
             (click)="openGitHub($event)">
+            <i class="pi pi-github" pButtonIcon></i>
           </button>
           
           <!-- More Info Toggle -->
-          <button 
+          <button
             *ngIf="hasAdditionalInfo()"
-            pButton 
+            pButton
+            iconOnly
             type="button"
-            icon="pi pi-info-circle" 
             class="p-button-sm p-button-text"
             pTooltip="More info"
             (click)="toggleMoreInfo($event)">
+            <i class="pi pi-info-circle" pButtonIcon></i>
           </button>
         </div>
       </div>
@@ -260,12 +264,13 @@ interface CodeBlockOptions {
             <span class="nuget-packages-list">
               {{ options.nugetPackages.join(', ') }}
             </span>
-            <button 
-              pButton 
-              icon="pi pi-download" 
+            <button
+              pButton
+              iconOnly
               class="p-button-sm p-button-text install-deps-btn"
               (click)="showAllNugetCommands($event)"
               pTooltip="Show install commands for all dependencies">
+              <i class="pi pi-download" pButtonIcon></i>
             </button>
           </div>
           
@@ -329,34 +334,31 @@ interface CodeBlockOptions {
             <ul class="nuget-list">
               <li *ngFor="let pkg of options.nugetPackages">{{ pkg }}</li>
             </ul>
-            <button 
-              pButton 
-              icon="pi pi-download" 
-              label="Show Install Commands"
+            <button
+              pButton
               class="p-button-sm p-button-outlined"
               (click)="showAllNugetCommands($event)">
+              <i class="pi pi-download" pButtonIcon></i><span pButtonLabel>Show Install Commands</span>
             </button>
           </div>
           
           <div class="dialog-links" *ngIf="options.githubUrl || options.docsUrl">
             <h6>Links</h6>
             <div class="dialog-link-buttons">
-              <button 
+              <button
                 *ngIf="options.githubUrl"
-                pButton 
-                icon="pi pi-github" 
-                label="GitHub"
+                pButton
                 class="p-button-sm p-button-outlined"
                 (click)="openGitHub($event)">
+                <i class="pi pi-github" pButtonIcon></i><span pButtonLabel>GitHub</span>
               </button>
-              
-              <button 
+
+              <button
                 *ngIf="options.docsUrl"
-                pButton 
-                icon="pi pi-file" 
-                label="Documentation"
+                pButton
                 class="p-button-sm p-button-outlined"
                 (click)="openDocsUrl($event)">
+                <i class="pi pi-file" pButtonIcon></i><span pButtonLabel>Documentation</span>
               </button>
             </div>
           </div>
@@ -383,10 +385,11 @@ interface CodeBlockOptions {
             <code>{{ options.nugetPackage }}</code>
             <button
               pButton
-              icon="pi pi-copy"
+              iconOnly
               class="p-button-sm p-button-text"
               (click)="copyNugetCommand()"
               pTooltip="Copy install command">
+              <i class="pi pi-copy" pButtonIcon></i>
             </button>
           </div>
         </div>
@@ -403,10 +406,11 @@ interface CodeBlockOptions {
               <code>{{ getAllDotnetCommands() }}</code>
               <button
                 pButton
-                icon="pi pi-copy"
+                iconOnly
                 class="p-button-sm p-button-text"
                 (click)="copyAllDotnetCommands()"
                 pTooltip="Copy .NET CLI command">
+                <i class="pi pi-copy" pButtonIcon></i>
               </button>
             </div>
           </div>
@@ -417,10 +421,11 @@ interface CodeBlockOptions {
               <code>{{ getAllPowerShellCommands() }}</code>
               <button
                 pButton
-                icon="pi pi-copy"
+                iconOnly
                 class="p-button-sm p-button-text"
                 (click)="copyAllPowerShellCommands()"
                 pTooltip="Copy PowerShell command">
+                <i class="pi pi-copy" pButtonIcon></i>
               </button>
             </div>
           </div>
@@ -431,10 +436,11 @@ interface CodeBlockOptions {
               <code>{{ getAllPackageReferences() }}</code>
               <button
                 pButton
-                icon="pi pi-copy"
+                iconOnly
                 class="p-button-sm p-button-text"
                 (click)="copyAllXmlReferences()"
                 pTooltip="Copy all PackageReference tags">
+                <i class="pi pi-copy" pButtonIcon></i>
               </button>
             </div>
           </div>
