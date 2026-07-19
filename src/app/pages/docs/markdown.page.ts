@@ -229,6 +229,45 @@ import { VerifiedModalComponent } from '../../components/verified-modal.componen
       opacity: 0.8;
       border-style: dashed;
     }
+
+    /* Mermaid diagram figure: diagram + required caption/tests */
+    :host ::ng-deep .mermaid-figure {
+      margin: 1.5rem 0;
+    }
+    :host ::ng-deep .mermaid-figure .mermaid-caption {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+      padding: 0 0.25rem;
+      font-size: 0.88rem;
+      font-style: italic;
+      color: var(--p-text-muted-color, #71717a);
+    }
+    :host ::ng-deep .mermaid-figure .mermaid-caption-text::before {
+      content: "Figure — ";
+      font-weight: 600;
+      font-style: normal;
+      color: var(--p-text-color, inherit);
+    }
+    :host ::ng-deep .mermaid-figure .mermaid-missing-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.4rem;
+      font-size: 0.82rem;
+      color: var(--orange-700, #b45309);
+      background: color-mix(in srgb, var(--orange-500, #f59e0b) 15%, transparent);
+      border: 1px solid color-mix(in srgb, var(--orange-500, #f59e0b) 40%, transparent);
+    }
+    :host ::ng-deep .mermaid-figure .mermaid-missing-meta code {
+      background: color-mix(in srgb, var(--p-text-color, #808080) 10%, transparent);
+      padding: 0.05rem 0.3rem;
+      border-radius: 0.25rem;
+    }
   `],
   animations: [
     trigger('fadeIn', [
@@ -677,11 +716,11 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  private mermaidBlocks: {placeholder: string, code: string}[] = [];
+  private mermaidBlocks: {placeholder: string, code: string, caption?: string, tests?: string[]}[] = [];
 
   private async renderMermaidBlocks() {
     for (let i = 0; i < this.mermaidBlocks.length; i++) {
-      const { placeholder, code } = this.mermaidBlocks[i];
+      const { placeholder, code, caption, tests } = this.mermaidBlocks[i];
 
       try {
         // Find the placeholder comment in the DOM
@@ -714,16 +753,53 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
               svgElement.insertBefore(titleElement, svgElement.firstChild);
             }
 
-            // Replace comment with diagram
+            // Wrap the diagram in a figure with a required caption + verified badge.
+            const figure = document.createElement('figure');
+            figure.className = 'mermaid-figure';
+            figure.appendChild(container);
+
+            const hasCaption = !!(caption && caption.trim());
+            const hasTests = Array.isArray(tests) && tests.length > 0;
+
+            if (hasCaption || hasTests) {
+              const figcaption = document.createElement('figcaption');
+              figcaption.className = 'mermaid-caption';
+              if (hasCaption) {
+                const text = document.createElement('span');
+                text.className = 'mermaid-caption-text';
+                text.textContent = caption!;
+                figcaption.appendChild(text);
+              }
+              if (hasTests) {
+                const badge = createComponent(VerifiedBadgeComponent, { environmentInjector: this.injector });
+                badge.instance.tests = tests!;
+                badge.changeDetectorRef.detectChanges();
+                this.verifiedComponentRefs.push(badge);
+                figcaption.appendChild(badge.location.nativeElement);
+              }
+              figure.appendChild(figcaption);
+            }
+
+            if (!hasCaption || !hasTests) {
+              const missing = [!hasCaption ? 'a caption' : null, !hasTests ? 'tests' : null].filter(Boolean).join(' and ');
+              const warn = document.createElement('div');
+              warn.className = 'mermaid-missing-meta';
+              warn.innerHTML =
+                `<i class="pi pi-exclamation-triangle"></i> This diagram is missing ${missing}. ` +
+                `Add <code>\`\`\`mermaid{caption="…" tests=["Class.MethodAsync"]}</code>.`;
+              figure.appendChild(warn);
+            }
+
+            // Replace comment with the figure
             if (commentNode.parentNode) {
-              commentNode.parentNode.replaceChild(container, commentNode);
+              commentNode.parentNode.replaceChild(figure, commentNode);
             }
 
             // Apply node classes to edges after SVG is in DOM
             if (svgElement) {
               this.mermaidService.applyNodeClassesToEdges(svgElement);
             }
-            
+
             // Add maximize button to the container
             this.mermaidService.addMaximizeButton(container);
             break;
@@ -783,12 +859,15 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
     // Collect all matches up front: exec() while mutating the scanned string
     // advances lastIndex past unseen content and silently skips every other
     // block on pages with multiple diagrams.
+    // A diagram may carry required metadata: ```mermaid{caption="..." tests=[...]}
     this.mermaidBlocks = [];
-    const mermaidRegex = /```mermaid\s*\r?\n([\s\S]*?)```/g;
+    const mermaidRegex = /```mermaid(\{[\s\S]*?\})?\s*\r?\n([\s\S]*?)```/g;
     const mermaidMatches = [...processedContent.matchAll(mermaidRegex)];
     mermaidMatches.forEach((match, mermaidIndex) => {
       const placeholder = `<!--MERMAID_PLACEHOLDER_${mermaidIndex}-->`;
-      this.mermaidBlocks.push({ placeholder, code: match[1] });
+      const meta = match[1] ? this.codeBlockParser.parseFenceMetadata(match[1].slice(1, -1)) : {};
+      const tests = Array.isArray(meta.tests) ? meta.tests : (meta.tests ? [meta.tests] : []);
+      this.mermaidBlocks.push({ placeholder, code: match[2], caption: meta.caption, tests });
       processedContent = processedContent.replace(match[0], placeholder);
     });
     

@@ -35,15 +35,13 @@ lastMaintainedCommit: '01f07906'
 
 The **Dispatcher** is Whizbang's central message router. It provides three distinct dispatch patterns for different messaging scenarios: commands, queries, and events.
 
-```mermaid
+```mermaid{caption="dispatch routing — SendAsync resolves the message type to its receptor, or falls through to the outbox when no local handler exists." tests=["DispatcherTests.Dispatcher_ShouldRouteToCorrectHandlerAsync", "DispatcherTests.Dispatcher_MultipleReceptorsSameMessage_ShouldRouteToAllAsync", "DispatcherOutboxTests.SendAsync_NoLocalHandler_RoutesToOutboxAsync"]}
 flowchart LR
     A[Caller] -->|SendAsync| D{Dispatcher}
     D -->|route by message type| R1[Matched Receptor]
     D -->|no local handler| O[(Outbox)]
     R1 --> RC[IDeliveryReceipt]
 ```
-
-*Figure — dispatch routing: `SendAsync` resolves the message type to its receptor (or falls through to the outbox when no local handler exists).* {verified: DispatcherTests.Dispatcher_ShouldRouteToCorrectHandlerAsync, DispatcherTests.Dispatcher_MultipleReceptorsSameMessage_ShouldRouteToAllAsync, DispatcherOutboxTests.SendAsync_NoLocalHandler_RoutesToOutboxAsync}
 
 ## Quick Reference
 
@@ -139,7 +137,7 @@ Understanding when to use `IEventStore.AppendAsync` versus `IDispatcher.PublishA
 
 **For Events (most common case):**
 
-```csharp{title="Correct Patterns" description="For Events (most common case):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}
+```csharp{title="Correct Patterns" description="For Events (most common case):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"] tests=["DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 // ✅ CORRECT: Just publish - handles perspectives + outbox
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder command,
@@ -156,7 +154,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 **For Commands:**
 
-```csharp{title="Correct Patterns (2)" description="For Commands:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}
+```csharp{title="Correct Patterns (2)" description="For Commands:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"] tests=["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"]}
 // ✅ CORRECT: Send command with delivery tracking
 await _dispatcher.SendAsync(new ProcessPayment(orderId, amount));
 ```
@@ -194,6 +192,8 @@ await _dispatcher.PublishAsync(@event);
 
 ### When to Use Each Pattern
 
+{verified: DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync, DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync, DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync}
+
 | Scenario | Pattern | Reason |
 |----------|---------|--------|
 | **Create order (synchronous response needed)** | `LocalInvokeAsync` | Need typed `OrderCreated` response immediately |
@@ -206,7 +206,7 @@ await _dispatcher.PublishAsync(@event);
 
 ### Pattern Comparison
 
-```csharp{title="Pattern Comparison" description="Pattern Comparison" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern", "Comparison"]}
+```csharp{title="Pattern Comparison" description="Pattern Comparison" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern", "Comparison"] tests=["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync", "DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync", "DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 // Scenario: Create an order
 
 // Option 1: SendAsync (async semantics, delivery tracking)
@@ -270,7 +270,7 @@ var options = new DispatchOptions()
 
 Wait for all perspectives to finish processing cascaded events before returning:
 
-```csharp{title="Perspective Synchronization" description="Wait for all perspectives to finish processing cascaded events before returning:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"]}
+```csharp{title="Perspective Synchronization" description="Wait for all perspectives to finish processing cascaded events before returning:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"] tests=["DispatchOptionsTests.Default_WaitForPerspectives_IsFalseAsync", "DispatcherLocalInvokeAndSyncTests.LocalInvokeAndSyncAsync_MultipleEventsWaitsOnceAsync"]}
 // Wait with default timeout (30 seconds)
 var options = new DispatchOptions().WithPerspectiveWait();
 var result = await dispatcher.LocalInvokeAsync<OrderCreated>(
@@ -295,7 +295,7 @@ var options = new DispatchOptions().WithPerspectiveWait(TimeSpan.FromMinutes(2))
 
 **Alternative API**: Use `LocalInvokeAndSyncAsync` for built-in perspective synchronization without explicit options:
 
-```csharp{title="Perspective Synchronization (2)" description="Alternative API: Use LocalInvokeAndSyncAsync for built-in perspective synchronization without explicit options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"]}
+```csharp{title="Perspective Synchronization (2)" description="Alternative API: Use LocalInvokeAndSyncAsync for built-in perspective synchronization without explicit options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"] tests=["DispatcherLocalInvokeAndSyncTests.LocalInvokeAndSyncAsync_NewOverload_ReturnsValueTaskAsync", "DispatcherLocalInvokeAndSyncTests.LocalInvokeAndSyncAsync_MultipleEventsWaitsOnceAsync"]}
 // Equivalent to LocalInvokeAsync with DispatchOptions.WithPerspectiveWait()
 var result = await dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderCreated>(
     command,
@@ -316,7 +316,7 @@ See [LocalInvokeAndSyncAsync](#localinvokeandsyncasync---invoke-with-perspective
 
 ### Example: Timeout Handling
 
-```csharp{title="Example: Timeout Handling" description="Example: Timeout Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "Timeout"]}
+```csharp{title="Example: Timeout Handling" description="Example: Timeout Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "Timeout"] tests=["DispatchOptionsTests.WithTimeout_SetsTimeout_ReturnsSelfAsync", "DispatchOptionsTests.WithTimeout_NegativeValue_ThrowsArgumentOutOfRangeExceptionAsync"]}
 try {
     var options = new DispatchOptions()
         .WithTimeout(TimeSpan.FromSeconds(5))
@@ -365,6 +365,8 @@ Envelope creation is internal to the dispatcher — application code never const
 ## Integration with Patterns
 
 ### Outbox Pattern
+
+{verified: DispatcherOutboxTests.SendAsync_NoLocalHandler_RoutesToOutboxAsync, DispatcherOutboxTests.SendManyAsync_QueuesAllMessagesBeforeFlushAsync}
 
 `SendAsync` and `PublishAsync` integrate with the Outbox pattern automatically: messages destined for the transport are serialized into `wh_outbox` in the same batch as the rest of the dispatch's work, then published by background workers.
 
@@ -435,6 +437,8 @@ public class OrderEndpointsTests {
 
 ### Properties
 
+{verified: DispatchOptionsTests.Timeout_PropertySetter_WorksAsync, DispatchOptionsTests.CancellationToken_PropertySetter_WorksAsync}
+
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `CancellationToken` | `CancellationToken` | `CancellationToken.None` | Token to cancel the dispatch operation. Throws `OperationCanceledException` when cancelled. |
@@ -468,6 +472,8 @@ var options = new DispatchOptions().WithPerspectiveWait(TimeSpan.FromMinutes(2))
 ```
 
 ### Perspective Wait
+
+{verified: DispatchOptionsTests.Default_WaitForPerspectives_IsFalseAsync}
 
 Use `WithPerspectiveWait()` for RPC-style calls where you need all perspectives to have processed cascaded events before the response is returned to the caller:
 

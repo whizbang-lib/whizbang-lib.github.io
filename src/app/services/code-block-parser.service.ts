@@ -27,6 +27,9 @@ export class CodeBlockParser {
 
     while ((match = enhancedCodeBlockRegex.exec(content)) !== null) {
       const language = match[1];
+      // Mermaid diagrams (even with {caption/tests} metadata) are rendered
+      // separately by the markdown page — never as code blocks.
+      if (language === 'mermaid') continue;
       const metadataString = match[2];
       const code = match[3].trim();
       const placeholder = `[CODE_BLOCK_${blockIndex}]`;
@@ -125,6 +128,11 @@ export class CodeBlockParser {
     return this.parseAllCodeBlocks(content);
   }
   
+  /** Parse a fence metadata string (`key="v" tests=[...]`). Reused for ```mermaid{...}. */
+  parseFenceMetadata(metadataString: string): any {
+    return this.parseMetadata(metadataString);
+  }
+
   private parseMetadata(metadataString: string): any {
     const metadata: any = {};
 
