@@ -9,7 +9,7 @@ tags: gdpr, crypto-shredding, data-protection, right-to-erasure, subject-key, en
 
 An event-sourced log is **append-only and immutable** — which collides head-on with a legal *right to erasure*. You cannot honour "delete this person's data" by deleting the events: the log stops replaying, and the bytes survive anyway in WAL, PITR backups, and read replicas. The industry-universal answer is **crypto-shredding**: encrypt each subject's sensitive fields with a *per-subject key*, keep the key *outside* the event store, and **destroy the key** to erase. The ciphertext stays in the log (replay still works structurally), but it can never be read again — the data is gone without ever mutating a single event.
 
-Whizbang generalises this one step further, at the user's direction: the mechanism is not PII-specific. A **subject** is any protected entity (a person, a company, an organisation, or a class not yet imagined); **protected data** is any sensitive classification (PII, health, financial, or a custom class you define). The feature is **subject-scoped cryptographic data protection**; GDPR / personal-data is its flagship preset. Crypto-shredding is the engine underneath.
+Whizbang generalizes this one step further, at the user's direction: the mechanism is not PII-specific. A **subject** is any protected entity (a person, a company, an organization, or a class not yet imagined); **protected data** is any sensitive classification (PII, health, financial, or a custom class you define). The feature is **subject-scoped cryptographic data protection**; GDPR / personal-data is its flagship preset. Crypto-shredding is the engine underneath.
 
 :::planned
 G1 is a proposed capability (unreleased, the final phase of the ephemeral/retention initiative). It is **orthogonal** to the Sourced ↔ Ephemeral axis — you crypto-shred *durable Sourced* data you must keep-but-forget, whereas [Ephemeral Events](ephemeral-events) *self-destruct* transient data by physical delete. G1 reuses foundations already built: the [Temporal Engine](temporal-engine) (scheduled erasure), the destruction reaper and retention limits from [Destruction Hooks & TTL](destruction-hooks-ttl), the system signal bus (cache invalidation), `PerspectiveScope` (subject-id propagation), the rebuild infrastructure (rebuild-on-erasure), and the [Type-Definition Fingerprint](type-definition-fingerprint) (locating protected-bearing events). The *mechanism* — key destruction on durable data — stays distinct from ephemeral self-destruct.
@@ -20,7 +20,7 @@ G1 is a proposed capability (unreleased, the final phase of the ephemeral/retent
 Physical deletion of events is the wrong tool for privacy, for three independent reasons:
 
 - **It breaks replay.** Deleting a subject's events from a stream that a projection rebuilds from silently corrupts that projection — the exact hazard every mature event store warns about. Crypto-shred leaves the event *structurally* intact; only the protected fields read back null.
-- **It doesn't even erase.** WAL, point-in-time-recovery backups, and streaming replicas all retain deleted rows for their retention windows. "Immutable store + delete" is, as EventStoreDB's docs put it, *fire and water*. Destroying a key held in a separate store erases everywhere the ciphertext ever travelled at once — events, projections rebuilt from them, snapshots, backups.
+- **It doesn't even erase.** WAL, point-in-time-recovery backups, and streaming replicas all retain deleted rows for their retention windows. "Immutable store + delete" is, as EventStoreDB's docs put it, *fire and water*. Destroying a key held in a separate store erases everywhere the ciphertext ever traveled at once — events, projections rebuilt from them, snapshots, backups.
 - **It's coarse.** A subject's data is usually a few fields inside events that also carry non-subject facts. You want to forget the *person*, not void the *order*. Field-level encryption keyed by subject erases exactly the subject's slice.
 
 This is the settled industry pattern (Axon's Data Protection Module, RailsEventStore, the Confluent/Kafka guidance): **crypto-shred + a separate key store**, with queryability preserved by decrypting into read models and rebuilding-then-redacting on erasure.
@@ -79,9 +79,9 @@ public interface ISubjectKeyStore {
 Protection is a **JSON-pipeline concern**, not a call-site concern — a `[Protected]`-aware converter encrypts on the way into `wh_event_store` and decrypts on the way out, so application code never sees ciphertext:
 
 - **Write:** on serialize, each `[Protected]` field is encrypted with the subject's key (fetched via `GetOrCreateAsync`, cached). The field lands in the event body as ciphertext + a small envelope (key id, algorithm, nonce). A non-protected field is written as-is.
-- **Read:** on deserialize, each `[Protected]` field is decrypted with the subject's key. If the key is **gone** (subject erased), the field reads back as a **redacted tombstone** — `null`, or a typed "[redacted]" marker — *not* an exception. The event still materialises; only the forgotten fields are blank.
+- **Read:** on deserialize, each `[Protected]` field is decrypted with the subject's key. If the key is **gone** (subject erased), the field reads back as a **redacted tombstone** — `null`, or a typed "[redacted]" marker — *not* an exception. The event still materializes; only the forgotten fields are blank.
 
-That graceful missing-key behaviour is what makes rebuild-on-erasure correct-by-construction (below): a projection re-applying a post-erasure event naturally writes redacted values because the decrypt path handed it nulls.
+That graceful missing-key behavior is what makes rebuild-on-erasure correct-by-construction (below): a projection re-applying a post-erasure event naturally writes redacted values because the decrypt path handed it nulls.
 
 ## Finding a subject's data — subject-id in scope
 
@@ -126,7 +126,7 @@ G1 is *"work in GDPR now since it shares code paths, but it's a separate mechani
 | Shared with the ephemeral/retention foundation | Distinct to G1 |
 |---|---|
 | Temporal engine (scheduled erasure / retention sweeps) | Per-subject key store + envelope encryption |
-| Destruction retention limits (defence-in-depth) | `[DataSubject]` / `[Protected]` + generated crypto glue |
+| Destruction retention limits (defense-in-depth) | `[DataSubject]` / `[Protected]` + generated crypto glue |
 | System signal bus (cache invalidation) | Rebuild-**redact**-on-erasure cascade |
 | `PerspectiveScope` (subject-id propagation) | Subject registry (`wh_subjects`) + audit-of-erasure |
 | Rebuild infrastructure (rebuild-on-erasure) | Key destruction as the erasure act (vs physical delete) |
@@ -134,10 +134,10 @@ G1 is *"work in GDPR now since it shares code paths, but it's a separate mechani
 ## Hard problems, and how G1 answers them
 
 - **Derived data escapes shredding** (projections/snapshots that cached decrypted PII). → **Rebuild-on-erasure** re-derives them after the key is destroyed, so none can retain plaintext. Snapshots below the erasure point are invalidated and rebuilt from the (now-redacted) events.
-- **Crypto on the critical path** (per-subject encrypt/decrypt latency). → **Key caching** (in-memory, TTL-bounded), invalidated on erasure via the signal bus. Encrypt/decrypt is amortised; the cache is the hot path.
-- **"Encrypted PII is still PII"** (a legal, not technical, position). → Crypto-shred is the *mechanism*; legal sufficiency is the operator's determination. Pair it with **retention limits** (reusing the reaper) as defence-in-depth, and document the stance plainly.
+- **Crypto on the critical path** (per-subject encrypt/decrypt latency). → **Key caching** (in-memory, TTL-bounded), invalidated on erasure via the signal bus. Encrypt/decrypt is amortized; the cache is the hot path.
+- **"Encrypted PII is still PII"** (a legal, not technical, position). → Crypto-shred is the *mechanism*; legal sufficiency is the operator's determination. Pair it with **retention limits** (reusing the reaper) as defense-in-depth, and document the stance plainly.
 - **PII must never be an identifier** (identifiers aren't erasable). → An **analyzer warning** when a `[Protected]` value is used as a stream-id or key.
-- **Computed/aggregated non-PII** derived from PII can't be un-computed. → **Data-minimisation guidance** in the docs; the framework can't retract a number it no longer has the inputs for.
+- **Computed/aggregated non-PII** derived from PII can't be un-computed. → **Data-minimization guidance** in the docs; the framework can't retract a number it no longer has the inputs for.
 
 ## Build increments (docs-first → TDD each)
 
@@ -150,4 +150,4 @@ G1 is *"work in GDPR now since it shares code paths, but it's a separate mechani
 
 ## Relationship to the rest of the initiative
 
-G1 is the last phase because it *composes* everything before it: it forgets **durable** data (so it needs crypto-shred, not the [ephemeral](ephemeral-events) reaper), on a **schedule** (the temporal engine), with **cache coherence** (the signal bus), by **rebuilding** (the rebuild infra) and **redacting** (the generated decrypt path), **locating** subjects via scope and the [fingerprint](type-definition-fingerprint). Archival (A1) and carry-forward compaction (E3) are orthogonal siblings — crypto-shred applies to hot **or** archived data, and an ephemeral subject just deletes. The result is a complete retention story: keep-forever (Sourced), keep-then-summarise (compaction), keep-then-archive (archival), self-destruct (ephemeral), and **keep-but-forget (crypto-shred)**.
+G1 is the last phase because it *composes* everything before it: it forgets **durable** data (so it needs crypto-shred, not the [ephemeral](ephemeral-events) reaper), on a **schedule** (the temporal engine), with **cache coherence** (the signal bus), by **rebuilding** (the rebuild infra) and **redacting** (the generated decrypt path), **locating** subjects via scope and the [fingerprint](type-definition-fingerprint). Archival (A1) and carry-forward compaction (E3) are orthogonal siblings — crypto-shred applies to hot **or** archived data, and an ephemeral subject just deletes. The result is a complete retention story: keep-forever (Sourced), keep-then-summarize (compaction), keep-then-archive (archival), self-destruct (ephemeral), and **keep-but-forget (crypto-shred)**.
