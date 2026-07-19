@@ -52,9 +52,9 @@ export class LayoutComponent implements AfterViewInit, OnDestroy {
     const isDark = this.themeService.isDarkTheme();
     const layers = isDark
       ? [
-          { count: 120, size: 1, color: 'rgba(255,255,255,0.4)' },
-          { count: 60, size: 1.5, color: 'rgba(255,255,255,0.6)' },
-          { count: 25, size: 2.5, color: 'rgba(255,255,255,0.8)' },
+          { count: 120, size: 1, color: 'rgba(148,163,196,0.22)' },
+          { count: 60, size: 1.5, color: 'rgba(148,163,196,0.30)' },
+          { count: 25, size: 2.5, color: 'rgba(148,163,196,0.40)' },
         ]
       : [
           { count: 120, size: 1, color: 'rgba(0,0,0,0.06)' },
