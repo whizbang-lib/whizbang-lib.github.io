@@ -87,8 +87,15 @@ interface CodeBlockOptions {
       <!-- Header with metadata -->
       <div class="code-header" *ngIf="hasHeader()">
         <div class="code-info">
-          <h4 *ngIf="options.title" class="code-title">{{ options.title }}</h4>
-          
+          <div class="code-title-row" *ngIf="options.title || (options.tests && options.tests.length > 0)"
+               style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+            <h4 *ngIf="options.title" class="code-title" style="margin:0;">{{ options.title }}</h4>
+            <wb-verified-badge
+              *ngIf="options.tests && options.tests.length > 0"
+              [tests]="options.tests">
+            </wb-verified-badge>
+          </div>
+
           <div class="metadata-row" *ngIf="hasMetadata()">
             <span *ngIf="options.filename" class="filename">
               <i class="pi pi-file"></i>
@@ -114,12 +121,6 @@ interface CodeBlockOptions {
               class="difficulty-chip"
               [attr.data-difficulty]="options.difficulty?.toLowerCase()">
             </p-chip>
-
-            <!-- Verified-by-tests badge: the specific test(s) that prove this example -->
-            <wb-verified-badge
-              *ngIf="options.tests && options.tests.length > 0"
-              [tests]="options.tests">
-            </wb-verified-badge>
 
             <!-- Tags moved inline to save vertical space -->
             <p-chip 
@@ -729,7 +730,7 @@ export class EnhancedCodeBlockV2Component implements OnInit, OnDestroy, OnChange
   }
   
   hasMetadata(): boolean {
-    return !!(this.options.filename || this.options.language || this.options.framework || this.options.difficulty || (this.options.tags && this.options.tags.length > 0) || (this.options.tests && this.options.tests.length > 0));
+    return !!(this.options.filename || this.options.language || this.options.framework || this.options.difficulty || (this.options.tags && this.options.tags.length > 0));
   }
   
   hasAdditionalInfo(): boolean {
