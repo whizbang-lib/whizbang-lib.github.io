@@ -7,7 +7,7 @@ tags: state-based, ephemeral, compacted, compaction, carry-forward, snapshot-as-
 
 # Carry-forward / Tier-2 (Compaction)
 
-[Archival & Compaction](archival-compaction) (A1) closed the books on **durable Sourced** streams. **E3 is its state-based twin.** Where A1's carry-forward is a durable Sourced event, E3 folds a state-based stream's detail into an authoritative **`Compacted`** carry-forward — the designated perspective's model, frozen as the new origin — and drops the folded detail. The `Compacted` head is the source of truth from there on; the compacted stream replays only back to it. This is the principled form of "snapshot-as-authority": the surviving state is a **legitimate new origin**, not a severed cache.
+**Archival & Compaction** (A1 — its own proposal) closed the books on **durable Sourced** streams. **E3 is its state-based twin.** Where A1's carry-forward is a durable Sourced event, E3 folds a state-based stream's detail into an authoritative **`Compacted`** carry-forward — the designated perspective's model, frozen as the new origin — and drops the folded detail. The `Compacted` head is the source of truth from there on; the compacted stream replays only back to it. This is the principled form of "snapshot-as-authority": the surviving state is a **legitimate new origin**, not a severed cache.
 
 E3 implements the one disposition E2 declared but deferred: **`Disposition.Compact`**.
 
