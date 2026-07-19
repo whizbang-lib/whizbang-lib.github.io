@@ -24,7 +24,6 @@ import { MessageService } from 'primeng/api';
       left: auto !important;
       right: auto !important;
       margin-bottom: 12px !important;
-      opacity: 1 !important;
     }
 
     /* Global toast styling - enhanced glassmorphism for all toast types */
