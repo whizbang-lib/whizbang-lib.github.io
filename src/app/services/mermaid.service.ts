@@ -272,7 +272,7 @@ export class MermaidService {
           padding: 10,  // Reduced from 80
           diagramPadding: 10,  // Reduced from 80
           nodeSpacing: 100,  // Horizontal spacing between nodes in LR graphs (default - can be overridden per-diagram)
-          rankSpacing: 300,  // Spacing between ranks/levels within the flowchart
+          rankSpacing: 60,  // Spacing between ranks/levels (was 300 — inflated small flowcharts to thousands of px tall)
           curve: 'basis',  // Use basis curve for smoother routing around obstacles
           subGraphTitleMargin: {
             bottom: 20  // Space between subgraph title and content
@@ -287,7 +287,7 @@ export class MermaidService {
         arrowMarkerAbsolute: true,
         themeVariables: {
           fontFamily: 'inherit',
-          fontSize: '32px',  // Base theme font size
+          fontSize: '16px',  // Base theme font size (was 32px — oversized every node)
           // Text color variables that control different text elements
           primaryTextColor: isDark ? '#ffffff' : '#000000',
           labelTextColor: isDark ? '#ffffff' : '#000000', 
