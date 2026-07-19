@@ -215,7 +215,6 @@ import { takeUntil } from 'rxjs/operators';
       left: auto !important;
       right: auto !important;
       margin-bottom: 12px !important;
-      opacity: 1 !important;
     }
 
     :host ::ng-deep .mobile-toast-fix {
@@ -340,13 +339,11 @@ export class AIEnhancementNotificationComponent implements OnInit, OnDestroy {
 
     switch (progress.state) {
       case AIEnhancementState.CHECKING_CAPABILITY:
-        severity = 'info';
-        summary = 'Checking device capabilities...';
-        detail = 'Determining if AI enhancement is supported';
-        life = 0;
-        closable = false;
+        // Transient state — don't flash a toast for it. On a fast (cached) load
+        // it would appear and vanish a fraction of a second later when READY
+        // replaces it, which reads as a glitch. Only show loading/terminal states.
         this.showProgress = false;
-        break;
+        return;
       
       case AIEnhancementState.LOADING:
         severity = 'info';
