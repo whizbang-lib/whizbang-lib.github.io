@@ -95,49 +95,49 @@ interface ClassRow {
       .vsum-toggle {
         display: inline-flex; align-items: center; gap: 0.5rem;
         padding: 0.4rem 0.85rem; border-radius: 0.5rem; cursor: pointer;
-        border: 1px solid var(--surface-border); background: var(--surface-card);
-        color: var(--text-color); font-size: 0.9rem; font-weight: 600;
+        border: 1px solid var(--p-content-border-color, #e2e8f0); background: var(--p-content-background, #ffffff);
+        color: var(--p-text-color, inherit); font-size: 0.9rem; font-weight: 600;
         transition: box-shadow 0.15s ease, border-color 0.15s ease;
       }
-      .vsum-toggle:hover { border-color: var(--primary-color); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color) 15%, transparent); }
-      .vsum-toggle > .pi-verified { color: var(--primary-color); }
+      .vsum-toggle:hover { border-color: var(--p-primary-color, #10b981); box-shadow: 0 0 0 2px color-mix(in srgb, var(--p-primary-color, #10b981) 15%, transparent); }
+      .vsum-toggle > .pi-verified { color: var(--p-primary-color, #10b981); }
       .vsum-toggle.has-fail > .pi-verified { color: var(--red-500, #ef4444); }
       .vsum-count { padding: 0.05rem 0.5rem; border-radius: 1rem; font-size: 0.78rem; }
       .vsum-count.pass { background: color-mix(in srgb, var(--green-500, #22c55e) 15%, transparent); color: var(--green-600, #16a34a); }
       .vsum-count.fail { background: color-mix(in srgb, var(--red-500, #ef4444) 15%, transparent); color: var(--red-600, #dc2626); }
-      .vsum-count.muted { background: var(--surface-ground); color: var(--text-color-secondary); }
+      .vsum-count.muted { background: color-mix(in srgb, var(--p-text-color, #808080) 7%, transparent); color: var(--p-text-muted-color, #71717a); }
 
       .vsum-body {
         margin-top: 0.5rem; padding: 0.75rem 1rem;
-        border: 1px solid var(--surface-border); border-left: 4px solid var(--primary-color);
-        border-radius: 0.5rem; background: var(--surface-card); font-size: 0.88rem;
+        border: 1px solid var(--p-content-border-color, #e2e8f0); border-left: 4px solid var(--p-primary-color, #10b981);
+        border-radius: 0.5rem; background: var(--p-content-background, #ffffff); font-size: 0.88rem;
       }
-      .vsum-run { color: var(--text-color-secondary); font-size: 0.8rem; margin-bottom: 0.5rem; }
+      .vsum-run { color: var(--p-text-muted-color, #71717a); font-size: 0.8rem; margin-bottom: 0.5rem; }
       .vsum-stale { color: var(--orange-500, #f59e0b); margin-left: 0.35rem; }
 
       .vsum-classes, .vsum-methods { list-style: none; margin: 0; padding: 0; }
       .vsum-classes > li { padding: 0.15rem 0; border-radius: 0.35rem; }
-      .vsum-classes > li.focused { background: color-mix(in srgb, var(--primary-color) 12%, transparent); }
+      .vsum-classes > li.focused { background: color-mix(in srgb, var(--p-primary-color, #10b981) 12%, transparent); }
       .vsum-class-head { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.15rem 0.25rem; }
-      .vsum-caret { font-size: 0.7rem; color: var(--text-color-secondary); width: 0.8rem; }
+      .vsum-caret { font-size: 0.7rem; color: var(--p-text-muted-color, #71717a); width: 0.8rem; }
       .vsum-badge {
         display: inline-flex; align-items: center; gap: 0.25rem; min-width: 3.4rem; justify-content: center;
         padding: 0.05rem 0.5rem; border-radius: 1rem; font-size: 0.76rem;
-        background: var(--surface-ground); color: var(--text-color-secondary);
+        background: color-mix(in srgb, var(--p-text-color, #808080) 7%, transparent); color: var(--p-text-muted-color, #71717a);
       }
       .vsum-badge.pass { background: color-mix(in srgb, var(--green-500, #22c55e) 15%, transparent); color: var(--green-600, #16a34a); }
       .vsum-badge.fail { background: color-mix(in srgb, var(--red-500, #ef4444) 15%, transparent); color: var(--red-600, #dc2626); }
-      .vsum-class-name { font-family: var(--font-family-mono, monospace); color: var(--text-color); }
+      .vsum-class-name { font-family: var(--font-family-mono, monospace); color: var(--p-text-color, inherit); }
 
       .vsum-methods { margin: 0.1rem 0 0.35rem 2rem; }
       .vsum-methods > li { display: flex; align-items: center; gap: 0.45rem; padding: 0.08rem 0.35rem; border-radius: 0.3rem; font-size: 0.8rem; }
       .vsum-methods > li.pass > .pi { color: var(--green-600, #16a34a); }
       .vsum-methods > li.fail > .pi { color: var(--red-600, #dc2626); }
-      .vsum-methods > li.skip > .pi { color: var(--text-color-secondary); }
-      .vsum-methods > li.focused { background: color-mix(in srgb, var(--primary-color) 18%, transparent); font-weight: 600; }
-      .vsum-method-name { font-family: var(--font-family-mono, monospace); color: var(--text-color); }
-      .vsum-method-dur { color: var(--text-color-secondary); font-size: 0.72rem; margin-left: auto; }
-      .vsum-empty { color: var(--text-color-secondary); font-style: italic; padding-left: 0.35rem; }
+      .vsum-methods > li.skip > .pi { color: var(--p-text-muted-color, #71717a); }
+      .vsum-methods > li.focused { background: color-mix(in srgb, var(--p-primary-color, #10b981) 18%, transparent); font-weight: 600; }
+      .vsum-method-name { font-family: var(--font-family-mono, monospace); color: var(--p-text-color, inherit); }
+      .vsum-method-dur { color: var(--p-text-muted-color, #71717a); font-size: 0.72rem; margin-left: auto; }
+      .vsum-empty { color: var(--p-text-muted-color, #71717a); font-style: italic; padding-left: 0.35rem; }
     `,
   ],
 })
