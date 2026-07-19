@@ -57,9 +57,9 @@ export class LayoutComponent implements AfterViewInit, OnDestroy {
           { count: 25, size: 2.5, color: 'rgba(148,163,196,0.40)' },
         ]
       : [
-          { count: 120, size: 1, color: 'rgba(0,0,0,0.06)' },
-          { count: 60, size: 1.5, color: 'rgba(0,0,0,0.1)' },
-          { count: 25, size: 2.5, color: 'rgba(0,0,0,0.15)' },
+          { count: 120, size: 1, color: 'rgba(71,85,120,0.22)' },
+          { count: 60, size: 1.5, color: 'rgba(71,85,120,0.32)' },
+          { count: 25, size: 2.5, color: 'rgba(71,85,120,0.45)' },
         ];
 
     layers.forEach((layer) => {

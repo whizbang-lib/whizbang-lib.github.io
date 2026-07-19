@@ -202,7 +202,7 @@ dotnet whiz replay OrderSummary`;
     const isDark = this.themeService.isDarkTheme();
     const colors = isDark
       ? ['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.65)', 'rgba(255,255,255,0.85)']
-      : ['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.12)', 'rgba(0,0,0,0.18)'];
+      : ['rgba(71,85,120,0.28)', 'rgba(71,85,120,0.42)', 'rgba(71,85,120,0.58)'];
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
