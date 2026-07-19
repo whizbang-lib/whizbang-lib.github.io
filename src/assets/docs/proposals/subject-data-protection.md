@@ -54,9 +54,19 @@ No `[property: …]` specifier is needed. These attributes are declared `Attribu
 
 - **`[DataSubjectId]`** marks the member (record parameter or property) that identifies the subject the event's protected data belongs to. It is the erasure key: "find everything scoped to *this* subject." One event may reference more than one subject (e.g. a transfer between two parties) — multiple `[DataSubjectId]` members are allowed, and the event is tagged with each.
 - **`[DataSubject]`** (type-level) marks a *type* as representing a subject entity — used for the subject registry and analyzer guidance.
-- **`[Protected(classification)]`** marks a field whose value must be encrypted at rest. Variants mirror Axon's module: `Protected` (a scalar), `DeepProtected` (recurse into a nested object graph), `SerializedProtected` (encrypt the serialized blob of a complex value). `DataClass` is an open classification (`PersonalData`, `Health`, `Financial`, or your own). It is more than an audit label: it is the **unit of the encryption key** — a field is encrypted under its subject's *(subject, class)* key (below), so a class can be erased or retained independently of the subject's other classes.
+- **`[Protected(classification)]`** marks a field whose value must be encrypted at rest. Variants mirror Axon's module: `Protected` (a scalar), `DeepProtected` (recurse into a nested object graph), `SerializedProtected` (encrypt the serialized blob of a complex value). `DataClass` is an **open** classification with turnkey members — `PersonalData`, `Health`, `Financial`, and a catch-all **`Other`** — plus any you define. It is more than an audit label: it is (part of) the **unit of the encryption key** — a field is encrypted under its subject's *(subject, class)* key (below), so a class can be erased or retained independently of the subject's other classes. `Other` is the escape hatch when no named class fits and you don't want to mint a custom one; pair it with a `Group` (next) to keep the arbitrary buckets it collects independently erasable.
+- **`[ProtectionGroup]` — the optional third key axis.** It sub-partitions the key **within a class**, for data that shares a subject *and* class but must crypto-delete independently — the per-purpose / per-consent / per-relationship case (GDPR is fundamentally *purpose-of-processing* based). Two forms: a **value-sourced** marker on a member whose runtime value is the discriminator (`[ProtectionGroup] Guid ContractId` → key `(subject, PersonalData, contractId)`, so one contract is forgotten while the others are retained), and a **static literal** on the field for fixed compile-time groupings (`[Protected(DataClass.PersonalData, Group = "employment")]`). Precedence: a field's static `Group =` wins; else the event's `[ProtectionGroup]` value; else none — and with none, the key is simply `(subject, class)`, the common turnkey path. Keep the group a **bounded** discriminator (purpose, contract, tenant), *not* a per-record id: high cardinality explodes the key store and defeats key-caching (per-record crypto-delete is possible, just pay for it deliberately).
 
-The generator emits, per protected-bearing type, the encrypt-on-serialize / decrypt-on-deserialize glue — no reflection, matching how every other Whizbang metadata facility is generated.
+The generator emits, per protected-bearing type, the encrypt-on-serialize / decrypt-on-deserialize glue — no reflection, matching how every other Whizbang metadata facility is generated. A second, compact example — the same subject and class, but each contract independently erasable:
+
+```csharp{title="Sub-partitioning a key within a class" description="[ProtectionGroup] gives each contract's PII its own (subject, class, group) key — erase one, keep the rest" category="Core Concepts" difficulty="ADVANCED" tags=["gdpr","crypto-shred","data-protection"] framework="NET10"}
+public sealed record ContractSigned(
+    [DataSubjectId]   Guid PersonId,                   // the subject
+    [ProtectionGroup] Guid ContractId,                 // sub-partitions the key WITHIN the class
+    [Protected(DataClass.PersonalData)] string SignatureRef
+) : IEvent;
+// key = (PersonId, PersonalData, ContractId) → forget one contract without touching the others.
+```
 
 ## Where the key lives — `ISubjectKeyStore` + `wh_subjects`
 
@@ -64,34 +74,37 @@ The whole guarantee rests on the key being held **outside** the event store, so 
 
 ```csharp{title="The subject key store abstraction" description="Independent per-(subject, class) keys held outside the event store; DB-table default, pluggable to KMS/Vault" category="Core Concepts" difficulty="ADVANCED" tags=["gdpr","key-store","crypto-shred"] framework="NET10"}
 public interface ISubjectKeyStore {
-  /// The key for this subject + data class, generating + persisting one on the first protected write
-  /// of that class. Keys are INDEPENDENT per (subject, class) — never derived from a shared master —
-  /// so destroying one class's key can never leave another re-derivable. Cached.
-  ValueTask<SubjectKey> GetOrCreateAsync(SubjectId subject, DataClass dataClass, CancellationToken ct = default);
+  /// The key for this (subject, class, group), generating + persisting one on the first protected write.
+  /// group defaults to null → the class's default (no-group) key. Keys are INDEPENDENT per
+  /// (subject, class, group) — never derived from a shared master — so destroying one can never leave
+  /// another re-derivable. Cached.
+  ValueTask<SubjectKey> GetOrCreateAsync(SubjectId subject, DataClass dataClass, string? group = null, CancellationToken ct = default);
 
-  /// The key if it still exists; null once that (subject, class) has been erased (→ redacted read).
-  ValueTask<SubjectKey?> TryGetAsync(SubjectId subject, DataClass dataClass, CancellationToken ct = default);
+  /// The key if it still exists; null once that (subject, class, group) has been erased (→ redacted read).
+  ValueTask<SubjectKey?> TryGetAsync(SubjectId subject, DataClass dataClass, string? group = null, CancellationToken ct = default);
 
-  /// Class-scoped crypto-shred: irreversibly destroy ONE (subject, class) key. Other classes for the
-  /// same subject stay readable — e.g. erase PersonalData while retaining Financial for tax-retention law.
+  /// Group-scoped crypto-shred: destroy ONE (subject, class, group) key — e.g. forget one contract's PII.
+  ValueTask DestroyGroupAsync(SubjectId subject, DataClass dataClass, string group, CancellationToken ct = default);
+
+  /// Class-scoped: destroy every group key under (subject, class) — e.g. all PersonalData, keep Financial.
   ValueTask DestroyAsync(SubjectId subject, DataClass dataClass, CancellationToken ct = default);
 
-  /// Full erasure: destroy EVERY class key for the subject (forget them entirely).
+  /// Full erasure: destroy EVERY key for the subject (all classes, all groups) — forget them entirely.
   ValueTask DestroyAllAsync(SubjectId subject, CancellationToken ct = default);
 }
 ```
 
-- The key identity is the **(subject, `DataClass`) composite**, not the subject alone. A **`wh_subjects`** table holds one row per pair — `(subject_id, data_class, key, created_at, erased_at)`, PK `(subject_id, data_class)`. `key` is an **independent** data-encryption key (DEK) for that subject *and* class; in production it is wrapped by a key-encryption-key in a KMS/Vault (envelope encryption).
-- **Why composite:** it makes `DataClass` the *unit of erasure and retention*, not just an audit label. That lets you **erase one class while retaining another under a different legal basis** — destroy a subject's `PersonalData` on an erasure request while keeping their `Financial` records for a 7-year tax/audit retention obligation (GDPR Art. 17(3)(b)). It also lets each class carry its own **retention schedule** and its own **key-management policy** (e.g. `Financial`/`Health` in an HSM-backed KMS, `PersonalData` in the DB-table default), and isolates blast radius — a compromised `Financial` key exposes only financial data.
+- The key identity is the **(subject, `DataClass`, group) composite** — with group optional (defaulting to none, so the everyday key is just `(subject, class)`). A **`wh_subjects`** table holds one row per triple — `(subject_id, data_class, group, key, created_at, erased_at)`, PK `(subject_id, data_class, group)` (group defaults to `''`). `key` is an **independent** data-encryption key (DEK); in production it is wrapped by a key-encryption-key in a KMS/Vault (envelope encryption).
+- **Why the composite:** it makes `DataClass` (and, when needed, the group) the *unit of erasure and retention*, not just an audit label. That lets you **erase one slice while retaining another under a different legal basis** — destroy a subject's `PersonalData` on an erasure request while keeping their `Financial` records for a 7-year tax/audit retention obligation (GDPR Art. 17(3)(b)); or, within `PersonalData`, forget one contract's data while retaining another's. Each slice can also carry its own **retention schedule** and **key-management policy** (e.g. `Financial`/`Health` in an HSM-backed KMS, `PersonalData` in the DB-table default), and blast radius is isolated — a compromised key exposes only its slice.
 - **Default provider = the DB table**; pluggable to HashiCorp Vault, AWS KMS, or Azure Key Vault via `ISubjectKeyStore`. The docs will carry a "move the key store off the DB for production" runbook — a DB-table key store next to the ciphertext is convenient but weaker than a dedicated KMS.
-- **Class-scoped erasure = `DestroyAsync(subject, class)`; full erasure = `DestroyAllAsync(subject)`** (destroy every class key). Both flip `erased_at` and wipe/tombstone the key material. Idempotent.
+- **Erasure hierarchy — subject ⊃ class ⊃ group.** `DestroyGroupAsync` (one group), `DestroyAsync` (a whole class = every group under it), `DestroyAllAsync` (the whole subject). All flip `erased_at` and wipe/tombstone the key material. Idempotent.
 
 ## Encrypt on serialize, decrypt on deserialize
 
 Protection is a **JSON-pipeline concern**, not a call-site concern — a `[Protected]`-aware converter encrypts on the way into `wh_event_store` and decrypts on the way out, so application code never sees ciphertext:
 
-- **Write:** on serialize, each `[Protected]` field is encrypted with its **(subject, class) key** — the class from the field's `[Protected(class)]`, the subject from the event's `[DataSubjectId]`; fetched via `GetOrCreateAsync`, cached. The field lands in the event body as ciphertext + a small envelope (**key id — which resolves the (subject, class)** — algorithm, nonce). A non-protected field is written as-is. A mixed-class event encrypts each field under its own class's key.
-- **Read:** on deserialize, each `[Protected]` field is decrypted with its **(subject, class) key**. If that key is **gone** (that class erased for the subject), the field reads back as a **redacted tombstone** — `null`, or a typed "[redacted]" marker — *not* an exception. Other classes on the same event still decrypt normally. The event always materializes; only the forgotten fields are blank.
+- **Write:** on serialize, each `[Protected]` field is encrypted with its **(subject, class, group) key** — the class from the field's `[Protected(class)]`, the subject from the event's `[DataSubjectId]`, the group from the field's `Group =` or the event's `[ProtectionGroup]` (or none); fetched via `GetOrCreateAsync`, cached. The field lands in the event body as ciphertext + a small envelope (**key id — which resolves the (subject, class, group)** — algorithm, nonce). A non-protected field is written as-is. A single event can carry fields under several different keys.
+- **Read:** on deserialize, each `[Protected]` field is decrypted with its **(subject, class, group) key**. If that key is **gone** (that slice erased for the subject), the field reads back as a **redacted tombstone** — `null`, or a typed "[redacted]" marker — *not* an exception. Fields under other keys on the same event still decrypt normally. The event always materializes; only the forgotten fields are blank.
 
 That graceful missing-key behavior is what makes rebuild-on-erasure correct-by-construction (below): a projection re-applying a post-erasure event naturally writes redacted values because the decrypt path handed it nulls.
 
@@ -109,7 +122,7 @@ The load-bearing decision (resolved): **encrypt in the event store only; keep pr
 
 ```mermaid
 flowchart TD
-  A[Erasure request: subject S<br/>full, OR scoped to a DataClass] --> B[ISubjectKeyStore: destroy the<br/>&#40;S, class&#41; key&#40;s&#41; — irreversibly gone]
+  A[Erasure request: subject S<br/>full, OR scoped to a class or group] --> B[ISubjectKeyStore: destroy the<br/>target key&#40;s&#41; — irreversibly gone]
   B --> C[Signal bus: SubjectErased&#40;S&#41;<br/>every instance drops cached key + decrypted PII]
   B --> D[Find streams tagged with subject-id S]
   D --> E[Rebuild those streams]
@@ -129,7 +142,7 @@ The considered alternative — **encrypt `[Protected]` end-to-end** so ciphertex
 
 ## Erasure triggers
 
-- **On-demand** — an erasure command/request: `EraseSubjectAsync(subjectId)` (full — every class) or `EraseSubjectClassAsync(subjectId, dataClass)` (scoped — one class, others retained), e.g. a data-subject access-request handler.
+- **On-demand** — an erasure command/request at any level of the hierarchy: `EraseSubjectAsync(subjectId)` (full), `EraseSubjectClassAsync(subjectId, dataClass)` (one class), or `EraseSubjectGroupAsync(subjectId, dataClass, group)` (one group — e.g. one contract), e.g. a data-subject access-request handler.
 - **Scheduled / retention-based** — via the [Temporal Engine](temporal-engine): "erase 30 days after account closure" is a one-shot schedule on the subject. Because keys are per class, **each class can carry its own retention clock** — `PersonalData` erased on request, `Financial` on a 7-year schedule — as independent scheduled erasures on the same subject. Recurring retention sweeps reuse the same engine. This is why G1 sequences *after* F2.
 - Either trigger emits a **`SubjectErased` signal** on the system signal bus so every instance invalidates its cached key + any cached decrypted values (crypto on the critical path is mitigated by key caching; the cache must be dropped on erasure — the signal does that).
 
@@ -155,12 +168,12 @@ G1 is *"work in GDPR now since it shares code paths, but it's a separate mechani
 
 ## Build increments (docs-first → TDD each)
 
-1. **Attributes + classification** — `[DataSubject]`, `[DataSubjectId]`, `[Protected(DataClass)]` (+ `DeepProtected`/`SerializedProtected`), `DataClass` open classification. All target `Parameter | Property | Field`, read as the union of parameter- and property-targeted attributes (so `[property: …]` is optional on records and a protected field is never silently missed). Analyzer for "PII as identifier". Metadata-only, inert.
-2. **`wh_subjects` + `ISubjectKeyStore`** — the registry table (PK `(subject_id, data_class)`) + the abstraction, DB-table default provider, envelope-encryption shape. **Independent** DEK per `(subject, class)` (never derived from a shared master, so a class-scoped destroy truly erases). `GetOrCreate`/`TryGet`/`Destroy` (one class) / `DestroyAll` (a subject), key caching keyed by `(subject, class)`.
+1. **Attributes + classification** — `[DataSubject]`, `[DataSubjectId]`, `[Protected(DataClass)]` (+ `DeepProtected`/`SerializedProtected`), `[ProtectionGroup]` + the `Group =` literal, `DataClass` open classification (turnkey `PersonalData`/`Health`/`Financial`/`Other` + custom). All target `Parameter | Property | Field`, read as the union of parameter- and property-targeted attributes (so `[property: …]` is optional on records and a protected field is never silently missed). Analyzer for "PII as identifier". Metadata-only, inert.
+2. **`wh_subjects` + `ISubjectKeyStore`** — the registry table (PK `(subject_id, data_class, group)`) + the abstraction, DB-table default provider, envelope-encryption shape. **Independent** DEK per `(subject, class, group)` (never derived from a shared master, so a scoped destroy truly erases). `GetOrCreate`/`TryGet` (group optional) / `DestroyGroup` / `Destroy` (a class) / `DestroyAll` (a subject); key caching keyed by `(subject, class, group)`.
 3. **Generated crypto glue** — source generator emits encrypt-on-serialize / decrypt-on-deserialize for protected-bearing types; missing-key → redacted tombstone. Wire into the JSON pipeline at the event-store boundary.
 4. **Subject-id tagging + locator** — `[DataSubjectId]` tags scope/metadata at emit; a "streams for subject S" query (scope-based, with the fingerprint body-hash as the fine-grained locator).
-5. **Erasure cascade** — `EraseSubjectAsync` (full) / `EraseSubjectClassAsync` (one class): destroy the target key(s) → `SubjectErased` signal (cache drop) → find streams → **Sourced:** rebuild → redacted re-projection; **Ephemeral:** purge the projection rows (not rebuildable) → audit tombstone. The correctness lock: inject an erasure and assert (a) Sourced projections rebuild-redacted and the log still replays structurally, (b) ephemeral projections are purged, (c) a protected field reads back unreadable after key-destroy in both — including a still-persisted-but-reaper-pending ephemeral event, and (d) **a class-scoped erasure leaves the subject's *other* classes still decryptable** (the tax-retention case).
-6. **Scheduled erasure + retention** — retention-based erasure via the temporal engine, **per (subject, class)** so classes carry independent clocks (PersonalData on request, Financial on a 7-year schedule); recurring retention sweeps; OTel meters (erasure requests full/scoped, keys destroyed by class, streams rebuilt + duration, decrypt-fail/redaction counts, key-cache hit/miss).
+5. **Erasure cascade** — `EraseSubjectAsync` (full) / `EraseSubjectClassAsync` (class) / `EraseSubjectGroupAsync` (group): destroy the target key(s) → `SubjectErased` signal (cache drop) → find streams → **Sourced:** rebuild → redacted re-projection; **Ephemeral:** purge the projection rows (not rebuildable) → audit tombstone. The correctness lock: inject an erasure and assert (a) Sourced projections rebuild-redacted and the log still replays structurally, (b) ephemeral projections are purged, (c) a protected field reads back unreadable after key-destroy in both — including a still-persisted-but-reaper-pending ephemeral event, and (d) **a scoped erasure leaves the subject's *other* slices still decryptable** — the tax-retention case (destroy `PersonalData`, keep `Financial`) *and* the per-group case (forget one contract, keep the rest).
+6. **Scheduled erasure + retention** — retention-based erasure via the temporal engine, **per (subject, class, group)** so each slice carries an independent clock (PersonalData on request, Financial on a 7-year schedule, one contract's data on its own deadline); recurring retention sweeps; OTel meters (erasure requests by level, keys destroyed by class/group, streams rebuilt + duration, decrypt-fail/redaction counts, key-cache hit/miss).
 
 ## Relationship to the rest of the initiative
 
