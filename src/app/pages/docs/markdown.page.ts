@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, ViewChild, ViewContainerRef, EnvironmentInjector, ComponentRef, AfterViewInit, effect, OnDestroy } from '@angular/core';
+import { Component, inject, signal, OnInit, ViewChild, ViewContainerRef, EnvironmentInjector, ComponentRef, AfterViewInit, effect, OnDestroy, createComponent } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MarkdownModule } from 'ngx-markdown';
 import { HttpClient } from '@angular/common/http';
@@ -20,10 +20,14 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { TestReferencesPanelComponent } from '../../components/test-references-panel.component';
+import { VerifiedMarkerProcessor, VerifiedMarker } from '../../services/verified-marker-processor.service';
+import { VerifiedBadgeComponent } from '../../components/verified-badge.component';
+import { VerifiedSummaryComponent } from '../../components/verified-summary.component';
+import { VerifiedModalComponent } from '../../components/verified-modal.component';
 
 @Component({
   standalone: true,
-  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule, BreadcrumbComponent, ToastModule, TestReferencesPanelComponent],
+  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule, BreadcrumbComponent, ToastModule, TestReferencesPanelComponent, VerifiedSummaryComponent, VerifiedModalComponent],
   providers: [MessageService],
   template: `
     <div>
@@ -38,7 +42,10 @@ import { TestReferencesPanelComponent } from '../../components/test-references-p
       <div [style.visibility]="isContentReady() ? 'visible' : 'hidden'">
         <!-- Breadcrumb Navigation -->
         <wb-breadcrumb [items]="breadcrumbs()"></wb-breadcrumb>
-        
+
+        <!-- Prominent, collapsible per-method "Verified by tests" summary -->
+        <wb-verified-summary [testReferences]="testReferences()"></wb-verified-summary>
+
         <markdown [data]="processedContent()"></markdown>
         
         <!-- Dynamic code block components for ALL blocks -->
@@ -56,6 +63,9 @@ import { TestReferencesPanelComponent } from '../../components/test-references-p
         <wb-test-references [testReferences]="testReferences()"></wb-test-references>
       </div>
       
+      <!-- Focused modal opened by inline verified-by-tests badges -->
+      <wb-verified-modal></wb-verified-modal>
+
       <!-- Toast notifications -->
       <p-toast></p-toast>
     </div>
@@ -242,6 +252,7 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
   private structuredDataService = inject(StructuredDataService);
   private headerProcessor = inject(HeaderProcessorService);
   private calloutProcessor = inject(CalloutProcessorService);
+  private verifiedMarkerProcessor = inject(VerifiedMarkerProcessor);
   private versionService = inject(VersionService);
   private messageService = inject(MessageService);
 
@@ -258,6 +269,8 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
 
   private allCodeBlocks: any[] = [];
   private codeComponentRefs: ComponentRef<EnhancedCodeBlockV2Component>[] = [];
+  private verifiedMarkers: VerifiedMarker[] = [];
+  private verifiedComponentRefs: ComponentRef<VerifiedBadgeComponent>[] = [];
   private intersectionObserver?: IntersectionObserver;
   private currentActiveHeader?: string;
 
@@ -461,7 +474,9 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
     // Clear existing components
     this.codeComponentRefs.forEach(ref => ref.destroy());
     this.codeComponentRefs = [];
-    
+    this.verifiedComponentRefs.forEach(ref => ref.destroy());
+    this.verifiedComponentRefs = [];
+
     // Create new components for ALL blocks
     this.allCodeBlocks.forEach(codeBlock => {
       const componentRef = this.codeBlockParser.createCodeBlockComponent(
@@ -510,7 +525,7 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
               // Create a wrapper div for the component
               const wrapper = document.createElement('div');
               wrapper.appendChild(componentRef.location.nativeElement);
-              
+
               // Replace the text node with the component wrapper
               const parentElement = node.parentElement;
               if (parentElement) {
@@ -522,6 +537,9 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         }
       });
 
+      // Mount inline verified-by-tests badges from {verified: ...} tokens.
+      this.mountVerifiedMarkers(markdownElement);
+
       // All placeholders have been processed, render Mermaid diagrams
       setTimeout(async () => {
         await this.renderMermaidBlocks();
@@ -529,6 +547,38 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         // Setup scroll spy after content is ready
         setTimeout(() => this.setupScrollSpy(), 100);
       }, 500);
+    });
+  }
+
+  /**
+   * Swap each `[VERIFIED_n]` placeholder for a mounted wb-verified-badge. The
+   * placeholder may be embedded mid-text (a sentence, a table cell), so we split
+   * the text node around it instead of replacing the whole node. Badges inside
+   * table cells render compact to keep dense tables readable.
+   */
+  private mountVerifiedMarkers(markdownElement: Element) {
+    this.verifiedMarkers.forEach((marker) => {
+      const walker = document.createTreeWalker(markdownElement, NodeFilter.SHOW_TEXT, null);
+      let node: Node | null;
+      while ((node = walker.nextNode())) {
+        const text = node.textContent ?? '';
+        const at = text.indexOf(marker.placeholder);
+        if (at === -1) continue;
+        const parent = node.parentElement;
+        if (!parent) break;
+
+        const ref = createComponent(VerifiedBadgeComponent, { environmentInjector: this.injector });
+        ref.instance.tests = marker.tests;
+        if (parent.closest('td, th')) ref.instance.compact = true;
+        ref.changeDetectorRef.detectChanges();
+        this.verifiedComponentRefs.push(ref);
+
+        // Split: [before][placeholder][after] -> before | <badge> | after
+        const after = (node as Text).splitText(at);
+        after.textContent = (after.textContent ?? '').slice(marker.placeholder.length);
+        parent.insertBefore(ref.location.nativeElement, after);
+        break; // placeholder is unique
+      }
     });
   }
 
@@ -588,8 +638,13 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         const { processedContent: contentWithCallouts, callouts } = this.calloutProcessor.processCallouts(contentWithHeaders);
         this.callouts.set(callouts);
 
+        // Replace {verified: Class.Method} tokens with placeholders (mounted as
+        // wb-verified-badge after render) — works in prose, tables, captions.
+        const { processedContent: contentWithVerified, markers } = this.verifiedMarkerProcessor.process(contentWithCallouts);
+        this.verifiedMarkers = markers;
+
         // Parse the rest of the content (videos, examples)
-        const { processedContent: finalContent, videos, examples } = this.parseCustomComponents(contentWithCallouts);
+        const { processedContent: finalContent, videos, examples } = this.parseCustomComponents(contentWithVerified);
 
         this.processedContent.set(finalContent);
         this.videos.set(videos);
@@ -601,8 +656,9 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         // Generate and add structured data for this page
         this.generateStructuredData(content, finalContent, path);
         
-        // Create code block components after content is processed
-        if (this.allCodeBlocks.length > 0) {
+        // Create code block components (and mount verified-badge markers) after
+        // content is processed.
+        if (this.allCodeBlocks.length > 0 || this.verifiedMarkers.length > 0) {
           setTimeout(() => this.createAllCodeBlocks(), 0);
         } else {
           // No code blocks to process, content is ready immediately
@@ -1059,7 +1115,13 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
     if (this.intersectionObserver) {
       this.intersectionObserver.disconnect();
     }
-    
+
+    // Destroy dynamically mounted components
+    this.codeComponentRefs.forEach(ref => ref.destroy());
+    this.codeComponentRefs = [];
+    this.verifiedComponentRefs.forEach(ref => ref.destroy());
+    this.verifiedComponentRefs = [];
+
     // Clean up SEO metadata when component is destroyed
     this.seoService.clearPageMetadata();
     

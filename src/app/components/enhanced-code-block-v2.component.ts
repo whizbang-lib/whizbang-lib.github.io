@@ -7,6 +7,7 @@ import { PopoverModule } from 'primeng/popover';
 import { DialogModule } from 'primeng/dialog';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { ThemeService } from '../services/theme.service';
+import { VerifiedBadgeComponent } from './verified-badge.component';
 import hljs from 'highlight.js/lib/core';
 import csharp from 'highlight.js/lib/languages/csharp';
 import typescript from 'highlight.js/lib/languages/typescript';
@@ -26,6 +27,8 @@ interface CodeBlockOptions {
   nugetPackages?: string[];
   description?: string;
   tags?: string[];
+  /** `<ShortClassName>.<MethodName>` test keys that verify this example. */
+  tests?: string[];
   category?: string;
   showLineNumbers?: boolean;
   highlightLines?: number[];
@@ -44,7 +47,7 @@ interface CodeBlockOptions {
 
 @Component({
   standalone: true,
-  imports: [CommonModule, ButtonModule, TooltipModule, ChipModule, PopoverModule, DialogModule],
+  imports: [CommonModule, ButtonModule, TooltipModule, ChipModule, PopoverModule, DialogModule, VerifiedBadgeComponent],
   selector: 'wb-enhanced-code-v2',
   changeDetection: ChangeDetectionStrategy.OnPush,
   animations: [
@@ -105,13 +108,19 @@ interface CodeBlockOptions {
               class="framework-chip">
             </p-chip>
             
-            <p-chip 
+            <p-chip
               *ngIf="options.difficulty"
               [label]="options.difficulty"
               class="difficulty-chip"
               [attr.data-difficulty]="options.difficulty?.toLowerCase()">
             </p-chip>
-            
+
+            <!-- Verified-by-tests badge: the specific test(s) that prove this example -->
+            <wb-verified-badge
+              *ngIf="options.tests && options.tests.length > 0"
+              [tests]="options.tests">
+            </wb-verified-badge>
+
             <!-- Tags moved inline to save vertical space -->
             <p-chip 
               *ngFor="let tag of options.tags" 
@@ -720,7 +729,7 @@ export class EnhancedCodeBlockV2Component implements OnInit, OnDestroy, OnChange
   }
   
   hasMetadata(): boolean {
-    return !!(this.options.filename || this.options.language || this.options.framework || this.options.difficulty || (this.options.tags && this.options.tags.length > 0));
+    return !!(this.options.filename || this.options.language || this.options.framework || this.options.difficulty || (this.options.tags && this.options.tags.length > 0) || (this.options.tests && this.options.tests.length > 0));
   }
   
   hasAdditionalInfo(): boolean {
