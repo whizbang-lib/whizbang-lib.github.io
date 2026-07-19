@@ -88,7 +88,7 @@ interface CodeBlockOptions {
       <div class="code-header" *ngIf="hasHeader()">
         <div class="code-info">
           <div class="code-title-row" *ngIf="options.title || (options.tests && options.tests.length > 0)"
-               style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+               style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.5rem;">
             <h4 *ngIf="options.title" class="code-title" style="margin:0;">{{ options.title }}</h4>
             <wb-verified-badge
               *ngIf="options.tests && options.tests.length > 0"
