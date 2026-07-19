@@ -4,15 +4,20 @@ import { TooltipModule } from 'primeng/tooltip';
 import { TestStatusService, TestOutcome } from '../services/test-status.service';
 import { VerifiedModalService } from '../services/verified-modal.service';
 
-type BadgeState = 'pass' | 'fail' | 'partial' | 'unknown' | 'nodata';
+type BadgeState = 'pass' | 'fail' | 'unverified' | 'na';
 
 /**
- * Inline "verified by tests" badge. Given one or more `<ShortClassName>.<Method>`
- * keys, it shows live pass/fail status from the latest library CI run and, on
- * click, asks the page's "Verified by tests" collapsible to open and focus those
- * tests. Used both inside code-block headers and — via {@link VerifiedMarkerProcessor}
- * — inline in prose, table cells, and diagram captions. Degrades to a neutral
- * "verified" chip when no status data is published.
+ * Coverage-map badge. Labels an example / section / diagram / table row with its
+ * verification state, so gaps are visible rather than silent:
+ *  - `pass`       — linked test(s) all found and passing (green)
+ *  - `fail`       — a linked test is failing (red)
+ *  - `unverified` — should have a test but none is linked, or the linked test
+ *                   isn't in the latest run (amber "needs test") — the gap callout
+ *  - `na`         — intentionally not verified, with a reason (muted; e.g. a
+ *                   counter-example, or an API verified elsewhere)
+ * Clicking a badge that has tests opens the focused modal via
+ * {@link VerifiedModalService}. Used in code-block headers and — via
+ * {@link VerifiedMarkerProcessor} — inline in prose, tables, and diagram captions.
  */
 @Component({
   selector: 'wb-verified-badge',
@@ -23,8 +28,10 @@ type BadgeState = 'pass' | 'fail' | 'partial' | 'unknown' | 'nodata';
       type="button"
       class="wb-vbadge"
       [class.pass]="state() === 'pass'"
-      [class.fail]="state() === 'fail' || state() === 'partial'"
-      [class.unknown]="state() === 'unknown' || state() === 'nodata'"
+      [class.fail]="state() === 'fail'"
+      [class.unverified]="state() === 'unverified'"
+      [class.na]="state() === 'na'"
+      [class.actionable]="hasKeys()"
       [pTooltip]="tooltip()"
       tooltipPosition="top"
       [attr.aria-label]="tooltip()"
@@ -41,15 +48,17 @@ type BadgeState = 'pass' | 'fail' | 'partial' | 'unknown' | 'nodata';
         display: inline-flex; align-items: center; gap: 0.25rem;
         padding: 0.05rem 0.45rem; border-radius: 1rem;
         font-size: 0.72rem; line-height: 1.4; font-weight: 600;
-        border: 1px solid transparent; cursor: pointer;
+        border: 1px solid transparent; cursor: default;
         background: color-mix(in srgb, var(--p-text-color, #808080) 7%, transparent); color: var(--p-text-muted-color, #71717a);
         transition: filter 0.15s ease, box-shadow 0.15s ease;
       }
-      .wb-vbadge:hover { filter: brightness(1.05); box-shadow: 0 0 0 2px color-mix(in srgb, var(--p-primary-color, #10b981) 25%, transparent); }
+      .wb-vbadge.actionable { cursor: pointer; }
+      .wb-vbadge.actionable:hover { filter: brightness(1.05); box-shadow: 0 0 0 2px color-mix(in srgb, var(--p-primary-color, #10b981) 25%, transparent); }
       .wb-vbadge .pi { font-size: 0.72rem; }
       .wb-vbadge.pass { background: color-mix(in srgb, var(--green-500, #22c55e) 15%, transparent); color: var(--green-600, #16a34a); }
       .wb-vbadge.fail { background: color-mix(in srgb, var(--red-500, #ef4444) 15%, transparent); color: var(--red-600, #dc2626); }
-      .wb-vbadge.unknown { background: color-mix(in srgb, var(--p-text-color, #808080) 7%, transparent); color: var(--p-text-muted-color, #71717a); }
+      .wb-vbadge.unverified { background: color-mix(in srgb, var(--orange-500, #f59e0b) 18%, transparent); color: var(--orange-700, #b45309); }
+      .wb-vbadge.na { background: color-mix(in srgb, var(--p-text-color, #808080) 8%, transparent); color: var(--p-text-muted-color, #71717a); font-weight: 500; }
       .wb-vbadge-label { white-space: nowrap; }
     `,
   ],
@@ -57,8 +66,8 @@ type BadgeState = 'pass' | 'fail' | 'partial' | 'unknown' | 'nodata';
 export class VerifiedBadgeComponent implements OnInit, OnChanges, OnDestroy {
   /** Test keys `<ShortClassName>.<MethodName>` this element is verified by. */
   @Input() tests: string[] = [];
-  /** Optional visible word override (default "verified"/"failing"). */
-  @Input() word?: string;
+  /** When set (and no tests), marks the element intentionally-not-verified with this reason. */
+  @Input() naReason?: string;
   /** Compact mode drops the word and shows just the icon (+ count when >1). */
   @Input() compact = false;
 
@@ -67,12 +76,13 @@ export class VerifiedBadgeComponent implements OnInit, OnChanges, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private destroyed = false;
 
-  readonly state = signal<BadgeState>('unknown');
+  readonly state = signal<BadgeState>('unverified');
   private readonly outcomes = signal<Map<string, TestOutcome | null>>(new Map());
 
   private keys(): string[] {
     return (this.tests || []).map((t) => t.trim()).filter(Boolean);
   }
+  hasKeys(): boolean { return this.keys().length > 0; }
 
   readonly countLabel = computed(() => {
     const vals = [...this.outcomes().values()];
@@ -83,38 +93,50 @@ export class VerifiedBadgeComponent implements OnInit, OnChanges, OnDestroy {
   });
 
   readonly label = computed(() => {
-    const count = this.countLabel();
-    if (this.compact) return count; // icon-only unless multiple
-    const word = this.word ?? (this.state() === 'fail' ? 'failing' : this.state() === 'partial' ? 'partial' : 'verified');
-    return count ? `${word} ${count}` : word;
+    const s = this.state();
+    if (this.compact) return s === 'pass' ? this.countLabel() : '';
+    switch (s) {
+      case 'pass': { const c = this.countLabel(); return c ? `verified ${c}` : 'verified'; }
+      case 'fail': return 'failing';
+      case 'na': return 'not verified';
+      default: return this.hasKeys() ? 'unverified' : 'needs test';
+    }
   });
 
   readonly icon = computed(() => {
     switch (this.state()) {
       case 'pass': return 'pi-verified';
       case 'fail': return 'pi-times-circle';
-      case 'partial': return 'pi-exclamation-circle';
-      default: return 'pi-circle';
+      case 'na': return 'pi-ban';
+      default: return 'pi-exclamation-triangle';
     }
   });
 
   readonly tooltip = computed(() => {
     const keys = this.keys();
     const map = this.outcomes();
-    if (this.state() === 'nodata') {
-      return `Verified by ${keys.map(shortMethod).join(', ')} (live status unavailable)`;
+    switch (this.state()) {
+      case 'na':
+        return this.naReason ? `Not verified — ${this.naReason}` : 'Intentionally not verified';
+      case 'unverified':
+        return keys.length === 0
+          ? 'No test linked yet — this example should be verified'
+          : `Linked test(s) not in the latest run: ${keys.map(shortMethod).join(', ')}`;
+      case 'fail':
+      case 'pass': {
+        if (keys.length === 1) {
+          const o = map.get(keys[0]);
+          const verb = o ? (o.o === 'passed' ? 'passed' : o.o) : 'no live status';
+          return `${shortMethod(keys[0])} — ${verb}${o ? ` (${o.d}ms)` : ''} · click for detail`;
+        }
+        const vals = [...map.values()];
+        const passed = vals.filter((v) => v && v.o === 'passed').length;
+        const failed = vals.filter((v) => v && v.o === 'failed').length;
+        const parts = [`${passed}/${keys.length} passing`];
+        if (failed) parts.push(`${failed} failing`);
+        return `${parts.join(', ')} — click for detail`;
+      }
     }
-    if (keys.length === 1) {
-      const o = map.get(keys[0]);
-      const verb = o ? (o.o === 'passed' ? 'passed' : o.o) : 'no live status';
-      return `${shortMethod(keys[0])} — ${verb}${o ? ` (${o.d}ms)` : ''}`;
-    }
-    const vals = [...map.values()];
-    const passed = vals.filter((v) => v && v.o === 'passed').length;
-    const failed = vals.filter((v) => v && v.o === 'failed').length;
-    const parts = [`${passed}/${keys.length} passing`];
-    if (failed) parts.push(`${failed} failing`);
-    return `${parts.join(', ')} — click for detail`;
   });
 
   // Load on init (covers dynamic createComponent() mounts where ngOnChanges
@@ -125,17 +147,20 @@ export class VerifiedBadgeComponent implements OnInit, OnChanges, OnDestroy {
 
   private async load(): Promise<void> {
     const keys = this.keys();
-    if (keys.length === 0) { this.set('nodata', new Map()); return; }
+    if (keys.length === 0) {
+      this.set(this.naReason ? 'na' : 'unverified', new Map());
+      return;
+    }
     const idx = await this.testStatus.ensureIndex();
     if (!idx) {
-      this.set('nodata', new Map<string, TestOutcome | null>(keys.map((k) => [k, null])));
+      this.set('unverified', new Map<string, TestOutcome | null>(keys.map((k) => [k, null])));
       return;
     }
     const map = await this.testStatus.getTestStatuses(keys);
     const known = [...map.values()].filter((v): v is TestOutcome => !!v);
-    if (known.length === 0) { this.set('unknown', map); return; }
     if (known.some((v) => v.o === 'failed')) { this.set('fail', map); return; }
-    this.set(known.length === keys.length ? 'pass' : 'partial', map);
+    // Fully verified only when every linked test is found and passing.
+    this.set(known.length === keys.length && known.length > 0 ? 'pass' : 'unverified', map);
   }
 
   private set(state: BadgeState, outcomes: Map<string, TestOutcome | null>): void {
@@ -151,7 +176,7 @@ export class VerifiedBadgeComponent implements OnInit, OnChanges, OnDestroy {
   open(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    this.modal.open(this.keys());
+    if (this.hasKeys()) this.modal.open(this.keys());
   }
 }
 

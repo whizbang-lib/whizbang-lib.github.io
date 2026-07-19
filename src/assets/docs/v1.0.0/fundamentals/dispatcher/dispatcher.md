@@ -161,7 +161,7 @@ await _dispatcher.SendAsync(new ProcessPayment(orderId, amount));
 
 **For Direct Event Store Access (rare - infrastructure/workers only):**
 
-```csharp{title="Correct Patterns (3)" description="For Direct Event Store Access (rare - infrastructure/workers only):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}
+```csharp{title="Correct Patterns (3)" description="For Direct Event Store Access (rare - infrastructure/workers only):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"] unverified="raw IEventStore.AppendAsync — verified in the Event Store docs, not by Dispatcher tests"}
 // ✅ CORRECT: Direct append for infrastructure code, replay, or migration scripts.
 // No perspectives fire and nothing is queued to the outbox.
 await _eventStore.AppendAsync(streamId, @event, ct);
@@ -169,7 +169,7 @@ await _eventStore.AppendAsync(streamId, @event, ct);
 
 ### Anti-Patterns to Avoid
 
-```csharp{title="Anti-Patterns to Avoid" description="Anti-Patterns to Avoid" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Anti-Patterns", "Avoid"]}
+```csharp{title="Anti-Patterns to Avoid" description="Anti-Patterns to Avoid" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Anti-Patterns", "Avoid"] unverified="counter-example — intentionally wrong, nothing to assert"}
 // ❌ WRONG: Redundant - calling both AppendAsync and PublishAsync
 await _eventStore.AppendAsync(orderId, @event, ct);
 await _dispatcher.PublishAsync(@event);
