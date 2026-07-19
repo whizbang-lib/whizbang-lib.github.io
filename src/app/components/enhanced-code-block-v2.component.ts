@@ -29,6 +29,8 @@ interface CodeBlockOptions {
   tags?: string[];
   /** `<ShortClassName>.<MethodName>` test keys that verify this example. */
   tests?: string[];
+  /** Reason this example is intentionally not verified (counter-example, external API). */
+  unverified?: string;
   category?: string;
   showLineNumbers?: boolean;
   highlightLines?: number[];
@@ -87,12 +89,13 @@ interface CodeBlockOptions {
       <!-- Header with metadata -->
       <div class="code-header" *ngIf="hasHeader()">
         <div class="code-info">
-          <div class="code-title-row" *ngIf="options.title || (options.tests && options.tests.length > 0)"
+          <div class="code-title-row" *ngIf="options.title || showVerification()"
                style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.5rem;">
             <h4 *ngIf="options.title" class="code-title" style="margin:0;">{{ options.title }}</h4>
             <wb-verified-badge
-              *ngIf="options.tests && options.tests.length > 0"
-              [tests]="options.tests">
+              *ngIf="showVerification()"
+              [tests]="options.tests || []"
+              [naReason]="options.unverified">
             </wb-verified-badge>
           </div>
 
@@ -731,6 +734,18 @@ export class EnhancedCodeBlockV2Component implements OnInit, OnDestroy, OnChange
   
   hasMetadata(): boolean {
     return !!(this.options.filename || this.options.language || this.options.framework || this.options.difficulty || (this.options.tags && this.options.tags.length > 0));
+  }
+
+  /**
+   * Whether to show a verification badge. Every C# example should be verified
+   * (green) or explicitly excused (na) — so a C# block with neither tests nor an
+   * `unverified` reason surfaces an amber "needs test" gap. Non-C# blocks
+   * (bash/json/output) only show a badge when tests are explicitly linked.
+   */
+  showVerification(): boolean {
+    const lang = (this.options.language || '').toLowerCase();
+    const isVerifiableLang = lang === 'csharp' || lang === 'cs' || lang === 'c#';
+    return !!(isVerifiableLang || (this.options.tests && this.options.tests.length > 0) || this.options.unverified);
   }
   
   hasAdditionalInfo(): boolean {
