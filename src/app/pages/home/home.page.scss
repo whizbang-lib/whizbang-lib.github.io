@@ -1120,40 +1120,45 @@
         -webkit-backdrop-filter: blur(12px);
     }
 
-    // Ambient orbs — bold in light mode
+    // Ambient orbs — bold in light mode. Colored haze washes out on white, so
+    // the opacity is pushed much higher than dark mode and the blur tightened so
+    // the color concentrates instead of spreading to nothing.
+    .orb { filter: blur(62px); }
+    .hero-orb { filter: blur(72px); }
+
     .orb-1 {
-        background: radial-gradient(circle, rgba(255, 124, 0, 0.35) 0%, rgba(255, 124, 0, 0.08) 50%, transparent 70%);
+        background: radial-gradient(circle, rgba(255, 124, 0, 0.7) 0%, rgba(255, 124, 0, 0.4) 50%, transparent 78%);
         width: 700px;
         height: 700px;
     }
 
     .orb-2 {
-        background: radial-gradient(circle, rgba(255, 0, 102, 0.28) 0%, rgba(255, 0, 102, 0.06) 50%, transparent 70%);
+        background: radial-gradient(circle, rgba(255, 0, 102, 0.66) 0%, rgba(255, 0, 102, 0.37) 50%, transparent 78%);
         width: 600px;
         height: 600px;
     }
 
     .orb-3 {
-        background: radial-gradient(circle, rgba(123, 63, 248, 0.3) 0%, rgba(123, 63, 248, 0.07) 50%, transparent 70%);
+        background: radial-gradient(circle, rgba(123, 63, 248, 0.66) 0%, rgba(123, 63, 248, 0.37) 50%, transparent 78%);
         width: 800px;
         height: 800px;
     }
 
     // Hero orbs — large warm glows
     .hero-orb-1 {
-        background: radial-gradient(circle, rgba(255, 124, 0, 0.3) 0%, rgba(255, 124, 0, 0.06) 50%, transparent 70%);
+        background: radial-gradient(circle, rgba(255, 124, 0, 0.66) 0%, rgba(255, 124, 0, 0.37) 50%, transparent 78%);
         width: 600px;
         height: 600px;
     }
 
     .hero-orb-2 {
-        background: radial-gradient(circle, rgba(255, 0, 102, 0.25) 0%, rgba(255, 0, 102, 0.05) 50%, transparent 70%);
+        background: radial-gradient(circle, rgba(255, 0, 102, 0.62) 0%, rgba(255, 0, 102, 0.34) 50%, transparent 78%);
         width: 500px;
         height: 500px;
     }
 
     .hero-orb-3 {
-        background: radial-gradient(circle, rgba(123, 63, 248, 0.28) 0%, rgba(123, 63, 248, 0.06) 50%, transparent 70%);
+        background: radial-gradient(circle, rgba(123, 63, 248, 0.62) 0%, rgba(123, 63, 248, 0.34) 50%, transparent 78%);
         width: 700px;
         height: 700px;
     }
