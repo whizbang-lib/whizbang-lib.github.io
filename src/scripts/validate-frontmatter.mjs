@@ -3,6 +3,8 @@
 //   1. Every content page (not _folder.md) has page frontmatter with codeReferences.
 //   2. Every fenced code block of a "should-have" language carries {...} front-matter
 //      (the same set the site flags with a "Missing Front-Matter" banner).
+//   2b. Every ```mermaid diagram carries {caption="…" tests=[…]} — the site
+//      requires a caption and verifying tests on every diagram (and flags misses).
 //   3. Taxonomy: pageType (Diátaxis-based enum), audience, status — WARNINGS until
 //      backfill completes; pass --strict-taxonomy to make them exit-1 failures.
 // Drafts / proposals / roadmap are unreleased and exempt from 1–2; taxonomy enum
@@ -109,6 +111,21 @@ for (const file of walk(ROOT)) {
       inBlock = true;
       const lang = m[1].toLowerCase();
       const rest = m[2];
+      if (lang === 'mermaid') {
+        // Every diagram must declare a caption and its verifying test(s).
+        const meta = rest.trim();
+        if (!meta.startsWith('{')) {
+          violations.push(`${file}:${i + 1}: mermaid diagram missing {caption="…" tests=["Class.MethodAsync"]} metadata`);
+        } else {
+          if (!/caption\s*=\s*["'][^"']+["']/.test(meta)) {
+            violations.push(`${file}:${i + 1}: mermaid diagram missing a non-empty caption`);
+          }
+          if (!/tests\s*=\s*\[\s*["'][^"']+["']/.test(meta)) {
+            violations.push(`${file}:${i + 1}: mermaid diagram missing tests=["Class.MethodAsync", …]`);
+          }
+        }
+        return;
+      }
       if (LANGS.has(lang) && !rest.includes('{')) {
         violations.push(`${file}:${i + 1}: \`\`\`${lang} code block missing front-matter`);
       }
