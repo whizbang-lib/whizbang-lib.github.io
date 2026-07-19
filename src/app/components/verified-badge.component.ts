@@ -42,14 +42,14 @@ type BadgeState = 'pass' | 'fail' | 'partial' | 'unknown' | 'nodata';
         padding: 0.05rem 0.45rem; border-radius: 1rem;
         font-size: 0.72rem; line-height: 1.4; font-weight: 600;
         border: 1px solid transparent; cursor: pointer;
-        background: var(--surface-ground); color: var(--text-color-secondary);
+        background: color-mix(in srgb, var(--p-text-color, #808080) 7%, transparent); color: var(--p-text-muted-color, #71717a);
         transition: filter 0.15s ease, box-shadow 0.15s ease;
       }
-      .wb-vbadge:hover { filter: brightness(1.05); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color) 25%, transparent); }
+      .wb-vbadge:hover { filter: brightness(1.05); box-shadow: 0 0 0 2px color-mix(in srgb, var(--p-primary-color, #10b981) 25%, transparent); }
       .wb-vbadge .pi { font-size: 0.72rem; }
       .wb-vbadge.pass { background: color-mix(in srgb, var(--green-500, #22c55e) 15%, transparent); color: var(--green-600, #16a34a); }
       .wb-vbadge.fail { background: color-mix(in srgb, var(--red-500, #ef4444) 15%, transparent); color: var(--red-600, #dc2626); }
-      .wb-vbadge.unknown { background: var(--surface-ground); color: var(--text-color-secondary); }
+      .wb-vbadge.unknown { background: color-mix(in srgb, var(--p-text-color, #808080) 7%, transparent); color: var(--p-text-muted-color, #71717a); }
       .wb-vbadge-label { white-space: nowrap; }
     `,
   ],
