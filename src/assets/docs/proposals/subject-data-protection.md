@@ -75,8 +75,9 @@ public sealed record CustomerProfileUpdated(
 
 The whole guarantee rests on the key being held **outside** the event store, so destroying it is meaningful:
 
-```csharp{title="The subject key store abstraction" description="Independent per-(subject, class) keys held outside the event store; DB-table default, pluggable to KMS/Vault" category="Core Concepts" difficulty="ADVANCED" tags=["gdpr","key-store","crypto-shred"] framework="NET10"}
+```csharp{title="The subject key store abstraction" description="Independent per-(subject, class, purpose) keys held outside the event store; single + bulk ops; DB-table default, pluggable to KMS/Vault" category="Core Concepts" difficulty="ADVANCED" tags=["gdpr","key-store","crypto-shred"] framework="NET10"}
 public interface ISubjectKeyStore {
+  // ── Single key — the per-field hot path ──────────────────────────────────────
   /// The key for this (subject, class, purpose), generating + persisting one on the first protected write.
   /// purpose defaults to null → the class's default (no-purpose) key. Keys are INDEPENDENT per
   /// (subject, class, purpose) — never derived from a shared master — so destroying one can never leave
@@ -94,6 +95,30 @@ public interface ISubjectKeyStore {
 
   /// Full erasure: destroy EVERY key for the subject (all classes, all purposes) — forget them entirely.
   ValueTask DestroyAllAsync(SubjectId subject, CancellationToken ct = default);
+
+  // ── Bulk — one round-trip to the KMS; rebuilds, batch decrypts, retention sweeps ─
+  /// Resolve every existing key the selector matches, in as few provider calls as possible. Warms the cache
+  /// before a batch decrypt or a rebuild that spans many subjects. Erased/absent keys are simply omitted.
+  ValueTask<IReadOnlyDictionary<SubjectKeyRef, SubjectKey>> GetManyAsync(SubjectKeySelector selector, CancellationToken ct = default);
+
+  /// List the (subject, class, purpose) keys a selector matches — no key material. Powers a DSAR "what do we
+  /// hold about this subject?" inventory (GDPR Art. 15) and previews a bulk destroy before you run it.
+  ValueTask<IReadOnlyList<SubjectKeyRef>> DescribeAsync(SubjectKeySelector selector, CancellationToken ct = default);
+
+  /// Bulk crypto-shred: destroy every key the selector matches; returns the count destroyed. The selector MUST
+  /// constrain at least one axis — a fully-open selector throws, so "erase everyone" is never an accident.
+  ValueTask<int> DestroyManyAsync(SubjectKeySelector selector, CancellationToken ct = default);
+}
+
+/// Identifies one key. (Purpose null = the class's default key.)
+public readonly record struct SubjectKeyRef(SubjectId Subject, DataClass Class, string? Purpose);
+
+/// Narrows a bulk op on any axis — "these subjects", "…with these purposes", "…in these classes", or any
+/// combination. A null set means "all values on that axis"; at least one axis must be non-null.
+public sealed record SubjectKeySelector {
+  public IReadOnlyCollection<SubjectId>? Subjects { get; init; }   // e.g. a batch being offboarded
+  public IReadOnlyCollection<DataClass>? Classes  { get; init; }   // e.g. [Financial] for a retention sweep
+  public IReadOnlyCollection<string>?    Purposes { get; init; }   // e.g. ["Marketing"] to cease a purpose org-wide
 }
 ```
 
@@ -101,6 +126,7 @@ public interface ISubjectKeyStore {
 - **Why the composite:** it makes `DataClass` (and, when needed, the purpose) the *unit of erasure and retention*, not just an audit label. That lets you **erase one slice while retaining another under a different legal basis** — destroy a subject's `PersonalData` on an erasure request while keeping their `Financial` records for a 7-year tax/audit retention obligation (GDPR Art. 17(3)(b)); or, within `PersonalData`, drop a withdrawn marketing consent while retaining the rest. Each slice can also carry its own **retention schedule** and **key-management policy** (e.g. `Financial`/`Health` in an HSM-backed KMS, `PersonalData` in the DB-table default), and blast radius is isolated — a compromised key exposes only its slice.
 - **Default provider = the DB table**; pluggable to HashiCorp Vault, AWS KMS, or Azure Key Vault via `ISubjectKeyStore`. The docs will carry a "move the key store off the DB for production" runbook — a DB-table key store next to the ciphertext is convenient but weaker than a dedicated KMS.
 - **Erasure hierarchy — subject ⊃ class ⊃ purpose.** `DestroyPurposeAsync` (one purpose), `DestroyAsync` (a whole class = every purpose under it), `DestroyAllAsync` (the whole subject). All flip `erased_at` and wipe/tombstone the key material. Idempotent.
+- **Bulk operations aren't optional at scale — they're load-bearing.** A rebuild or a batch decrypt touches *many* subjects, and against a KMS a per-key round-trip is a latency-and-cost killer; erasure is likewise often bulk (a retention sweep over a class, ceasing a processing purpose org-wide, offboarding a batch of subjects). `GetManyAsync` / `DescribeAsync` / `DestroyManyAsync` take a **`SubjectKeySelector`** that narrows on any axis — *these subjects*, *…with these purposes*, *…in these classes*, or any mix — symmetric for reading and shredding, exactly as the single-key ops are. The DB-table provider turns a selector into set-based SQL (`WHERE subject_id = ANY(…) AND purpose = ANY(…)`); a KMS provider batches its API calls. Two guards: a **fully-open selector throws** (no accidental "erase everyone"), and `DescribeAsync` lets an operator **preview** the exact key set a destroy would hit before running it. The higher-level erasure cascade (below) exposes **matching bulk entry points** — erase a batch of subjects, or a purpose across all subjects — which destroy keys by selector *and then* drive the rebuild/purge over every affected stream.
 
 ## Encrypt on serialize, decrypt on deserialize
 
@@ -146,7 +172,8 @@ The considered alternative — **encrypt `[Protected]` end-to-end** so ciphertex
 ## Erasure triggers
 
 - **On-demand** — an erasure command/request at any level of the hierarchy: `EraseSubjectAsync(subjectId)` (full), `EraseSubjectClassAsync(subjectId, dataClass)` (one class), or `EraseSubjectPurposeAsync(subjectId, dataClass, purpose)` (one purpose — e.g. a withdrawn consent), e.g. a data-subject access-request handler.
-- **Scheduled / retention-based** — via the [Temporal Engine](temporal-engine): "erase 30 days after account closure" is a one-shot schedule on the subject. Because keys are per class, **each class can carry its own retention clock** — `PersonalData` erased on request, `Financial` on a 7-year schedule — as independent scheduled erasures on the same subject. Recurring retention sweeps reuse the same engine. This is why G1 sequences *after* F2.
+- **Bulk** — the same cascade over a `SubjectKeySelector`: `EraseManyAsync(selector)` erases a batch of subjects, or a purpose (or class) across all subjects, in one operation — offboarding a set of subjects, or ceasing a processing purpose org-wide. It destroys the matched keys in bulk, then rebuilds/purges every affected stream.
+- **Scheduled / retention-based** — via the [Temporal Engine](temporal-engine): "erase 30 days after account closure" is a one-shot schedule on the subject. Because keys are per (class, purpose), **each slice can carry its own retention clock** — `PersonalData` erased on request, `Financial` on a 7-year schedule, a marketing consent on its own deadline — as independent scheduled erasures. Recurring retention sweeps reuse the same engine (a periodic bulk erasure by selector). This is why G1 sequences *after* F2.
 - Either trigger emits a **`SubjectErased` signal** on the system signal bus so every instance invalidates its cached key + any cached decrypted values (crypto on the critical path is mitigated by key caching; the cache must be dropped on erasure — the signal does that).
 
 ## Shared plumbing, separate mechanism
@@ -172,11 +199,11 @@ G1 is *"work in GDPR now since it shares code paths, but it's a separate mechani
 ## Build increments (docs-first → TDD each)
 
 1. **Attributes + classification** — `[DataSubject]`, `[DataSubjectId]`, `[Protected(DataClass, purpose?)]` (+ `DeepProtected`/`SerializedProtected`), the per-field `purpose:` axis, `DataClass` open classification (turnkey `PersonalData`/`Health`/`Financial`/`Other` + custom). All target `Parameter | Property | Field`, read as the union of parameter- and property-targeted attributes (so `[property: …]` is optional on records and a protected field is never silently missed). Analyzer for "PII as identifier". Metadata-only, inert.
-2. **`wh_subjects` + `ISubjectKeyStore`** — the registry table (PK `(subject_id, data_class, purpose)`) + the abstraction, DB-table default provider, envelope-encryption shape. **Independent** DEK per `(subject, class, purpose)` (never derived from a shared master, so a scoped destroy truly erases). `GetOrCreate`/`TryGet` (purpose optional) / `DestroyPurpose` / `Destroy` (a class) / `DestroyAll` (a subject); key caching keyed by `(subject, class, purpose)`.
+2. **`wh_subjects` + `ISubjectKeyStore`** — the registry table (PK `(subject_id, data_class, purpose)`) + the abstraction, DB-table default provider, envelope-encryption shape. **Independent** DEK per `(subject, class, purpose)` (never derived from a shared master, so a scoped destroy truly erases). Single ops `GetOrCreate`/`TryGet` (purpose optional) / `DestroyPurpose` / `Destroy` (a class) / `DestroyAll` (a subject); **bulk ops** `GetMany`/`Describe`/`DestroyMany` over a `SubjectKeySelector` (set-based SQL in the DB provider, batched calls in a KMS provider; fully-open selector throws); key caching keyed by `(subject, class, purpose)`.
 3. **Generated crypto glue** — source generator emits encrypt-on-serialize / decrypt-on-deserialize for protected-bearing types; missing-key → redacted tombstone. Wire into the JSON pipeline at the event-store boundary.
 4. **Subject-id tagging + locator** — `[DataSubjectId]` tags scope/metadata at emit; a "streams for subject S" query (scope-based, with the fingerprint body-hash as the fine-grained locator).
 5. **Erasure cascade** — `EraseSubjectAsync` (full) / `EraseSubjectClassAsync` (class) / `EraseSubjectPurposeAsync` (purpose): destroy the target key(s) → `SubjectErased` signal (cache drop) → find streams → **Sourced:** rebuild → redacted re-projection; **Ephemeral:** purge the projection rows (not rebuildable) → audit tombstone. The correctness lock: inject an erasure and assert (a) Sourced projections rebuild-redacted and the log still replays structurally, (b) ephemeral projections are purged, (c) a protected field reads back unreadable after key-destroy in both — including a still-persisted-but-reaper-pending ephemeral event, and (d) **a scoped erasure leaves the subject's *other* slices still decryptable** — the tax-retention case (destroy `PersonalData`, keep `Financial`) *and* the per-purpose case (drop a withdrawn marketing consent, keep the rest of `PersonalData`).
-6. **Scheduled erasure + retention** — retention-based erasure via the temporal engine, **per (subject, class, purpose)** so each slice carries an independent clock (PersonalData on request, Financial on a 7-year schedule, a marketing consent on its own deadline); recurring retention sweeps; OTel meters (erasure requests by level, keys destroyed by class/purpose, streams rebuilt + duration, decrypt-fail/redaction counts, key-cache hit/miss).
+6. **Scheduled + bulk erasure + retention** — retention-based erasure via the temporal engine, **per (subject, class, purpose)** so each slice carries an independent clock (PersonalData on request, Financial on a 7-year schedule, a marketing consent on its own deadline); recurring retention sweeps run as **bulk erasures by selector**; `EraseManyAsync(selector)` for offboarding a batch or ceasing a purpose org-wide (bulk key-destroy → cascade). OTel meters (erasure requests by level/bulk, keys destroyed by class/purpose, streams rebuilt + duration, decrypt-fail/redaction counts, key-cache hit/miss).
 
 ## Relationship to the rest of the initiative
 
