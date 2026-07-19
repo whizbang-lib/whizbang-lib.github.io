@@ -42,15 +42,17 @@ Two attributes declare the contract at compile time (read by the source generato
 ```csharp{title="Declaring a subject and its protected fields" description="[DataSubject]/[DataSubjectId] identify the protected entity; [Protected] marks fields to encrypt, with a classification" category="Core Concepts" difficulty="ADVANCED" tags=["gdpr","crypto-shred","data-protection"] framework="NET10"}
 // A subject = any protected entity. The classification is open — PersonalData is the GDPR preset.
 public sealed record CustomerRegistered(
-    [property: DataSubjectId] Guid CustomerId,        // WHO this event's protected data belongs to
-    [property: Protected(DataClass.PersonalData)] string FullName,
-    [property: Protected(DataClass.PersonalData)] string Email,
-    [property: Protected(DataClass.Financial)]    string TaxId,
-    string CountryCode                                // NOT protected — a plain fact, stays readable
+    [DataSubjectId] Guid CustomerId,                   // WHO this event's protected data belongs to
+    [Protected(DataClass.PersonalData)] string FullName,
+    [Protected(DataClass.PersonalData)] string Email,
+    [Protected(DataClass.Financial)]    string TaxId,
+    string CountryCode                                 // NOT protected — a plain fact, stays readable
 ) : IEvent;
 ```
 
-- **`[DataSubjectId]`** marks the property that identifies the subject the event's protected data belongs to. It is the erasure key: "find everything scoped to *this* subject." One event may reference more than one subject (e.g. a transfer between two parties) — multiple `[DataSubjectId]` properties are allowed, and the event is tagged with each.
+No `[property: …]` specifier is needed. These attributes are declared `AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.Field`, and the generator reads the **union** of a member's parameter- *and* property-targeted attributes. On a positional record a bare attribute binds to the constructor parameter (C#'s default) — the generator finds it there; on a class with declared properties it binds to the property — found there too. `[property: Protected(…)]` stays valid (it's what `System.Text.Json` users reach for reflexively), just optional. Reading both targets is deliberate for a *security* attribute: a `[Protected]` field must never be silently left unencrypted because the attribute happened to land on the parameter rather than the property.
+
+- **`[DataSubjectId]`** marks the member (record parameter or property) that identifies the subject the event's protected data belongs to. It is the erasure key: "find everything scoped to *this* subject." One event may reference more than one subject (e.g. a transfer between two parties) — multiple `[DataSubjectId]` members are allowed, and the event is tagged with each.
 - **`[DataSubject]`** (type-level) marks a *type* as representing a subject entity — used for the subject registry and analyzer guidance.
 - **`[Protected(classification)]`** marks a field whose value must be encrypted at rest. Variants mirror Axon's module: `Protected` (a scalar), `DeepProtected` (recurse into a nested object graph), `SerializedProtected` (encrypt the serialized blob of a complex value). `DataClass` is an open classification (`PersonalData`, `Health`, `Financial`, or your own) so a data-protection officer can audit "what classes do we hold for a subject?"
 
@@ -146,7 +148,7 @@ G1 is *"work in GDPR now since it shares code paths, but it's a separate mechani
 
 ## Build increments (docs-first → TDD each)
 
-1. **Attributes + classification** — `[DataSubject]`, `[DataSubjectId]`, `[Protected(DataClass)]` (+ `DeepProtected`/`SerializedProtected`), `DataClass` open classification. Analyzer for "PII as identifier". Metadata-only, inert.
+1. **Attributes + classification** — `[DataSubject]`, `[DataSubjectId]`, `[Protected(DataClass)]` (+ `DeepProtected`/`SerializedProtected`), `DataClass` open classification. All target `Parameter | Property | Field`, read as the union of parameter- and property-targeted attributes (so `[property: …]` is optional on records and a protected field is never silently missed). Analyzer for "PII as identifier". Metadata-only, inert.
 2. **`wh_subjects` + `ISubjectKeyStore`** — the registry table + the abstraction, DB-table default provider, envelope-encryption shape. `GetOrCreate`/`TryGet`/`Destroy`, key caching.
 3. **Generated crypto glue** — source generator emits encrypt-on-serialize / decrypt-on-deserialize for protected-bearing types; missing-key → redacted tombstone. Wire into the JSON pipeline at the event-store boundary.
 4. **Subject-id tagging + locator** — `[DataSubjectId]` tags scope/metadata at emit; a "streams for subject S" query (scope-based, with the fingerprint body-hash as the fine-grained locator).
