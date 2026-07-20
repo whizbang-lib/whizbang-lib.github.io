@@ -161,7 +161,7 @@ public enum QueryScope {
 
 `Scope()`, `ScopeOverride()`, and `DefaultScope` return an `IScopedLensAccess<TModel>` with scope filters pre-applied:
 
-```csharp{title="IScopedLensAccess" description="Scope-filtered query access returned by the fluent scope API" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "IScopedLensAccess"]}
+```csharp{title="IScopedLensAccess" description="Scope-filtered query access returned by the fluent scope API" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "IScopedLensAccess"] unverified="IScopedLensAccess interface declaration and scope-selection usage; not exercised by the scoped-query or factory tests referenced on this page"}
 public interface IScopedLensAccess<TModel> where TModel : class {
   // Queryable access to perspective rows with scope filters pre-applied
   IQueryable<PerspectiveRow<TModel>> Query { get; }

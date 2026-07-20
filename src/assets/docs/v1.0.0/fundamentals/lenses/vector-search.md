@@ -46,7 +46,7 @@ When Whizbang detects `[VectorField]` attributes in your perspective models, the
 
 If you need to configure the data source (e.g., for JSON options), pass a callback:
 
-```csharp{title="Customization" description="If you need to configure the data source (e." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Customization"]}
+```csharp{title="Customization" description="If you need to configure the data source (e." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Customization"] unverified="configures the generated app-specific AddMyAppDbContext method plus an external Npgsql data-source builder; no mapped library test asserts this callback"}
 builder.Services.AddMyAppDbContext(connectionString, dataSourceBuilder => {
   dataSourceBuilder.ConfigureJsonOptions(jsonOptions);
   dataSourceBuilder.EnableDynamicJson();
@@ -55,7 +55,7 @@ builder.Services.AddMyAppDbContext(connectionString, dataSourceBuilder => {
 
 Or configure DbContext options:
 
-```csharp{title="Customization (2)" description="Or configure DbContext options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Customization"]}
+```csharp{title="Customization (2)" description="Or configure DbContext options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Customization"] unverified="configures the generated app-specific AddMyAppDbContext method plus external EF Core DbContext options; no mapped library test asserts this callback"}
 builder.Services.AddMyAppDbContext(connectionString, configureDbContext: options => {
   options.EnableSensitiveDataLogging();
 });
