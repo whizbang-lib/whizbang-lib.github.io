@@ -37,7 +37,7 @@ Tenancy is **first-class in Whizbang**: every `IMessageContext` carries a `Tenan
 
 ## Architecture
 
-```mermaid
+```mermaid{caption="One database-per-tenant deployment architecture routing each request to its tenant DB"}
 flowchart TD
     subgraph MTSA["Multi-Tenant SaaS Architecture"]
         Request["HTTP Request<br/>X-Tenant-Id: tenant-a"]
@@ -76,7 +76,7 @@ flowchart TD
 
 **TenantContext.cs**:
 
-```csharp{title="Tenant Context" description="**TenantContext." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant", "Context"]}
+```csharp{title="Tenant Context" description="**TenantContext." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant", "Context"] unverified="Consumer AsyncLocal TenantContext helper, not a Whizbang library API"}
 public class TenantContext {
   private static readonly AsyncLocal<string?> _tenantId = new();
 
@@ -102,7 +102,7 @@ public class TenantContext {
 
 **TenantIdentificationMiddleware.cs**:
 
-```csharp{title="Tenant Middleware" description="**TenantIdentificationMiddleware." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Tenant", "Middleware"]}
+```csharp{title="Tenant Middleware" description="**TenantIdentificationMiddleware." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Tenant", "Middleware"] unverified="Consumer ASP.NET request middleware illustration, no Whizbang API surface"}
 public class TenantIdentificationMiddleware {
   private readonly RequestDelegate _next;
   private readonly ILogger<TenantIdentificationMiddleware> _logger;
@@ -156,7 +156,7 @@ public class TenantIdentificationMiddleware {
 
 **Program.cs registration**:
 
-```csharp{title="Tenant Middleware (2)" description="Tenant Middleware" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Tenant", "Middleware"]}
+```csharp{title="Tenant Middleware (2)" description="Tenant Middleware" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Tenant", "Middleware"] unverified="Consumer ASP.NET middleware registration, no Whizbang API"}
 app.UseMiddleware<TenantIdentificationMiddleware>();
 ```
 
@@ -168,7 +168,7 @@ app.UseMiddleware<TenantIdentificationMiddleware>();
 
 **ITenantDatabaseResolver.cs**:
 
-```csharp{title="Tenant Database Resolver" description="**ITenantDatabaseResolver." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant", "Database"]}
+```csharp{title="Tenant Database Resolver" description="**ITenantDatabaseResolver." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant", "Database"] unverified="Consumer database-per-tenant connection resolver, not a Whizbang library API"}
 public interface ITenantDatabaseResolver {
   string GetConnectionString(string tenantId);
 }
@@ -231,7 +231,7 @@ public record TenantConfig(
 
 **Program.cs**:
 
-```csharp{title="Tenant-Aware Database Connection" description="Tenant-Aware Database Connection" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Tenant-Aware", "Database"]}
+```csharp{title="Tenant-Aware Database Connection" description="Tenant-Aware Database Connection" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Tenant-Aware", "Database"] unverified="Consumer DI registration for a per-tenant Npgsql connection, no Whizbang API"}
 builder.Services.AddScoped<NpgsqlConnection>(sp => {
   var tenantId = TenantContext.CurrentTenantId
     ?? throw new InvalidOperationException("Tenant context not set");
@@ -251,7 +251,7 @@ builder.Services.AddSingleton<ITenantDatabaseResolver, TenantDatabaseResolver>()
 
 **CreateOrderReceptor.cs**:
 
-```csharp{title="Tenant-Aware Receptors" description="**CreateOrderReceptor." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Tenant-Aware", "Receptors"]}
+```csharp{title="Tenant-Aware Receptors" description="**CreateOrderReceptor." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Tenant-Aware", "Receptors"] unverified="Sample application receptor; no receptor test in this page's testReferences"}
 using Whizbang.Core;
 
 public class CreateOrderReceptor(
@@ -296,7 +296,7 @@ The receptor body contains **no tenant plumbing** — tenant scope flows through
 
 Tenant propagation is built in — `IMessageContext` has a first-class `TenantId` property:
 
-```csharp{title="Message Context Propagation" description="IMessageContext tenant support" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Message", "Context"]}
+```csharp{title="Message Context Propagation" description="IMessageContext tenant support" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Message", "Context"] unverified="IMessageContext interface shape illustration; no IMessageContext test in this page's testReferences"}
 public interface IMessageContext {
   MessageId MessageId { get; }
   CorrelationId CorrelationId { get; }
@@ -311,7 +311,7 @@ public interface IMessageContext {
 
 **Explicit tenant scoping at dispatch** — for system/maintenance operations, make the tenant scope explicit with the security builder:
 
-```csharp{title="Message Context Propagation (2)" description="Dispatcher tenant-scope builders" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Message", "Context"]}
+```csharp{title="Message Context Propagation (2)" description="Dispatcher tenant-scope builders" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Message", "Context"] tests=["SystemDispatcherBuilderTests.AsSystem_ForAllTenants_SetsTenantIdToAllTenantsConstantAsync", "SystemDispatcherBuilderTests.AsSystem_ForTenant_SetsExplicitTenantIdAsync", "SystemDispatcherBuilderTests.AsSystem_KeepTenant_PreservesAmbientTenantIdAsync", "SystemDispatcherBuilderTests.TenantConstants_AllTenants_IsAsteriskAsync"]}
 // Cross-tenant system operation (TenantId = TenantConstants.AllTenants, "*")
 await dispatcher.AsSystem().ForAllTenants().SendAsync(new ReindexAllTenantsCommand());
 
@@ -334,7 +334,7 @@ Perspective rows carry their tenant scope, so cross-tenant analytics is a **lens
 
 **samples/ECommerce/ECommerce.BFF.API/Lenses/OrderLens.cs** (excerpt):
 
-```csharp{title="Cross-Tenant Lens Queries" description="**OrderLens." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Cross-Tenant", "Analytics"]}
+```csharp{title="Cross-Tenant Lens Queries" description="**OrderLens." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Cross-Tenant", "Analytics"] unverified="ECommerce sample OrderLens; no lens test in this page's testReferences"}
 using Microsoft.EntityFrameworkCore;
 using Whizbang.Core.Lenses;
 
@@ -360,7 +360,7 @@ public class OrderLens(ILensQuery<OrderReadModel> query, ILogger<OrderLens> logg
 
 **Super-admin endpoint** (**samples/ECommerce/ECommerce.BFF.API/Endpoints/SuperAdmin/GetOrdersByTenantEndpoint.cs**):
 
-```csharp{title="Cross-Tenant Endpoint" description="Super-admin cross-tenant endpoint" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Cross-Tenant", "Analytics"]}
+```csharp{title="Cross-Tenant Endpoint" description="Super-admin cross-tenant endpoint" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Cross-Tenant", "Analytics"] unverified="SuperAdminEndpointTests is map-absent; sample FastEndpoints super-admin endpoint"}
 using FastEndpoints;
 
 /// <summary>
@@ -389,7 +389,7 @@ For pre-aggregated cross-tenant rollups (daily sales per tenant), materialize a 
 
 **TenantProvisioningService.cs**:
 
-```csharp{title="Tenant Onboarding" description="**TenantProvisioningService." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Tenant", "Onboarding"]}
+```csharp{title="Tenant Onboarding" description="**TenantProvisioningService." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Tenant", "Onboarding"] unverified="Consumer tenant provisioning service with raw SQL, no Whizbang API"}
 public class TenantProvisioningService {
   private readonly NpgsqlConnection _masterDb;
   private readonly ILogger<TenantProvisioningService> _logger;
@@ -458,7 +458,7 @@ public class TenantProvisioningService {
 
 **Feature Flags per Tenant**:
 
-```csharp{title="Tenant-Specific Customizations" description="Feature Flags per Tenant:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant-Specific", "Customizations"]}
+```csharp{title="Tenant-Specific Customizations" description="Feature Flags per Tenant:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant-Specific", "Customizations"] unverified="Consumer per-tenant feature-flag service, no Whizbang API"}
 public class TenantFeatureService {
   private readonly ITenantDatabaseResolver _resolver;
 
@@ -482,7 +482,7 @@ public class TenantFeatureService {
 
 **Usage**:
 
-```csharp{title="Tenant-Specific Customizations (2)" description="Tenant-Specific Customizations" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant-Specific", "Customizations"]}
+```csharp{title="Tenant-Specific Customizations (2)" description="Tenant-Specific Customizations" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Tenant-Specific", "Customizations"] unverified="Sample receptor usage snippet for feature-gated publishing, no mapped test"}
 public async ValueTask<OrderCreatedEvent> HandleAsync(
   CreateOrderCommand message,
   CancellationToken cancellationToken = default

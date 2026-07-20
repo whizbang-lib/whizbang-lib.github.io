@@ -41,7 +41,7 @@ Whizbang ships a dedicated **Whizbang.Sagas** package (saga state repositories, 
 
 ## Orchestration vs. Choreography
 
-```mermaid
+```mermaid{caption="Choreography-style saga where services react to each other's events with no central coordinator"}
 flowchart TD
     subgraph CHOREO["Choreography (Decentralized)"]
         OrderService["OrderService"] --> OC["OrderCreated"] --> InventoryService["InventoryService"] --> IR["InventoryReserved"] --> PaymentService["PaymentService"] --> PP["PaymentProcessed"]
@@ -52,7 +52,7 @@ flowchart TD
     class OC,IR,PP layer-event
 ```
 
-```mermaid
+```mermaid{caption="Orchestration-style saga where a central OrderSaga process manager coordinates the inventory, payment, and shipping services"}
 flowchart TD
     subgraph ORCH["Orchestration (Centralized)"]
         OrderSaga["OrderSaga<br/>(Process Manager)"]
@@ -72,7 +72,7 @@ flowchart TD
 
 **OrderSagaState.cs**:
 
-```csharp{title="Saga State Machine" description="**OrderSagaState." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Saga", "State"]}
+```csharp{title="Saga State Machine" description="**OrderSagaState." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Saga", "State"] unverified="example saga domain model (record plus enums), not a core library API; page tests CreateShipmentReceptorTests and PostAllPerspectivesTests are map-absent"}
 public record OrderSagaState {
   public required string SagaId { get; init; }
   public required string OrderId { get; init; }
@@ -115,7 +115,7 @@ The orchestrator is a set of **event receptors** — each saga step reacts to an
 
 **OrderSagaReceptors.cs**:
 
-```csharp{title="Saga Orchestrator" description="**OrderSagaReceptors." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Saga", "Orchestrator"]}
+```csharp{title="Saga Orchestrator" description="**OrderSagaReceptors." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Saga", "Orchestrator"] unverified="hand-rolled application saga receptors built on IReceptor/IDispatcher, not an isolated library API; page tests CreateShipmentReceptorTests and PostAllPerspectivesTests are map-absent"}
 using Whizbang.Core;
 using Whizbang.Core.ValueObjects;
 
@@ -211,7 +211,7 @@ public class PaymentFailedSagaReceptor(
 
 **SagaStateStore.cs** (durable saga state via Dapper):
 
-```csharp{title="Saga State Store" description="**SagaStateStore." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Saga", "State"]}
+```csharp{title="Saga State Store" description="**SagaStateStore." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Saga", "State"] unverified="example Dapper-backed saga persistence class, not a core library API; page tests are map-absent"}
 public class SagaStateStore(NpgsqlDataSource dataSource) {
 
   public async Task SaveAsync(OrderSagaState state, CancellationToken ct) {
@@ -296,7 +296,7 @@ CREATE INDEX idx_saga_state_created_at ON saga_state(created_at DESC);
 
 **SagaTimeoutMonitor.cs**:
 
-```csharp{title="Timeout Handling" description="**SagaTimeoutMonitor." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Timeout", "Handling"]}
+```csharp{title="Timeout Handling" description="**SagaTimeoutMonitor." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Timeout", "Handling"] unverified="example BackgroundService for saga timeouts, application illustration not a core library API; page tests are map-absent"}
 public class SagaTimeoutMonitor : BackgroundService {
   private readonly NpgsqlDataSource _dataSource;
   private readonly IDispatcher _dispatcher;
@@ -374,7 +374,7 @@ public class SagaTimeoutMonitor : BackgroundService {
 
 **SagasController.cs**:
 
-```csharp{title="Saga Visualization API" description="**SagasController." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Saga", "Visualization"]}
+```csharp{title="Saga Visualization API" description="**SagasController." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Saga", "Visualization"] unverified="example ASP.NET saga visualization controller, application illustration not a core library API; page tests are map-absent"}
 [ApiController]
 [Route("api/[controller]")]
 public class SagasController : ControllerBase {
