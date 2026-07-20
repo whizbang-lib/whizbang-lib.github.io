@@ -32,7 +32,7 @@ Delivery receipts provide tracking information when messages are dispatched. Str
 
 When you dispatch a message via `SendAsync`, you receive an `IDeliveryReceipt`:
 
-```csharp{title="Overview" description="When you dispatch a message via SendAsync, you receive an IDeliveryReceipt:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Overview"]}
+```csharp{title="Overview" description="When you dispatch a message via SendAsync, you receive an IDeliveryReceipt:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Overview"] tests=["DeliveryReceiptTests.AllProperties_AreAccessible_ThroughInterfaceAsync", "DeliveryReceiptTests.StreamId_IsAccessible_ThroughInterfaceAsync"]}
 var receipt = await dispatcher.SendAsync(new CreateOrder {
   CustomerId = customerId,
   Items = items
@@ -49,7 +49,7 @@ var receipt = await dispatcher.SendAsync(new CreateOrder {
 
 ## IDeliveryReceipt Structure
 
-```csharp{title="IDeliveryReceipt Structure" description="IDeliveryReceipt Structure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "DeliveryReceipt", "Structure"]}
+```csharp{title="IDeliveryReceipt Structure" description="IDeliveryReceipt Structure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "DeliveryReceipt", "Structure"] tests=["DeliveryReceiptTests.AllProperties_AreAccessible_ThroughInterfaceAsync", "DeliveryReceiptTests.StreamId_IsAccessible_ThroughInterfaceAsync"]}
 public interface IDeliveryReceipt {
   MessageId MessageId { get; }                              // Unique message identifier
   DateTimeOffset Timestamp { get; }                         // When the dispatcher accepted the message
@@ -68,7 +68,7 @@ The concrete `DeliveryReceipt` class provides static factory methods for each st
 
 ### IStreamIdExtractor Interface {#istreamidextractor}
 
-```csharp{title="IStreamIdExtractor Interface" description="IStreamIdExtractor Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IStreamIdExtractor", "Interface"]}
+```csharp{title="IStreamIdExtractor Interface" description="IStreamIdExtractor Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IStreamIdExtractor", "Interface"] tests=["StreamIdExtractorTests.StreamIdExtractor_ImplementsIStreamIdExtractorAsync", "StreamIdExtractorTests.ExtractStreamId_EventWithStreamId_ReturnsStreamIdValueAsync", "StreamIdExtractorTests.ExtractStreamId_EventWithNeither_ReturnsNullAsync"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -103,7 +103,7 @@ public interface IStreamIdExtractor {
 
 The default implementation delegates to source-generated extractors:
 
-```csharp{title="StreamIdExtractor Implementation" description="The default implementation delegates to source-generated extractors:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "StreamIdExtractor", "Implementation"]}
+```csharp{title="StreamIdExtractor Implementation" description="The default implementation delegates to source-generated extractors:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "StreamIdExtractor", "Implementation"] tests=["StreamIdExtractorTests.StreamIdExtractor_Constructor_CreatesInstanceAsync", "StreamIdExtractorTests.StreamIdExtractor_ExtractStreamId_NullMessage_ReturnsNullAsync", "StreamIdExtractorTests.StreamIdExtractor_GetGenerationPolicy_WithUnknownType_ReturnsDefaultAsync", "StreamIdExtractorTests.StreamIdExtractor_SetStreamId_WithUnknownType_ReturnsFalseAsync"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -141,7 +141,7 @@ public sealed class StreamIdExtractor : IStreamIdExtractor {
 
 Registry for multi-assembly stream ID extraction:
 
-```csharp{title="StreamIdExtractorRegistry" description="Registry for multi-assembly stream ID extraction:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "StreamIdExtractorRegistry", "Streamidextractorregistry"]}
+```csharp{title="StreamIdExtractorRegistry" description="Registry for multi-assembly stream ID extraction:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "StreamIdExtractorRegistry", "Streamidextractorregistry"] tests=["StreamIdExtractorRegistryTests.GetComposite_DelegatesGetGenerationPolicy_ToRegistryAsync", "StreamIdExtractorRegistryTests.GetComposite_DelegatesSetStreamId_ToRegistryAsync", "StreamIdExtractorRegistryTests.SetStreamId_WithSuccessfulExtractor_ReturnsTrueAsync", "StreamIdExtractorRegistryTests.GetGenerationPolicy_WithMultipleExtractors_ReturnsFirstMatchAsync"]}
 namespace Whizbang.Core.Registry;
 
 /// <summary>
@@ -175,7 +175,7 @@ public static class StreamIdExtractorRegistry {
 
 Mark properties that identify the event stream:
 
-```csharp{title="Using [StreamId] Attribute" description="Mark properties that identify the event stream:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Using", "StreamId"]}
+```csharp{title="Using [StreamId] Attribute" description="Mark properties that identify the event stream:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Using", "StreamId"] tests=["StreamIdExtractorTests.ExtractStreamId_EventWithStreamId_ReturnsStreamIdValueAsync", "DeliveryReceiptTests.Accepted_WithStreamId_IncludesStreamIdAsync"]}
 public record OrderCreated : IEvent {
   [StreamId]
   public required Guid OrderId { get; init; }  // This is the stream ID
@@ -209,7 +209,7 @@ public record OrderCreated : IEvent, IHasStreamId {
 
 Extractors are **source-generated** at compile time:
 
-```csharp{title="Source-Generated Extractors" description="Extractors are source-generated at compile time:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Source-Generated", "Extractors"]}
+```csharp{title="Source-Generated Extractors" description="Extractors are source-generated at compile time:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Source-Generated", "Extractors"] unverified="illustrative simplified generator output — TryResolveAsGuid generation is verified by the StreamId source-generator tests (StreamIdGeneratorTests)"}
 // Generated code (simplified)
 namespace Whizbang.Core.Generated;
 
@@ -247,7 +247,7 @@ public record OrderCreated : IEvent {
 
 The generated extractor is registered via `[ModuleInitializer]`:
 
-```csharp{title="Multi-Assembly Extraction (2)" description="The generated extractor is registered via [ModuleInitializer]:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Multi-Assembly", "Extraction"]}
+```csharp{title="Multi-Assembly Extraction (2)" description="The generated extractor is registered via [ModuleInitializer]:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Multi-Assembly", "Extraction"] tests=["StreamIdExtractorRegistryTests.GetGenerationPolicy_WithMultipleExtractors_ReturnsFirstMatchAsync", "StreamIdExtractorRegistryTests.SetStreamId_WithFailingThenSucceeding_ReturnsTrueFromSecondAsync"]}
 // Generated in MyApp.Contracts assembly
 [ModuleInitializer]
 public static void RegisterStreamIdExtractors() {
@@ -268,7 +268,7 @@ When the service assembly loads:
 
 ### Tracking Message Delivery
 
-```csharp{title="Tracking Message Delivery" description="Tracking Message Delivery" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Tracking", "Message"]}
+```csharp{title="Tracking Message Delivery" description="Tracking Message Delivery" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Tracking", "Message"] tests=["DeliveryReceiptTests.AllProperties_AreAccessible_ThroughInterfaceAsync", "DeliveryReceiptTests.StreamId_IsAccessible_ThroughInterfaceAsync"]}
 [HttpPost("orders")]
 public async Task<ActionResult> CreateOrder(
     [FromBody] CreateOrderRequest request,

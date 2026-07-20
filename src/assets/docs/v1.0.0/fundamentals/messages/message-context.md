@@ -37,7 +37,7 @@ Whizbang provides automatic **distributed tracing** through three key identifier
 
 ### Visual Example
 
-```mermaid
+```mermaid{caption="Correlation & causation propagation — every message in a workflow inherits the originating CreateOrder's CorrelationId, while each child event carries its parent's MessageId as its CausationId." tests=["MessageContextTests.Create_WithCascadeContext_CopiesCorrelationIdAsync", "MessageContextTests.Create_WithCascadeContext_UsesCascadeCausationIdAsContextCausationIdAsync"]}
 graph TB
     U["User clicks &quot;Create Order&quot; button"]
     C["CreateOrder Command<br/>MessageId: msg-001<br/>CorrelationId: corr-abc (generated for this workflow)<br/>CausationId: null (no parent)"]
@@ -124,7 +124,7 @@ Console.WriteLine($"Message ID: {receipt.MessageId}");
 ambient **W3C trace context**; externally-supplied ids — an inbound header, a W3C trace-id, or a client
 `crypto.randomUUID` (UUIDv4) — are accepted verbatim (a W3C trace-id is 128 bits, so it fits a `Guid`).
 
-```csharp{title="CorrelationId" description="Type: 128-bit value object; W3C-aligned when minted, any token when external." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CorrelationId"]}
+```csharp{title="CorrelationId" description="Type: 128-bit value object; W3C-aligned when minted, any token when external." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CorrelationId"] tests=["CorrelationIdTests.New_ProducesUuidV7Async", "CorrelationIdTests.ToString_FormatsAsGuidAsync"]}
 public readonly partial struct CorrelationId {
     // Fresh UUIDv7 (time-ordered, database-friendly).
     public static CorrelationId New();
@@ -219,7 +219,7 @@ public async Task<Message[]> GetWorkflowMessagesAsync(
 
 **Type**: There is **no separate `CausationId` type** — a causation id *is* the parent message's `MessageId`, so Whizbang uses `MessageId` directly (e.g., `IMessageContext.CausationId` is a `MessageId`).
 
-```csharp{title="CausationId" description="CausationId is just the parent's MessageId - no separate type." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CausationId"]}
+```csharp{title="CausationId" description="CausationId is just the parent's MessageId - no separate type." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CausationId"] tests=["MessageContextTests.Create_WithCorrelationIdAndCausationId_UsesProvidedCausationIdAsync", "MessageContextTests.New_GeneratesAllNewIdentifiersAsync"]}
 // From src/Whizbang.Core/ValueObjects/CausationId.cs:
 // "CausationId is just a MessageId of the parent/causing message.
 //  No need for a separate type - use MessageId directly."
@@ -240,7 +240,7 @@ public interface IMessageContext {
 
 ### Causation Chain Example
 
-```mermaid
+```mermaid{caption="Causation chain — each event's CausationId is its parent's MessageId (msg-001 → msg-002 → msg-003 → msg-004), and every message in the chain shares the same CorrelationId." tests=["MessageContextTests.Create_WithCascadeContext_UsesCascadeCausationIdAsContextCausationIdAsync", "MessageContextTests.Create_WithCascadeContext_CopiesCorrelationIdAsync"]}
 graph TB
     M1["CreateOrder Command<br/>MessageId: msg-001<br/>CorrelationId: corr-abc<br/>CausationId: null (no parent)"]
     M2["OrderCreated Event<br/>MessageId: msg-002<br/>CorrelationId: corr-abc<br/>CausationId: msg-001 (caused by CreateOrder)"]
@@ -294,7 +294,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 Whizbang wraps all messages in a **MessageEnvelope** containing context:
 
-```csharp{title="MessageEnvelope" description="Whizbang wraps all messages in a MessageEnvelope containing context:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "MessageEnvelope"]}
+```csharp{title="MessageEnvelope" description="Whizbang wraps all messages in a MessageEnvelope containing context:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "MessageEnvelope"] tests=["MessageEnvelopeTests.GetCorrelationId_ReturnsFirstHopCorrelationIdAsync", "MessageEnvelopeTests.GetCausationId_ReturnsFirstHopCausationIdAsync", "MessageEnvelopeTests.ParameterlessConstructor_AllowsObjectInitializerAsync"]}
 public class MessageEnvelope<TMessage> : IMessageEnvelope<TMessage> {
     public required MessageId MessageId { get; init; }
     public required TMessage Payload { get; init; }        // Your actual message
@@ -619,7 +619,7 @@ public class HttpClientWithCorrelation {
 
 The `IMessageContext` interface provides all context and metadata for a message flowing through the system:
 
-```csharp{title="IMessageContext Interface" description="Full IMessageContext interface with all properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IMessageContext"]}
+```csharp{title="IMessageContext Interface" description="Full IMessageContext interface with all properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IMessageContext"] tests=["MessageContextTests.New_GeneratesAllNewIdentifiersAsync", "MessageContextTests.Metadata_IsEmptyByDefaultAsync", "MessageContextTests.ScopeContext_IsNullByDefaultAsync", "MessageContextTests.CallerInfo_IsNullByDefaultAsync"]}
 public interface IMessageContext {
   MessageId MessageId { get; }
   CorrelationId CorrelationId { get; }
@@ -658,7 +658,7 @@ public class OrderLifecycleReceptor : ILifecycleReceptor<OrderCreatedEvent> {
 
 The `CallerInfo` property captures the caller's source location at dispatch time using `[CallerMemberName]`, `[CallerFilePath]`, and `[CallerLineNumber]`. This enables click-to-navigate in IDEs like VSCode.
 
-```csharp{title="CallerInfo Interface" description="Captures source location at dispatch time" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CallerInfo"]}
+```csharp{title="CallerInfo Interface" description="Captures source location at dispatch time" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CallerInfo"] tests=["CallerInfoTests.CallerInfo_ImplementsICallerInfoAsync", "CallerInfoTests.CallerInfo_InterfaceProperties_MatchRecordPropertiesAsync"]}
 public interface ICallerInfo {
   string CallerMemberName { get; }  // Method name that dispatched the message
   string CallerFilePath { get; }    // Source file path

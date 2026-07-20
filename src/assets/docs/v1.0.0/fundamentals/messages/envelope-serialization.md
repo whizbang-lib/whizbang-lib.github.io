@@ -32,7 +32,7 @@ When storing or transmitting envelopes, they need to be serialized to JSON. The 
 
 ## EnvelopeSerializer {#envelopeserializer}
 
-```csharp{title="EnvelopeSerializer" description="EnvelopeSerializer" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "EnvelopeSerializer", "Envelopeserializer"]}
+```csharp{title="EnvelopeSerializer" description="EnvelopeSerializer" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "EnvelopeSerializer", "Envelopeserializer"] tests=["EnvelopeSerializerTests.SerializeEnvelope_WithValidEnvelope_ReturnsSerializedEnvelopeAsync", "EnvelopeSerializerTests.SerializeEnvelope_CapturesCorrectTypeMetadataAsync"]}
 namespace Whizbang.Core.Messaging;
 
 /// <summary>
@@ -61,7 +61,7 @@ public sealed class EnvelopeSerializer : IEnvelopeSerializer {
 
 ## IEnvelopeSerializer Interface {#ienvelopeserializer}
 
-```csharp{title="IEnvelopeSerializer Interface" description="IEnvelopeSerializer Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IEnvelopeSerializer", "Interface"]}
+```csharp{title="IEnvelopeSerializer Interface" description="IEnvelopeSerializer Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IEnvelopeSerializer", "Interface"] tests=["EnvelopeSerializerTests.SerializeEnvelope_WithValidEnvelope_ReturnsSerializedEnvelopeAsync"]}
 namespace Whizbang.Core.Messaging;
 
 /// <summary>
@@ -82,7 +82,7 @@ public interface IEnvelopeSerializer {
 
 ## SerializedEnvelope {#serializedenvelope}
 
-```csharp{title="SerializedEnvelope" description="SerializedEnvelope" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "SerializedEnvelope", "Serializedenvelope"]}
+```csharp{title="SerializedEnvelope" description="SerializedEnvelope" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "SerializedEnvelope", "Serializedenvelope"] tests=["EnvelopeSerializerTests.SerializedEnvelope_RecordEquality_WorksCorrectlyAsync", "EnvelopeSerializerTests.SerializeEnvelope_WithValidEnvelope_ReturnsSerializedEnvelopeAsync"]}
 namespace Whizbang.Core.Messaging;
 
 /// <summary>
@@ -100,7 +100,7 @@ public sealed record SerializedEnvelope(
 
 ## Serialization Flow
 
-```mermaid
+```mermaid{caption="Envelope serialization flow — capture type metadata, serialize the payload to a JsonElement, then return a SerializedEnvelope." tests=["EnvelopeSerializerTests.SerializeEnvelope_CapturesCorrectTypeMetadataAsync", "EnvelopeSerializerTests.SerializeEnvelope_PayloadSerializesToValidJsonElementAsync", "EnvelopeSerializerTests.SerializeEnvelope_WithValidEnvelope_ReturnsSerializedEnvelopeAsync"]}
 graph TB
     S1["1. Typed Envelope: MessageEnvelope&lt;OrderCreated&gt;<br/>serializer.SerializeEnvelope(envelope)"]
     S2["2. Capture Type Metadata<br/>EnvelopeType: &quot;MessageEnvelope&#96;1[[OrderCreated,...]], Whizbang.Core&quot;<br/>MessageType: &quot;MyApp.Events.OrderCreated, MyApp&quot;"]
@@ -117,7 +117,7 @@ graph TB
 
 ### Serializing for Storage
 
-```csharp{title="Serializing for Storage" description="Serializing for Storage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Serializing", "Storage"]}
+```csharp{title="Serializing for Storage" description="Serializing for Storage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Serializing", "Storage"] tests=["EnvelopeSerializerTests.SerializeEnvelope_WithValidEnvelope_ReturnsSerializedEnvelopeAsync"]}
 public class EventStore {
   private readonly IEnvelopeSerializer _serializer;
 
@@ -171,7 +171,7 @@ public async Task<object> LoadMessageAsync(Guid messageId) {
 
 ### Outbox Integration
 
-```csharp{title="Outbox Integration" description="Outbox Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Outbox", "Integration"]}
+```csharp{title="Outbox Integration" description="Outbox Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Outbox", "Integration"] tests=["EnvelopeSerializerTests.SerializeEnvelope_WithValidEnvelope_ReturnsSerializedEnvelopeAsync"]}
 public async Task WriteToOutboxAsync<TMessage>(
     MessageEnvelope<TMessage> envelope,
     CancellationToken ct = default) {
@@ -200,7 +200,7 @@ public async Task WriteToOutboxAsync<TMessage>(
 
 The serializer detects and prevents double serialization:
 
-```csharp{title="Double Serialization Prevention" description="The serializer detects and prevents double serialization:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Double", "Serialization"]}
+```csharp{title="Double Serialization Prevention" description="The serializer detects and prevents double serialization:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Double", "Serialization"] tests=["EnvelopeSerializerTests.SerializeEnvelope_WithJsonElementPayload_ThrowsInvalidOperationExceptionAsync"]}
 // ❌ This will throw InvalidOperationException
 var alreadySerialized = new MessageEnvelope<JsonElement>(...);
 serializer.SerializeEnvelope(alreadySerialized);
@@ -213,7 +213,7 @@ This prevents bugs where envelopes are accidentally serialized twice.
 
 The serializer uses `JsonContextRegistry` for AOT-safe type resolution:
 
-```csharp{title="AOT Compatibility" description="The serializer uses JsonContextRegistry for AOT-safe type resolution:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "AOT", "Compatibility"]}
+```csharp{title="AOT Compatibility" description="The serializer uses JsonContextRegistry for AOT-safe type resolution:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "AOT", "Compatibility"] tests=["EnvelopeSerializerTests.DeserializeMessage_WithUnknownTypeName_ThrowsInvalidOperationExceptionAsync"]}
 public object DeserializeMessage(
     MessageEnvelope<JsonElement> jsonEnvelope,
     string messageTypeName) {
@@ -241,7 +241,7 @@ Types are registered via `[ModuleInitializer]` in generated code.
 
 ### Type Resolution Failure
 
-```csharp{title="Type Resolution Failure" description="Type Resolution Failure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Type", "Resolution"]}
+```csharp{title="Type Resolution Failure" description="Type Resolution Failure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Type", "Resolution"] tests=["EnvelopeSerializerTests.DeserializeMessage_WithUnknownTypeName_ThrowsInvalidOperationExceptionAsync"]}
 try {
   var message = serializer.DeserializeMessage(jsonEnvelope, messageTypeName);
 } catch (InvalidOperationException ex) {
@@ -252,7 +252,7 @@ try {
 
 ### Serialization Failure
 
-```csharp{title="Serialization Failure" description="Serialization Failure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Serialization", "Failure"]}
+```csharp{title="Serialization Failure" description="Serialization Failure" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Serialization", "Failure"] tests=["EnvelopeSerializerTests.SerializeEnvelope_WithJsonElementPayload_ThrowsInvalidOperationExceptionAsync"]}
 try {
   var serialized = serializer.SerializeEnvelope(envelope);
 } catch (InvalidOperationException ex) {
