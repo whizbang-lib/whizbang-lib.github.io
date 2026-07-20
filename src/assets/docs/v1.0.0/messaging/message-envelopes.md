@@ -62,7 +62,7 @@ The framework creates envelopes for you — when a receptor calls `dispatcher.Pu
 
 Envelope and hop properties serialize with **short JSON names** to keep payloads small:
 
-```csharp{title="Envelope and Hop Shape" description="IMessageEnvelope and MessageHop with their compact JSON property names" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Storing", "Envelope", "Outbox"]}
+```csharp{title="Envelope and Hop Shape" description="IMessageEnvelope and MessageHop with their compact JSON property names" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Storing", "Envelope", "Outbox"] unverified="wire-shape declaration — the compact JSON property-name contract is verified by MessageEnvelopeVersionTests, which is outside the current coverage map"}
 public interface IMessageEnvelope {
     [JsonPropertyName("v")]  int Version { get; }                        // Envelope schema version
     [JsonPropertyName("dc")] MessageDispatchContext DispatchContext { get; }
@@ -342,7 +342,7 @@ public async ValueTask<InventoryReservedEvent> HandleAsync(
 3. Hops not stored in the outbox metadata column
 
 **Solution**:
-```csharp{title="Problem: Missing Hops" description="Problem: Missing Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Problem:", "Missing", "Hops"]}
+```csharp{title="Problem: Missing Hops" description="Problem: Missing Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Problem:", "Missing", "Hops"] unverified="troubleshooting snippet — publish-from-handler cascade guidance plus an illustrative serialization round-trip check, not framework test code"}
 // Publish from within the handler so the cascade context inherits hops
 await dispatcher.PublishAsync(newEvent);   // ✅ hops inherited automatically
 

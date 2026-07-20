@@ -138,6 +138,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "ADVANCED"
 tags: ["composite-events", "event-store", "batch-append", "performance"]
+unverified: "verified by EventStoreAppendBatchTests, which is outside the current coverage map"
 }
 Task AppendBatchAsync<TMessage>(
     IReadOnlyList<(Guid streamId, MessageEnvelope<TMessage> envelope)> entries,

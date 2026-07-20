@@ -70,7 +70,7 @@ flowchart TD
 
 The core methods (each has a corresponding SQL function and a dedicated calling worker):
 
-```csharp{title="IWorkCoordinator Interface" description="IWorkCoordinator Interface" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "IWorkCoordinator", "Interface"]}
+```csharp{title="IWorkCoordinator Interface" description="IWorkCoordinator Interface" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "IWorkCoordinator", "Interface"] unverified="interface declaration — IWorkCoordinator API surface, no behavioral assertion"}
 public interface IWorkCoordinator {
     // Claim loop (called only by ClaimWorker)
     Task<WorkBatch> ClaimWorkAsync(
@@ -150,7 +150,7 @@ public sealed record HeartbeatRequest(
 
 **Pattern**: A handler's inbox completion and everything it emitted commit **together or not at all**.
 
-```csharp{title="Atomic Handler Commit" description="Pattern: A handler's inbox completion and its emitted messages commit atomically." category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Atomic", "Batch", "Processing"]}
+```csharp{title="Atomic Handler Commit" description="Pattern: A handler's inbox completion and its emitted messages commit atomically." category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Atomic", "Batch", "Processing"] unverified="verified by EFCoreCommitHandlerTests, which is outside the current coverage map"}
 // InboxHandlerWorker batches handler results and commits them in one round-trip
 var results = await _coordinator.CommitHandlerBatchAsync(
     [
@@ -225,7 +225,7 @@ partition_number := abs(hashtext(stream_id::TEXT)) % partition_count;
 
 ### Work Batch (Claim Result)
 
-```csharp{title="WorkBatch" description="Result of ClaimWorkAsync" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "WorkBatch"]}
+```csharp{title="WorkBatch" description="Result of ClaimWorkAsync" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "WorkBatch"] unverified="verified by EFCoreClaimWorkTests, which is outside the current coverage map"}
 public record WorkBatch {
     public required List<OutboxWork> OutboxWork { get; init; }
     public required List<InboxWork> InboxWork { get; init; }
@@ -271,7 +271,7 @@ public enum WorkCategory { Outbox, Inbox, PerspectiveEvent }
 
 ### Perspective Cursor Completion
 
-```csharp{title="Perspective Cursor Completion" description="Cursor advancement spec for CompletePerspectiveAsync" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Event", "Store", "Tracking"]}
+```csharp{title="Perspective Cursor Completion" description="Cursor advancement spec for CompletePerspectiveAsync" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Event", "Store", "Tracking"] unverified="verified by WorkCoordinatorDtoSurfaceTests, which is outside the current coverage map"}
 public record PerspectiveCursorCompletion {
     public required Guid StreamId { get; init; }
     public required string PerspectiveName { get; init; }
@@ -288,7 +288,7 @@ public record PerspectiveCursorCompletion {
 
 ### New Messages
 
-```csharp{title="New Messages" description="Envelope-based message records for the store methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "New", "Messages"]}
+```csharp{title="New Messages" description="Envelope-based message records for the store methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "New", "Messages"] unverified="supporting type declaration — store-method envelope records, no dedicated surface test"}
 public record OutboxMessage {
     public required Guid MessageId { get; init; }
     public string? Destination { get; init; }
@@ -382,7 +382,7 @@ await coordinator.ReportFailuresAsync(WorkCategory.Outbox, pendingFailures, ct);
 
 ### Pattern 4: Lease Renewal (LeaseRenewalWorker)
 
-```csharp{title="Pattern 4: Lease Renewal" description="LeaseRenewalWorker extends leases for in-flight work approaching expiry" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Pattern", "Store", "Inbox"]}
+```csharp{title="Pattern 4: Lease Renewal" description="LeaseRenewalWorker extends leases for in-flight work approaching expiry" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Pattern", "Store", "Inbox"] unverified="verified by LeaseRenewalWorkerCapTests, which is outside the current coverage map"}
 // When in-flight items approach lease/3 from expiry, renew in batch per category
 var renewed = await coordinator.RenewLeasesAsync(
     WorkCategory.Inbox,
@@ -483,7 +483,7 @@ CREATE OR REPLACE FUNCTION claim_work(
 
 The coordinator exposes queue-depth statistics via `GatherStatisticsAsync`:
 
-```csharp{title="Key Metrics" description="Key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Key", "Metrics"]}
+```csharp{title="Key Metrics" description="Key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Key", "Metrics"] unverified="verified by CoordinatorRecordSurfaceTests, which is outside the current coverage map"}
 public record WorkCoordinatorStatistics {
     public long PendingPerspectiveEvents { get; init; }  // wh_perspective_events unprocessed
     public long PendingOutbox { get; init; }             // wh_outbox unprocessed

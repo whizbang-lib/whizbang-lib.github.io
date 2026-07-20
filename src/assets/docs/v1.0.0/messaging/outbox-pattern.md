@@ -283,7 +283,7 @@ The Outbox Pattern provides **at-least-once delivery**:
 
 ### Retry Strategy
 
-```csharp{title="Retry Strategy" description="Failures are reported through the coordinator" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Retry", "Strategy"]}
+```csharp{title="Retry Strategy" description="Failures are reported through the coordinator" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Retry", "Strategy"] unverified="ReportFailuresAsync outbox-failure behavior (error stamped, lease released) is verified by EFCoreFlusherMethodsTests and DapperWorkCoordinatorWithDataTests, which are outside the current coverage map"}
 // FailureFlushWorker batches failures per category:
 await coordinator.ReportFailuresAsync(
     WorkCategory.Outbox,
@@ -394,7 +394,7 @@ public async Task<OutboxMetrics> GetMetricsAsync(CancellationToken ct = default)
 
 The framework's own suite exercises the store → claim → fetch → complete cycle (see `FetchOutboxBatchSqlTests.cs` and `CompleteOutboxPublishedSqlTests.cs`):
 
-```csharp{title="Integration Tests" description="Store, publish, and complete an outbox message" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Integration", "Tests"]}
+```csharp{title="Integration Tests" description="Store, publish, and complete an outbox message" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Integration", "Tests"] unverified="illustrative integration test — the store, claim, fetch, complete cycle and production-mode row deletion are verified by FetchOutboxBatchSqlTests and CompleteOutboxPublishedSqlTests, which are outside the current coverage map"}
 [Test]
 public async Task StoreClaimPublishComplete_RemovesRowAsync() {
     // Arrange - store a message (normally done by the handler-commit path)

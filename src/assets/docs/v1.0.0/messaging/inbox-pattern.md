@@ -350,7 +350,7 @@ if (!alreadyReserved) {
 
 Failures flow through `ReportFailuresAsync` (batched by `FailureFlushWorker`), which increments `attempts`, stamps `error`/`failure_reason`, and releases the lease so the row can be re-claimed. Retries can be delayed via `scheduled_for` — later messages in the same stream wait behind a scheduled retry to preserve ordering.
 
-```csharp{title="Retry Logic" description="Failures are reported through the coordinator, not raw SQL" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Retry", "Logic"]}
+```csharp{title="Retry Logic" description="Failures are reported through the coordinator, not raw SQL" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Retry", "Logic"] unverified="illustrative ReportFailuresAsync usage showing the failure-reporting API shape; the coordinator call flow is not exercised by this snippet"}
 // FailureFlushWorker drains the failure channel and flushes per category
 await coordinator.ReportFailuresAsync(
     WorkCategory.Inbox,
@@ -465,7 +465,7 @@ public async Task<InboxMetrics> GetMetricsAsync(CancellationToken ct = default) 
 
 The framework's own regression suite locks the dedup invariant (see `StoreInboxMessagesSqlTests.cs`):
 
-```csharp{title="Integration Tests" description="Duplicate store no-ops via the dedup table" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Integration", "Tests"]}
+```csharp{title="Integration Tests" description="Duplicate store no-ops via the dedup table" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Integration", "Tests"] unverified="verified by StoreInboxMessagesSqlTests, which is outside the current coverage map"}
 [Test]
 public async Task DuplicateMessageId_SecondCallNoOpsViaDedupTableAsync() {
     // Arrange

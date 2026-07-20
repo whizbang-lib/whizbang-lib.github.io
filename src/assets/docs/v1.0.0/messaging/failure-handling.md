@@ -42,7 +42,7 @@ Whizbang implements sophisticated failure handling mechanisms including exponent
 
 Messages track their processing state using bitwise flags in the `status` column:
 
-```csharp{title="Message Processing Status" description="Messages track their processing state using bitwise flags in the status column:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Message", "Processing", "Status"]}
+```csharp{title="Message Processing Status" description="Messages track their processing state using bitwise flags in the status column:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Message", "Processing", "Status"] unverified="verified by MessageProcessingStatusTests, which is outside the current coverage map"}
 [Flags]
 public enum MessageProcessingStatus {
     None = 0,           // No processing stages completed
@@ -62,7 +62,7 @@ public enum MessageProcessingStatus {
 
 ### Failure Classification
 
-```csharp{title="Failure Classification" description="Failure Classification" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Failure", "Classification"]}
+```csharp{title="Failure Classification" description="Failure Classification" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Failure", "Classification"] tests=["MessageFailureReasonTests.MessageFailureReason_HasExpectedValuesAsync", "MessageFailureReasonTests.MessageFailureReason_CanConvertToIntAsync", "MessageFailureReasonTests.MessageFailureReason_CanConvertFromIntAsync"]}
 public enum MessageFailureReason {
     None = 0,                                  // No failure
     TransportNotReady = 1,                     // Transport not yet available
@@ -177,7 +177,7 @@ When message M1 in stream S fails, what happens to messages M2, M3, M4 that come
 
 **Mechanism**: Completing a message with `Status = 0` clears its lease without changing status flags, allowing it to be reprocessed.
 
-```csharp{title="Status=0 Release Pattern" description="Mechanism: Completing a message with Status = 0 clears its lease without changing status flags, allowing it to be" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Status=0", "Release", "Pattern"]}
+```csharp{title="Status=0 Release Pattern" description="Mechanism: Completing a message with Status = 0 clears its lease without changing status flags, allowing it to be" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Status=0", "Release", "Pattern"] unverified="conceptual illustration of the Status=0 cascade-release API call; required request fields are elided, so it is not a literal compiled snippet"}
 // Release messages M2, M3 (let them be retried)
 await coordinator.ProcessWorkBatchAsync(new ProcessWorkBatchRequest {
     // ... instance identity fields + other required arrays (empty) elided ...
@@ -337,7 +337,7 @@ public record MessageFailure {
 ```
 
 **Example**:
-```csharp{title="CompletedStatus Field (2)" description="CompletedStatus Field" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "CompletedStatus", "Field"]}
+```csharp{title="CompletedStatus Field (2)" description="CompletedStatus Field" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "CompletedStatus", "Field"] unverified="conceptual illustration of the CompletedStatus flag-overlay semantics; uses pseudo-code parameters, not the literal ProcessWorkBatchRequest API"}
 // Message M1: Store to DB ✅, Store to Event Store ✅, Publish to Transport ❌
 await coordinator.ProcessWorkBatchAsync(
     outboxFailures: [
