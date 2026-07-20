@@ -132,16 +132,14 @@ interface FilterOptions {
 
           <!-- Clear Filters -->
           <div class="filter-actions">
-            <button 
-              pButton 
-              type="button" 
-              icon="pi pi-filter-slash" 
-              label="Clear"
+            <button
+              pButton
+              type="button"
               class="p-button-outlined p-button-sm"
               (click)="clearFilters()"
               [disabled]="!hasActiveFilters()"
               pTooltip="Clear all filters"
-            ></button>
+            ><i class="pi pi-filter-slash" pButtonIcon></i><span pButtonLabel>Clear</span></button>
           </div>
         </div>
 
@@ -202,7 +200,7 @@ interface FilterOptions {
         >
           <p-card class="sample-card" styleClass="sample-card">
             <!-- Card Header -->
-            <ng-template pTemplate="header">
+            <ng-template #header>
               <div class="card-header">
                 <div class="sample-meta">
                   <div class="framework-badge" *ngIf="sample.framework">
@@ -230,7 +228,7 @@ interface FilterOptions {
             </ng-template>
 
             <!-- Card Content -->
-            <ng-template pTemplate="content">
+            <ng-template #content>
               <div class="sample-content">
                 <h4 class="sample-title">{{ sample.title }}</h4>
                 <p class="sample-description">{{ sample.description }}</p>
@@ -249,47 +247,45 @@ interface FilterOptions {
             </ng-template>
 
             <!-- Card Footer -->
-            <ng-template pTemplate="footer">
+            <ng-template #footer>
               <div class="sample-actions">
-                <button 
-                  pButton 
-                  type="button" 
-                  icon="pi pi-eye" 
-                  label="View Code"
+                <button
+                  pButton
+                  type="button"
                   class="p-button-outlined p-button-sm"
                   (click)="viewSample(sample)"
                   pTooltip="View code sample"
-                ></button>
-                
-                <button 
-                  pButton 
-                  type="button" 
-                  icon="pi pi-external-link" 
+                ><i class="pi pi-eye" pButtonIcon></i><span pButtonLabel>View Code</span></button>
+
+                <button
+                  pButton
+                  iconOnly
+                  type="button"
                   class="p-button-text p-button-sm"
                   *ngIf="sample.stackblitzUrl"
                   (click)="openExternal(sample.stackblitzUrl!)"
                   pTooltip="Open in StackBlitz"
-                ></button>
-                
-                <button 
-                  pButton 
-                  type="button" 
-                  icon="pi pi-github" 
+                ><i class="pi pi-external-link" pButtonIcon></i></button>
+
+                <button
+                  pButton
+                  iconOnly
+                  type="button"
                   class="p-button-text p-button-sm"
                   *ngIf="sample.githubRepo"
                   (click)="openExternal(sample.githubRepo!)"
                   pTooltip="View on GitHub"
-                ></button>
-                
-                <button 
-                  pButton 
-                  type="button" 
-                  icon="pi pi-play" 
+                ><i class="pi pi-github" pButtonIcon></i></button>
+
+                <button
+                  pButton
+                  iconOnly
+                  type="button"
                   class="p-button-text p-button-sm"
                   *ngIf="sample.demoUrl"
                   (click)="openExternal(sample.demoUrl!)"
                   pTooltip="Live demo"
-                ></button>
+                ><i class="pi pi-play" pButtonIcon></i></button>
               </div>
             </ng-template>
           </p-card>
@@ -300,10 +296,10 @@ interface FilterOptions {
       <div class="samples-grid" *ngIf="loading">
         <div *ngFor="let i of [1,2,3,4,5,6]" class="sample-card-wrapper">
           <p-card class="sample-card skeleton-card">
-            <ng-template pTemplate="header">
+            <ng-template #header>
               <p-skeleton height="2rem" class="mb-2"></p-skeleton>
             </ng-template>
-            <ng-template pTemplate="content">
+            <ng-template #content>
               <p-skeleton height="1.5rem" class="mb-3"></p-skeleton>
               <p-skeleton height="4rem" class="mb-3"></p-skeleton>
               <div class="flex gap-2">
@@ -311,7 +307,7 @@ interface FilterOptions {
                 <p-skeleton width="3rem" height="1.5rem"></p-skeleton>
               </div>
             </ng-template>
-            <ng-template pTemplate="footer">
+            <ng-template #footer>
               <div class="flex gap-2">
                 <p-skeleton width="6rem" height="2rem"></p-skeleton>
                 <p-skeleton width="2rem" height="2rem"></p-skeleton>
@@ -327,14 +323,13 @@ interface FilterOptions {
           <i class="pi pi-search empty-icon"></i>
           <h3>No samples found</h3>
           <p>Try adjusting your filters or search terms.</p>
-          <button 
-            pButton 
-            type="button" 
-            label="Clear Filters" 
+          <button
+            pButton
+            type="button"
             class="p-button-outlined"
             (click)="clearFilters()"
             *ngIf="hasActiveFilters()"
-          ></button>
+          ><span pButtonLabel>Clear Filters</span></button>
         </div>
       </div>
     </div>

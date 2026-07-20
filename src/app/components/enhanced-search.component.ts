@@ -20,11 +20,11 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
   imports: [CommonModule, FormsModule, InputTextModule, ButtonModule, IconFieldModule, InputIconModule, PopoverModule, AutoCompleteModule, CheckboxModule],
   template: `
     <div class="search-container">
-      <p-iconField iconPosition="left" class="search-field">
-        <p-inputIcon 
+      <p-iconfield iconPosition="left" class="search-field">
+        <p-inputicon
           styleClass="pi pi-search cursor-pointer"
           (click)="onSearchClick()"
-        ></p-inputIcon>
+        ></p-inputicon>
         <input 
           #searchInput
           type="text" 
@@ -40,12 +40,12 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
           class="search-input"
           autocomplete="off"
         />
-        <p-inputIcon 
+        <p-inputicon
           *ngIf="searchQuery.trim()"
           styleClass="pi pi-times cursor-pointer clear-icon"
           (click)="clearSearch()"
-        ></p-inputIcon>
-      </p-iconField>
+        ></p-inputicon>
+      </p-iconfield>
 
       <p-popover
         #searchOverlay
@@ -120,14 +120,13 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap } fro
             <p class="text-600">No results found for "{{searchQuery}}"</p>
             <p class="text-500 text-sm">Try different keywords, check spelling, or use fewer terms</p>
             <div class="mt-3">
-              <button 
-                pButton 
-                type="button" 
-                label="Try fuzzy search" 
+              <button
+                pButton
+                type="button"
                 class="p-button-sm p-button-text"
                 (click)="tryFuzzySearch()"
                 *ngIf="!usedFuzzySearch"
-              ></button>
+              ><span pButtonLabel>Try fuzzy search</span></button>
             </div>
           </div>
         </div>

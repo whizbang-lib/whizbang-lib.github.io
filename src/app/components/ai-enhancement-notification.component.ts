@@ -11,9 +11,9 @@ import { takeUntil } from 'rxjs/operators';
   standalone: true,
   imports: [CommonModule, ToastModule],
   template: `
-    <p-toast position="bottom-right" [baseZIndex]="1000" key="ai-enhancement" 
+    <p-toast position="bottom-right" [baseZIndex]="1000" key="ai-enhancement"
              styleClass="mobile-toast-fix">
-      <ng-template let-message pTemplate="message">
+      <ng-template #message let-message>
         <div class="custom-toast-content">
           <div class="toast-header">
             <i [class]="getIconClass(message.severity)" class="toast-icon"></i>
@@ -204,6 +204,19 @@ import { takeUntil } from 'rxjs/operators';
     }
     
     /* Toast positioning - responsive with max-width */
+    /* Disable PrimeNG 22's collapsed-stack ("pile") behavior so messages flow
+       as a normal vertical list instead of overlapping. styleClass is not placed
+       on the .p-toast container in v22, so target .p-toast-message directly. */
+    :host ::ng-deep .p-toast-message {
+      position: relative !important;
+      transform: none !important;
+      inset: auto !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+      margin-bottom: 12px !important;
+    }
+
     :host ::ng-deep .mobile-toast-fix {
       position: fixed !important;
       bottom: 20px !important;
@@ -326,13 +339,11 @@ export class AIEnhancementNotificationComponent implements OnInit, OnDestroy {
 
     switch (progress.state) {
       case AIEnhancementState.CHECKING_CAPABILITY:
-        severity = 'info';
-        summary = 'Checking device capabilities...';
-        detail = 'Determining if AI enhancement is supported';
-        life = 0;
-        closable = false;
+        // Transient state — don't flash a toast for it. On a fast (cached) load
+        // it would appear and vanish a fraction of a second later when READY
+        // replaces it, which reads as a glitch. Only show loading/terminal states.
         this.showProgress = false;
-        break;
+        return;
       
       case AIEnhancementState.LOADING:
         severity = 'info';
@@ -369,8 +380,10 @@ export class AIEnhancementNotificationComponent implements OnInit, OnDestroy {
         // The template will automatically update with new progress values
         return;
       } else {
-        // For state changes, clear and create new
-        this.messageService.clear(this.currentToastId);
+        // For state changes, clear and create new. clear() filters by the
+        // message key ('ai-enhancement'), NOT currentToastId — passing the id
+        // was a no-op, so old status toasts piled up instead of being replaced.
+        this.messageService.clear('ai-enhancement');
         this.currentToastId = null;
       }
     }

@@ -179,6 +179,7 @@ dotnet whiz replay OrderSummary`;
     this.setupRockets();
     this.setupScrollHandler();
     this.setupIntersectionObserver();
+    this.setupScrollIndicatorCentering();
   }
 
   ngOnDestroy() {
@@ -187,6 +188,47 @@ dotnet whiz replay OrderSummary`;
     }
     if (this.observer) {
       this.observer.disconnect();
+    }
+    if (this.contentResizeObserver) {
+      this.contentResizeObserver.disconnect();
+    }
+    window.removeEventListener('resize', this.centeringRecenter);
+  }
+
+  // Horizontally center the fixed "scroll to explore" indicator over the main
+  // content area (which is offset by the sidebar). Extracted so it can run on a
+  // ResizeObserver, not only during scroll.
+  private centerScrollIndicator() {
+    const el = this.scrollIndicator?.nativeElement;
+    if (!el) return;
+    const main = document.querySelector('.main-content') || document.body;
+    const mainRect = main.getBoundingClientRect();
+    el.style.left = `${mainRect.left + mainRect.width / 2}px`;
+    el.style.transform = 'translateX(-50%)';
+  }
+
+  // The indicator's left offset used to be computed only during scroll, so on
+  // first paint (before the sidebar/content layout settled) it centered on the
+  // full viewport and only snapped into place once the user scrolled. Observe
+  // the content area so it re-centers on layout settle, sidebar toggle, and resize.
+  private contentResizeObserver?: ResizeObserver;
+  private centeringRecenter = () => this.centerScrollIndicator();
+  private setupScrollIndicatorCentering() {
+    this.centerScrollIndicator();
+    // Re-center over the next frames + shortly after, to catch the layout/sidebar
+    // settling on first paint (a position-only shift a ResizeObserver won't see).
+    requestAnimationFrame(() => {
+      this.centerScrollIndicator();
+      requestAnimationFrame(this.centeringRecenter);
+    });
+    setTimeout(this.centeringRecenter, 350);
+    // Keep it correct on viewport resize.
+    window.addEventListener('resize', this.centeringRecenter, { passive: true });
+    // And on content-area size changes (sidebar toggle that resizes main-content).
+    const main = document.querySelector('.main-content');
+    if (main && typeof ResizeObserver !== 'undefined') {
+      this.contentResizeObserver = new ResizeObserver(this.centeringRecenter);
+      this.contentResizeObserver.observe(main);
     }
   }
 
@@ -202,7 +244,7 @@ dotnet whiz replay OrderSummary`;
     const isDark = this.themeService.isDarkTheme();
     const colors = isDark
       ? ['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.65)', 'rgba(255,255,255,0.85)']
-      : ['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.12)', 'rgba(0,0,0,0.18)'];
+      : ['rgba(71,85,120,0.28)', 'rgba(71,85,120,0.42)', 'rgba(71,85,120,0.58)'];
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -390,15 +432,8 @@ dotnet whiz replay OrderSummary`;
     // Progress bar + scroll indicator visibility + centering
     const overallProgress = this.clamp(scrollY / (docHeight - vh), 0, 1);
     if (this.scrollIndicator?.nativeElement) {
-      const el = this.scrollIndicator.nativeElement;
-      el.style.opacity = overallProgress > 0.92 ? '0' : '1';
-
-      // Center over the main content area (accounts for sidebars, scrollbars)
-      const main = document.querySelector('.main-content') || document.body;
-      const mainRect = main.getBoundingClientRect();
-      const centerX = mainRect.left + mainRect.width / 2;
-      el.style.left = `${centerX}px`;
-      el.style.transform = 'translateX(-50%)';
+      this.scrollIndicator.nativeElement.style.opacity = overallProgress > 0.92 ? '0' : '1';
+      this.centerScrollIndicator();
     }
     if (this.progressBar?.nativeElement) {
       this.progressBar.nativeElement.style.transform = `scaleX(${overallProgress})`;
