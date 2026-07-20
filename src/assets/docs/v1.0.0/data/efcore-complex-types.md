@@ -42,7 +42,7 @@ Whizbang perspective rows store three JSON columns: `data` (the read model), `me
 
 Every perspective table follows the same schema:
 
-```csharp{title="PerspectiveRow" description="Generic perspective row with JSON columns" category="Architecture" difficulty="BEGINNER" tags=["Data", "EF Core", "PerspectiveRow"]}
+```csharp{title="PerspectiveRow" description="Generic perspective row with JSON columns" category="Architecture" difficulty="BEGINNER" tags=["Data", "EF Core", "PerspectiveRow"] unverified="type-shape illustration of the PerspectiveRow of T columns; the generic row shape itself, no behavioral test"}
 public class PerspectiveRow<TModel> where TModel : class {
   public required Guid Id { get; init; }
   public required TModel Data { get; set; }
@@ -247,7 +247,7 @@ EF Core 10's `ComplexProperty().ToJson()` maintains internal indexes for collect
 
 The primary upsert strategy avoids the problem entirely by detaching tracked entities and querying with `AsNoTracking()`:
 
-```csharp{title="Detach-and-Reattach Pattern" description="Avoid tracking corruption by detaching and using AsNoTracking" category="Architecture" difficulty="ADVANCED" tags=["Data", "EF Core", "ComplexProperty", "Upsert"]}
+```csharp{title="Detach-and-Reattach Pattern" description="Avoid tracking corruption by detaching and using AsNoTracking" category="Architecture" difficulty="ADVANCED" tags=["Data", "EF Core", "ComplexProperty", "Upsert"] unverified="verified by BaseUpsertStrategyInPlaceUpdateTests, which is outside the current coverage map"}
 // 1. Detach any locally tracked entity
 var localRow = context.Set<PerspectiveRow<TModel>>().Local
     .FirstOrDefault(r => r.Id == id);
@@ -277,7 +277,7 @@ context.Set<PerspectiveRow<TModel>>().Update(row);
 
 For scenarios where entities are already tracked, in-place update methods modify properties on the **existing object instances** without replacing the `List` references:
 
-```csharp{title="UpdateMetadataInPlace" description="Update metadata properties without replacing the object" category="Architecture" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "ComplexProperty", "In-Place"]}
+```csharp{title="UpdateMetadataInPlace" description="Update metadata properties without replacing the object" category="Architecture" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "ComplexProperty", "In-Place"] unverified="verified by BaseUpsertStrategyInPlaceUpdateTests, which is outside the current coverage map"}
 protected static void UpdateMetadataInPlace(PerspectiveMetadata target, PerspectiveMetadata source) {
   target.EventType = source.EventType;
   target.EventId = source.EventId;
@@ -288,7 +288,7 @@ protected static void UpdateMetadataInPlace(PerspectiveMetadata target, Perspect
 }
 ```
 
-```csharp{title="UpdateScopeInPlace" description="Update scope properties while preserving List instances" category="Architecture" difficulty="ADVANCED" tags=["Data", "EF Core", "ComplexProperty", "In-Place", "Collections"]}
+```csharp{title="UpdateScopeInPlace" description="Update scope properties while preserving List instances" category="Architecture" difficulty="ADVANCED" tags=["Data", "EF Core", "ComplexProperty", "In-Place", "Collections"] unverified="verified by BaseUpsertStrategyInPlaceUpdateTests, which is outside the current coverage map"}
 protected static void UpdateScopeInPlace(PerspectiveScope target, PerspectiveScope source) {
   // Scalar properties -- safe to assign directly
   target.TenantId = source.TenantId;
@@ -316,7 +316,7 @@ protected static void UpdateScopeInPlace(PerspectiveScope target, PerspectiveSco
 
 When creating new `PerspectiveRow` instances (e.g., during upsert), complex types must be cloned to avoid sharing references:
 
-```csharp{title="CloneMetadata" description="Create an independent copy of PerspectiveMetadata" category="Architecture" difficulty="BEGINNER" tags=["Data", "EF Core", "Clone"]}
+```csharp{title="CloneMetadata" description="Create an independent copy of PerspectiveMetadata" category="Architecture" difficulty="BEGINNER" tags=["Data", "EF Core", "Clone"] unverified="verified by BaseUpsertStrategyInPlaceUpdateTests, which is outside the current coverage map"}
 protected static PerspectiveMetadata CloneMetadata(PerspectiveMetadata metadata) {
   return new PerspectiveMetadata {
     EventType = metadata.EventType,
@@ -329,7 +329,7 @@ protected static PerspectiveMetadata CloneMetadata(PerspectiveMetadata metadata)
 }
 ```
 
-```csharp{title="CloneScope" description="Create an independent copy of PerspectiveScope with new List instances" category="Architecture" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "Clone"]}
+```csharp{title="CloneScope" description="Create an independent copy of PerspectiveScope with new List instances" category="Architecture" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "Clone"] unverified="verified by BaseUpsertStrategyInPlaceUpdateTests, which is outside the current coverage map"}
 protected static PerspectiveScope CloneScope(PerspectiveScope scope) {
   return new PerspectiveScope {
     TenantId = scope.TenantId,

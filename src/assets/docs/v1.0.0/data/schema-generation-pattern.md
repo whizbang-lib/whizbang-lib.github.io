@@ -357,7 +357,7 @@ public class PostgresDatabaseInitializer {
 
 ### Pattern 3: Custom Perspective Tables
 
-```csharp{title="Pattern 3: Custom Perspective Tables" description="Pattern 3: Custom Perspective Tables" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Custom", "Perspective"]}
+```csharp{title="Pattern 3: Custom Perspective Tables" description="Pattern 3: Custom Perspective Tables" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Custom", "Perspective"] unverified="BuildPerspectiveTable is verified by ISchemaBuilderContractTests, which is outside the current coverage map"}
 using Whizbang.Data.Schema;
 using Whizbang.Data.Postgres.Schema;
 

@@ -56,7 +56,7 @@ Whizbang uses the **`IDbConnectionFactory`** pattern (defined in `Whizbang.Core.
 
 ### Interface
 
-```csharp{title="Interface" description="Interface" category="Implementation" difficulty="BEGINNER" tags=["Data", "Interface"]}
+```csharp{title="Interface" description="Interface" category="Implementation" difficulty="BEGINNER" tags=["Data", "Interface"] unverified="IDbConnectionFactory contract definition — a single-method abstraction with no behavior to verify directly"}
 namespace Whizbang.Core.Data;
 
 public interface IDbConnectionFactory {
@@ -74,7 +74,7 @@ public interface IDbConnectionFactory {
 
 The PostgreSQL factory opens the connection before returning it, ensuring proper async initialization:
 
-```csharp{title="PostgreSQL Implementation" description="PostgreSQL Implementation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "PostgreSQL", "Implementation"]}
+```csharp{title="PostgreSQL Implementation" description="PostgreSQL Implementation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "PostgreSQL", "Implementation"] unverified="Npgsql connection-factory setup — opens a live connection, exercised only through integration fixtures, not a unit-tested surface"}
 public class PostgresConnectionFactory : IDbConnectionFactory {
     private readonly string _connectionString;
 
