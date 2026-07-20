@@ -42,7 +42,7 @@ Whizbang addresses these needs through configurable persistence modes that can b
 
 The `PersistenceMode` enum defines three built-in strategies:
 
-```csharp{title="Persistence Modes" description="The PersistenceMode enum defines three built-in strategies:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "C#", "Modes"]}
+```csharp{title="Persistence Modes" description="The PersistenceMode enum defines three built-in strategies:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "C#", "Modes"] tests=["PersistenceModeTests.PersistenceMode_HasThreeValuesAsync", "PersistenceModeTests.PersistenceMode_Immediate_HasCorrectIntValueAsync", "PersistenceModeTests.PersistenceMode_Batched_HasCorrectIntValueAsync", "PersistenceModeTests.PersistenceMode_Outbox_HasCorrectIntValueAsync", "PersistenceModeTests.PersistenceMode_Immediate_IsDefaultAsync"]}
 public enum PersistenceMode {
   Immediate = 0,  // Default - commit after each append
   Batched = 1,    // Buffer and commit on flush/threshold
@@ -54,7 +54,7 @@ public enum PersistenceMode {
 
 Events are committed immediately after each `AppendAsync` call.
 
-```csharp{title="Immediate Mode (Default)" description="Events are committed immediately after each AppendAsync call." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Immediate", "Mode"]}
+```csharp{title="Immediate Mode (Default)" description="Events are committed immediately after each AppendAsync call." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Immediate", "Mode"] unverified="illustrates immediate-commit runtime behavior which is declarative-only per the page callout — no runtime test; the Immediate=default enum value is verified on the Persistence Modes block"}
 // Events committed immediately - no explicit SaveChanges needed
 await _eventStore.AppendAsync(orderId, new OrderCreated(...));
 // Event is now visible to all readers
@@ -74,7 +74,7 @@ await _eventStore.AppendAsync(orderId, new OrderCreated(...));
 
 Events are buffered and committed when `FlushAsync` is called or when a configured batch threshold is reached.
 
-```csharp{title="Batched Mode" description="Events are buffered and committed when FlushAsync is called or when a configured batch threshold is reached." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Batched", "Mode"]}
+```csharp{title="Batched Mode" description="Events are buffered and committed when FlushAsync is called or when a configured batch threshold is reached." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Batched", "Mode"] unverified="design-intent snippet — batched buffering/flush is declarative-only (no FlushAsync exists yet), not exercised by this page's tests"}
 // Design intent (see callout above — IEventStore has no FlushAsync yet):
 // events are buffered ...
 await _eventStore.AppendAsync(streamId1, event1);
@@ -115,7 +115,7 @@ await _eventStore.AppendBatchAsync(entries);
 
 Events are queued for reliable delivery via `IWorkCoordinator`, ensuring at-least-once delivery with automatic retries.
 
-```csharp{title="Outbox Mode" description="Events are queued for reliable delivery via IWorkCoordinator, ensuring at-least-once delivery with automatic retries." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Outbox", "Mode"]}
+```csharp{title="Outbox Mode" description="Events are queued for reliable delivery via IWorkCoordinator, ensuring at-least-once delivery with automatic retries." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Outbox", "Mode"] unverified="illustrates outbox-mode runtime delivery which is declarative-only per the page callout — not exercised by this page's tests"}
 // Event queued to outbox table, processed reliably by worker
 await _eventStore.AppendAsync(orderId, new OrderCreated(...));
 // Event will be delivered even if this process crashes
@@ -139,7 +139,7 @@ Use the `[PersistenceStrategy]` attribute to configure persistence behavior per-
 
 ### Using Built-in Modes
 
-```csharp{title="Using Built-in Modes" description="Using Built-in Modes" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Using", "Built-in"]}
+```csharp{title="Using Built-in Modes" description="Using Built-in Modes" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Using", "Built-in"] tests=["PersistenceStrategyTests.PersistenceStrategyAttribute_CanBeAppliedToReceptorAsync", "PersistenceStrategyTests.PersistenceStrategyAttribute_Mode_CanBeSetViaConstructorAsync", "PersistenceStrategyTests.PersistenceStrategyAttribute_AttributeUsage_AllowsClassTargetAsync"]}
 using Whizbang.Core.Attributes;
 using Whizbang.Core.Persistence;
 
@@ -203,7 +203,7 @@ For more control, define custom strategies in `appsettings.json` and reference t
 }
 ```
 
-```csharp{title="Using Custom Named Strategies - BulkImportReceptor" description="For more control, define custom strategies in `appsettings." category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Using", "Custom"]}
+```csharp{title="Using Custom Named Strategies - BulkImportReceptor" description="For more control, define custom strategies in `appsettings." category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Using", "Custom"] tests=["PersistenceStrategyTests.PersistenceStrategyAttribute_CanBeAppliedWithCustomStrategyAsync", "PersistenceStrategyTests.PersistenceStrategyAttribute_StrategyName_CanBeSetViaConstructorAsync", "PersistenceStrategyTests.PersistenceStrategyAttribute_Mode_IsNullWhenUsingStrategyNameAsync"]}
 // Reference custom strategy by name
 [PersistenceStrategy("high-throughput-batch")]
 public class BulkImportReceptor : IReceptor<ImportData, DataImported> {
@@ -230,7 +230,7 @@ public class PublishIntegrationEventReceptor : IReceptor<PublishEvent, EventPubl
 
 Receptors without the `[PersistenceStrategy]` attribute use the global default configured in `appsettings.json`:
 
-```csharp{title="Default Behavior (No Attribute)" description="Receptors without the [PersistenceStrategy] attribute use the global default configured in `appsettings." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Default", "Behavior"]}
+```csharp{title="Default Behavior (No Attribute)" description="Receptors without the [PersistenceStrategy] attribute use the global default configured in `appsettings." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Default", "Behavior"] tests=["PersistenceStrategyTests.PersistenceStrategyAttribute_NotPresentOnDefaultReceptorAsync", "PersistenceStrategyTests.PersistenceMode_DefaultIsImmediateDetachedAsync"]}
 // No attribute = uses Persistence.DefaultMode (Immediate if not configured)
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
   public async ValueTask<OrderCreated> HandleAsync(
@@ -289,7 +289,7 @@ Configure default persistence behavior in `appsettings.json`:
 
 The `PersistenceStrategyAttribute` supports two constructors:
 
-```csharp{title="Attribute Details" description="The PersistenceStrategyAttribute supports two constructors:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Attribute", "Details"]}
+```csharp{title="Attribute Details" description="The PersistenceStrategyAttribute supports two constructors:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Persistence", "Attribute", "Details"] tests=["PersistenceStrategyTests.PersistenceStrategyAttribute_Mode_CanBeSetViaConstructorAsync", "PersistenceStrategyTests.PersistenceStrategyAttribute_StrategyName_CanBeSetViaConstructorAsync", "PersistenceStrategyTests.PersistenceStrategyAttribute_StrategyName_IsNullWhenUsingModeAsync", "PersistenceStrategyTests.PersistenceStrategyAttribute_Mode_IsNullWhenUsingStrategyNameAsync"]}
 // Use built-in mode
 [PersistenceStrategy(PersistenceMode.Batched)]
 
@@ -310,7 +310,7 @@ The `PersistenceStrategyAttribute` supports two constructors:
 - **Multiple**: Not allowed (`AllowMultiple = false`)
 - **Inherited**: Yes (`Inherited = true`) - base class strategy applies to derived classes
 
-```csharp{title="Attribute Behavior" description="- Target: Class only (`AttributeTargets." category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Attribute", "Behavior"]}
+```csharp{title="Attribute Behavior" description="- Target: Class only (`AttributeTargets." category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Persistence", "Attribute", "Behavior"] tests=["PersistenceStrategyTests.PersistenceStrategyAttribute_AttributeUsage_AllowsInheritedAsync", "PersistenceStrategyTests.PersistenceStrategyAttribute_AttributeUsage_AllowsClassTargetAsync", "PersistenceStrategyTests.PersistenceStrategyAttribute_AttributeUsage_DoesNotAllowMultipleAsync"]}
 // Base class strategy inherited by derived classes
 [PersistenceStrategy(PersistenceMode.Batched)]
 public abstract class BaseBatchReceptor<TMessage, TResponse>
