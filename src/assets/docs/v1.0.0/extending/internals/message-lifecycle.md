@@ -41,7 +41,7 @@ This document provides a complete view of how messages flow through Whizbang fro
 
 ## Architecture Overview
 
-```mermaid
+```mermaid{caption="Whizbang end-to-end component map: dispatcher, work coordinator, event store, outbox and inbox, and the background workers"}
 graph TB
     subgraph "API/Client Layer"
         API[API Controller]
@@ -114,7 +114,7 @@ graph TB
 
 **Use Case**: API endpoint needs immediate typed response
 
-```mermaid
+```mermaid{caption="Synchronous command flow: the controller waits for the receptor result while outbox and event store persist in one atomic work-coordinator batch"}
 sequenceDiagram
     participant Client
     participant Controller
@@ -188,7 +188,7 @@ sequenceDiagram
 
 **Use Case**: Long-running operation, return receipt for tracking
 
-```mermaid
+```mermaid{caption="Asynchronous command flow: the dispatcher returns a delivery receipt after the outbox insert, with eventual delivery guaranteed by the outbox"}
 sequenceDiagram
     participant Client
     participant Controller
@@ -237,7 +237,7 @@ sequenceDiagram
 The legacy `WorkCoordinatorPublisherWorker` has been decomposed into a work-pump pipeline (Phase C): `ClaimWorker` is the **only** place that calls `IWorkCoordinator.ClaimWorkAsync` (adaptive backoff on empty polls, with a wake semaphore driven by Postgres NOTIFY / local channel writes); claimed work flows through in-process channels to `OutboxPublishWorker`, which publishes to transport via `IMessagePublishStrategy`; completions and failures are flushed back to the database by dedicated flush workers (`OutboxCompletionFlushWorker`, `FailureFlushWorker`). The sequence below shows the logical flow — claim, ordered publish, completion reporting — which is unchanged.
 :::
 
-```mermaid
+```mermaid{caption="Outbox publishing flow: lease-based claim, ordered per-stream publish to transport via the Ordered Stream Processor, then atomic completion reporting"}
 sequenceDiagram
     participant Timer
     participant PublisherWorker as ClaimWorker +<br/>OutboxPublishWorker
@@ -306,7 +306,7 @@ sequenceDiagram
 
 ### Background Worker: ServiceBusConsumerWorker
 
-```mermaid
+```mermaid{caption="Inbox consuming flow: atomic dedup insert, ordered per-stream perspective invocation via the Ordered Stream Processor, then completion reporting and Service Bus completion"}
 sequenceDiagram
     participant ServiceBus as Azure Service Bus
     participant ConsumerWorker as ServiceBus<br/>ConsumerWorker
@@ -397,7 +397,7 @@ sequenceDiagram
 
 Receptors have several integration points throughout the message lifecycle:
 
-```mermaid
+```mermaid{caption="Receptor lifecycle phases from validation through completion, with the error path and HTTP status for each phase"}
 graph TB
     START[Message Arrives] --> VALIDATE[1. Validation Phase]
     VALIDATE --> LOGIC[2. Business Logic Phase]
@@ -421,7 +421,7 @@ graph TB
 
 ### Phase 1: Validation
 
-```csharp{title="Phase 1: Validation" description="Phase 1: Validation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Validation"]}
+```csharp{title="Phase 1: Validation" description="Phase 1: Validation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Validation"] unverified="Consumer receptor validation illustration, not a core Whizbang API"}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {
@@ -445,7 +445,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 ### Phase 2: Business Logic
 
-```csharp{title="Phase 2: Business Logic" description="Phase 2: Business Logic" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Business"]}
+```csharp{title="Phase 2: Business Logic" description="Phase 2: Business Logic" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Business"] unverified="Consumer receptor business-logic illustration, not a core Whizbang API"}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {
@@ -483,7 +483,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 ### Phase 3: Event Generation
 
-```csharp{title="Phase 3: Event Generation" description="Phase 3: Event Generation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Event"]}
+```csharp{title="Phase 3: Event Generation" description="Phase 3: Event Generation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Event"] unverified="Consumer receptor event-generation illustration, not a core Whizbang API"}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {
@@ -515,7 +515,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 This phase is **automatic** - no receptor code needed:
 
-```csharp{title="Phase 4: Event Store (Automatic)" description="This phase is automatic - no receptor code needed:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Event"]}
+```csharp{title="Phase 4: Event Store (Automatic)" description="This phase is automatic - no receptor code needed:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Phase", "Event"] unverified="Illustrative Dispatcher-internal pseudo-code, not verified by this page's strategy or OSP tests"}
 // Inside Dispatcher.SendAsync():
 _workCoordinatorStrategy.QueueOutboxMessage(
     new OutboxMessage {
@@ -535,7 +535,7 @@ _workCoordinatorStrategy.QueueOutboxMessage(
 
 **Automatic via `PublishAsync()`**:
 
-```csharp{title="Phase 5: Perspective Update" description="Automatic via PublishAsync():" category="Internals" difficulty="BEGINNER" tags=["Extending", "Internals", "Phase", "Perspective"]}
+```csharp{title="Phase 5: Perspective Update" description="Automatic via PublishAsync():" category="Internals" difficulty="BEGINNER" tags=["Extending", "Internals", "Phase", "Perspective"] unverified="Illustrative Dispatcher-internal pseudo-code for PublishAsync, not verified by this page's tests"}
 // Inside Dispatcher after receptor returns
 if (result is not null) {
     await PublishAsync(result, cancellationToken);
@@ -550,7 +550,7 @@ if (result is not null) {
 
 **Automatic scope disposal**:
 
-```csharp{title="Phase 6: Completion" description="Automatic scope disposal:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Internals", "Phase", "Completion"]}
+```csharp{title="Phase 6: Completion" description="Automatic scope disposal:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Internals", "Phase", "Completion"] unverified="Consumer HTTP scope-usage illustration, not a core Whizbang API"}
 // Inside HTTP request handler
 await using var scope = _scopeFactory.CreateAsyncScope();
 var dispatcher = scope.ServiceProvider.GetRequiredService<IDispatcher>();
@@ -573,7 +573,7 @@ var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(comman
 
 ### 1. Immediate Strategy (Lowest Latency)
 
-```csharp{title="Immediate Strategy (Lowest Latency)" description="Immediate Strategy (Lowest Latency)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Internals", "Immediate", "Strategy"]}
+```csharp{title="Immediate Strategy (Lowest Latency)" description="Immediate Strategy (Lowest Latency)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Internals", "Immediate", "Strategy"] tests=["ImmediateWorkCoordinatorStrategyTests.QueueOutboxMessage_FlushesOnCallAsync", "ImmediateWorkCoordinatorStrategyTests.FlushAsync_ImmediatelyCallsWorkCoordinatorAsync"]}
 public class ImmediateWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
     public void QueueOutboxMessage(OutboxMessage message) {
         _pendingOutbox.Add(message);
@@ -590,7 +590,7 @@ public class ImmediateWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
 
 ### 2. Scoped Strategy (Per-Request Batching)
 
-```csharp{title="Scoped Strategy (Per-Request Batching)" description="Scoped Strategy (Per-Request Batching)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Scoped", "Strategy"]}
+```csharp{title="Scoped Strategy (Per-Request Batching)" description="Scoped Strategy (Per-Request Batching)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Scoped", "Strategy"] tests=["ScopedWorkCoordinatorStrategyTests.DisposeAsync_FlushesQueuedMessagesAsync", "ScopedWorkCoordinatorStrategyTests.MultipleQueues_FlushedTogetherOnDisposalAsync"]}
 public class ScopedWorkCoordinatorStrategy : IWorkCoordinatorStrategy, IAsyncDisposable {
     public void QueueOutboxMessage(OutboxMessage message) {
         _pendingOutbox.Add(message);
@@ -610,7 +610,7 @@ public class ScopedWorkCoordinatorStrategy : IWorkCoordinatorStrategy, IAsyncDis
 
 ### 3. Interval Strategy (Highest Throughput)
 
-```csharp{title="Interval Strategy (Highest Throughput)" description="Interval Strategy (Highest Throughput)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Interval", "Strategy"]}
+```csharp{title="Interval Strategy (Highest Throughput)" description="Interval Strategy (Highest Throughput)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Internals", "Interval", "Strategy"] tests=["IntervalWorkCoordinatorStrategyTests.BackgroundTimer_FlushesEveryIntervalAsync", "IntervalWorkCoordinatorStrategyTests.QueuedMessages_BatchedUntilTimerAsync"]}
 public class IntervalWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
     public void QueueOutboxMessage(OutboxMessage message) {
         _pendingOutbox.Add(message);
