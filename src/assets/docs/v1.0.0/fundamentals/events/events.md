@@ -83,7 +83,7 @@ Guid underlying = eventId.Value;
 
 ### Basic Event
 
-```csharp{title="Basic Event" description="Basic Event" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Basic", "Event"]}
+```csharp{title="Basic Event" description="Basic Event" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Basic", "Event"] tests=["StreamIdGeneratorTests.Generator_WithStreamIdAttribute_GeneratesExtractorAsync", "StreamIdGeneratorTests.GeneratedExtractor_WithValidEvent_GeneratesResolveMethodAsync"]}
 public record OrderCreated : IEvent {
   [StreamId]
   public required Guid OrderId { get; init; }
@@ -135,7 +135,7 @@ public record ShippingInfo {
 
 Events describe what **has happened**:
 
-```csharp{title="Use Past Tense" description="Events describe what has happened:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Past", "Tense"]}
+```csharp{title="Use Past Tense" description="Events describe what has happened:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Past", "Tense"] unverified="naming-convention illustration — empty event records incl. present-tense anti-patterns, nothing to assert"}
 // ✅ GOOD: Past tense
 public record OrderCreated : IEvent { }
 public record PaymentProcessed : IEvent { }
@@ -150,7 +150,7 @@ public record ProcessPayment : IEvent { }   // This is a command!
 
 Events should clearly describe the state change:
 
-```csharp{title="Be Specific" description="Events should clearly describe the state change:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Specific"]}
+```csharp{title="Be Specific" description="Events should clearly describe the state change:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Specific"] unverified="naming-convention illustration — empty event records, nothing to assert"}
 // ✅ GOOD: Specific events
 public record OrderStatusChangedToShipped : IEvent { }
 public record OrderStatusChangedToDelivered : IEvent { }
@@ -169,7 +169,7 @@ public record OrderChanged : IEvent { }  // What changed?
 
 ### Capture Complete State
 
-```csharp{title="Capture Complete State" description="Capture Complete State" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Capture", "Complete"]}
+```csharp{title="Capture Complete State" description="Capture Complete State" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Capture", "Complete"] unverified="design-guidance good/bad contrast — incomplete-event anti-pattern, nothing to assert"}
 // ✅ GOOD: Complete state for reconstruction
 public record AccountBalanceChanged : IEvent {
   [StreamId]
@@ -208,7 +208,7 @@ public record OrderCancelled : IEvent {
 
 ### Use Value Objects for Type Safety
 
-```csharp{title="Use Value Objects for Type Safety" description="Use Value Objects for Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Value", "Objects"]}
+```csharp{title="Use Value Objects for Type Safety" description="Use Value Objects for Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Value", "Objects"] unverified="design-guidance good/bad contrast — strongly-typed vs primitive stream ids, not covered by the Guid-based StreamId generator tests"}
 // ✅ GOOD: Type-safe identifiers
 public record OrderCreated : IEvent {
   [StreamId]
@@ -229,7 +229,7 @@ public record OrderCreated : IEvent {
 
 Events are **facts** and must be immutable:
 
-```csharp{title="Event Immutability" description="Events are facts and must be immutable:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Immutability"]}
+```csharp{title="Event Immutability" description="Events are facts and must be immutable:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Immutability"] unverified="counter-example — mutable-event anti-pattern, nothing to assert"}
 // ✅ GOOD: Immutable record with init-only properties
 public record OrderCreated : IEvent {
   public required Guid OrderId { get; init; }  // Can only be set during construction
@@ -247,7 +247,7 @@ public class OrderCreated : IEvent {
 
 Events are **not** commands or intentions. They represent **accomplished facts**:
 
-```csharp{title="Event vs Fact" description="Events are not commands or intentions." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Fact"]}
+```csharp{title="Event vs Fact" description="Events are not commands or intentions." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Fact"] unverified="illustrative command-vs-event contrast — no single behavior to assert"}
 // Command (intention): "Please create an order"
 public record CreateOrder : ICommand {
   public required Guid CustomerId { get; init; }
@@ -274,7 +274,7 @@ Key differences:
 
 ### In Receptors
 
-```csharp{title="In Receptors" description="In Receptors" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Receptors"]}
+```csharp{title="In Receptors" description="In Receptors" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Receptors"] unverified="receptor event handling — another component, verified in the Receptors docs"}
 public class InventoryReceptor : IReceptor<OrderCreated, InventoryReserved> {
   public async ValueTask<InventoryReserved> HandleAsync(
       OrderCreated @event,
@@ -294,7 +294,7 @@ public class InventoryReceptor : IReceptor<OrderCreated, InventoryReserved> {
 
 ### In Perspectives
 
-```csharp{title="In Perspectives" description="In Perspectives" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspectives"]}
+```csharp{title="In Perspectives" description="In Perspectives" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspectives"] unverified="perspective Apply projection — another component, verified in the Perspectives docs"}
 public class OrderSummaryPerspective
     : IPerspectiveFor<OrderSummary, OrderCreated, OrderShipped, OrderDelivered> {
 

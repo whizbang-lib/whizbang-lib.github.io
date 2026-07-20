@@ -43,7 +43,7 @@ Whizbang's event store is designed for:
 
 ### Appending Events
 
-```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Appending"]}
+```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Appending"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_ShouldStoreEventAsync", "EFCoreEventStoreTests.AppendAsync_WithRawMessage_CreatesEnvelopeAndAppendsAsync"]}
 public class OrderHandler {
   private readonly IEventStore _eventStore;
 
@@ -59,7 +59,7 @@ public class OrderHandler {
 
 ### Reading Events
 
-```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Reading"]}
+```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Reading"] tests=["EFCoreEventStoreTests.ReadAsync_WithExistingEvents_ReturnsEventsInSequenceOrderAsync", "InMemoryEventStoreTests.ReadAsync_ByEventId_WithSpecificEventId_ShouldReturnEventsAfterItAsync"]}
 // Read all events of a specific type
 await foreach (var envelope in _eventStore.ReadAsync<OrderCreatedEvent>(orderId, fromSequence: 0)) {
   var evt = envelope.Payload;
@@ -89,7 +89,7 @@ The decorator is automatically applied when using `DecorateEventStoreWithSyncTra
 
 ### Usage
 
-```csharp{title="Usage" description="Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Usage"]}
+```csharp{title="Usage" description="Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Usage"] tests=["AppendAndWaitEventStoreDecoratorTests.AppendAndWaitAsync_WaitsForPerspectiveSyncAsync", "AppendAndWaitEventStoreDecoratorTests.AppendAndWaitAsync_AppendsEventToInnerStoreAsync", "AppendAndWaitEventStoreDecoratorTests.AppendAndWaitAsync_UsesProvidedTimeoutAsync"]}
 var syncResult = await _eventStore.AppendAndWaitAsync<OrderCreatedEvent, OrderProjection>(
     streamId: orderId,
     message: new OrderCreatedEvent(orderId, customerId, items),
@@ -128,7 +128,7 @@ This uses `IEventCompletionAwaiter` internally to wait for all perspectives.
 
 Returns a `SyncResult` with the outcome:
 
-```csharp{title="SyncResult" description="Returns a SyncResult with the outcome:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "SyncResult"]}
+```csharp{title="SyncResult" description="Returns a SyncResult with the outcome:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "SyncResult"] tests=["AppendAndWaitEventStoreDecoratorTests.AppendAndWaitAsync_WaitsForPerspectiveSyncAsync", "AppendAndWaitEventStoreDecoratorTests.AppendAndWaitAsync_WhenTimeoutOccurs_ReturnsTimedOutResultAsync"]}
 var result = await eventStore.AppendAndWaitAsync<OrderCreatedEvent, OrderProjection>(
     streamId, evt);
 
@@ -161,7 +161,7 @@ When appending events with the message-only overload (`AppendAsync<TMessage>(str
 
 This happens via the `SecurityContextEventStoreDecorator`:
 
-```csharp{title="Security Context Propagation" description="This happens via the SecurityContextEventStoreDecorator:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Security", "Context"]}
+```csharp{title="Security Context Propagation" description="This happens via the SecurityContextEventStoreDecorator:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Security", "Context"] tests=["SecurityContextEventStoreDecoratorTests.AppendAsync_WithMessage_WithAmbientSecurityContext_PropagatesContextAsync"]}
 // Security context from ScopeContextAccessor.CurrentContext is auto-propagated
 await _eventStore.AppendAsync(orderId, new OrderCreatedEvent(...));
 
@@ -179,7 +179,7 @@ Security context is propagated when:
 1. `ScopeContextAccessor.CurrentContext` contains an `ImmutableScopeContext`
 2. The context has `ShouldPropagate = true`
 
-```csharp{title="When Context is Propagated" description="Security context is propagated when: 1." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "When", "Context"]}
+```csharp{title="When Context is Propagated" description="Security context is propagated when: 1." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "When", "Context"] tests=["SecurityContextEventStoreDecoratorTests.AppendAsync_WithMessage_WithAmbientSecurityContext_PropagatesContextAsync", "SecurityContextEventStoreDecoratorTests.AppendAsync_WithMessage_WithNonPropagatingContext_DoesNotPropagateAsync"]}
 // Context is set by middleware or scope initialization
 var extraction = new SecurityExtraction {
   Scope = new PerspectiveScope { UserId = "user-123", TenantId = "tenant-456" },
@@ -193,7 +193,7 @@ await _eventStore.AppendAsync(orderId, evt);
 
 ## IEventStore Interface
 
-```csharp{title="IEventStore Interface" description="IEventStore Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "IEventStore", "Interface"]}
+```csharp{title="IEventStore Interface" description="IEventStore Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "IEventStore", "Interface"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_ShouldStoreEventAsync", "EFCoreEventStoreTests.AppendAsync_WithValidEnvelope_AppendsEventToStreamAsync", "InMemoryEventStoreTests.ReadPolymorphicAsync_WithMatchingEventType_ShouldReturnEventsAsync", "EFCoreEventStoreTests.GetLastSequenceAsync_WithExistingEvents_ReturnsHighestSequenceAsync", "AppendAndWaitEventStoreDecoratorTests.AppendAndWaitAsync_WaitsForPerspectiveSyncAsync"]}
 public interface IEventStore {
   // Append with envelope (full control)
   Task AppendAsync<TMessage>(Guid streamId, MessageEnvelope<TMessage> envelope, CancellationToken ct = default);
@@ -263,7 +263,7 @@ public interface IEventStore {
 
 Whizbang applies decorators to enhance event store functionality:
 
-```mermaid
+```mermaid{caption="Event store decorator stack — your IEventStore call passes through AppendAndWait, SyncTracking, SecurityContext, and Upcasting decorators before reaching the base store."}
 graph TB
     A["IEventStore (your code calls this)"]
     B["AppendAndWaitEventStoreDecorator (enables AppendAndWaitAsync)"]
@@ -286,7 +286,7 @@ These decorators are automatically applied when using `DecorateEventStoreWithSyn
 
 Event stores are registered by data providers:
 
-```csharp{title="Registration" description="Event stores are registered by data providers:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Registration"]}
+```csharp{title="Registration" description="Event stores are registered by data providers:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Registration"] unverified="DI registration / provider wiring — configures the EFCoreEventStore + decorator stack, not an event-store behavior exercised by these tests"}
 services.AddWhizbang()
     .WithEFCore<MyDbContext>()
     .WithDriver.Postgres;  // Registers EFCoreEventStore with decorators
