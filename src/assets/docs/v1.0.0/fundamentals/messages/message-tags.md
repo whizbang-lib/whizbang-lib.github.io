@@ -69,7 +69,7 @@ Message tags enable **declarative cross-cutting concerns** - attach attributes t
 
 ## Core Concept
 
-```mermaid{title="Message tag processing at a glance" description="A tagged message flows through its receptor and cascade events, then tag processing fans out to every registered hook."}
+```mermaid{title="Message tag processing at a glance" description="A tagged message flows through its receptor and cascade events, then tag processing fans out to every registered hook." caption="Message tag processing flow — a tagged message runs through its receptor and cascade events, then tag processing fans out to every registered hook." tests=["MessageTagProcessorTests.ProcessTagsAsync_WithMatchingTag_InvokesHookAsync", "MessageTagProcessorTests.ProcessTagsAsync_InvokesHooksInPriorityOrderAsync"]}
 graph LR
     A[Tagged Message] --> B[Receptor]
     B --> C[Cascade Events]
@@ -104,7 +104,7 @@ Message tags provide a **declarative way** to apply cross-cutting concerns to me
 
 ### How It Works
 
-```csharp{title="Tag Processing Pipeline" description="Understanding the message tag processing flow from decoration to hook invocation" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "Architecture", "Pipeline"]}
+```csharp{title="Tag Processing Pipeline" description="Understanding the message tag processing flow from decoration to hook invocation" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "Architecture", "Pipeline"] tests=["MessageTagProcessorTests.ProcessTagsAsync_WithMatchingTag_InvokesHookAsync", "MessageTagProcessorTests.ProcessTagsAsync_InvokesHooksInPriorityOrderAsync"]}
 // 1. Decorate messages with tag attributes
 [SignalTag(Tag = "order-created", Properties = ["OrderId", "CustomerId"])]
 [TelemetryTag(Tag = "order-telemetry", SpanName = "CreateOrder")]
@@ -137,7 +137,7 @@ public class SignalRNotificationHook : IMessageTagHook<SignalTagAttribute> {
 
 Register hooks in your `Program.cs` or `Startup.cs`:
 
-```csharp{title="Configuring Tag Hooks" description="Register hooks for built-in and custom tag attributes inside AddWhizbang" category="Configuration" difficulty="BEGINNER" tags=["Tags", "Configuration", "Hooks"]}
+```csharp{title="Configuring Tag Hooks" description="Register hooks for built-in and custom tag attributes inside AddWhizbang" category="Configuration" difficulty="BEGINNER" tags=["Tags", "Configuration", "Hooks"] tests=["TagOptionsTests.UseHook_AllowsMultipleAttributeTypesAsync", "TagOptionsTests.UseUniversalHook_RegistersForMessageTagAttributeAsync"]}
 services.AddWhizbang(options => {
   // Register hooks for built-in tag types
   options.Tags.UseHook<SignalTagAttribute, SignalRNotificationHook>();
@@ -154,7 +154,7 @@ services.AddWhizbang(options => {
 
 **Priority Control**: Hooks execute in ascending priority order (lower values first). The **default priority is `-100`** (lowest — fires first), not `0`:
 
-```csharp{title="Hook Priority Configuration" description="Control hook execution order with explicit priority values" category="Configuration" difficulty="INTERMEDIATE" tags=["Tags", "Hooks", "Priority"]}
+```csharp{title="Hook Priority Configuration" description="Control hook execution order with explicit priority values" category="Configuration" difficulty="INTERMEDIATE" tags=["Tags", "Hooks", "Priority"] tests=["TagOptionsTests.UseHook_UsesDefaultPriorityAsync", "TagOptionsTests.UseHook_AcceptsCustomPriorityAsync", "TagOptionsTests.GetHooksInExecutionOrder_SortsByPriorityAscendingAsync"]}
 options.Tags.UseHook<SignalTagAttribute, ValidationHook>(priority: -100);  // First (also the default)
 options.Tags.UseHook<SignalTagAttribute, NotificationHook>(priority: 0);   // Middle
 options.Tags.UseHook<SignalTagAttribute, AuditHook>(priority: 500);        // Last
@@ -166,7 +166,7 @@ options.Tags.UseHook<SignalTagAttribute, AuditHook>(priority: 500);        // La
 
 Apply tag attributes to events and commands:
 
-```csharp{title="Tagging Messages" description="Apply signal, telemetry, and metric tag attributes to events" category="Attributes" difficulty="BEGINNER" tags=["Tags", "Events", "Attributes"]}
+```csharp{title="Tagging Messages" description="Apply signal, telemetry, and metric tag attributes to events" category="Attributes" difficulty="BEGINNER" tags=["Tags", "Events", "Attributes"] tests=["SignalTagAttributeTests.SignalTagAttribute_CanBeAppliedToEventAsync", "TelemetryTagAttributeTests.TelemetryTagAttribute_CanBeAppliedToEventAsync", "MetricTagAttributeTests.MetricTagAttribute_Counter_CanBeAppliedToEventAsync"]}
 // Signal tag - for real-time notifications
 [SignalTag(
     Tag = "order-created",
@@ -202,7 +202,7 @@ public record PaymentCompletedEvent(Guid PaymentId, decimal Amount) : IEvent;
 
 Create hooks that respond to tagged messages. Hooks are resolved from a **fresh DI scope per dispatch**, so scoped services (e.g. `DbContext`) work:
 
-```csharp{title="Implementing a Tag Hook" description="Create a hook that resolves the group template and sends a SignalR notification" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "Hooks", "SignalR"]}
+```csharp{title="Implementing a Tag Hook" description="Create a hook that resolves the group template and sends a SignalR notification" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "Hooks", "SignalR"] tests=["MessageTagHookTests.Hook_CanAccessAttributePropertiesAsync", "MessageTagHookTests.Hook_CanAccessScopeDataAsync"]}
 public class SignalRNotificationHook : IMessageTagHook<SignalTagAttribute> {
   private readonly IHubContext<NotificationHub> _hubContext;
   private readonly MyDbContext _dbContext; // Scoped services work!
@@ -265,7 +265,7 @@ The `MessageTagProcessor` orchestrates tag hook execution after successful recep
 
 ### Processing Flow
 
-```mermaid{title="Tag hook execution sequence" description="After the receptor returns and cascade events run, the dispatcher calls ProcessTagsAsync, which queries the registry and invokes hooks in priority order."}
+```mermaid{title="Tag hook execution sequence" description="After the receptor returns and cascade events run, the dispatcher calls ProcessTagsAsync, which queries the registry and invokes hooks in priority order." caption="Tag hook execution sequence — after the receptor returns and cascade events run, ProcessTagsAsync queries the registry, builds the payload, and invokes hooks in ascending priority order." tests=["MessageTagProcessorTests.ProcessTagsAsync_InvokesHooksInPriorityOrderAsync", "MessageTagProcessorTests.ProcessTagsAsync_BuildsPayloadFromMessageAsync"]}
 sequenceDiagram
     participant D as Dispatcher
     participant R as Receptor
@@ -309,7 +309,7 @@ Tags are processed during lifecycle invocation (use when hooks depend on lifecyc
 Message → Receptor → Cascade Events → Lifecycle Stages → TAG PROCESSING
 ```
 
-```csharp{title="Lifecycle Stage Mode" description="Switch tag processing to run during the lifecycle stages instead of immediately" category="Configuration" difficulty="INTERMEDIATE" tags=["Tags", "Configuration", "Lifecycle"]}
+```csharp{title="Lifecycle Stage Mode" description="Switch tag processing to run during the lifecycle stages instead of immediately" category="Configuration" difficulty="INTERMEDIATE" tags=["Tags", "Configuration", "Lifecycle"] unverified="configuration toggle — WhizbangCoreOptions.TagProcessingMode enum and default verified in source, no runtime test"}
 services.AddWhizbang(options => {
   options.TagProcessingMode = TagProcessingMode.AsLifecycleStage;
 });
@@ -343,7 +343,7 @@ The `TagContext<TAttribute>` (a `sealed record`) provides hooks with all necessa
 
 `Scope` is an `IScopeContext` — there is **no string indexer**. Read tenant/user via the nested `PerspectiveScope`, and roles/permissions via the helper methods:
 
-```csharp{title="Accessing scope in a hook" description="IScopeContext exposes typed accessors (nested PerspectiveScope, HasRole, HasPermission), not an indexer" category="Identity" difficulty="INTERMEDIATE" tags=["Tags", "Security", "Scope"]}
+```csharp{title="Accessing scope in a hook" description="IScopeContext exposes typed accessors (nested PerspectiveScope, HasRole, HasPermission), not an indexer" category="Identity" difficulty="INTERMEDIATE" tags=["Tags", "Security", "Scope"] tests=["MessageTagHookTests.Hook_CanAccessScopeDataAsync"]}
 var tenantId = context.Scope?.Scope?.TenantId;
 var userId   = context.Scope?.Scope?.UserId;
 var isAdmin  = context.Scope?.HasRole("Admin") ?? false;
@@ -357,13 +357,13 @@ The `Stage` property tells hooks **when** in the message lifecycle they are bein
 1. **Server-side (registration-time) filtering** — pass `fireAt:` when registering. The framework only invokes the hook at that stage (via `TagOptions.GetHooksFor(attributeType, stage)`). This is the mechanism JDNext uses.
 2. **In-hook filtering** — omit `fireAt` (the default `null` means "fire at every stage") and inspect `context.Stage` inside the hook.
 
-```csharp{title="Server-side stage filtering with fireAt" description="Register a hook to fire only at one lifecycle stage — the framework filters, not the hook" category="Configuration" difficulty="INTERMEDIATE" tags=["Tags", "LifecycleStage", "Hooks"]}
+```csharp{title="Server-side stage filtering with fireAt" description="Register a hook to fire only at one lifecycle stage — the framework filters, not the hook" category="Configuration" difficulty="INTERMEDIATE" tags=["Tags", "LifecycleStage", "Hooks"] tests=["TagOptionsTests.UseHook_AcceptsCustomFireAtAsync", "TagOptionsTests.GetHooksFor_WithStage_ExcludesHooksForOtherStagesAsync"]}
 // Only invoke this hook at PostAllPerspectivesDetached — the framework filters, not the hook.
 options.Tags.UseHook<SignalTagAttribute, SignalRNotificationHook>(
     fireAt: LifecycleStage.PostAllPerspectivesDetached);
 ```
 
-```csharp{title="In-hook stage filtering with context.Stage" description="A hook registered at every stage that only acts once, after the perspective checkpoint commits" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "LifecycleStage", "Hooks"]}
+```csharp{title="In-hook stage filtering with context.Stage" description="A hook registered at every stage that only acts once, after the perspective checkpoint commits" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "LifecycleStage", "Hooks"] tests=["MessageTagProcessorTests.ProcessTagsAsync_HookCanFilterByStage_OnlyActsOnPostPerspectiveDetachedAsync", "MessageTagProcessorTests.ProcessTagsAsync_PassesStageToHookContext_AllStagesAsync"]}
 public class SignalRNotificationHook : IMessageTagHook<SignalTagAttribute> {
   private readonly IHubContext<NotificationHub> _hubContext;
 
@@ -406,7 +406,7 @@ The payload is a flat JSON object built from two sources:
 - **Explicit empty array** `[]` — no fields are extracted; the tag fires with just a tag name and any `ExtraJson`. Use this when the tag itself (not its data) is the signal.
 - **Omitted** (`null`) — the generator falls back to every public property on the event type. Preserved for backward compat; **not recommended** for high-volume signal payloads because they travel over real-time transports and oversized payloads are easy to create by accident. (The built-in `AuditEventAttribute` deliberately leaves `Properties` null — audit needs the full event body.)
 
-```csharp{title="Understanding Payload Structure" description="How the flat tag payload is assembled from extracted properties plus merged ExtraJson" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "Payload", "JSON"]}
+```csharp{title="Understanding Payload Structure" description="How the flat tag payload is assembled from extracted properties plus merged ExtraJson" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "Payload", "JSON"] tests=["MessageTagDiscoveryGeneratorTests.Generator_WithExplicitProperties_EmitsOnlyDeclaredFieldsAsync", "MessageTagDiscoveryGeneratorTests.Generator_WithExtraJson_GeneratesMergeCodeAsync"]}
 [SignalTag(
     Tag = "order-created",
     Properties = ["OrderId", "CustomerId"],
@@ -425,7 +425,7 @@ public record OrderCreatedEvent(Guid OrderId, Guid CustomerId, decimal Total, st
 
 ### Accessing Payload Data
 
-```csharp{title="Working with Payload Data" description="Reading extracted properties, merged ExtraJson, and un-extracted fields from a tag context" category="Messaging" difficulty="BEGINNER" tags=["Tags", "Payload", "JSON"]}
+```csharp{title="Working with Payload Data" description="Reading extracted properties, merged ExtraJson, and un-extracted fields from a tag context" category="Messaging" difficulty="BEGINNER" tags=["Tags", "Payload", "JSON"] tests=["MessageTagProcessorTests.ProcessTagsAsync_BuildsPayloadFromMessageAsync", "MessageTagHookTests.Hook_CanAccessMessageAndMessageTypeAsync"]}
 public async ValueTask<JsonElement?> OnTaggedMessageAsync(
     TagContext<SignalTagAttribute> context,
     CancellationToken ct) {
@@ -460,7 +460,7 @@ The processor measures each built payload and flags oversized ones via `TagOptio
 | `PayloadSizeWarningThresholdBytes` | `8192` | Logs a warning with message type, tag, and size. Set to `null` to disable. |
 | `PayloadSizeErrorThresholdBytes` | `null` (disabled) | Throws `InvalidOperationException` *before any hook runs* for that tag. |
 
-```csharp{title="Configuring payload size thresholds" description="Catch runaway tag payloads with warning and error byte thresholds before they ship" category="Configuration" difficulty="BEGINNER" tags=["Tags", "Configuration", "Payload"]}
+```csharp{title="Configuring payload size thresholds" description="Catch runaway tag payloads with warning and error byte thresholds before they ship" category="Configuration" difficulty="BEGINNER" tags=["Tags", "Configuration", "Payload"] tests=["MessageTagProcessorTests.ProcessTagsAsync_PayloadExceedsWarningThreshold_LogsWarningAsync", "MessageTagProcessorTests.ProcessTagsAsync_PayloadExceedsErrorThreshold_ThrowsAsync"]}
 services.AddWhizbang(options => {
   options.Tags.PayloadSizeWarningThresholdBytes = 4096;
   options.Tags.PayloadSizeErrorThresholdBytes = 65_536;
@@ -496,7 +496,7 @@ All tag attributes inherit from `MessageTagAttribute` and share these base prope
 
 Tags messages for real-time notification delivery through SignalR, WebSockets, or other push mechanisms. The built-in `SignalRNotificationHook` (in `Whizbang.SignalR`) sends the payload to the resolved group.
 
-```csharp{title="SignalTag Properties" description="Full property reference for SignalTagAttribute, including group placeholders and priority" category="Attributes" difficulty="BEGINNER" tags=["Tags", "Notifications", "API"]}
+```csharp{title="SignalTag Properties" description="Full property reference for SignalTagAttribute, including group placeholders and priority" category="Attributes" difficulty="BEGINNER" tags=["Tags", "Notifications", "API"] tests=["SignalTagAttributeTests.SignalTagAttribute_CanBeAppliedToEventAsync", "SignalTagAttributeTests.SignalTagAttribute_Group_CanBeSetAsync", "SignalTagAttributeTests.SignalTagAttribute_Priority_CanBeSetToHighAsync"]}
 [SignalTag(
     Tag = "order-shipped",              // Unique identifier for this notification type
     Properties = ["OrderId", "TrackingNumber"],  // Properties to extract into payload
@@ -525,7 +525,7 @@ public record OrderShippedEvent(
 
 The `Group` property supports dynamic resolution using property placeholders:
 
-```csharp{title="Dynamic Group Resolution" description="Using {PropertyName} placeholders to target customers, tenants, users, or broadcast" category="Attributes" difficulty="INTERMEDIATE" tags=["Tags", "Notifications", "Groups"]}
+```csharp{title="Dynamic Group Resolution" description="Using {PropertyName} placeholders to target customers, tenants, users, or broadcast" category="Attributes" difficulty="INTERMEDIATE" tags=["Tags", "Notifications", "Groups"] tests=["SignalTagAttributeTests.SignalTagAttribute_Group_CanBeSetAsync"]}
 [SignalTag(Tag = "order-update", Group = "customer-{CustomerId}")]   // Specific customer
 [SignalTag(Tag = "user-action", Group = "tenant-{TenantId}")]       // Specific tenant
 [SignalTag(Tag = "direct-message", Group = "user-{UserId}")]        // Specific user
@@ -550,7 +550,7 @@ The `SignalPriority` enum controls notification delivery urgency:
 
 Tags messages for OpenTelemetry distributed tracing integration. The built-in `OpenTelemetrySpanHook` (in `Whizbang.Observability`) creates or enriches spans.
 
-```csharp{title="TelemetryTag Properties" description="Full property reference for TelemetryTagAttribute, including span name, kind, and event recording" category="Attributes" difficulty="BEGINNER" tags=["Tags", "Telemetry", "API"]}
+```csharp{title="TelemetryTag Properties" description="Full property reference for TelemetryTagAttribute, including span name, kind, and event recording" category="Attributes" difficulty="BEGINNER" tags=["Tags", "Telemetry", "API"] tests=["TelemetryTagAttributeTests.TelemetryTagAttribute_CanBeAppliedToEventAsync", "TelemetryTagAttributeTests.TelemetryTagAttribute_SpanName_CanBeSetAsync", "TelemetryTagAttributeTests.TelemetryTagAttribute_Kind_DefaultsToInternalAsync"]}
 [TelemetryTag(
     Tag = "payment-processed",          // Unique identifier
     SpanName = "ProcessPayment",        // OpenTelemetry span name
@@ -588,7 +588,7 @@ public record PaymentProcessedEvent(Guid PaymentId, decimal Amount, string Curre
 
 Tags messages for OpenTelemetry metrics recording. The built-in `OpenTelemetryMetricHook` (in `Whizbang.Observability`) records the metric.
 
-```csharp{title="MetricTag Properties" description="Counter, histogram, and gauge examples showing when ValueProperty is required" category="Attributes" difficulty="BEGINNER" tags=["Tags", "Metrics", "API"]}
+```csharp{title="MetricTag Properties" description="Counter, histogram, and gauge examples showing when ValueProperty is required" category="Attributes" difficulty="BEGINNER" tags=["Tags", "Metrics", "API"] tests=["MetricTagAttributeTests.MetricTagAttribute_Counter_CanBeAppliedToEventAsync", "MetricTagAttributeTests.MetricTagAttribute_Histogram_CanBeAppliedToEventAsync", "MetricTagAttributeTests.MetricTagAttribute_Type_CanBeSetToGaugeAsync", "MetricTagAttributeTests.MetricTagAttribute_ValueProperty_CanBeSetAsync"]}
 // Counter metric - counts occurrences (increments by 1)
 [MetricTag(
     Tag = "order-created",
@@ -644,7 +644,7 @@ public record OrderQueueDepthEvent(int QueueDepth, string QueueName);
 
 Ships in `Whizbang.Core.Attributes`. Marks an event type for selective auditing through the tag system — register an `IMessageTagHook<AuditEventAttribute>` to capture audited events. Unlike the three attributes above, it does not have a hardcoded fast path in the processor; it is dispatched through the generated custom-attribute dispatcher.
 
-```csharp{title="AuditEvent Properties" description="Mark an event for selective auditing and register a matching audit hook" category="Attributes" difficulty="BEGINNER" tags=["Tags", "Audit", "API"]}
+```csharp{title="AuditEvent Properties" description="Mark an event for selective auditing and register a matching audit hook" category="Attributes" difficulty="BEGINNER" tags=["Tags", "Audit", "API"] tests=["AuditEventAttributeTests.AuditEventAttribute_CanBeAppliedToEventRecordAsync", "AuditEventAttributeTests.AuditEventAttribute_Reason_CanBeSetAsync", "AuditEventAttributeTests.AuditEventAttribute_Level_CanBeSetAsync"]}
 [AuditEvent(Reason = "PII access", Level = AuditLevel.Warning)]
 public record CustomerDataViewed(Guid CustomerId, string ViewedBy) : IEvent;
 
@@ -677,7 +677,7 @@ The `MessageTagRegistry` is a static registry that aggregates tag registrations 
 2. **Module Initialization**: `[ModuleInitializer]` registers the generated registry before `Main()` runs
 3. **Runtime**: `MessageTagProcessor` queries the registry to find tags for message types
 
-```csharp{title="Registry Architecture" description="What MessageTagDiscoveryGenerator emits per assembly — a registry plus a [ModuleInitializer] that always registers at priority 100" category="Messaging" difficulty="ADVANCED" tags=["Tags", "Registry", "Multi-Assembly"]}
+```csharp{title="Registry Architecture" description="What MessageTagDiscoveryGenerator emits per assembly — a registry plus a [ModuleInitializer] that always registers at priority 100" category="Messaging" difficulty="ADVANCED" tags=["Tags", "Registry", "Multi-Assembly"] tests=["MessageTagDiscoveryGeneratorTests.Generator_WithTaggedTypes_ImplementsIMessageTagRegistryAsync", "MessageTagDiscoveryGeneratorTests.Generator_WithTaggedTypes_GeneratesModuleInitializerAsync", "MessageTagDiscoveryGeneratorTests.Generator_WithTaggedTypes_UsesPriority100ForContractsAsync"]}
 // Generated by MessageTagDiscoveryGenerator per assembly:
 internal sealed class GeneratedMessageTagRegistry_MyAssembly : IMessageTagRegistry {
   public static readonly GeneratedMessageTagRegistry_MyAssembly Instance = new();
@@ -758,7 +758,7 @@ Because a contracts registry and a services registry both land at priority `100`
 
 For tag attributes that are not one of the three fast-path built-ins (including `AuditEventAttribute` and any user-defined attribute), the source generator also produces a `MessageTagHookDispatcher` registered in `MessageTagHookDispatcherRegistry`. It builds the typed `TagContext<TAttribute>` and invokes the typed hook **without reflection**:
 
-```csharp{title="Generated Dispatcher Architecture" description="How custom-attribute hooks are dispatched without reflection, and how the generated dispatcher establishes ambient scope before invoking the hook" category="Messaging" difficulty="ADVANCED" tags=["Tags", "Custom-Attributes", "AOT", "Source-Generation"]}
+```csharp{title="Generated Dispatcher Architecture" description="How custom-attribute hooks are dispatched without reflection, and how the generated dispatcher establishes ambient scope before invoking the hook" category="Messaging" difficulty="ADVANCED" tags=["Tags", "Custom-Attributes", "AOT", "Source-Generation"] tests=["MessageTagDiscoveryGeneratorTests.GeneratedDispatcher_TryCreateContext_ReturnsTypedContextAsync", "MessageTagDiscoveryGeneratorTests.GeneratedDispatcher_TryDispatchAsync_InvokesHookAsync", "MessageTagDiscoveryGeneratorTests.Generator_WithCustomAttributes_GeneratesDispatcherAsync"]}
 internal sealed class GeneratedMessageTagHookDispatcher_MyAssembly : IMessageTagHookDispatcher {
   public static readonly GeneratedMessageTagHookDispatcher_MyAssembly Instance = new();
 
@@ -825,7 +825,7 @@ Each `MessageTagRegistration` (a `sealed record`) contains metadata for one tagg
 
 Create domain-specific tag attributes by inheriting from `MessageTagAttribute`:
 
-```csharp{title="Custom Tag Attribute" description="Define, apply, implement, and register a domain-specific Slack notification tag" category="Attributes" difficulty="INTERMEDIATE" tags=["Tags", "Custom-Attributes", "Extensibility"]}
+```csharp{title="Custom Tag Attribute" description="Define, apply, implement, and register a domain-specific Slack notification tag" category="Attributes" difficulty="INTERMEDIATE" tags=["Tags", "Custom-Attributes", "Extensibility"] tests=["MessageTagDiscoveryGeneratorTests.Generator_WithCustomAttribute_GeneratesRegistrationAsync", "MessageTagDiscoveryGeneratorTests.Generator_WithCustomAttributes_GeneratesDispatcherAsync"]}
 // 1. Define the attribute
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = true, Inherited = true)]
 public sealed class SlackNotificationAttribute : MessageTagAttribute {
@@ -876,7 +876,7 @@ services.AddWhizbang(options => {
 
 Tag attributes commonly accept positional constructor arguments alongside `Tag`:
 
-```csharp{title="Tag Attribute With Positional Ctor Args" description="A tag attribute whose ctor takes (tag, tagValue) — both are preserved by the generator's AttributeFactory" category="Attributes" difficulty="INTERMEDIATE" tags=["Tags", "Custom-Attributes", "Positional-Args"]}
+```csharp{title="Tag Attribute With Positional Ctor Args" description="A tag attribute whose ctor takes (tag, tagValue) — both are preserved by the generator's AttributeFactory" category="Attributes" difficulty="INTERMEDIATE" tags=["Tags", "Custom-Attributes", "Positional-Args"] tests=["MessageTagDiscoveryGeneratorTests.Generator_PositionalCtorArg_EmittedAsPascalCasePropertyInitializerAsync"]}
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = true)]
 public class TabTagAttribute : MessageTagAttribute {
   public string? TagValue { get; init; }   // Must be init-settable for the generator's factory.
@@ -906,7 +906,7 @@ The generator emits an `AttributeFactory` that initializes BOTH `Tag` and `TagVa
 
 When constructor parameter names don't follow the default PascalCase convention, declare an explicit convention with `[AttributeArgNaming]`:
 
-```csharp{title="Custom Naming Convention" description="Override the constructor-parameter to property mapping with [AttributeArgNaming]" category="Attributes" difficulty="ADVANCED" tags=["Tags", "Custom-Attributes", "Conventions"]}
+```csharp{title="Custom Naming Convention" description="Override the constructor-parameter to property mapping with [AttributeArgNaming]" category="Attributes" difficulty="ADVANCED" tags=["Tags", "Custom-Attributes", "Conventions"] tests=["AttributeArgNamingAttributeTests.Constructor_AcceptsIdentityAsync", "MessageTagDiscoveryGeneratorTests.Generator_PositionalCtorArg_RespectsIdentityConventionAsync"]}
 using Whizbang.Core.Attributes;
 
 [AttributeArgNaming(AttributeArgNamingConvention.Identity)]   // No transform.
@@ -945,7 +945,7 @@ The `[AttributeArgNaming]` attribute is inherited — declaring it on a base tag
 
 Hooks can modify the payload for subsequent hooks in the chain by returning a new `JsonElement` (return `null` to pass the original through):
 
-```csharp{title="Payload Modification Hook" description="Enrich the payload for the next hook by returning a modified JsonElement" category="Messaging" difficulty="ADVANCED" tags=["Tags", "Hooks", "Payload-Modification"]}
+```csharp{title="Payload Modification Hook" description="Enrich the payload for the next hook by returning a modified JsonElement" category="Messaging" difficulty="ADVANCED" tags=["Tags", "Hooks", "Payload-Modification"] tests=["MessageTagHookTests.Hook_ReturnsModifiedPayload_NextHookReceivesModifiedPayloadAsync", "MessageTagProcessorTests.ProcessAsync_PassesModifiedPayloadToNextHookAsync"]}
 public class EnrichmentHook : IMessageTagHook<SignalTagAttribute> {
   private readonly IUserService _userService;
   public EnrichmentHook(IUserService userService) => _userService = userService;
@@ -973,7 +973,7 @@ options.Tags.UseHook<SignalTagAttribute, SignalRNotificationHook>(priority: 0);
 
 `UseUniversalHook<THook>()` registers a hook typed on the base `MessageTagAttribute`, so it receives *every* tagged message. It shares the same `priority` / `fireAt` parameters as `UseHook`:
 
-```csharp{title="Universal Tag Hook" description="A hook typed on MessageTagAttribute that logs every tagged message across all attribute types" category="Messaging" difficulty="ADVANCED" tags=["Tags", "Hooks", "Universal"]}
+```csharp{title="Universal Tag Hook" description="A hook typed on MessageTagAttribute that logs every tagged message across all attribute types" category="Messaging" difficulty="ADVANCED" tags=["Tags", "Hooks", "Universal"] tests=["TagOptionsTests.UseUniversalHook_RegistersForMessageTagAttributeAsync", "MessageTagProcessorTests.ProcessAsync_InvokesUniversalHookForAnyTagAsync"]}
 public class UniversalTagLoggerHook : IMessageTagHook<MessageTagAttribute> {
   private readonly ILogger<UniversalTagLoggerHook> _logger;
   public UniversalTagLoggerHook(ILogger<UniversalTagLoggerHook> logger) => _logger = logger;
@@ -1007,7 +1007,7 @@ options.Tags.UseUniversalHook<UniversalTagLoggerHook>(priority: -1000);
 
 Don't store scope-dependent state in hook fields across calls — the injected scoped services belong to *one* `ProcessTagsAsync` call:
 
-```csharp{title="Scope Lifetime Pitfalls" description="Why accumulating state across calls leaks: the DbContext is scoped to a single ProcessTagsAsync call" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "DI", "Pitfalls"]}
+```csharp{title="Scope Lifetime Pitfalls" description="Why accumulating state across calls leaks: the DbContext is scoped to a single ProcessTagsAsync call" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "DI", "Pitfalls"] tests=["MessageTagProcessorTests.ProcessTagsAsync_WithScopeFactory_MultipleHooksShareSameScope_Async", "MessageTagProcessorTests.ProcessTagsAsync_WithScopeFactory_DisposesScope_Async"]}
 // ❌ WRONG - accumulating state across calls; the DbContext is scoped to a single call.
 public class BadHook : IMessageTagHook<SignalTagAttribute> {
   private readonly MyDbContext _db;
@@ -1033,7 +1033,7 @@ public class GoodHook : IMessageTagHook<SignalTagAttribute> {
 
 Combine multiple tag types on a single message — each registered hook fires automatically when the event is dispatched:
 
-```csharp{title="Multi-Concern Event Tagging" description="One event carrying signal, telemetry, two metric, and audit tags — each fires its own hook on dispatch" category="Attributes" difficulty="ADVANCED" tags=["Tags", "Multi-Concern", "Telemetry", "Metrics", "Notifications"]}
+```csharp{title="Multi-Concern Event Tagging" description="One event carrying signal, telemetry, two metric, and audit tags — each fires its own hook on dispatch" category="Attributes" difficulty="ADVANCED" tags=["Tags", "Multi-Concern", "Telemetry", "Metrics", "Notifications"] tests=["MessageTagProcessorTests.ProcessTagsAsync_WithMultipleTags_ProcessesAllAsync", "MessageTagDiscoveryGeneratorTests.Generator_WithMultipleTagAttributes_DiscoversAllAsync", "MessageTagDiscoveryGeneratorTests.Generator_WithMultipleSameTypeAttributes_DiscoversAllAsync"]}
 [SignalTag(
     Tag = "payment-completed",
     Properties = ["PaymentId", "OrderId", "Amount"],
@@ -1105,7 +1105,7 @@ if (!tags.Any()) {
 
 This can be expected. `ProcessTagsAsync` may be called at multiple lifecycle stages. Either register the hook with a `fireAt:` stage so the framework only invokes it once, or filter inside the hook with `context.Stage`:
 
-```csharp{title="Skip a hook until data is committed" description="Filter inside the hook on context.Stage so it only acts once, at the committed stage" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "LifecycleStage", "Hooks"]}
+```csharp{title="Skip a hook until data is committed" description="Filter inside the hook on context.Stage so it only acts once, at the committed stage" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "LifecycleStage", "Hooks"] tests=["MessageTagProcessorTests.ProcessTagsAsync_HookCanFilterByStage_OnlyActsOnPostPerspectiveDetachedAsync", "MessageTagProcessorTests.ProcessTagsAsync_PassesStageToHookContext_AllStagesAsync"]}
 if (context.Stage != LifecycleStage.PostPerspectiveInline)
   return null; // Skip — only act when data is committed
 ```

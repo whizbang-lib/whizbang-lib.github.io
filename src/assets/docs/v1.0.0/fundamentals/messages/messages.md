@@ -58,7 +58,7 @@ public interface IMessage;
 
 ## Message Type Hierarchy
 
-```mermaid
+```mermaid{caption="Message type hierarchy — IMessage is the marker interface; ICommand (intentions to change state) and IEvent (facts about state changes) derive from it, alongside application-specific custom messages." tests=["MessageRegistryGeneratorTests.MessageRegistryGenerator_SingleCommand_DiscoversCommandAsync", "MessageRegistryGeneratorTests.MessageRegistryGenerator_SingleEvent_DiscoversEventAsync"]}
 graph TB
     M["IMessage (marker interface)"]
     C["ICommand (intentions to change state)"]
@@ -100,7 +100,7 @@ graph TB
 
 Commands represent **intentions** - requests to perform actions:
 
-```csharp{title="Commands" description="Commands represent intentions - requests to perform actions:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Commands"]}
+```csharp{title="Commands" description="Commands represent intentions - requests to perform actions:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Commands"] tests=["MessageRegistryGeneratorTests.MessageRegistryGenerator_SingleCommand_DiscoversCommandAsync"]}
 public record CreateOrder : ICommand {
   public required Guid CustomerId { get; init; }
   public required OrderItem[] Items { get; init; }
@@ -117,7 +117,7 @@ public record CancelOrder : ICommand {
 
 Events represent **facts** - things that have happened:
 
-```csharp{title="Events" description="Events represent facts - things that have happened:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Events"]}
+```csharp{title="Events" description="Events represent facts - things that have happened:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Events"] tests=["MessageRegistryGeneratorTests.MessageRegistryGenerator_SingleEvent_DiscoversEventAsync", "StreamIdGeneratorTests.Generator_WithStreamIdAttribute_GeneratesExtractorAsync"]}
 public record OrderCreated : IEvent {
   [StreamId]
   public required Guid OrderId { get; init; }
@@ -139,7 +139,7 @@ public record OrderCancelled : IEvent {
 
 ### Use Records for Immutability
 
-```csharp{title="Use Records for Immutability" description="Use Records for Immutability" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Records", "Immutability"]}
+```csharp{title="Use Records for Immutability" description="Use Records for Immutability" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Records", "Immutability"] unverified="design guideline with mutable-class counter-example — no behavior under test"}
 // ✅ GOOD: Immutable record with init-only properties
 public record CreateOrder : ICommand {
   public required Guid CustomerId { get; init; }
@@ -155,7 +155,7 @@ public class CreateOrder : ICommand {
 
 ### Make Messages Self-Contained
 
-```csharp{title="Make Messages Self-Contained" description="Make Messages Self-Contained" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Make", "Self-Contained"]}
+```csharp{title="Make Messages Self-Contained" description="Make Messages Self-Contained" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Make", "Self-Contained"] unverified="design guideline with counter-example — illustrates message completeness, not a behavior under test"}
 // ✅ GOOD: All data needed to process the command
 public record CreateOrder : ICommand {
   public required Guid CustomerId { get; init; }
@@ -173,7 +173,7 @@ public record CreateOrder : ICommand {
 
 ### Use Value Objects for Type Safety
 
-```csharp{title="Use Value Objects for Type Safety" description="Use Value Objects for Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Value", "Objects"]}
+```csharp{title="Use Value Objects for Type Safety" description="Use Value Objects for Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Value", "Objects"] unverified="design guideline with primitive-obsession counter-example — no behavior under test"}
 // ✅ GOOD: Type-safe value objects
 public record CreateOrder : ICommand {
   public required CustomerId CustomerId { get; init; }  // Strongly-typed
@@ -190,7 +190,7 @@ public record CreateOrder : ICommand {
 
 `IMessage` enables generic constraints throughout Whizbang:
 
-```csharp{title="Message Constraints" description="IMessage enables generic constraints throughout Whizbang:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Message", "Constraints"]}
+```csharp{title="Message Constraints" description="IMessage enables generic constraints throughout Whizbang:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Message", "Constraints"] tests=["ReceptorTests.Receive_ValidCommand_ShouldReturnTypeSafeResponseAsync", "DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync", "DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync", "DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 // Receptors handle specific message types
 public interface IReceptor<in TMessage, TResponse> {
   ValueTask<TResponse> HandleAsync(TMessage message, CancellationToken cancellationToken = default);
@@ -235,7 +235,7 @@ public interface IDispatcher {
 
 Messages are wrapped in envelopes for routing and tracing:
 
-```csharp{title="Message Envelopes" description="Messages are wrapped in envelopes for routing and tracing:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Message", "Envelopes"]}
+```csharp{title="Message Envelopes" description="Messages are wrapped in envelopes for routing and tracing:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Message", "Envelopes"] unverified="MessageEnvelope construction — verified on the Message Envelopes page, not by this page's tests"}
 // The dispatcher wraps every message in a MessageEnvelope<TMessage>.
 // Correlation/causation ride on the hop list, not top-level fields.
 var envelope = new MessageEnvelope<CreateOrder> {
@@ -265,7 +265,7 @@ See [Message Envelopes](../../messaging/message-envelopes.md) for details.
 
 Each message should represent **one** logical operation:
 
-```csharp{title="Single Responsibility" description="Each message should represent one logical operation:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Single", "Responsibility"]}
+```csharp{title="Single Responsibility" description="Each message should represent one logical operation:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Single", "Responsibility"] unverified="design guideline with generic-catch-all counter-example — no behavior under test"}
 // ✅ GOOD: Specific commands
 public record CreateOrder : ICommand { ... }
 public record UpdateOrderAddress : ICommand { ... }
@@ -281,7 +281,7 @@ public record ModifyOrder : ICommand {
 
 Events should capture **all relevant state**:
 
-```csharp{title="Event Data Completeness" description="Events should capture all relevant state:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Event", "Data"]}
+```csharp{title="Event Data Completeness" description="Events should capture all relevant state:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Event", "Data"] unverified="design guideline with incomplete-event counter-example — no behavior under test"}
 // ✅ GOOD: Complete state snapshot
 public record ProductPriceChanged : IEvent {
   [StreamId]
