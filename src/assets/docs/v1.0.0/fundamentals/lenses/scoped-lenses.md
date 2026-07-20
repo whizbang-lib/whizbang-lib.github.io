@@ -102,7 +102,7 @@ factory.GetMyOrSharedLens<TLens>();   // ScopeFilters.Tenant | ScopeFilters.User
 
 ### Usage Examples
 
-```csharp{title="Usage Examples" description="Usage Examples" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Usage", "Examples"]}
+```csharp{title="Usage Examples" description="Usage Examples" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Usage", "Examples"] unverified="consumer OrderController illustration calling GetTenantLens/GetUserLens/GetMyOrSharedLens; ScopedLensFactoryTests assert only that the methods exist, not this controller usage"}
 public class OrderController : ControllerBase {
   private readonly IScopedLensFactory _lensFactory;
 
@@ -140,7 +140,7 @@ public class OrderController : ControllerBase {
 
 Combine scope filtering with permission verification:
 
-```csharp{title="Permission Checks" description="Combine scope filtering with permission verification:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Permission", "Checks"]}
+```csharp{title="Permission Checks" description="Combine scope filtering with permission verification:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Permission", "Checks"] unverified="consumer usage of the permission-gated GetLens overloads on IOrderLens/IReportLens; no mapped test asserts the AccessDeniedException behavior shown, only that the overload signatures exist"}
 // Throws AccessDeniedException if caller lacks permission
 var lens = _lensFactory.GetLens<IOrderLens>(
   ScopeFilters.Tenant,
@@ -340,7 +340,7 @@ services.AddWhizbang(options => {
 
 ### Using Named Scopes (Legacy API)
 
-```csharp{title="Using Named Scopes (Legacy API)" description="Using Named Scopes (Legacy API)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Using", "Named"]}
+```csharp{title="Using Named Scopes (Legacy API)" description="Using Named Scopes (Legacy API)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Using", "Named"] unverified="consumer usage of the legacy string-based named-scope GetLens on IOrderLens; no mapped test exercises string-scope resolution"}
 // Get lens using named scope
 var lens = factory.GetLens<IOrderLens>("Tenant");
 var globalLens = factory.GetLens<IOrderLens>("Global");

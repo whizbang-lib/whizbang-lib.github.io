@@ -44,7 +44,7 @@ This causes the error:
 
 Whizbang solves this automatically. When you configure `.AddWhizbang().WithEFCore<T>().WithDriver.Postgres`, it registers `ILensQuery<T>` as **transient** with each injection receiving its own DbContext:
 
-```csharp{title="The Solution: Automatic Thread Safety" description="Whizbang solves this automatically." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Solution:", "Automatic"]}
+```csharp{title="The Solution: Automatic Thread Safety" description="Whizbang solves this automatically." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Solution:", "Automatic"] unverified="consumer CatalogQueries HotChocolate illustration; the transient own-DbContext-per-resolver behavior is a DI registration concern, not asserted by the factory unit tests"}
 // Each resolver gets its OWN DbContext - safe for parallel execution
 public class CatalogQueries {
   public async Task<IEnumerable<Product>> GetProducts([Service] ILensQuery<Product> lens) {
@@ -109,7 +109,7 @@ public class OrderWithCustomerQuery {
 
 For most queries, inject `ILensQuery<T>` directly:
 
-```csharp{title="Pattern 1: Direct Injection (Most Common)" description="For most queries, inject ILensQuery<T> directly:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Pattern", "Direct"]}
+```csharp{title="Pattern 1: Direct Injection (Most Common)" description="For most queries, inject ILensQuery<T> directly:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Pattern", "Direct"] unverified="consumer ProductQueries HotChocolate resolver illustration of direct lens injection; not asserted by the factory unit tests"}
 [QueryType]
 public class ProductQueries {
   public IQueryable<Product> GetProducts([Service] ILensQuery<Product> lens) =>
@@ -227,7 +227,7 @@ builder.Services
 
 The `ScopedDbContextFactory<TContext>` is a singleton implementation of `IDbContextFactory<T>` that creates DbContext instances via service scopes:
 
-```csharp{title="ScopedDbContextFactory" description="The ScopedDbContextFactory<TContext> is a singleton implementation of IDbContextFactory<T> that creates DbContext" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "ScopedDbContextFactory"]}
+```csharp{title="ScopedDbContextFactory" description="The ScopedDbContextFactory<TContext> is a singleton implementation of IDbContextFactory<T> that creates DbContext" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "ScopedDbContextFactory"] unverified="ScopedDbContextFactory implementation source; the class is absent from the code-tests map and not among this page's test references"}
 public sealed class ScopedDbContextFactory<TContext> : IDbContextFactory<TContext>
     where TContext : DbContext {
 
