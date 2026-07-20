@@ -81,6 +81,7 @@ difficulty: "BEGINNER"
 tags: ["Fundamentals", "Dispatcher", "SendAsync", "Verified"]
 testFile: "tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs"
 testMethod: "Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"
+tests: ["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"]
 }
 var command = new CreateOrder(Guid.NewGuid(), ["item1", "item2"]);
 
@@ -441,7 +442,7 @@ The timeout-shaped overloads below (`TimeSpan? timeout`, `onWaiting`/`onDecision
 :::
 
 **Signatures**:
-```csharp{title="LocalInvokeAndSyncAsync - Invoke with Perspective Sync" description="Signatures:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "LocalInvokeAndSyncAsync", "Invoke"]}
+```csharp{title="LocalInvokeAndSyncAsync - Invoke with Perspective Sync" description="Signatures:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "LocalInvokeAndSyncAsync", "Invoke"] unverified="verified by DispatcherSyncModeContractTests, which is outside the current coverage map"}
 // With typed result - waits for ALL perspectives
 Task<TResult> LocalInvokeAndSyncAsync<TMessage, TResult>(
     TMessage message,
@@ -497,7 +498,7 @@ Use `LocalInvokeAndSyncAsync` when:
 
 ### Basic Usage
 
-```csharp{title="Basic Usage - OrderMutation" description="Basic Usage - OrderMutation" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Usage"]}
+```csharp{title="Basic Usage - OrderMutation" description="Basic Usage - OrderMutation" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Usage"] unverified="verified by DispatcherLocalInvokeAndSyncTimingTests, which is outside the current coverage map"}
 public class OrderMutation {
     private readonly IDispatcher _dispatcher;
 
@@ -523,7 +524,7 @@ public class OrderMutation {
 
 When using the void overload, you get a `SyncResult`:
 
-```csharp{title="SyncResult Outcomes" description="When using the void overload, you get a SyncResult:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "SyncResult", "Outcomes"]}
+```csharp{title="SyncResult Outcomes" description="When using the void overload, you get a SyncResult:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "SyncResult", "Outcomes"] unverified="verified by DispatcherLocalInvokeAndSyncTimingTests, which is outside the current coverage map"}
 var syncResult = await _dispatcher.LocalInvokeAndSyncAsync(command);
 
 switch (syncResult.Outcome) {
@@ -543,7 +544,7 @@ switch (syncResult.Outcome) {
 
 For the typed result overload, a `TimeoutException` is thrown if perspectives don't complete in time:
 
-```csharp{title="Timeout Handling" description="For the typed result overload, a TimeoutException is thrown if perspectives don't complete in time:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Timeout", "Handling"]}
+```csharp{title="Timeout Handling" description="For the typed result overload, a TimeoutException is thrown if perspectives don't complete in time:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Timeout", "Handling"] unverified="verified by DispatcherLocalInvokeAndSyncTimingTests, which is outside the current coverage map"}
 try {
     var result = await _dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderResult>(
         command,
@@ -567,7 +568,7 @@ The default timeout is 30 seconds if not specified.
 
 When you only need one specific read model to be updated before returning, use the perspective-specific overloads. This avoids waiting for all perspectives when you only depend on one:
 
-```csharp{title="Perspective-Specific Sync" description="Wait for a specific perspective to process events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "LocalInvokeAndSyncAsync", "Perspective"]}
+```csharp{title="Perspective-Specific Sync" description="Wait for a specific perspective to process events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "LocalInvokeAndSyncAsync", "Perspective"] unverified="verified by DispatcherSyncModeBehaviorTests, which is outside the current coverage map"}
 // Wait for OrderSummaryPerspective only (typed result)
 var result = await _dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderResult, OrderSummaryPerspective>(
     command,
@@ -588,7 +589,7 @@ var syncResult = await _dispatcher.LocalInvokeAndSyncForPerspectiveAsync<CreateO
 
 Use `onWaiting` and `onDecisionMade` callbacks for observability:
 
-```csharp{title="Sync Callbacks" description="Use callbacks for observability during perspective sync" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "LocalInvokeAndSyncAsync", "Callbacks"]}
+```csharp{title="Sync Callbacks" description="Use callbacks for observability during perspective sync" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "LocalInvokeAndSyncAsync", "Callbacks"] unverified="verified by DispatcherLocalInvokeAndSyncCallbackTests, which is outside the current coverage map"}
 var result = await _dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderResult>(
     command,
     timeout: TimeSpan.FromSeconds(10),
@@ -970,7 +971,7 @@ public async Task<ActionResult> CreateOrder(
 
 ### LocalInvokeAsync Error Handling
 
-```csharp{title="LocalInvokeAsync Error Handling" description="LocalInvokeAsync Error Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "LocalInvokeAsync", "Error"]}
+```csharp{title="LocalInvokeAsync Error Handling" description="LocalInvokeAsync Error Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "LocalInvokeAsync", "Error"] unverified="illustrative controller error-mapping — maps user-domain exceptions to HTTP responses, not a library-asserted behavior"}
 [HttpPost("orders")]
 public async Task<ActionResult> CreateOrder(
     [FromBody] CreateOrderRequest request,
@@ -1013,7 +1014,7 @@ public async Task<ActionResult> CreateOrder(
 
 ### SendAsync Error Handling
 
-```csharp{title="SendAsync Error Handling" description="SendAsync Error Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "SendAsync", "Error"]}
+```csharp{title="SendAsync Error Handling" description="SendAsync Error Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "SendAsync", "Error"] unverified="illustrative error-handling — treats dispatch failures as infrastructure faults, not a library-asserted behavior"}
 try {
     var receipt = await _dispatcher.SendAsync(command);
 
@@ -1031,7 +1032,7 @@ try {
 
 ### PublishAsync Error Handling
 
-```csharp{title="PublishAsync Error Handling" description="PublishAsync Error Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "PublishAsync", "Error"]}
+```csharp{title="PublishAsync Error Handling" description="PublishAsync Error Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "PublishAsync", "Error"] unverified="illustrative perspective-failure handling — an eventual-consistency strategy, not a library-asserted behavior"}
 try {
     await _dispatcher.PublishAsync(orderCreated);
 

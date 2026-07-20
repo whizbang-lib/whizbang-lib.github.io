@@ -130,7 +130,7 @@ public class NotifyReceptor : IReceptor<SendNotifications, IEvent[]> {
 ```
 
 **Nested Tuples**:
-```csharp{title="Supported Return Types - ComplexReceptor" description="Nested Tuples:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"]}
+```csharp{title="Supported Return Types - ComplexReceptor" description="Nested Tuples:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"] unverified="verified by DispatcherCascadeTests.LocalInvokeAsync_NestedTupleWithEvents_AutoPublishesAllEventsAsync, which is outside the current coverage map"}
 public class ComplexReceptor : IReceptor<ComplexCommand, (Result, (Event1, Event2))> {
     public ValueTask<(Result, (Event1, Event2))> HandleAsync(
         ComplexCommand command, CancellationToken ct = default) {
@@ -440,7 +440,7 @@ This ensures cascaded receptors have access to:
 - `UserContextManager.TenantContext` - Tenant-scoped context
 
 **Example Flow**:
-```csharp{title="Security Context in Cascade" description="Example Flow:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Security", "Context"]}
+```csharp{title="Security Context in Cascade" description="Example Flow:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Security", "Context"] unverified="illustrative user-domain flow — security context shown via comments, no assertion"}
 // 1. HTTP request with UserId = "user@test.com", TenantId = "tenant-123"
 public class OrderCommandHandler : IReceptor<CreateOrder, OrderCreated> {
     private readonly IMessageContext _context;

@@ -127,7 +127,7 @@ Event subscriptions are **automatically discovered** from your code via source g
 1. **Perspectives**: Events your service projects
 2. **Receptors**: Events your service handles
 
-```csharp{title="Automatic Event Subscription Discovery" description="Automatic Event Subscription Discovery" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Automatic", "Event"]}
+```csharp{title="Automatic Event Subscription Discovery" description="Automatic Event Subscription Discovery" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Automatic", "Event"] unverified="conceptual perspective/receptor auto-subscription illustration (user-domain types)"}
 // This perspective automatically subscribes to "myapp.orders.events"
 public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreatedEvent> {
   // OrderCreatedEvent is in namespace MyApp.Orders.Events
@@ -522,7 +522,7 @@ await dispatcher.PublishAsync(new OrderCreatedEvent(...));
 
 Services subscribe to event namespaces automatically based on their perspectives and receptors:
 
-```csharp{title="Subscription Flow" description="Services subscribe to event namespaces automatically based on their perspectives and receptors:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Subscription", "Flow"]}
+```csharp{title="Subscription Flow" description="Services subscribe to event namespaces automatically based on their perspectives and receptors:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Subscription", "Flow"] unverified="conceptual perspective auto-subscription illustration (user-domain type)"}
 // This perspective automatically subscribes to "myapp.orders.events"
 public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreatedEvent> {
     // ...
@@ -1094,7 +1094,7 @@ The strategy extracts the full namespace from a message type and uses it as the 
 
 ### Configuration
 
-```csharp{title="Configuration (5)" description="Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Configuration"]}
+```csharp{title="Configuration (5)" description="Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Configuration"] tests=["TopicRoutingStrategyTests.NamespaceRoutingStrategy_CommandNamespace_ReturnsFullNamespaceAsync", "TopicRoutingStrategyTests.NamespaceRoutingStrategy_ReturnsFullNamespaceAsync", "TopicRoutingStrategyTests.NamespaceRoutingStrategy_ReturnsLowercaseNamespaceAsync"]}
 // Used internally by SharedTopicOutboxStrategy
 var strategy = new NamespaceRoutingStrategy();
 
@@ -1111,7 +1111,7 @@ var topic = strategy.ResolveTopic(
 
 You can provide custom logic for extracting topics from types:
 
-```csharp{title="Custom Namespace Extraction" description="You can provide custom logic for extracting topics from types:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Custom", "Namespace"]}
+```csharp{title="Custom Namespace Extraction" description="You can provide custom logic for extracting topics from types:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Custom", "Namespace"] tests=["TopicRoutingStrategyTests.NamespaceRoutingStrategy_CustomMapping_OverridesDefaultAsync"]}
 // Custom extraction - use only the last two segments
 var strategy = new NamespaceRoutingStrategy(type => {
     var ns = type.Namespace ?? throw new InvalidOperationException();
@@ -1124,7 +1124,7 @@ var strategy = new NamespaceRoutingStrategy(type => {
 
 ### Interface
 
-```csharp{title="Interface" description="Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Interface"]}
+```csharp{title="Interface" description="Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Interface"] tests=["TopicRoutingStrategyTests.NamespaceRoutingStrategy_ReturnsFullNamespaceAsync", "TopicRoutingStrategyTests.PassthroughRoutingStrategy_ReturnsBaseTopicUnchangedAsync"]}
 public interface ITopicRoutingStrategy {
     string ResolveTopic(
         Type messageType,
@@ -1283,7 +1283,7 @@ never affected.
 returns an accepted receipt immediately — the owning service is expected to have a local receptor, so
 there is nothing to deliver cross-service and the outbox is skipped entirely:
 
-```csharp{title="Owned command with no local receptor skips the outbox" description="Dispatcher.SendAsync returns an accepted receipt for an owned-namespace command that has no local receptor, so it is never written to the outbox or sent to the transport." category="Architecture" difficulty="ADVANCED" tags=["Dispatcher", "Routing", "OwnedDomains", "Outbox"]}
+```csharp{title="Owned command with no local receptor skips the outbox" description="Dispatcher.SendAsync returns an accepted receipt for an owned-namespace command that has no local receptor, so it is never written to the outbox or sent to the transport." category="Architecture" difficulty="ADVANCED" tags=["Dispatcher", "Routing", "OwnedDomains", "Outbox"] unverified="verified by DispatcherOwnedDomainTests, which is outside the current coverage map"}
 // Dispatcher.SendAsync — reached only when there is no local receptor (invoker == null)
 if (_isOwnedNamespace(messageType.Namespace)) {
   // Owned-domain command: the owner is expected to handle it locally; skip outbox routing.
@@ -1298,7 +1298,7 @@ paths (`_dispatchByModeAsync` and `CascadeMessageAsync`) downgrade an owned non-
 handlers plus event store, no transport. Events are explicitly excluded, so a cascaded owned event still
 broadcasts:
 
-```csharp{title="Owned-domain downgrade applies to commands, not events" description="In the receptor cascade paths, an owned non-event dispatched in Outbox mode is downgraded to Local; events are excluded so they always reach the transport." category="Architecture" difficulty="INTERMEDIATE" tags=["Dispatcher", "Routing", "OwnedDomains", "Cascade"]}
+```csharp{title="Owned-domain downgrade applies to commands, not events" description="In the receptor cascade paths, an owned non-event dispatched in Outbox mode is downgraded to Local; events are excluded so they always reach the transport." category="Architecture" difficulty="INTERMEDIATE" tags=["Dispatcher", "Routing", "OwnedDomains", "Cascade"] unverified="verified by DispatcherOwnedDomainTests, which is outside the current coverage map"}
 // Owned-domain commands cascaded from receptors stay local (event store + local handlers).
 // Events ALWAYS go to transport — other services subscribe to our events.
 if (mode == DispatchModes.Outbox && msg is not IEvent && _isOwnedNamespace(messageType.Namespace)) {
