@@ -72,7 +72,7 @@ The Warning carries all five forensic fields from `StuckRow`:
 
 The sentinel ships enabled by default with sensible knobs. All three properties live on `MaintenanceWorkerOptions`:
 
-```csharp{title="Sentinel Configuration" description="Tune the stuck-row sentinel" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Maintenance", "StuckRow"]}
+```csharp{title="Sentinel Configuration" description="Tune the stuck-row sentinel" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Maintenance", "StuckRow"] unverified="verified by MaintenanceWorkerStuckRowSentinelTests / StuckRowSentinelSqlTests, which are outside the current coverage map"}
 services.Configure<MaintenanceWorkerOptions>(options => {
   options.StuckRowSentinelEnabled = true;           // killswitch, default true
   options.StuckRowSentinelMaxAttempts = 10;         // threshold, default 10 (matches MaxOutboxAttempts)

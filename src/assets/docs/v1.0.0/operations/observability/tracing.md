@@ -33,7 +33,7 @@ Whizbang provides comprehensive distributed tracing for message handlers, lifecy
 
 ## Quick Start
 
-```csharp{title="Enable Tracing" description="Configure tracing in AddWhizbang" category="Configuration" difficulty="BEGINNER" tags=["Tracing", "Configuration"]}
+```csharp{title="Enable Tracing" description="Configure tracing in AddWhizbang" category="Configuration" difficulty="BEGINNER" tags=["Tracing", "Configuration"] unverified="DI-wiring — AddWhizbang tracing quick-start, no verifying test"}
 services.AddWhizbang(options => {
   options.Tracing.Verbosity = TraceVerbosity.Normal;
   options.Tracing.Components = TraceComponents.Handlers | TraceComponents.Errors;
@@ -46,7 +46,7 @@ services.AddWhizbang(options => {
 
 The `TracingOptions` class controls all tracing behavior. Configure via `AddWhizbang()` or bind from `appsettings.json`.
 
-```csharp{title="TracingOptions Properties" description="Full configuration reference for TracingOptions" category="Reference" difficulty="INTERMEDIATE" tags=["Tracing", "Configuration", "API"]}
+```csharp{title="TracingOptions Properties" description="Full configuration reference for TracingOptions" category="Reference" difficulty="INTERMEDIATE" tags=["Tracing", "Configuration", "API"] tests=["TracingOptionsTests.Verbosity_CanBeSetAsync", "TracingOptionsTests.Components_CanBeSetAsync", "TracingOptionsTests.EnableOpenTelemetry_CanBeSetToFalseAsync", "TracingOptionsTests.EnableStructuredLogging_CanBeSetToFalseAsync", "TracingOptionsTests.EnableWorkerBatchSpans_CanBeSetToTrueAsync", "TracingOptionsTests.TracedHandlers_CanBePopulatedAsync", "TracingOptionsTests.TracedMessages_CanBePopulatedAsync"]}
 services.AddWhizbang(options => {
   // Global verbosity level (default: Off)
   options.Tracing.Verbosity = TraceVerbosity.Verbose;
@@ -119,7 +119,7 @@ The `Tracer` class implements `ITracer` and emits traces via OpenTelemetry Activ
 
 ### ITracer Interface
 
-```csharp{title="ITracer Interface" description="Core tracing interface for handler invocations" category="Reference" difficulty="INTERMEDIATE" tags=["Tracing", "Interface", "API"]}
+```csharp{title="ITracer Interface" description="Core tracing interface for handler invocations" category="Reference" difficulty="INTERMEDIATE" tags=["Tracing", "Interface", "API"] tests=["TracerTests.BeginHandlerTrace_CreatesSpanWithHandlerTagsAsync", "TracerTests.EndHandlerTrace_Success_SetsOkStatusAsync"]}
 public interface ITracer {
   void BeginHandlerTrace(
       string handlerName,
@@ -158,7 +158,7 @@ The `Tracer` emits:
 
 Replace the default tracer for custom trace destinations:
 
-```csharp{title="Custom Tracer" description="Implement ITracer for custom trace destinations" category="Extensibility" difficulty="ADVANCED" tags=["Tracing", "Extensibility", "Custom"]}
+```csharp{title="Custom Tracer" description="Implement ITracer for custom trace destinations" category="Extensibility" difficulty="ADVANCED" tags=["Tracing", "Extensibility", "Custom"] unverified="extensibility example — custom ITracer implementation with a user backend, no verifying test"}
 public class CustomTracer : ITracer {
   private readonly IMyTracingBackend _backend;
 
@@ -226,7 +226,7 @@ The `TraceComponents` flags enum controls which parts of Whizbang emit traces.
 
 ### Usage Examples
 
-```csharp{title="TraceComponents Configuration" description="Combine component flags for targeted tracing" category="Configuration" difficulty="BEGINNER" tags=["Tracing", "Components", "Configuration"]}
+```csharp{title="TraceComponents Configuration" description="Combine component flags for targeted tracing" category="Configuration" difficulty="BEGINNER" tags=["Tracing", "Components", "Configuration"] unverified="config example — component flag assignment; convenience combos (Production, Core, AllWithoutWorkers) not exercised by candidate tests"}
 // Trace only handlers and errors
 options.Tracing.Components = TraceComponents.Handlers | TraceComponents.Errors;
 
@@ -318,7 +318,7 @@ options.Tracing.TracedMessages["*Event"] = TraceVerbosity.Normal;              /
 
 Whizbang traces integrate with any OpenTelemetry collector:
 
-```csharp{title="OpenTelemetry Setup" description="Configure OpenTelemetry with Whizbang tracing" category="Configuration" difficulty="INTERMEDIATE" tags=["Tracing", "OpenTelemetry", "Aspire"]}
+```csharp{title="OpenTelemetry Setup" description="Configure OpenTelemetry with Whizbang tracing" category="Configuration" difficulty="INTERMEDIATE" tags=["Tracing", "OpenTelemetry", "Aspire"] unverified="OTel-exporter setup — AddOpenTelemetry/AddSource DI wiring, not exercised by tests"}
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => {
       tracing.AddSource("Whizbang.Tracing");  // Tracer spans
@@ -359,7 +359,7 @@ When handlers fail, the span records:
 
 ### Production Configuration
 
-```csharp{title="Production Tracing" description="Recommended production tracing configuration" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Observability", "C#", "Production", "Tracing"]}
+```csharp{title="Production Tracing" description="Recommended production tracing configuration" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Observability", "C#", "Production", "Tracing"] unverified="best-practices config — production AddWhizbang recipe, DI-wiring not exercised by tests"}
 services.AddWhizbang(options => {
   options.Tracing.Verbosity = TraceVerbosity.Minimal;
   options.Tracing.Components = TraceComponents.Production;
@@ -374,7 +374,7 @@ services.AddWhizbang(options => {
 
 ### Development Configuration
 
-```csharp{title="Development Tracing" description="Verbose tracing for development" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Observability", "C#", "Development", "Tracing"]}
+```csharp{title="Development Tracing" description="Verbose tracing for development" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Observability", "C#", "Development", "Tracing"] unverified="best-practices config — development AddWhizbang recipe, DI-wiring not exercised by tests"}
 services.AddWhizbang(options => {
   options.Tracing.Verbosity = TraceVerbosity.Debug;
   options.Tracing.Components = TraceComponents.AllWithoutWorkers;
@@ -385,7 +385,7 @@ services.AddWhizbang(options => {
 
 ### Debugging Specific Issues
 
-```csharp{title="Targeted Debugging" description="Enable verbose tracing for specific components" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Tracing", "Debugging", "Best-Practices"]}
+```csharp{title="Targeted Debugging" description="Enable verbose tracing for specific components" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Tracing", "Debugging", "Best-Practices"] unverified="best-practices config — targeted debugging recipe; EnablePerspectiveEventSpans has no test"}
 // Debug perspective processing
 options.Tracing.Verbosity = TraceVerbosity.Debug;
 options.Tracing.Components = TraceComponents.Perspectives | TraceComponents.EventStore;
