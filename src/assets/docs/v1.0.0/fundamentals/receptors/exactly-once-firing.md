@@ -121,7 +121,7 @@ Records become durable when the envelope next hits a durable write (outbox row, 
 
 The default implementation is `EnvelopeReceptorDedupStore` (registered via `TryAddSingleton` in `AddWhizbangReceptorRegistry`). A consumer can replace it with a custom implementation — e.g., a database-backed store that writes to a `wh_receptor_invocations(message_id, receptor_id)` composite-PK table for stronger cross-process guarantees. Register a replacement before calling `AddWhizbang()` and the default registration is skipped.
 
-```csharp{title="Custom IReceptorDedupStore" description="Replace the default envelope-backed dedup store" category="Architecture" difficulty="ADVANCED" tags=["Receptors", "Guardrails", "DI"]}
+```csharp{title="Custom IReceptorDedupStore" description="Replace the default envelope-backed dedup store" category="Architecture" difficulty="ADVANCED" tags=["Receptors", "Guardrails", "DI"] unverified="illustrative DI registration of a user-provided custom store — configuration, not a framework unit under test"}
 services.AddSingleton<IReceptorDedupStore, MyDatabaseReceptorDedupStore>();
 services.AddWhizbang()
   .WithEFCore<MyDbContext>()
