@@ -79,7 +79,7 @@ In practice you rarely write this by hand — the Whizbang source generators emi
 
 Perspective rows store your read-model DTOs in JSONB columns using the fixed `PerspectiveRow<TModel>` shape:
 
-```csharp{title="Example: Perspective Row Storage" description="PerspectiveRow<TModel> fields stored as JSONB" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Perspective", "Row"]}
+```csharp{title="Example: Perspective Row Storage" description="PerspectiveRow<TModel> fields stored as JSONB" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Perspective", "Row"] unverified="type-shape illustration of PerspectiveRow of T stored as JSONB; the row shape itself, not behavior under test"}
 public class PerspectiveRow<TModel> where TModel : class {
   public required Guid Id { get; init; }
   public required TModel Data { get; set; }              // JSONB

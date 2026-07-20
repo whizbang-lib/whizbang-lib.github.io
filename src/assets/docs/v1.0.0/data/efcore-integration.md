@@ -116,7 +116,7 @@ var products = await context.Products
 
 Whizbang standardizes on **UUIDv7** (time-ordered GUIDs), generated client-side via `TrackedGuid.NewMedo()`:
 
-```csharp{title="UUIDv7 Support" description="Whizbang standardizes on UUIDv7 (time-ordered GUIDs):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "UUIDv7", "Support"]}
+```csharp{title="UUIDv7 Support" description="Whizbang standardizes on UUIDv7 (time-ordered GUIDs):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "UUIDv7", "Support"] tests=["TrackedGuidTests.TrackedGuid_NewMedo_Version_Returns7Async", "TrackedGuidTests.TrackedGuid_NewMedo_IsTimeOrdered_ReturnsTrueAsync", "TrackedGuidTests.TrackedGuid_ImplicitToGuid_ReturnsUnderlyingValueAsync", "TrackedGuidTests.TrackedGuid_NewMedo_HasSourceMedoMetadataAsync"]}
 using Whizbang.Core.ValueObjects;
 
 public class Order {
@@ -992,7 +992,7 @@ dotnet publish -c Release -r linux-x64
 
 ### Hybrid Approach (Recommended)
 
-```csharp{title="Hybrid Approach (Recommended)" description="Hybrid Approach (Recommended)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Hybrid", "Approach", "Recommended"]}
+```csharp{title="Hybrid Approach (Recommended)" description="Hybrid Approach (Recommended)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Hybrid", "Approach", "Recommended"] unverified="user-domain illustration composing an EF Core write model with an ILensQuery read — application wiring, not a single framework API surface under test"}
 // ✅ EF Core for write model (domain aggregates)
 public class OrderService {
     private readonly ECommerceDbContext _context;
@@ -1053,7 +1053,7 @@ public class OrderQueryService(ILensQuery<OrderSummary> lens) {
 
 ### Pattern 1: Command Handler with EF Core
 
-```csharp{title="Pattern 1: Command Handler with EF Core" description="Pattern 1: Command Handler with EF Core" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Command", "Handler"]}
+```csharp{title="Pattern 1: Command Handler with EF Core" description="Pattern 1: Command Handler with EF Core" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Command", "Handler"] unverified="user-domain illustration — a receptor handler persisting via EF Core, not a framework API surface under test"}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly ECommerceDbContext _context;
 

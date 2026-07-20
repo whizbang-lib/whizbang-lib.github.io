@@ -200,7 +200,7 @@ await eventStore.AppendAsync(orderId, envelope, ct);
 
 When one wire message fans out into many inner events (composite events), use `AppendBatchAsync` so backends can bulk-insert in one round trip:
 
-```csharp{title="Batch Appends" description="Append a batch of envelopes in a single operation:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Batch", "Appends"]}
+```csharp{title="Batch Appends" description="Append a batch of envelopes in a single operation:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Batch", "Appends"] unverified="AppendBatchAsync is verified by EventStoreAppendBatchTests, which is outside the current coverage map"}
 await eventStore.AppendBatchAsync(
     [
         (orderId, envelope1),
